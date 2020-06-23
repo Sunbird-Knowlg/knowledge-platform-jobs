@@ -15,10 +15,8 @@ class Aggregator(config: CourseAggregatorConfig)(implicit val stringTypeInfo: Ty
   val mapType: Type = new TypeToken[util.Map[String, AnyRef]]() {}.getType
 
   override def metricsList(): List[String] = {
-    List(config.successEventCount, config.auditEventCount, config.failedEventCount)
+    List(config.successEventCount, config.failedEventCount)
   }
-
-
   /**
    * Method to process the events extraction from the batch
    *
@@ -28,6 +26,7 @@ class Aggregator(config: CourseAggregatorConfig)(implicit val stringTypeInfo: Ty
   override def processElement(batchEvent: util.Map[String, AnyRef],
                               context: ProcessFunction[util.Map[String, AnyRef], util.Map[String, AnyRef]]#Context,
                               metrics: Metrics): Unit = {
+    println("=====================**** Batch Event" + batchEvent + "===============")
 
   }
 }

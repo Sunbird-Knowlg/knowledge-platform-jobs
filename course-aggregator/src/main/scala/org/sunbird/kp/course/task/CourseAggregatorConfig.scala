@@ -17,7 +17,6 @@ class CourseAggregatorConfig(override val config: Config) extends BaseJobConfig(
 
   // Kafka Topics Configuration
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
-  val kafkaSuccessTopic: String = config.getString("kafka.output.success.topic")
   val kafkaFailedTopic: String = config.getString("kafka.output.failed.topic")
   val eventMaxSize: Long = config.getLong("kafka.event.max.size")
 
@@ -43,7 +42,7 @@ class CourseAggregatorConfig(override val config: Config) extends BaseJobConfig(
 
 
   // Consumers
-  val courseAggregatorConsumer = "course-aggregator-consumer"
+  val aggregatorConsumer = "course-aggregator-consumer"
 
   // Producers
   val aggregatorProducer = "extractor-duplicate-events-sink"
