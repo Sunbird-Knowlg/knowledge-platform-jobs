@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: user-cache-config
+  labels:
+    app: flink
+data:
+  user-cache-config.yaml: |+
+    kafka.broker-servers: "localhost:9092"
+    kafka.zookeeper: "localhost:2181"
+
