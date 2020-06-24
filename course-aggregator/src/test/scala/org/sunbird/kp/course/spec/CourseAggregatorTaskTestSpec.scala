@@ -72,14 +72,13 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
   }
 
 
-  "Aggregator " should "Update event to db" in {
+  "Aggregator " should "Compute and update to cassandra database" in {
     when(mockKafkaUtil.kafkaMapSource(courseAggregatorConfig.kafkaInputTopic)).thenReturn(new CourseAggregatorMapSource)
     when(mockKafkaUtil.kafkaMapSink(courseAggregatorConfig.kafkaFailedTopic)).thenReturn(new FailedEventsSink)
-    val task = new CourseAggregatorStreamTask(courseAggregatorConfig, mockKafkaUtil)
-    task.process()
+    new CourseAggregatorStreamTask(courseAggregatorConfig, mockKafkaUtil).process()
     //val failedEvent = gson.fromJson(gson.toJson(FailedEventsSink.values.get(0)), new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]].asScala
     //assert(failedEvent.get("map").get.asInstanceOf[LinkedTreeMap[String, AnyRef]].containsKey("metadata"))
-    // BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.failedEventCount}").getValue() should be(1)
+     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.totalEventsCount}").getValue() should be(1)
     // val test_row1 = cassandraUtil.findOne("select total_score,total_max_score from sunbird_courses.assessment_aggregator where course_id='do_2128410273679114241112'")
     // assert(test_row1.getDouble("total_score") == 2.0)
     // assert(test_row1.getDouble("total_max_score") == 2.0)
@@ -91,7 +90,7 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
 
   def testCassandraUtil(cassandraUtil: CassandraUtil): Unit = {
     cassandraUtil.reconnect()
-    val response = cassandraUtil.find("SELECT * FROM sunbird_courses.assessment_aggregator;")
+    val response = cassandraUtil.find(s"SELECT * FROM ${courseAggregatorConfig.dbKeyspace}.${courseAggregatorConfig.dbTable};")
     response should not be (null)
   }
 }

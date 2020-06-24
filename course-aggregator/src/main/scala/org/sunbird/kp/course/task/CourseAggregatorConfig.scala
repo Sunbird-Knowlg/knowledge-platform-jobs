@@ -24,8 +24,12 @@ class CourseAggregatorConfig(override val config: Config) extends BaseJobConfig(
   val aggregatorParallelism: Int = config.getInt("task.aggregator.parallelism")
 
   // Metric List
-  val successEventCount = "success-event-count"
-  val failedEventCount = "failed-event-count"
+  val totalEventsCount = "total-events-count"
+  val successEventCount = "success-events-count"
+  val failedEventCount = "failed-events-count"
+  val dbUpdateCount = "db-update-count"
+  val dbReadCount = "db-read-count"
+  val skippedEventCount = "skipped-event-count"
 
   // Cassandra
   val dbTable: String = config.getString("lms-cassandra.table")
