@@ -30,7 +30,7 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>org.sunbird</groupId>
+            <groupId>org.sunbird.kp</groupId>
             <artifactId>kp-jobs-core</artifactId>
             <version>1.0.0</version>
         </dependency>
