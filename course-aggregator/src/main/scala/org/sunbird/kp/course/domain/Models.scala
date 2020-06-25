@@ -1,25 +1,46 @@
 package org.sunbird.kp.course.domain
 
-case class Actor(id: String, `type`: String)
+import scala.collection.JavaConverters._
+import java.util
+import java.util.UUID
 
-case class Context(channel: String, env: String, sid: String, did: String, pdata: Pdata, cdata: Seq[AnyRef])
 
-case class EData(level: String = "INFO", `type`: String, message: String, params: Array[Params])
+case class ActorObject(id: String, `type`: String)
 
-case class Params(ver: String, events_count: Int, sync_status: String)
+case class Context(channel: String = "in.sunbird",
+                   env: String = "knowledge-platform",
+                   sid: String = UUID.randomUUID().toString,
+                   did: String = UUID.randomUUID().toString,
+                   pdata: util.Map[String, String],
+                   cdata: util.ArrayList[util.Map[String, AnyRef]],
+                   rollup: util.Map[String, String])
 
-case class Pdata(ver: String, pid: String, id: String = "data-pipeline")
+case class eData(`type`: String)
 
-case class  Object(id:String, ver: String, `type`:String, rollup: Option[Map[String, String]])
+case class EventObject(id: String, ver: String, `type`: String, rollup: util.Map[String, String])
 
-case class LogEvent(actor: Actor,
-                    eid: String,
-                    edata: EData,
-                    ver: String = "3.0",
-                    syncts: Long,
-                    ets: Long = System.currentTimeMillis(),
-                    context: Context,
-                    mid: String,
-                    `object`: Object,
-                    tags: Seq[AnyRef]
+case class TelemetryEvent(actor: ActorObject = ActorObject("sunbird-telemetry", "knowledge-platform"),
+                          eid: String,
+                          edata: eData = eData(`type` = "platform"),
+                          ver: String = "3.0",
+                          syncts: Long = System.currentTimeMillis(),
+                          ets: Long = System.currentTimeMillis(),
+                          context: Context = Context(
+                            pdata = Map("ver" -> "3.0", "pid" -> "course-aggregator").asJava,
+                            cdata = new util.ArrayList[util.Map[String, AnyRef]](),
+                            rollup = new util.HashMap[String, String]()
+                          ),
+                          mid: String,
+                          `object`: EventObject = EventObject(UUID.randomUUID().toString, "3.0", "kp-telemetry-events", new util.HashMap[String, String]()),
+                          tags: util.List[AnyRef] = new util.ArrayList[AnyRef]()
+                         )
+
+case class Progress(batchId: String,
+                    userId: String,
+                    courseId: String,
+                    status: Int,
+                    completedOn: Option[Long],
+                    contentStatus: Map[String, Int],
+                    progress: Int, completionPercentage: Int
                    )
+

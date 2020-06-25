@@ -31,11 +31,14 @@ class CourseAggregatorConfig(override val config: Config) extends BaseJobConfig(
   val dbReadCount = "db-read-count"
   val skippedEventCount = "skipped-event-count"
 
-  // Cassandra
+  // Cassandra Configurations
   val dbTable: String = config.getString("lms-cassandra.table")
   val dbKeyspace: String = config.getString("lms-cassandra.keyspace")
   val dbHost: String = config.getString("lms-cassandra.host")
   val dbPort: Int = config.getInt("lms-cassandra.port")
+
+  // Redis Configurations
+  val leafNodesStore: Int = config.getInt("redis.database.leafnodes.id")
 
   // Tags
   val FAILED_EVENTS_OUTPUT_TAG = "failed-events"
@@ -44,11 +47,15 @@ class CourseAggregatorConfig(override val config: Config) extends BaseJobConfig(
   val successEventOutputTag: OutputTag[util.Map[String, AnyRef]] = OutputTag[util.Map[String, AnyRef]](SUCCESS_EVENTS_OUTPUT_TAG)
   val failedEventsOutputTag: OutputTag[util.Map[String, AnyRef]] = OutputTag[util.Map[String, AnyRef]](FAILED_EVENTS_OUTPUT_TAG)
 
-
   // Consumers
   val aggregatorConsumer = "course-aggregator-consumer"
 
   // Producers
   val aggregatorProducer = "extractor-duplicate-events-sink"
+
+  val completedStatusCode: Int = 2
+  val inCompleteStatusCode: Int = 1
+  val completionPercentage: Int = 100
+
 
 }

@@ -16,11 +16,14 @@ import org.cassandraunit.dataset.cql.FileCQLDataSet
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
 import org.mockito.Mockito
 import org.mockito.Mockito._
+import org.sunbird.async.core.cache.RedisConnect
 import org.sunbird.async.core.job.FlinkKafkaConnector
 import org.sunbird.async.core.util.CassandraUtil
 import org.sunbird.async.core.{BaseMetricsReporter, BaseTestSpec}
 import org.sunbird.kp.course.fixture.EventFixture
 import org.sunbird.kp.course.task.{CourseAggregatorConfig, CourseAggregatorStreamTask}
+import redis.clients.jedis.Jedis
+import redis.embedded.RedisServer
 
 import scala.collection.JavaConverters._
 
@@ -34,17 +37,23 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
     .setNumberTaskManagers(1)
     .build)
 
-
-  val config: Config = ConfigFactory.load("test.conf")
-  val courseAggregatorConfig: CourseAggregatorConfig = new CourseAggregatorConfig(config)
+  var redisServer: RedisServer = _
+  redisServer = new RedisServer(6373)
+  redisServer.start()
+  var jedis: Jedis = _
   val mockKafkaUtil: FlinkKafkaConnector = mock[FlinkKafkaConnector](Mockito.withSettings().serializable())
   val gson = new Gson()
+  val config: Config = ConfigFactory.load("test.conf")
+  val courseAggregatorConfig: CourseAggregatorConfig = new CourseAggregatorConfig(config)
 
 
   var cassandraUtil: CassandraUtil = _
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
+    val redisConnect = new RedisConnect(courseAggregatorConfig)
+    jedis = redisConnect.getConnection(courseAggregatorConfig.leafNodesStore)
+    setupRedisTestData(jedis)
     EmbeddedCassandraServerHelper.startEmbeddedCassandra(80000L)
     cassandraUtil = new CassandraUtil(courseAggregatorConfig.dbHost, courseAggregatorConfig.dbPort)
     val session = cassandraUtil.session
@@ -63,6 +72,7 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
     super.afterAll()
     try {
       EmbeddedCassandraServerHelper.cleanEmbeddedCassandra()
+      redisServer.stop()
     } catch {
       case ex: Exception => {
 
@@ -91,9 +101,20 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
   def testCassandraUtil(cassandraUtil: CassandraUtil): Unit = {
     cassandraUtil.reconnect()
     val response = cassandraUtil.find(s"SELECT * FROM ${courseAggregatorConfig.dbKeyspace}.${courseAggregatorConfig.dbTable};")
+    println("cassandra resposne" + response)
     response should not be (null)
   }
+
+  def setupRedisTestData(jedis: Jedis) {
+    // Insert user test data
+    jedis.flushDB()
+    jedis.lpush("do_1127212344324751361295:leafnodes", "do_11260735471149056012299")
+    jedis.lpush("do_1127212344324751361295:leafnodes", "do_11260735471149056012300")
+    jedis.lpush("do_1127212344324751361295:leafnodes", "do_11260735471149056012301")
+    jedis.close()
+  }
 }
+
 
 class CourseAggregatorMapSource extends SourceFunction[util.Map[String, AnyRef]] {
 

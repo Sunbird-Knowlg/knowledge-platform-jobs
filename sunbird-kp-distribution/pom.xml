@@ -21,8 +21,8 @@
             <type>jar</type>
         </dependency>
         <dependency>
-            <groupId>org.sunbird.dp.jobs</groupId>
-            <artifactId>telemetry-extractor</artifactId>
+            <groupId>org.sunbird.kp</groupId>
+            <artifactId>course-aggregator</artifactId>
             <version>1.0.0</version>
             <type>jar</type>
         </dependency>
@@ -68,8 +68,8 @@
                             </execution>
                         </executions>
                         <configuration>
-                            <repository>knowledge-platform-jobs</repository>
-                            <tag>${release-version}</tag>
+                            <repository>docker.io/manjudr/kp-course-aggregator-job</repository>
+                            <tag>${project.version}</tag>
                         </configuration>
                     </plugin>
                 </plugins>

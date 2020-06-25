@@ -5,15 +5,14 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>org.sunbird</groupId>
+        <groupId>org.sunbird.kp</groupId>
         <artifactId>knowledge-platform-jobs</artifactId>
         <version>1.0</version>
     </parent>
-
     <artifactId>course-aggregator</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
-    <name>Course Aggregator</name>
+    <name>Course-Aggregator</name>
     <description>
         Course Progress Computation
     </description>
@@ -96,6 +95,18 @@
             <artifactId>cassandra-unit</artifactId>
             <version>3.11.2.0</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>it.ozimov</groupId>
+            <artifactId>embedded-redis</artifactId>
+            <version>0.7.1</version>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.google.guava</groupId>
+                    <artifactId>guava</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
     </dependencies>
 
