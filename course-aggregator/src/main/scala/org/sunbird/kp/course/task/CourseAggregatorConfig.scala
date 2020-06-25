@@ -44,8 +44,8 @@ class CourseAggregatorConfig(override val config: Config) extends BaseJobConfig(
   val FAILED_EVENTS_OUTPUT_TAG = "failed-events"
   val SUCCESS_EVENTS_OUTPUT_TAG = "success-events"
 
-  val successEventOutputTag: OutputTag[util.Map[String, AnyRef]] = OutputTag[util.Map[String, AnyRef]](SUCCESS_EVENTS_OUTPUT_TAG)
-  val failedEventsOutputTag: OutputTag[util.Map[String, AnyRef]] = OutputTag[util.Map[String, AnyRef]](FAILED_EVENTS_OUTPUT_TAG)
+  val successEventOutputTag: OutputTag[String] = OutputTag[String](SUCCESS_EVENTS_OUTPUT_TAG)
+  val failedEventsOutputTag: OutputTag[String] = OutputTag[String](FAILED_EVENTS_OUTPUT_TAG)
 
   // Consumers
   val aggregatorConsumer = "course-aggregator-consumer"
@@ -56,6 +56,6 @@ class CourseAggregatorConfig(override val config: Config) extends BaseJobConfig(
   val completedStatusCode: Int = 2
   val inCompleteStatusCode: Int = 1
   val completionPercentage: Int = 100
-
+  val primaryCols = List("userid","courseid","batchid")
 
 }

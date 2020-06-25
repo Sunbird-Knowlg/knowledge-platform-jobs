@@ -21,17 +21,11 @@ import org.sunbird.kp.course.task.CourseAggregatorConfig
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 
-/**
- *
- *
- *
- */
-
 
 class Aggregator(config: CourseAggregatorConfig)(implicit val stringTypeInfo: TypeInformation[String],
                                                  @transient var cassandraUtil: CassandraUtil = null
 )
-  extends BaseProcessFunction[util.Map[String, AnyRef], util.Map[String, AnyRef]](config) {
+  extends BaseProcessFunction[util.Map[String, AnyRef], String](config) {
 
   val mapType: Type = new TypeToken[util.Map[String, AnyRef]]() {}.getType
   private[this] val logger = LoggerFactory.getLogger(classOf[Aggregator])
@@ -65,25 +59,29 @@ class Aggregator(config: CourseAggregatorConfig)(implicit val stringTypeInfo: Ty
    * @param context
    */
   override def processElement(event: util.Map[String, AnyRef],
-                              context: ProcessFunction[util.Map[String, AnyRef], util.Map[String, AnyRef]]#Context,
+                              context: ProcessFunction[util.Map[String, AnyRef], String]#Context,
                               metrics: Metrics): Unit = {
     metrics.incCounter(config.totalEventsCount)
     val eventData = event.get("edata").asInstanceOf[util.Map[String, AnyRef]]
-    val batchId = eventData.get("batchId").asInstanceOf[String]
-    val courseId = eventData.get("courseId").asInstanceOf[String]
-    val userId = eventData.get("userId").asInstanceOf[String]
     val csFromEvent = new mutable.HashMap[String, Int]()
+    val primaryColss = eventData.asScala.map(v => (v._1.toLowerCase, v._2)).filter(x=> x._1.contains(config.primaryCols))
+    println("primaryColss" + primaryColss)
+     val primaryCols = Map(
+        "courseid" -> eventData.get("courseId").asInstanceOf[String],
+        "batchid" -> eventData.get("batchId").asInstanceOf[String],
+        "userid" -> eventData.get("userId").asInstanceOf[String]
+      )
+
     val contentsList = eventData.get("contents").asInstanceOf[util.List[util.Map[String, AnyRef]]]
     contentsList.forEach(content => {
       csFromEvent.put(content.get("contentId").asInstanceOf[String], content.get("status").asInstanceOf[Double].toInt)
     })
-    val primaryCols = Map("courseid" -> courseId, "batchid" -> batchId, "userid" -> userId)
     val dbResponse = readFromDB(primaryCols, config.dbKeyspace, config.dbTable)
     val csFromDB = Option(dbResponse).map(res => {
       res.getObject("contentstatus").asInstanceOf[util.Map[String, Int]]
     }).getOrElse(new util.HashMap[String, Int]())
     // Get the LeafNodes from Redis
-    val leafNodes = getLeafNodes(key = s"${courseId}:leafnodes")
+    val leafNodes = getLeafNodes(key = s"${primaryCols.get("courseid")}:leafnodes")
     if (null != leafNodes && !leafNodes.isEmpty) {
       val progress = computeProgress(leafNodes.size(), csFromDB.asScala, csFromEvent, primaryCols, context)
       try {
@@ -93,13 +91,13 @@ class Aggregator(config: CourseAggregatorConfig)(implicit val stringTypeInfo: Ty
         case ex: Exception =>
           ex.printStackTrace()
           metrics.incCounter(config.failedEventCount)
-          logger.error(s"Error While writing Data into database for this Batch:${batchId}, courseId:${courseId}, userId:${userId}")
-          context.output(config.failedEventsOutputTag, event)
+          logger.error(s"Error While writing Data into database for this Batch:${primaryCols.get("batchid")}, courseId:${primaryCols.get("courseid")}, userId:${primaryCols.get("userid")}")
+          context.output(config.failedEventsOutputTag, gson.toJson(event))
       }
       // Update the progress to DB
     } else {
-      logger.debug(s"LeafNodes are not available in the redis for this Batch:${batchId}, courseId:${courseId}, userId:${userId}")
-      context.output(config.failedEventsOutputTag, event)
+      logger.debug(s"LeafNodes are not available in the redis for this Batch:${primaryCols.get("batchid")}, courseId:${primaryCols.get("courseid")}, userId:${primaryCols.get("userid")}")
+      context.output(config.failedEventsOutputTag, gson.toJson(event))
       metrics.incCounter(config.failedEventCount)
     }
 
@@ -137,9 +135,9 @@ class Aggregator(config: CourseAggregatorConfig)(implicit val stringTypeInfo: Ty
                       csFromDB: mutable.Map[String, Int],
                       csFromEvent: mutable.Map[String, Int],
                       primaryCols: Map[String, String],
-                      context: ProcessFunction[util.Map[String, AnyRef], util.Map[String, AnyRef]]#Context): Progress = {
+                      context: ProcessFunction[util.Map[String, AnyRef], String]#Context): Progress = {
     // Generating TELEMETRY START Event When ContentStatus IN DB is Empty or Null
-    Option(csFromDB).getOrElse(context.output(config.successEventOutputTag, TelemetryEvent(eid = "START", mid = s"course-${primaryCols.get("batchid")}_${primaryCols.get("userid")}_start")))
+    Option(csFromDB).getOrElse(context.output(config.successEventOutputTag, gson.toJson(TelemetryEvent(eid = "START", mid = s"course-${primaryCols.get("batchid")}_${primaryCols.get("userid")}_start"))))
     val unionKeys = csFromEvent.keySet.union(csFromDB.keySet)
     val mergedContentStatus: Map[String, Int] = unionKeys.map { k =>
       (k -> (if (csFromEvent.get(k).getOrElse(0) >= csFromDB.get(k).getOrElse(0)) csFromEvent.get(k).getOrElse(0)
@@ -148,7 +146,7 @@ class Aggregator(config: CourseAggregatorConfig)(implicit val stringTypeInfo: Ty
     val completionPercentage = ((mergedContentStatus.size.toFloat / leafNodesSize.toFloat) * 100).toInt
     if (completionPercentage == config.completionPercentage) {
       // Generating TELEMETRY END Event When completionPercentage is config.completionPercentage or 100%
-      context.output(config.successEventOutputTag, TelemetryEvent(eid = "END", mid = s"course-${primaryCols.get("batchid")}_${primaryCols.get("userid")}_compelete"))
+      context.output(config.successEventOutputTag, gson.toJson(TelemetryEvent(eid = "END", mid = s"course-${primaryCols.get("batchid")}_${primaryCols.get("userid")}_compelete")))
       Progress(primaryCols.get("batchid").get, primaryCols.get("courseid").get, primaryCols.get("userid").get, status = config.completedStatusCode, completedOn = Some(new DateTime().getMillis), contentStatus = mergedContentStatus, progress = mergedContentStatus.size, completionPercentage = completionPercentage)
     } else {
       Progress(primaryCols.get("batchid").get, primaryCols.get("courseid").get, primaryCols.get("userid").get, status = config.inCompleteStatusCode, completedOn = None, contentStatus = mergedContentStatus, progress = mergedContentStatus.size, completionPercentage = completionPercentage)
