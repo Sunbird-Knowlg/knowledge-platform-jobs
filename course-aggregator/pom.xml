@@ -40,7 +40,7 @@
             <version>2.10.6</version>
         </dependency>
         <dependency>
-            <groupId>org.sunbird</groupId>
+            <groupId>org.sunbird.kp</groupId>
             <artifactId>kp-jobs-core</artifactId>
             <version>1.0.0</version>
             <type>test-jar</type>

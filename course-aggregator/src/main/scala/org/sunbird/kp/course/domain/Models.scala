@@ -1,8 +1,9 @@
 package org.sunbird.kp.course.domain
 
-import scala.collection.JavaConverters._
 import java.util
 import java.util.UUID
+
+import scala.collection.JavaConverters._
 
 
 case class ActorObject(id: String, `type`: String)

@@ -22,13 +22,13 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 
-class Aggregator(config: CourseAggregatorConfig)(implicit val stringTypeInfo: TypeInformation[String],
+class ProgressUpdater(config: CourseAggregatorConfig)(implicit val stringTypeInfo: TypeInformation[String],
                                                  @transient var cassandraUtil: CassandraUtil = null
 )
   extends BaseProcessFunction[util.Map[String, AnyRef], String](config) {
 
   val mapType: Type = new TypeToken[util.Map[String, AnyRef]]() {}.getType
-  private[this] val logger = LoggerFactory.getLogger(classOf[Aggregator])
+  private[this] val logger = LoggerFactory.getLogger(classOf[ProgressUpdater])
   private var dataCache: DataCache = _
   lazy private val gson = new Gson()
 

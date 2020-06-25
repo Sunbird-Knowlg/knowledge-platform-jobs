@@ -10,7 +10,7 @@ import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 import org.sunbird.async.core.job.FlinkKafkaConnector
 import org.sunbird.async.core.util.FlinkUtil
-import org.sunbird.kp.course.functions.Aggregator
+import org.sunbird.kp.course.functions.ProgressUpdater
 
 class CourseAggregatorStreamTask(config: CourseAggregatorConfig, kafkaConnector: FlinkKafkaConnector) {
 
@@ -24,7 +24,7 @@ class CourseAggregatorStreamTask(config: CourseAggregatorConfig, kafkaConnector:
     env.addSource(kafkaConnector.kafkaMapSource(config.kafkaInputTopic), config.aggregatorConsumer)
       .uid(config.aggregatorConsumer).setParallelism(config.kafkaConsumerParallelism)
       .rebalance()
-      .process(new Aggregator(config))
+      .process(new ProgressUpdater(config))
       .name("AggregatorFn").uid("AggregatorFn")
       .setParallelism(config.aggregatorParallelism)
 
