@@ -120,8 +120,14 @@ class CourseAggregatorMapSource extends SourceFunction[util.Map[String, AnyRef]]
 
   override def run(ctx: SourceContext[util.Map[String, AnyRef]]) {
     val gson = new Gson()
-    val eventMap = gson.fromJson(EventFixture.EVENT_WITH_MESSAGE_ID, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]].asScala
-    ctx.collect(eventMap.asJava)
+    val eventMap1 = gson.fromJson(EventFixture.EVENT_WITH_MESSAGE_ID, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]].asScala ++ Map("partition" -> 0.asInstanceOf[AnyRef])
+    val eventMap2 = gson.fromJson(EventFixture.EVENT_WITH_MESSAGE_ID, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]].asScala ++ Map("partition" -> 2.asInstanceOf[AnyRef])
+    val eventMap3 = gson.fromJson(EventFixture.EVENT_WITH_MESSAGE_ID, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]].asScala ++ Map("partition" -> 1.asInstanceOf[AnyRef])
+    val eventMap4 = gson.fromJson(EventFixture.EVENT_WITH_MESSAGE_ID, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]].asScala ++ Map("partition" -> 1.asInstanceOf[AnyRef])
+    ctx.collect(eventMap1.asJava)
+    ctx.collect(eventMap2.asJava)
+    ctx.collect(eventMap3.asJava)
+    ctx.collect(eventMap4.asJava)
   }
 
   override def cancel() = {}

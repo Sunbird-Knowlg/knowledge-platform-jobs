@@ -30,6 +30,7 @@ class CourseAggregatorConfig(override val config: Config) extends BaseJobConfig(
   val dbUpdateCount = "db-update-count"
   val dbReadCount = "db-read-count"
   val skippedEventCount = "skipped-event-count"
+  val cacheHitCount = "cach-hit-count"
 
   // Cassandra Configurations
   val dbTable: String = config.getString("lms-cassandra.table")

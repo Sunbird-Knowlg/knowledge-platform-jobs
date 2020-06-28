@@ -16,8 +16,9 @@ class MapDeserializationSchema extends KafkaDeserializationSchema[util.Map[Strin
   override def isEndOfStream(nextElement: util.Map[String, AnyRef]): Boolean = false
 
   override def deserialize(record: ConsumerRecord[Array[Byte], Array[Byte]]): util.Map[String, AnyRef] = {
+    val partition = new Integer(record.partition())
     val parsedString = new String(record.value(), StandardCharsets.UTF_8)
-    val recordMap = new Gson().fromJson(parsedString, new util.HashMap[String, AnyRef]().getClass).asScala
+    val recordMap = new Gson().fromJson(parsedString, new util.HashMap[String, AnyRef]().getClass).asScala ++ Map("partition" -> partition.asInstanceOf[AnyRef])
     recordMap.asJava
   }
 

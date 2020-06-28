@@ -7,29 +7,36 @@ import com.typesafe.config.ConfigFactory
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
+import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
+import org.apache.flink.streaming.api.windowing.assigners._
+import org.apache.flink.streaming.api.windowing.evictors.CountEvictor
+import org.apache.flink.streaming.api.windowing.time.Time
 import org.sunbird.async.core.job.FlinkKafkaConnector
 import org.sunbird.async.core.util.FlinkUtil
-import org.sunbird.kp.course.functions.ProgressUpdater
+import org.sunbird.kp.course.functions.TestWindowFunction
+
 
 class CourseAggregatorStreamTask(config: CourseAggregatorConfig, kafkaConnector: FlinkKafkaConnector) {
-
-  private val serialVersionUID = -7729362727131516112L
-
   def process(): Unit = {
     implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
     implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
-
     env.addSource(kafkaConnector.kafkaMapSource(config.kafkaInputTopic), config.aggregatorConsumer)
+   // val source = env.fromElements(("hello", 1), ("hello", 2))
+   val dataStream = env.addSource(kafkaConnector.kafkaMapSource(config.kafkaInputTopic), "telemetry-ingest-events-consumer")
       .uid(config.aggregatorConsumer).setParallelism(config.kafkaConsumerParallelism)
-      .rebalance()
-      .process(new ProgressUpdater(config))
-      .name("AggregatorFn").uid("AggregatorFn")
-      .setParallelism(config.aggregatorParallelism)
+      .keyBy(x=>  x.get("partition").toString)
+      .window(TumblingEventTimeWindows.of(Time.seconds(60)))
+      .process(new TestWindowFunction(config))
 
+      
+//      .window(EventTimeSessionWindows.withGap(Time.seconds(1)))
+//      .evictor(CountEvictor.of(2))
+//      .process(new TestWindowFunction(config))
     env.execute(config.jobName)
   }
+
 }
 
 // $COVERAGE-OFF$ Disabling scoverage as the below code can only be invoked within flink cluster
