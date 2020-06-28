@@ -29,9 +29,10 @@ class ProgressUpdater(config: CourseAggregatorConfig)(implicit val stringTypeInf
   private[this] val logger = LoggerFactory.getLogger(classOf[ProgressUpdater])
   private var dataCache: DataCache = _
   lazy private val gson = new Gson()
+  val actionType = "batch-enrolment-update"
 
   override def metricsList(): List[String] = {
-    List(config.successEventCount, config.failedEventCount, config.totalEventsCount, config.dbUpdateCount)
+    List(config.successEventCount, config.failedEventCount, config.totalEventsCount, config.dbUpdateCount, config.cacheHitCount)
   }
 
   override def open(parameters: Configuration): Unit = {
@@ -51,40 +52,35 @@ class ProgressUpdater(config: CourseAggregatorConfig)(implicit val stringTypeInf
     val batch = QueryBuilder.batch()
     events.forEach(event => {
       val eventData = event.get("edata").asInstanceOf[util.Map[String, AnyRef]]
-      metrics.incCounter(config.totalEventsCount)
-      val csFromEvent = new mutable.HashMap[String, Int]()
-      val primaryCols = eventData.asScala.map(v => (v._1.toLowerCase, v._2)).filter(x => config.primaryCols.contains(x._1)).asInstanceOf[mutable.Map[String, String]]
-      val contentsList = eventData.get("contents").asInstanceOf[util.List[util.Map[String, AnyRef]]]
-      contentsList.forEach(content => {
-        csFromEvent.put(content.get("contentId").asInstanceOf[String], content.get("status").asInstanceOf[Double].toInt)
-      })
-      val dbResponse = readFromDB(primaryCols, config.dbKeyspace, config.dbTable)
-      val csFromDB = Option(dbResponse).map(res => {
-        res.getObject("contentstatus").asInstanceOf[util.Map[String, Int]]
-      }).getOrElse(new util.HashMap[String, Int]())
-      // Get the LeafNodes from Redis
-      val leafNodes = getLeafNodes(key = s"${primaryCols.get("courseid").getOrElse(null)}:leafnodes", metrics)
-      if (null != leafNodes && !leafNodes.isEmpty) {
-        val progress = computeProgress(leafNodes.size(), csFromDB.asScala, csFromEvent, primaryCols, context)
-        batch.add(getQuery(progress, keySpace = config.dbKeyspace, table = config.dbTable))
-        try {
-          cassandraUtil.upsert(batch.toString)
-          metrics.incCounter(config.successEventCount)
-          metrics.incCounter(config.dbUpdateCount)
-        } catch {
-          case ex: Exception =>
-            ex.printStackTrace()
-            metrics.incCounter(config.failedEventCount)
-            logger.error(s"Error While writing Data into database for this Batch:${primaryCols.get("batchid")}, courseId:${primaryCols.get("courseid")}, userId:${primaryCols.get("userid")}")
-            context.output(config.failedEventsOutputTag, gson.toJson(event))
+      if (eventData.get("action") == actionType) {
+        metrics.incCounter(config.totalEventsCount) // To Measure the number of batch-enrollment-updater events came.
+        val csFromEvent = getContentStatsFromEvent(eventData)
+        val primaryCols = eventData.asScala.map(v => (v._1.toLowerCase, v._2)).filter(x => config.primaryCols.contains(x._1)).asInstanceOf[mutable.Map[String, String]]
+        val csFromDB = Option(readFromDB(primaryCols, config.dbKeyspace, config.dbTable)).map(res => {
+          res.getObject("contentstatus").asInstanceOf[util.Map[String, Int]]
+        }).getOrElse(new util.HashMap[String, Int]())
+
+        // Get the LeafNodes from Redis
+        val leafNodes = getLeafNodes(key = s"${primaryCols.get("courseid").getOrElse(null)}:leafnodes", metrics)
+        if (null != leafNodes && !leafNodes.isEmpty) {
+          val progress = computeProgress(leafNodes.size(), csFromDB.asScala, csFromEvent, primaryCols, context)
+          batch.add(getQuery(progress, keySpace = config.dbKeyspace, table = config.dbTable))
+          try {
+            writeToDb(query = batch.toString, metrics)
+          } catch {
+            case ex: Exception =>
+              ex.printStackTrace()
+              metrics.incCounter(config.failedEventCount)
+              logger.error(s"Error While writing Data into database for this Batch:${primaryCols.get("batchid")}, courseId:${primaryCols.get("courseid")}, userId:${primaryCols.get("userid")}")
+              context.output(config.failedEventsOutputTag, gson.toJson(event))
+          }
+        } else {
+          logger.debug(s"LeafNodes are not available in the redis for this Batch:${primaryCols.get("batchid")}, courseId:${primaryCols.get("courseid")}, userId:${primaryCols.get("userid")}")
+          context.output(config.failedEventsOutputTag, gson.toJson(event))
+          metrics.incCounter(config.failedEventCount)
         }
-      } else {
-        logger.debug(s"LeafNodes are not available in the redis for this Batch:${primaryCols.get("batchid")}, courseId:${primaryCols.get("courseid")}, userId:${primaryCols.get("userid")}")
-        context.output(config.failedEventsOutputTag, gson.toJson(event))
-        metrics.incCounter(config.failedEventCount)
       }
     })
-
   }
 
   def readFromDB(columns: mutable.Map[String, String], keySpace: String, table: String): Row = {
@@ -136,5 +132,21 @@ class ProgressUpdater(config: CourseAggregatorConfig)(implicit val stringTypeInf
     } else {
       Progress(primaryCols.get("batchid").get, primaryCols.get("courseid").get, primaryCols.get("userid").get, status = config.inCompleteStatusCode, completedOn = None, contentStatus = mergedContentStatus, progress = mergedContentStatus.size, completionPercentage = completionPercentage)
     }
+  }
+
+  def getContentStatsFromEvent(eventData: util.Map[String, AnyRef]): mutable.HashMap[String, Int] = {
+    val csFromEvent = new mutable.HashMap[String, Int]()
+    val contentsList = eventData.get("contents").asInstanceOf[util.List[util.Map[String, AnyRef]]]
+    contentsList.forEach(content => {
+      if (csFromEvent.get(content.get("contentId").asInstanceOf[String]).getOrElse(0) > content.get("status").asInstanceOf[Double].toInt)
+        csFromEvent.put(content.get("contentId").asInstanceOf[String], content.get("status").asInstanceOf[Double].toInt)
+    })
+    csFromEvent
+  }
+
+  def writeToDb(query:String, metrics: Metrics): Unit ={
+    cassandraUtil.upsert(query)
+    metrics.incCounter(config.successEventCount)
+    metrics.incCounter(config.dbUpdateCount)
   }
 }
