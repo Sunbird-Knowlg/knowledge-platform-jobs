@@ -62,6 +62,7 @@ class ProgressUpdater(config: CourseAggregatorConfig)(implicit val stringTypeInf
 
         // Get the LeafNodes from Redis
         val leafNodes = getLeafNodes(key = s"${primaryCols.get("courseid").getOrElse(null)}:leafnodes", metrics)
+        println("leafNodesleafNodes" + leafNodes)
         if (null != leafNodes && !leafNodes.isEmpty) {
           val progress = computeProgress(leafNodes.size(), csFromDB.asScala, csFromEvent, primaryCols, context)
           batch.add(getQuery(progress, keySpace = config.dbKeyspace, table = config.dbTable))
@@ -69,6 +70,7 @@ class ProgressUpdater(config: CourseAggregatorConfig)(implicit val stringTypeInf
             writeToDb(query = batch.toString, metrics)
           } catch {
             case ex: Exception =>
+              println("ERRORIS" + ex.getMessage)
               ex.printStackTrace()
               metrics.incCounter(config.failedEventCount)
               logger.error(s"Error While writing Data into database for this Batch:${primaryCols.get("batchid")}, courseId:${primaryCols.get("courseid")}, userId:${primaryCols.get("userid")}")
@@ -106,10 +108,11 @@ class ProgressUpdater(config: CourseAggregatorConfig)(implicit val stringTypeInf
       .and(QueryBuilder.eq("userid", progressColumns.userId)).and(QueryBuilder.eq("courseid", progressColumns.courseId))
   }
 
-
   def getLeafNodes(key: String, metrics: Metrics): util.List[String] = {
     metrics.incCounter(config.cacheHitCount)
-    dataCache.lRangeWithRetry(key)
+    val data = dataCache.lRangeWithRetry(key)
+    println("DataIs" + gson.toJson(data))
+    data
   }
 
   def computeProgress(leafNodesSize: Int,
@@ -119,32 +122,46 @@ class ProgressUpdater(config: CourseAggregatorConfig)(implicit val stringTypeInf
                       context: ProcessWindowFunction[util.Map[String, AnyRef], String, String, TimeWindow]#Context): Progress = {
     // Generating TELEMETRY START Event When ContentStatus IN DB is Empty or Null
     Option(csFromDB).getOrElse(context.output(config.successEventOutputTag, gson.toJson(TelemetryEvent(eid = "START", mid = s"course-${primaryCols.get("batchid")}_${primaryCols.get("userid")}_start"))))
+    println("csFromEvent")
     val unionKeys = csFromEvent.keySet.union(csFromDB.keySet)
+    println("unionKeys" + unionKeys)
     val mergedContentStatus: Map[String, Int] = unionKeys.map { k =>
       (k -> (if (csFromEvent.get(k).getOrElse(0) >= csFromDB.get(k).getOrElse(0)) csFromEvent.get(k).getOrElse(0)
       else csFromDB.get(k).getOrElse(0)))
     }.toMap.filter(value => value._2 == config.completedStatusCode)
+    println("mergedContentStatus" + mergedContentStatus)
+    println("leafNodesSize" + leafNodesSize)
     val completionPercentage = ((mergedContentStatus.size.toFloat / leafNodesSize.toFloat) * 100).toInt
     if (completionPercentage == config.completionPercentage) {
       // Generating TELEMETRY END Event When completionPercentage is config.completionPercentage or 100%
       context.output(config.successEventOutputTag, gson.toJson(TelemetryEvent(eid = "END", mid = s"course-${primaryCols.get("batchid")}_${primaryCols.get("userid")}_compelete")))
-      Progress(primaryCols.get("batchid").get, primaryCols.get("courseid").get, primaryCols.get("userid").get, status = config.completedStatusCode, completedOn = Some(new DateTime().getMillis), contentStatus = mergedContentStatus, progress = mergedContentStatus.size, completionPercentage = completionPercentage)
+      Progress(primaryCols.get("batchid").get, primaryCols.get("userid").get, primaryCols.get("courseid").get, status = config.completedStatusCode, completedOn = Some(new DateTime().getMillis), contentStatus = mergedContentStatus, progress = mergedContentStatus.size, completionPercentage = completionPercentage)
     } else {
-      Progress(primaryCols.get("batchid").get, primaryCols.get("courseid").get, primaryCols.get("userid").get, status = config.inCompleteStatusCode, completedOn = None, contentStatus = mergedContentStatus, progress = mergedContentStatus.size, completionPercentage = completionPercentage)
+      Progress(primaryCols.get("batchid").get, primaryCols.get("userid").get, primaryCols.get("courseid").get, status = config.inCompleteStatusCode, completedOn = None, contentStatus = mergedContentStatus, progress = mergedContentStatus.size, completionPercentage = completionPercentage)
     }
   }
 
+
+  /**
+   * Method to get the content status object in map format ex: (do_5874308329084 -> 2, do_59485345435 -> 3)
+   * It always takes the highest precedence progress values for the contents ex: (do_5874308329084 -> 2, do_5874308329084 -> 1, do_59485345435 -> 3) => (do_5874308329084 -> 2, do_59485345435 -> 3)
+   *
+   * @param eventData
+   * @return
+   */
   def getContentStatsFromEvent(eventData: util.Map[String, AnyRef]): mutable.HashMap[String, Int] = {
     val csFromEvent = new mutable.HashMap[String, Int]()
     val contentsList = eventData.get("contents").asInstanceOf[util.List[util.Map[String, AnyRef]]]
     contentsList.forEach(content => {
-      if (csFromEvent.get(content.get("contentId").asInstanceOf[String]).getOrElse(0) > content.get("status").asInstanceOf[Double].toInt)
+      if (csFromEvent.get(content.get("contentId").asInstanceOf[String]).getOrElse(0) < content.get("status").asInstanceOf[Double].toInt) {
         csFromEvent.put(content.get("contentId").asInstanceOf[String], content.get("status").asInstanceOf[Double].toInt)
+      }
     })
     csFromEvent
   }
 
-  def writeToDb(query:String, metrics: Metrics): Unit ={
+  def writeToDb(query: String, metrics: Metrics): Unit = {
+    println("Cassandra Query Is" + query)
     cassandraUtil.upsert(query)
     metrics.incCounter(config.successEventCount)
     metrics.incCounter(config.dbUpdateCount)

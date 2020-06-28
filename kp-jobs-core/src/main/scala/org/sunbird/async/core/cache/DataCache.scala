@@ -121,7 +121,9 @@ class DataCache(val config: BaseJobConfig, val redisConnect: RedisConnect, val d
   }
 
   def lRange(key: String, startIndex: Int, endIndex: Int): util.List[String] = {
-    redisConnection.lrange(key, startIndex, endIndex)
+    val res = redisConnection.lrange(key, startIndex, endIndex)
+    println("RESPONSE REDIS" + res)
+    res
   }
 
   def lRangeWithRetry(key: String): util.List[String] = {

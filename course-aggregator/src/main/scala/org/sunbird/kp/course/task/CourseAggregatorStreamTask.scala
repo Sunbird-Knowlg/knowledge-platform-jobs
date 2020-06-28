@@ -14,7 +14,7 @@ import org.apache.flink.streaming.api.windowing.evictors.CountEvictor
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.sunbird.async.core.job.FlinkKafkaConnector
 import org.sunbird.async.core.util.FlinkUtil
-import org.sunbird.kp.course.functions.TestWindowFunction
+import org.sunbird.kp.course.functions.{ProgressUpdater}
 
 
 class CourseAggregatorStreamTask(config: CourseAggregatorConfig, kafkaConnector: FlinkKafkaConnector) {
@@ -23,12 +23,11 @@ class CourseAggregatorStreamTask(config: CourseAggregatorConfig, kafkaConnector:
     implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
     env.addSource(kafkaConnector.kafkaMapSource(config.kafkaInputTopic), config.aggregatorConsumer)
-   // val source = env.fromElements(("hello", 1), ("hello", 2))
    val dataStream = env.addSource(kafkaConnector.kafkaMapSource(config.kafkaInputTopic), "telemetry-ingest-events-consumer")
       .uid(config.aggregatorConsumer).setParallelism(config.kafkaConsumerParallelism)
       .keyBy(x=>  x.get("partition").toString)
       .window(TumblingEventTimeWindows.of(Time.seconds(60)))
-      .process(new TestWindowFunction(config))
+      .process(new ProgressUpdater(config))
 
       
 //      .window(EventTimeSessionWindows.withGap(Time.seconds(1)))
