@@ -7,14 +7,12 @@ import com.typesafe.config.ConfigFactory
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
-import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 import org.apache.flink.streaming.api.windowing.assigners._
-import org.apache.flink.streaming.api.windowing.evictors.CountEvictor
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.sunbird.async.core.job.FlinkKafkaConnector
 import org.sunbird.async.core.util.FlinkUtil
-import org.sunbird.kp.course.functions.{ProgressUpdater}
+import org.sunbird.kp.course.functions.ProgressUpdater
 
 
 class CourseAggregatorStreamTask(config: CourseAggregatorConfig, kafkaConnector: FlinkKafkaConnector) {

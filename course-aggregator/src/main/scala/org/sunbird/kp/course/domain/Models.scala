@@ -36,12 +36,9 @@ case class TelemetryEvent(actor: ActorObject = ActorObject("sunbird-telemetry", 
                           tags: util.List[AnyRef] = new util.ArrayList[AnyRef]()
                          )
 
-case class Progress(batchId: String,
-                    userId: String,
-                    courseId: String,
-                    status: Int,
-                    completedOn: Option[Long],
-                    contentStatus: Map[String, Int],
-                    progress: Int, completionPercentage: Int
-                   )
-
+case class Progress( activity_type: String,
+                     activity_id: String,
+                     context_id: String,
+                     agg: Map[String, Int],
+                     agg_last_updated: Map[String, Long]
+                    )
