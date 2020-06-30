@@ -62,9 +62,9 @@ class ProgressUpdater(config: CourseAggregatorConfig)(implicit val stringTypeInf
         if (null != leafNodes && !leafNodes.isEmpty) {
           val csFromEvent = getContentStatusFromEvent(eventData)
           //val courseId = s"${primaryCols.get("courseid").getOrElse(null)}"
-          getUnitProgres(csFromEvent, primaryCols, metrics)
+          getUnitProgress(csFromEvent, primaryCols, metrics)
             .map(unit => batch.add(getQuery(unit._2, config.dbKeyspace, "activity_agg")))
-          getCourseProgres(csFromEvent, primaryCols, metrics)
+          getCourseProgress(csFromEvent, primaryCols, metrics)
             .map(course => batch.add(getQuery(course._2, config.dbKeyspace, "activity_agg")))
           //          val unitProgressMap = mutable.Map[String, Progress]()
           //          csFromEvent.map(contentId => {
@@ -132,13 +132,16 @@ class ProgressUpdater(config: CourseAggregatorConfig)(implicit val stringTypeInf
   //      //computeProgress(Map("activityType" -> "course", "contextId" -> s"cb:${cols.get("batchid")}", "activityId" -> s"${cols.get("courseid")}"), courseLeafNodesSize, csFromDB, csFromEvent, context)
   //    }
 
-  def getUnitProgres(csFromEvent: mutable.HashMap[String, Int], primaryCols: mutable.Map[String, AnyRef], metrics: Metrics): mutable.Map[String, Progress] = {
+  def getUnitProgress(csFromEvent: mutable.HashMap[String, Int], primaryCols: mutable.Map[String, AnyRef], metrics: Metrics): mutable.Map[String, Progress] = {
     val unitProgressMap = mutable.Map[String, Progress]()
+
+    def progress(id: String): Progress = unitProgressMap.get(id).getOrElse(null)
+
     val courseId = s"${primaryCols.get("courseid").getOrElse(null)}"
     csFromEvent.map(contentId => {
       val unitLevelAncestors = Option(getDataFromRedis(s"$courseId:${contentId._1}:ancestors", metrics)).map(x => x.asScala.filter(_ > courseId)).getOrElse(List())
       unitLevelAncestors.map(unitId => {
-        if (null != unitProgressMap.get(unitId).getOrElse(null)) {
+        if (progress(unitId) == null) {
           val unitLeafNodes: util.List[String] = Option(getDataFromRedis(s"${unitId}:leafnodes", metrics)).getOrElse(new util.LinkedList())
           val cols = Map("activityType" -> "course-unit", "contextId" -> s"cb:${primaryCols.get("batchid")}", "activityId" -> s"${unitId}")
           val unitContentsStatusFromDB = getContentStatusFromDB(primaryCols ++ Map("contentid" -> unitLeafNodes.asScala.toList))
@@ -149,7 +152,7 @@ class ProgressUpdater(config: CourseAggregatorConfig)(implicit val stringTypeInf
     unitProgressMap
   }
 
-  def getCourseProgres(csFromEvent: mutable.HashMap[String, Int], primaryCols: mutable.Map[String, AnyRef], metrics: Metrics): Map[String, Progress] = {
+  def getCourseProgress(csFromEvent: mutable.HashMap[String, Int], primaryCols: mutable.Map[String, AnyRef], metrics: Metrics): Map[String, Progress] = {
     val courseId = s"${primaryCols.get("courseid").getOrElse(null)}"
     val leafNodes = getDataFromRedis(key = s"$courseId:leafnodes", metrics)
     val courseContentsStatus = getContentStatusFromDB(primaryCols ++ Map("contentid" -> leafNodes.asScala.toList))
