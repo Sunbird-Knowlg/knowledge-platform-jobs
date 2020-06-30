@@ -79,6 +79,8 @@ object EventFixture {
 
   // CourseUnitResponse(ArrayBuffer(Progress(course-unit,do_course_unit3,cb:Some(0126083288437637121),Map(progress -> 50),Map(progress -> 1593455177239))), ArrayBuffer(Progress(course-unit,do_course_unit3,cb:Some(0126083288437637121),Map(progress -> 50),Map(progress -> 1593455177289)), Progress(course-unit,do_course_unit2,cb:Some(0126083288437637121),Map(progress -> 100),Map(progress -> 1593455177290))), ArrayBuffer(Progress(course-unit,do_course_unit1,cb:Some(0126083288437637121),Map(progress -> 100),Map(progress -> 1593455177290))))
 
+  //BatchQueryIsBEGIN BATCH UPDATE sunbird_courses.activity_agg SET agg={'progress':50},agg_last_updated={'progress':1593506947906} WHERE activity_id='do_course_unit3' AND activity_type='course-unit' AND context_id='cb:Some(0126083288437637121)';UPDATE sunbird_courses.activity_agg SET agg={'progress':100},agg_last_updated={'progress':1593506948010} WHERE activity_id='do_course_unit2' AND activity_type='course-unit' AND context_id='cb:Some(0126083288437637121)';UPDATE sunbird_courses.activity_agg SET agg={'progress':100},agg_last_updated={'progress':1593506948017} WHERE activity_id='do_course_unit1' AND activity_type='course-unit' AND context_id='cb:Some(0126083288437637121)';UPDATE sunbird_courses.activity_agg SET agg={'progress':66},agg_last_updated={'progress':1593506948034} WHERE activity_id='Some(do_1127212344324751361295)' AND activity_type='course' AND context_id='cb:Some(0126083288437637121)';APPLY BATCH;
+
 
   val EVENT_2: String =
     """

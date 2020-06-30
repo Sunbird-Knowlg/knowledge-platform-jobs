@@ -138,7 +138,7 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
 
   def getPrimaryCols(event: util.Map[String, AnyRef]): mutable.Map[String, String] = {
     val eventData = event.get("edata").asInstanceOf[util.Map[String, AnyRef]]
-    eventData.asScala.map(v => (v._1.toLowerCase, v._2)).filter(x => courseAggregatorConfig.primaryCols.contains(x._1)).asInstanceOf[mutable.Map[String, String]]
+    eventData.asScala.map(v => (v._1.toLowerCase, v._2)).filter(x => courseAggregatorConfig.primaryFields.contains(x._1)).asInstanceOf[mutable.Map[String, String]]
   }
 }
 

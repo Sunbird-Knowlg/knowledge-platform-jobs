@@ -57,6 +57,17 @@ class CourseAggregatorConfig(override val config: Config) extends BaseJobConfig(
   val completedStatusCode: Int = 2
   val inCompleteStatusCode: Int = 1
   val completionPercentage: Int = 100
-  val primaryCols = List("userid","courseid","batchid")
+  val primaryFields = List("userid", "courseid", "batchid")
+
+  val activityType ="activity_type"
+  val activityId = "activity_id"
+  val contextId = "context_id"
+  val aggLastUpdated = "agg_last_updated"
+  val agg = "agg"
+  val courseId = "courseid"
+  val batchId = "batchid"
+  val contentId = "contentid"
+  val progress = "progress"
+
 
 }
