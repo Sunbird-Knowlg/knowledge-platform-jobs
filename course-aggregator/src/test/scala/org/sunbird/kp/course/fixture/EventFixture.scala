@@ -55,7 +55,7 @@ object EventFixture {
 //
 //  do_11260735471149056012299:ansestor -> do_course_unit1, do_1127212344324751361295
 //  do_course_unit1:do_1127212344324751361295:leafnodes: do_11260735471149056012299
-//   lefNodesSize = 1, completed
+//   lefNodesSize = 1, completed = 1
 //  1/1 = 100%
 //
 //  do_11260735471149056012301:ansestor -> do_course_unit3,do_1127212344324751361295
