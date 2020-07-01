@@ -6,15 +6,49 @@ object EventFixture {
    * case-1. Inserting a first course which is having 3 leaf nodes in the redis database and cassandra database
    * does not contains this course id.
    * courseId =
+   * ============BE_JOB_REQUEST_CONTENTS==========
+   *   do_1127212344324751361295
+   *       do_course_unit1
+   *           do_11260735471149056012299
+   *       do_course_unit2
+   *           do_11260735471149056012300
+   *       do_course_unit3
+   *           do_11260735471149056012301
+   *           do_11260735471149056012300
    *
-   * Expect:
-   *          1 - Since it's first course it should generate START Event of the course
-   *          2 - Progress of this course should be 30% since it has only one subject is completed and remaining are yet to finish)
-   *          3 - It should update the
-   *                  content-status = Map(do_11260735471149056012300 -> 1,do_11260735471149056012299 ->2, do_11260735471149056012300 -> 1),
-   *                  completionpercentage = 30,
-   *                  status = 1,
-   *                  progress = 1(1 content finished out of 3) into the cassandra
+   *
+   *============== content status in the event ======
+   *          do_11260735471149056012299 - 2
+   *          do_11260735471149056012301 - 1
+   *          do_11260735471149056012300 - 1
+   *============== content status in the database(content-consumption)
+   *          do_11260735471149056012299 - 2
+   *          do_11260735471149056012301 - 1
+   *          do_11260735471149056012300 - 2
+   *
+   *============== Computation =====================
+   * unit level computation
+   * do_11260735471149056012299:ansestor -> do_course_unit1, do_1127212344324751361295
+   * do_course_unit1:do_1127212344324751361295:leafnodes: do_11260735471149056012299
+   * lefNodesSize = 1, completed = 1
+   * 1/1 = 100%
+   *
+   * do_11260735471149056012301:ansestor -> do_course_unit3,do_1127212344324751361295
+   * do_course_unit3:do_1127212344324751361295:leafNodes -> do_11260735471149056012301,do_11260735471149056012300
+   * leafNodesSize = 2,completed 1
+   * 1/2 = 50%
+   *
+   * do_11260735471149056012300:ansestor -> do_course_unit3,do_course_unit2,do_1127212344324751361295
+   * do_course_unit3:do_1127212344324751361295:leafNodes -> do_11260735471149056012301,do_11260735471149056012300
+   * leafNodesSize = 2, completed = 1
+   * 1/2 = 50%
+   *
+   * do_course_unit2:do_1127212344324751361295:leafNodes -> do_11260735471149056012300
+   * leafNodesSize = 1, completed = 1
+   * 1/1 = 100%
+   *
+   * course level progress computation
+   * do_1127212344324751361295:leafNodes = do_11260735471149056012299, do_11260735471149056012301, do_11260735471149056012300
    */
 
   val EVENT_1: String =
@@ -31,55 +65,6 @@ object EventFixture {
   val ancestorsResource_2 = Map("do_1127212344324751361295:do_11260735471149056012300:ancestors" -> List("do_course_unit2", "do_course_unit3", "do_1127212344324751361295"))
   val ancestorsResource_3 = Map("do_1127212344324751361295:do_11260735471149056012301:ancestors" -> List("do_course_unit3","do_1127212344324751361295"))
 
-// Resource
-//  do_11260735471149056012299 - 2
-//  do_11260735471149056012301 - 1
-//  do_11260735471149056012300 - 1
-//
-//  DataBase
-//    do_11260735471149056012299 - 2
-//    do_11260735471149056012301 - 1
-//    do_11260735471149056012300 - 2
-//
-//
-//  do_1127212344324751361295
-//      do_course_unit1
-//          do_11260735471149056012299
-//      do_course_unit2
-//          do_11260735471149056012300
-//      do_course_unit3
-//          do_11260735471149056012301
-//          do_11260735471149056012300
-//
-//  computation
-//
-//  do_11260735471149056012299:ansestor -> do_course_unit1, do_1127212344324751361295
-//  do_course_unit1:do_1127212344324751361295:leafnodes: do_11260735471149056012299
-//   lefNodesSize = 1, completed = 1
-//  1/1 = 100%
-//
-//  do_11260735471149056012301:ansestor -> do_course_unit3,do_1127212344324751361295
-//  do_course_unit3:do_1127212344324751361295:leafNodes -> do_11260735471149056012301,do_11260735471149056012300
-//  leafNodesSize = 2,completed 1
-//  1/2 = 50%
-//
-//  do_11260735471149056012300:ansestor -> do_course_unit3,do_course_unit2,do_1127212344324751361295
-//  do_course_unit3:do_1127212344324751361295:leafNodes -> do_11260735471149056012301,do_11260735471149056012300
-//  leafNodesSize = 2, completed = 1
-//  1/2 = 50%
-//    do_course_unit2:do_1127212344324751361295:leafNodes -> do_11260735471149056012300
-//  leafNodesSize = 1, completed = 1
-//  1/1 = 100%
-//
-//  do_1127212344324751361295:leafNodes = do_11260735471149056012299, do_11260735471149056012301, do_11260735471149056012300
-//
-//  courseProgressResponseProgress(course,Some(do_1127212344324751361295),cb:Some(0126083288437637121),Map(progress -> 33),Map(progress -> 1593455177292))
-
-//CourseUnit ResponseArrayBuffer(ArrayBuffer(Progress(course-unit,do_course_unit3,cb:Some(0126083288437637121),Map(progress -> 100),Map(progress -> 1593459708141))), ArrayBuffer(Progress(course-unit,do_course_unit3,cb:Some(0126083288437637121),Map(progress -> 100),Map(progress -> 1593459708217)), Progress(course-unit,do_course_unit2,cb:Some(0126083288437637121),Map(progress -> 200),Map(progress -> 1593459708217))), ArrayBuffer(Progress(course-unit,do_course_unit1,cb:Some(0126083288437637121),Map(progress -> 200),Map(progress -> 1593459708218))))
-
-  // CourseUnitResponse(ArrayBuffer(Progress(course-unit,do_course_unit3,cb:Some(0126083288437637121),Map(progress -> 50),Map(progress -> 1593455177239))), ArrayBuffer(Progress(course-unit,do_course_unit3,cb:Some(0126083288437637121),Map(progress -> 50),Map(progress -> 1593455177289)), Progress(course-unit,do_course_unit2,cb:Some(0126083288437637121),Map(progress -> 100),Map(progress -> 1593455177290))), ArrayBuffer(Progress(course-unit,do_course_unit1,cb:Some(0126083288437637121),Map(progress -> 100),Map(progress -> 1593455177290))))
-
-  //BatchQueryIsBEGIN BATCH UPDATE sunbird_courses.activity_agg SET agg={'progress':50},agg_last_updated={'progress':1593506947906} WHERE activity_id='do_course_unit3' AND activity_type='course-unit' AND context_id='cb:Some(0126083288437637121)';UPDATE sunbird_courses.activity_agg SET agg={'progress':100},agg_last_updated={'progress':1593506948010} WHERE activity_id='do_course_unit2' AND activity_type='course-unit' AND context_id='cb:Some(0126083288437637121)';UPDATE sunbird_courses.activity_agg SET agg={'progress':100},agg_last_updated={'progress':1593506948017} WHERE activity_id='do_course_unit1' AND activity_type='course-unit' AND context_id='cb:Some(0126083288437637121)';UPDATE sunbird_courses.activity_agg SET agg={'progress':66},agg_last_updated={'progress':1593506948034} WHERE activity_id='Some(do_1127212344324751361295)' AND activity_type='course' AND context_id='cb:Some(0126083288437637121)';APPLY BATCH;
 
 
   val EVENT_2: String =
