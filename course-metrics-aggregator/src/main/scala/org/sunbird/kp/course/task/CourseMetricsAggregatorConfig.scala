@@ -74,6 +74,8 @@ class CourseMetricsAggregatorConfig(override val config: Config) extends BaseJob
   val contentId = "contentid"
   val progress = "progress"
   val userId = "userid"
+  val unitActivityType = "course-unit"
+  val courseActivityType = "course"
 
   val windowTimingInSec = config.getInt("window.period")
 

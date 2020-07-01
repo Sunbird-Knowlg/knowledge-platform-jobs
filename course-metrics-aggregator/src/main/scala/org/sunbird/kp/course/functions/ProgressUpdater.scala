@@ -74,7 +74,7 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
     val courseId = s"${primaryFields.get("courseid").orNull}"
     Option(readFromCache(key = s"$courseId:leafnodes", metrics)).map(leafNodes => {
       val courseContentsStatus = getContentStatusFromDB(primaryFields ++ Map(config.contentId -> leafNodes.asScala.toList))
-      Map(courseId -> computeProgress(Map(config.activityType -> "course", config.activityUser -> primaryFields.get(config.userId).orNull, config.contextId -> s"cb:${primaryFields.get(config.batchId).orNull}", config.activityId -> s"${primaryFields.get(config.courseId).orNull}"), leafNodes, courseContentsStatus, csFromEvent))
+      Map(courseId -> computeProgress(Map(config.activityType -> config.courseActivityType, config.activityUser -> primaryFields.get(config.userId).orNull, config.contextId -> s"cb:${primaryFields.get(config.batchId).orNull}", config.activityId -> s"${primaryFields.get(config.courseId).orNull}"), leafNodes, courseContentsStatus, csFromEvent))
     }).getOrElse(throw new Exception(s"LeafNodes are not available. courseId:$courseId")) // Stop The job if the leafnodes are not available
   }
 
@@ -98,7 +98,7 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
           val unitLeafNodes: util.List[String] = Option(readFromCache(key = s"${unitId}:leafnodes", metrics)).getOrElse(new util.LinkedList())
           // Stop the job if the leaf-nodes are not available
           if (unitLeafNodes.isEmpty) throw new Exception(s"LeafNodes are not available. unitId:$unitId, courseId:$courseId")
-          val cols = Map(config.activityType -> "course-unit", config.activityUser -> primaryFields.get(config.userId).orNull, config.contextId -> s"cb:${primaryFields.get(config.batchId).orNull}", config.activityId -> s"$unitId")
+          val cols = Map(config.activityType -> config.unitActivityType, config.activityUser -> primaryFields.get(config.userId).orNull, config.contextId -> s"cb:${primaryFields.get(config.batchId).orNull}", config.activityId -> s"$unitId")
           // Get all the content status for the leaf nodes of the particular unit
           val unitContentsStatusFromDB = getContentStatusFromDB(primaryFields ++ Map(config.contentId -> unitLeafNodes.asScala.toList))
           val progress = computeProgress(cols, unitLeafNodes, unitContentsStatusFromDB, csFromEvent)
@@ -126,7 +126,6 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
   }
 
   def writeToDb(query: String, metrics: Metrics): Unit = {
-    println("qery" + query)
     cassandraUtil.upsert(query)
     metrics.incCounter(config.successEventCount)
     metrics.incCounter(config.dbUpdateCount)
@@ -162,7 +161,6 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
                       leafNodes: util.List[String],
                       csFromDB: Map[String, Int],
                       csFromEvent: mutable.Map[String, Int]): Progress = {
-    println("colss" + cols)
     val unionKeys = csFromEvent.keySet.union(csFromDB.keySet)
     val mergedContentStatus: Map[String, Int] = unionKeys.map { key =>
       key -> (if (csFromEvent.getOrElse(key, 0) >= csFromDB.getOrElse(key, 0)) csFromEvent.getOrElse(key, 0)
