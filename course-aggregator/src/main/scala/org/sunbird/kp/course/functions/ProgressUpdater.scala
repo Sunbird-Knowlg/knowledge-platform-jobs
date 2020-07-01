@@ -16,7 +16,7 @@ import org.slf4j.LoggerFactory
 import org.sunbird.async.core.cache.{DataCache, RedisConnect}
 import org.sunbird.async.core.job.{Metrics, WindowBaseProcessFunction}
 import org.sunbird.async.core.util.CassandraUtil
-import org.sunbird.kp.course.domain.{Progress, TelemetryEvent}
+import org.sunbird.kp.course.domain.Progress
 import org.sunbird.kp.course.task.CourseAggregatorConfig
 
 import scala.collection.JavaConverters._
@@ -27,8 +27,7 @@ class ProgressUpdater(config: CourseAggregatorConfig)(implicit val stringTypeInf
 ) extends WindowBaseProcessFunction[util.Map[String, AnyRef], String, String](config) {
   val mapType: Type = new TypeToken[util.Map[String, AnyRef]]() {}.getType
   private[this] val logger = LoggerFactory.getLogger(classOf[ProgressUpdater])
-  private var redisCache: DataCache = _
-  private var ancestorsCache: DataCache = _
+  private var cache: DataCache = _
   lazy private val gson = new Gson()
   val actionType = "batch-enrolment-update"
 
@@ -39,8 +38,8 @@ class ProgressUpdater(config: CourseAggregatorConfig)(implicit val stringTypeInf
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
     cassandraUtil = new CassandraUtil(config.dbHost, config.dbPort)
-    redisCache = new DataCache(config, new RedisConnect(config), config.leafNodesStore, List())
-    redisCache.init()
+    cache = new DataCache(config, new RedisConnect(config), config.nodeStore, List())
+    cache.init()
   }
 
   override def close(): Unit = {
@@ -50,7 +49,6 @@ class ProgressUpdater(config: CourseAggregatorConfig)(implicit val stringTypeInf
   override def process(key: String,
                        context: ProcessWindowFunction[util.Map[String, AnyRef], String, String, TimeWindow]#Context,
                        events: lang.Iterable[util.Map[String, AnyRef]], metrics: Metrics): Unit = {
-
     val batch: Batch = QueryBuilder.batch()
     events.forEach(event => {
       val eventData = event.get("edata").asInstanceOf[util.Map[String, AnyRef]]
@@ -59,10 +57,9 @@ class ProgressUpdater(config: CourseAggregatorConfig)(implicit val stringTypeInf
         val primaryFields = eventData.asScala.map(v => (v._1.toLowerCase, v._2)).filter(x => config.primaryFields.contains(x._1))
         val csFromEvent = getContentStatusFromEvent(eventData)
         getUnitProgress(csFromEvent, primaryFields, metrics)
-          .map(unit => batch.add(getQuery(unit._2, config.dbKeyspace, "activity_agg")))
+          .map(unit => batch.add(getQuery(unit._2, config.dbKeyspace, config.dbActivityAggTable)))
         getCourseProgress(csFromEvent, primaryFields, metrics)
-          .map(course => batch.add(getQuery(course._2, config.dbKeyspace, "activity_agg")))
-        println("BatchQueryIs" + batch.toString)
+          .map(course => batch.add(getQuery(course._2, config.dbKeyspace, config.dbActivityAggTable)))
         writeToDb(batch.toString, metrics)
       }
     })
@@ -72,13 +69,12 @@ class ProgressUpdater(config: CourseAggregatorConfig)(implicit val stringTypeInf
     val unitProgressMap = mutable.Map[String, Progress]()
 
     def progress(id: String): Progress = unitProgressMap.get(id).getOrElse(null)
-
-    val courseId = s"${primaryFields.get("courseid").getOrElse(null)}"
+    val courseId = s"${primaryFields.get(config.courseId).getOrElse(null)}"
     csFromEvent.map(contentId => {
-      val unitLevelAncestors = Option(getDataFromRedis(s"$courseId:${contentId._1}:ancestors", metrics)).map(x => x.asScala.filter(_ > courseId)).getOrElse(List())
+      val unitLevelAncestors = Option(getDataFromCache(key = s"$courseId:${contentId._1}:ancestors", metrics)).map(x => x.asScala.filter(_ > courseId)).getOrElse(List())
       unitLevelAncestors.map(unitId => {
         if (progress(unitId) == null) {
-          val unitLeafNodes: util.List[String] = Option(getDataFromRedis(s"${unitId}:leafnodes", metrics)).getOrElse(new util.LinkedList())
+          val unitLeafNodes: util.List[String] = Option(getDataFromCache(key= s"${unitId}:leafnodes", metrics)).getOrElse(new util.LinkedList())
           val cols = Map(config.activityType -> "course-unit", config.contextId -> s"cb:${primaryFields.get(config.batchId)}", config.activityId -> s"${unitId}")
           val unitContentsStatusFromDB = getContentStatusFromDB(primaryFields ++ Map(config.contentId -> unitLeafNodes.asScala.toList))
           unitProgressMap += (unitId -> computeProgress(cols, unitLeafNodes, unitContentsStatusFromDB, csFromEvent))
@@ -90,7 +86,7 @@ class ProgressUpdater(config: CourseAggregatorConfig)(implicit val stringTypeInf
 
   def getCourseProgress(csFromEvent: mutable.HashMap[String, Int], primaryFields: mutable.Map[String, AnyRef], metrics: Metrics): Map[String, Progress] = {
     val courseId = s"${primaryFields.get("courseid").getOrElse(null)}"
-    val leafNodes = getDataFromRedis(key = s"$courseId:leafnodes", metrics)
+    val leafNodes = getDataFromCache(key = s"$courseId:leafnodes", metrics)
     val courseContentsStatus = getContentStatusFromDB(primaryFields ++ Map(config.contentId -> leafNodes.asScala.toList))
     Map(courseId -> computeProgress(Map(config.activityType -> "course", config.contextId -> s"cb:${primaryFields.get(config.batchId)}", config.activityId -> s"${primaryFields.get(config.courseId)}"), leafNodes, courseContentsStatus, csFromEvent))
   }
@@ -106,22 +102,21 @@ class ProgressUpdater(config: CourseAggregatorConfig)(implicit val stringTypeInf
         selectWhere.and(QueryBuilder.eq(col._1, col._2))
       }
     })
-    println("selectWhereselectWhere" + selectWhere.toString)
     cassandraUtil.find(selectWhere.toString).asScala.toList
   }
 
   def getQuery(progressColumns: Progress, keySpace: String, table: String): Update.Where = {
     QueryBuilder.update(keySpace, table)
-      .`with`(QueryBuilder.set(config.agg, progressColumns.agg.asJava))
-      .and(QueryBuilder.set(config.aggLastUpdated, progressColumns.agg_last_updated.asJava))
+      .`with`(QueryBuilder.putAll(config.agg, progressColumns.agg.asJava))
+      .and(QueryBuilder.putAll(config.aggLastUpdated, progressColumns.agg_last_updated.asJava))
       .where(QueryBuilder.eq(config.activityId, progressColumns.activity_id))
       .and(QueryBuilder.eq(config.activityType, progressColumns.activity_type))
       .and(QueryBuilder.eq(config.contextId, progressColumns.context_id))
   }
 
-  def getDataFromRedis(key: String, metrics: Metrics): util.List[String] = {
+  def getDataFromCache(key: String, metrics: Metrics): util.List[String] = {
     metrics.incCounter(config.cacheHitCount)
-    redisCache.lRangeWithRetry(key)
+    cache.lRangeWithRetry(key)
   }
 
   def computeProgress(cols: Map[String, AnyRef],

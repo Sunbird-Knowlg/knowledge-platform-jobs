@@ -8,7 +8,7 @@ import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.streaming.api.scala.OutputTag
 import org.sunbird.async.core.BaseJobConfig
 
-class CourseAggregatorConfig(override val config: Config) extends BaseJobConfig(config, "CourseAggregator") {
+class CourseAggregatorConfig(override val config: Config) extends BaseJobConfig(config, "course-metrics-aggregator") {
 
   private val serialVersionUID = 2905979434303791379L
 
@@ -30,23 +30,24 @@ class CourseAggregatorConfig(override val config: Config) extends BaseJobConfig(
   val dbUpdateCount = "db-update-count"
   val dbReadCount = "db-read-count"
   val skippedEventCount = "skipped-event-count"
-  val cacheHitCount = "cach-hit-count"
+  val cacheHitCount = "cache-hit-count"
 
   // Cassandra Configurations
-  val dbTable: String = config.getString("lms-cassandra.table")
+  val dbContentConsumptionTable: String = config.getString("lms-cassandra.consumption.table")
+  val dbActivityAggTable: String = config.getString("lms-cassandra.activity_agg.table")
   val dbKeyspace: String = config.getString("lms-cassandra.keyspace")
   val dbHost: String = config.getString("lms-cassandra.host")
   val dbPort: Int = config.getInt("lms-cassandra.port")
 
   // Redis Configurations
-  val leafNodesStore: Int = config.getInt("redis.database.leafnodes.id")
+  val nodeStore: Int = config.getInt("redis.database.nodes.id") // Both LeafNodes And Ancestor nodes
 
   // Tags
-  val FAILED_EVENTS_OUTPUT_TAG = "failed-events"
-  val SUCCESS_EVENTS_OUTPUT_TAG = "success-events"
+  val failedEventOutputTagName = "failed-events"
+  val successEventOutputTagName = "success-events"
 
-  val successEventOutputTag: OutputTag[String] = OutputTag[String](SUCCESS_EVENTS_OUTPUT_TAG)
-  val failedEventsOutputTag: OutputTag[String] = OutputTag[String](FAILED_EVENTS_OUTPUT_TAG)
+  val successEventOutputTag: OutputTag[String] = OutputTag[String](successEventOutputTagName)
+  val failedEventsOutputTag: OutputTag[String] = OutputTag[String](failedEventOutputTagName)
 
   // Consumers
   val aggregatorConsumer = "course-aggregator-consumer"
@@ -59,6 +60,7 @@ class CourseAggregatorConfig(override val config: Config) extends BaseJobConfig(
   val completionPercentage: Int = 100
   val primaryFields = List("userid", "courseid", "batchid")
 
+  // constans
   val activityType ="activity_type"
   val activityId = "activity_id"
   val contextId = "context_id"
