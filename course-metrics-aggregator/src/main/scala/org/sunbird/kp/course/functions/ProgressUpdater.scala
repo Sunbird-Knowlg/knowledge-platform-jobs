@@ -49,8 +49,8 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
   override def process(key: String,
                        context: ProcessWindowFunction[util.Map[String, AnyRef], String, String, TimeWindow]#Context,
                        events: lang.Iterable[util.Map[String, AnyRef]], metrics: Metrics): Unit = {
-    val batch: Batch = QueryBuilder.batch() // It holds all the batch of progress
     events.forEach(event => {
+      val batch: Batch = QueryBuilder.batch() // It holds all the batch of progress
       val eventData = event.get("edata").asInstanceOf[util.Map[String, AnyRef]]
       if (eventData.get("action") == actionType) { //TODO: Need to write other function to seperate the events based on action specific
         metrics.incCounter(config.totalEventsCount) // To Measure the number of batch-enrollment-updater events came.
@@ -66,6 +66,8 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
           .map(course => batch.add(getQuery(course._2, config.dbKeyspace, config.dbActivityAggTable)))
         // To update the both unit and course progress into db
         writeToDb(batch.toString, metrics)
+      } else {
+        logger.debug("Invalid action type")
       }
     })
   }
@@ -168,11 +170,8 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
     }.toMap.filter(value => value._2 == config.completedStatusCode).filter(requiredNodes => leafNodes.contains(requiredNodes._1))
     val agg = Map(config.progress -> mergedContentStatus.size) // Progress in the percentage
     val aggUpdatedOn = Map(config.progress -> new DateTime().getMillis) // Progress updated time
-    Progress(
-      cols.get(config.activityType).orNull.asInstanceOf[String],
-      cols.get(config.activityUser).orNull.asInstanceOf[String],
-      cols.get(config.activityId).orNull.asInstanceOf[String],
-      cols.get(config.contextId).orNull.asInstanceOf[String],
+    Progress(cols.get(config.activityType).orNull.asInstanceOf[String], cols.get(config.activityUser).orNull.asInstanceOf[String],
+      cols.get(config.activityId).orNull.asInstanceOf[String], cols.get(config.contextId).orNull.asInstanceOf[String],
       agg, aggUpdatedOn)
   }
 

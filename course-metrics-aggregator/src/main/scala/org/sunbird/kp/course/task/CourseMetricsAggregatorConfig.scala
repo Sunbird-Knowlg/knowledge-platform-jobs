@@ -54,6 +54,7 @@ class CourseMetricsAggregatorConfig(override val config: Config) extends BaseJob
   // Consumers
   val aggregatorConsumer = "course-metrics-aggregator-consumer"
 
+
   // Producers
   val aggregatorAuditProducer = "extractor-audit-events-sink"
 

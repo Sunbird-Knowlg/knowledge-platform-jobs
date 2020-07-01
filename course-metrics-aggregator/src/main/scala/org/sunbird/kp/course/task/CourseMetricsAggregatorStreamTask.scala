@@ -8,7 +8,6 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
-import org.apache.flink.streaming.api.windowing.assigners._
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.sunbird.async.core.job.FlinkKafkaConnector
 import org.sunbird.async.core.util.FlinkUtil
@@ -25,12 +24,13 @@ class CourseMetricsAggregatorStreamTask(config: CourseMetricsAggregatorConfig, k
       env.addSource(kafkaConnector.kafkaMapSource(config.kafkaInputTopic), "course-metrics-agg-consumer")
         .uid(config.aggregatorConsumer).setParallelism(config.kafkaConsumerParallelism)
         .keyBy(x => x.get("partition").toString)
-        .window(TumblingEventTimeWindows.of(Time.seconds(config.windowTimingInSec)))
+        .timeWindow(Time.seconds(60))
         .process(new ProgressUpdater(config))
 
     progressEventStream.getSideOutput(config.auditEventOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaAuditEventTopic)).name(config.aggregatorAuditProducer).uid(config.aggregatorAuditProducer)
     env.execute(config.jobName)
   }
+
 
 }
 
