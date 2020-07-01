@@ -92,7 +92,7 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
     val courseId = s"${primaryFields.get(config.courseId).orNull}"
     csFromEvent.map(contentId => {
       // Get the ancestors for the specific resource
-      context.output(config.auditEventOutputTag, gson.toJson(generateTelemetry(primaryFields))) // Get the Telemetry for resource type event
+      context.output(config.auditEventOutputTag, gson.toJson(generateTelemetry(primaryFields, generationFor = "content", contentId._2 == config.completedStatusCode, contentId._1))) // Get the Telemetry for resource type event
       val unitLevelAncestors = Option(readFromCache(key = s"$courseId:${contentId._1}:ancestors", metrics)).map(x => x.asScala.filter(_ > courseId)).getOrElse(List())
       unitLevelAncestors.map(unitId => {
         if (progress(unitId) == null) { // To avoid the computation iteration for unit
@@ -105,14 +105,15 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
           val unitContentsStatusFromDB = getContentStatusFromDB(primaryFields ++ Map(config.contentId -> unitLeafNodes.asScala.toList))
           val progress = computeProgress(cols, unitLeafNodes, unitContentsStatusFromDB, csFromEvent)
           unitProgressMap += (unitId -> progress)
-          context.output(config.auditEventOutputTag, gson.toJson(generateTelemetry(primaryFields)))
+          context.output(config.auditEventOutputTag, gson.toJson(generateTelemetry(primaryFields, "course-unit", progress.isCompleted, unitId)))
         }
       })
     })
     unitProgressMap
   }
 
-  def readFromDB(columns: mutable.Map[String, AnyRef], keySpace: String, table: String): List[Row] = {
+  def readFromDB(columns: mutable.Map[String, AnyRef], keySpace: String, table: String): List[Row]
+  = {
     val selectWhere: Select.Where = QueryBuilder.select().all()
       .from(keySpace, table).
       where()
@@ -127,7 +128,8 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
     cassandraUtil.find(selectWhere.toString).asScala.toList
   }
 
-  def writeToDb(query: String, metrics: Metrics): Unit = {
+  def writeToDb(query: String, metrics: Metrics): Unit
+  = {
     cassandraUtil.upsert(query)
     metrics.incCounter(config.successEventCount)
     metrics.incCounter(config.dbUpdateCount)
@@ -138,7 +140,8 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
     cache.lRangeWithRetry(key)
   }
 
-  def getQuery(progress: Progress, keySpace: String, table: String): Update.Where = {
+  def getQuery(progress: Progress, keySpace: String, table: String):
+  Update.Where = {
     QueryBuilder.update(keySpace, table)
       .`with`(QueryBuilder.putAll(config.agg, progress.agg.asJava))
       .and(QueryBuilder.putAll(config.aggLastUpdated, progress.agg_last_updated.asJava))
@@ -162,17 +165,19 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
   def computeProgress(cols: Map[String, AnyRef],
                       leafNodes: util.List[String],
                       csFromDB: Map[String, Int],
-                      csFromEvent: mutable.Map[String, Int]): Progress = {
+                      csFromEvent: mutable.Map[String, Int]):
+  Progress = {
     val unionKeys = csFromEvent.keySet.union(csFromDB.keySet)
     val mergedContentStatus: Map[String, Int] = unionKeys.map { key =>
       key -> (if (csFromEvent.getOrElse(key, 0) >= csFromDB.getOrElse(key, 0)) csFromEvent.getOrElse(key, 0)
       else csFromDB.getOrElse(key, 0))
     }.toMap.filter(value => value._2 == config.completedStatusCode).filter(requiredNodes => leafNodes.contains(requiredNodes._1))
-    val agg = Map(config.progress -> mergedContentStatus.size) // Progress in the percentage
+    val agg = Map(config.progress -> mergedContentStatus.size) // It has only completed nodes id details
     val aggUpdatedOn = Map(config.progress -> new DateTime().getMillis) // Progress updated time
+    val isCompleted: Boolean = mergedContentStatus.size == leafNodes.size()
     Progress(cols.get(config.activityType).orNull.asInstanceOf[String], cols.get(config.activityUser).orNull.asInstanceOf[String],
       cols.get(config.activityId).orNull.asInstanceOf[String], cols.get(config.contextId).orNull.asInstanceOf[String],
-      agg, aggUpdatedOn)
+      agg, aggUpdatedOn, isCompleted = isCompleted)
   }
 
 
@@ -199,11 +204,24 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
       .toList.flatMap(list => list.map(res => mutable.Map(res.getObject(config.contentId) -> res.getObject("status")).asInstanceOf[mutable.Map[String, Int]])).flatten.toMap
   }
 
-  def generateTelemetry(primaryFields: mutable.Map[String, AnyRef]): TelemetryEvent = {
-    TelemetryEvent(actor = ActorObject(id = primaryFields.get("userid").orNull.asInstanceOf[String]),
-      edata = EventData(props = Array(""), `type` = "start"),
-      context = EventContext(pdata = Map("" -> "").asJava, cdata = Array(Map().asJava)),
-      `object` = EventObject(rollup = Map("" -> "").asJava, id = "", `type` = "content")
-    )
+  def generateTelemetry(primaryFields: mutable.Map[String, AnyRef], generationFor: String, isCompleted: Boolean, activityId: String)
+  : TelemetryEvent = {
+    generationFor.toUpperCase() match {
+      case "COURSE-UNIT" =>
+        TelemetryEvent(actor = ActorObject(id = primaryFields.get("courseid").orNull.asInstanceOf[String]), edata = if (isCompleted) EventData(props = Array(new DateTime().getMillis.toString), `type` = "completed") else EventData(props = Array(activityId), `type` = "start"),
+          context = EventContext(cdata = Array(Map("type" -> "CourseBatch", "id" -> primaryFields.get(config.batchId).orNull).asJava)),
+          `object` = EventObject(rollup = Map("l1" -> primaryFields.get(config.courseId).orNull.asInstanceOf[String]).asJava, id = activityId, `type` = "CourseUnit")
+        )
+      case "CONTENT" => // Default is content
+        TelemetryEvent(
+          actor = ActorObject(id = primaryFields.get(config.userId).orNull.asInstanceOf[String]),
+          edata = if (isCompleted) EventData(props = Array(new DateTime().getMillis.toString), `type` = "completed") else EventData(props = Array(activityId), `type` = "start"),
+          context = EventContext(cdata = Array(Map("type" -> "CourseBatch", "id" -> primaryFields.get(config.batchId).orNull).asJava)),
+          `object` = EventObject(rollup = Map("l1" -> primaryFields.get(config.courseId).orNull.asInstanceOf[String], "l2" -> primaryFields.get(config.batchId).orNull.asInstanceOf[String]).asJava, id = activityId, `type` = "Content")
+        )
+      case "COURSE" => println("Telemetry is not generated")
+        null
+    }
+
   }
 }

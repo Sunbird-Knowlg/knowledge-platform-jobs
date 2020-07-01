@@ -94,6 +94,11 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.cacheHitCount}").getValue() should be(18)
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.successEventCount}").getValue() should be(3)
 
+    auditEventSink.values.size() should be(15)
+    auditEventSink.values.forEach(event =>{
+      println("AUDIEBT" + event)
+    })
+
     val event1Progress = readFromCassandra(EventFixture.EVENT_2)
     event1Progress.size() should be(3)
     event1Progress.forEach(col => {
@@ -112,7 +117,6 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
         println("aggMap", col.getObject("agg"))
         col.getObject("activity_type") should be("{'progress': 1}")
       }
-
       if (col.getObject("activity_id") == "do_1127212344324751361295") {
         col.getObject("activity_type") should be("course")
         println("aggMap", col.getObject("agg"))

@@ -12,7 +12,7 @@ case class EventContext(channel: String = "in.sunbird",
                    env: String = "Course",
                    sid: String = UUID.randomUUID().toString,
                    did: String = UUID.randomUUID().toString,
-                   pdata: util.Map[String, String],
+                   pdata: util.Map[String, String] = Map("ver" -> "3.0", "id" -> "org.sunbird.learning.platform", "pid" -> "course-progress-updater").asJava,
                    cdata: Array[util.Map[String, AnyRef]])
 
 
@@ -27,7 +27,6 @@ case class TelemetryEvent(actor: ActorObject,
                           syncts: Long = System.currentTimeMillis(),
                           ets: Long = System.currentTimeMillis(),
                           context: EventContext = EventContext(
-                            pdata = Map("ver" -> "3.0", "id" -> "org.sunbird.learning.platform", "pid" -> "course-progress-updater").asJava,
                             cdata = Array[util.Map[String, AnyRef]]()
                           ),
                           mid: String = s"LP.AUDIT.${UUID.randomUUID().toString}",
@@ -40,5 +39,6 @@ case class Progress(activity_type: String,
                     activity_id: String,
                     context_id: String,
                     agg: Map[String, Int],
-                    agg_last_updated: Map[String, Long]
+                    agg_last_updated: Map[String, Long],
+                    isCompleted:Boolean
                    )
