@@ -97,7 +97,7 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
           // Get the leafNodes for the specific unit
           val unitLeafNodes: util.List[String] = Option(readFromCache(key = s"${unitId}:leafnodes", metrics)).getOrElse(new util.LinkedList())
           // Stop the job if the leaf-nodes are not available
-          if (null == unitLeafNodes) throw new Exception(s"LeafNodes are not available. unitId:$unitId, courseId:$courseId")
+          if (unitLeafNodes.isEmpty) throw new Exception(s"LeafNodes are not available. unitId:$unitId, courseId:$courseId")
           val cols = Map(config.activityType -> "course-unit", config.contextId -> s"cb:${primaryFields.get(config.batchId)}", config.activityId -> s"${unitId}")
           // Get all the content status for the leaf nodes of the particular unit
           val unitContentsStatusFromDB = getContentStatusFromDB(primaryFields ++ Map(config.contentId -> unitLeafNodes.asScala.toList))
