@@ -138,8 +138,6 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
    * @return Progress - It will returns the computed progress
    */
 
-
-
   def computeProgress(cols: Map[String, AnyRef],
                       leafNodes: util.List[String],
                       csFromDB: Map[String, Int],
