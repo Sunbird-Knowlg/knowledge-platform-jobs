@@ -24,7 +24,7 @@ class CourseMetricsAggregatorStreamTask(config: CourseMetricsAggregatorConfig, k
    val dataStream = env.addSource(kafkaConnector.kafkaMapSource(config.kafkaInputTopic), "course-metrics-agg-consumer")
       .uid(config.aggregatorConsumer).setParallelism(config.kafkaConsumerParallelism)
       .keyBy(x=>  x.get("partition").toString)
-      .window(TumblingEventTimeWindows.of(Time.seconds(60)))
+      .window(TumblingEventTimeWindows.of(Time.seconds(config.windowTimingInSec)))
       .process(new ProgressUpdater(config))
     env.execute(config.jobName)
   }

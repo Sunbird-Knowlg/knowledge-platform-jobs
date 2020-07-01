@@ -49,7 +49,7 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
   override def process(key: String,
                        context: ProcessWindowFunction[util.Map[String, AnyRef], String, String, TimeWindow]#Context,
                        events: lang.Iterable[util.Map[String, AnyRef]], metrics: Metrics): Unit = {
-    val batch: Batch = QueryBuilder.batch()
+    val batch: Batch = QueryBuilder.batch() // It holds all the batch of progress
     events.forEach(event => {
       val eventData = event.get("edata").asInstanceOf[util.Map[String, AnyRef]]
       if (eventData.get("action") == actionType) { //TODO: Need to write other function to seperate the events based on action specific
