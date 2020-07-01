@@ -17,7 +17,7 @@ class CourseMetricsAggregatorConfig(override val config: Config) extends BaseJob
 
   // Kafka Topics Configuration
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
-  val kafkaFailedTopic: String = config.getString("kafka.output.failed.topic")
+  val kafkaAuditEventTopic: String = config.getString("kafka.output.audit.topic")
   val eventMaxSize: Long = config.getLong("kafka.event.max.size")
 
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
@@ -55,7 +55,7 @@ class CourseMetricsAggregatorConfig(override val config: Config) extends BaseJob
   val aggregatorConsumer = "course-metrics-aggregator-consumer"
 
   // Producers
-  val aggregatorProducer = "extractor-duplicate-events-sink"
+  val aggregatorAuditProducer = "extractor-audit-events-sink"
 
   val completedStatusCode: Int = 2
   val inCompleteStatusCode: Int = 1

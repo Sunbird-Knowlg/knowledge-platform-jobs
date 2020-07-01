@@ -39,7 +39,7 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
     .build)
 
   var redisServer: RedisServer = _
-  redisServer = new RedisServer(6374)
+  redisServer = new RedisServer(6375)
   redisServer.start()
   var jedis: Jedis = _
   val mockKafkaUtil: FlinkKafkaConnector = mock[FlinkKafkaConnector](Mockito.withSettings().serializable())
@@ -95,11 +95,8 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
 
   "Aggregator " should "Compute and update to cassandra database" in {
 
-    //println("Redis data" +jedis.lrange("do_1127212344324751361295:do_11260735471149056012299:ancestors", 0, -1))
-
-
     when(mockKafkaUtil.kafkaMapSource(courseAggregatorConfig.kafkaInputTopic)).thenReturn(new CourseAggregatorMapSource)
-    when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaFailedTopic)).thenReturn(new FailedEventsSink)
+    when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaAuditEventTopic)).thenReturn(new auditEventSink)
     //when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafka)).thenReturn(new FailedEventsSink)
     new CourseMetricsAggregatorStreamTask(courseAggregatorConfig, mockKafkaUtil).process()
 //    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.totalEventsCount}").getValue() should be(1)
@@ -158,28 +155,28 @@ class CourseAggregatorMapSource extends SourceFunction[util.Map[String, AnyRef]]
 }
 
 
-class FailedEventsSink extends SinkFunction[String] {
+class auditEventSink extends SinkFunction[String] {
 
   override def invoke(value: String): Unit = {
     synchronized {
-      FailedEventsSink.values.add(value)
+      auditEventSink.values.add(value)
     }
   }
 }
 
-object FailedEventsSink {
+object auditEventSink {
   val values: util.List[String] = new util.ArrayList()
 }
 
-class SuccessEvent extends SinkFunction[String] {
-
-  override def invoke(value: String): Unit = {
-    synchronized {
-      SuccessEventSink.values.add(value)
-    }
-  }
-}
-
-object SuccessEventSink {
-  val values: util.List[String] = new util.ArrayList()
-}
+//class SuccessEvent extends SinkFunction[String] {
+//
+//  override def invoke(value: String): Unit = {
+//    synchronized {
+//      SuccessEventSink.values.add(value)
+//    }
+//  }
+//}
+//
+//object SuccessEventSink {
+//  val values: util.List[String] = new util.ArrayList()
+//}

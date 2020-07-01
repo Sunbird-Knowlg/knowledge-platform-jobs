@@ -21,11 +21,14 @@ class CourseMetricsAggregatorStreamTask(config: CourseMetricsAggregatorConfig, k
     implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
     env.addSource(kafkaConnector.kafkaMapSource(config.kafkaInputTopic), config.aggregatorConsumer)
-   val dataStream = env.addSource(kafkaConnector.kafkaMapSource(config.kafkaInputTopic), "course-metrics-agg-consumer")
-      .uid(config.aggregatorConsumer).setParallelism(config.kafkaConsumerParallelism)
-      .keyBy(x=>  x.get("partition").toString)
-      .window(TumblingEventTimeWindows.of(Time.seconds(config.windowTimingInSec)))
-      .process(new ProgressUpdater(config))
+    val progressEventStream =
+      env.addSource(kafkaConnector.kafkaMapSource(config.kafkaInputTopic), "course-metrics-agg-consumer")
+        .uid(config.aggregatorConsumer).setParallelism(config.kafkaConsumerParallelism)
+        .keyBy(x => x.get("partition").toString)
+        .window(TumblingEventTimeWindows.of(Time.seconds(config.windowTimingInSec)))
+        .process(new ProgressUpdater(config))
+
+    progressEventStream.getSideOutput(config.auditEventOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaAuditEventTopic)).name(config.aggregatorAuditProducer).uid(config.aggregatorAuditProducer)
     env.execute(config.jobName)
   }
 
