@@ -70,6 +70,13 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
     })
   }
 
+  def getCourseProgress(csFromEvent: mutable.HashMap[String, Int], primaryFields: mutable.Map[String, AnyRef], metrics: Metrics): Map[String, Progress] = {
+    val courseId = s"${primaryFields.get("courseid").getOrElse(null)}"
+    val leafNodes = readFromCache(key = s"$courseId:leafnodes", metrics)
+    val courseContentsStatus = getContentStatusFromDB(primaryFields ++ Map(config.contentId -> leafNodes.asScala.toList))
+    Map(courseId -> computeProgress(Map(config.activityType -> "course", config.contextId -> s"cb:${primaryFields.get(config.batchId)}", config.activityId -> s"${primaryFields.get(config.courseId)}"), leafNodes, courseContentsStatus, csFromEvent))
+  }
+
   def getUnitProgress(csFromEvent: mutable.HashMap[String, Int], primaryFields: mutable.Map[String, AnyRef], metrics: Metrics): mutable.Map[String, Progress] = {
     val unitProgressMap = mutable.Map[String, Progress]()
 
@@ -78,11 +85,11 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
     val courseId = s"${primaryFields.get(config.courseId).getOrElse(null)}"
     csFromEvent.map(contentId => {
       // Get the ancestors for the specific resource
-      val unitLevelAncestors = Option(getDataFromCache(key = s"$courseId:${contentId._1}:ancestors", metrics)).map(x => x.asScala.filter(_ > courseId)).getOrElse(List())
+      val unitLevelAncestors = Option(readFromCache(key = s"$courseId:${contentId._1}:ancestors", metrics)).map(x => x.asScala.filter(_ > courseId)).getOrElse(List())
       unitLevelAncestors.map(unitId => {
         if (progress(unitId) == null) { // To avoid the computation iteration for unit
           // Get the leafNodes for the specific unit
-          val unitLeafNodes: util.List[String] = Option(getDataFromCache(key = s"${unitId}:leafnodes", metrics)).getOrElse(new util.LinkedList())
+          val unitLeafNodes: util.List[String] = Option(readFromCache(key = s"${unitId}:leafnodes", metrics)).getOrElse(new util.LinkedList())
           val cols = Map(config.activityType -> "course-unit", config.contextId -> s"cb:${primaryFields.get(config.batchId)}", config.activityId -> s"${unitId}")
           // Get all the content status for the leaf nodes of the particular unit
           val unitContentsStatusFromDB = getContentStatusFromDB(primaryFields ++ Map(config.contentId -> unitLeafNodes.asScala.toList))
@@ -91,13 +98,6 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
       })
     })
     unitProgressMap
-  }
-
-  def getCourseProgress(csFromEvent: mutable.HashMap[String, Int], primaryFields: mutable.Map[String, AnyRef], metrics: Metrics): Map[String, Progress] = {
-    val courseId = s"${primaryFields.get("courseid").getOrElse(null)}"
-    val leafNodes = getDataFromCache(key = s"$courseId:leafnodes", metrics)
-    val courseContentsStatus = getContentStatusFromDB(primaryFields ++ Map(config.contentId -> leafNodes.asScala.toList))
-    Map(courseId -> computeProgress(Map(config.activityType -> "course", config.contextId -> s"cb:${primaryFields.get(config.batchId)}", config.activityId -> s"${primaryFields.get(config.courseId)}"), leafNodes, courseContentsStatus, csFromEvent))
   }
 
   def readFromDB(columns: mutable.Map[String, AnyRef], keySpace: String, table: String): List[Row] = {
@@ -114,6 +114,17 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
     cassandraUtil.find(selectWhere.toString).asScala.toList
   }
 
+  def writeToDb(query: String, metrics: Metrics): Unit = {
+    cassandraUtil.upsert(query)
+    metrics.incCounter(config.successEventCount)
+    metrics.incCounter(config.dbUpdateCount)
+  }
+
+  def readFromCache(key: String, metrics: Metrics): util.List[String] = {
+    metrics.incCounter(config.cacheHitCount)
+    cache.lRangeWithRetry(key)
+  }
+
   def getQuery(progressColumns: Progress, keySpace: String, table: String): Update.Where = {
     QueryBuilder.update(keySpace, table)
       .`with`(QueryBuilder.putAll(config.agg, progressColumns.agg.asJava))
@@ -123,17 +134,13 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
       .and(QueryBuilder.eq(config.contextId, progressColumns.context_id))
   }
 
-  def getDataFromCache(key: String, metrics: Metrics): util.List[String] = {
-    metrics.incCounter(config.cacheHitCount)
-    cache.lRangeWithRetry(key)
-  }
 
   /**
    * Method to compute the progress by comparing the content status
    *
-   * @param cols unit agg table columns list
-   * @param leafNodes - number of leafNodes either
-   * @param csFromDB  - content status from database  Map(do_54395 -> 1, do_u5oi957438 -> 2)
+   * @param cols        unit agg table columns list
+   * @param leafNodes   - number of leafNodes either
+   * @param csFromDB    - content status from database  Map(do_54395 -> 1, do_u5oi957438 -> 2)
    * @param csFromEvent - content status from the event ex: Map(do_54395 -> 2)
    * @return Progress - It will returns the computed progress
    */
@@ -176,9 +183,9 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
       .toList.flatMap(list => list.map(res => mutable.Map(res.getObject(config.contentId) -> res.getObject("status")).asInstanceOf[mutable.Map[String, Int]])).flatten.toMap
   }
 
-  def writeToDb(query: String, metrics: Metrics): Unit = {
-    cassandraUtil.upsert(query)
-    metrics.incCounter(config.successEventCount)
-    metrics.incCounter(config.dbUpdateCount)
+
+  def generateTelemetry(): Unit = {
+
   }
+
 }

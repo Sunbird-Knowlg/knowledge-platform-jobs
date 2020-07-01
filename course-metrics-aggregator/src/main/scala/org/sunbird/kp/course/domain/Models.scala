@@ -6,7 +6,7 @@ import java.util.UUID
 import scala.collection.JavaConverters._
 
 
-case class ActorObject(id: String, `type`: String)
+case class ActorObject(id: String, `type`: String = "User")
 
 case class Context(channel: String = "in.sunbird",
                    env: String = "Course",
@@ -21,7 +21,7 @@ case class eData(props: util.ArrayList[String], `type`: String)
 case class EventObject(id: String, ver: String, `type`: String, rollup: util.Map[String, String])
 
 case class TelemetryEvent(actor: ActorObject,
-                          eid: String,
+                          eid: String = "AUDIT",
                           edata: eData,
                           ver: String = "3.0",
                           syncts: Long = System.currentTimeMillis(),
