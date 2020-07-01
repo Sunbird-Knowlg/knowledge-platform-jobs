@@ -21,7 +21,7 @@ class CourseMetricsAggregatorStreamTask(config: CourseMetricsAggregatorConfig, k
     implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
     env.addSource(kafkaConnector.kafkaMapSource(config.kafkaInputTopic), config.aggregatorConsumer)
-   val dataStream = env.addSource(kafkaConnector.kafkaMapSource(config.kafkaInputTopic), "telemetry-ingest-events-consumer")
+   val dataStream = env.addSource(kafkaConnector.kafkaMapSource(config.kafkaInputTopic), "course-metrics-agg-consumer")
       .uid(config.aggregatorConsumer).setParallelism(config.kafkaConsumerParallelism)
       .keyBy(x=>  x.get("partition").toString)
       .window(TumblingEventTimeWindows.of(Time.seconds(60)))
