@@ -125,6 +125,18 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
     cache.lRangeWithRetry(key)
   }
 
+  /**
+   * Method to compute the progress by comparing the content status
+   *
+   * @param cols unit agg table columns list
+   * @param leafNodes - number of leafNodes either
+   * @param csFromDB  - content status from database  Map(do_54395 -> 1, do_u5oi957438 -> 2)
+   * @param csFromEvent - content status from the event ex: Map(do_54395 -> 2)
+   * @return Progress - It will returns the computed progress
+   */
+
+
+
   def computeProgress(cols: Map[String, AnyRef],
                       leafNodes: util.List[String],
                       csFromDB: Map[String, Int],
