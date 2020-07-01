@@ -22,7 +22,7 @@
         </dependency>
         <dependency>
             <groupId>org.sunbird.kp</groupId>
-            <artifactId>course-aggregator</artifactId>
+            <artifactId>course-metrics-aggregator</artifactId>
             <version>1.0.0</version>
             <type>jar</type>
         </dependency>

@@ -21,7 +21,7 @@
 
 	<modules>
 		<module>kp-jobs-core</module>
-		<module>course-aggregator</module>
+		<module>course-metrics-aggregator</module>
 	</modules>
 
 	<properties>

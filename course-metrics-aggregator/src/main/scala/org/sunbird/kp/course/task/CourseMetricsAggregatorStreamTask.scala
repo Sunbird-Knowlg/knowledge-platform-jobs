@@ -15,7 +15,7 @@ import org.sunbird.async.core.util.FlinkUtil
 import org.sunbird.kp.course.functions.ProgressUpdater
 
 
-class CourseAggregatorStreamTask(config: CourseAggregatorConfig, kafkaConnector: FlinkKafkaConnector) {
+class CourseMetricsAggregatorStreamTask(config: CourseMetricsAggregatorConfig, kafkaConnector: FlinkKafkaConnector) {
   def process(): Unit = {
     implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
     implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
@@ -26,27 +26,22 @@ class CourseAggregatorStreamTask(config: CourseAggregatorConfig, kafkaConnector:
       .keyBy(x=>  x.get("partition").toString)
       .window(TumblingEventTimeWindows.of(Time.seconds(60)))
       .process(new ProgressUpdater(config))
-
-      
-//      .window(EventTimeSessionWindows.withGap(Time.seconds(1)))
-//      .evictor(CountEvictor.of(2))
-//      .process(new TestWindowFunction(config))
     env.execute(config.jobName)
   }
 
 }
 
 // $COVERAGE-OFF$ Disabling scoverage as the below code can only be invoked within flink cluster
-object CourseAggregatorStreamTask {
+object CourseMetricsAggregatorStreamTask {
 
   def main(args: Array[String]): Unit = {
     val configFilePath = Option(ParameterTool.fromArgs(args).get("config.file.path"))
     val config = configFilePath.map {
       path => ConfigFactory.parseFile(new File(path)).resolve()
-    }.getOrElse(ConfigFactory.load("course-aggregator.conf").withFallback(ConfigFactory.systemEnvironment()))
-    val courseAggregator = new CourseAggregatorConfig(config)
+    }.getOrElse(ConfigFactory.load("course-metrics-aggregator.conf").withFallback(ConfigFactory.systemEnvironment()))
+    val courseAggregator = new CourseMetricsAggregatorConfig(config)
     val kafkaUtil = new FlinkKafkaConnector(courseAggregator)
-    val task = new CourseAggregatorStreamTask(courseAggregator, kafkaUtil)
+    val task = new CourseMetricsAggregatorStreamTask(courseAggregator, kafkaUtil)
     task.process()
   }
 }

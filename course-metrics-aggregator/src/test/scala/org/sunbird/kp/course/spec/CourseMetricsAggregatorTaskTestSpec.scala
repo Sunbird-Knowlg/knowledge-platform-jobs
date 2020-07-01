@@ -21,10 +21,9 @@ import org.sunbird.async.core.job.FlinkKafkaConnector
 import org.sunbird.async.core.util.CassandraUtil
 import org.sunbird.async.core.{BaseMetricsReporter, BaseTestSpec}
 import org.sunbird.kp.course.fixture.EventFixture
-import org.sunbird.kp.course.task.{CourseAggregatorConfig, CourseAggregatorStreamTask}
+import org.sunbird.kp.course.task.{CourseMetricsAggregatorConfig, CourseMetricsAggregatorStreamTask}
 import redis.clients.jedis.Jedis
 import redis.embedded.RedisServer
-import scala.collection.JavaConverters._
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
@@ -46,7 +45,7 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
   val mockKafkaUtil: FlinkKafkaConnector = mock[FlinkKafkaConnector](Mockito.withSettings().serializable())
   val gson = new Gson()
   val config: Config = ConfigFactory.load("test.conf")
-  val courseAggregatorConfig: CourseAggregatorConfig = new CourseAggregatorConfig(config)
+  val courseAggregatorConfig: CourseMetricsAggregatorConfig = new CourseMetricsAggregatorConfig(config)
 
 
   var cassandraUtil: CassandraUtil = _
@@ -102,7 +101,7 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
     when(mockKafkaUtil.kafkaMapSource(courseAggregatorConfig.kafkaInputTopic)).thenReturn(new CourseAggregatorMapSource)
     when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaFailedTopic)).thenReturn(new FailedEventsSink)
     //when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafka)).thenReturn(new FailedEventsSink)
-    new CourseAggregatorStreamTask(courseAggregatorConfig, mockKafkaUtil).process()
+    new CourseMetricsAggregatorStreamTask(courseAggregatorConfig, mockKafkaUtil).process()
 //    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.totalEventsCount}").getValue() should be(1)
 //    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.dbUpdateCount}").getValue() should be(1)
 //    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.cacheHitCount}").getValue() should be(1)

@@ -17,13 +17,13 @@ import org.sunbird.async.core.cache.{DataCache, RedisConnect}
 import org.sunbird.async.core.job.{Metrics, WindowBaseProcessFunction}
 import org.sunbird.async.core.util.CassandraUtil
 import org.sunbird.kp.course.domain.Progress
-import org.sunbird.kp.course.task.CourseAggregatorConfig
+import org.sunbird.kp.course.task.CourseMetricsAggregatorConfig
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 
-class ProgressUpdater(config: CourseAggregatorConfig)(implicit val stringTypeInfo: TypeInformation[String],
-                                                      @transient var cassandraUtil: CassandraUtil = null
+class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val stringTypeInfo: TypeInformation[String],
+                                                             @transient var cassandraUtil: CassandraUtil = null
 ) extends WindowBaseProcessFunction[util.Map[String, AnyRef], String, String](config) {
   val mapType: Type = new TypeToken[util.Map[String, AnyRef]]() {}.getType
   private[this] val logger = LoggerFactory.getLogger(classOf[ProgressUpdater])
@@ -54,12 +54,17 @@ class ProgressUpdater(config: CourseAggregatorConfig)(implicit val stringTypeInf
       val eventData = event.get("edata").asInstanceOf[util.Map[String, AnyRef]]
       if (eventData.get("action") == actionType) {
         metrics.incCounter(config.totalEventsCount) // To Measure the number of batch-enrollment-updater events came.
+        // PrimaryFields = <batchid, userid, courseid>
         val primaryFields = eventData.asScala.map(v => (v._1.toLowerCase, v._2)).filter(x => config.primaryFields.contains(x._1))
+        // content-status object from the telemetry "BE_JOB_REQUEST"
         val csFromEvent = getContentStatusFromEvent(eventData)
+        //To compute the unit level progress
         getUnitProgress(csFromEvent, primaryFields, metrics)
           .map(unit => batch.add(getQuery(unit._2, config.dbKeyspace, config.dbActivityAggTable)))
+        // To compute the course progress
         getCourseProgress(csFromEvent, primaryFields, metrics)
           .map(course => batch.add(getQuery(course._2, config.dbKeyspace, config.dbActivityAggTable)))
+        // To update the both unit and course progress into db
         writeToDb(batch.toString, metrics)
       }
     })
@@ -69,12 +74,13 @@ class ProgressUpdater(config: CourseAggregatorConfig)(implicit val stringTypeInf
     val unitProgressMap = mutable.Map[String, Progress]()
 
     def progress(id: String): Progress = unitProgressMap.get(id).getOrElse(null)
+
     val courseId = s"${primaryFields.get(config.courseId).getOrElse(null)}"
     csFromEvent.map(contentId => {
       val unitLevelAncestors = Option(getDataFromCache(key = s"$courseId:${contentId._1}:ancestors", metrics)).map(x => x.asScala.filter(_ > courseId)).getOrElse(List())
       unitLevelAncestors.map(unitId => {
         if (progress(unitId) == null) {
-          val unitLeafNodes: util.List[String] = Option(getDataFromCache(key= s"${unitId}:leafnodes", metrics)).getOrElse(new util.LinkedList())
+          val unitLeafNodes: util.List[String] = Option(getDataFromCache(key = s"${unitId}:leafnodes", metrics)).getOrElse(new util.LinkedList())
           val cols = Map(config.activityType -> "course-unit", config.contextId -> s"cb:${primaryFields.get(config.batchId)}", config.activityId -> s"${unitId}")
           val unitContentsStatusFromDB = getContentStatusFromDB(primaryFields ++ Map(config.contentId -> unitLeafNodes.asScala.toList))
           unitProgressMap += (unitId -> computeProgress(cols, unitLeafNodes, unitContentsStatusFromDB, csFromEvent))

@@ -8,7 +8,7 @@ import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.streaming.api.scala.OutputTag
 import org.sunbird.async.core.BaseJobConfig
 
-class CourseAggregatorConfig(override val config: Config) extends BaseJobConfig(config, "course-metrics-aggregator") {
+class CourseMetricsAggregatorConfig(override val config: Config) extends BaseJobConfig(config, "course-metrics-aggregator") {
 
   private val serialVersionUID = 2905979434303791379L
 
@@ -50,7 +50,7 @@ class CourseAggregatorConfig(override val config: Config) extends BaseJobConfig(
   val failedEventsOutputTag: OutputTag[String] = OutputTag[String](failedEventOutputTagName)
 
   // Consumers
-  val aggregatorConsumer = "course-aggregator-consumer"
+  val aggregatorConsumer = "course-metrics-aggregator-consumer"
 
   // Producers
   val aggregatorProducer = "extractor-duplicate-events-sink"
