@@ -137,14 +137,14 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
     cache.lRangeWithRetry(key)
   }
 
-  def getQuery(progressColumns: Progress, keySpace: String, table: String): Update.Where = {
+  def getQuery(progress: Progress, keySpace: String, table: String): Update.Where = {
     QueryBuilder.update(keySpace, table)
-      .`with`(QueryBuilder.putAll(config.agg, progressColumns.agg.asJava))
-      .and(QueryBuilder.putAll(config.aggLastUpdated, progressColumns.agg_last_updated.asJava))
-      .where(QueryBuilder.eq(config.activityId, progressColumns.activity_id))
-      .and(QueryBuilder.eq(config.activityType, progressColumns.activity_type))
-      .and(QueryBuilder.eq(config.contextId, progressColumns.context_id))
-      .and(QueryBuilder.eq(config.userId, progressColumns.user_id))
+      .`with`(QueryBuilder.putAll(config.agg, progress.agg.asJava))
+      .and(QueryBuilder.putAll(config.aggLastUpdated, progress.agg_last_updated.asJava))
+      .where(QueryBuilder.eq(config.activityId, progress.activity_id))
+      .and(QueryBuilder.eq(config.activityType, progress.activity_type))
+      .and(QueryBuilder.eq(config.contextId, progress.context_id))
+      .and(QueryBuilder.eq(config.activityUser, progress.user_id))
   }
 
 
