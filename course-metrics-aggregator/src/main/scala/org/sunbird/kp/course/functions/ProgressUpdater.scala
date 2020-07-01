@@ -52,7 +52,7 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
     val batch: Batch = QueryBuilder.batch()
     events.forEach(event => {
       val eventData = event.get("edata").asInstanceOf[util.Map[String, AnyRef]]
-      if (eventData.get("action") == actionType) {
+      if (eventData.get("action") == actionType) { //TODO: Need to write other function to seperate the events based on action specific
         metrics.incCounter(config.totalEventsCount) // To Measure the number of batch-enrollment-updater events came.
         // PrimaryFields = <batchid, userid, courseid>
         val primaryFields = eventData.asScala.map(v => (v._1.toLowerCase, v._2)).filter(x => config.primaryFields.contains(x._1))
@@ -159,7 +159,7 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
   }
 
   def getContentStatusFromDB(primaryFields: mutable.Map[String, AnyRef]): Map[String, Int] = {
-    Option(readFromDB(primaryFields, config.dbKeyspace, "content_consumption"))
+    Option(readFromDB(primaryFields, config.dbKeyspace, config.dbContentConsumptionTable))
       .toList.flatMap(list => list.map(res => mutable.Map(res.getObject(config.contentId) -> res.getObject("status")).asInstanceOf[mutable.Map[String, Int]])).flatten.toMap
   }
 
