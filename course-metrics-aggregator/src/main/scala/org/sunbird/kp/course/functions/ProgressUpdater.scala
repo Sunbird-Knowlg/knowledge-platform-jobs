@@ -144,7 +144,7 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
       .where(QueryBuilder.eq(config.activityId, progressColumns.activity_id))
       .and(QueryBuilder.eq(config.activityType, progressColumns.activity_type))
       .and(QueryBuilder.eq(config.contextId, progressColumns.context_id))
-      .and(QueryBuilder.eq(config.contextId, progressColumns.context_id))
+      .and(QueryBuilder.eq(config.userId, progressColumns.user_id))
   }
 
 
