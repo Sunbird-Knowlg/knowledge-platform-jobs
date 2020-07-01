@@ -26,9 +26,10 @@ INSERT INTO sunbird_courses.content_consumption(userid, contentid, batchid,cours
 
 CREATE TABLE IF NOT EXISTS sunbird_courses.activity_agg (
     activity_id text,
+    user_id text,
     activity_type text,
     context_id text,
     agg Map<text, int>,
     agg_last_updated Map<text, timestamp>,
-    PRIMARY KEY (activity_type, activity_id, context_id)
+    PRIMARY KEY (activity_type, activity_id, context_id, user_id)
 );

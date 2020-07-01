@@ -97,15 +97,14 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
 
     when(mockKafkaUtil.kafkaMapSource(courseAggregatorConfig.kafkaInputTopic)).thenReturn(new CourseAggregatorMapSource)
     when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaAuditEventTopic)).thenReturn(new auditEventSink)
-    //when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafka)).thenReturn(new FailedEventsSink)
     new CourseMetricsAggregatorStreamTask(courseAggregatorConfig, mockKafkaUtil).process()
-//    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.totalEventsCount}").getValue() should be(1)
-//    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.dbUpdateCount}").getValue() should be(1)
-//    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.cacheHitCount}").getValue() should be(1)
-//    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.successEventCount}").getValue() should be(1)
+    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.totalEventsCount}").getValue() should be(1)
+    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.dbUpdateCount}").getValue() should be(1)
+    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.cacheHitCount}").getValue() should be(1)
+    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.successEventCount}").getValue() should be(1)
    val event1_primaryCols = getPrimaryCols(gson.fromJson(EventFixture.EVENT_1, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]].asScala.asJava)
     // Cassandra Query IsBEGIN BATCH UPDATE sunbird_courses.user_enrolments SET progress=3,contentstatus={'do_11260735471149056012301':1,'do_11260735471149056012300':1,'do_11260735471149056012299':2},completionpercentage=300,completedon=null,status=1 WHERE batchid='0126083288437637121' AND userid='do_1127212344324751361295' AND courseid='8454cb21-3ce9-4e30-85b5-fade097880d8';APPLY BATCH;
-//    val queryIs = s"select progress,status,contentstatus,completedon,completionpercentage from sunbird_courses.user_enrolments where courseid='${event1_primaryCols.get("courseid").get}' and batchid='${event1_primaryCols.get("batchid").get}' and userid='${event1_primaryCols.get("userid").get}';"
+    val queryIs = s"select * from sunbird_courses.activity_agg where activity_id='${event1_primaryCols.get("courseid").get}' and context_id='cb:${event1_primaryCols.get("batchid").get}' ;"
 //    val event1Progress = cassandraUtil.findOne(queryIs)
 //    println("event1Progress" + event1Progress)
 //    event1Progress.getObject("progress") should be(1)

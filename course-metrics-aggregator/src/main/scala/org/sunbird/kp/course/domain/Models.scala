@@ -36,6 +36,7 @@ case class TelemetryEvent(actor: ActorObject,
                          )
 
 case class Progress(activity_type: String,
+                    user_id:String,
                     activity_id: String,
                     context_id: String,
                     agg: Map[String, Int],

@@ -71,10 +71,10 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
   }
 
   def getCourseProgress(csFromEvent: mutable.HashMap[String, Int], primaryFields: mutable.Map[String, AnyRef], metrics: Metrics): Map[String, Progress] = {
-    val courseId = s"${primaryFields.get("courseid").getOrElse(null)}"
+    val courseId = s"${primaryFields.get("courseid").orNull}"
     Option(readFromCache(key = s"$courseId:leafnodes", metrics)).map(leafNodes => {
       val courseContentsStatus = getContentStatusFromDB(primaryFields ++ Map(config.contentId -> leafNodes.asScala.toList))
-      Map(courseId -> computeProgress(Map(config.activityType -> "course", config.contextId -> s"cb:${primaryFields.get(config.batchId)}", config.activityId -> s"${primaryFields.get(config.courseId)}"), leafNodes, courseContentsStatus, csFromEvent))
+      Map(courseId -> computeProgress(Map(config.activityType -> "course", config.activityUser -> primaryFields.get(config.userId).orNull, config.contextId -> s"cb:${primaryFields.get(config.batchId).orNull}", config.activityId -> s"${primaryFields.get(config.courseId).orNull}"), leafNodes, courseContentsStatus, csFromEvent))
     }).getOrElse(throw new Exception(s"LeafNodes are not available. courseId:$courseId")) // Stop The job if the leafnodes are not available
   }
 
@@ -85,9 +85,9 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
                      ): mutable.Map[String, Progress] = {
     val unitProgressMap = mutable.Map[String, Progress]()
 
-    def progress(id: String): Progress = unitProgressMap.get(id).getOrElse(null)
+    def progress(id: String): Progress = unitProgressMap.get(id).orNull
 
-    val courseId = s"${primaryFields.get(config.courseId).getOrElse(null)}"
+    val courseId = s"${primaryFields.get(config.courseId).orNull}"
     csFromEvent.map(contentId => {
       // Get the ancestors for the specific resource
       context.output(config.auditEventOutputTag, gson.toJson(generateTelemetry(primaryFields))) // Get the Telemetry for resource type event
@@ -98,7 +98,7 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
           val unitLeafNodes: util.List[String] = Option(readFromCache(key = s"${unitId}:leafnodes", metrics)).getOrElse(new util.LinkedList())
           // Stop the job if the leaf-nodes are not available
           if (unitLeafNodes.isEmpty) throw new Exception(s"LeafNodes are not available. unitId:$unitId, courseId:$courseId")
-          val cols = Map(config.activityType -> "course-unit", config.contextId -> s"cb:${primaryFields.get(config.batchId)}", config.activityId -> s"${unitId}")
+          val cols = Map(config.activityType -> "course-unit", config.activityUser -> primaryFields.get(config.userId).orNull, config.contextId -> s"cb:${primaryFields.get(config.batchId).orNull}", config.activityId -> s"$unitId")
           // Get all the content status for the leaf nodes of the particular unit
           val unitContentsStatusFromDB = getContentStatusFromDB(primaryFields ++ Map(config.contentId -> unitLeafNodes.asScala.toList))
           val progress = computeProgress(cols, unitLeafNodes, unitContentsStatusFromDB, csFromEvent)
@@ -115,16 +115,18 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
       .from(keySpace, table).
       where()
     columns.map(col => {
-      if (col._2.isInstanceOf[List[Any]]) {
-        selectWhere.and(QueryBuilder.in(col._1, col._2.asInstanceOf[List[_]].asJava))
-      } else {
-        selectWhere.and(QueryBuilder.eq(col._1, col._2))
+      col._2 match {
+        case value: List[Any] =>
+          selectWhere.and(QueryBuilder.in(col._1, value.asJava))
+        case _ =>
+          selectWhere.and(QueryBuilder.eq(col._1, col._2))
       }
     })
     cassandraUtil.find(selectWhere.toString).asScala.toList
   }
 
   def writeToDb(query: String, metrics: Metrics): Unit = {
+    println("qery" + query)
     cassandraUtil.upsert(query)
     metrics.incCounter(config.successEventCount)
     metrics.incCounter(config.dbUpdateCount)
@@ -141,6 +143,7 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
       .and(QueryBuilder.putAll(config.aggLastUpdated, progressColumns.agg_last_updated.asJava))
       .where(QueryBuilder.eq(config.activityId, progressColumns.activity_id))
       .and(QueryBuilder.eq(config.activityType, progressColumns.activity_type))
+      .and(QueryBuilder.eq(config.contextId, progressColumns.context_id))
       .and(QueryBuilder.eq(config.contextId, progressColumns.context_id))
   }
 
@@ -159,14 +162,20 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
                       leafNodes: util.List[String],
                       csFromDB: Map[String, Int],
                       csFromEvent: mutable.Map[String, Int]): Progress = {
+    println("colss" + cols)
     val unionKeys = csFromEvent.keySet.union(csFromDB.keySet)
     val mergedContentStatus: Map[String, Int] = unionKeys.map { key =>
-      (key -> (if (csFromEvent.get(key).getOrElse(0) >= csFromDB.get(key).getOrElse(0)) csFromEvent.get(key).getOrElse(0)
-      else csFromDB.get(key).getOrElse(0)))
+      key -> (if (csFromEvent.getOrElse(key, 0) >= csFromDB.getOrElse(key, 0)) csFromEvent.getOrElse(key, 0)
+      else csFromDB.getOrElse(key, 0))
     }.toMap.filter(value => value._2 == config.completedStatusCode).filter(requiredNodes => leafNodes.contains(requiredNodes._1))
     val agg = Map(config.progress -> mergedContentStatus.size) // Progress in the percentage
     val aggUpdatedOn = Map(config.progress -> new DateTime().getMillis) // Progress updated time
-    Progress(cols.get(config.activityType).getOrElse(null).asInstanceOf[String], cols.get(config.activityId).getOrElse(null).asInstanceOf[String], cols.get(config.contextId).getOrElse(null).asInstanceOf[String], agg, aggUpdatedOn)
+    Progress(
+      cols.get(config.activityType).orNull.asInstanceOf[String],
+      cols.get(config.activityUser).orNull.asInstanceOf[String],
+      cols.get(config.activityId).orNull.asInstanceOf[String],
+      cols.get(config.contextId).orNull.asInstanceOf[String],
+      agg, aggUpdatedOn)
   }
 
 
@@ -181,7 +190,7 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
     val csFromEvent = new mutable.HashMap[String, Int]()
     val contentsList = eventData.get("contents").asInstanceOf[util.List[util.Map[String, AnyRef]]]
     contentsList.forEach(content => {
-      if (csFromEvent.get(content.get("contentId").asInstanceOf[String]).getOrElse(0) < content.get("status").asInstanceOf[Double].toInt) {
+      if (csFromEvent.getOrElse(content.get("contentId").asInstanceOf[String], 0) < content.get("status").asInstanceOf[Double].toInt) {
         csFromEvent.put(content.get("contentId").asInstanceOf[String], content.get("status").asInstanceOf[Double].toInt)
       }
     })
@@ -194,7 +203,7 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
   }
 
   def generateTelemetry(primaryFields: mutable.Map[String, AnyRef]): TelemetryEvent = {
-    TelemetryEvent(actor = ActorObject(id = primaryFields.get("userid").getOrElse(null).asInstanceOf[String]),
+    TelemetryEvent(actor = ActorObject(id = primaryFields.get("userid").orNull.asInstanceOf[String]),
       edata = EventData(props = Array(""), `type` = "start"),
       context = EventContext(pdata = Map("" -> "").asJava, cdata = Array(Map().asJava)),
       `object` = EventObject(rollup = Map("" -> "").asJava, id = "", `type` = "content")
