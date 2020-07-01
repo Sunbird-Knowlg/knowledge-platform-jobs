@@ -77,11 +77,14 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
 
     val courseId = s"${primaryFields.get(config.courseId).getOrElse(null)}"
     csFromEvent.map(contentId => {
+      // Get the ancestors for the specific resource
       val unitLevelAncestors = Option(getDataFromCache(key = s"$courseId:${contentId._1}:ancestors", metrics)).map(x => x.asScala.filter(_ > courseId)).getOrElse(List())
       unitLevelAncestors.map(unitId => {
-        if (progress(unitId) == null) {
+        if (progress(unitId) == null) { // To avoid the computation iteration for unit
+          // Get the leafNodes for the specific unit
           val unitLeafNodes: util.List[String] = Option(getDataFromCache(key = s"${unitId}:leafnodes", metrics)).getOrElse(new util.LinkedList())
           val cols = Map(config.activityType -> "course-unit", config.contextId -> s"cb:${primaryFields.get(config.batchId)}", config.activityId -> s"${unitId}")
+          // Get all the content status for the leaf nodes of the particular unit
           val unitContentsStatusFromDB = getContentStatusFromDB(primaryFields ++ Map(config.contentId -> unitLeafNodes.asScala.toList))
           unitProgressMap += (unitId -> computeProgress(cols, unitLeafNodes, unitContentsStatusFromDB, csFromEvent))
         }
@@ -146,8 +149,8 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
       (key -> (if (csFromEvent.get(key).getOrElse(0) >= csFromDB.get(key).getOrElse(0)) csFromEvent.get(key).getOrElse(0)
       else csFromDB.get(key).getOrElse(0)))
     }.toMap.filter(value => value._2 == config.completedStatusCode).filter(requiredNodes => leafNodes.contains(requiredNodes._1))
-    val agg = Map(config.progress -> ((mergedContentStatus.size.toFloat / leafNodes.size().toFloat) * 100).toInt)
-    val aggUpdatedOn = Map(config.progress -> new DateTime().getMillis)
+    val agg = Map(config.progress -> ((mergedContentStatus.size.toFloat / leafNodes.size().toFloat) * 100).toInt) // Progress in the percentage
+    val aggUpdatedOn = Map(config.progress -> new DateTime().getMillis) // Progress updated time
     Progress(cols.get(config.activityType).getOrElse(null).asInstanceOf[String], cols.get(config.activityId).getOrElse(null).asInstanceOf[String], cols.get(config.contextId).getOrElse(null).asInstanceOf[String], agg, aggUpdatedOn)
   }
 
