@@ -45,9 +45,11 @@ class CourseMetricsAggregatorConfig(override val config: Config) extends BaseJob
   // Tags
   val failedEventOutputTagName = "failed-events"
   val successEventOutputTagName = "success-events"
+  val auditEventOutputTagName = "audit-events"
 
   val successEventOutputTag: OutputTag[String] = OutputTag[String](successEventOutputTagName)
   val failedEventsOutputTag: OutputTag[String] = OutputTag[String](failedEventOutputTagName)
+  val auditEventOutputTag: OutputTag[String] = OutputTag[String](auditEventOutputTagName)
 
   // Consumers
   val aggregatorConsumer = "course-metrics-aggregator-consumer"
