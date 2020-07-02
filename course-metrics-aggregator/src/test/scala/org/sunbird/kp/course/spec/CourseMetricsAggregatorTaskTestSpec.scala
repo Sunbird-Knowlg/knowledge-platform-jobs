@@ -93,10 +93,11 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.dbUpdateCount}").getValue() should be(3)
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.cacheHitCount}").getValue() should be(18)
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.successEventCount}").getValue() should be(3)
+    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.dbReadCount}").getValue() should be(10)
 
     auditEventSink.values.size() should be(15)
     auditEventSink.values.forEach(event =>{
-      println("AUDIEBT" + event)
+      println("AUDIT_TELEMETRY_EVENT" + event)
     })
 
     val event1Progress = readFromCassandra(EventFixture.EVENT_2)
