@@ -32,7 +32,7 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
   val actionType = "batch-enrolment-update"
 
   override def metricsList(): List[String] = {
-    List(config.successEventCount, config.failedEventCount, config.totalEventsCount, config.dbUpdateCount, config.cacheHitCount)
+    List(config.successEventCount, config.failedEventCount, config.totalEventsCount, config.dbUpdateCount, config.dbReadCount, config.cacheHitCount)
   }
 
   override def open(parameters: Configuration): Unit = {
@@ -76,9 +76,9 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
 
   def getCourseProgress(csFromEvent: Map[String, Number], primaryFields: Map[String, AnyRef], metrics: Metrics): Map[String, Progress] = {
     val courseId = s"${primaryFields.get("courseid").orNull}"
-    val leafNodes = readFromCache(key = s"$courseId:leafnodes", metrics)
+    val leafNodes = readFromCache(key = s"$courseId:${config.leafNodes}", metrics).asScala.toList
     if (leafNodes.isEmpty) throw new Exception(s"LeafNodes are not available. courseId:$courseId") // Stop The job if the leafnodes are not available
-    val courseContentsStatus: Map[String, Number] = getContentStatusFromDB(primaryFields ++ Map(config.contentId -> leafNodes.asScala.toList))
+    val courseContentsStatus: Map[String, Number] = getContentStatusFromDB(primaryFields ++ Map(config.contentId -> leafNodes), metrics)
     Map(courseId -> computeProgress(Map(config.activityType -> config.courseActivityType, config.activityUser -> primaryFields.get(config.userId).orNull, config.contextId -> s"cb:${primaryFields.get(config.batchId).orNull}", config.activityId -> s"${primaryFields.get(config.courseId).orNull}"), leafNodes, courseContentsStatus, csFromEvent))
   }
 
@@ -86,36 +86,34 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
                       primaryFields: Map[String, AnyRef],
                       context: ProcessWindowFunction[util.Map[String, AnyRef], String, String, TimeWindow]#Context,
                       metrics: Metrics
-                     ): mutable.Map[String, Progress] = {
-    val unitProgressMap = mutable.Map[String, Progress]()
-
-    def progress(id: String): Progress = unitProgressMap.get(id).orNull
-
+                     ): Map[String, Progress] = {
     val courseId = s"${primaryFields.get(config.courseId).orNull}"
-    csFromEvent.map(contentId => {
-      // Get the ancestors for the specific resource
+
+    // Get the ancestors for the specific resource
+    val contentAncestors: List[String] = csFromEvent.map(contentId => {
       context.output(config.auditEventOutputTag, gson.toJson(generateTelemetry(primaryFields, generationFor = "content", contentId._2.intValue() == config.completedStatusCode, contentId._1))) // Get the Telemetry for resource type event
-      val unitLevelAncestors = readFromCache(key = s"$courseId:${contentId._1}:ancestors", metrics).asScala.filter(_ > courseId)
-      unitLevelAncestors.map(unitId => {
-        if (progress(unitId) == null) { // To avoid the computation iteration for unit
-          // Get the leafNodes for the specific unit
-          val unitLeafNodes = readFromCache(key = s"${unitId}:leafnodes", metrics)
-          // Stop the job if the leaf-nodes are not available
-          if (unitLeafNodes.isEmpty) throw new Exception(s"LeafNodes are not available. unitId:$unitId, courseId:$courseId")
-          val cols = Map(config.activityType -> config.unitActivityType, config.activityUser -> primaryFields.get(config.userId).orNull, config.contextId -> s"cb:${primaryFields.get(config.batchId).orNull}", config.activityId -> s"$unitId")
-          // Get all the content status for the leaf nodes of the particular unit
-          val unitContentsStatusFromDB = getContentStatusFromDB(primaryFields ++ Map(config.contentId -> unitLeafNodes.asScala.toList))
-          val progress = computeProgress(cols, unitLeafNodes, unitContentsStatusFromDB, csFromEvent)
-          unitProgressMap += (unitId -> progress)
-          logger.info(s"Unit: $unitId completion status: ${progress.isCompleted}")
-          context.output(config.auditEventOutputTag, gson.toJson(generateTelemetry(primaryFields, "course-unit", progress.isCompleted, unitId)))
-        }
-      })
+      contentId._1 -> readFromCache(key = s"$courseId:${contentId._1}:${config.ancestors}", metrics).asScala.filter(_ > courseId).toList.distinct
+    }).values.flatten.toList.distinct
+
+    // Get the leafNodes for the unit from the redis cache
+    val unitLeafNodes: Map[String, List[String]] = contentAncestors.map(unitId => {
+      val leafNodes: List[String] = readFromCache(key = s"${unitId}:${config.leafNodes}", metrics).asScala.toList.distinct
+      if (leafNodes.isEmpty) throw new Exception(s"Leaf nodes are not available for this unitId:$unitId and courseId:$courseId")
+      (unitId -> leafNodes.distinct)
+    }).toMap
+
+    // Get the progress for each unit node
+    unitLeafNodes.map(unitLeafMap => {
+      val cols = Map(config.activityType -> config.unitActivityType, config.activityUser -> primaryFields.get(config.userId).orNull, config.contextId -> s"cb:${primaryFields.get(config.batchId).orNull}", config.activityId -> s"${unitLeafMap._1}")
+      val contentStatus = getContentStatusFromDB(primaryFields ++ Map(config.contentId -> unitLeafMap._2), metrics)
+      val progress = computeProgress(cols, unitLeafMap._2, contentStatus, csFromEvent)
+      logger.info(s"Unit: ${unitLeafMap._1} completion status: ${progress.isCompleted}")
+      context.output(config.auditEventOutputTag, gson.toJson(generateTelemetry(primaryFields, "course-unit", progress.isCompleted, unitLeafMap._1)))
+      (unitLeafMap._1 -> progress)
     })
-    unitProgressMap
   }
 
-  def readFromDB(columns: Map[String, AnyRef], keySpace: String, table: String): List[Row]
+  def readFromDB(columns: Map[String, AnyRef], keySpace: String, table: String, metrics: Metrics): List[Row]
   = {
     val selectWhere: Select.Where = QueryBuilder.select().all()
       .from(keySpace, table).
@@ -128,7 +126,9 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
           selectWhere.and(QueryBuilder.eq(col._1, col._2))
       }
     })
+    metrics.incCounter(config.dbReadCount)
     cassandraUtil.find(selectWhere.toString).asScala.toList
+
   }
 
   def writeToDb(query: String, metrics: Metrics): Unit
@@ -166,7 +166,7 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
    */
 
   def computeProgress(cols: Map[String, AnyRef],
-                      leafNodes: util.List[String],
+                      leafNodes: List[String],
                       csFromDB: Map[String, Number],
                       csFromEvent: Map[String, Number]):
   Progress = {
@@ -177,7 +177,7 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
     }.toMap.filter(value => value._2 == config.completedStatusCode).filter(requiredNodes => leafNodes.contains(requiredNodes._1))
     val agg = Map(config.progress -> mergedContentStatus.size) // It has only completed nodes id details
     val aggUpdatedOn = Map(config.progress -> new DateTime().getMillis) // Progress updated time
-    val isCompleted: Boolean = mergedContentStatus.size == leafNodes.size()
+    val isCompleted: Boolean = mergedContentStatus.size == leafNodes.size
     Progress(cols.get(config.activityType).orNull.asInstanceOf[String], cols.get(config.activityUser).orNull.asInstanceOf[String],
       cols.get(config.activityId).orNull.asInstanceOf[String], cols.get(config.contextId).orNull.asInstanceOf[String],
       agg, aggUpdatedOn, isCompleted = isCompleted)
@@ -197,8 +197,8 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
       .map(status => status._2.maxBy(_._1))
   }
 
-  def getContentStatusFromDB(primaryFields: Map[String, AnyRef]): Map[String, Number] = {
-    Option(readFromDB(primaryFields, config.dbKeyspace, config.dbContentConsumptionTable))
+  def getContentStatusFromDB(primaryFields: Map[String, AnyRef], metrics: Metrics): Map[String, Number] = {
+    Option(readFromDB(primaryFields, config.dbKeyspace, config.dbContentConsumptionTable, metrics))
       .toList.flatMap(list => list.map(res => Map(res.getObject(config.contentId) -> res.getObject("status")).asInstanceOf[Map[String, Number]])).flatten.toMap
   }
 

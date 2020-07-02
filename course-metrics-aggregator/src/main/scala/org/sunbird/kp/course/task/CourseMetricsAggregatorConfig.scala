@@ -77,6 +77,8 @@ class CourseMetricsAggregatorConfig(override val config: Config) extends BaseJob
   val userId = "userid"
   val unitActivityType = "course-unit"
   val courseActivityType = "course"
+  val leafNodes ="leafnodes"
+  val ancestors ="ancestors"
 
   val windowTimingInSec = config.getInt("window.period")
 
