@@ -105,6 +105,7 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
           val unitContentsStatusFromDB = getContentStatusFromDB(primaryFields ++ Map(config.contentId -> unitLeafNodes.asScala.toList))
           val progress = computeProgress(cols, unitLeafNodes, unitContentsStatusFromDB, csFromEvent)
           unitProgressMap += (unitId -> progress)
+          logger.info(s"Unit: $unitId completion status: ${progress.isCompleted}")
           context.output(config.auditEventOutputTag, gson.toJson(generateTelemetry(primaryFields, "course-unit", progress.isCompleted, unitId)))
         }
       })

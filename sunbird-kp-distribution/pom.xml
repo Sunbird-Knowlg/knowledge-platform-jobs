@@ -68,7 +68,7 @@
                             </execution>
                         </executions>
                         <configuration>
-                            <repository>docker.io/manjudr/kp-course-metrics-aggregator-fix</repository>
+                            <repository>docker.io/manjudr/kp-course-metrics-aggregator-fix1</repository>
                             <tag>${project.version}</tag>
                         </configuration>
                     </plugin>
