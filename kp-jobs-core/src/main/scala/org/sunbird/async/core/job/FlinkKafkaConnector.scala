@@ -17,7 +17,7 @@ class FlinkKafkaConnector(config: BaseJobConfig) extends Serializable {
   }
 
   def kafkaMapSink(kafkaTopic: String): SinkFunction[util.Map[String, AnyRef]] = {
-    new FlinkKafkaProducer[util.Map[String, AnyRef]](kafkaTopic, new MapSerializationSchema(kafkaTopic), config.kafkaConsumerProperties, Semantic.AT_LEAST_ONCE)
+    new FlinkKafkaProducer[util.Map[String, AnyRef]](kafkaTopic, new MapSerializationSchema(kafkaTopic), config.kafkaProducerProperties, Semantic.AT_LEAST_ONCE)
   }
 
   def kafkaStringSource(kafkaTopic: String): SourceFunction[String] = {
@@ -25,6 +25,6 @@ class FlinkKafkaConnector(config: BaseJobConfig) extends Serializable {
   }
 
   def kafkaStringSink(kafkaTopic: String): SinkFunction[String] = {
-    new FlinkKafkaProducer[String](kafkaTopic, new StringSerializationSchema(kafkaTopic), config.kafkaConsumerProperties, Semantic.AT_LEAST_ONCE)
+    new FlinkKafkaProducer[String](kafkaTopic, new StringSerializationSchema(kafkaTopic), config.kafkaProducerProperties, Semantic.AT_LEAST_ONCE)
   }
 }
