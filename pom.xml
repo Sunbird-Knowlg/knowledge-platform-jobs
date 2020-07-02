@@ -22,6 +22,7 @@
 	<modules>
 		<module>kp-jobs-core</module>
 		<module>course-aggregator</module>
+		<module>relation-cache-updater</module>
 	</modules>
 
 	<properties>
