@@ -56,11 +56,11 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
         metrics.incCounter(config.totalEventsCount) // To Measure the number of batch-enrollment-updater events came.
         // PrimaryFields = <batchid, userid, courseid>
         val primaryFields: Map[String, AnyRef] = eventData.map(v => (v._1.toLowerCase, v._2)).filter(x => config.primaryFields.contains(x._1))
-        // content-status object from the telemetry "BE_JOB_REQUEST"
+        // contents object from the telemetry "BE_JOB_REQUEST"
         val contents: List[Map[String, AnyRef]] = eventData.getOrElse("contents", new util.ArrayList[Map[String, AnyRef]]()).asInstanceOf[util.ArrayList[Map[String, AnyRef]]].asScala.toList
-
+        // Create a content status map using contents list and remove the lowest precedence stats if have any duplicate content
         val csFromEvent = getContentStatusFromEvent(contents)
-        //To compute the unit level progress
+        //To compute the progress to units
         getUnitProgress(csFromEvent, primaryFields, context, metrics)
           .map(unit => batch.add(getQuery(unit._2, config.dbKeyspace, config.dbActivityAggTable)))
         // To compute the course progress
