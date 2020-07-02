@@ -56,7 +56,7 @@ class CourseMetricsAggregatorConfig(override val config: Config) extends BaseJob
 
 
   // Producers
-  val aggregatorAuditProducer = "extractor-audit-events-sink"
+  val aggregatorAuditProducer = "course-audit-events-sink"
 
   val completedStatusCode: Int = 2
   val inCompleteStatusCode: Int = 1

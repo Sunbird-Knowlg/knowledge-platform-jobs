@@ -74,10 +74,10 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
 
   def getCourseProgress(csFromEvent: mutable.HashMap[String, Int], primaryFields: mutable.Map[String, AnyRef], metrics: Metrics): Map[String, Progress] = {
     val courseId = s"${primaryFields.get("courseid").orNull}"
-    Option(readFromCache(key = s"$courseId:leafnodes", metrics)).map(leafNodes => {
-      val courseContentsStatus = getContentStatusFromDB(primaryFields ++ Map(config.contentId -> leafNodes.asScala.toList))
-      Map(courseId -> computeProgress(Map(config.activityType -> config.courseActivityType, config.activityUser -> primaryFields.get(config.userId).orNull, config.contextId -> s"cb:${primaryFields.get(config.batchId).orNull}", config.activityId -> s"${primaryFields.get(config.courseId).orNull}"), leafNodes, courseContentsStatus, csFromEvent))
-    }).getOrElse(throw new Exception(s"LeafNodes are not available. courseId:$courseId")) // Stop The job if the leafnodes are not available
+    val leafNodes = readFromCache(key = s"$courseId:leafnodes", metrics)
+    if (leafNodes.isEmpty) throw new Exception(s"LeafNodes are not available. courseId:$courseId") // Stop The job if the leafnodes are not available
+    val courseContentsStatus = getContentStatusFromDB(primaryFields ++ Map(config.contentId -> leafNodes.asScala.toList))
+    Map(courseId -> computeProgress(Map(config.activityType -> config.courseActivityType, config.activityUser -> primaryFields.get(config.userId).orNull, config.contextId -> s"cb:${primaryFields.get(config.batchId).orNull}", config.activityId -> s"${primaryFields.get(config.courseId).orNull}"), leafNodes, courseContentsStatus, csFromEvent))
   }
 
   def getUnitProgress(csFromEvent: mutable.HashMap[String, Int],
@@ -212,14 +212,14 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
           context = EventContext(cdata = Array(Map("type" -> "CourseBatch", "id" -> primaryFields.get(config.batchId).orNull).asJava)),
           `object` = EventObject(rollup = Map("l1" -> primaryFields.get(config.courseId).orNull.asInstanceOf[String]).asJava, id = activityId, `type` = "CourseUnit")
         )
-      case "CONTENT" => // Default is content
+      case "CONTENT" =>
         TelemetryEvent(
           actor = ActorObject(id = primaryFields.get(config.userId).orNull.asInstanceOf[String]),
           edata = if (isCompleted) EventData(props = Array(new DateTime().getMillis.toString), `type` = "completed") else EventData(props = Array(activityId), `type` = "start"),
           context = EventContext(cdata = Array(Map("type" -> "CourseBatch", "id" -> primaryFields.get(config.batchId).orNull).asJava)),
           `object` = EventObject(rollup = Map("l1" -> primaryFields.get(config.courseId).orNull.asInstanceOf[String], "l2" -> primaryFields.get(config.batchId).orNull.asInstanceOf[String]).asJava, id = activityId, `type` = "Content")
         )
-      case "COURSE" => println("Telemetry is not generated")
+      case "COURSE" => logger.debug("Telemetry is not generated")
         null
     }
 
