@@ -33,7 +33,7 @@ INSERT INTO sunbird_courses.content_consumption(userid, contentid, batchid,cours
 
 
 
-CREATE TABLE IF NOT EXISTS sunbird_courses.activity_agg (
+CREATE TABLE IF NOT EXISTS sunbird_courses.activity_user_agg (
     activity_id text,
     user_id text,
     activity_type text,
