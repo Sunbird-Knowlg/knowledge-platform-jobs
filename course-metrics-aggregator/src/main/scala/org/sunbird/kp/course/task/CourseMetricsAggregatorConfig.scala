@@ -21,7 +21,8 @@ class CourseMetricsAggregatorConfig(override val config: Config) extends BaseJob
   val eventMaxSize: Long = config.getLong("kafka.event.max.size")
 
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
-  val aggregatorParallelism: Int = config.getInt("task.aggregator.parallelism")
+  val progressUpdaterParallelism: Int = config.getInt("task.progressUpdater.parallelism")
+  val routerParallelism: Int = config.getInt("task.router.parallelism")
 
   // Metric List
   val totalEventsCount = "total-events-count"
@@ -31,6 +32,7 @@ class CourseMetricsAggregatorConfig(override val config: Config) extends BaseJob
   val dbReadCount = "db-read-count"
   val skippedEventCount = "skipped-event-count"
   val cacheHitCount = "cache-hit-count"
+  val batchEnrolmentUpdateEventCount = "batch-enrolment-update-count"
 
   // Cassandra Configurations
   val dbContentConsumptionTable: String = config.getString("lms-cassandra.consumption.table")
@@ -46,17 +48,19 @@ class CourseMetricsAggregatorConfig(override val config: Config) extends BaseJob
   val failedEventOutputTagName = "failed-events"
   val successEventOutputTagName = "success-events"
   val auditEventOutputTagName = "audit-events"
+  val batchEnrolmentOutputTagName = "batch-enrolment-update"
 
   val successEventOutputTag: OutputTag[String] = OutputTag[String](successEventOutputTagName)
   val failedEventsOutputTag: OutputTag[String] = OutputTag[String](failedEventOutputTagName)
   val auditEventOutputTag: OutputTag[String] = OutputTag[String](auditEventOutputTagName)
+  val batchEnrolmentUpdateOutputTag: OutputTag[util.Map[String, AnyRef]] = OutputTag[util.Map[String, AnyRef]](batchEnrolmentOutputTagName)
 
   // Consumers
-  val aggregatorConsumer = "course-metrics-aggregator-consumer"
+  val courseMetricsUpdaterConsumer = "course-metrics-updater-consumer"
 
 
   // Producers
-  val aggregatorAuditProducer = "course-audit-events-sink"
+  val courseMetricsAuditProducer = "course-audit-events-sink"
 
   val completedStatusCode: Int = 2
   val inCompleteStatusCode: Int = 1
@@ -64,7 +68,7 @@ class CourseMetricsAggregatorConfig(override val config: Config) extends BaseJob
   val primaryFields = List("userid", "courseid", "batchid")
 
   // constans
-  val activityType ="activity_type"
+  val activityType = "activity_type"
   val activityId = "activity_id"
   val contextId = "context_id"
   val activityUser = "user_id"
@@ -77,10 +81,13 @@ class CourseMetricsAggregatorConfig(override val config: Config) extends BaseJob
   val userId = "userid"
   val unitActivityType = "course-unit"
   val courseActivityType = "course"
-  val leafNodes ="leafnodes"
-  val ancestors ="ancestors"
+  val leafNodes = "leafnodes"
+  val ancestors = "ancestors"
 
-  val windowTimingInSec = config.getInt("window.period")
+  val windowTimingInSec: Int = config.getInt("window.period")
+
+  val routerFn = "RouterFn"
+  val ProgressUpdaterFn = "ProgressUpdaterFn"
 
 
 }

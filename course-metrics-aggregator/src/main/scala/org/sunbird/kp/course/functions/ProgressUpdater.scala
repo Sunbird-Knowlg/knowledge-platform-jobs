@@ -1,7 +1,7 @@
 package org.sunbird.kp.course.functions
 
 import java.lang.reflect.Type
-import java.{lang, util}
+import java.util
 
 import com.datastax.driver.core.Row
 import com.datastax.driver.core.querybuilder.{Batch, QueryBuilder, Select, Update}
@@ -9,22 +9,20 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
-import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction
-import org.apache.flink.streaming.api.windowing.windows.TimeWindow
+import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.joda.time.DateTime
 import org.slf4j.LoggerFactory
 import org.sunbird.async.core.cache.{DataCache, RedisConnect}
-import org.sunbird.async.core.job.{Metrics, WindowBaseProcessFunction}
+import org.sunbird.async.core.job.{BaseProcessFunction, Metrics}
 import org.sunbird.async.core.util.CassandraUtil
 import org.sunbird.kp.course.domain._
 import org.sunbird.kp.course.task.CourseMetricsAggregatorConfig
 
 import scala.collection.JavaConverters._
-import scala.collection.mutable
 
 class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val stringTypeInfo: TypeInformation[String],
                                                              @transient var cassandraUtil: CassandraUtil = null
-) extends WindowBaseProcessFunction[util.Map[String, AnyRef], String, String](config) {
+) extends BaseProcessFunction[util.Map[String, AnyRef], String](config) {
   val mapType: Type = new TypeToken[util.Map[String, AnyRef]]() {}.getType
   private[this] val logger = LoggerFactory.getLogger(classOf[ProgressUpdater])
   private var cache: DataCache = _
@@ -32,7 +30,7 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
   val actionType = "batch-enrolment-update"
 
   override def metricsList(): List[String] = {
-    List(config.successEventCount, config.failedEventCount, config.totalEventsCount, config.dbUpdateCount, config.dbReadCount, config.cacheHitCount)
+    List(config.successEventCount, config.failedEventCount, config.dbUpdateCount, config.dbReadCount, config.cacheHitCount)
   }
 
   override def open(parameters: Configuration): Unit = {
@@ -46,32 +44,25 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
     super.close()
   }
 
-  override def process(key: String,
-                       context: ProcessWindowFunction[util.Map[String, AnyRef], String, String, TimeWindow]#Context,
-                       events: lang.Iterable[util.Map[String, AnyRef]], metrics: Metrics): Unit = {
-    events.forEach(event => {
-      val batch: Batch = QueryBuilder.batch() // It holds all the batch of progress
-      val eventData: Map[String, AnyRef] = event.get("edata").asInstanceOf[util.Map[String, AnyRef]].asScala.toMap
-      if (eventData.getOrElse("action", "").asInstanceOf[String] == actionType) { //TODO: Need to write other function to seperate the events based on action specific
-        metrics.incCounter(config.totalEventsCount) // To Measure the number of batch-enrollment-updater events came.
-        // PrimaryFields = <batchid, userid, courseid>
-        val primaryFields: Map[String, AnyRef] = eventData.map(v => (v._1.toLowerCase, v._2)).filter(x => config.primaryFields.contains(x._1))
-        // contents object from the telemetry "BE_JOB_REQUEST"
-        val contents: List[Map[String, AnyRef]] = eventData.getOrElse("contents", new util.ArrayList[Map[String, AnyRef]]()).asInstanceOf[util.ArrayList[Map[String, AnyRef]]].asScala.toList
-        // Create a content status map using contents list and remove the lowest precedence stats if have any duplicate content
-        val csFromEvent = getContentStatusFromEvent(contents)
-        //To compute the progress to units
-        getUnitProgress(csFromEvent, primaryFields, context, metrics)
-          .map(unit => batch.add(getQuery(unit._2, config.dbKeyspace, config.dbActivityAggTable)))
-        // To compute the course progress
-        getCourseProgress(csFromEvent, primaryFields, metrics)
-          .map(course => batch.add(getQuery(course._2, config.dbKeyspace, config.dbActivityAggTable)))
-        // To update the both unit and course progress into db
-        writeToDb(batch.toString, metrics)
-      } else {
-        logger.debug("Invalid action type")
-      }
-    })
+  override def processElement(event: util.Map[String, AnyRef], context: ProcessFunction[util.Map[String, AnyRef], String]#Context, metrics: Metrics): Unit = {
+    val batch: Batch = QueryBuilder.batch() // It holds all the batch of progress
+    val eventData: Map[String, AnyRef] = event.get("edata").asInstanceOf[util.Map[String, AnyRef]].asScala.toMap
+    if (eventData.getOrElse("action", "").asInstanceOf[String] == actionType) { //TODO: Need to write other function to seperate the events based on action specific
+      // PrimaryFields = <batchid, userid, courseid>
+      val primaryFields: Map[String, AnyRef] = eventData.map(v => (v._1.toLowerCase, v._2)).filter(x => config.primaryFields.contains(x._1))
+      // contents object from the telemetry "BE_JOB_REQUEST"
+      val contents: List[Map[String, AnyRef]] = eventData.getOrElse("contents", new util.ArrayList[Map[String, AnyRef]]()).asInstanceOf[util.ArrayList[Map[String, AnyRef]]].asScala.toList
+      // Create a content status map using contents list and remove the lowest precedence stats if have any duplicate content
+      val csFromEvent = getContentStatusFromEvent(contents)
+      //To compute the progress to units
+      getUnitProgress(csFromEvent, primaryFields, context, metrics)
+        .map(unit => batch.add(getQuery(unit._2, config.dbKeyspace, config.dbActivityAggTable)))
+      // To compute the course progress
+      getCourseProgress(csFromEvent, primaryFields, metrics)
+        .map(course => batch.add(getQuery(course._2, config.dbKeyspace, config.dbActivityAggTable)))
+      // To update the both unit and course progress into db
+      writeToDb(batch.toString, metrics)
+    }
   }
 
   def getCourseProgress(csFromEvent: Map[String, Number], primaryFields: Map[String, AnyRef], metrics: Metrics): Map[String, Progress] = {
@@ -84,7 +75,7 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
 
   def getUnitProgress(csFromEvent: Map[String, Number],
                       primaryFields: Map[String, AnyRef],
-                      context: ProcessWindowFunction[util.Map[String, AnyRef], String, String, TimeWindow]#Context,
+                      context: ProcessFunction[util.Map[String, AnyRef], String]#Context,
                       metrics: Metrics
                      ): Map[String, Progress] = {
     val courseId = s"${primaryFields.get(config.courseId).orNull}"
@@ -222,4 +213,6 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
     }
 
   }
+
+
 }

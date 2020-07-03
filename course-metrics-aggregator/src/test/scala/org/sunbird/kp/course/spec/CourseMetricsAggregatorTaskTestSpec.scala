@@ -40,7 +40,7 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
     .build)
 
   var redisServer: RedisServer = _
-  redisServer = new RedisServer(6375)
+  redisServer = new RedisServer(6377)
   redisServer.start()
   var jedis: Jedis = _
   val mockKafkaUtil: FlinkKafkaConnector = mock[FlinkKafkaConnector](Mockito.withSettings().serializable())
@@ -90,6 +90,7 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
     when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaAuditEventTopic)).thenReturn(new auditEventSink)
     new CourseMetricsAggregatorStreamTask(courseAggregatorConfig, mockKafkaUtil).process()
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.totalEventsCount}").getValue() should be(3)
+    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.batchEnrolmentUpdateEventCount}").getValue() should be(3)
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.dbUpdateCount}").getValue() should be(3)
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.cacheHitCount}").getValue() should be(18)
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.successEventCount}").getValue() should be(3)
