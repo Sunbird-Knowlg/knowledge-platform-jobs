@@ -21,7 +21,7 @@ class CourseMetricsAggregatorStreamTask(config: CourseMetricsAggregatorConfig, k
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
     val routerStream =
       env.addSource(kafkaConnector.kafkaMapSource(config.kafkaInputTopic), config.courseMetricsUpdaterConsumer)
-        .uid(config.aggregatorConsumer).setParallelism(config.kafkaConsumerParallelism)
+        .uid(config.courseMetricsUpdaterConsumer).setParallelism(config.kafkaConsumerParallelism)
         .keyBy(x => x.get("partition").toString)
         .timeWindow(Time.seconds(config.windowTimingInSec))
         .process(new Router(config))
