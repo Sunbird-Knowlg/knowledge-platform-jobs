@@ -36,7 +36,7 @@ class CourseMetricsAggregatorConfig(override val config: Config) extends BaseJob
 
   // Cassandra Configurations
   val dbContentConsumptionTable: String = config.getString("lms-cassandra.consumption.table")
-  val dbActivityAggTable: String = config.getString("lms-cassandra.activity_user_agg.table")
+  val dbUserActivityAggTable: String = config.getString("lms-cassandra.activity_user_agg.table")
   val dbKeyspace: String = config.getString("lms-cassandra.keyspace")
   val dbHost: String = config.getString("lms-cassandra.host")
   val dbPort: Int = config.getInt("lms-cassandra.port")

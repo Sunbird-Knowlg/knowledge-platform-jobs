@@ -54,10 +54,10 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
     val csFromEvent = getContentStatusFromEvent(contents)
     //To compute the progress to units
     getUnitProgress(csFromEvent, primaryFields, context, metrics)
-      .map(unit => batch.add(getQuery(unit._2, config.dbKeyspace, config.dbActivityAggTable)))
+      .map(unit => batch.add(getQuery(unit._2, config.dbKeyspace, config.dbUserActivityAggTable)))
     // To compute the course progress
     getCourseProgress(csFromEvent, primaryFields, metrics)
-      .map(course => batch.add(getQuery(course._2, config.dbKeyspace, config.dbActivityAggTable)))
+      .map(course => batch.add(getQuery(course._2, config.dbKeyspace, config.dbUserActivityAggTable)))
     // To update the both unit and course progress into db
     writeToDb(batch.toString, metrics)
   }
