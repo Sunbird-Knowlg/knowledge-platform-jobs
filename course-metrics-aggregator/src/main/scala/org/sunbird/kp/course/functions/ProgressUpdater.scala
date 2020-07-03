@@ -65,7 +65,10 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
   def getCourseProgress(csFromEvent: Map[String, Number], primaryFields: Map[String, AnyRef], metrics: Metrics): Map[String, Progress] = {
     val courseId = s"${primaryFields.get("courseid").orNull}"
     val leafNodes = readFromCache(key = s"$courseId:${config.leafNodes}", metrics).asScala.toList
-    if (leafNodes.isEmpty) throw new Exception(s"LeafNodes are not available. courseId:$courseId") // Stop The job if the leafnodes are not available
+    if (leafNodes.isEmpty) {
+      metrics.incCounter(config.failedEventCount)
+      throw new Exception(s"LeafNodes are not available. courseId:$courseId")
+    } // Stop The job if the leafnodes are not available
     val courseContentsStatus: Map[String, Number] = getContentStatusFromDB(primaryFields ++ Map(config.contentId -> leafNodes), metrics)
     Map(courseId -> computeProgress(Map(config.activityType -> config.courseActivityType, config.activityUser -> primaryFields.get(config.userId).orNull, config.contextId -> s"cb:${primaryFields.get(config.batchId).orNull}", config.activityId -> s"${primaryFields.get(config.courseId).orNull}"), leafNodes, courseContentsStatus, csFromEvent))
   }
