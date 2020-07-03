@@ -27,7 +27,6 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
   private[this] val logger = LoggerFactory.getLogger(classOf[ProgressUpdater])
   private var cache: DataCache = _
   lazy private val gson = new Gson()
-  val actionType = "batch-enrolment-update"
 
   override def metricsList(): List[String] = {
     List(config.successEventCount, config.failedEventCount, config.dbUpdateCount, config.dbReadCount, config.cacheHitCount)
@@ -47,22 +46,20 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
   override def processElement(event: util.Map[String, AnyRef], context: ProcessFunction[util.Map[String, AnyRef], String]#Context, metrics: Metrics): Unit = {
     val batch: Batch = QueryBuilder.batch() // It holds all the batch of progress
     val eventData: Map[String, AnyRef] = event.get("edata").asInstanceOf[util.Map[String, AnyRef]].asScala.toMap
-    if (eventData.getOrElse("action", "").asInstanceOf[String] == actionType) { //TODO: Need to write other function to seperate the events based on action specific
-      // PrimaryFields = <batchid, userid, courseid>
-      val primaryFields: Map[String, AnyRef] = eventData.map(v => (v._1.toLowerCase, v._2)).filter(x => config.primaryFields.contains(x._1))
-      // contents object from the telemetry "BE_JOB_REQUEST"
-      val contents: List[Map[String, AnyRef]] = eventData.getOrElse("contents", new util.ArrayList[Map[String, AnyRef]]()).asInstanceOf[util.ArrayList[Map[String, AnyRef]]].asScala.toList
-      // Create a content status map using contents list and remove the lowest precedence stats if have any duplicate content
-      val csFromEvent = getContentStatusFromEvent(contents)
-      //To compute the progress to units
-      getUnitProgress(csFromEvent, primaryFields, context, metrics)
-        .map(unit => batch.add(getQuery(unit._2, config.dbKeyspace, config.dbActivityAggTable)))
-      // To compute the course progress
-      getCourseProgress(csFromEvent, primaryFields, metrics)
-        .map(course => batch.add(getQuery(course._2, config.dbKeyspace, config.dbActivityAggTable)))
-      // To update the both unit and course progress into db
-      writeToDb(batch.toString, metrics)
-    }
+    // PrimaryFields = <batchid, userid, courseid>
+    val primaryFields: Map[String, AnyRef] = eventData.map(v => (v._1.toLowerCase, v._2)).filter(x => config.primaryFields.contains(x._1))
+    // contents object from the telemetry "BE_JOB_REQUEST"
+    val contents: List[Map[String, AnyRef]] = eventData.getOrElse("contents", new util.ArrayList[Map[String, AnyRef]]()).asInstanceOf[util.ArrayList[Map[String, AnyRef]]].asScala.toList
+    // Create a content status map using contents list and remove the lowest precedence stats if have any duplicate content
+    val csFromEvent = getContentStatusFromEvent(contents)
+    //To compute the progress to units
+    getUnitProgress(csFromEvent, primaryFields, context, metrics)
+      .map(unit => batch.add(getQuery(unit._2, config.dbKeyspace, config.dbActivityAggTable)))
+    // To compute the course progress
+    getCourseProgress(csFromEvent, primaryFields, metrics)
+      .map(course => batch.add(getQuery(course._2, config.dbKeyspace, config.dbActivityAggTable)))
+    // To update the both unit and course progress into db
+    writeToDb(batch.toString, metrics)
   }
 
   def getCourseProgress(csFromEvent: Map[String, Number], primaryFields: Map[String, AnyRef], metrics: Metrics): Map[String, Progress] = {
