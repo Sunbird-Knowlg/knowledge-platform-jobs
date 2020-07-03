@@ -187,7 +187,7 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
 
   def readFromCassandra(event: String): util.List[Row] = {
     val event1_primaryCols = getPrimaryCols(gson.fromJson(event, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]].asScala.asJava)
-    val query = s"select * from sunbird_courses.activity_agg where context_id='cb:${event1_primaryCols.get("batchid").get}' and user_id='${event1_primaryCols.get("userid").get}' ALLOW FILTERING;"
+    val query = s"select * from sunbird_courses.activity_user_agg where context_id='cb:${event1_primaryCols.get("batchid").get}' and user_id='${event1_primaryCols.get("userid").get}' ALLOW FILTERING;"
     cassandraUtil.find(query)
   }
 
