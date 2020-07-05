@@ -1,7 +1,7 @@
 package org.sunbird.kp.course.functions
 
 import java.lang.reflect.Type
-import java.util
+import java.{lang, util}
 
 import com.datastax.driver.core.Row
 import com.datastax.driver.core.querybuilder.{Batch, QueryBuilder, Select, Update}
@@ -10,26 +10,26 @@ import com.google.gson.reflect.TypeToken
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
+import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction
+import org.apache.flink.streaming.api.windowing.windows.TimeWindow
 import org.joda.time.DateTime
 import org.slf4j.LoggerFactory
 import org.sunbird.async.core.cache.{DataCache, RedisConnect}
-import org.sunbird.async.core.job.{BaseProcessFunction, Metrics}
+import org.sunbird.async.core.job.{BaseProcessFunction, Metrics, WindowBaseProcessFunction}
 import org.sunbird.async.core.util.CassandraUtil
 import org.sunbird.kp.course.domain._
 import org.sunbird.kp.course.task.CourseMetricsAggregatorConfig
 
 import scala.collection.JavaConverters._
 
-class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val stringTypeInfo: TypeInformation[String],
-                                                             @transient var cassandraUtil: CassandraUtil = null
-) extends BaseProcessFunction[util.Map[String, AnyRef], String](config) {
+class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val stringTypeInfo: TypeInformation[String], @transient var cassandraUtil: CassandraUtil = null) extends WindowBaseProcessFunction[util.Map[String, AnyRef], String, String](config) {
   val mapType: Type = new TypeToken[util.Map[String, AnyRef]]() {}.getType
   private[this] val logger = LoggerFactory.getLogger(classOf[ProgressUpdater])
   private var cache: DataCache = _
   lazy private val gson = new Gson()
 
   override def metricsList(): List[String] = {
-    List(config.successEventCount, config.failedEventCount, config.dbUpdateCount, config.dbReadCount, config.cacheHitCount)
+    List(config.successEventCount, config.failedEventCount, config.batchEnrolmentUpdateEventCount, config.dbUpdateCount, config.dbReadCount, config.cacheHitCount)
   }
 
   override def open(parameters: Configuration): Unit = {
@@ -43,46 +43,80 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
     super.close()
   }
 
-  override def processElement(event: util.Map[String, AnyRef], context: ProcessFunction[util.Map[String, AnyRef], String]#Context, metrics: Metrics): Unit = {
-    val batch: Batch = QueryBuilder.batch() // It holds all the batch of progress
-    val eventData: Map[String, AnyRef] = event.get("edata").asInstanceOf[util.Map[String, AnyRef]].asScala.toMap
-    // PrimaryFields = <batchid, userid, courseid>
-    val primaryFields: Map[String, AnyRef] = eventData.map(v => (v._1.toLowerCase, v._2)).filter(x => config.primaryFields.contains(x._1))
-    // contents object from the telemetry "BE_JOB_REQUEST"
-    val contents: List[Map[String, AnyRef]] = eventData.getOrElse("contents", new util.ArrayList[Map[String, AnyRef]]()).asInstanceOf[util.ArrayList[Map[String, AnyRef]]].asScala.toList
-    // Create a content status map using contents list and remove the lowest precedence stats if have any duplicate content
-    val csFromEvent = getContentStatusFromEvent(contents)
-    //To compute the progress to units
-    getUnitProgress(csFromEvent, primaryFields, context, metrics)
-      .map(unit => batch.add(getQuery(unit._2, config.dbKeyspace, config.dbUserActivityAggTable)))
-    // To compute the course progress
-    getCourseProgress(csFromEvent, primaryFields, metrics)
-      .map(course => batch.add(getQuery(course._2, config.dbKeyspace, config.dbUserActivityAggTable)))
-    // To update the both unit and course progress into db
+  def process(key: String, context: ProcessWindowFunction[util.Map[String, AnyRef], String, String, TimeWindow]#Context, events: lang.Iterable[util.Map[String, AnyRef]], metrics: Metrics): Unit = {
+    val batch: Batch = QueryBuilder.batch()
+
+    val batchEnrolmentEvents = events.asScala.filter(event => event.get("edata").asInstanceOf[util.Map[String, AnyRef]].asScala("action").asInstanceOf[String] == "batch-enrolment-update")
+    val eDataBatch = batchEnrolmentEvents.map(f => {
+      metrics.incCounter(config.batchEnrolmentUpdateEventCount)
+      (f.get("edata").asInstanceOf[util.Map[String, AnyRef]].asScala.toMap)
+    })
+    val csFromEvents: List[Map[String, AnyRef]] = eDataBatch.map(ed => ed ++ Map("contentStatus" -> getContentStatusFromEvent(ed("contents").asInstanceOf[util.List[Map[String, AnyRef]]].asScala.toList))).toList
+    val csFromDb: List[Map[String, AnyRef]] = getContentStatusFromDB(Map("userid" -> eDataBatch.map(x => x("userId")), "batchid" -> eDataBatch.map(x => x("batchId")), "courseid" -> eDataBatch.map(x => x("courseId"))), metrics)
+
+    csFromEvents.map(csFromEvent => getCourseProgress(csFromEvent, csFromDb, metrics)
+      .map(course => batch.add(getQuery(course._2, config.dbKeyspace, config.dbUserActivityAggTable))))
+
+    csFromEvents.map(csFromEvent => getUnitProgress(csFromEvent, csFromDb, context, metrics)
+      .map(course => batch.add(getQuery(course._2, config.dbKeyspace, config.dbUserActivityAggTable))))
+
     writeToDb(batch.toString, metrics)
+
+    //batch.add(List())
+
+
+    //println("userId2" + userIds)
+
+    //batchEnrolmentEvents.map(batch => (batch.get("userId"), batch.get("courseId"), batch.get("userId"), getContentStatusFromEvent(batch.get("contents").asInstanceOf[util.ArrayList[Map[String, AnyRef]]].asScala.toList)))
+    //    events.forEach(event => {
+    //      metrics.incCounter(config.totalEventsCount)
+    //      metrics.incCounter(config.batchEnrolmentUpdateEventCount)
+    //      val eventData: Map[String, AnyRef] = event.get("edata").asInstanceOf[util.Map[String, AnyRef]].asScala.toMap
+    //      // PrimaryFields = <batchid, userid, courseid>
+    //      val primaryFields: Map[String, AnyRef] = eventData.map(v => (v._1.toLowerCase, v._2)).filter(x => config.primaryFields.contains(x._1))
+    //      // contents object from the telemetry "BE_JOB_REQUEST"
+    //      val contents: List[Map[String, AnyRef]] = eventData.getOrElse("contents", new util.ArrayList[Map[String, AnyRef]]()).asInstanceOf[util.ArrayList[Map[String, AnyRef]]].asScala.toList
+    //      // Create a content status map using contents list and remove the lowest precedence stats if have any duplicate content
+    //      val csFromEvent = getContentStatusFromEvent(contents)
+    //      //To compute the progress to units
+    //      getUnitProgress(csFromEvent, primaryFields, context, metrics)
+    //        .map(unit => batch.add(getQuery(unit._2, config.dbKeyspace, config.dbUserActivityAggTable)))
+    //      // To compute the course progress
+    //      getCourseProgress(csFromEvent, primaryFields, metrics)
+    //        .map(course => batch.add(getQuery(course._2, config.dbKeyspace, config.dbUserActivityAggTable)))
+    //      // To update the both unit and course progress into db
+    //      writeToDb(batch.toString, metrics)
+    //    })
   }
 
-  def getCourseProgress(csFromEvent: Map[String, Number], primaryFields: Map[String, AnyRef], metrics: Metrics): Map[String, Progress] = {
-    val courseId = s"${primaryFields.get("courseid").orNull}"
+
+  def getCourseProgress(csFromEvent: Map[String, AnyRef], csFromDb: List[Map[String, AnyRef]], metrics: Metrics): Map[String, Progress] = {
+    val courseId = csFromEvent.getOrElse("courseId", null).asInstanceOf[String]
+    val batchId = csFromEvent.getOrElse("batchId", null).asInstanceOf[String]
+    val userId = csFromEvent.getOrElse("userId", null).asInstanceOf[String]
     val leafNodes = readFromCache(key = s"$courseId:${config.leafNodes}", metrics).asScala.toList
     if (leafNodes.isEmpty) {
       metrics.incCounter(config.failedEventCount)
       throw new Exception(s"LeafNodes are not available. courseId:$courseId")
-    } // Stop The job if the leafnodes are not available
-    val courseContentsStatus: Map[String, Number] = getContentStatusFromDB(primaryFields ++ Map(config.contentId -> leafNodes), metrics)
-    Map(courseId -> computeProgress(Map(config.activityType -> config.courseActivityType, config.activityUser -> primaryFields.get(config.userId).orNull, config.contextId -> s"cb:${primaryFields.get(config.batchId).orNull}", config.activityId -> s"${primaryFields.get(config.courseId).orNull}"), leafNodes, courseContentsStatus, csFromEvent))
+    }
+    val courseContentsStatusFromDb = csFromDb.filter(cs => cs("courseId").asInstanceOf[String] != courseId && cs("batchId").asInstanceOf[String] != batchId && cs("userId").asInstanceOf[String] != userId)
+    Map(courseId -> computeProgress(Map(config.activityType -> config.courseActivityType, config.activityUser -> userId,
+      config.contextId -> s"cb:$batchId", config.activityId -> courseId), leafNodes,
+      courseContentsStatusFromDb.head, csFromEvent("contentStatus").asInstanceOf[Map[String, AnyRef]]))
   }
 
-  def getUnitProgress(csFromEvent: Map[String, Number],
-                      primaryFields: Map[String, AnyRef],
-                      context: ProcessFunction[util.Map[String, AnyRef], String]#Context,
+  def getUnitProgress(csFromEvent: Map[String, AnyRef],
+                      csFromDb: List[Map[String, AnyRef]],
+                      context: ProcessWindowFunction[util.Map[String, AnyRef], String, String, TimeWindow]#Context,
                       metrics: Metrics
                      ): Map[String, Progress] = {
-    val courseId = s"${primaryFields.get(config.courseId).orNull}"
-
+    val courseId = csFromEvent.getOrElse("courseId", null).asInstanceOf[String]
+    val batchId = csFromEvent.getOrElse("batchId", null).asInstanceOf[String]
+    val userId = csFromEvent.getOrElse("userId", null).asInstanceOf[String]
+    val contentStatus: Map[String, AnyRef] = csFromEvent.getOrElse("contentStatus", null).asInstanceOf[Map[String, AnyRef]]
     // Get the ancestors for the specific resource
-    val contentAncestors: List[String] = csFromEvent.map(contentId => {
-      context.output(config.auditEventOutputTag, gson.toJson(generateTelemetry(primaryFields, generationFor = "content", contentId._2.intValue() == config.completedStatusCode, contentId._1))) // Get the Telemetry for resource type event
+    val contentAncestors: List[String] = contentStatus.map(contentId => {
+      context.output(config.auditEventOutputTag, gson.toJson(generateTelemetry(csFromEvent, generationFor = "content", contentId._2.asInstanceOf[Number].intValue() == config.completedStatusCode, contentId._1))) // Get the Telemetry for resource type event
       contentId._1 -> readFromCache(key = s"$courseId:${contentId._1}:${config.ancestors}", metrics).asScala.filter(_ > courseId).toList.distinct
     }).values.flatten.toList.distinct
 
@@ -95,11 +129,11 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
 
     // Get the progress for each unit node
     unitLeafNodes.map(unitLeafMap => {
-      val cols = Map(config.activityType -> config.unitActivityType, config.activityUser -> primaryFields.get(config.userId).orNull, config.contextId -> s"cb:${primaryFields.get(config.batchId).orNull}", config.activityId -> s"${unitLeafMap._1}")
-      val contentStatus = getContentStatusFromDB(primaryFields ++ Map(config.contentId -> unitLeafMap._2), metrics)
-      val progress = computeProgress(cols, unitLeafMap._2, contentStatus, csFromEvent)
+      val cols = Map(config.activityType -> config.unitActivityType, config.activityUser -> userId, config.contextId -> s"cb:$batchId", config.activityId -> s"${unitLeafMap._1}")
+      val courseContentsStatusFromDb = csFromDb.filter(cs => cs("courseId").asInstanceOf[String] != courseId && cs("batchId").asInstanceOf[String] != batchId && cs("userId").asInstanceOf[String] != userId)
+      val progress = computeProgress(cols, unitLeafMap._2, courseContentsStatusFromDb.head, contentStatus)
       logger.info(s"Unit: ${unitLeafMap._1} completion status: ${progress.isCompleted}")
-      context.output(config.auditEventOutputTag, gson.toJson(generateTelemetry(primaryFields, "course-unit", progress.isCompleted, unitLeafMap._1)))
+      context.output(config.auditEventOutputTag, gson.toJson(generateTelemetry(csFromEvent, "course-unit", progress.isCompleted, unitLeafMap._1)))
       (unitLeafMap._1 -> progress)
     })
   }
@@ -158,13 +192,14 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
 
   def computeProgress(cols: Map[String, AnyRef],
                       leafNodes: List[String],
-                      csFromDB: Map[String, Number],
-                      csFromEvent: Map[String, Number]):
+                      csFromDB: Map[String, AnyRef],
+                      csFromEvent: Map[String, AnyRef]):
   Progress = {
+    val contentStatusFromDB = csFromDB.getOrElse("contentStatus", Map()).asInstanceOf[Map[String, Number]]
     val unionKeys = csFromEvent.keySet.union(csFromDB.keySet)
     val mergedContentStatus: Map[String, Int] = unionKeys.map { key =>
-      key -> (if (csFromEvent.getOrElse(key, 0).asInstanceOf[Number].intValue() >= csFromDB.getOrElse(key, 0).asInstanceOf[Number].intValue()) csFromEvent.getOrElse(key, 0).asInstanceOf[Number].intValue()
-      else csFromDB.getOrElse(key, 0).asInstanceOf[Number].intValue())
+      key -> (if (csFromEvent.getOrElse(key, 0).asInstanceOf[Number].intValue() >= contentStatusFromDB.getOrElse(key, 0).asInstanceOf[Number].intValue()) csFromEvent.getOrElse(key, 0).asInstanceOf[Number].intValue()
+      else contentStatusFromDB.getOrElse(key, 0).asInstanceOf[Number].intValue())
     }.toMap.filter(value => value._2 == config.completedStatusCode).filter(requiredNodes => leafNodes.contains(requiredNodes._1))
     val agg = Map(config.progress -> mergedContentStatus.size) // It has only completed nodes id details
     val aggUpdatedOn = Map(config.progress -> new DateTime().getMillis) // Progress updated time
@@ -188,9 +223,12 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
       .map(status => status._2.maxBy(_._1))
   }
 
-  def getContentStatusFromDB(primaryFields: Map[String, AnyRef], metrics: Metrics): Map[String, Number] = {
-    Option(readFromDB(primaryFields, config.dbKeyspace, config.dbContentConsumptionTable, metrics))
-      .toList.flatMap(list => list.map(res => Map(res.getObject(config.contentId) -> res.getObject("status")).asInstanceOf[Map[String, Number]])).flatten.toMap
+  def getContentStatusFromDB(primaryFields: Map[String, AnyRef], metrics: Metrics): List[Map[String, AnyRef]] = {
+    val result = Option(readFromDB(primaryFields, config.dbKeyspace, config.dbContentConsumptionTable, metrics))
+    result.map(x => x.groupBy(z => Map("batchId" -> z.getObject("batchid").asInstanceOf[String], "userId" -> z.getObject("userid").asInstanceOf[String], "courseId" -> z.getObject("courseid").asInstanceOf[String])))
+      .map(p => p.map(q => Map(q._1.asInstanceOf[Map[String, String]]
+        -> q._2.flatMap(t => Map(t.getObject("contentid").asInstanceOf[String] -> t.getObject("status"))).toMap))).toList.flatten
+      .flatMap(d => d.keySet.map(z => Map("userId" -> z("userId"), "courseId" -> z("courseId"), "batchId" -> z("batchId"), "contentStatus" -> d.values.flatten.toMap)).toList)
   }
 
   def generateTelemetry(primaryFields: Map[String, AnyRef], generationFor: String, isCompleted: Boolean, activityId: String)
@@ -212,6 +250,10 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
         null
     }
 
+  }
+
+  def getBatch: Batch = {
+    QueryBuilder.batch() // It hold only batch of 150 Query
   }
 
 

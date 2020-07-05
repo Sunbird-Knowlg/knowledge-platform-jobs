@@ -11,7 +11,7 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.sunbird.async.core.job.FlinkKafkaConnector
 import org.sunbird.async.core.util.FlinkUtil
-import org.sunbird.kp.course.functions.{ProgressUpdater, Router}
+import org.sunbird.kp.course.functions.ProgressUpdater
 
 
 class CourseMetricsAggregatorStreamTask(config: CourseMetricsAggregatorConfig, kafkaConnector: FlinkKafkaConnector) {
@@ -19,18 +19,18 @@ class CourseMetricsAggregatorStreamTask(config: CourseMetricsAggregatorConfig, k
     implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
     implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
-    val routerStream =
+    val progressStream =
       env.addSource(kafkaConnector.kafkaMapSource(config.kafkaInputTopic), config.courseMetricsUpdaterConsumer)
         .uid(config.courseMetricsUpdaterConsumer).setParallelism(config.kafkaConsumerParallelism)
         .keyBy(x => x.get("partition").toString)
-        .timeWindow(Time.seconds(config.windowTimingInSec))
-        .process(new Router(config))
-        .setParallelism(config.routerParallelism)
-
-    val progressStream =
-      routerStream.getSideOutput(config.batchEnrolmentUpdateOutputTag)
+        .timeWindow(Time.seconds(129))
         .process(new ProgressUpdater(config)).name(config.ProgressUpdaterFn).uid(config.ProgressUpdaterFn)
-        .setParallelism(config.progressUpdaterParallelism)
+        .setParallelism(1)
+
+//    val progressStream =
+//      routerStream.getSideOutput(config.batchEnrolmentUpdateOutputTag)
+//        .process(new ProgressUpdater(config)).name(config.ProgressUpdaterFn).uid(config.ProgressUpdaterFn)
+//        .setParallelism(config.progressUpdaterParallelism)
 
     progressStream.getSideOutput(config.auditEventOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaAuditEventTopic)).name(config.courseMetricsAuditProducer).uid(config.courseMetricsAuditProducer)
     env.execute(config.jobName)
