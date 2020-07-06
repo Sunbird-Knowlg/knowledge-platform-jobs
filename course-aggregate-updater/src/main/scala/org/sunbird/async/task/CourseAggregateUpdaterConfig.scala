@@ -85,7 +85,8 @@ class CourseAggregateUpdaterConfig(override val config: Config) extends BaseJobC
   val ancestors = "ancestors"
 
   val windowTimingInSec: Int = config.getInt("window.period")
-  val maxQueryBatchSize:Int = config.getInt("query.batch.size")
+  val maxQueryWriteBatchSize:Int = config.getInt("query.batch.write.size")
+  val maxQueryReadBatchSize:Int = config.getInt("query.batch.read.size")
 
   val routerFn = "RouterFn"
   val ProgressUpdaterFn = "ProgressUpdaterFn"
