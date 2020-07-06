@@ -4,29 +4,30 @@ import java.lang.reflect.Type
 import java.{lang, util}
 
 import com.datastax.driver.core.Row
-import com.datastax.driver.core.querybuilder.{Batch, QueryBuilder, Select, Update}
+import com.datastax.driver.core.querybuilder.{QueryBuilder, Select, Update}
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
-import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow
 import org.joda.time.DateTime
 import org.slf4j.LoggerFactory
 import org.sunbird.async.core.cache.{DataCache, RedisConnect}
-import org.sunbird.async.core.job.{BaseProcessFunction, Metrics, WindowBaseProcessFunction}
+import org.sunbird.async.core.job.{Metrics, WindowBaseProcessFunction}
 import org.sunbird.async.core.util.CassandraUtil
 import org.sunbird.kp.course.domain._
 import org.sunbird.kp.course.task.CourseMetricsAggregatorConfig
 
 import scala.collection.JavaConverters._
+import scala.collection.mutable.ListBuffer
 
 class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val stringTypeInfo: TypeInformation[String], @transient var cassandraUtil: CassandraUtil = null) extends WindowBaseProcessFunction[util.Map[String, AnyRef], String, String](config) {
   val mapType: Type = new TypeToken[util.Map[String, AnyRef]]() {}.getType
   private[this] val logger = LoggerFactory.getLogger(classOf[ProgressUpdater])
   private var cache: DataCache = _
   lazy private val gson = new Gson()
+  var batch = new ListBuffer[Update.Where]()
 
   override def metricsList(): List[String] = {
     List(config.successEventCount, config.failedEventCount, config.batchEnrolmentUpdateEventCount, config.dbUpdateCount, config.dbReadCount, config.cacheHitCount)
@@ -44,49 +45,31 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
   }
 
   def process(key: String, context: ProcessWindowFunction[util.Map[String, AnyRef], String, String, TimeWindow]#Context, events: lang.Iterable[util.Map[String, AnyRef]], metrics: Metrics): Unit = {
-    val batch: Batch = QueryBuilder.batch()
 
     val batchEnrolmentEvents = events.asScala.filter(event => event.get("edata").asInstanceOf[util.Map[String, AnyRef]].asScala("action").asInstanceOf[String] == "batch-enrolment-update")
     val eDataBatch = batchEnrolmentEvents.map(f => {
       metrics.incCounter(config.batchEnrolmentUpdateEventCount)
       (f.get("edata").asInstanceOf[util.Map[String, AnyRef]].asScala.toMap)
     })
+    // Content status from the list of the events
     val csFromEvents: List[Map[String, AnyRef]] = eDataBatch.map(ed => ed ++ Map("contentStatus" -> getContentStatusFromEvent(ed("contents").asInstanceOf[util.List[Map[String, AnyRef]]].asScala.toList))).toList
+
+    // Content status from the cassandra db for all batchId, UserId & courseId in the list of events
     val csFromDb: List[Map[String, AnyRef]] = getContentStatusFromDB(Map("userid" -> eDataBatch.map(x => x("userId")), "batchid" -> eDataBatch.map(x => x("batchId")), "courseid" -> eDataBatch.map(x => x("courseId"))), metrics)
 
+    // CourseProgress
     csFromEvents.map(csFromEvent => getCourseProgress(csFromEvent, csFromDb, metrics)
-      .map(course => batch.add(getQuery(course._2, config.dbKeyspace, config.dbUserActivityAggTable))))
+      .map(course => batch += getQuery(course._2, config.dbKeyspace, config.dbUserActivityAggTable)))
 
+    // Unit Progress
     csFromEvents.map(csFromEvent => getUnitProgress(csFromEvent, csFromDb, context, metrics)
-      .map(course => batch.add(getQuery(course._2, config.dbKeyspace, config.dbUserActivityAggTable))))
+      .map(course => batch += getQuery(course._2, config.dbKeyspace, config.dbUserActivityAggTable)))
 
-    writeToDb(batch.toString, metrics)
-
-    //batch.add(List())
-
-
-    //println("userId2" + userIds)
-
-    //batchEnrolmentEvents.map(batch => (batch.get("userId"), batch.get("courseId"), batch.get("userId"), getContentStatusFromEvent(batch.get("contents").asInstanceOf[util.ArrayList[Map[String, AnyRef]]].asScala.toList)))
-    //    events.forEach(event => {
-    //      metrics.incCounter(config.totalEventsCount)
-    //      metrics.incCounter(config.batchEnrolmentUpdateEventCount)
-    //      val eventData: Map[String, AnyRef] = event.get("edata").asInstanceOf[util.Map[String, AnyRef]].asScala.toMap
-    //      // PrimaryFields = <batchid, userid, courseid>
-    //      val primaryFields: Map[String, AnyRef] = eventData.map(v => (v._1.toLowerCase, v._2)).filter(x => config.primaryFields.contains(x._1))
-    //      // contents object from the telemetry "BE_JOB_REQUEST"
-    //      val contents: List[Map[String, AnyRef]] = eventData.getOrElse("contents", new util.ArrayList[Map[String, AnyRef]]()).asInstanceOf[util.ArrayList[Map[String, AnyRef]]].asScala.toList
-    //      // Create a content status map using contents list and remove the lowest precedence stats if have any duplicate content
-    //      val csFromEvent = getContentStatusFromEvent(contents)
-    //      //To compute the progress to units
-    //      getUnitProgress(csFromEvent, primaryFields, context, metrics)
-    //        .map(unit => batch.add(getQuery(unit._2, config.dbKeyspace, config.dbUserActivityAggTable)))
-    //      // To compute the course progress
-    //      getCourseProgress(csFromEvent, primaryFields, metrics)
-    //        .map(course => batch.add(getQuery(course._2, config.dbKeyspace, config.dbUserActivityAggTable)))
-    //      // To update the both unit and course progress into db
-    //      writeToDb(batch.toString, metrics)
-    //    })
+    // Update batch of queries into cassandra
+    if (batch.size >= config.maxQueryBatchSize) {
+      updateDB(batch.toList, metrics)
+      batch.clear()
+    }
   }
 
 
@@ -156,9 +139,11 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
 
   }
 
-  def writeToDb(query: String, metrics: Metrics): Unit
+  def updateDB(batch: List[Update.Where], metrics: Metrics): Unit
   = {
-    cassandraUtil.upsert(query)
+    val cqlBatch = QueryBuilder.batch()
+    batch.map(x => cqlBatch.add(x))
+    cassandraUtil.upsert(cqlBatch.toString)
     metrics.incCounter(config.successEventCount)
     metrics.incCounter(config.dbUpdateCount)
   }
@@ -251,10 +236,5 @@ class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val string
     }
 
   }
-
-  def getBatch: Batch = {
-    QueryBuilder.batch() // It hold only batch of 150 Query
-  }
-
 
 }

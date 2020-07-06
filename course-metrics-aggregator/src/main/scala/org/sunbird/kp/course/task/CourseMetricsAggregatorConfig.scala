@@ -85,6 +85,7 @@ class CourseMetricsAggregatorConfig(override val config: Config) extends BaseJob
   val ancestors = "ancestors"
 
   val windowTimingInSec: Int = config.getInt("window.period")
+  val maxQueryBatchSize:Int = config.getInt("query.batch.size")
 
   val routerFn = "RouterFn"
   val ProgressUpdaterFn = "ProgressUpdaterFn"
