@@ -7,6 +7,8 @@ import com.datastax.driver.core.Row
 import com.datastax.driver.core.querybuilder.{Clause, QueryBuilder, Select}
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import org.apache.commons.collections.CollectionUtils
+import org.apache.commons.lang3.StringUtils
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper
@@ -51,9 +53,11 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
         val edata = event.get("edata").asInstanceOf[java.util.Map[String, AnyRef]]
         println("processElement:: " + edata)
         if (isValidEvent(edata)) {
-            val hierarchy = getCassandraHierarchy(edata.get("ids").asInstanceOf[String])
+            val hierarchy = getCassandraHierarchy(edata.get("id").asInstanceOf[String])
             println("processElement:: " + hierarchy)
-
+            val leafNodeMap = populateLeafNodes(edata.get("id").asInstanceOf[String], hierarchy)
+            val ancestorsMap = populateAncenstors(edata.get("id").asInstanceOf[String], hierarchy)
+            storeDataInCache(leafNodeMap, ancestorsMap)
         }
 
     }
@@ -64,9 +68,9 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
 
     private def isValidEvent(edata: java.util.Map[String, AnyRef]): Boolean = {
         println("isValidEvent:: " + edata.get("mimeType") + edata.get("id") + edata.get("action"))
-        val isTrue = edata.get("action").asInstanceOf[String] == "publish-shallow-content" &&
-            edata.get("mimeType").asInstanceOf[String] == "application/vnd.ekstep.content-collection" &&
-            edata.get("id").asInstanceOf[String] != null
+        val isTrue = StringUtils.equalsIgnoreCase(edata.getOrDefault("action", "").asInstanceOf[String], "publish-shallow-content") &&
+            StringUtils.equalsIgnoreCase(edata.getOrDefault("mimeType", "").asInstanceOf[String], "application/vnd.ekstep.content-collection") &&
+            StringUtils.isNotBlank(edata.getOrDefault("id", "").asInstanceOf[String])
         println("isValidEvent:: " + isTrue)
         isTrue
     }
@@ -75,28 +79,56 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
         val row: Row = readHierarchyFromDb(identifier, List("hierarchy"))
         val hierarchy = row.getObject("hierarchy").asInstanceOf[String]
         println("getCassandraHierarchy:: " + hierarchy)
-        mapper.readValue(hierarchy,classOf[java.util.Map[String, AnyRef]])
+        mapper.readValue(hierarchy, classOf[java.util.Map[String, AnyRef]])
     }
 
-    private def populateLeafNodes(identifier: String, hierarchy: java.util.Map[String, AnyRef]) = {
-        val leafNodeMap = Map(identifier -> hierarchy.get("leafNodes").asInstanceOf[Set[String]])
-
+    private def populateLeafNodes(identifier: String, hierarchy: java.util.Map[String, AnyRef]): Map[String, AnyRef] = {
+        val leafNodeMap: Map[String, AnyRef] = Map(identifier -> hierarchy.get("leafNodes").asInstanceOf[Set[String]])
+        recursiveLeafNodes(hierarchy.getOrDefault("children",
+            new util.ArrayList[java.util.Map[String, AnyRef]]())
+            .asInstanceOf[java.util.List[java.util.Map[String, AnyRef]]], leafNodeMap)
+        println("populateLeafNodes:: " + leafNodeMap.keys)
+        leafNodeMap
     }
 
-    private def recursiveLeafNodes(children:java.util.ArrayList[java.util.Map[String, AnyRef]]) = {
-
+    private def recursiveLeafNodes(children: java.util.List[java.util.Map[String, AnyRef]], leafNodeMap: Map[String, AnyRef]): Unit = {
+        children.forEach(child => {
+            if (StringUtils.equalsIgnoreCase(child.get("mimeType").asInstanceOf[String], "application/vnd.ekstep.content-collection")) {
+                val updatedLeadNodeMap = leafNodeMap ++ Map(child.get("identifier").asInstanceOf[String]
+                    -> child.getOrDefault("leafNodes", new util.ArrayList[String]()).asInstanceOf[java.util.List[String]])
+                if (StringUtils.equalsIgnoreCase(child.get("visibility").asInstanceOf[String], "Parent"))
+                    recursiveLeafNodes(child.getOrDefault("children",
+                        new util.ArrayList[java.util.Map[String, AnyRef]]())
+                        .asInstanceOf[java.util.List[java.util.Map[String, AnyRef]]], updatedLeadNodeMap)
+            }
+        })
     }
 
-    private def populateAncenstors() = {
-
+    private def populateAncenstors(identifier: String, hierarchy: java.util.Map[String, AnyRef]): java.util.Map[String, java.util.Set[String]] = {
+        val ancestorsMap: java.util.Map[String, java.util.Set[String]] = new java.util.HashMap[String, java.util.Set[String]]()
+        val ancestors: java.util.Set[String] = new java.util.HashSet[String]()
+        getRecursiveAncenstors(identifier, hierarchy, ancestorsMap, ancestors, true)
+        println("populateAncenstors:: " + ancestorsMap.keySet())
+        ancestorsMap
     }
 
-    private def getRecursiveAncenstors() = {
-
+    private def getRecursiveAncenstors(identifier: String, hierarchy: java.util.Map[String, AnyRef], ancestorsMap: java.util.Map[String, java.util.Set[String]], ancestors: java.util.Set[String], flag: Boolean): Unit = {
+        val mimeType = hierarchy.get("mimeType").asInstanceOf[String]
+        if (!StringUtils.equalsIgnoreCase(mimeType, "application/vnd.ekstep.content-collection"))
+            ancestorsMap.put(identifier, ancestors)
+        else if (CollectionUtils.isNotEmpty(hierarchy.get("children").asInstanceOf[java.util.List[java.util.Map[String, AnyRef]]])) {
+            if (flag) ancestors.add(identifier)
+            val newFlag = !(StringUtils.equalsIgnoreCase(mimeType, "application/vnd.ekstep.content-collection") && StringUtils.equalsIgnoreCase(hierarchy.get("visibility").asInstanceOf[String], "Default"))
+            hierarchy.get("children").asInstanceOf[java.util.List[java.util.Map[String, AnyRef]]]
+                .forEach(child => {
+                    getRecursiveAncenstors(child.get("identifier").asInstanceOf[String], child, ancestorsMap, ancestors, newFlag)
+                })
+        }
     }
 
-    private def storeDataInCache() = {
-
+    private def storeDataInCache(leafNodesMap: Map[String, AnyRef], ancestorMap: java.util.Map[String, java.util.Set[String]]) = {
+        leafNodesMap.foreach(each => dataCache.addList(each._1, each._2.asInstanceOf[List[String]]))
+        ancestorMap.entrySet().forEach(each => dataCache.addList(each.getKey, each.getValue.asScala.toList))
     }
 
     def readHierarchyFromDb(identifier: String, properties: List[String]): Row = {
