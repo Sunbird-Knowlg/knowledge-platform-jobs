@@ -5,7 +5,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>org.sunbird.kp</groupId>
+        <groupId>org.sunbird</groupId>
         <artifactId>knowledge-platform-jobs</artifactId>
         <version>1.0</version>
     </parent>
@@ -30,8 +30,8 @@
             <scope>provided</scope>
         </dependency>
         <dependency>
-            <groupId>org.sunbird.kp</groupId>
-            <artifactId>kp-jobs-core</artifactId>
+            <groupId>org.sunbird</groupId>
+            <artifactId>core-job</artifactId>
             <version>1.0.0</version>
         </dependency>
         <dependency>
@@ -40,8 +40,8 @@
             <version>2.10.6</version>
         </dependency>
         <dependency>
-            <groupId>org.sunbird.kp</groupId>
-            <artifactId>kp-jobs-core</artifactId>
+            <groupId>org.sunbird</groupId>
+            <artifactId>core-job</artifactId>
             <version>1.0.0</version>
             <type>test-jar</type>
             <scope>test</scope>
@@ -146,7 +146,7 @@
                             <transformers>
                                 <transformer
                                         implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>org.sunbird.kp.course.task.CourseAggregateUpdaterStreamTask</mainClass>
+                                    <mainClass>org.sunbird.async.task.CourseAggregateUpdaterStreamTask</mainClass>
                                 </transformer>
                                 <!-- append default configs -->
                                 <transformer

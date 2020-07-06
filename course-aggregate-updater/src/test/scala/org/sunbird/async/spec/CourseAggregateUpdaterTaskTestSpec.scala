@@ -1,4 +1,4 @@
-package org.sunbird.kp.course.spec
+package org.sunbird.async.spec
 
 import java.util
 
@@ -21,8 +21,8 @@ import org.sunbird.async.core.cache.RedisConnect
 import org.sunbird.async.core.job.FlinkKafkaConnector
 import org.sunbird.async.core.util.CassandraUtil
 import org.sunbird.async.core.{BaseMetricsReporter, BaseTestSpec}
-import org.sunbird.kp.course.fixture.EventFixture
-import org.sunbird.kp.course.task.{CourseAggregateUpdaterConfig, CourseAggregateUpdaterStreamTask}
+import org.sunbird.async.fixture.EventFixture
+import org.sunbird.async.task.{CourseAggregateUpdaterConfig, CourseAggregateUpdaterStreamTask}
 import redis.clients.jedis.Jedis
 import redis.embedded.RedisServer
 

@@ -9,9 +9,9 @@
         <version>1.0</version>
     </parent>
 
-    <artifactId>sunbird-kp-distribution</artifactId>
+    <artifactId>jobs-distribution</artifactId>
     <packaging>pom</packaging>
-    <name>Sunbird KP Distribution</name>
+    <name>Jobs Distribution</name>
 
     <dependencies>
         <dependency>
@@ -21,7 +21,7 @@
             <type>jar</type>
         </dependency>
         <dependency>
-            <groupId>org.sunbird.kp</groupId>
+            <groupId>org.sunbird</groupId>
             <artifactId>course-aggregate-updater</artifactId>
             <version>1.0.0</version>
             <type>jar</type>

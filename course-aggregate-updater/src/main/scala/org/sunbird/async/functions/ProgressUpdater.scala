@@ -1,4 +1,4 @@
-package org.sunbird.kp.course.functions
+package org.sunbird.async.functions
 
 import java.lang.reflect.Type
 import java.{lang, util}
@@ -16,8 +16,8 @@ import org.slf4j.LoggerFactory
 import org.sunbird.async.core.cache.{DataCache, RedisConnect}
 import org.sunbird.async.core.job.{Metrics, WindowBaseProcessFunction}
 import org.sunbird.async.core.util.CassandraUtil
-import org.sunbird.kp.course.domain._
-import org.sunbird.kp.course.task.CourseAggregateUpdaterConfig
+import org.sunbird.async.domain._
+import org.sunbird.async.task.CourseAggregateUpdaterConfig
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer

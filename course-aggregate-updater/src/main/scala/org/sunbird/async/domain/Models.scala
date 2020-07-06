@@ -1,4 +1,4 @@
-package org.sunbird.kp.course.domain
+package org.sunbird.async.domain
 
 import java.util
 import java.util.UUID

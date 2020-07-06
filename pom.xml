@@ -9,7 +9,7 @@
 		<maven>3.0.0</maven>
 	</prerequisites>
 
-	<groupId>org.sunbird.kp</groupId>
+	<groupId>org.sunbird</groupId>
 	<artifactId>knowledge-platform-jobs</artifactId>
 	<version>1.0</version>
 	<packaging>pom</packaging>
@@ -20,7 +20,7 @@
 	<url>https://sunbird.org/</url>
 
 	<modules>
-		<module>kp-jobs-core</module>
+		<module>core-job</module>
 		<module>course-aggregate-updater</module>
 	</modules>
 

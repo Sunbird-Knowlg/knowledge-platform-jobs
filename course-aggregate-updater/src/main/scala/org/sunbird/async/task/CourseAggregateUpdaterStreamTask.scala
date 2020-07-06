@@ -1,4 +1,4 @@
-package org.sunbird.kp.course.task
+package org.sunbird.async.task
 
 import java.io.File
 import java.util
@@ -11,7 +11,7 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.sunbird.async.core.job.FlinkKafkaConnector
 import org.sunbird.async.core.util.FlinkUtil
-import org.sunbird.kp.course.functions.ProgressUpdater
+import org.sunbird.async.functions.ProgressUpdater
 
 
 class CourseAggregateUpdaterStreamTask(config: CourseAggregateUpdaterConfig, kafkaConnector: FlinkKafkaConnector) {
