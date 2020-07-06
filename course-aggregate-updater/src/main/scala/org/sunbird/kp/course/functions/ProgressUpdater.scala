@@ -17,12 +17,12 @@ import org.sunbird.async.core.cache.{DataCache, RedisConnect}
 import org.sunbird.async.core.job.{Metrics, WindowBaseProcessFunction}
 import org.sunbird.async.core.util.CassandraUtil
 import org.sunbird.kp.course.domain._
-import org.sunbird.kp.course.task.CourseMetricsAggregatorConfig
+import org.sunbird.kp.course.task.CourseAggregateUpdaterConfig
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 
-class ProgressUpdater(config: CourseMetricsAggregatorConfig)(implicit val stringTypeInfo: TypeInformation[String], @transient var cassandraUtil: CassandraUtil = null) extends WindowBaseProcessFunction[util.Map[String, AnyRef], String, String](config) {
+class ProgressUpdater(config: CourseAggregateUpdaterConfig)(implicit val stringTypeInfo: TypeInformation[String], @transient var cassandraUtil: CassandraUtil = null) extends WindowBaseProcessFunction[util.Map[String, AnyRef], String, String](config) {
   val mapType: Type = new TypeToken[util.Map[String, AnyRef]]() {}.getType
   private[this] val logger = LoggerFactory.getLogger(classOf[ProgressUpdater])
   private var cache: DataCache = _

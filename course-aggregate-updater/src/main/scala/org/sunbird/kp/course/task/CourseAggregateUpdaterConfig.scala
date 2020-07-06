@@ -8,7 +8,7 @@ import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.streaming.api.scala.OutputTag
 import org.sunbird.async.core.BaseJobConfig
 
-class CourseMetricsAggregatorConfig(override val config: Config) extends BaseJobConfig(config, "course-metrics-aggregator") {
+class CourseAggregateUpdaterConfig(override val config: Config) extends BaseJobConfig(config, "course-aggregate-updater") {
 
   private val serialVersionUID = 2905979434303791379L
 

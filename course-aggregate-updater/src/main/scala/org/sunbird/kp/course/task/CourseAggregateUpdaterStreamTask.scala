@@ -14,7 +14,7 @@ import org.sunbird.async.core.util.FlinkUtil
 import org.sunbird.kp.course.functions.ProgressUpdater
 
 
-class CourseMetricsAggregatorStreamTask(config: CourseMetricsAggregatorConfig, kafkaConnector: FlinkKafkaConnector) {
+class CourseAggregateUpdaterStreamTask(config: CourseAggregateUpdaterConfig, kafkaConnector: FlinkKafkaConnector) {
   def process(): Unit = {
     implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
     implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
@@ -27,11 +27,6 @@ class CourseMetricsAggregatorStreamTask(config: CourseMetricsAggregatorConfig, k
         .process(new ProgressUpdater(config)).name(config.ProgressUpdaterFn).uid(config.ProgressUpdaterFn)
         .setParallelism(1)
 
-//    val progressStream =
-//      routerStream.getSideOutput(config.batchEnrolmentUpdateOutputTag)
-//        .process(new ProgressUpdater(config)).name(config.ProgressUpdaterFn).uid(config.ProgressUpdaterFn)
-//        .setParallelism(config.progressUpdaterParallelism)
-
     progressStream.getSideOutput(config.auditEventOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaAuditEventTopic)).name(config.courseMetricsAuditProducer).uid(config.courseMetricsAuditProducer)
     env.execute(config.jobName)
   }
@@ -40,16 +35,16 @@ class CourseMetricsAggregatorStreamTask(config: CourseMetricsAggregatorConfig, k
 }
 
 // $COVERAGE-OFF$ Disabling scoverage as the below code can only be invoked within flink cluster
-object CourseMetricsAggregatorStreamTask {
+object CourseAggregateUpdaterStreamTask {
 
   def main(args: Array[String]): Unit = {
     val configFilePath = Option(ParameterTool.fromArgs(args).get("config.file.path"))
     val config = configFilePath.map {
       path => ConfigFactory.parseFile(new File(path)).resolve()
-    }.getOrElse(ConfigFactory.load("course-metrics-aggregator.conf").withFallback(ConfigFactory.systemEnvironment()))
-    val courseAggregator = new CourseMetricsAggregatorConfig(config)
+    }.getOrElse(ConfigFactory.load("course-aggregate-updater.conf").withFallback(ConfigFactory.systemEnvironment()))
+    val courseAggregator = new CourseAggregateUpdaterConfig(config)
     val kafkaUtil = new FlinkKafkaConnector(courseAggregator)
-    val task = new CourseMetricsAggregatorStreamTask(courseAggregator, kafkaUtil)
+    val task = new CourseAggregateUpdaterStreamTask(courseAggregator, kafkaUtil)
     task.process()
   }
 }

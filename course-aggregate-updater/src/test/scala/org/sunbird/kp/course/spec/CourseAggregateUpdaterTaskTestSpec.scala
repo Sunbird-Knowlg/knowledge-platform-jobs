@@ -22,7 +22,7 @@ import org.sunbird.async.core.job.FlinkKafkaConnector
 import org.sunbird.async.core.util.CassandraUtil
 import org.sunbird.async.core.{BaseMetricsReporter, BaseTestSpec}
 import org.sunbird.kp.course.fixture.EventFixture
-import org.sunbird.kp.course.task.{CourseMetricsAggregatorConfig, CourseMetricsAggregatorStreamTask}
+import org.sunbird.kp.course.task.{CourseAggregateUpdaterConfig, CourseAggregateUpdaterStreamTask}
 import redis.clients.jedis.Jedis
 import redis.embedded.RedisServer
 
@@ -46,7 +46,7 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
   val mockKafkaUtil: FlinkKafkaConnector = mock[FlinkKafkaConnector](Mockito.withSettings().serializable())
   val gson = new Gson()
   val config: Config = ConfigFactory.load("test.conf")
-  val courseAggregatorConfig: CourseMetricsAggregatorConfig = new CourseMetricsAggregatorConfig(config)
+  val courseAggregatorConfig: CourseAggregateUpdaterConfig = new CourseAggregateUpdaterConfig(config)
 
 
   var cassandraUtil: CassandraUtil = _
@@ -88,7 +88,7 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
   "Aggregator " should "Compute and update to cassandra database" in {
     when(mockKafkaUtil.kafkaMapSource(courseAggregatorConfig.kafkaInputTopic)).thenReturn(new CourseAggregatorMapSource)
     when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaAuditEventTopic)).thenReturn(new auditEventSink)
-    new CourseMetricsAggregatorStreamTask(courseAggregatorConfig, mockKafkaUtil).process()
+    new CourseAggregateUpdaterStreamTask(courseAggregatorConfig, mockKafkaUtil).process()
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.batchEnrolmentUpdateEventCount}").getValue() should be(3)
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.dbReadCount}").getValue() should be(1) // 10
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.dbUpdateCount}").getValue() should be(1) // 3 (This should happend depending on the batch size)
