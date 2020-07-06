@@ -10,7 +10,7 @@ import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 import org.sunbird.async.core.job.FlinkKafkaConnector
 import org.sunbird.async.core.util.FlinkUtil
-import org.sunbird.kp.flink.functions.TestFunction
+import org.sunbird.kp.flink.functions.RelationCacheUpdater
 
 
 class RelationCacheUpdaterStreamTask(config: RelationCacheUpdaterConfig, kafkaConnector: FlinkKafkaConnector) {
@@ -21,8 +21,8 @@ class RelationCacheUpdaterStreamTask(config: RelationCacheUpdaterConfig, kafkaCo
     val source = kafkaConnector.kafkaMapSource(config.kafkaInputTopic)
 
       env.addSource(source, config.aggregatorConsumer).uid(config.aggregatorConsumer)
-        .rebalance().process(new TestFunction(config))
-        .name("test-function-processor").uid("test-function-processor")
+        .rebalance()
+          .process(new RelationCacheUpdater(config)).name("relation-cache-updator").uid("relation-cache-updator")
     env.execute(config.jobName)
   }
 }

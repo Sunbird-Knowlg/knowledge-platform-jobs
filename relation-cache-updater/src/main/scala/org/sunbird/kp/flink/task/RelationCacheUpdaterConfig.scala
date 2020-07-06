@@ -36,4 +36,14 @@ class RelationCacheUpdaterConfig(override val config: Config) extends BaseJobCon
   // Consumers
   val aggregatorConsumer = "relation-cache-updater-consumer"
 
+  // Cassandra Configurations
+  val dbTable: String = config.getString("lp-cassandra.table")
+  val dbKeyspace: String = config.getString("lp-cassandra.keyspace")
+  val dbHost: String = config.getString("lp-cassandra.host")
+  val dbPort: Int = config.getInt("lp-cassandra.port")
+  val hierarchyPrimaryKey: List[String] = List("identifier")
+
+  // Redis Configurations
+  val leafNodesStore: Int = config.getInt("redis.database.leafnodes.id")
+
 }
