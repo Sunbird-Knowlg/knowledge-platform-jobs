@@ -25,12 +25,10 @@ class CourseAggregateUpdaterConfig(override val config: Config) extends BaseJobC
   val routerParallelism: Int = config.getInt("task.router.parallelism")
 
   // Metric List
-  val totalEventsCount = "total-events-count"
   val successEventCount = "success-events-count"
   val failedEventCount = "failed-events-count"
   val dbUpdateCount = "db-update-count"
   val dbReadCount = "db-read-count"
-  val skippedEventCount = "skipped-event-count"
   val cacheHitCount = "cache-hit-count"
   val batchEnrolmentUpdateEventCount = "batch-enrolment-update-count"
 
@@ -54,13 +52,6 @@ class CourseAggregateUpdaterConfig(override val config: Config) extends BaseJobC
   val failedEventsOutputTag: OutputTag[String] = OutputTag[String](failedEventOutputTagName)
   val auditEventOutputTag: OutputTag[String] = OutputTag[String](auditEventOutputTagName)
   val batchEnrolmentUpdateOutputTag: OutputTag[util.Map[String, AnyRef]] = OutputTag[util.Map[String, AnyRef]](batchEnrolmentOutputTagName)
-
-  // Consumers
-  val courseMetricsUpdaterConsumer = "course-metrics-updater-consumer"
-
-
-  // Producers
-  val courseMetricsAuditProducer = "course-audit-events-sink"
 
   val completedStatusCode: Int = 2
   val inCompleteStatusCode: Int = 1
@@ -88,13 +79,24 @@ class CourseAggregateUpdaterConfig(override val config: Config) extends BaseJobC
   val ancestors = "ancestors"
   val viewcount = "viewcount"
   val completedcount = "completedcount"
-
-  val windowTimingInSec: Int = config.getInt("window.period")
-  val maxQueryWriteBatchSize:Int = config.getInt("query.batch.write.size")
-  val maxQueryReadBatchSize:Int = config.getInt("query.batch.read.size")
-
+  val eData = "edata"
+  val action = "action"
+  val batchEnrolmentUpdateCode = "batch-enrolment-update"
   val routerFn = "RouterFn"
   val ProgressUpdaterFn = "ProgressUpdaterFn"
+
+  // Consumers
+  val courseMetricsUpdaterConsumer = "course-metrics-updater-consumer"
+  // Producers
+  val courseMetricsAuditProducer = "course-audit-events-sink"
+
+
+  //
+  val windowTimingInSec: Int = config.getInt("window.period")
+  val maxQueryWriteBatchSize: Int = config.getInt("query.batch.write.size")
+  val maxQueryReadBatchSize: Int = config.getInt("query.batch.read.size")
+
+
 
 
 }

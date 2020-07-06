@@ -9,11 +9,11 @@ import scala.collection.JavaConverters._
 case class ActorObject(id: String, `type`: String = "User")
 
 case class EventContext(channel: String = "in.sunbird",
-                   env: String = "Course",
-                   sid: String = UUID.randomUUID().toString,
-                   did: String = UUID.randomUUID().toString,
-                   pdata: util.Map[String, String] = Map("ver" -> "3.0", "id" -> "org.sunbird.learning.platform", "pid" -> "course-progress-updater").asJava,
-                   cdata: Array[util.Map[String, AnyRef]])
+                        env: String = "Course",
+                        sid: String = UUID.randomUUID().toString,
+                        did: String = UUID.randomUUID().toString,
+                        pdata: util.Map[String, String] = Map("ver" -> "3.0", "id" -> "org.sunbird.learning.platform", "pid" -> "course-progress-updater").asJava,
+                        cdata: Array[util.Map[String, AnyRef]])
 
 
 case class EventData(props: Array[String], `type`: String)
@@ -35,12 +35,14 @@ case class TelemetryEvent(actor: ActorObject,
                          )
 
 case class Progress(activity_type: String,
-                    user_id:String,
+                    user_id: String,
                     activity_id: String,
                     context_id: String,
                     agg: Map[String, Int],
                     agg_last_updated: Map[String, Long],
-                    isCompleted:Boolean,
+                    isCompleted: Boolean,
                     contentStatus: Option[Map[String, Int]]
                    )
+
+
 
