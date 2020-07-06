@@ -87,7 +87,7 @@ class ProgressUpdater(config: CourseAggregateUpdaterConfig)(implicit val stringT
     val courseContentsStatusFromDb = csFromDb.filter(cs => cs(config.courseId).asInstanceOf[String] != courseId && cs(config.batchId).asInstanceOf[String] != batchId && cs(config.userId).asInstanceOf[String] != userId)
     Map(courseId -> computeProgress(Map(config.activityType -> config.courseActivityType, config.activityUser -> userId,
       config.contextId -> s"cb:$batchId", config.activityId -> courseId), leafNodes,
-      courseContentsStatusFromDb.head, csFromEvent(config.contentStatus).asInstanceOf[Map[String, AnyRef]]))
+      courseContentsStatusFromDb.headOption.getOrElse(Map[String, AnyRef]), csFromEvent(config.contentStatus).asInstanceOf[Map[String, AnyRef]]))
   }
 
   def getUnitProgress(csFromEvent: Map[String, AnyRef],
@@ -116,7 +116,7 @@ class ProgressUpdater(config: CourseAggregateUpdaterConfig)(implicit val stringT
     unitLeafNodes.map(unitLeafMap => {
       val cols = Map(config.activityType -> config.unitActivityType, config.activityUser -> userId, config.contextId -> s"cb:$batchId", config.activityId -> s"${unitLeafMap._1}")
       val courseContentsStatusFromDb = csFromDb.filter(cs => cs(config.courseId).asInstanceOf[String] != courseId && cs(config.batchId).asInstanceOf[String] != batchId && cs(config.userId).asInstanceOf[String] != userId)
-      val progress = computeProgress(cols, unitLeafMap._2, courseContentsStatusFromDb.head, contentStatus)
+      val progress = computeProgress(cols, unitLeafMap._2, courseContentsStatusFromDb.headOption.getOrElse(Map[String, AnyRef]), contentStatus)
       logger.info(s"Unit: ${unitLeafMap._1} completion status: ${progress.isCompleted}")
       context.output(config.auditEventOutputTag, gson.toJson(generateTelemetry(csFromEvent, "course-unit", progress.isCompleted, unitLeafMap._1)))
       (unitLeafMap._1 -> progress)
