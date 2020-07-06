@@ -27,7 +27,8 @@ class ProgressUpdater(config: CourseAggregateUpdaterConfig)(implicit val stringT
   private[this] val logger = LoggerFactory.getLogger(classOf[ProgressUpdater])
   private var cache: DataCache = _
   lazy private val gson = new Gson()
-  var batch = new ListBuffer[Update.Where]()
+  var progressBatch = new ListBuffer[Update.Where]()
+  var contentConsumptionBatch = new ListBuffer[Update.Where]()
 
   override def metricsList(): List[String] = {
     List(config.successEventCount, config.failedEventCount, config.batchEnrolmentUpdateEventCount, config.dbUpdateCount, config.dbReadCount, config.cacheHitCount)
@@ -64,14 +65,19 @@ class ProgressUpdater(config: CourseAggregateUpdaterConfig)(implicit val stringT
 
     // CourseProgress
     csFromEvents.map(csFromEvent => getCourseProgress(csFromEvent, csFromDb, metrics)
-      .map(course => batch += getUserAggQuery(course._2, config.dbKeyspace, config.dbUserActivityAggTable)))
+      .map(course => progressBatch += getUserAggQuery(course._2, config.dbKeyspace, config.dbUserActivityAggTable)))
 
     // Unit Progress
     csFromEvents.map(csFromEvent => getUnitProgress(csFromEvent, csFromDb, context, metrics)
-      .map(course => batch += getUserAggQuery(course._2, config.dbKeyspace, config.dbUserActivityAggTable)))
+      .map(unit => {
+        progressBatch += getUserAggQuery(unit._2, config.dbKeyspace, config.dbUserActivityAggTable)
+        getContentConsumptionQuery(unit._2, config.dbKeyspace, config.dbContentConsumptionTable).map(query => contentConsumptionBatch += query)
+      }))
 
     // Update batch of queries into cassandra
-    updateDB(config.maxQueryWriteBatchSize, metrics)
+    updateDB(config.maxQueryWriteBatchSize, progressBatch, metrics)
+    updateDB(config.maxQueryWriteBatchSize, contentConsumptionBatch, metrics)
+
   }
 
 
@@ -87,7 +93,7 @@ class ProgressUpdater(config: CourseAggregateUpdaterConfig)(implicit val stringT
     val courseContentsStatusFromDb = csFromDb.filter(cs => cs(config.courseId).asInstanceOf[String] != courseId && cs(config.batchId).asInstanceOf[String] != batchId && cs(config.userId).asInstanceOf[String] != userId)
     Map(courseId -> computeProgress(Map(config.activityType -> config.courseActivityType, config.activityUser -> userId,
       config.contextId -> s"cb:$batchId", config.activityId -> courseId), leafNodes,
-      courseContentsStatusFromDb.headOption.getOrElse(Map[String, AnyRef]), csFromEvent(config.contentStatus).asInstanceOf[Map[String, AnyRef]]))
+      courseContentsStatusFromDb.headOption.getOrElse(Map[String, AnyRef]()), csFromEvent(config.contentStatus).asInstanceOf[Map[String, AnyRef]]))
   }
 
   def getUnitProgress(csFromEvent: Map[String, AnyRef],
@@ -116,7 +122,7 @@ class ProgressUpdater(config: CourseAggregateUpdaterConfig)(implicit val stringT
     unitLeafNodes.map(unitLeafMap => {
       val cols = Map(config.activityType -> config.unitActivityType, config.activityUser -> userId, config.contextId -> s"cb:$batchId", config.activityId -> s"${unitLeafMap._1}")
       val courseContentsStatusFromDb = csFromDb.filter(cs => cs(config.courseId).asInstanceOf[String] != courseId && cs(config.batchId).asInstanceOf[String] != batchId && cs(config.userId).asInstanceOf[String] != userId)
-      val progress = computeProgress(cols, unitLeafMap._2, courseContentsStatusFromDb.headOption.getOrElse(Map[String, AnyRef]), contentStatus)
+      val progress = computeProgress(cols, unitLeafMap._2, courseContentsStatusFromDb.headOption.getOrElse(Map[String, AnyRef]()), contentStatus)
       logger.info(s"Unit: ${unitLeafMap._1} completion status: ${progress.isCompleted}")
       context.output(config.auditEventOutputTag, gson.toJson(generateTelemetry(csFromEvent, "course-unit", progress.isCompleted, unitLeafMap._1)))
       (unitLeafMap._1 -> progress)
@@ -141,12 +147,13 @@ class ProgressUpdater(config: CourseAggregateUpdaterConfig)(implicit val stringT
 
   }
 
-  def updateDB(batchSize: Int, metrics: Metrics): Unit = {
+  def updateDB(batchSize: Int, batch: ListBuffer[Update.Where], metrics: Metrics): Unit = {
     val cqlBatch = QueryBuilder.batch()
     batch.foreach(query => {
       if (batch.nonEmpty) {
         val totalElements = batch.slice(0, batchSize)
         totalElements.map(element => cqlBatch.add(element))
+        println("cqlBatch" + cqlBatch.toString)
         val updateStatus = cassandraUtil.upsert(cqlBatch.toString)
         if (updateStatus) {
           metrics.incCounter(config.successEventCount)
@@ -175,15 +182,18 @@ class ProgressUpdater(config: CourseAggregateUpdaterConfig)(implicit val stringT
       .and(QueryBuilder.eq(config.activityUser, progress.user_id))
   }
 
-  //  def contentConsumptionQuery(contentConsumption: String, keySpace: String, table: String): Update.Where = {
-  //    QueryBuilder.update(keySpace, table)
-  //    .`with`(QueryBuilder.putAll(config.agg, progress.agg.asJava))
-  //    .and(QueryBuilder.putAll(config.aggLastUpdated, progress.agg_last_updated.asJava))
-  //    .where(QueryBuilder.eq(config.activityId, progress.activity_id))
-  //    .and(QueryBuilder.eq(config.activityType, progress.activity_type))
-  //    .and(QueryBuilder.eq(config.contextId, progress.context_id))
-  //    .and(QueryBuilder.eq(config.activityUser, progress.user_id))
-  //  }
+  def getContentConsumptionQuery(contentConsumption: Progress, keySpace: String, table: String): List[Update.Where] = {
+    contentConsumption.contentStatus.get.map(x => {
+      QueryBuilder.update(keySpace, table)
+        .`with`(QueryBuilder.set(config.viewcount, 0))
+        .and(QueryBuilder.set(config.completedcount, x._2))
+        .where(QueryBuilder.eq(config.batchId.toLowerCase(), contentConsumption.activity_id))
+        .and(QueryBuilder.eq(config.courseId.toLowerCase(), contentConsumption.activity_type))
+        .and(QueryBuilder.eq(config.userId.toLowerCase(), contentConsumption.context_id))
+        .and(QueryBuilder.eq(config.contentId.toLowerCase(), x._1))
+    }).toList
+
+  }
 
 
   /**
@@ -212,7 +222,7 @@ class ProgressUpdater(config: CourseAggregateUpdaterConfig)(implicit val stringT
     val isCompleted: Boolean = mergedContentStatus.size == leafNodes.size
     Progress(cols.get(config.activityType).orNull.asInstanceOf[String], cols.get(config.activityUser).orNull.asInstanceOf[String],
       cols.get(config.activityId).orNull.asInstanceOf[String], cols.get(config.contextId).orNull.asInstanceOf[String],
-      agg, aggUpdatedOn, isCompleted = isCompleted)
+      agg, aggUpdatedOn, isCompleted = isCompleted, Some(mergedContentStatus))
   }
 
 
@@ -226,7 +236,7 @@ class ProgressUpdater(config: CourseAggregateUpdaterConfig)(implicit val stringT
     val data = contents.asInstanceOf[List[util.Map[String, AnyRef]]].map(content => {
       (content.asScala.toMap.get(config.contentId).orNull.asInstanceOf[String], content.asScala.toMap.get(config.status).orNull.asInstanceOf[Number])
     }).groupBy(id => id._1.asInstanceOf[String])
-      data.map(status => status._2.maxBy(_._2.intValue()))
+    data.map(status => status._2.maxBy(_._2.intValue()))
   }
 
   def getContentStatusFromDB(eDataBatch: ListBuffer[Map[String, AnyRef]], maxReadBatchSize: Int, metrics: Metrics): List[Map[String, AnyRef]] = {
@@ -244,7 +254,7 @@ class ProgressUpdater(config: CourseAggregateUpdaterConfig)(implicit val stringT
       records.map(record => record.groupBy(col => Map(config.batchId -> col.getObject(config.batchId.toLowerCase()).asInstanceOf[String], config.userId -> col.getObject(config.userId.toLowerCase()).asInstanceOf[String], config.courseId -> col.getObject(config.courseId.toLowerCase()).asInstanceOf[String])))
         .map(groupedRecords => groupedRecords.map(groupedRecord => Map(groupedRecord._1.asInstanceOf[Map[String, String]]
           -> groupedRecord._2.flatMap(mapRec => Map(mapRec.getObject(config.contentId.toLowerCase()).asInstanceOf[String] -> Map(config.status -> mapRec.getObject(config.status), config.viewcount -> mapRec.getObject(config.viewcount), config.completedcount -> mapRec.getObject(config.completedcount)))).toMap))).toList.flatten
-        .flatMap(d => d.keySet.map(key => Map(config.userId -> key(config.userId), config.courseId -> key(config.courseId ), config.batchId -> key(config.batchId), config.contentStatus -> d.values.flatten.toMap)).toList)
+        .flatMap(d => d.keySet.map(key => Map(config.userId -> key(config.userId), config.courseId -> key(config.courseId), config.batchId -> key(config.batchId), config.contentStatus -> d.values.flatten.toMap)).toList)
     }
 
     csFromDb.toList
