@@ -73,7 +73,7 @@ class ProgressUpdater(config: CourseAggregateUpdaterConfig)(implicit val stringT
       .map(course => batch += getQuery(course._2, config.dbKeyspace, config.dbUserActivityAggTable)))
 
     // Update batch of queries into cassandra
-    createBatchAndUpdateDB(config.maxQueryWriteBatchSize, metrics)
+    updateDB(config.maxQueryWriteBatchSize, metrics)
   }
 
 
@@ -143,22 +143,16 @@ class ProgressUpdater(config: CourseAggregateUpdaterConfig)(implicit val stringT
 
   }
 
-  def updateDB(batch: List[Update.Where], metrics: Metrics): Boolean
-  = {
+  def updateDB(batchSize: Int, metrics: Metrics): Unit = {
     val cqlBatch = QueryBuilder.batch()
-    batch.map(x => cqlBatch.add(x))
-    val status = cassandraUtil.upsert(cqlBatch.toString)
-    metrics.incCounter(config.successEventCount)
-    metrics.incCounter(config.dbUpdateCount)
-    status
-  }
-
-  def createBatchAndUpdateDB(batchSize: Int, metrics: Metrics): Unit = {
     batch.foreach(query => {
       if (batch.nonEmpty) {
-        val totalElements = batch.slice(0, batchSize).toList
-        val updateStatus = updateDB(totalElements, metrics)
+        val totalElements = batch.slice(0, batchSize)
+        totalElements.map(element => cqlBatch.add(element))
+        val updateStatus = cassandraUtil.upsert(cqlBatch.toString)
         if (updateStatus) {
+          metrics.incCounter(config.successEventCount)
+          metrics.incCounter(config.dbUpdateCount)
           batch.remove(0, totalElements.size)
         } else {
           logger.error("Database update has failed")
@@ -232,7 +226,7 @@ class ProgressUpdater(config: CourseAggregateUpdaterConfig)(implicit val stringT
     records.map(record => record.groupBy(col => Map("batchId" -> col.getObject("batchid").asInstanceOf[String], "userId" -> col.getObject("userid").asInstanceOf[String], "courseId" -> col.getObject("courseid").asInstanceOf[String])))
       .map(groupedRecords => groupedRecords.map(groupedRecord => Map(groupedRecord._1.asInstanceOf[Map[String, String]]
         -> groupedRecord._2.flatMap(mapRec => Map(mapRec.getObject("contentid").asInstanceOf[String] -> mapRec.getObject("status"))).toMap))).toList.flatten
-      .flatMap(d => d.keySet.map(z => Map("userId" -> z("userId"), "courseId" -> z("courseId"), "batchId" -> z("batchId"), "contentStatus" -> d.values.flatten.toMap)).toList)
+      .flatMap(d => d.keySet.map(key => Map("userId" -> key("userId"), "courseId" -> key("courseId"), "batchId" -> key("batchId"), "contentStatus" -> d.values.flatten.toMap)).toList)
   }
 
   def generateTelemetry(primaryFields: Map[String, AnyRef], generationFor: String, isCompleted: Boolean, activityId: String)
