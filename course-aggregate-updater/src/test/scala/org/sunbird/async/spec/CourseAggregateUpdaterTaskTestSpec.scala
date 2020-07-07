@@ -196,16 +196,16 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
     val event3ContentConsumption = readFromContentConsumptionTable(EventFixture.EVENT_2)
     event3ContentConsumption.forEach(col => {
       if (col.getObject("contentid") == "do_R2") {
-        col.getObject("viewcount") should be(2)
-        col.getObject("completedcount") should be(2)
+        col.getObject("viewcount") should be(2) // No start
+        col.getObject("completedcount") should be(2) // No end
       }
       if (col.getObject("contentid") == "do_R1") {
-        col.getObject("viewcount") should be(2)
-        col.getObject("completedcount") should be(2)
+        col.getObject("viewcount") should be(2) // No start
+        col.getObject("completedcount") should be(2) // No end
       }
       if (col.getObject("contentid") == "do_R3") {
-        col.getObject("viewcount") should be(2)
-        col.getObject("completedcount") should be(2)
+        col.getObject("viewcount") should be(2) // No start
+        col.getObject("completedcount") should be(2) // No end
       }
     })
 

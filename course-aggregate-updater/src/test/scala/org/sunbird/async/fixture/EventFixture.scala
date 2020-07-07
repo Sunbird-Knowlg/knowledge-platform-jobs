@@ -56,10 +56,10 @@ object EventFixture {
       |{"eid":"BE_JOB_REQUEST","ets":1563788371969,"mid":"LMS.1563788371969.590c5fa0-0ce8-46ed-bf6c-681c0a1fdac8","actor":{"type":"System","id":"Course Batch Updater"},"context":{"pdata":{"ver":"1.0","id":"org.sunbird.platform"}},"object":{"type":"CourseBatchEnrolment","id":"0126083288437637121_8454cb21-3ce9-4e30-85b5-fade097880d8"},"edata":{"contents":[{"contentId":"do_11260735471149056012299","status":2},{"contentId":"do_11260735471149056012300","status":1},{"contentId":"do_11260735471149056012301","status":1}],"action":"batch-enrolment-update","iteration":1,"batchId":"0126083288437637121","userId":"8454cb21-3ce9-4e30-85b5-fade097880d8","courseId":"do_1127212344324751361295"}}
       |""".stripMargin
 
-  val courseLeafNodes = Map("do_1127212344324751361295:leafnodes" -> List("do_11260735471149056012299", "do_11260735471149056012300", "do_11260735471149056012301"))
-  val unitLeafNodes_1 = Map("do_course_unit1:leafnodes" -> List("do_11260735471149056012299"))
-  val unitLeafNodes_2 = Map("do_course_unit2:leafnodes" -> List("do_11260735471149056012300"))
-  val unitLeafNodes_3 = Map("do_course_unit3:leafnodes" -> List("do_11260735471149056012301", "do_11260735471149056012300"))
+  val courseLeafNodes = Map("do_1127212344324751361295:do_1127212344324751361295:leafnodes" -> List("do_11260735471149056012299", "do_11260735471149056012300", "do_11260735471149056012301"))
+  val unitLeafNodes_1 = Map("do_1127212344324751361295:do_course_unit1:leafnodes" -> List("do_11260735471149056012299"))
+  val unitLeafNodes_2 = Map("do_1127212344324751361295:do_course_unit2:leafnodes" -> List("do_11260735471149056012300"))
+  val unitLeafNodes_3 = Map("do_1127212344324751361295:do_course_unit3:leafnodes" -> List("do_11260735471149056012301", "do_11260735471149056012300"))
 
   val ancestorsResource_1 = Map("do_1127212344324751361295:do_11260735471149056012299:ancestors" -> List("do_course_unit1", "do_1127212344324751361295"))
   val ancestorsResource_2 = Map("do_1127212344324751361295:do_11260735471149056012300:ancestors" -> List("do_course_unit2", "do_course_unit3", "do_1127212344324751361295"))
@@ -112,9 +112,9 @@ object EventFixture {
    *
    *
    */
-  val e2_courseLeafNodes = Map("course001:leafnodes" -> List("do_R1", "do_R3", "do_R2"))
-  val e2_unitLeafNodes_1 = Map("unit1:leafnodes" -> List("do_R1", "do_R3"))
-  val e2_unitLeafNodes_2 = Map("unit2:leafnodes" -> List("do_R2", "do_R3"))
+  val e2_courseLeafNodes = Map("course001:course001:leafnodes" -> List("do_R1", "do_R3", "do_R2"))
+  val e2_unitLeafNodes_1 = Map("course001:unit1:leafnodes" -> List("do_R1", "do_R3"))
+  val e2_unitLeafNodes_2 = Map("course001:unit2:leafnodes" -> List("do_R2", "do_R3"))
 
   val e2_ancestorsResource_1 = Map("course001:do_R1:ancestors" -> List("unit1", "course001"))
   val e2_ancestorsResource_2 = Map("course001:do_R3:ancestors" -> List("unit1", "unit2", "course001"))
@@ -154,9 +154,9 @@ object EventFixture {
    *
    */
 
-  val e3_courseLeafNodes = Map("C11:leafnodes" -> List("R11", "R22"))
-  val e3_unitLeafNodes_1 = Map("unit11:leafnodes" -> List("R11", "R22"))
-  val e3_unitLeafNodes_2 = Map("unit22:leafnodes" -> List("R11"))
+  val e3_courseLeafNodes = Map("C11:C11:leafnodes" -> List("R11", "R22"))
+  val e3_unitLeafNodes_1 = Map("C11:unit11:leafnodes" -> List("R11", "R22"))
+  val e3_unitLeafNodes_2 = Map("C11:unit22:leafnodes" -> List("R11"))
 
   val e3_ancestorsResource_1 = Map("C11:R11:ancestors" -> List("unit11", "C11"))
   val e3_ancestorsResource_2 = Map("C11:R11:ancestors" -> List("unit22", "C11"))
@@ -167,11 +167,6 @@ object EventFixture {
       |""".stripMargin
 
   val CASE_3:Map[String, AnyRef] = Map("event" -> EVENT_3, "cacheData" -> List(e3_courseLeafNodes, e3_unitLeafNodes_1, e3_unitLeafNodes_2,e3_ancestorsResource_1, e3_ancestorsResource_2) )
-  //===QUERY====BEGIN BATCH UPDATE sunbird_courses.activity_user_agg SET agg=agg+{'progress':1},agg_last_updated=agg_last_updated+{'progress':1593612137196} WHERE activity_id='do_course_unit3' AND activity_type='course-unit' AND context_id='cb:0126083288437637121' AND user_id='8454cb21-3ce9-4e30-85b5-fade097880d8';UPDATE sunbird_courses.activity_user_agg SET agg=agg+{'progress':1},agg_last_updated=agg_last_updated+{'progress':1593612137255} WHERE activity_id='do_course_unit2' AND activity_type='course-unit' AND context_id='cb:0126083288437637121' AND user_id='8454cb21-3ce9-4e30-85b5-fade097880d8';UPDATE sunbird_courses.activity_user_agg SET agg=agg+{'progress':1},agg_last_updated=agg_last_updated+{'progress':1593612137259} WHERE activity_id='do_course_unit1' AND activity_type='course-unit' AND context_id='cb:0126083288437637121' AND user_id='8454cb21-3ce9-4e30-85b5-fade097880d8';UPDATE sunbird_courses.activity_user_agg SET agg=agg+{'progress':2},agg_last_updated=agg_last_updated+{'progress':1593612137269} WHERE activity_id='do_1127212344324751361295' AND activity_type='course' AND context_id='cb:0126083288437637121' AND user_id='8454cb21-3ce9-4e30-85b5-fade097880d8';APPLY BATCH;
-  //===QUERY====BEGIN BATCH UPDATE sunbird_courses.activity_user_agg SET agg=agg+{'progress':2},agg_last_updated=agg_last_updated+{'progress':1593612137319} WHERE activity_id='unit2' AND activity_type='course-unit' AND context_id='cb:Batch1' AND user_id='user001';UPDATE sunbird_courses.activity_user_agg SET agg=agg+{'progress':2},agg_last_updated=agg_last_updated+{'progress':1593612137324} WHERE activity_id='unit1' AND activity_type='course-unit' AND context_id='cb:Batch1' AND user_id='user001';UPDATE sunbird_courses.activity_user_agg SET agg=agg+{'progress':3},agg_last_updated=agg_last_updated+{'progress':1593612137330} WHERE activity_id='course001' AND activity_type='course' AND context_id='cb:Batch1' AND user_id='user001';APPLY BATCH;
-  // UPDATE sunbird_courses.activity_user_agg SET agg=agg+{'progress':2},agg_last_updated=agg_last_updated+{'progress':1593612137319} WHERE activity_id='unit2' AND activity_type='course-unit' AND context_id='cb:Batch1' AND user_id='user001';UPDATE sunbird_courses.activity_user_agg SET agg=agg+{'progress':2},agg_last_updated=agg_last_updated+{'progress':1593612137324} WHERE activity_id='unit1' AND activity_type='course-unit' AND context_id='cb:Batch1' AND user_id='user001';UPDATE sunbird_courses.activity_user_agg SET agg=agg+{'progress':3},agg_last_updated=agg_last_updated+{'progress':1593612137330} WHERE activity_id='course001' AND activity_type='course' AND context_id='cb:Batch1' AND user_id='user001';UPDATE sunbird_courses.activity_user_agg SET agg=agg+{'progress':2},agg_last_updated=agg_last_updated+{'progress':1593612137346} WHERE activity_id='unit11' AND activity_type='course-unit' AND context_id='cb:B11' AND user_id='U11';UPDATE sunbird_courses.activity_user_agg SET agg=agg+{'progress':1},agg_last_updated=agg_last_updated+{'progress':1593612137343} WHERE activity_id='unit22' AND activity_type='course-unit' AND context_id='cb:B11' AND user_id='U11';UPDATE sunbird_courses.activity_user_agg SET agg=agg+{'progress':2},agg_last_updated=agg_last_updated+{'progress':1593612137349} WHERE activity_id='C11' AND activity_type='course' AND context_id='cb:B11' AND user_id='U11';APPLY BATCH;
-
-  //===QUERY====BEGIN BATCH UPDATE sunbird_courses.activity_user_agg SET agg=agg+{'progress':2},agg_last_updated=agg_last_updated+{'progress':1593612416135} WHERE activity_id='unit11' AND activity_type='course-unit' AND context_id='cb:B11' AND user_id='U11';UPDATE sunbird_courses.activity_user_agg SET agg=agg+{'progress':1},agg_last_updated=agg_last_updated+{'progress':1593612416079} WHERE activity_id='unit22' AND activity_type='course-unit' AND context_id='cb:B11' AND user_id='U11';UPDATE sunbird_courses.activity_user_agg SET agg=agg+{'progress':2},agg_last_updated=agg_last_updated+{'progress':1593612416145} WHERE activity_id='C11' AND activity_type='course' AND context_id='cb:B11' AND user_id='U11';APPLY BATCH;
 
   val EVENT_4: String =
     """

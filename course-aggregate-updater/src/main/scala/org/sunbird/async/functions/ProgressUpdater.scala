@@ -94,7 +94,7 @@ class ProgressUpdater(config: CourseAggregateUpdaterConfig)(implicit val stringT
     val courseId = csFromEvent.getOrElse(config.courseId, null).asInstanceOf[String]
     val batchId = csFromEvent.getOrElse(config.batchId, null).asInstanceOf[String]
     val userId = csFromEvent.getOrElse(config.userId, null).asInstanceOf[String]
-    val leafNodes = readFromCache(key = s"$courseId:${config.leafNodes}", metrics).asScala.toList
+    val leafNodes = readFromCache(key = s"$courseId:$courseId:${config.leafNodes}", metrics).asScala.toList
     if (leafNodes.isEmpty) {
       metrics.incCounter(config.failedEventCount)
       throw new Exception(s"LeafNodes are not available. courseId:$courseId")
@@ -124,7 +124,7 @@ class ProgressUpdater(config: CourseAggregateUpdaterConfig)(implicit val stringT
 
     // Get the leafNodes for the unit from the redis cache
     val unitLeafNodes: Map[String, List[String]] = contentAncestors.map(unitId => {
-      val leafNodes: List[String] = readFromCache(key = s"${unitId}:${config.leafNodes}", metrics).asScala.toList.distinct
+      val leafNodes: List[String] = readFromCache(key = s"$courseId:${unitId}:${config.leafNodes}", metrics).asScala.toList.distinct
       if (leafNodes.isEmpty) throw new Exception(s"Leaf nodes are not available for this unitId:$unitId and courseId:$courseId")
       (unitId -> leafNodes.distinct)
     }).toMap
@@ -167,7 +167,7 @@ class ProgressUpdater(config: CourseAggregateUpdaterConfig)(implicit val stringT
       if (batch.nonEmpty) {
         val totalElements = batch.slice(0, batchSize)
         totalElements.map(element => cqlBatch.add(element))
-        println("cqlBatch" + cqlBatch)
+        logger.debug("cqlBatch is" + cqlBatch.toString)
         val updateStatus = cassandraUtil.upsert(cqlBatch.toString)
         if (updateStatus) {
           metrics.incCounter(config.successEventCount)
@@ -299,13 +299,11 @@ class ProgressUpdater(config: CourseAggregateUpdaterConfig)(implicit val stringT
   : TelemetryEvent = {
     generationFor.toUpperCase() match {
       case "COURSE-UNIT" =>
-        println("generating for courseUnit")
         TelemetryEvent(actor = ActorObject(id = primaryFields.get("courseid").orNull.asInstanceOf[String]), edata = if (isCompleted) EventData(props = Array(new DateTime().getMillis.toString), `type` = "completed") else EventData(props = Array(activityId), `type` = "start"),
           context = EventContext(cdata = Array(Map("type" -> "CourseBatch", "id" -> primaryFields.get(config.batchId.toLowerCase()).orNull).asJava)),
           `object` = EventObject(rollup = Map("l1" -> primaryFields.get(config.courseId.toLowerCase()).orNull.asInstanceOf[String]).asJava, id = activityId, `type` = "CourseUnit")
         )
       case "CONTENTS" =>
-        println("Generating for contents")
         TelemetryEvent(
           actor = ActorObject(id = primaryFields.get(config.userId.toLowerCase()).orNull.asInstanceOf[String]),
           edata = if (isCompleted) EventData(props = Array(new DateTime().getMillis.toString), `type` = "completed") else EventData(props = Array(activityId), `type` = "start"),

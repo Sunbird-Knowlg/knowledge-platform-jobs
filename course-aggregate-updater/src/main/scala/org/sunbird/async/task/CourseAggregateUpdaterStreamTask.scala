@@ -23,9 +23,9 @@ class CourseAggregateUpdaterStreamTask(config: CourseAggregateUpdaterConfig, kaf
       env.addSource(kafkaConnector.kafkaMapSource(config.kafkaInputTopic), config.courseMetricsUpdaterConsumer)
         .uid(config.courseMetricsUpdaterConsumer).setParallelism(config.kafkaConsumerParallelism)
         .keyBy(x => x.get("partition").toString)
-        .timeWindow(Time.seconds(129))
+        .timeWindow(Time.seconds(config.windowTimingInSec))
         .process(new ProgressUpdater(config)).name(config.ProgressUpdaterFn).uid(config.ProgressUpdaterFn)
-        .setParallelism(1)
+        .setParallelism(config.progressUpdaterParallelism)
 
     progressStream.getSideOutput(config.auditEventOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaAuditEventTopic)).name(config.courseMetricsAuditProducer).uid(config.courseMetricsAuditProducer)
     env.execute(config.jobName)
