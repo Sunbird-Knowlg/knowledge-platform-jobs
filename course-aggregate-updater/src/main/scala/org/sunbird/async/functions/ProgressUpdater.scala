@@ -202,12 +202,12 @@ class ProgressUpdater(config: CourseAggregateUpdaterConfig)(implicit val stringT
   def getContentConsumptionQuery(contentConsumption: Progress, keySpace: String, table: String): List[Update.Where] = {
     contentConsumption.contentStats.map(content => {
       QueryBuilder.update(keySpace, table)
-        .`with`(QueryBuilder.set(config.viewcount, content.get(config.viewcount).getOrElse(1)))
-        .and(QueryBuilder.set(config.completedcount, content.get(config.completedcount).getOrElse(1)))
+        .`with`(QueryBuilder.set(config.viewcount, content.getOrElse(config.viewcount, 0)))
+        .and(QueryBuilder.set(config.completedcount, content.getOrElse(config.completedcount, 0)))
         .where(QueryBuilder.eq(config.batchId.toLowerCase(), contentConsumption.context_id))
         .and(QueryBuilder.eq(config.courseId.toLowerCase(), contentConsumption.activity_id))
         .and(QueryBuilder.eq(config.userId.toLowerCase(), contentConsumption.user_id))
-        .and(QueryBuilder.eq(config.contentId.toLowerCase(), content.get(config.contentId).getOrElse(null)))
+        .and(QueryBuilder.eq(config.contentId.toLowerCase(), content.get(config.contentId).orNull))
     })
 
   }
@@ -240,7 +240,7 @@ class ProgressUpdater(config: CourseAggregateUpdaterConfig)(implicit val stringT
     val isCompleted: Boolean = completedContent.size == leafNodes.size
 
     val contentStats = mergedContentStatus.map(content => {
-      val completedCount = if (content._2 == config.completedStatusCode) contentStatusFromDB.getOrElse(content._1, Map()).get(config.completedcount).getOrElse(0).asInstanceOf[Int] + 1 else contentStatusFromDB.get(content._1).getOrElse(Map()).get(config.completedcount).getOrElse(0).asInstanceOf[Int]
+      val completedCount = if (content._2 == config.completedStatusCode) contentStatusFromDB.getOrElse(content._1, Map()).getOrElse(config.completedcount, 0).asInstanceOf[Int] + 1 else contentStatusFromDB.getOrElse(content._1, Map()).getOrElse(config.completedcount, 0).asInstanceOf[Int]
       val viewCount = contentStatusFromDB.getOrElse(content._1, Map()).getOrElse(config.viewcount, 0).asInstanceOf[Int] + 1
       Map(config.contentId -> content._1, config.status -> content._2, config.completedcount -> completedCount, config.viewcount -> viewCount)
     }).toList
