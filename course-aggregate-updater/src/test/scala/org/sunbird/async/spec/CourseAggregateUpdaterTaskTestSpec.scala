@@ -91,23 +91,19 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
     new CourseAggregateUpdaterStreamTask(courseAggregatorConfig, mockKafkaUtil).process()
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.batchEnrolmentUpdateEventCount}").getValue() should be(3)
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.dbReadCount}").getValue() should be(2) // 10
-    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.dbUpdateCount}").getValue() should be(4) // 3 (This should happend depending on the batch size)
+    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.dbUpdateCount}").getValue() should be(5) // 3 (This should happend depending on the batch size)
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.cacheHitCount}").getValue() should be(18)
-    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.successEventCount}").getValue() should be(4)
+    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.successEventCount}").getValue() should be(5)
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.failedEventCount}").getValue() should be(0)
 
-    auditEventSink.values.size() should be(15)
-    auditEventSink.values.forEach(event =>{
+    auditEventSink.values.size() should be(10)
+    auditEventSink.values.forEach(event => {
       println("AUDIT_TELEMETRY_EVENT" + event)
     })
 
     val event1Progress = readFromCassandra(EventFixture.EVENT_1)
-    println("event1R" + event1Progress)
-    println("event2R" + readFromCassandra(EventFixture.EVENT_2))
-    println("event3R" + readFromCassandra(EventFixture.EVENT_3))
     event1Progress.size() should be(4)
     event1Progress.forEach(col => {
-      println("event1" + col)
       if (col.getObject("activity_id") == "do_course_unit1") {
         col.getObject("activity_type") should be("course-unit")
         col.getObject("agg").asInstanceOf[util.Map[String, Int]].get("progress") should equal(1)
@@ -128,11 +124,25 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
       }
     })
 
+    val event1ContentConsumption = readFromContentConsumptionTable(EventFixture.EVENT_1)
+    event1ContentConsumption.forEach(col => {
+      if (col.getObject("contentid") == "do_11260735471149056012299") {
+        col.getObject("viewcount") should be(4) // No start telemetry
+        col.getObject("completedcount") should be(2) // No end telemetry
+      }
+      if (col.getObject("contentid") == "do_11260735471149056012300") {
+        col.getObject("viewcount") should be(3) // No start telemetry
+        col.getObject("completedcount") should be(3) // No end telemetry
+      }
+      if (col.getObject("contentid") == "do_11260735471149056012301") {
+        col.getObject("viewcount") should be(1) // Start telemetry
+        col.getObject("completedcount") should be(1) // End telemetry
+      }
+    })
 
     val event2Progress = readFromCassandra(EventFixture.EVENT_2)
     event2Progress.size() should be(3)
     event2Progress.forEach(col => {
-      println("event2" + col)
       if (col.getObject("activity_id") == "unit11") {
         col.getObject("activity_type") should be("course-unit")
         println("aggMap", col.getObject("agg"))
@@ -151,10 +161,21 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
     })
 
 
+    val event2ContentConsumption = readFromContentConsumptionTable(EventFixture.EVENT_2)
+    event2ContentConsumption.forEach(col => {
+      if (col.getObject("contentid") == "R11") {
+        col.getObject("viewcount") should be(1) // No start
+        col.getObject("completedcount") should be(1) // end
+      }
+      if (col.getObject("contentid") == "R22") {
+        col.getObject("viewcount") should be(1) // No start
+        col.getObject("completedcount") should be(1) // End
+      }
+    })
+
     val event3Progress = readFromCassandra(EventFixture.EVENT_3)
     event3Progress.size() should be(3)
     event3Progress.forEach(col => {
-      println("event3" + col)
       if (col.getObject("activity_id") == "unit1") {
         col.getObject("activity_type") should be("course-unit")
         println("aggMap", col.getObject("agg"))
@@ -169,6 +190,22 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
         col.getObject("activity_type") should be("course")
         println("aggMap", col.getObject("agg"))
         col.getObject("agg").asInstanceOf[util.Map[String, Int]].get("progress") should equal(3)
+      }
+    })
+
+    val event3ContentConsumption = readFromContentConsumptionTable(EventFixture.EVENT_2)
+    event3ContentConsumption.forEach(col => {
+      if (col.getObject("contentid") == "do_R2") {
+        col.getObject("viewcount") should be(2)
+        col.getObject("completedcount") should be(2)
+      }
+      if (col.getObject("contentid") == "do_R1") {
+        col.getObject("viewcount") should be(2)
+        col.getObject("completedcount") should be(2)
+      }
+      if (col.getObject("contentid") == "do_R3") {
+        col.getObject("viewcount") should be(2)
+        col.getObject("completedcount") should be(2)
       }
     })
 
@@ -193,6 +230,12 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
   def readFromCassandra(event: String): util.List[Row] = {
     val event1_primaryCols = getPrimaryCols(gson.fromJson(event, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]].asScala.asJava)
     val query = s"select * from sunbird_courses.activity_user_agg where context_id='cb:${event1_primaryCols.get("batchid").get}' and user_id='${event1_primaryCols.get("userid").get}' ALLOW FILTERING;"
+    cassandraUtil.find(query)
+  }
+
+  def readFromContentConsumptionTable(event: String): util.List[Row] = {
+    val event1_primaryCols = getPrimaryCols(gson.fromJson(event, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]].asScala.asJava)
+    val query = s"select * from sunbird_courses.user_content_consumption where userid='${event1_primaryCols.get("userid").get}' and batchid='${event1_primaryCols.get("batchid").get}' and courseid='${event1_primaryCols.get("courseid").get}' ALLOW FILTERING;"
     cassandraUtil.find(query)
   }
 
