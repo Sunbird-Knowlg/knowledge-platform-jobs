@@ -69,8 +69,8 @@ class ProgressUpdater(config: CourseAggregateUpdaterConfig)(implicit val stringT
         progressBatch += getUserAggQuery(course._2.asInstanceOf[Progress], config.dbKeyspace, config.dbUserActivityAggTable)
         getContentConsumptionQuery(course._2.asInstanceOf[Progress], config.dbKeyspace, config.dbContentConsumptionTable).map(query => contentConsumptionBatch += query) // create a content consumption query
         course._2.contentStats.map(stats => {
-          if (stats.getOrElse(config.viewcount, 0).asInstanceOf[Int] == 0) context.output(config.auditEventOutputTag, generateTelemetry(csFromEvent, config.contents, isCompleted = false, course._2.activity_id)) // Generate start event
-          if (stats.getOrElse(config.completedcount, 0).asInstanceOf[Int] == 1) context.output(config.auditEventOutputTag, generateTelemetry(csFromEvent, config.contents, isCompleted = true, course._2.activity_id)) // Generate end event
+          if (stats.getOrElse(config.viewcount, 0).asInstanceOf[Int] == 0) context.output(config.auditEventOutputTag, gson.toJson(generateTelemetry(csFromEvent, config.contents, isCompleted = false, course._2.activity_id))) // Generate start event
+          if (stats.getOrElse(config.completedcount, 0).asInstanceOf[Int] == 1) context.output(config.auditEventOutputTag, gson.toJson(generateTelemetry(csFromEvent, config.contents, isCompleted = true, course._2.activity_id))) // Generate end event
         })
       }))
 
