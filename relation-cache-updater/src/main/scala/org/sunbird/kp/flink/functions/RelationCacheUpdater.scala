@@ -123,6 +123,7 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
                 .forEach(child => {
                     getRecursiveAncenstors(child.get("identifier").asInstanceOf[String], child, ancestorsMap, ancestors, newFlag)
                 })
+            ancestors.remove(identifier)
         }
     }
 
