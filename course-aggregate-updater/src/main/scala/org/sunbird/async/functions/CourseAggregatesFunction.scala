@@ -100,7 +100,7 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
       metrics.incCounter(config.failedEventCount)
       throw new Exception(s"LeafNodes are not available. courseId:$courseId")
     }
-    val courseContentsStatusFromDb = csFromDb.filter(cs => cs(config.courseId).asInstanceOf[String] == courseId && cs(config.batchId).asInstanceOf[String] == batchId && cs(config.userId).asInstanceOf[String] == userId)
+    val courseContentsStatusFromDb = csFromDb.filter(cs => StringUtils.equals(cs(config.courseId).asInstanceOf[String], courseId) && StringUtils.equals(cs(config.batchId).asInstanceOf[String], batchId) && StringUtils.equals(cs(config.userId).asInstanceOf[String], userId))
     Map(courseId -> computeProgress(Map(config.activityType -> config.courseActivityType, config.activityUser -> userId,
       config.contextId -> batchId, config.activityId -> courseId), leafNodes,
       courseContentsStatusFromDb.headOption.getOrElse(Map[String, AnyRef]()), csFromEvent(config.contentStatus).asInstanceOf[Map[String, AnyRef]]))
@@ -133,7 +133,7 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
     // Get the progress for each unit node
     unitLeafNodes.map(unitLeafMap => {
       val cols = Map(config.activityType -> config.unitActivityType, config.activityUser -> userId, config.contextId -> batchId, config.activityId -> s"${unitLeafMap._1}")
-      val courseContentsStatusFromDb = csFromDb.filter(cs => cs(config.courseId).asInstanceOf[String] == courseId && cs(config.batchId).asInstanceOf[String] == batchId && cs(config.userId).asInstanceOf[String] == userId)
+      val courseContentsStatusFromDb = csFromDb.filter(cs => StringUtils.equals(cs(config.courseId).asInstanceOf[String], courseId) && StringUtils.equals(cs(config.batchId).asInstanceOf[String], batchId) && StringUtils.equals(cs(config.userId).asInstanceOf[String], userId))
       val progress = computeProgress(cols, unitLeafMap._2, courseContentsStatusFromDb.headOption.getOrElse(Map[String, AnyRef]()), contentStatus)
       logger.info(s"Unit: ${unitLeafMap._1} completion status: ${progress.isCompleted}")
       context.output(config.auditEventOutputTag, gson.toJson(generateTelemetry(csFromEvent, generationFor = config.unitActivityType, progress.isCompleted, unitLeafMap._1)))
