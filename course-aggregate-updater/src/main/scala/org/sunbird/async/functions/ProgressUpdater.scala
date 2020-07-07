@@ -94,7 +94,7 @@ class ProgressUpdater(config: CourseAggregateUpdaterConfig)(implicit val stringT
     val courseId = csFromEvent.getOrElse(config.courseId, null).asInstanceOf[String]
     val batchId = csFromEvent.getOrElse(config.batchId, null).asInstanceOf[String]
     val userId = csFromEvent.getOrElse(config.userId, null).asInstanceOf[String]
-    val leafNodes = readFromCache(key = s"$courseId:$courseId:${config.leafNodes}", metrics).asScala.toList
+    val leafNodes = readFromCache(key = s"$courseId:$courseId:${config.leafNodes}", metrics)
     if (leafNodes.isEmpty) {
       metrics.incCounter(config.failedEventCount)
       throw new Exception(s"LeafNodes are not available. courseId:$courseId")
@@ -119,12 +119,12 @@ class ProgressUpdater(config: CourseAggregateUpdaterConfig)(implicit val stringT
     val contentStatus: Map[String, AnyRef] = csFromEvent.getOrElse(config.contentStatus, null).asInstanceOf[Map[String, AnyRef]]
     // Get the ancestors for the specific resource
     val contentAncestors: List[String] = contentStatus.map(contentId => {
-      contentId._1 -> readFromCache(key = s"$courseId:${contentId._1}:${config.ancestors}", metrics).asScala.filter(_ > courseId).toList.distinct
+      contentId._1 -> readFromCache(key = s"$courseId:${contentId._1}:${config.ancestors}", metrics).filter(_ > courseId).distinct
     }).values.flatten.toList.distinct
 
     // Get the leafNodes for the unit from the redis cache
     val unitLeafNodes: Map[String, List[String]] = contentAncestors.map(unitId => {
-      val leafNodes: List[String] = readFromCache(key = s"$courseId:${unitId}:${config.leafNodes}", metrics).asScala.toList.distinct
+      val leafNodes: List[String] = readFromCache(key = s"$courseId:${unitId}:${config.leafNodes}", metrics).distinct
       if (leafNodes.isEmpty) throw new Exception(s"Leaf nodes are not available for this unitId:$unitId and courseId:$courseId")
       (unitId -> leafNodes.distinct)
     }).toMap
@@ -180,9 +180,9 @@ class ProgressUpdater(config: CourseAggregateUpdaterConfig)(implicit val stringT
     })
   }
 
-  def readFromCache(key: String, metrics: Metrics): util.List[String] = {
+  def readFromCache(key: String, metrics: Metrics): List[String] = {
     metrics.incCounter(config.cacheHitCount)
-    cache.lRangeWithRetry(key)
+    cache.sMembers(key).asScala.toList
   }
 
   def getUserAggQuery(progress: Progress, keySpace: String, table: String):

@@ -220,7 +220,7 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
       data.asInstanceOf[List[Map[String, AnyRef]]].map(cacheData => {
         cacheData.map(x => {
           x._2.asInstanceOf[List[String]].foreach(d => {
-            jedis.lpush(x._1, d)
+            jedis.sadd(x._1, d)
           })
         })
       })

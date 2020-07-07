@@ -123,6 +123,9 @@ class DataCache(val config: BaseJobConfig, val redisConnect: RedisConnect, val d
   def lRange(key: String, startIndex: Int, endIndex: Int): util.List[String] = {
      redisConnection.lrange(key, startIndex, endIndex)
   }
+  def sMembers(key: String): util.Set[String] = {
+    redisConnection.smembers(key)
+  }
 
   def lRangeWithRetry(key: String): util.List[String] = {
     try {
@@ -135,6 +138,19 @@ class DataCache(val config: BaseJobConfig, val redisConnect: RedisConnect, val d
         lRange(key, 0, -1)
     }
   }
+
+  def getKeyMembers(key: String): util.Set[String] = {
+    try {
+      sMembers(key)
+    } catch {
+      case ex: JedisException =>
+        logger.error("Exception when retrieving data from redis cache", ex)
+        this.redisConnection.close()
+        this.redisConnection = redisConnect.getConnection(dbIndex)
+        sMembers(key)
+    }
+  }
+
 }
 
 // $COVERAGE-ON$
