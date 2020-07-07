@@ -62,7 +62,7 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
     val csFromEvents: List[Map[String, AnyRef]] = groupedData.map(ed => ed ++ Map(config.contentStatus -> getContentStatusFromEvent(ed(config.contents).asInstanceOf[List[Map[String, AnyRef]]])))
 
     // Fetch the content status from the table in batch format
-    val csFromDb: List[Map[String, AnyRef]] = getContentStatusFromDB(eDataBatch.to[ListBuffer], config.maxQueryReadBatchSize, metrics)
+    val csFromDb: List[Map[String, AnyRef]] = getContentStatusFromDB(eDataBatch, metrics)
 
     // CourseProgress
     csFromEvents.map(csFromEvent => getCourseProgress(csFromEvent, csFromDb, metrics)
@@ -272,25 +272,13 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
    * Ex: List(Map("courseId" -> "do_43795", batchId -> "batch1", userId->"user001", contentStatus -> Map("C1"->2, "C2" ->1)))
    *
    */
-  def getContentStatusFromDB(eDataBatch: ListBuffer[Map[String, AnyRef]], maxReadBatchSize: Int, metrics: Metrics): List[Map[String, AnyRef]] = {
-    val csFromDb = new ListBuffer[Map[String, AnyRef]]()
-    eDataBatch.foreach(edata => {
-      if (eDataBatch.nonEmpty) {
-        val eDataSubBatch = eDataBatch.slice(0, maxReadBatchSize) // Max read query
-        csFromDb.appendAll(read(Map(config.userId.toLowerCase() -> eDataSubBatch.map(x => x(config.userId)).toList, config.batchId.toLowerCase -> eDataSubBatch.map(x => x(config.batchId)).toList, config.courseId.toLowerCase -> eDataSubBatch.map(x => x(config.courseId)).toList)))
-        eDataBatch.remove(0, eDataSubBatch.size)
-      }
-    })
-
-    def read(primaryFields: Map[String, AnyRef]): List[Map[String, AnyRef]] = {
-      val records = Option(readFromDB(primaryFields, config.dbKeyspace, config.dbContentConsumptionTable, metrics))
-      records.map(record => record.groupBy(col => Map(config.batchId -> col.getObject(config.batchId.toLowerCase()).asInstanceOf[String], config.userId -> col.getObject(config.userId.toLowerCase()).asInstanceOf[String], config.courseId -> col.getObject(config.courseId.toLowerCase()).asInstanceOf[String])))
-        .map(groupedRecords => groupedRecords.map(groupedRecord => Map(groupedRecord._1.asInstanceOf[Map[String, String]]
-          -> groupedRecord._2.flatMap(mapRec => Map(mapRec.getObject(config.contentId.toLowerCase()).asInstanceOf[String] -> Map(config.status -> mapRec.getObject(config.status), config.viewcount -> mapRec.getObject(config.viewcount), config.completedcount -> mapRec.getObject(config.completedcount)))).toMap))).toList.flatten
-        .flatMap(mapObj => mapObj.keySet.map(key => Map(config.userId -> key(config.userId), config.courseId -> key(config.courseId), config.batchId -> key(config.batchId), config.contentStatus -> mapObj.values.flatten.toMap)).toList)
-    }
-
-    csFromDb.toList
+  def getContentStatusFromDB(eDataBatch: List[Map[String, AnyRef]], metrics: Metrics): List[Map[String, AnyRef]] = {
+    val primaryFields = Map(config.userId.toLowerCase() -> eDataBatch.map(x => x(config.userId)).toList, config.batchId.toLowerCase -> eDataBatch.map(x => x(config.batchId)).toList, config.courseId.toLowerCase -> eDataBatch.map(x => x(config.courseId)).toList)
+    val records = Option(readFromDB(primaryFields, config.dbKeyspace, config.dbContentConsumptionTable, metrics))
+    records.map(record => record.groupBy(col => Map(config.batchId -> col.getObject(config.batchId.toLowerCase()).asInstanceOf[String], config.userId -> col.getObject(config.userId.toLowerCase()).asInstanceOf[String], config.courseId -> col.getObject(config.courseId.toLowerCase()).asInstanceOf[String])))
+      .map(groupedRecords => groupedRecords.map(groupedRecord => Map(groupedRecord._1.asInstanceOf[Map[String, String]]
+        -> groupedRecord._2.flatMap(mapRec => Map(mapRec.getObject(config.contentId.toLowerCase()).asInstanceOf[String] -> Map(config.status -> mapRec.getObject(config.status), config.viewcount -> mapRec.getObject(config.viewcount), config.completedcount -> mapRec.getObject(config.completedcount)))).toMap))).toList.flatten
+      .flatMap(mapObj => mapObj.keySet.map(key => Map(config.userId -> key(config.userId), config.courseId -> key(config.courseId), config.batchId -> key(config.batchId), config.contentStatus -> mapObj.values.flatten.toMap)).toList)
   }
 
   /**
