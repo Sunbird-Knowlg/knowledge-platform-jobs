@@ -101,28 +101,30 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
       println("AUDIT_TELEMETRY_EVENT" + event)
     })
 
-    val event1Progress = readFromCassandra(EventFixture.EVENT_2)
-    event1Progress.size() should be(3)
+    val event1Progress = readFromCassandra(EventFixture.EVENT_1)
+    println("event1R" + event1Progress)
+    println("event2R" + readFromCassandra(EventFixture.EVENT_2))
+    println("event3R" + readFromCassandra(EventFixture.EVENT_3))
+    event1Progress.size() should be(4)
     event1Progress.forEach(col => {
+      println("event1" + col)
       if (col.getObject("activity_id") == "do_course_unit1") {
         col.getObject("activity_type") should be("course-unit")
-        println("aggMap", col.getObject("agg"))
-        col.getObject("activity_type") should be("{'progress': 1}")
+        col.getObject("agg").asInstanceOf[util.Map[String, Int]].get("progress") should equal(1)
       }
       if (col.getObject("activity_id") == "do_course_unit2") {
         col.getObject("activity_type") should be("course-unit")
-        println("aggMap", col.getObject("agg"))
-        col.getObject("activity_type") should be("{'progress': 1}")
+        col.getObject("agg").asInstanceOf[util.Map[String, Int]].get("progress") should equal(1)
       }
       if (col.getObject("activity_id") == "do_course_unit3") {
         col.getObject("activity_type") should be("course-unit")
-        println("aggMap", col.getObject("agg"))
-        col.getObject("activity_type") should be("{'progress': 1}")
+        col.getObject("agg").asInstanceOf[util.Map[String, Int]].get("progress") should equal(1)
       }
       if (col.getObject("activity_id") == "do_1127212344324751361295") {
         col.getObject("activity_type") should be("course")
         println("aggMap", col.getObject("agg"))
-        col.getObject("activity_type") should be("{'progress': 2}")
+        col.getObject("agg").asInstanceOf[util.Map[String, Int]].get("progress") should equal(2)
+
       }
     })
 
@@ -130,20 +132,21 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
     val event2Progress = readFromCassandra(EventFixture.EVENT_2)
     event2Progress.size() should be(3)
     event2Progress.forEach(col => {
+      println("event2" + col)
       if (col.getObject("activity_id") == "unit11") {
         col.getObject("activity_type") should be("course-unit")
         println("aggMap", col.getObject("agg"))
-        col.getObject("activity_type") should be("{'progress': 2}")
+        col.getObject("agg").asInstanceOf[util.Map[String, Int]].get("progress") should equal(2)
       }
       if (col.getObject("activity_id") == "unit22") {
         col.getObject("activity_type") should be("course-unit")
         println("aggMap", col.getObject("agg"))
-        col.getObject("activity_type") should be("{'progress': 1}")
+        col.getObject("agg").asInstanceOf[util.Map[String, Int]].get("progress") should equal(1)
       }
       if (col.getObject("activity_id") == "C11") {
         col.getObject("activity_type") should be("course")
         println("aggMap", col.getObject("agg"))
-        col.getObject("activity_type") should be("{'progress': 2}")
+        col.getObject("agg").asInstanceOf[util.Map[String, Int]].get("progress") should equal(2)
       }
     })
 
@@ -151,20 +154,21 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
     val event3Progress = readFromCassandra(EventFixture.EVENT_3)
     event3Progress.size() should be(3)
     event3Progress.forEach(col => {
+      println("event3" + col)
       if (col.getObject("activity_id") == "unit1") {
         col.getObject("activity_type") should be("course-unit")
         println("aggMap", col.getObject("agg"))
-        col.getObject("activity_type") should be("{'progress': 2}")
+        col.getObject("agg").asInstanceOf[util.Map[String, Int]].get("progress") should equal(2)
       }
       if (col.getObject("activity_id") == "unit2") {
         col.getObject("activity_type") should be("course-unit")
         println("aggMap", col.getObject("agg"))
-        col.getObject("activity_type") should be("{'progress': 2}")
+        col.getObject("agg").asInstanceOf[util.Map[String, Int]].get("progress") should equal(2)
       }
       if (col.getObject("activity_id") == "course001") {
         col.getObject("activity_type") should be("course")
         println("aggMap", col.getObject("agg"))
-        col.getObject("activity_type") should be("{'progress': 3}")
+        col.getObject("agg").asInstanceOf[util.Map[String, Int]].get("progress") should equal(3)
       }
     })
 
@@ -207,7 +211,7 @@ class CourseAggregatorMapSource extends SourceFunction[util.Map[String, AnyRef]]
     val eventMap1 = gson.fromJson(EventFixture.EVENT_1, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]].asScala ++ Map("partition" -> 0.asInstanceOf[AnyRef])
     val eventMap2 = gson.fromJson(EventFixture.EVENT_2, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]].asScala ++ Map("partition" -> 0.asInstanceOf[AnyRef])
     val eventMap3 = gson.fromJson(EventFixture.EVENT_3, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]].asScala ++ Map("partition" -> 0.asInstanceOf[AnyRef])
-   // val eventMap4 = gson.fromJson(EventFixture.EVENT_4, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]].asScala ++ Map("partition" -> 0.asInstanceOf[AnyRef])
+    // val eventMap4 = gson.fromJson(EventFixture.EVENT_4, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]].asScala ++ Map("partition" -> 0.asInstanceOf[AnyRef])
     ctx.collect(eventMap1.asJava)
     ctx.collect(eventMap2.asJava)
     ctx.collect(eventMap3.asJava)

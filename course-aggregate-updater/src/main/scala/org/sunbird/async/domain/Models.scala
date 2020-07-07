@@ -41,7 +41,7 @@ case class Progress(activity_type: String,
                     agg: Map[String, Int],
                     agg_last_updated: Map[String, Long],
                     isCompleted: Boolean,
-                    contentStatus: Option[Map[String, Int]]
+                    contentStats: List[Map[String, Any]]
                    )
 
 
