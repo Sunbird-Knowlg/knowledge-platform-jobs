@@ -33,7 +33,7 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
     override def open(parameters: Configuration): Unit = {
         super.open(parameters)
         cassandraUtil = new CassandraUtil(config.dbHost, config.dbPort)
-        dataCache = new DataCache(config, new RedisConnect(config), config.leafNodesStore, List())
+        dataCache = new DataCache(config, new RedisConnect(config), config.relationCacheStore, List())
         dataCache.init()
     }
 
