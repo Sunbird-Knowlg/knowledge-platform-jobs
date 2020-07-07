@@ -1,11 +1,8 @@
 package org.sunbird.kp.flink.functions
 
 import java.lang.reflect.Type
-import java.util
 
-import com.datastax.driver.core.Row
-import com.datastax.driver.core.querybuilder.{Clause, QueryBuilder, Select}
-import com.google.gson.Gson
+import com.datastax.driver.core.querybuilder.QueryBuilder
 import com.google.gson.reflect.TypeToken
 import org.apache.commons.collections.{CollectionUtils, MapUtils}
 import org.apache.commons.lang3.StringUtils
@@ -25,10 +22,10 @@ import scala.collection.JavaConverters._
 class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
                           (implicit val stringTypeInfo: TypeInformation[String],
                            @transient var cassandraUtil: CassandraUtil = null)
-    extends BaseProcessFunction[util.Map[String, AnyRef], String](config) {
+    extends BaseProcessFunction[java.util.Map[String, AnyRef], String](config) {
 
     private[this] val logger = LoggerFactory.getLogger(classOf[RelationCacheUpdater])
-    val mapType: Type = new TypeToken[util.Map[String, AnyRef]]() {}.getType
+    val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
     private var dataCache: DataCache = _
     lazy private val mapper: ObjectMapper = new ObjectMapper()
 
@@ -45,28 +42,31 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
     }
 
     override def processElement(event: java.util.Map[String, AnyRef], context: ProcessFunction[java.util.Map[String, AnyRef], String]#Context, metrics: Metrics): Unit = {
-        println("Got event:" + event)
         val eData = event.get("edata").asInstanceOf[java.util.Map[String, AnyRef]]
         if (isValidEvent(eData)) {
             val rootId = eData.get("id").asInstanceOf[String]
+            logger.info("Processing - identifier: " + rootId)
             val hierarchy = getHierarchy(rootId)
             if (MapUtils.isNotEmpty(hierarchy)) {
                 val leafNodesMap = getLeafNodes(rootId, hierarchy)
+                logger.info("Leaf-nodes cache updating for: " + leafNodesMap.size)
                 storeDataInCache(rootId, "leafnodes", leafNodesMap)
                 val ancestorsMap = getAncestors(rootId, hierarchy)
+                logger.info("Ancestors cache updating for: "+ ancestorsMap.size)
                 storeDataInCache(rootId, "ancestors", ancestorsMap)
+                metrics.incCounter(config.successEventCount)
             } else {
-                logger.warn("Hierarchy is empty for rootId: " + rootId)
-                // TODO: skipped counter inc.
+                logger.warn("Hierarchy Empty: " + rootId)
+                metrics.incCounter(config.skippedEventCount)
             }
         } else {
-            // TODO: skipped counter inc.
+            metrics.incCounter(config.skippedEventCount)
         }
         metrics.incCounter(config.totalEventsCount)
     }
 
     override def metricsList(): List[String] = {
-        List(config.successEventCount, config.failedEventCount, config.totalEventsCount)
+        List(config.successEventCount, config.failedEventCount, config.skippedEventCount, config.totalEventsCount)
     }
 
     private def isValidEvent(eData: java.util.Map[String, AnyRef]): Boolean = {
@@ -91,7 +91,7 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
         if (StringUtils.equalsIgnoreCase(mimeType, "application/vnd.ekstep.content-collection")) {
             val leafNodes = hierarchy.getOrDefault("leafNodes", java.util.Arrays.asList()).asInstanceOf[java.util.List[String]].asScala.toList
             val map: Map[String, List[String]] = if (leafNodes.nonEmpty) Map() + (identifier -> leafNodes) else Map()
-            val children = hierarchy.getOrDefault("children", java.util.Arrays.asList()).asInstanceOf[java.util.List[java.util.Map[String, AnyRef]]]
+            val children = getChildren(hierarchy)
             val childLeafNodesMap = if (CollectionUtils.isNotEmpty(children)) {
                 children.asScala.map(child => {
                     val childId = child.get("identifier").asInstanceOf[String]
@@ -107,20 +107,25 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
         val isCollection = (StringUtils.equalsIgnoreCase(mimeType, "application/vnd.ekstep.content-collection"))
         val ancestors = if (isCollection) identifier :: parents else parents
         if (isCollection) {
-            val children = hierarchy.getOrDefault("children", java.util.Arrays.asList()).asInstanceOf[java.util.List[java.util.Map[String, AnyRef]]]
-            // TODO - merge repeated child ancestors.
-            children.asScala.map(child => {
+            getChildren(hierarchy).asScala.map(child => {
                 val childId = child.get("identifier").asInstanceOf[String]
                 getAncestors(childId, child, ancestors)
-            }).flatten.toMap
+            }).filter(m => m.nonEmpty).reduce((a,b) => {
+                // Here we are merging the Resource ancestors where it is used multiple times - Functional.
+                // convert maps to seq, to keep duplicate keys and concat then group by key - Code explanation.
+                val grouped = (a.toSeq ++ b.toSeq).groupBy(_._1)
+                grouped.mapValues(_.map(_._2).toList.flatten.distinct)
+            })
         } else {
             Map(identifier -> parents)
         }
     }
 
+    private def getChildren(hierarchy: java.util.Map[String, AnyRef]) = hierarchy.getOrDefault("children", java.util.Arrays.asList()).asInstanceOf[java.util.List[java.util.Map[String, AnyRef]]]
+
     private def storeDataInCache(rootId: String, suffix: String, leafNodesMap: Map[String, List[String]]) = {
         val finalSuffix = if (StringUtils.isNotBlank(suffix)) ":" + suffix else ""
-        leafNodesMap.foreach(each => dataCache.addList(each._1 + finalSuffix, each._2))
+        leafNodesMap.foreach(each => dataCache.addList(rootId + ":" +each._1 + finalSuffix, each._2))
     }
 
     def readHierarchyFromDb(identifier: String): String = {

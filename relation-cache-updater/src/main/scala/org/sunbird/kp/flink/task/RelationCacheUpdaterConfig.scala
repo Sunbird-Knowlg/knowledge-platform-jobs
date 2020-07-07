@@ -25,6 +25,7 @@ class RelationCacheUpdaterConfig(override val config: Config) extends BaseJobCon
   val totalEventsCount = "total-events-count"
   val successEventCount = "success-events-count"
   val failedEventCount = "failed-events-count"
+  val skippedEventCount = "skipped-event-count"
 
   // Tags
   val failedEventOutputTagName = "failed-events"
