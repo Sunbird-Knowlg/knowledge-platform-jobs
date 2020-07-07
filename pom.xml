@@ -20,7 +20,7 @@
 	<url>https://sunbird.org/</url>
 
 	<modules>
-		<module>core-job</module>
+		<module>jobs-core</module>
 		<module>course-aggregate-updater</module>
 	</modules>
 

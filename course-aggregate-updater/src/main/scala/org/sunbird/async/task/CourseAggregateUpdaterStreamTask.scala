@@ -11,7 +11,7 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.sunbird.async.core.job.FlinkKafkaConnector
 import org.sunbird.async.core.util.FlinkUtil
-import org.sunbird.async.functions.ProgressUpdater
+import org.sunbird.async.functions.CourseAggregatesFunction
 
 
 class CourseAggregateUpdaterStreamTask(config: CourseAggregateUpdaterConfig, kafkaConnector: FlinkKafkaConnector) {
@@ -24,7 +24,7 @@ class CourseAggregateUpdaterStreamTask(config: CourseAggregateUpdaterConfig, kaf
         .uid(config.courseMetricsUpdaterConsumer).setParallelism(config.kafkaConsumerParallelism)
         .keyBy(x => x.get("partition").toString)
         .timeWindow(Time.seconds(config.windowTimingInSec))
-        .process(new ProgressUpdater(config)).name(config.ProgressUpdaterFn).uid(config.ProgressUpdaterFn)
+        .process(new CourseAggregatesFunction(config)).name(config.ProgressUpdaterFn).uid(config.ProgressUpdaterFn)
         .setParallelism(config.progressUpdaterParallelism)
 
     progressStream.getSideOutput(config.auditEventOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaAuditEventTopic)).name(config.courseMetricsAuditProducer).uid(config.courseMetricsAuditProducer)

@@ -40,7 +40,7 @@ class CourseAggregateUpdaterConfig(override val config: Config) extends BaseJobC
   val dbPort: Int = config.getInt("lms-cassandra.port")
 
   // Redis Configurations
-  val nodeStore: Int = config.getInt("redis.database.nodes.id") // Both LeafNodes And Ancestor nodes
+  val nodeStore: Int = config.getInt("redis.database.relationCache.id") // Both LeafNodes And Ancestor nodes
 
   // Tags
   val failedEventOutputTagName = "failed-events"
