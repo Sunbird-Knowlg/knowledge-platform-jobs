@@ -9,7 +9,8 @@ import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.streaming.connectors.kafka.{KafkaDeserializationSchema, KafkaSerializationSchema}
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.producer.ProducerRecord
-import collection.JavaConverters._
+
+import scala.collection.JavaConverters._
 
 class MapDeserializationSchema extends KafkaDeserializationSchema[util.Map[String, AnyRef]] {
 
