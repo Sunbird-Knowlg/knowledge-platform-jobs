@@ -34,8 +34,9 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
     override def open(parameters: Configuration): Unit = {
         super.open(parameters)
         cassandraUtil = new CassandraUtil(config.dbHost, config.dbPort)
-        dataCache = new DataCache(config, new RedisConnect(config), config.relationCacheStore, List())
-        collectionCache = new DataCache(config, new RedisConnect(config), config.collectionCacheStore, List())
+        val redisConnect = new RedisConnect(config)
+        dataCache = new DataCache(config, redisConnect, config.relationCacheStore, List())
+        collectionCache = new DataCache(config, redisConnect, config.collectionCacheStore, List())
         dataCache.init()
         collectionCache.init()
     }
@@ -59,7 +60,7 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
                 storeDataInCache(rootId, "ancestors", ancestorsMap, dataCache)
                 val unitsMap = getUnitMaps(hierarchy)
                 logger.info("Units cache updating for: "+ unitsMap.size)
-                storeDataInCache(rootId, "", unitsMap, collectionCache)
+                storeDataInCache("", "", unitsMap, collectionCache)
                 metrics.incCounter(config.successEventCount)
             } else {
                 logger.warn("Hierarchy Empty: " + rootId)
@@ -131,9 +132,10 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
 
     private def storeDataInCache(rootId: String, suffix: String, dataMap: Map[String, AnyRef], cache: DataCache) = {
         val finalSuffix = if (StringUtils.isNotBlank(suffix)) ":" + suffix else ""
+        val finalPrefix = if (StringUtils.isNoneBlank(rootId)) rootId + ":" else ""
         dataMap.foreach(each => each._2 match {
-            case value: List[String] => cache.addList(rootId + ":" + each._1 + finalSuffix, each._2.asInstanceOf[List[String]])
-            case _ =>  cache.setWithRetry(rootId + ":" + each._1 + finalSuffix, each._2.asInstanceOf[String])
+            case value: List[String] => cache.addList(finalPrefix + each._1 + finalSuffix, each._2.asInstanceOf[List[String]])
+            case _ =>  cache.setWithRetry(finalPrefix + each._1 + finalSuffix, each._2.asInstanceOf[String])
         })
     }
 
@@ -152,6 +154,7 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
         val mimeType = hierarchy.getOrDefault("mimeType", "").asInstanceOf[String]
         if (StringUtils.equalsIgnoreCase(mimeType, "application/vnd.ekstep.content-collection")) {
             val children = getChildren(hierarchy).asScala
+            // TODO - Here the collection with "visibility:Parent" constructed with children in it. May be we should remove children.
             if (children.nonEmpty)
                 (if (StringUtils.equalsIgnoreCase(hierarchy.getOrDefault("visibility", "").asInstanceOf[String], "Parent"))
                     Map(hierarchy.get("identifier").asInstanceOf[String] -> mapper.writeValueAsString(hierarchy))
