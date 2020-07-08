@@ -2,29 +2,33 @@ package org.sunbird.kp.flink.spec
 
 import java.util
 
-import com.datastax.driver.core.Row
 import com.google.gson.Gson
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
-import org.apache.flink.streaming.api.functions.sink.SinkFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext
 import org.apache.flink.test.util.MiniClusterWithClientResource
+import org.cassandraunit.CQLDataLoader
+import org.cassandraunit.dataset.cql.FileCQLDataSet
+import org.cassandraunit.utils.EmbeddedCassandraServerHelper
 import org.mockito.Mockito
 import org.mockito.Mockito._
+import org.sunbird.async.core.cache.RedisConnect
 import org.sunbird.async.core.job.FlinkKafkaConnector
+import org.sunbird.async.core.util.CassandraUtil
 import org.sunbird.async.core.{BaseMetricsReporter, BaseTestSpec}
 import org.sunbird.kp.flink.fixture.EventFixture
 import org.sunbird.kp.flink.task.{RelationCacheUpdaterConfig, RelationCacheUpdaterStreamTask}
+import redis.clients.jedis.Jedis
+//import redis.embedded.RedisServer
 
 import scala.collection.JavaConverters._
-import scala.collection.mutable
 
 class RelationCacheUpdaterTaskTestSpec extends BaseTestSpec {
 
-  implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
+  implicit val mapTypeInfo: TypeInformation[java.util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[java.util.Map[String, AnyRef]])
 
   val flinkCluster = new MiniClusterWithClientResource(new MiniClusterResourceConfiguration.Builder()
     .setConfiguration(testConfiguration())
@@ -32,71 +36,70 @@ class RelationCacheUpdaterTaskTestSpec extends BaseTestSpec {
     .setNumberTaskManagers(1)
     .build)
 
+//  var redisServer: RedisServer = _
+//  redisServer = new RedisServer(6377)
+//  redisServer.start()
+  var jedis: Jedis = _
   val mockKafkaUtil: FlinkKafkaConnector = mock[FlinkKafkaConnector](Mockito.withSettings().serializable())
   val gson = new Gson()
   val config: Config = ConfigFactory.load("test.conf")
-  val cacheUpdaterConfig: RelationCacheUpdaterConfig = new RelationCacheUpdaterConfig(config)
+  val jobConfig: RelationCacheUpdaterConfig = new RelationCacheUpdaterConfig(config)
 
+
+  var cassandraUtil: CassandraUtil = _
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
+    val redisConnect = new RedisConnect(jobConfig)
+    jedis = redisConnect.getConnection(jobConfig.relationCacheStore)
+    EmbeddedCassandraServerHelper.startEmbeddedCassandra(80000L)
+    cassandraUtil = new CassandraUtil(jobConfig.dbHost, jobConfig.dbPort)
+    val session = cassandraUtil.session
+//
+//
+    val dataLoader = new CQLDataLoader(session);
+    dataLoader.load(new FileCQLDataSet(getClass.getResource("/test.cql").getPath, true, true));
+    // Clear the metrics
+    testCassandraUtil(cassandraUtil)
     BaseMetricsReporter.gaugeMetrics.clear()
+    jedis.flushDB()
     flinkCluster.before()
   }
 
   override protected def afterAll(): Unit = {
     super.afterAll()
+    try {
+      EmbeddedCassandraServerHelper.cleanEmbeddedCassandra()
+//      redisServer.stop()
+    } catch {
+      case ex: Exception => {
+      }
+    }
     flinkCluster.after()
   }
 
 
-  "Aggregator " should "Compute and update to cassandra database" in {
-    when(mockKafkaUtil.kafkaMapSource(cacheUpdaterConfig.kafkaInputTopic)).thenReturn(new RelationCacheUpdaterMapSource)
-    new RelationCacheUpdaterStreamTask(cacheUpdaterConfig, mockKafkaUtil).process()
-    BaseMetricsReporter.gaugeMetrics(s"${cacheUpdaterConfig.jobName}.${cacheUpdaterConfig.totalEventsCount}").getValue() should be(3)
-    BaseMetricsReporter.gaugeMetrics(s"${cacheUpdaterConfig.jobName}.${cacheUpdaterConfig.successEventCount}").getValue() should be(3)
+  "RelationCacheUpdater " should "generate cache" in {
+    when(mockKafkaUtil.kafkaMapSource(jobConfig.kafkaInputTopic)).thenReturn(new RelationCacheUpdaterMapSource)
+    new RelationCacheUpdaterStreamTask(jobConfig, mockKafkaUtil).process()
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(1)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.successEventCount}").getValue() should be(1)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.failedEventCount}").getValue() should be(0)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skippedEventCount}").getValue() should be(0)
   }
 
-class RelationCacheUpdaterMapSource extends SourceFunction[util.Map[String, AnyRef]] {
+  def testCassandraUtil(cassandraUtil: CassandraUtil): Unit = {
+    cassandraUtil.reconnect()
+  }
 
-  override def run(ctx: SourceContext[util.Map[String, AnyRef]]) {
+}
+
+class RelationCacheUpdaterMapSource extends SourceFunction[java.util.Map[String, AnyRef]] {
+  override def run(ctx: SourceContext[util.Map[String, AnyRef]]): Unit = {
     val gson = new Gson()
     val eventMap1 = gson.fromJson(EventFixture.EVENT_1, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]].asScala
-    val eventMap2 = gson.fromJson(EventFixture.EVENT_2, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]].asScala
-    val eventMap3 = gson.fromJson(EventFixture.EVENT_3, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]].asScala
     ctx.collect(eventMap1.asJava)
-    ctx.collect(eventMap2.asJava)
-    ctx.collect(eventMap3.asJava)
   }
 
   override def cancel() = {}
-
-}
-
-
-class auditEventSink extends SinkFunction[String] {
-
-  override def invoke(value: String): Unit = {
-    synchronized {
-      auditEventSink.values.add(value)
-    }
-  }
-}
-
-object auditEventSink {
-  val values: util.List[String] = new util.ArrayList()
-}
-
-class SuccessEvent extends SinkFunction[String] {
-
-  override def invoke(value: String): Unit = {
-    synchronized {
-      SuccessEventSink.values.add(value)
-    }
-  }
-}
-
-object SuccessEventSink {
-  val values: util.List[String] = new util.ArrayList()
-}
 }

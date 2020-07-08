@@ -25,6 +25,7 @@ class RelationCacheUpdaterConfig(override val config: Config) extends BaseJobCon
   val totalEventsCount = "total-events-count"
   val successEventCount = "success-events-count"
   val failedEventCount = "failed-events-count"
+  val skippedEventCount = "skipped-event-count"
 
   // Tags
   val failedEventOutputTagName = "failed-events"
@@ -44,6 +45,6 @@ class RelationCacheUpdaterConfig(override val config: Config) extends BaseJobCon
   val hierarchyPrimaryKey: List[String] = List("identifier")
 
   // Redis Configurations
-  val leafNodesStore: Int = config.getInt("redis.database.leafnodes.id")
+  val relationCacheStore: Int = config.getInt("redis.database.relationCache.id")
 
 }
