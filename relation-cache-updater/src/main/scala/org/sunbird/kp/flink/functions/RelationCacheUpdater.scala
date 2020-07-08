@@ -110,12 +110,12 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
             getChildren(hierarchy).asScala.map(child => {
                 val childId = child.get("identifier").asInstanceOf[String]
                 getAncestors(childId, child, ancestors)
-            }).filter(m => m.nonEmpty).reduce((a,b) => {
+            }).filter(m => m.nonEmpty).reduceOption((a,b) => {
                 // Here we are merging the Resource ancestors where it is used multiple times - Functional.
                 // convert maps to seq, to keep duplicate keys and concat then group by key - Code explanation.
                 val grouped = (a.toSeq ++ b.toSeq).groupBy(_._1)
                 grouped.mapValues(_.map(_._2).toList.flatten.distinct)
-            })
+            }).getOrElse(Map())
         } else {
             Map(identifier -> parents)
         }

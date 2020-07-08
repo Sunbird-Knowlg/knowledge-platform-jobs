@@ -82,8 +82,8 @@ class RelationCacheUpdaterTaskTestSpec extends BaseTestSpec {
   "RelationCacheUpdater " should "generate cache" in {
     when(mockKafkaUtil.kafkaMapSource(jobConfig.kafkaInputTopic)).thenReturn(new RelationCacheUpdaterMapSource)
     new RelationCacheUpdaterStreamTask(jobConfig, mockKafkaUtil).process()
-    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(1)
-    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.successEventCount}").getValue() should be(1)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(2)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.successEventCount}").getValue() should be(2)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.failedEventCount}").getValue() should be(0)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skippedEventCount}").getValue() should be(0)
   }
@@ -98,7 +98,9 @@ class RelationCacheUpdaterMapSource extends SourceFunction[java.util.Map[String,
   override def run(ctx: SourceContext[util.Map[String, AnyRef]]): Unit = {
     val gson = new Gson()
     val eventMap1 = gson.fromJson(EventFixture.EVENT_1, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]].asScala
+    val eventMap2 = gson.fromJson(EventFixture.EVENT_2, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]].asScala
     ctx.collect(eventMap1.asJava)
+    ctx.collect(eventMap2.asJava)
   }
 
   override def cancel() = {}

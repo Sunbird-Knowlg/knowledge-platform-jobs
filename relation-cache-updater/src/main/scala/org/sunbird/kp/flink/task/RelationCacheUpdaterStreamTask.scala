@@ -22,7 +22,7 @@ class RelationCacheUpdaterStreamTask(config: RelationCacheUpdaterConfig, kafkaCo
 
       env.addSource(source, config.aggregatorConsumer).uid(config.aggregatorConsumer)
         .rebalance()
-          .process(new RelationCacheUpdater(config)).name("relation-cache-updator").uid("relation-cache-updator")
+          .process(new RelationCacheUpdater(config)).name("relation-cache-updater").uid("relation-cache-updater")
     env.execute(config.jobName)
   }
 }
