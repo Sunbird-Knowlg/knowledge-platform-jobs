@@ -27,6 +27,7 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
     private[this] val logger = LoggerFactory.getLogger(classOf[RelationCacheUpdater])
     val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
     private var dataCache: DataCache = _
+    private var collectionCache: DataCache = _
     lazy private val mapper: ObjectMapper = new ObjectMapper()
 
 
@@ -34,7 +35,9 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
         super.open(parameters)
         cassandraUtil = new CassandraUtil(config.dbHost, config.dbPort)
         dataCache = new DataCache(config, new RedisConnect(config), config.relationCacheStore, List())
+        collectionCache = new DataCache(config, new RedisConnect(config), config.collectionCacheStore, List())
         dataCache.init()
+        collectionCache.init()
     }
 
     override def close(): Unit = {
@@ -50,10 +53,13 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
             if (MapUtils.isNotEmpty(hierarchy)) {
                 val leafNodesMap = getLeafNodes(rootId, hierarchy)
                 logger.info("Leaf-nodes cache updating for: " + leafNodesMap.size)
-                storeDataInCache(rootId, "leafnodes", leafNodesMap)
+                storeDataInCache(rootId, "leafnodes", leafNodesMap, dataCache)
                 val ancestorsMap = getAncestors(rootId, hierarchy)
                 logger.info("Ancestors cache updating for: "+ ancestorsMap.size)
-                storeDataInCache(rootId, "ancestors", ancestorsMap)
+                storeDataInCache(rootId, "ancestors", ancestorsMap, dataCache)
+                val unitsMap = getUnitMaps(hierarchy)
+                logger.info("Units cache updating for: "+ unitsMap.size)
+                storeDataInCache(rootId, "", unitsMap, collectionCache)
                 metrics.incCounter(config.successEventCount)
             } else {
                 logger.warn("Hierarchy Empty: " + rootId)
@@ -123,9 +129,12 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
 
     private def getChildren(hierarchy: java.util.Map[String, AnyRef]) = hierarchy.getOrDefault("children", java.util.Arrays.asList()).asInstanceOf[java.util.List[java.util.Map[String, AnyRef]]]
 
-    private def storeDataInCache(rootId: String, suffix: String, leafNodesMap: Map[String, List[String]]) = {
+    private def storeDataInCache(rootId: String, suffix: String, dataMap: Map[String, AnyRef], cache: DataCache) = {
         val finalSuffix = if (StringUtils.isNotBlank(suffix)) ":" + suffix else ""
-        leafNodesMap.foreach(each => dataCache.addList(rootId + ":" +each._1 + finalSuffix, each._2))
+        dataMap.foreach(each => each._2 match {
+            case value: List[String] => cache.addList(rootId + ":" + each._1 + finalSuffix, each._2.asInstanceOf[List[String]])
+            case _ =>  cache.setWithRetry(rootId + ":" + each._1 + finalSuffix, each._2.asInstanceOf[String])
+        })
     }
 
     def readHierarchyFromDb(identifier: String): String = {
@@ -137,5 +146,17 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
             rows.asScala.head.getObject("hierarchy").asInstanceOf[String]
         else
             ""
+    }
+
+    private def getUnitMaps(hierarchy: java.util.Map[String, AnyRef]): Map[String, String] = {
+        val mimeType = hierarchy.getOrDefault("mimeType", "").asInstanceOf[String]
+        if (StringUtils.equalsIgnoreCase(mimeType, "application/vnd.ekstep.content-collection")) {
+            val children = getChildren(hierarchy).asScala
+            if (children.nonEmpty)
+                (if (StringUtils.equalsIgnoreCase(hierarchy.getOrDefault("visibility", "").asInstanceOf[String], "Parent"))
+                    Map(hierarchy.get("identifier").asInstanceOf[String] -> mapper.writeValueAsString(hierarchy))
+                else Map()) ++ children.flatMap(child => getUnitMaps(child)).toMap
+            else Map()
+        } else Map()
     }
 }
