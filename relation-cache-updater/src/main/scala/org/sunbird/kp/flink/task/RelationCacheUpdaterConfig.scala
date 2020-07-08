@@ -46,5 +46,6 @@ class RelationCacheUpdaterConfig(override val config: Config) extends BaseJobCon
 
   // Redis Configurations
   val relationCacheStore: Int = config.getInt("redis.database.relationCache.id")
+  val collectionCacheStore: Int = config.getInt("redis.database.collectionCache.id")
 
 }
