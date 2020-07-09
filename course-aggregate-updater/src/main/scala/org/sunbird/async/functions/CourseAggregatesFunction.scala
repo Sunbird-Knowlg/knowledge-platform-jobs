@@ -183,7 +183,7 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
 
   def readFromCache(key: String, metrics: Metrics): List[String] = {
     metrics.incCounter(config.cacheHitCount)
-    cache.sMembers(key).asScala.toList
+    cache.getKeyMembers(key).asScala.toList
   }
 
   def getUserAggQuery(progress: Progress, keySpace: String, table: String):
