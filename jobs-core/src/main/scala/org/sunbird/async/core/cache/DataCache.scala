@@ -9,6 +9,7 @@ import redis.clients.jedis.Jedis
 import redis.clients.jedis.exceptions.{JedisConnectionException, JedisException}
 
 import scala.collection.JavaConverters._
+import scala.collection.mutable
 import scala.collection.mutable.Map
 
 class DataCache(val config: BaseJobConfig, val redisConnect: RedisConnect, val dbIndex: Int, val fields: List[String]) {
@@ -119,22 +120,21 @@ class DataCache(val config: BaseJobConfig, val redisConnect: RedisConnect, val d
     redisConnection.set(key, value)
   }
 
-  def sMembers(key: String): util.Set[String] = {
-    redisConnection.smembers(key)
+  def lRange(key: String, startIndex: Int, endIndex: Int): util.List[String] = {
+     redisConnection.lrange(key, startIndex, endIndex)
   }
 
-  def getKeyMembers(key: String): util.Set[String] = {
+  def lRangeWithRetry(key: String): util.List[String] = {
     try {
-      sMembers(key)
+      lRange(key, 0, -1)
     } catch {
       case ex: JedisException =>
         logger.error("Exception when retrieving data from redis cache", ex)
         this.redisConnection.close()
         this.redisConnection = redisConnect.getConnection(dbIndex)
-        sMembers(key)
+        lRange(key, 0, -1)
     }
   }
-
 }
 
 // $COVERAGE-ON$
