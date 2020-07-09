@@ -1,6 +1,7 @@
 version: 2.1
 jobs:
   knowledge-platform-jobs-build:
+    working_directory: ~/kp
     machine: true
     steps:
       - checkout:
