@@ -20,5 +20,5 @@ workflows:
   version: 2.1
   build_and_test:
     jobs:
-      - knowledge-platform-build
+      - knowledge-platform-jobs-build
 #testing quality gate
