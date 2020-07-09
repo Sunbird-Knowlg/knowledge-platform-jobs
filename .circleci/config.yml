@@ -1,11 +1,11 @@
 version: 2.1
 jobs:
-  datapipeline-build:
-    working_directory: ~/kp/knowledge-platform-jobs
+  knowledge-platform-jobs-build:
+    working_directory: ~/kp/flink-jobs
     machine: true
     steps:
       - checkout:
-          path: ~/dp
+          path: ~/kp
       - restore_cache:
           key: dependency-cache-{{ checksum "pom.xml" }}
       - save_cache:
@@ -15,7 +15,7 @@ jobs:
       - run:
           name: sonar
           command: |
-            mvn -X sonar:sonar -Dlog4j.configuration=./logs sonar:sonar -Dsonar.projectKey=project-sunbird_knowledge-platform-jobs -Dsonar.organization=project-sunbird -Dsonar.exclusions=/home/circleci/dp/kubernetes/**,-Dsonar.host.url=https://sonarcloud.io -Dsonar.scala.coverage.reportPaths=/home/circleci/kp/knowledge-platform-jobs/target/scoverage.xml
+            mvn -X sonar:sonar -Dlog4j.configuration=./logs sonar:sonar -Dsonar.projectKey=project-sunbird_knowledge-platform-jobs -Dsonar.organization=project-sunbird -Dsonar.host.url=https://sonarcloud.io -Dsonar.scala.coverage.reportPaths=/home/circleci/kp/flink-jobs/target/scoverage.xml
 workflows:
   version: 2.1
   build_and_test:
