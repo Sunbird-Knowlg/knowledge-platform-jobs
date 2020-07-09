@@ -66,53 +66,25 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
     val dbUserConsumption: Map[String, UserContentConsumption] = getContentStatusFromDB(eDataBatch, metrics).map(e => (getUCKey(e), e)).toMap
 
     // Final User's ContentConsumption after merging with DB data.
+    // Here we have final viewcount, completedcount and identified the content which should generate AUDIT events for start and complete.
     val finalUserConsumptionList = inputUserConsumptionList.map(inputData => {
       val dbData = dbUserConsumption.getOrElse(getUCKey(inputData), UserContentConsumption(inputData.userId, inputData.batchId, inputData.courseId, Map()))
       finalUserConsumption(inputData, dbData)(metrics)
     })
 
+    // user_content_consumption update with viewcount and completedcout.
     val userConsumptionQueries = finalUserConsumptionList.map(userConsumption => getContentConsumptionQueries(userConsumption)).flatten.toList
     updateDB(config.maxQueryWriteBatchSize, userConsumptionQueries)(metrics)
 
+    // Course Level Agg using the merged data of ContentConsumption per user, course and batch.
+    val courseAggs = finalUserConsumptionList.map(userConsumption => courseActivityAgg(userConsumption)(metrics))
 
-    val courseAggs = finalUserConsumptionList.map(userConsumption => {
-      val courseId = userConsumption.courseId
-      val userId = userConsumption.userId
-      val contextId = "cb:"+ userConsumption.batchId
-      val leafNodes = readFromCache(key = s"$courseId:$courseId:${config.leafNodes}", metrics).distinct
-      val completedCount = leafNodes.intersect(userConsumption.contents.filter(cc => cc._2.status == 2).map(cc => cc._2.contentId).toList.distinct).size
-      UserActivityAgg("course", userId, courseId, contextId, Map("completedCount" -> completedCount), Map("completedCount" -> System.currentTimeMillis()))
-    }).toList
+    // Identified the children of the course (only collections) for which aggregates computation required.
+    // Computation of aggregates using leafNodes (of the specific collection) and user completed contents.
+    // Here computing only "completedCount" aggregate.
+    val courseChildrenAggs = finalUserConsumptionList.map(userConsumption => courseChildrenActivityAgg(userConsumption)(metrics)).flatten
 
-    val courseChildrenAggs = finalUserConsumptionList.map(userConsumption => {
-      val courseId = userConsumption.courseId
-      val userId = userConsumption.userId
-      val contextId = "cb:"+ userConsumption.batchId
-
-      // These are the child collections which require computation of aggregates - for this user.
-      val ancestors = userConsumption.contents.mapValues(content => {
-        val contentId = content.contentId
-        readFromCache(key = s"$courseId:$contentId:${config.ancestors}", metrics)
-      }).values.flatten.filter(_ > courseId).toList.distinct
-
-      // LeafNodes of the identified child collections - for this user.
-      val collectionsWithLeafNodes = ancestors.map(unitId => {
-        (unitId, readFromCache(key = s"$courseId:$unitId:${config.leafNodes}", metrics).distinct)
-      }).toMap
-
-      // Content completed - By this user.
-      val userCompletedContents = userConsumption.contents.filter(cc => cc._2.status == 2).map(cc => cc._2.contentId).toList.distinct
-
-      // Child Collection UserAggregate list - for this user.
-      collectionsWithLeafNodes.map(e => {
-        val collectionId = e._1
-        val leafNodes = e._2
-        val completedCount = leafNodes.intersect(userCompletedContents).size
-        // TODO - Identify how to generate start and end event for CourseUnit.
-        UserActivityAgg("course", userId, collectionId, contextId, Map("completedCount" -> completedCount), Map("completedCount" -> System.currentTimeMillis()))
-      })
-    }).flatten.toList
-
+    // Saving all queries for course and it's children (only collection) aggregates.
     val aggQueries = (courseAggs ++ courseChildrenAggs).map(agg => getUserAggQuery(agg))
     updateDB(config.maxQueryWriteBatchSize, aggQueries)(metrics)
 
@@ -122,10 +94,76 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
 
   }
 
-  def getUCKey(userConsumption: UserContentConsumption): String = {
-    userConsumption.userId + "" + userConsumption.courseId + "" + userConsumption.courseId
+  /**
+   * Course Level Agg using the merged data of ContentConsumption per user, course and batch.
+   * @param userConsumption
+   * @param metrics
+   * @return
+   */
+  def courseActivityAgg(userConsumption: UserContentConsumption)(implicit metrics: Metrics): UserActivityAgg = {
+    val courseId = userConsumption.courseId
+    val userId = userConsumption.userId
+    val contextId = "cb:"+ userConsumption.batchId
+    val leafNodes = readFromCache(key = s"$courseId:$courseId:${config.leafNodes}", metrics).distinct
+    val completedCount = leafNodes.intersect(userConsumption.contents.filter(cc => cc._2.status == 2).map(cc => cc._2.contentId).toList.distinct).size
+    UserActivityAgg("course", userId, courseId, contextId, Map("completedCount" -> completedCount), Map("completedCount" -> System.currentTimeMillis()))
   }
 
+  /**
+   * Identified the children of the course (only collections) for which aggregates computation required.
+   * Computation of aggregates using leafNodes (of the specific collection) and user completed contents.
+   * Here computing only "completedCount" aggregate.
+   *
+   * @param userConsumption
+   * @param metrics
+   * @return
+   */
+  def courseChildrenActivityAgg(userConsumption: UserContentConsumption)(implicit metrics: Metrics): List[UserActivityAgg] = {
+    val courseId = userConsumption.courseId
+    val userId = userConsumption.userId
+    val contextId = "cb:"+ userConsumption.batchId
+
+    // These are the child collections which require computation of aggregates - for this user.
+    val ancestors = userConsumption.contents.mapValues(content => {
+      val contentId = content.contentId
+      readFromCache(key = s"$courseId:$contentId:${config.ancestors}", metrics)
+    }).values.flatten.filter(_ > courseId).toList.distinct
+
+    // LeafNodes of the identified child collections - for this user.
+    val collectionsWithLeafNodes = ancestors.map(unitId => {
+      (unitId, readFromCache(key = s"$courseId:$unitId:${config.leafNodes}", metrics).distinct)
+    }).toMap
+
+    // Content completed - By this user.
+    val userCompletedContents = userConsumption.contents.filter(cc => cc._2.status == 2).map(cc => cc._2.contentId).toList.distinct
+
+    // Child Collection UserAggregate list - for this user.
+    collectionsWithLeafNodes.map(e => {
+      val collectionId = e._1
+      val leafNodes = e._2
+      val completedCount = leafNodes.intersect(userCompletedContents).size
+      // TODO - Identify how to generate start and end event for CourseUnit.
+      UserActivityAgg("course", userId, collectionId, contextId, Map("completedCount" -> completedCount), Map("completedCount" -> System.currentTimeMillis()))
+    }).toList
+  }
+
+  /**
+   * Generation of a "String" key for UserContentConsumption.
+   * @param userConsumption
+   * @return
+   */
+  def getUCKey(userConsumption: UserContentConsumption): String = {
+    userConsumption.userId + ":" + userConsumption.courseId + ":" + userConsumption.courseId
+  }
+
+  /**
+   * Merging the Input and DB ContentStatus data of a User, Course and Batch (Enrolment)
+   * This is the critical part of the code.
+   * @param inputData
+   * @param dbData
+   * @param metrics
+   * @return
+   */
   def finalUserConsumption(inputData: UserContentConsumption, dbData: UserContentConsumption)(implicit metrics: Metrics): UserContentConsumption = {
     val dbContents = dbData.contents
     val processedContents = inputData.contents.map(ccMap => {
@@ -259,7 +297,7 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
   }
 
   /**
-   *
+   * Computation of Sum for viewCount and completedCount.
    * @param list
    * @param valFunc
    * @return
@@ -299,6 +337,12 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
       })).getOrElse(List()).toList
   }
 
+  /**
+   * Content - AUDIT Event Generation using UserContentConsumption
+   * "eventsFor" - will have the action (or type) for the event to generate.
+   * @param userConsumption
+   * @return
+   */
   def contentAuditEvents(userConsumption: UserContentConsumption): List[TelemetryEvent] = {
     val userId = userConsumption.userId
     val courseId = userConsumption.courseId
