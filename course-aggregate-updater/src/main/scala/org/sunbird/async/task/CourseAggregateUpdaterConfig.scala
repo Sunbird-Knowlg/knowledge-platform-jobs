@@ -33,7 +33,7 @@ class CourseAggregateUpdaterConfig(override val config: Config) extends BaseJobC
   val batchEnrolmentUpdateEventCount = "batch-enrolment-update-count"
 
   // Cassandra Configurations
-  val dbContentConsumptionTable: String = config.getString("lms-cassandra.consumption.table")
+  val dbUserContentConsumptionTable: String = config.getString("lms-cassandra.consumption.table")
   val dbUserActivityAggTable: String = config.getString("lms-cassandra.activity_user_agg.table")
   val dbKeyspace: String = config.getString("lms-cassandra.keyspace")
   val dbHost: String = config.getString("lms-cassandra.host")

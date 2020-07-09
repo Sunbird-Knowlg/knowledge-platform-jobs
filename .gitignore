@@ -2,3 +2,4 @@
 .idea/
 *.iml
 */target/
+course-aggregate-updater/dependency-reduced-pom.xml
