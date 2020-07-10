@@ -125,7 +125,7 @@ object EventFixture {
 
   /** *
    *
-   * Case3: When resource data is not available in the content_consumption table and user_activity_user_agg
+   * Case3: When resource data is not available in the content_consumption table and user_activity_agg
    *
    * C11 -  course
    * unit11 - unit1

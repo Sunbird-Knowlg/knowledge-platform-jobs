@@ -34,7 +34,7 @@ class CourseAggregateUpdaterConfig(override val config: Config) extends BaseJobC
 
   // Cassandra Configurations
   val dbUserContentConsumptionTable: String = config.getString("lms-cassandra.consumption.table")
-  val dbUserActivityAggTable: String = config.getString("lms-cassandra.activity_user_agg.table")
+  val dbUserActivityAggTable: String = config.getString("lms-cassandra.user_activity_agg.table")
   val dbKeyspace: String = config.getString("lms-cassandra.keyspace")
   val dbHost: String = config.getString("lms-cassandra.host")
   val dbPort: Int = config.getInt("lms-cassandra.port")
