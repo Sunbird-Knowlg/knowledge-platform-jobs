@@ -160,13 +160,14 @@ object EventFixture {
 
   val e3_ancestorsResource_1 = Map("C11:R11:ancestors" -> List("unit11", "C11"))
   val e3_ancestorsResource_2 = Map("C11:R11:ancestors" -> List("unit22", "C11"))
+  val e3_ancestorsResource_3 = Map("C11:R22:ancestors" ->  List("unit11", "C11"))
 
   val EVENT_3: String =
     """
       |{"eid":"BE_JOB_REQUEST","ets":1563788371969,"mid":"LMS.1563788371969.590c5fa0-0ce8-46ed-bf6c-681c0a1fdac8","actor":{"type":"System","id":"Course Batch Updater"},"context":{"pdata":{"ver":"1.0","id":"org.sunbird.platform"}},"object":{"type":"CourseBatchEnrolment","id":"0126083288437637121_8454cb21-3ce9-4e30-85b5-fade097880d8"},"edata":{"contents":[{"contentId":"R11","status":2},{"contentId":"R22","status":2}],"action":"batch-enrolment-update","iteration":1,"batchId":"B11","userId":"U11","courseId":"C11"}}
       |""".stripMargin
 
-  val CASE_3:Map[String, AnyRef] = Map("event" -> EVENT_3, "cacheData" -> List(e3_courseLeafNodes, e3_unitLeafNodes_1, e3_unitLeafNodes_2,e3_ancestorsResource_1, e3_ancestorsResource_2) )
+  val CASE_3:Map[String, AnyRef] = Map("event" -> EVENT_3, "cacheData" -> List(e3_courseLeafNodes, e3_unitLeafNodes_1, e3_unitLeafNodes_2,e3_ancestorsResource_1, e3_ancestorsResource_2, e3_ancestorsResource_3) )
 
   val EVENT_4: String =
     """

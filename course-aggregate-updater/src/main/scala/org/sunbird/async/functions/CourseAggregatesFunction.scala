@@ -7,6 +7,7 @@ import com.datastax.driver.core.Row
 import com.datastax.driver.core.querybuilder.{QueryBuilder, Select, Update}
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import org.apache.commons.collections.CollectionUtils
 import org.apache.commons.lang3.StringUtils
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
@@ -40,6 +41,8 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
   }
 
   override def close(): Unit = {
+    cassandraUtil.close()
+    cache.close()
     super.close()
   }
 
@@ -241,7 +244,10 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
 
   def readFromCache(key: String, metrics: Metrics): List[String] = {
     metrics.incCounter(config.cacheHitCount)
-    cache.getKeyMembers(key).asScala.toList
+    val list = cache.getKeyMembers(key)
+    if (CollectionUtils.isEmpty(list))
+      throw new Exception("Redis cache (smembers) not available for key: " + key)
+    else list.asScala.toList
   }
 
   def getUserAggQuery(progress: UserActivityAgg):
