@@ -20,9 +20,9 @@ import org.mockito.Mockito._
 import org.sunbird.async.core.cache.RedisConnect
 import org.sunbird.async.core.job.FlinkKafkaConnector
 import org.sunbird.async.core.util.CassandraUtil
-import org.sunbird.async.core.{BaseMetricsReporter, BaseTestSpec}
 import org.sunbird.async.fixture.EventFixture
 import org.sunbird.async.task.{CourseAggregateUpdaterConfig, CourseAggregateUpdaterStreamTask}
+import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 import redis.clients.jedis.Jedis
 import redis.embedded.RedisServer
 
@@ -53,7 +53,7 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
-    val redisConnect = new RedisConnect(courseAggregatorConfig)
+    val redisConnect = new RedisConnect(courseAggregatorConfig.redisHost, courseAggregatorConfig.redisPort, courseAggregatorConfig)
     jedis = redisConnect.getConnection(courseAggregatorConfig.nodeStore)
     EmbeddedCassandraServerHelper.startEmbeddedCassandra(80000L)
     cassandraUtil = new CassandraUtil(courseAggregatorConfig.dbHost, courseAggregatorConfig.dbPort)

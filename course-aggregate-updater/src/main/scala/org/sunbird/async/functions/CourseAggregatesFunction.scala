@@ -38,7 +38,7 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
     cassandraUtil = new CassandraUtil(config.dbHost, config.dbPort)
-    cache = new DataCache(config, new RedisConnect(config), config.nodeStore, List())
+    cache = new DataCache(config, new RedisConnect(config.redisHost, config.redisPort, config), config.nodeStore, List())
     cache.init()
   }
 
