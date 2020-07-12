@@ -1,4 +1,4 @@
-package org.sunbird.async.core
+package org.sunbird.spec
 
 import org.apache.flink.configuration.Configuration
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
