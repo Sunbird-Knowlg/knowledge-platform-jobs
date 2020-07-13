@@ -1,0 +1,24 @@
+version: 2.1
+jobs:
+  knowledge-platform-jobs-build:
+    working_directory: ~/kp
+    machine: true
+    steps:
+      - checkout:
+          path: ~/kp
+      - restore_cache:
+          key: dependency-cache-{{ checksum "pom.xml" }}
+      - save_cache:
+          key: dependency-cache-{{ checksum "pom.xml" }}
+          paths: ~/.m2
+      - run: mvn clean scoverage:report
+      - run:
+          name: sonar
+          command: |
+            mvn -X sonar:sonar -Dlog4j.configuration=./logs sonar:sonar -Dsonar.projectKey=project-sunbird_knowledge-platform-jobs -Dsonar.organization=project-sunbird -Dsonar.host.url=https://sonarcloud.io -Dsonar.scala.coverage.reportPaths=/home/circleci/kp/target/scoverage.xml
+workflows:
+  version: 2.1
+  build_and_test:
+    jobs:
+      - knowledge-platform-jobs-build
+#testing quality gate
