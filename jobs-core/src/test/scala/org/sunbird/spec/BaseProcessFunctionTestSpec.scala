@@ -128,17 +128,6 @@ class BaseProcessFunctionTestSpec extends BaseSpec with Matchers {
 
     mapSchemaMessages.size should be (1)
     stringSchemaMessages.size should be (1)
-
-//    retrieveMid(mapSchemaMessages.head) should be ("56c0c430-748b-11e8-ae77-cd19397ca6b0")
-//    retrieveMid(eventSchemaDuplicates.head) should be ("02ba33e5-15fe-4ec5-b32")
-//    retrieveMid(stringSchemaMessages.head) should be ("02ba33e5-15fe-4ec5-b32")
-//    retrieveMid(eventSchemaMessages.head) should be ("02ba33e5-15fe-4ec5-b32")
-//    retrieveMid(eventSchemaMessages.last) should be ("LP.1586994119534.4bfe9b31-216d-46ea-8e60-d7ea1b1a103c")
-
   }
-
-//  def retrieveMid(message: String): String = {
-//    new Event(gson.fromJson(message, new util.HashMap[String, AnyRef]().getClass)).mid()
-//  }
 
 }
