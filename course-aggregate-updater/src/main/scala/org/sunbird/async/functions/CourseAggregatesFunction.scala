@@ -327,11 +327,12 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
         val identifierMap = entry._1
         val consumptionList = entry._2.flatMap(row => Map(row.getObject(config.contentId.toLowerCase()).asInstanceOf[String] -> Map(config.status -> row.getObject(config.status), config.viewcount -> row.getObject(config.viewcount), config.completedcount -> row.getObject(config.completedcount))))
           .map(entry => {
+            val contentStatus = entry._2.filter(x=>x._2 != null)
             val contentId = entry._1
-            val status = entry._2.getOrElse(config.status, 1).asInstanceOf[Number].intValue()
-            val viewCount = entry._2.getOrElse(config.viewcount, 1).asInstanceOf[Number].intValue()
+            val status = contentStatus.getOrElse(config.status, 1).asInstanceOf[Number].intValue()
+            val viewCount = contentStatus.get(config.viewcount).getOrElse(0).asInstanceOf[Number].intValue()
             val defaultCompletedCount = if (status == 2) 1 else 0
-            val completedCount = entry._2.getOrElse(config.completedcount, defaultCompletedCount).asInstanceOf[Number].intValue()
+            val completedCount = contentStatus.getOrElse(config.completedcount, defaultCompletedCount).asInstanceOf[Number].intValue()
             (contentId, ContentStatus(contentId, status, completedCount, viewCount))
           }).toMap
 
