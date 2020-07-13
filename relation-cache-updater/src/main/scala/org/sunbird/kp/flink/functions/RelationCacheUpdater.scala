@@ -137,7 +137,7 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
         val finalSuffix = if (StringUtils.isNotBlank(suffix)) ":" + suffix else ""
         val finalPrefix = if (StringUtils.isNoneBlank(rootId)) rootId + ":" else ""
         dataMap.foreach(each => each._2 match {
-            case value: List[String] => cache.addList(finalPrefix + each._1 + finalSuffix, each._2.asInstanceOf[List[String]])
+            case value: List[String] => cache.addListWithRetry(finalPrefix + each._1 + finalSuffix, each._2.asInstanceOf[List[String]])
             case _ =>  cache.setWithRetry(finalPrefix + each._1 + finalSuffix, each._2.asInstanceOf[String])
         })
     }

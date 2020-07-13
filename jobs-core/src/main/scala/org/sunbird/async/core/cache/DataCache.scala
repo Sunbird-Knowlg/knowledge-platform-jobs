@@ -103,7 +103,7 @@ class DataCache(val config: BaseJobConfig, val redisConnect: RedisConnect, val d
     }
   }
 
-  def addList(key: String, value: List[String]): Unit = {
+  def addListWithRetry(key: String, value: List[String]): Unit = {
     try {
       redisConnection.sadd(key, value.map(_.asInstanceOf[String]): _*)
     } catch {
