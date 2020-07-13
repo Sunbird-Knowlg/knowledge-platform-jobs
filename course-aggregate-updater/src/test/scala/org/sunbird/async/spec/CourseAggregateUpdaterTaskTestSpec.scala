@@ -20,9 +20,9 @@ import org.mockito.Mockito._
 import org.sunbird.async.core.cache.RedisConnect
 import org.sunbird.async.core.job.FlinkKafkaConnector
 import org.sunbird.async.core.util.CassandraUtil
-import org.sunbird.async.core.{BaseMetricsReporter, BaseTestSpec}
 import org.sunbird.async.fixture.EventFixture
 import org.sunbird.async.task.{CourseAggregateUpdaterConfig, CourseAggregateUpdaterStreamTask}
+import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 import redis.clients.jedis.Jedis
 import redis.embedded.RedisServer
 
@@ -40,7 +40,7 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
     .build)
 
   var redisServer: RedisServer = _
-  redisServer = new RedisServer()
+  redisServer = new RedisServer(6340)
   redisServer.start()
   var jedis: Jedis = _
   val mockKafkaUtil: FlinkKafkaConnector = mock[FlinkKafkaConnector](Mockito.withSettings().serializable())
