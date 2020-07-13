@@ -40,7 +40,7 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
     .build)
 
   var redisServer: RedisServer = _
-  redisServer = new RedisServer()
+  redisServer = new RedisServer(6371)
   redisServer.start()
   var jedis: Jedis = _
   val mockKafkaUtil: FlinkKafkaConnector = mock[FlinkKafkaConnector](Mockito.withSettings().serializable())
@@ -53,7 +53,7 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
-    val redisConnect = new RedisConnect(courseAggregatorConfig.redisHost, courseAggregatorConfig.redisPort, courseAggregatorConfig)
+    val redisConnect = new RedisConnect(courseAggregatorConfig.redisHost, 6371, courseAggregatorConfig)
     jedis = redisConnect.getConnection(courseAggregatorConfig.nodeStore)
     EmbeddedCassandraServerHelper.startEmbeddedCassandra(80000L)
     cassandraUtil = new CassandraUtil(courseAggregatorConfig.dbHost, courseAggregatorConfig.dbPort)
