@@ -1,5 +1,4 @@
-package org.sunbird.async.core
-
+package org.sunbird.spec
 
 import org.apache.flink.api.scala.metrics.ScalaGauge
 import org.apache.flink.metrics.reporter.MetricReporter
@@ -28,4 +27,3 @@ class BaseMetricsReporter extends MetricReporter {
 object BaseMetricsReporter {
   val gaugeMetrics :  mutable.Map[String,  ScalaGauge[Long]] = mutable.Map[String,  ScalaGauge[Long]]()
 }
-
