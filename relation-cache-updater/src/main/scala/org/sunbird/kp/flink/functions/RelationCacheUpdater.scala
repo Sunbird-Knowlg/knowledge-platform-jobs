@@ -42,6 +42,9 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
     }
 
     override def close(): Unit = {
+        cassandraUtil.close()
+        dataCache.close()
+        collectionCache.close()
         super.close()
     }
 

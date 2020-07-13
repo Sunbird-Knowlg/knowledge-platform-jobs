@@ -73,6 +73,12 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>it.ozimov</groupId>
+            <artifactId>embedded-redis</artifactId>
+            <version>0.7.1</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>org.scalatest</groupId>
             <artifactId>scalatest_2.12</artifactId>
             <version>3.0.6</version>

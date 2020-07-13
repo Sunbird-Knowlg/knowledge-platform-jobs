@@ -22,7 +22,7 @@ import org.sunbird.async.core.{BaseMetricsReporter, BaseTestSpec}
 import org.sunbird.kp.flink.fixture.EventFixture
 import org.sunbird.kp.flink.task.{RelationCacheUpdaterConfig, RelationCacheUpdaterStreamTask}
 import redis.clients.jedis.Jedis
-//import redis.embedded.RedisServer
+import redis.embedded.RedisServer
 
 import scala.collection.JavaConverters._
 
@@ -36,9 +36,9 @@ class RelationCacheUpdaterTaskTestSpec extends BaseTestSpec {
     .setNumberTaskManagers(1)
     .build)
 
-//  var redisServer: RedisServer = _
-//  redisServer = new RedisServer(6377)
-//  redisServer.start()
+  var redisServer: RedisServer = _
+  redisServer = new RedisServer()
+  redisServer.start()
   var jedis: Jedis = _
   val mockKafkaUtil: FlinkKafkaConnector = mock[FlinkKafkaConnector](Mockito.withSettings().serializable())
   val gson = new Gson()
@@ -70,7 +70,7 @@ class RelationCacheUpdaterTaskTestSpec extends BaseTestSpec {
     super.afterAll()
     try {
       EmbeddedCassandraServerHelper.cleanEmbeddedCassandra()
-//      redisServer.stop()
+      redisServer.stop()
     } catch {
       case ex: Exception => {
       }

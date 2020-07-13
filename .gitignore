@@ -1,6 +1,12 @@
-.idea/
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.logs
 *.iml
-*/target/
+.idea/
+.eclipse
 dependency-reduced-pom.xml
 .DS_Store
 *.log
