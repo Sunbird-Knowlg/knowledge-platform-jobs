@@ -30,7 +30,7 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
   lazy private val gson = new Gson()
 
   override def metricsList(): List[String] = {
-    List(config.successEventCount, config.failedEventCount, config.batchEnrolmentUpdateEventCount, config.dbUpdateCount, config.dbReadCount, config.cacheHitCount)
+    List(config.successEventCount, config.failedEventCount, config.batchEnrolmentUpdateEventCount, config.dbUpdateCount, config.dbReadCount, config.cacheHitCount, config.skipEventsCount)
   }
 
   override def open(parameters: Configuration): Unit = {
@@ -47,12 +47,17 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
   }
 
   def process(key: String, context: ProcessWindowFunction[util.Map[String, AnyRef], String, String, TimeWindow]#Context, events: lang.Iterable[util.Map[String, AnyRef]], metrics: Metrics): Unit = {
-    val contentConsumptionEvents = events.asScala.filter(event => StringUtils.equalsIgnoreCase(event.get(config.eData).asInstanceOf[util.Map[String, AnyRef]].asScala(config.action).asInstanceOf[String], config.batchEnrolmentUpdateCode))
-    val eDataBatch: List[Map[String, AnyRef]] = contentConsumptionEvents.map(f => {
-      metrics.incCounter(config.batchEnrolmentUpdateEventCount)
-      f.get(config.eData).asInstanceOf[util.Map[String, AnyRef]].asScala.toMap
-    }).toList
-
+    val contentConsumptionEvents = events.asScala.filter(event => {
+      val isBatchEnrollmentEvent: Boolean = StringUtils.equalsIgnoreCase(event.get(config.eData).asInstanceOf[util.Map[String, AnyRef]].asScala(config.action).asInstanceOf[String], config.batchEnrolmentUpdateCode)
+      if (isBatchEnrollmentEvent) {
+        metrics.incCounter(config.batchEnrolmentUpdateEventCount)
+        isBatchEnrollmentEvent
+      } else {
+        metrics.incCounter(config.skipEventsCount)
+        isBatchEnrollmentEvent
+      }
+    })
+    val eDataBatch: List[Map[String, AnyRef]] = contentConsumptionEvents.map(f => f.get(config.eData).asInstanceOf[util.Map[String, AnyRef]].asScala.toMap).toList
     // Grouping the contents to avoid the duplicate of contents
     val groupedData: List[Map[String, AnyRef]] = eDataBatch.groupBy(key => (key.get(config.courseId), key.get(config.batchId), key.get(config.userId)))
       .values.map(value => Map(config.batchId -> value.head(config.batchId), config.userId -> value.head(config.userId), config.courseId -> value.head(config.courseId),
@@ -99,6 +104,7 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
 
   /**
    * Course Level Agg using the merged data of ContentConsumption per user, course and batch.
+   *
    * @param userConsumption
    * @param metrics
    * @return
@@ -106,7 +112,7 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
   def courseActivityAgg(userConsumption: UserContentConsumption)(implicit metrics: Metrics): UserActivityAgg = {
     val courseId = userConsumption.courseId
     val userId = userConsumption.userId
-    val contextId = "cb:"+ userConsumption.batchId
+    val contextId = "cb:" + userConsumption.batchId
     val leafNodes = readFromCache(key = s"$courseId:$courseId:${config.leafNodes}", metrics).distinct
     val completedCount = leafNodes.intersect(userConsumption.contents.filter(cc => cc._2.status == 2).map(cc => cc._2.contentId).toList.distinct).size
     UserActivityAgg("course", userId, courseId, contextId, Map("completedCount" -> completedCount), Map("completedCount" -> System.currentTimeMillis()))
@@ -124,7 +130,7 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
   def courseChildrenActivityAgg(userConsumption: UserContentConsumption)(implicit metrics: Metrics): List[UserActivityAgg] = {
     val courseId = userConsumption.courseId
     val userId = userConsumption.userId
-    val contextId = "cb:"+ userConsumption.batchId
+    val contextId = "cb:" + userConsumption.batchId
 
     // These are the child collections which require computation of aggregates - for this user.
     val ancestors = userConsumption.contents.mapValues(content => {
@@ -152,6 +158,7 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
 
   /**
    * Generation of a "String" key for UserContentConsumption.
+   *
    * @param userConsumption
    * @return
    */
@@ -162,6 +169,7 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
   /**
    * Merging the Input and DB ContentStatus data of a User, Course and Batch (Enrolment)
    * This is the critical part of the code.
+   *
    * @param inputData
    * @param dbData
    * @param metrics
@@ -176,8 +184,12 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
       // ContentStatus from DB.
       val dbCC: ContentStatus = dbContents.getOrElse(contentId, ContentStatus(contentId, 0, 0, 0))
       val finalStatus = List(inputCC.status, dbCC.status).max // Final status is max of DB and Input ContentStatus.
-      val views = sumFunc(List(inputCC, dbCC), (x: ContentStatus) => {x.viewCount}) // View Count is sum of DB and Input ContentStatus.
-      val completion = sumFunc(List(inputCC, dbCC), (x: ContentStatus) => {x.completedCount}) // Completed Count is sum of DB and Input ContentStatus.
+      val views = sumFunc(List(inputCC, dbCC), (x: ContentStatus) => {
+        x.viewCount
+      }) // View Count is sum of DB and Input ContentStatus.
+      val completion = sumFunc(List(inputCC, dbCC), (x: ContentStatus) => {
+        x.completedCount
+      }) // Completed Count is sum of DB and Input ContentStatus.
       val eventsFor: List[String] = getEventActions(dbCC, inputCC)
       // Merged ContentStatus.
       (contentId, ContentStatus(contentId, finalStatus, completion, views, eventsFor))
@@ -187,6 +199,7 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
 
   /**
    * This will identify whether this is the start or complete of the Content by User.
+   *
    * @param dbCC
    * @param inputCC
    * @return List - Actions - "start" and "complete".
@@ -199,6 +212,7 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
 
   /**
    * Generic method to read data from DB (Cassandra).
+   *
    * @param columns
    * @param keySpace
    * @param table
@@ -296,20 +310,24 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
     enrichedContents.map(content => {
       val consumedList = content._2
       val finalStatus = consumedList.map(x => x.status).max
-      val views = sumFunc(consumedList, (x: ContentStatus) => {x.viewCount})
-      val completion = sumFunc(consumedList, (x: ContentStatus) => {x.completedCount})
+      val views = sumFunc(consumedList, (x: ContentStatus) => {
+        x.viewCount
+      })
+      val completion = sumFunc(consumedList, (x: ContentStatus) => {
+        x.completedCount
+      })
       (content._1, ContentStatus(content._1, finalStatus, completion, views))
     }).toMap
   }
 
   /**
    * Computation of Sum for viewCount and completedCount.
+   *
    * @param list
    * @param valFunc
    * @return
    */
   private def sumFunc(list: List[ContentStatus], valFunc: (ContentStatus) => Int): Int = list.map(x => valFunc(x)).sum
-
 
 
   /**
@@ -327,7 +345,7 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
         val identifierMap = entry._1
         val consumptionList = entry._2.flatMap(row => Map(row.getObject(config.contentId.toLowerCase()).asInstanceOf[String] -> Map(config.status -> row.getObject(config.status), config.viewcount -> row.getObject(config.viewcount), config.completedcount -> row.getObject(config.completedcount))))
           .map(entry => {
-            val contentStatus = entry._2.filter(x=>x._2 != null)
+            val contentStatus = entry._2.filter(x => x._2 != null)
             val contentId = entry._1
             val status = contentStatus.getOrElse(config.status, 1).asInstanceOf[Number].intValue()
             val viewCount = contentStatus.get(config.viewcount).getOrElse(0).asInstanceOf[Number].intValue()
@@ -347,6 +365,7 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
   /**
    * Content - AUDIT Event Generation using UserContentConsumption
    * "eventsFor" - will have the action (or type) for the event to generate.
+   *
    * @param userConsumption
    * @return
    */
