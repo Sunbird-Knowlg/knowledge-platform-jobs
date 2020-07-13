@@ -25,7 +25,6 @@ class BaseProcessTestConfig(override val config: Config) extends BaseJobConfig(c
 
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
 
-  val dedupStore: Int = config.getInt("redis.database.duplicationstore.id")
   val cacheExpirySeconds: Int = config.getInt("redis.database.key.expiry.seconds")
   val mapEventCount = "map-event-count"
   val telemetryEventCount = "telemetry-event-count"
