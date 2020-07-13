@@ -256,7 +256,7 @@ class CourseAggregatorMapSource extends SourceFunction[util.Map[String, AnyRef]]
     val eventMap2 = gson.fromJson(EventFixture.EVENT_2, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]].asScala ++ Map("partition" -> 0.asInstanceOf[AnyRef])
     val eventMap3 = gson.fromJson(EventFixture.EVENT_3, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]].asScala ++ Map("partition" -> 0.asInstanceOf[AnyRef])
     val eventMap4 = gson.fromJson(EventFixture.EVENT_4, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]].asScala ++ Map("partition" -> 0.asInstanceOf[AnyRef])
-    val eventMap5 = gson.fromJson(EventFixture.EVENT_4, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]].asScala ++ Map("partition" -> 0.asInstanceOf[AnyRef])
+    val eventMap5 = gson.fromJson(EventFixture.EVENT_5, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]].asScala ++ Map("partition" -> 0.asInstanceOf[AnyRef])
     ctx.collect(eventMap1.asJava)
     ctx.collect(eventMap2.asJava)
     ctx.collect(eventMap3.asJava)
