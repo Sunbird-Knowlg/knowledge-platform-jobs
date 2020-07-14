@@ -1,5 +1,12 @@
-
-.idea/
+target/
+*.class
+*.jar
+*.war
+*.ear
+*.logs
 *.iml
-*/target/
-course-aggregate-updater/dependency-reduced-pom.xml
+.idea/
+.eclipse
+dependency-reduced-pom.xml
+.DS_Store
+*.log
