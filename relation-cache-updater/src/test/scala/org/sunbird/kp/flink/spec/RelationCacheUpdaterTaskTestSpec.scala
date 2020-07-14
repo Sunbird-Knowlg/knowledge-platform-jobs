@@ -37,7 +37,7 @@ class RelationCacheUpdaterTaskTestSpec extends BaseTestSpec {
     .build)
 
   var redisServer: RedisServer = _
-  redisServer = new RedisServer()
+  redisServer = new RedisServer(6340)
   redisServer.start()
   var relCacheDb: Jedis = _
   var contentCacheDb: Jedis = _
