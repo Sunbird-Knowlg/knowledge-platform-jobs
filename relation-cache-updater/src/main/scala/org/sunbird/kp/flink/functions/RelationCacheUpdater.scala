@@ -131,7 +131,10 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
         }
     }
 
-    private def getChildren(hierarchy: java.util.Map[String, AnyRef]) = hierarchy.getOrDefault("children", java.util.Arrays.asList()).asInstanceOf[java.util.List[java.util.Map[String, AnyRef]]]
+    private def getChildren(hierarchy: java.util.Map[String, AnyRef]) = {
+        val children = hierarchy.getOrDefault("children", java.util.Arrays.asList()).asInstanceOf[java.util.List[java.util.Map[String, AnyRef]]]
+        if (CollectionUtils.isEmpty(children)) List().asJava else children
+    }
 
     private def storeDataInCache(rootId: String, suffix: String, dataMap: Map[String, AnyRef], cache: DataCache) = {
         val finalSuffix = if (StringUtils.isNotBlank(suffix)) ":" + suffix else ""
