@@ -95,6 +95,7 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.cacheHitCount}").getValue() should be(18)
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.successEventCount}").getValue() should be(5)
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.failedEventCount}").getValue() should be(0)
+    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.skipEventsCount}").getValue() should be(1)
 
     auditEventSink.values.size() should be(5)
     auditEventSink.values.forEach(event => {
@@ -255,10 +256,12 @@ class CourseAggregatorMapSource extends SourceFunction[util.Map[String, AnyRef]]
     val eventMap2 = gson.fromJson(EventFixture.EVENT_2, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]].asScala ++ Map("partition" -> 0.asInstanceOf[AnyRef])
     val eventMap3 = gson.fromJson(EventFixture.EVENT_3, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]].asScala ++ Map("partition" -> 0.asInstanceOf[AnyRef])
     val eventMap4 = gson.fromJson(EventFixture.EVENT_4, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]].asScala ++ Map("partition" -> 0.asInstanceOf[AnyRef])
+    val eventMap5 = gson.fromJson(EventFixture.EVENT_5, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]].asScala ++ Map("partition" -> 0.asInstanceOf[AnyRef])
     ctx.collect(eventMap1.asJava)
     ctx.collect(eventMap2.asJava)
     ctx.collect(eventMap3.asJava)
     ctx.collect(eventMap4.asJava)
+    ctx.collect(eventMap5.asJava)
   }
 
   override def cancel() = {}
