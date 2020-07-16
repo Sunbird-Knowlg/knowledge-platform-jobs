@@ -117,7 +117,7 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
         val mimeType = hierarchy.getOrDefault("mimeType", "").asInstanceOf[String]
         val isCollection = (StringUtils.equalsIgnoreCase(mimeType, "application/vnd.ekstep.content-collection"))
         val ancestors = if (isCollection) identifier :: parents else parents
-        if (isCollection) {
+        val ancestorsMap = if (isCollection) {
             getChildren(hierarchy).asScala.map(child => {
                 val childId = child.get("identifier").asInstanceOf[String]
                 getAncestors(childId, child, ancestors)
@@ -126,10 +126,11 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
                 // convert maps to seq, to keep duplicate keys and concat then group by key - Code explanation.
                 val grouped = (a.toSeq ++ b.toSeq).groupBy(_._1)
                 grouped.mapValues(_.map(_._2).toList.flatten.distinct)
-            }).getOrElse(Map()).filter(a => a._2.nonEmpty)
+            }).getOrElse(Map())
         } else {
             Map(identifier -> parents)
         }
+        ancestorsMap.filter(m => m._2.nonEmpty)
     }
 
     private def getChildren(hierarchy: java.util.Map[String, AnyRef]) = {
