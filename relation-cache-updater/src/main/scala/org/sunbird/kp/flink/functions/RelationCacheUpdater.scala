@@ -79,10 +79,6 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
         List(config.successEventCount, config.failedEventCount, config.skippedEventCount, config.totalEventsCount)
     }
 
-    private def filterEmpty(data: Map[String, List[String]]): Map[String, List[String]] = {
-        data.filterNot(entry => entry._2.nonEmpty)
-    }
-
     private def isValidEvent(eData: java.util.Map[String, AnyRef]): Boolean = {
         val action = eData.getOrDefault("action", "").asInstanceOf[String]
         val mimeType = eData.getOrDefault("mimeType", "").asInstanceOf[String]
