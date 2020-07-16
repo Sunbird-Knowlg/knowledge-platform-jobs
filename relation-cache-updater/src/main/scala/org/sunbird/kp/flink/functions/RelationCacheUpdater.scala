@@ -79,6 +79,10 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
         List(config.successEventCount, config.failedEventCount, config.skippedEventCount, config.totalEventsCount)
     }
 
+    private def filterEmpty(data: Map[String, List[String]]): Map[String, List[String]] = {
+        data.filterNot(entry => entry._2.nonEmpty)
+    }
+
     private def isValidEvent(eData: java.util.Map[String, AnyRef]): Boolean = {
         val action = eData.getOrDefault("action", "").asInstanceOf[String]
         val mimeType = eData.getOrDefault("mimeType", "").asInstanceOf[String]
@@ -98,7 +102,7 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
 
     private def getLeafNodes(identifier: String, hierarchy: java.util.Map[String, AnyRef]): Map[String, List[String]] = {
         val mimeType = hierarchy.getOrDefault("mimeType", "").asInstanceOf[String]
-        if (StringUtils.equalsIgnoreCase(mimeType, "application/vnd.ekstep.content-collection")) {
+        val leafNodesMap = if (StringUtils.equalsIgnoreCase(mimeType, "application/vnd.ekstep.content-collection")) {
             val leafNodes = hierarchy.getOrDefault("leafNodes", java.util.Arrays.asList()).asInstanceOf[java.util.List[String]].asScala.toList
             val map: Map[String, List[String]] = if (leafNodes.nonEmpty) Map() + (identifier -> leafNodes) else Map()
             val children = getChildren(hierarchy)
@@ -110,6 +114,7 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
             } else Map()
             map ++ childLeafNodesMap
         } else Map()
+        leafNodesMap.filter(m => m._2.nonEmpty).toMap
     }
 
     private def getAncestors(identifier: String, hierarchy: java.util.Map[String, AnyRef], parents: List[String] = List()): Map[String, List[String]] = {
@@ -125,7 +130,7 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
                 // convert maps to seq, to keep duplicate keys and concat then group by key - Code explanation.
                 val grouped = (a.toSeq ++ b.toSeq).groupBy(_._1)
                 grouped.mapValues(_.map(_._2).toList.flatten.distinct)
-            }).getOrElse(Map())
+            }).getOrElse(Map()).filter(a => a._2.nonEmpty)
         } else {
             Map(identifier -> parents)
         }
@@ -146,7 +151,7 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
             })
         } catch {
             case e: Throwable => {
-                println("Failed to write data for " + rootId + "with map: " + dataMap)
+                println("Failed to write data for " + suffix + ": " + rootId + " with map: " + dataMap)
                 throw e
             }
         }
