@@ -139,10 +139,17 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
     private def storeDataInCache(rootId: String, suffix: String, dataMap: Map[String, AnyRef], cache: DataCache) = {
         val finalSuffix = if (StringUtils.isNotBlank(suffix)) ":" + suffix else ""
         val finalPrefix = if (StringUtils.isNoneBlank(rootId)) rootId + ":" else ""
-        dataMap.foreach(each => each._2 match {
-            case value: List[String] => cache.addListWithRetry(finalPrefix + each._1 + finalSuffix, each._2.asInstanceOf[List[String]])
-            case _ =>  cache.setWithRetry(finalPrefix + each._1 + finalSuffix, each._2.asInstanceOf[String])
-        })
+        try {
+            dataMap.foreach(each => each._2 match {
+                case value: List[String] => cache.addListWithRetry(finalPrefix + each._1 + finalSuffix, each._2.asInstanceOf[List[String]])
+                case _ =>  cache.setWithRetry(finalPrefix + each._1 + finalSuffix, each._2.asInstanceOf[String])
+            })
+        } catch {
+            case e: Throwable => {
+                println("Failed to write data for " + rootId + "with map: " + dataMap)
+                throw e
+            }
+        }
     }
 
     def readHierarchyFromDb(identifier: String): String = {
