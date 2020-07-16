@@ -99,7 +99,7 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
     private def getLeafNodes(identifier: String, hierarchy: java.util.Map[String, AnyRef]): Map[String, List[String]] = {
         val mimeType = hierarchy.getOrDefault("mimeType", "").asInstanceOf[String]
         val leafNodesMap = if (StringUtils.equalsIgnoreCase(mimeType, "application/vnd.ekstep.content-collection")) {
-            val leafNodes = hierarchy.getOrDefault("leafNodes", java.util.Arrays.asList()).asInstanceOf[java.util.List[String]].asScala.toList
+            val leafNodes = getOrComposeLeafNodes(hierarchy, false)
             val map: Map[String, List[String]] = if (leafNodes.nonEmpty) Map() + (identifier -> leafNodes) else Map()
             val children = getChildren(hierarchy)
             val childLeafNodesMap = if (CollectionUtils.isNotEmpty(children)) {
@@ -111,6 +111,22 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
             map ++ childLeafNodesMap
         } else Map()
         leafNodesMap.filter(m => m._2.nonEmpty).toMap
+    }
+
+    private def getOrComposeLeafNodes(hierarchy: java.util.Map[String, AnyRef], compose: Boolean = true): List[String] = {
+        if (hierarchy.containsKey("leafNodes") && !compose)
+            hierarchy.getOrDefault("leafNodes", java.util.Arrays.asList()).asInstanceOf[java.util.List[String]].asScala.toList
+        else {
+            val children = getChildren(hierarchy)
+            val childCollections = children.asScala.filter(c => isCollection(c))
+            val leafList = childCollections.map(coll => getOrComposeLeafNodes(coll, true)).flatten.toList
+            val ids = children.asScala.filterNot(c => isCollection(c)).map(c => c.getOrDefault("identifier", "").asInstanceOf[String]).filter(id => StringUtils.isNotBlank(id))
+            leafList ++ ids
+        }
+    }
+
+    private def isCollection(content: java.util.Map[String, AnyRef]): Boolean = {
+        StringUtils.equalsIgnoreCase(content.getOrDefault("mimeType", "").asInstanceOf[String], "application/vnd.ekstep.content-collection")
     }
 
     private def getAncestors(identifier: String, hierarchy: java.util.Map[String, AnyRef], parents: List[String] = List()): Map[String, List[String]] = {
