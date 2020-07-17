@@ -9,6 +9,7 @@ import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 import org.apache.flink.streaming.api.windowing.time.Time
+import org.apache.flink.streaming.api.windowing.triggers.CountTrigger
 import org.sunbird.async.core.job.FlinkKafkaConnector
 import org.sunbird.async.core.util.FlinkUtil
 import org.sunbird.async.functions.CourseAggregatesFunction
@@ -23,7 +24,8 @@ class CourseAggregateUpdaterStreamTask(config: CourseAggregateUpdaterConfig, kaf
       env.addSource(kafkaConnector.kafkaMapSource(config.kafkaInputTopic), config.courseMetricsUpdaterConsumer)
         .uid(config.courseMetricsUpdaterConsumer).setParallelism(config.kafkaConsumerParallelism)
         .keyBy(x => x.get("partition").toString)
-        .timeWindow(Time.seconds(config.windowTimingInSec))
+        .timeWindow(Time.seconds(config.windowTimingInSec)) // Collect all the events for certain period of time
+        .trigger(CountTrigger.of(config.windowBatchSize)) // Trigger the psrocess fn When it reaches the certain batch size
         .process(new CourseAggregatesFunction(config)).name(config.ProgressUpdaterFn).uid(config.ProgressUpdaterFn)
         .setParallelism(config.progressUpdaterParallelism)
 
