@@ -233,6 +233,7 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
           selectWhere.and(QueryBuilder.eq(col._1, col._2))
       }
     })
+    logger.info("DB Read" + selectWhere.toString)
     metrics.incCounter(config.dbReadCount)
     cassandraUtil.find(selectWhere.toString).asScala.toList
 
@@ -248,10 +249,11 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
       queries.map(query => cqlBatch.add(query))
       val result = cassandraUtil.upsert(cqlBatch.toString)
       if (result) {
+        logger.info("DataBase Update got success" + cqlBatch.toString)
         metrics.incCounter(config.successEventCount)
         metrics.incCounter(config.dbUpdateCount)
       } else {
-        logger.info("Database update has failed")
+        logger.info("Database update has failed" + cqlBatch.toString)
       }
     })
   }
@@ -260,8 +262,8 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
     metrics.incCounter(config.cacheHitCount)
     val list = cache.getKeyMembers(key)
     if (CollectionUtils.isEmpty(list))
-      throw new Exception("Redis cache (smembers) not available for key: " + key)
-    else list.asScala.toList
+      logger.info("Redis cache (smembers) not available for key: " + key)
+    list.asScala.toList
   }
 
   def getUserAggQuery(progress: UserActivityAgg):
