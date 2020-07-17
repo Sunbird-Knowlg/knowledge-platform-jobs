@@ -48,8 +48,9 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
 
   def process(key: String, context: ProcessWindowFunction[util.Map[String, AnyRef], String, String, TimeWindow]#Context, events: lang.Iterable[util.Map[String, AnyRef]], metrics: Metrics): Unit = {
     val contentConsumptionEvents = events.asScala.filter(event => {
-      val isBatchEnrollmentEvent: Boolean = StringUtils.equalsIgnoreCase(event.get(config.eData).asInstanceOf[util.Map[String, AnyRef]].asScala(config.action).asInstanceOf[String], config.batchEnrolmentUpdateCode)
+      val isBatchEnrollmentEvent: Boolean = StringUtils.equalsIgnoreCase(event.get(config.eData).asInstanceOf[util.Map[String, AnyRef]].asScala.getOrElse(config.action, "").asInstanceOf[String], config.batchEnrolmentUpdateCode)
       if (isBatchEnrollmentEvent) {
+        logger.info("Processing batch-enrolment-update - MID: " + event.get("mid"))
         metrics.incCounter(config.batchEnrolmentUpdateEventCount)
         isBatchEnrollmentEvent
       } else {
@@ -245,13 +246,12 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
     groupedQueries.foreach(queries => {
       val cqlBatch = QueryBuilder.batch()
       queries.map(query => cqlBatch.add(query))
-      logger.debug("CQLBatch query: " + cqlBatch.toString)
       val result = cassandraUtil.upsert(cqlBatch.toString)
       if (result) {
         metrics.incCounter(config.successEventCount)
         metrics.incCounter(config.dbUpdateCount)
       } else {
-        logger.error("Database update has failed")
+        logger.info("Database update has failed")
       }
     })
   }
@@ -337,7 +337,7 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
    *
    */
   def getContentStatusFromDB(eDataBatch: List[Map[String, AnyRef]], metrics: Metrics): List[UserContentConsumption] = {
-    val primaryFields = Map(config.userId.toLowerCase() -> eDataBatch.map(x => x(config.userId)).toList, config.batchId.toLowerCase -> eDataBatch.map(x => x(config.batchId)).toList, config.courseId.toLowerCase -> eDataBatch.map(x => x(config.courseId)).toList)
+    val primaryFields = Map(config.userId.toLowerCase() -> eDataBatch.map(x => x(config.userId)).toList.distinct, config.batchId.toLowerCase -> eDataBatch.map(x => x(config.batchId)).toList.distinct, config.courseId.toLowerCase -> eDataBatch.map(x => x(config.courseId)).toList.distinct)
     val records = Option(readFromDB(primaryFields, config.dbKeyspace, config.dbUserContentConsumptionTable, metrics))
 
     records.map(record => record.groupBy(col => Map(config.batchId -> col.getObject(config.batchId.toLowerCase()).asInstanceOf[String], config.userId -> col.getObject(config.userId.toLowerCase()).asInstanceOf[String], config.courseId -> col.getObject(config.courseId.toLowerCase()).asInstanceOf[String])))
