@@ -24,7 +24,7 @@ class CourseAggregateUpdaterStreamTask(config: CourseAggregateUpdaterConfig, kaf
       env.addSource(kafkaConnector.kafkaMapSource(config.kafkaInputTopic), config.courseMetricsUpdaterConsumer)
         .uid(config.courseMetricsUpdaterConsumer).setParallelism(config.kafkaConsumerParallelism)
         .keyBy(x => x.get("partition").toString)
-        .timeWindow(Time.seconds(config.thresholdPeriod)) // Collect all the events for certain period of time
+        .timeWindow(Time.seconds(config.thresholdTime)) // Collect all the events for certain period of time
         .trigger(CountTrigger.of(config.thresholdSize)) // Trigger the psrocess fn When it reaches the certain batch size
         .process(new CourseAggregatesFunction(config)).name(config.ProgressUpdaterFn).uid(config.ProgressUpdaterFn)
         .setParallelism(config.progressUpdaterParallelism)
