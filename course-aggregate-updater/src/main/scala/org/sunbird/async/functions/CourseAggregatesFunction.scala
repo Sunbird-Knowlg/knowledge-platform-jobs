@@ -164,7 +164,7 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
    * @return
    */
   def getUCKey(userConsumption: UserContentConsumption): String = {
-    userConsumption.userId + ":" + userConsumption.courseId + ":" + userConsumption.courseId
+    userConsumption.userId + ":" + userConsumption.courseId + ":" + userConsumption.batchId
   }
 
   /**
@@ -195,7 +195,11 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
       // Merged ContentStatus.
       (contentId, ContentStatus(contentId, finalStatus, completion, views, eventsFor))
     }).toMap
-    UserContentConsumption(inputData.userId, inputData.batchId, inputData.courseId, processedContents)
+
+    val existing = processedContents.keys.toList
+    val remainingContents = dbData.contents.filterKeys(key => !existing.contains(key))
+    val finalContentsMap = processedContents ++ remainingContents
+    UserContentConsumption(inputData.userId, inputData.batchId, inputData.courseId, finalContentsMap)
   }
 
   /**
