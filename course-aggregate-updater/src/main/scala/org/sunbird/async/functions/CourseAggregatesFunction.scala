@@ -47,6 +47,7 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
   }
 
   def process(key: String, context: ProcessWindowFunction[util.Map[String, AnyRef], String, String, TimeWindow]#Context, events: lang.Iterable[util.Map[String, AnyRef]], metrics: Metrics): Unit = {
+    logger.info("EventsSize" + events.asScala.toList.size)
     val contentConsumptionEvents = events.asScala.filter(event => {
       val isBatchEnrollmentEvent: Boolean = StringUtils.equalsIgnoreCase(event.get(config.eData).asInstanceOf[util.Map[String, AnyRef]].asScala.getOrElse(config.action, "").asInstanceOf[String], config.batchEnrolmentUpdateCode)
       if (isBatchEnrollmentEvent) {
@@ -237,7 +238,7 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
           selectWhere.and(QueryBuilder.eq(col._1, col._2))
       }
     })
-    logger.info("DB Read" + selectWhere.toString)
+   // logger.info("DB Read" + selectWhere.toString)
     metrics.incCounter(config.dbReadCount)
     cassandraUtil.find(selectWhere.toString).asScala.toList
 
@@ -253,20 +254,22 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
       queries.map(query => cqlBatch.add(query))
       val result = cassandraUtil.upsert(cqlBatch.toString)
       if (result) {
-        logger.info("DataBase Update got success" + cqlBatch.toString)
+       // logger.info("DataBase Update got success" + cqlBatch.toString)
         metrics.incCounter(config.successEventCount)
         metrics.incCounter(config.dbUpdateCount)
       } else {
-        logger.info("Database update has failed" + cqlBatch.toString)
+       // logger.info("Database update has failed" + cqlBatch.toString)
       }
     })
   }
 
   def readFromCache(key: String, metrics: Metrics): List[String] = {
+    //logger.info("redis key" + key)
+    //logger.info("redis db" + cache.dbIndex)
     metrics.incCounter(config.cacheHitCount)
     val list = cache.getKeyMembers(key)
-    if (CollectionUtils.isEmpty(list))
-      logger.info("Redis cache (smembers) not available for key: " + key)
+    //if (CollectionUtils.isEmpty(list))
+      //logger.info("Redis cache (smembers) not available for key: " + key)
     list.asScala.toList
   }
 
