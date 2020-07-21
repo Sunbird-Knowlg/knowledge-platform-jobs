@@ -106,19 +106,19 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
     event1Progress.size() should be(4)
     event1Progress.forEach(col => {
       if (col.getObject("activity_id") == "do_course_unit1") {
-        col.getObject("activity_type") should be("course")
+        col.getObject("activity_type") should be("Course")
         col.getObject("agg").asInstanceOf[util.Map[String, Int]].get("completedCount") should equal(1)
       }
       if (col.getObject("activity_id") == "do_course_unit2") {
-        col.getObject("activity_type") should be("course")
+        col.getObject("activity_type") should be("Course")
         col.getObject("agg").asInstanceOf[util.Map[String, Int]].get("completedCount") should equal(1)
       }
       if (col.getObject("activity_id") == "do_course_unit3") {
-        col.getObject("activity_type") should be("course")
+        col.getObject("activity_type") should be("Course")
         col.getObject("agg").asInstanceOf[util.Map[String, Int]].get("completedCount") should equal(1)
       }
       if (col.getObject("activity_id") == "do_1127212344324751361295") {
-        col.getObject("activity_type") should be("course")
+        col.getObject("activity_type") should be("Course")
         println("aggMap", col.getObject("agg"))
         col.getObject("agg").asInstanceOf[util.Map[String, Int]].get("completedCount") should equal(2)
 
@@ -145,17 +145,17 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
     event2Progress.size() should be(3)
     event2Progress.forEach(col => {
       if (col.getObject("activity_id") == "unit11") {
-        col.getObject("activity_type") should be("course")
+        col.getObject("activity_type") should be("Course")
         println("aggMap", col.getObject("agg"))
         col.getObject("agg").asInstanceOf[util.Map[String, Int]].get("completedCount") should equal(2)
       }
       if (col.getObject("activity_id") == "unit22") {
-        col.getObject("activity_type") should be("course")
+        col.getObject("activity_type") should be("Course")
         println("aggMap", col.getObject("agg"))
         col.getObject("agg").asInstanceOf[util.Map[String, Int]].get("completedCount") should equal(1)
       }
       if (col.getObject("activity_id") == "C11") {
-        col.getObject("activity_type") should be("course")
+        col.getObject("activity_type") should be("Course")
         println("aggMap", col.getObject("agg"))
         col.getObject("agg").asInstanceOf[util.Map[String, Int]].get("completedCount") should equal(2)
       }
@@ -178,17 +178,17 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
     event3Progress.size() should be(3)
     event3Progress.forEach(col => {
       if (col.getObject("activity_id") == "unit1") {
-        col.getObject("activity_type") should be("course")
+        col.getObject("activity_type") should be("Course")
         println("aggMap", col.getObject("agg"))
         col.getObject("agg").asInstanceOf[util.Map[String, Int]].get("completedCount") should equal(2)
       }
       if (col.getObject("activity_id") == "unit2") {
-        col.getObject("activity_type") should be("course")
+        col.getObject("activity_type") should be("Course")
         println("aggMap", col.getObject("agg"))
         col.getObject("agg").asInstanceOf[util.Map[String, Int]].get("completedCount") should equal(2)
       }
       if (col.getObject("activity_id") == "course001") {
-        col.getObject("activity_type") should be("course")
+        col.getObject("activity_type") should be("Course")
         println("aggMap", col.getObject("agg"))
         col.getObject("agg").asInstanceOf[util.Map[String, Int]].get("completedCount") should equal(3)
       }

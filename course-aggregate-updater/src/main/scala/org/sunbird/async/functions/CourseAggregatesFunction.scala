@@ -47,6 +47,7 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
   }
 
   def process(key: String, context: ProcessWindowFunction[util.Map[String, AnyRef], String, String, TimeWindow]#Context, events: lang.Iterable[util.Map[String, AnyRef]], metrics: Metrics): Unit = {
+    logger.info("EventsSize" + events.asScala.toList.size)
     val contentConsumptionEvents = events.asScala.filter(event => {
       val isBatchEnrollmentEvent: Boolean = StringUtils.equalsIgnoreCase(event.get(config.eData).asInstanceOf[util.Map[String, AnyRef]].asScala.getOrElse(config.action, "").asInstanceOf[String], config.batchEnrolmentUpdateCode)
       if (isBatchEnrollmentEvent) {
@@ -116,7 +117,7 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
     val contextId = "cb:" + userConsumption.batchId
     val leafNodes = readFromCache(key = s"$courseId:$courseId:${config.leafNodes}", metrics).distinct
     val completedCount = leafNodes.intersect(userConsumption.contents.filter(cc => cc._2.status == 2).map(cc => cc._2.contentId).toList.distinct).size
-    UserActivityAgg("course", userId, courseId, contextId, Map("completedCount" -> completedCount), Map("completedCount" -> System.currentTimeMillis()))
+    UserActivityAgg("Course", userId, courseId, contextId, Map("completedCount" -> completedCount), Map("completedCount" -> System.currentTimeMillis()))
   }
 
   /**
@@ -153,7 +154,7 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
       val leafNodes = e._2
       val completedCount = leafNodes.intersect(userCompletedContents).size
       // TODO - Identify how to generate start and end event for CourseUnit.
-      UserActivityAgg("course", userId, collectionId, contextId, Map("completedCount" -> completedCount), Map("completedCount" -> System.currentTimeMillis()))
+      UserActivityAgg("Course", userId, collectionId, contextId, Map("completedCount" -> completedCount), Map("completedCount" -> System.currentTimeMillis()))
     }).toList
   }
 
@@ -237,7 +238,6 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
           selectWhere.and(QueryBuilder.eq(col._1, col._2))
       }
     })
-    logger.info("DB Read" + selectWhere.toString)
     metrics.incCounter(config.dbReadCount)
     cassandraUtil.find(selectWhere.toString).asScala.toList
 
@@ -253,7 +253,6 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
       queries.map(query => cqlBatch.add(query))
       val result = cassandraUtil.upsert(cqlBatch.toString)
       if (result) {
-        logger.info("DataBase Update got success" + cqlBatch.toString)
         metrics.incCounter(config.successEventCount)
         metrics.incCounter(config.dbUpdateCount)
       } else {
