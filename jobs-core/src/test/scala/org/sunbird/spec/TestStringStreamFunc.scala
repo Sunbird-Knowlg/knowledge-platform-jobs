@@ -2,7 +2,7 @@ package org.sunbird.spec
 
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.streaming.api.functions.ProcessFunction
-import org.sunbird.async.core.job.{BaseProcessFunction, Metrics}
+import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 class TestStringStreamFunc(config: BaseProcessTestConfig)(implicit val stringTypeInfo: TypeInformation[String])
   extends BaseProcessFunction[String, String](config) {

@@ -12,7 +12,7 @@
     <artifactId>jobs-core</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
-    <name>Jobs Core</name>
+    <name>jobs-core</name>
     <properties>
         <encoding>UTF-8</encoding>
         <scoverage.plugin.version>1.4.0</scoverage.plugin.version>

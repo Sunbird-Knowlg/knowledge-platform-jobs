@@ -10,8 +10,8 @@ import org.apache.flink.streaming.api.scala._
 import org.apache.flink.test.util.MiniClusterWithClientResource
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.scalatest.Matchers
-import org.sunbird.async.core.job.FlinkKafkaConnector
-import org.sunbird.async.core.util.FlinkUtil
+import org.sunbird.job.connector.FlinkKafkaConnector
+import org.sunbird.job.util.FlinkUtil
 
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future

@@ -6,11 +6,11 @@ import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 import org.scalatest.Matchers
 import org.scalatestplus.mockito.MockitoSugar
-import org.sunbird.async.core.BaseJobConfig
-import org.sunbird.async.core.cache.{DataCache, RedisConnect}
-import org.sunbird.async.core.serde.{MapDeserializationSchema, MapSerializationSchema, StringDeserializationSchema, StringSerializationSchema}
-import org.sunbird.async.core.util.FlinkUtil
 import org.sunbird.fixture.EventFixture
+import org.sunbird.job.BaseJobConfig
+import org.sunbird.job.cache.{DataCache, RedisConnect}
+import org.sunbird.job.serde.{MapDeserializationSchema, MapSerializationSchema, StringDeserializationSchema, StringSerializationSchema}
+import org.sunbird.job.util.FlinkUtil
 import redis.clients.jedis.exceptions.JedisDataException
 
 class CoreTestSpec extends BaseSpec with Matchers with MockitoSugar {

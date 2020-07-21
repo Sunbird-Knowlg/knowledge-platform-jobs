@@ -9,12 +9,12 @@
         <artifactId>knowledge-platform-jobs</artifactId>
         <version>1.0</version>
     </parent>
-    <artifactId>relation-cache-updater</artifactId>
+    <artifactId>activity-aggregate-updater</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
-    <name>relation-cache-updater</name>
+    <name>activity-aggregate-updater</name>
     <description>
-        Relation Cache Updater Flink Job
+        Course Progress Computation
     </description>
     
     <properties>
@@ -48,16 +48,22 @@
         </dependency>
         <dependency>
             <groupId>org.apache.flink</groupId>
-            <artifactId>flink-test-utils_${scala.version}</artifactId>
+            <artifactId>flink-test-utils_2.12</artifactId>
             <version>1.10.0</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.flink</groupId>
-            <artifactId>flink-runtime_${scala.version}</artifactId>
+            <artifactId>flink-runtime_2.12</artifactId>
             <version>1.10.0</version>
             <scope>test</scope>
             <classifier>tests</classifier>
+        </dependency>
+        <dependency>
+            <groupId>it.ozimov</groupId>
+            <artifactId>embedded-redis</artifactId>
+            <version>0.7.1</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.flink</groupId>
@@ -65,18 +71,6 @@
             <version>1.10.0</version>
             <scope>test</scope>
             <classifier>tests</classifier>
-        </dependency>
-        <dependency>
-            <groupId>org.cassandraunit</groupId>
-            <artifactId>cassandra-unit</artifactId>
-            <version>3.11.2.0</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>it.ozimov</groupId>
-            <artifactId>embedded-redis</artifactId>
-            <version>0.7.1</version>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.scalatest</groupId>
@@ -89,6 +83,30 @@
             <artifactId>mockito-core</artifactId>
             <version>3.3.3</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.fiftyonred</groupId>
+            <artifactId>mock-jedis</artifactId>
+            <version>0.4.0</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.cassandraunit</groupId>
+            <artifactId>cassandra-unit</artifactId>
+            <version>3.11.2.0</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>it.ozimov</groupId>
+            <artifactId>embedded-redis</artifactId>
+            <version>0.7.1</version>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.google.guava</groupId>
+                    <artifactId>guava</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
     </dependencies>
 
@@ -128,7 +146,7 @@
                             <transformers>
                                 <transformer
                                         implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>org.sunbird.job.task.RelationCacheUpdaterStreamTask</mainClass>
+                                    <mainClass>org.sunbird.job.task.ActivityAggregateUpdaterStreamTask</mainClass>
                                 </transformer>
                                 <!-- append default configs -->
                                 <transformer
@@ -184,7 +202,7 @@
                 <configuration>
                     <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
                     <junitxml>.</junitxml>
-                    <filereports>relation-cache-updater-testsuite.txt</filereports>
+                    <filereports>dp-duplication-testsuite.txt</filereports>
                 </configuration>
                 <executions>
                     <execution>
