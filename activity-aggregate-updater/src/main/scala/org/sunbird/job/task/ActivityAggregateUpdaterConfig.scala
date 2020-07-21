@@ -28,6 +28,7 @@ class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJo
   val dbUpdateCount = "db-update-count"
   val dbReadCount = "db-read-count"
   val cacheHitCount = "cache-hit-count"
+  val cacheMissCount = "cache-miss-count"
   val batchEnrolmentUpdateEventCount = "batch-enrolment-update-count"
   val skipEventsCount = "skipped-events-count"
 
@@ -66,12 +67,14 @@ class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJo
   val ancestors = "ancestors"
   val viewcount = "viewcount"
   val completedcount = "completedcount"
+  val complete = "complete"
   val eData = "edata"
   val action = "action"
   val batchEnrolmentUpdateCode = "batch-enrolment-update"
   val routerFn = "RouterFn"
   val activityAggregateUpdaterFn = "activity-aggregate-updater-fn"
   val partition = "partition"
+  val courseBatch = "CourseBatch"
 
   // Consumers
   val activityAggregateUpdaterConsumer = "activity-aggregate-updater-consumer"
