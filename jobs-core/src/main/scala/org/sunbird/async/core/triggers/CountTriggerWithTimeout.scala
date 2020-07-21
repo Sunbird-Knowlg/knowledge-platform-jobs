@@ -18,25 +18,30 @@ class CountTriggerWithTimeout[W <: TimeWindow](maxCount: Long, timeCharacteristi
   override def onElement(element: Object, timestamp: Long, window: W, ctx: TriggerContext): TriggerResult = {
     val count: ReducingState[java.lang.Long] = ctx.getPartitionedState(countState)
     count.add(1L)
-    if (count.get >= maxCount || timestamp >= window.getEnd) TriggerResult.FIRE_AND_PURGE else TriggerResult.CONTINUE
-  }
-
-  override def onProcessingTime(time: Long, window: W, ctx: TriggerContext): TriggerResult = {
-    if (timeCharacteristic == TimeCharacteristic.EventTime) TriggerResult.CONTINUE
-    else {
-      if (time >= window.getEnd) TriggerResult.CONTINUE else TriggerResult.FIRE_AND_PURGE
+    if (count.get >= maxCount || timestamp >= window.getEnd) {
+      count.clear()
+      TriggerResult.FIRE_AND_PURGE
+    } else {
+      TriggerResult.CONTINUE
     }
   }
 
-  override def onEventTime(time: Long, window: W, ctx: TriggerContext): TriggerResult = {
-    if (timeCharacteristic == TimeCharacteristic.ProcessingTime) TriggerResult.CONTINUE else {
-      if (time >= window.getEnd) TriggerResult.CONTINUE else TriggerResult.FIRE_AND_PURGE
-    }
-  }
+override def onProcessingTime (time: Long, window: W, ctx: TriggerContext): TriggerResult = {
+  if (timeCharacteristic == TimeCharacteristic.EventTime) TriggerResult.CONTINUE
+  else {
+  if (time >= window.getEnd) TriggerResult.CONTINUE else TriggerResult.FIRE_AND_PURGE
+}
+}
 
-  override def clear(window: W, ctx: TriggerContext): Unit = {
-    ctx.getPartitionedState(countState).clear
-  }
+  override def onEventTime (time: Long, window: W, ctx: TriggerContext): TriggerResult = {
+  if (timeCharacteristic == TimeCharacteristic.ProcessingTime) TriggerResult.CONTINUE else {
+  if (time >= window.getEnd) TriggerResult.CONTINUE else TriggerResult.FIRE_AND_PURGE
+}
+}
+
+  override def clear (window: W, ctx: TriggerContext): Unit = {
+  ctx.getPartitionedState (countState).clear
+}
 
   class Sum extends ReduceFunction[java.lang.Long] {
     def reduce(value1: java.lang.Long, value2: java.lang.Long): java.lang.Long = value1 + value2

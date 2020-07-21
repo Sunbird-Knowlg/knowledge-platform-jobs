@@ -117,7 +117,7 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
     val contextId = "cb:" + userConsumption.batchId
     val leafNodes = readFromCache(key = s"$courseId:$courseId:${config.leafNodes}", metrics).distinct
     val completedCount = leafNodes.intersect(userConsumption.contents.filter(cc => cc._2.status == 2).map(cc => cc._2.contentId).toList.distinct).size
-    UserActivityAgg("course", userId, courseId, contextId, Map("completedCount" -> completedCount), Map("completedCount" -> System.currentTimeMillis()))
+    UserActivityAgg("Course", userId, courseId, contextId, Map("completedCount" -> completedCount), Map("completedCount" -> System.currentTimeMillis()))
   }
 
   /**
@@ -154,7 +154,7 @@ class CourseAggregatesFunction(config: CourseAggregateUpdaterConfig)(implicit va
       val leafNodes = e._2
       val completedCount = leafNodes.intersect(userCompletedContents).size
       // TODO - Identify how to generate start and end event for CourseUnit.
-      UserActivityAgg("course", userId, collectionId, contextId, Map("completedCount" -> completedCount), Map("completedCount" -> System.currentTimeMillis()))
+      UserActivityAgg("Course", userId, collectionId, contextId, Map("completedCount" -> completedCount), Map("completedCount" -> System.currentTimeMillis()))
     }).toList
   }
 

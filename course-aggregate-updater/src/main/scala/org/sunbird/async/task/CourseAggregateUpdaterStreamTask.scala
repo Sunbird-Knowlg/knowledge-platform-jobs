@@ -31,7 +31,7 @@ class CourseAggregateUpdaterStreamTask(config: CourseAggregateUpdaterConfig, kaf
         .process(new CourseAggregatesFunction(config))
         .name(config.ProgressUpdaterFn)
         .uid(config.ProgressUpdaterFn)
-        .setParallelism(1)
+        .setParallelism(config.progressUpdaterParallelism)
 
     progressStream.getSideOutput(config.auditEventOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaAuditEventTopic)).name(config.courseMetricsAuditProducer).uid(config.courseMetricsAuditProducer)
     env.execute(config.jobName)
