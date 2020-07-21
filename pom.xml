@@ -22,7 +22,7 @@
 	<modules>
 		<module>jobs-core</module>
 		<module>relation-cache-updater</module>
-		<module>course-aggregate-updater</module>
+		<module>activity-aggregate-updater</module>
 	</modules>
 
 	<properties>

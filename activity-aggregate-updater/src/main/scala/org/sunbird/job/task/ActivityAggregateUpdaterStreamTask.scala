@@ -11,12 +11,12 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.functions.CourseAggregatesFunction
+import org.sunbird.job.functions.ActivityAggregatesFunction
 import org.sunbird.job.trigger.CountTriggerWithTimeout
 import org.sunbird.job.util.FlinkUtil
 
 
-class CourseAggregateUpdaterStreamTask(config: CourseAggregateUpdaterConfig, kafkaConnector: FlinkKafkaConnector) {
+class ActivityAggregateUpdaterStreamTask(config: ActivityAggregateUpdaterConfig, kafkaConnector: FlinkKafkaConnector) {
   def process(): Unit = {
     implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
     implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
@@ -28,7 +28,7 @@ class CourseAggregateUpdaterStreamTask(config: CourseAggregateUpdaterConfig, kaf
         .keyBy(x => x.get("partition").toString)
         .timeWindow(Time.seconds(config.thresholdTime))
         .trigger(new CountTriggerWithTimeout[TimeWindow](config.thresholdSize, env.getStreamTimeCharacteristic))
-        .process(new CourseAggregatesFunction(config))
+        .process(new ActivityAggregatesFunction(config))
         .name(config.ProgressUpdaterFn)
         .uid(config.ProgressUpdaterFn)
         .setParallelism(config.progressUpdaterParallelism)
@@ -41,16 +41,16 @@ class CourseAggregateUpdaterStreamTask(config: CourseAggregateUpdaterConfig, kaf
 }
 
 // $COVERAGE-OFF$ Disabling scoverage as the below code can only be invoked within flink cluster
-object CourseAggregateUpdaterStreamTask {
+object ActivityAggregateUpdaterStreamTask {
 
   def main(args: Array[String]): Unit = {
     val configFilePath = Option(ParameterTool.fromArgs(args).get("config.file.path"))
     val config = configFilePath.map {
       path => ConfigFactory.parseFile(new File(path)).resolve()
-    }.getOrElse(ConfigFactory.load("course-aggregate-updater.conf").withFallback(ConfigFactory.systemEnvironment()))
-    val courseAggregator = new CourseAggregateUpdaterConfig(config)
+    }.getOrElse(ConfigFactory.load("activity-aggregate-updater.conf").withFallback(ConfigFactory.systemEnvironment()))
+    val courseAggregator = new ActivityAggregateUpdaterConfig(config)
     val kafkaUtil = new FlinkKafkaConnector(courseAggregator)
-    val task = new CourseAggregateUpdaterStreamTask(courseAggregator, kafkaUtil)
+    val task = new ActivityAggregateUpdaterStreamTask(courseAggregator, kafkaUtil)
     task.process()
   }
 }

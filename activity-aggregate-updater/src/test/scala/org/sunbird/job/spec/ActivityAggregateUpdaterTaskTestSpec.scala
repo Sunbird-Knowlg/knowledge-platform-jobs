@@ -20,7 +20,7 @@ import org.mockito.Mockito._
 import org.sunbird.job.cache.RedisConnect
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.fixture.EventFixture
-import org.sunbird.job.task.{CourseAggregateUpdaterConfig, CourseAggregateUpdaterStreamTask}
+import org.sunbird.job.task.{ActivityAggregateUpdaterConfig, ActivityAggregateUpdaterStreamTask}
 import org.sunbird.job.util.CassandraUtil
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 import redis.clients.jedis.Jedis
@@ -46,7 +46,7 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
   val mockKafkaUtil: FlinkKafkaConnector = mock[FlinkKafkaConnector](Mockito.withSettings().serializable())
   val gson = new Gson()
   val config: Config = ConfigFactory.load("test.conf")
-  val courseAggregatorConfig: CourseAggregateUpdaterConfig = new CourseAggregateUpdaterConfig(config)
+  val courseAggregatorConfig: ActivityAggregateUpdaterConfig = new ActivityAggregateUpdaterConfig(config)
 
 
   var cassandraUtil: CassandraUtil = _
@@ -88,7 +88,7 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
   "Aggregator " should "Compute and update to cassandra database" in {
     when(mockKafkaUtil.kafkaMapSource(courseAggregatorConfig.kafkaInputTopic)).thenReturn(new CourseAggregatorMapSource)
     when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaAuditEventTopic)).thenReturn(new auditEventSink)
-    new CourseAggregateUpdaterStreamTask(courseAggregatorConfig, mockKafkaUtil).process()
+    new ActivityAggregateUpdaterStreamTask(courseAggregatorConfig, mockKafkaUtil).process()
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.batchEnrolmentUpdateEventCount}").getValue() should be(4)
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.dbReadCount}").getValue() should be(1) // 10
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.dbUpdateCount}").getValue() should be(5) // 3 (This should happend depending on the batch size)
