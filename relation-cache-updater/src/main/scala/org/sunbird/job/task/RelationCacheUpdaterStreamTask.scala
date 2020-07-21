@@ -1,4 +1,4 @@
-package org.sunbird.kp.flink.task
+package org.sunbird.job.task
 
 import java.io.File
 import java.util
@@ -8,9 +8,9 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
-import org.sunbird.async.core.job.FlinkKafkaConnector
-import org.sunbird.async.core.util.FlinkUtil
-import org.sunbird.kp.flink.functions.RelationCacheUpdater
+import org.sunbird.job.connector.FlinkKafkaConnector
+import org.sunbird.job.functions.RelationCacheUpdater
+import org.sunbird.job.util.FlinkUtil
 
 
 class RelationCacheUpdaterStreamTask(config: RelationCacheUpdaterConfig, kafkaConnector: FlinkKafkaConnector) {

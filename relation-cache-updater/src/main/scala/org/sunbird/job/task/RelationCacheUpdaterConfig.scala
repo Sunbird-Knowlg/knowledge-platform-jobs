@@ -1,4 +1,4 @@
-package org.sunbird.kp.flink.task
+package org.sunbird.job.task
 
 import java.util
 
@@ -6,7 +6,7 @@ import com.typesafe.config.Config
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.streaming.api.scala.OutputTag
-import org.sunbird.async.core.BaseJobConfig
+import org.sunbird.job.BaseJobConfig
 
 class RelationCacheUpdaterConfig(override val config: Config) extends BaseJobConfig(config, "relation-cache-updater") {
 

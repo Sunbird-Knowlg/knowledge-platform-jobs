@@ -1,4 +1,4 @@
-package org.sunbird.kp.flink.functions
+package org.sunbird.job.functions
 
 import java.lang.reflect.Type
 
@@ -11,10 +11,10 @@ import org.apache.flink.configuration.Configuration
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
-import org.sunbird.async.core.cache.{DataCache, RedisConnect}
-import org.sunbird.async.core.job.{BaseProcessFunction, Metrics}
-import org.sunbird.async.core.util.CassandraUtil
-import org.sunbird.kp.flink.task.RelationCacheUpdaterConfig
+import org.sunbird.job.cache.{DataCache, RedisConnect}
+import org.sunbird.job.task.RelationCacheUpdaterConfig
+import org.sunbird.job.util.CassandraUtil
+import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import scala.collection.JavaConverters._
 

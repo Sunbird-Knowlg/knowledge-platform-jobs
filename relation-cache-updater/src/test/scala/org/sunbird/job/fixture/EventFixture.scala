@@ -1,4 +1,4 @@
-package org.sunbird.kp.flink.fixture
+package org.sunbird.job.fixture
 
 object EventFixture {
 

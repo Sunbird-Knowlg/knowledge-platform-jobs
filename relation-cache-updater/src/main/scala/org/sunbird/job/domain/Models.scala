@@ -1,4 +1,4 @@
-package org.sunbird.kp.flink.domain
+package org.sunbird.job.domain
 
 import java.util
 import java.util.UUID

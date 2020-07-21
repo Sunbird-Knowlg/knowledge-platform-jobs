@@ -1,4 +1,4 @@
-package org.sunbird.kp.flink.spec
+package org.sunbird.job.spec
 
 import java.util
 
@@ -15,11 +15,11 @@ import org.cassandraunit.dataset.cql.FileCQLDataSet
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
 import org.mockito.Mockito
 import org.mockito.Mockito._
-import org.sunbird.async.core.cache.RedisConnect
-import org.sunbird.async.core.job.FlinkKafkaConnector
-import org.sunbird.async.core.util.CassandraUtil
-import org.sunbird.kp.flink.fixture.EventFixture
-import org.sunbird.kp.flink.task.{RelationCacheUpdaterConfig, RelationCacheUpdaterStreamTask}
+import org.sunbird.job.cache.RedisConnect
+import org.sunbird.job.connector.FlinkKafkaConnector
+import org.sunbird.job.fixture.EventFixture
+import org.sunbird.job.task.{RelationCacheUpdaterConfig, RelationCacheUpdaterStreamTask}
+import org.sunbird.job.util.CassandraUtil
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 import redis.clients.jedis.Jedis
 import redis.embedded.RedisServer

@@ -146,7 +146,7 @@
                             <transformers>
                                 <transformer
                                         implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>org.sunbird.async.task.CourseAggregateUpdaterStreamTask</mainClass>
+                                    <mainClass>org.sunbird.job.task.CourseAggregateUpdaterStreamTask</mainClass>
                                 </transformer>
                                 <!-- append default configs -->
                                 <transformer
