@@ -2,10 +2,8 @@
 # Source the env properties script for each job
 # Comment or Uncomment depending upon the job you are deploying
 # Create another script if you are working on new job
-source ./kp-course-aggregator.sh
-# source ./set_preprocessor_env.sh
-# source ./set_druid_validator_env.sh
-# source ./set_denorm_env.sh
+source ./activity-aggregate-updater.sh
+
 envsubst <flink-configuration-configmap.yaml | kubectl create -f -
 # This is used for communication between JobManager and TaskManager
 envsubst <job-cluster-service.yaml | kubectl create -f -
