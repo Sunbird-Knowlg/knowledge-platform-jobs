@@ -22,7 +22,7 @@
         </dependency>
         <dependency>
             <groupId>org.sunbird</groupId>
-            <artifactId>course-aggregate-updater</artifactId>
+            <artifactId>activity-aggregate-updater</artifactId>
             <version>1.0.0</version>
             <type>jar</type>
         </dependency>
@@ -74,8 +74,8 @@
                             </execution>
                         </executions>
                         <configuration>
-                            <repository>docker.io/maheshkg/kp-async-jobs</repository>
-                            <tag>${project.version}</tag>
+                            <repository>knowledge-platform-jobs</repository>
+                            <tag>${release-version}</tag>
                         </configuration>
                     </plugin>
                 </plugins>
