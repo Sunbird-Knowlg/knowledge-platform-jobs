@@ -28,10 +28,10 @@ class RelationCacheUpdaterConfig(override val config: Config) extends BaseJobCon
   val relationCacheConsumer = "relation-cache-updater-consumer"
 
   // Cassandra Configurations
-  val dbTable: String = config.getString("lp-cassandra.table")
-  val dbKeyspace: String = config.getString("lp-cassandra.keyspace")
-  val dbHost: String = config.getString("lp-cassandra.host")
-  val dbPort: Int = config.getInt("lp-cassandra.port")
+  val dbTable: String = config.getString("lms-cassandra.table")
+  val dbKeyspace: String = config.getString("lms-cassandra.keyspace")
+  val dbHost: String = config.getString("lms-cassandra.host")
+  val dbPort: Int = config.getInt("lms-cassandra.port")
   val hierarchyPrimaryKey: List[String] = List("identifier")
 
   // Redis Configurations

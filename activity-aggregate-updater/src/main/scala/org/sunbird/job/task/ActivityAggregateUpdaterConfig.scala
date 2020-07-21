@@ -19,7 +19,7 @@ class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJo
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
   val kafkaAuditEventTopic: String = config.getString("kafka.output.audit.topic")
 
-  override val kafkaConsumerParallelism: Int = config.getInt("task.activity.consumer.parallelism")
+  override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
   val activityAggregateUpdaterParallelism: Int = config.getInt("task.activity.parallelism")
 
   // Metric List
