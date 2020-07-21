@@ -12,7 +12,7 @@
     <artifactId>relation-cache-updater</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
-    <name>Relation Cache Updater</name>
+    <name>relation-cache-updater</name>
     <description>
         Relation Cache Updater Flink Job
     </description>

@@ -8,7 +8,7 @@ import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.streaming.api.scala.OutputTag
 import org.sunbird.job.BaseJobConfig
 
-class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJobConfig(config, "course-aggregate-updater") {
+class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJobConfig(config, "activity-aggregate-updater") {
 
   private val serialVersionUID = 2905979434303791379L
 
@@ -18,11 +18,9 @@ class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJo
   // Kafka Topics Configuration
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
   val kafkaAuditEventTopic: String = config.getString("kafka.output.audit.topic")
-  val eventMaxSize: Long = config.getLong("kafka.event.max.size")
 
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
-  val progressUpdaterParallelism: Int = config.getInt("task.progressUpdater.parallelism")
-  val routerParallelism: Int = config.getInt("task.router.parallelism")
+  val activityAggregateUpdaterParallelism: Int = config.getInt("task.activity.parallelism")
 
   // Metric List
   val successEventCount = "success-events-count"
@@ -44,20 +42,8 @@ class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJo
   val nodeStore: Int = config.getInt("redis.database.relationCache.id") // Both LeafNodes And Ancestor nodes
 
   // Tags
-  val failedEventOutputTagName = "failed-events"
-  val successEventOutputTagName = "success-events"
   val auditEventOutputTagName = "audit-events"
-  val batchEnrolmentOutputTagName = "batch-enrolment-update"
-
-  val successEventOutputTag: OutputTag[String] = OutputTag[String](successEventOutputTagName)
-  val failedEventsOutputTag: OutputTag[String] = OutputTag[String](failedEventOutputTagName)
   val auditEventOutputTag: OutputTag[String] = OutputTag[String](auditEventOutputTagName)
-  val batchEnrolmentUpdateOutputTag: OutputTag[util.Map[String, AnyRef]] = OutputTag[util.Map[String, AnyRef]](batchEnrolmentOutputTagName)
-
-  val completedStatusCode: Int = 2
-  val inCompleteStatusCode: Int = 1
-  val completionPercentage: Int = 100
-  val primaryFields = List("userid", "courseid", "batchid")
 
   // constans
   val activityType = "activity_type"
@@ -84,22 +70,18 @@ class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJo
   val action = "action"
   val batchEnrolmentUpdateCode = "batch-enrolment-update"
   val routerFn = "RouterFn"
-  val ProgressUpdaterFn = "ProgressUpdaterFn"
+  val activityAggregateUpdaterFn = "activity-aggregate-updater-fn"
+  val partition = "partition"
 
   // Consumers
-  val courseMetricsUpdaterConsumer = "course-metrics-updater-consumer"
+  val activityAggregateUpdaterConsumer = "activity-aggregate-updater-consumer"
+
   // Producers
-  val courseMetricsAuditProducer = "course-audit-events-sink"
+  val activityAggregateUpdaterProducer = "activity-aggregate-updater-audit-events-sink"
 
-
-  //
-  val thresholdTime: Int = config.getInt("threshold.time")
-  val thresholdSize: Int = config.getInt("threshold.size")
-
-  val maxQueryWriteBatchSize: Int = config.getInt("query.batch.write.size")
-  val maxQueryReadBatchSize: Int = config.getInt("query.batch.read.size")
-
-
-
+  //Thresholds
+  val thresholdBatchReadInterval: Int = config.getInt("threshold.batch.read.interval")
+  val thresholdBatchReadSize: Int = config.getInt("threshold.batch.read.size")
+  val thresholdBatchWriteSize: Int = config.getInt("threshold.batch.write.size")
 
 }

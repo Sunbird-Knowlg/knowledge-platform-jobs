@@ -84,7 +84,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
 
     // user_content_consumption update with viewcount and completedcout.
     val userConsumptionQueries = finalUserConsumptionList.map(userConsumption => getContentConsumptionQueries(userConsumption)).flatten.toList
-    updateDB(config.maxQueryWriteBatchSize, userConsumptionQueries)(metrics)
+    updateDB(config.thresholdBatchWriteSize, userConsumptionQueries)(metrics)
 
     // Course Level Agg using the merged data of ContentConsumption per user, course and batch.
     val courseAggs = finalUserConsumptionList.map(userConsumption => courseActivityAgg(userConsumption)(metrics))
@@ -96,7 +96,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
 
     // Saving all queries for course and it's children (only collection) aggregates.
     val aggQueries = (courseAggs ++ courseChildrenAggs).map(agg => getUserAggQuery(agg))
-    updateDB(config.maxQueryWriteBatchSize, aggQueries)(metrics)
+    updateDB(config.thresholdBatchWriteSize, aggQueries)(metrics)
 
     // Content AUDIT Event generation and pushing to output tag.
     finalUserConsumptionList.map(userConsumption => contentAuditEvents(userConsumption))
