@@ -5,7 +5,6 @@ import java.util
 import com.typesafe.config.Config
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
-import org.apache.flink.streaming.api.scala.OutputTag
 import org.sunbird.job.BaseJobConfig
 
 class RelationCacheUpdaterConfig(override val config: Config) extends BaseJobConfig(config, "relation-cache-updater") {
@@ -17,8 +16,6 @@ class RelationCacheUpdaterConfig(override val config: Config) extends BaseJobCon
 
   // Kafka Topics Configuration
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
-  val eventMaxSize: Long = config.getLong("kafka.event.max.size")
-
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
 
   // Metric List
@@ -27,15 +24,8 @@ class RelationCacheUpdaterConfig(override val config: Config) extends BaseJobCon
   val failedEventCount = "failed-events-count"
   val skippedEventCount = "skipped-event-count"
 
-  // Tags
-  val failedEventOutputTagName = "failed-events"
-  val successEventOutputTagName = "success-events"
-
-  val successEventOutputTag: OutputTag[String] = OutputTag[String](successEventOutputTagName)
-  val failedEventsOutputTag: OutputTag[String] = OutputTag[String](failedEventOutputTagName)
-
   // Consumers
-  val aggregatorConsumer = "relation-cache-updater-consumer"
+  val relationCacheConsumer = "relation-cache-updater-consumer"
 
   // Cassandra Configurations
   val dbTable: String = config.getString("lp-cassandra.table")

@@ -20,8 +20,8 @@ class RelationCacheUpdaterStreamTask(config: RelationCacheUpdaterConfig, kafkaCo
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
     val source = kafkaConnector.kafkaMapSource(config.kafkaInputTopic)
 
-    env.addSource(source, config.aggregatorConsumer)
-      .uid(config.aggregatorConsumer).setParallelism(config.kafkaConsumerParallelism)
+    env.addSource(source, config.relationCacheConsumer)
+      .uid(config.relationCacheConsumer).setParallelism(config.kafkaConsumerParallelism)
       .rebalance()
       .process(new RelationCacheUpdater(config))
       .name("relation-cache-updater").uid("relation-cache-updater")
