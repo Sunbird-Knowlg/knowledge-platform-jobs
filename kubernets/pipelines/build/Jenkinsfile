@@ -33,7 +33,7 @@ node('build-slave') {
                 env.NODE_ENV = "build"
                 print "Environment will be : ${env.NODE_ENV}"
                 sh '/opt/apache-maven-3.6.3/bin/mvn3.6 clean install -DskipTests'
-
+              
             }
 
             stage('Package') {
@@ -46,7 +46,7 @@ node('build-slave') {
                sh """
                   docker tag knowledge-platform-jobs:${build_tag} ${hub_org}/knowledge-platform-jobs:${build_tag}
                   echo {\\"image_name\\" : \\"knowledge-platform-jobs\\", \\"image_tag\\" : \\"${build_tag}\\", \\"node_name\\" : \\"${env.NODE_NAME}\\"} > metadata.json
-                  """
+                  """ 
             }
 
             stage('ArchiveArtifacts') {
