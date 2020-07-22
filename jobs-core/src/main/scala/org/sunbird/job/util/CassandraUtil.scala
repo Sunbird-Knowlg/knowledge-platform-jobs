@@ -10,7 +10,7 @@ class CassandraUtil(host: String, port: Int) {
 
   val cluster = {
     Cluster.builder()
-      .addContactPoint(host)
+      .addContactPoints(host)
       .withPort(port)
       .withoutJMXReporting()
       .build()
