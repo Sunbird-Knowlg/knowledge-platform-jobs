@@ -5,7 +5,7 @@ node(){
             folder = new File("$WORKSPACE/.git")
             if (folder.exists())
             {
-               println "Found .git folder. Clearing it.."
+               println "Found .git folder. Clearing it..."
                sh'git clean -fxd'
             }
             checkout scm
