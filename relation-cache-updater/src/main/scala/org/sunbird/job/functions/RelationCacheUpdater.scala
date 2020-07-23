@@ -53,17 +53,17 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
         if (isValidEvent(eData)) {
             val rootId = eData.get("id").asInstanceOf[String]
             logger.info("Processing - identifier: " + rootId)
-            val hierarchy = getHierarchy(rootId)
+            val hierarchy = getHierarchy(rootId)(metrics)
             if (MapUtils.isNotEmpty(hierarchy)) {
                 val leafNodesMap = getLeafNodes(rootId, hierarchy)
                 logger.info("Leaf-nodes cache updating for: " + leafNodesMap.size)
-                storeDataInCache(rootId, "leafnodes", leafNodesMap, dataCache)
+                storeDataInCache(rootId, "leafnodes", leafNodesMap, dataCache)(metrics)
                 val ancestorsMap = getAncestors(rootId, hierarchy)
                 logger.info("Ancestors cache updating for: "+ ancestorsMap.size)
-                storeDataInCache(rootId, "ancestors", ancestorsMap, dataCache)
+                storeDataInCache(rootId, "ancestors", ancestorsMap, dataCache)(metrics)
                 val unitsMap = getUnitMaps(hierarchy)
                 logger.info("Units cache updating for: "+ unitsMap.size)
-                storeDataInCache("", "", unitsMap, collectionCache)
+                storeDataInCache("", "", unitsMap, collectionCache)(metrics)
                 metrics.incCounter(config.successEventCount)
             } else {
                 logger.warn("Hierarchy Empty: " + rootId)
@@ -76,7 +76,7 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
     }
 
     override def metricsList(): List[String] = {
-        List(config.successEventCount, config.failedEventCount, config.skippedEventCount, config.totalEventsCount)
+        List(config.successEventCount, config.failedEventCount, config.skippedEventCount, config.totalEventsCount, config.dbReadCount, config.cacheHit)
     }
 
     private def isValidEvent(eData: java.util.Map[String, AnyRef]): Boolean = {
@@ -89,8 +89,9 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
             StringUtils.isNotBlank(identifier)
     }
 
-    private def getHierarchy(identifier: String): java.util.Map[String, AnyRef] = {
+    private def getHierarchy(identifier: String)(implicit metrics: Metrics): java.util.Map[String, AnyRef] = {
         val hierarchy = readHierarchyFromDb(identifier)
+        metrics.incCounter(config.dbReadCount)
         if (StringUtils.isNotBlank(hierarchy))
             mapper.readValue(hierarchy, classOf[java.util.Map[String, AnyRef]])
         else new java.util.HashMap[String, AnyRef]()
@@ -154,17 +155,22 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
         if (CollectionUtils.isEmpty(children)) List().asJava else children
     }
 
-    private def storeDataInCache(rootId: String, suffix: String, dataMap: Map[String, AnyRef], cache: DataCache) = {
+    private def storeDataInCache(rootId: String, suffix: String, dataMap: Map[String, AnyRef], cache: DataCache)(implicit metrics: Metrics) = {
         val finalSuffix = if (StringUtils.isNotBlank(suffix)) ":" + suffix else ""
         val finalPrefix = if (StringUtils.isNoneBlank(rootId)) rootId + ":" else ""
         try {
             dataMap.foreach(each => each._2 match {
-                case value: List[String] => cache.addListWithRetry(finalPrefix + each._1 + finalSuffix, each._2.asInstanceOf[List[String]])
-                case _ =>  cache.setWithRetry(finalPrefix + each._1 + finalSuffix, each._2.asInstanceOf[String])
+                case value: List[String] =>
+                    cache.addListWithRetry(finalPrefix + each._1 + finalSuffix, each._2.asInstanceOf[List[String]])
+                    metrics.incCounter(config.cacheHit)
+                case _ =>
+                    cache.setWithRetry(finalPrefix + each._1 + finalSuffix, each._2.asInstanceOf[String])
+                    metrics.incCounter(config.cacheHit)
             })
         } catch {
             case e: Throwable => {
-                println("Failed to write data for " + suffix + ": " + rootId + " with map: " + dataMap)
+                metrics.incCounter(config.failedEventCount)
+                logger.info("Failed to write data for " + suffix + ": " + rootId + " with map: " + dataMap)
                 throw e
             }
         }
