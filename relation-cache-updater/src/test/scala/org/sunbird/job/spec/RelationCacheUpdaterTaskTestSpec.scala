@@ -89,7 +89,7 @@ class RelationCacheUpdaterTaskTestSpec extends BaseTestSpec {
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.failedEventCount}").getValue() should be(0)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skippedEventCount}").getValue() should be(0)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.dbReadCount}").getValue() should be(2)
-    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.cacheHit}").getValue() should be(43)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.cacheWrite}").getValue() should be(43)
 
     // Assertion on total keys for leafnodes and ancestors.
     getKeysLength("*:leafnodes", relCacheDb) should be (18)

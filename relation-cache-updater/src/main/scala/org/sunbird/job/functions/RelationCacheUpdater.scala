@@ -76,7 +76,7 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
     }
 
     override def metricsList(): List[String] = {
-        List(config.successEventCount, config.failedEventCount, config.skippedEventCount, config.totalEventsCount, config.dbReadCount, config.cacheHit)
+        List(config.successEventCount, config.failedEventCount, config.skippedEventCount, config.totalEventsCount, config.dbReadCount, config.cacheWrite)
     }
 
     private def isValidEvent(eData: java.util.Map[String, AnyRef]): Boolean = {
@@ -162,10 +162,10 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
             dataMap.foreach(each => each._2 match {
                 case value: List[String] =>
                     cache.addListWithRetry(finalPrefix + each._1 + finalSuffix, each._2.asInstanceOf[List[String]])
-                    metrics.incCounter(config.cacheHit)
+                    metrics.incCounter(config.cacheWrite)
                 case _ =>
                     cache.setWithRetry(finalPrefix + each._1 + finalSuffix, each._2.asInstanceOf[String])
-                    metrics.incCounter(config.cacheHit)
+                    metrics.incCounter(config.cacheWrite)
             })
         } catch {
             case e: Throwable => {
