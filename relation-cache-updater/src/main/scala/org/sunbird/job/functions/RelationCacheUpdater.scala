@@ -84,7 +84,7 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
         val mimeType = eData.getOrDefault("mimeType", "").asInstanceOf[String]
         val identifier = eData.getOrDefault("id", "").asInstanceOf[String]
 
-        StringUtils.equalsIgnoreCase(action, "publish-shallow-content") &&
+        StringUtils.equalsIgnoreCase(action, "link-dialcode") &&
             StringUtils.equalsIgnoreCase(mimeType, "application/vnd.ekstep.content-collection") &&
             StringUtils.isNotBlank(identifier)
     }
