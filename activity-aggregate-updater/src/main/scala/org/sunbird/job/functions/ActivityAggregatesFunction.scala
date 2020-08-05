@@ -134,7 +134,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
     val ancestors = userConsumption.contents.mapValues(content => {
       val contentId = content.contentId
       readFromCache(key = s"$courseId:$contentId:${config.ancestors}", metrics)
-    }).values.flatten.filter(_ > courseId).toList.distinct
+    }).values.flatten.filter(a => !StringUtils.equals(a, courseId)).toList.distinct
 
     // LeafNodes of the identified child collections - for this user.
     val collectionsWithLeafNodes = ancestors.map(unitId => {
