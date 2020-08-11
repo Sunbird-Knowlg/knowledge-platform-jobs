@@ -114,7 +114,8 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
     val leafNodes = readFromCache(key, metrics).distinct
     if (leafNodes.isEmpty) {
       metrics.incCounter(config.failedEventCount)
-      throw new Exception(s"leaf nodes are not available: $key")
+      logger.error(s"leaf nodes are not available for: $key")
+//      throw new Exception(s"leaf nodes are not available: $key")
     }
     val completedCount = leafNodes.intersect(userConsumption.contents.filter(cc => cc._2.status == 2).map(cc => cc._2.contentId).toList.distinct).size
     UserActivityAgg("Course", userId, courseId, contextId, Map("completedCount" -> completedCount), Map("completedCount" -> System.currentTimeMillis()))
