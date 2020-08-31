@@ -14,11 +14,11 @@ import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 import org.sunbird.job.task.PostPublishProcessorConfig
-import org.sunbird.job.util.CassandraUtil
+import org.sunbird.job.util.{CassandraUtil, HttpUtil}
 
 import scala.collection.JavaConverters._
 
-class PostPublishEventRouter(config: PostPublishProcessorConfig)
+class PostPublishEventRouter(config: PostPublishProcessorConfig, httpUtil: HttpUtil)
                             (implicit val stringTypeInfo: TypeInformation[String],
                              @transient var cassandraUtil: CassandraUtil = null)
   extends BaseProcessFunction[java.util.Map[String, AnyRef], String](config) {
@@ -66,10 +66,10 @@ class PostPublishEventRouter(config: PostPublishProcessorConfig)
   }
 
   def getShallowCopiedContents(identifier: String): List[String] = {
-    val searchRequest = s"""{"request":{"filters":{"status":["Draft","Review","Live","Unlisted"],"origin":"${identifier}"},"fields":["identifier","mimeType","contentType","versionKey","channel","status","lastPublishedBy","origin","originData"]}}"""
-    val searchResponse = org.sunbird.job.util.HttpUtil.post(config.searchBaseUrl + "/v3/search", searchRequest)
-    if (searchResponse.status == 200) {
-      val response = mapper.readValue(searchResponse.body, classOf[java.util.Map[String, AnyRef]])
+    val httpRequest = s"""{"request":{"filters":{"status":["Draft","Review","Live","Unlisted"],"origin":"${identifier}"},"fields":["identifier","mimeType","contentType","versionKey","channel","status","lastPublishedBy","origin","originData"]}}"""
+    val httpResponse = httpUtil.post(config.searchBaseUrl + "/v3/search", httpRequest)
+    if (httpResponse.status == 200) {
+      val response = mapper.readValue(httpResponse.body, classOf[java.util.Map[String, AnyRef]])
       val result = response.getOrDefault("result", new java.util.HashMap[String, AnyRef]()).asInstanceOf[java.util.Map[String, AnyRef]]
       val contents = result.getOrDefault("content", new java.util.ArrayList[java.util.Map[String, AnyRef]]()).asInstanceOf[java.util.List[java.util.Map[String, AnyRef]]]
       contents.asScala.filter(c => c.containsKey("originData"))

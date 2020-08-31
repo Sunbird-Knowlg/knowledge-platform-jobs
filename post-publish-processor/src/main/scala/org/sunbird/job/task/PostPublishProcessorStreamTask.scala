@@ -10,7 +10,7 @@ import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.functions.{BatchCreateFunction, DIALCodeLinkFunction, PostPublishEventRouter, ShallowCopyPublishFunction}
-import org.sunbird.job.util.FlinkUtil
+import org.sunbird.job.util.{FlinkUtil, HttpUtil}
 
 class PostPublishProcessorStreamTask(config: PostPublishProcessorConfig, kafkaConnector: FlinkKafkaConnector) {
   def process(): Unit = {
@@ -18,11 +18,12 @@ class PostPublishProcessorStreamTask(config: PostPublishProcessorConfig, kafkaCo
     implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
     val source = kafkaConnector.kafkaMapSource(config.kafkaInputTopic)
+    val httpUtil = new HttpUtil()
 
     val processStreamTask = env.addSource(source, config.inputConsumerName)
       .uid(config.inputConsumerName).setParallelism(config.kafkaConsumerParallelism)
       .rebalance()
-      .process(new PostPublishEventRouter(config))
+      .process(new PostPublishEventRouter(config, httpUtil))
       .name("post-publish-event-router").uid("post-publish-event-router")
       .setParallelism(config.eventRouterParallelism)
 
