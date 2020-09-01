@@ -43,12 +43,12 @@ class PostPublishEventRouter(config: PostPublishProcessorConfig, httpUtil: HttpU
     val eData = event.get("edata").asInstanceOf[java.util.Map[String, AnyRef]]
     val action = eData.getOrDefault("action", "").asInstanceOf[String]
     val mimeType = eData.getOrDefault("mimeType", "").asInstanceOf[String]
-    val identifier = eData.getOrDefault("id", "").asInstanceOf[String]
-    if (StringUtils.equals("application/vnd.ekstep.content-collection", mimeType)) {
+    val identifier = eData.getOrDefault("identifier", "").asInstanceOf[String]
+    if (StringUtils.equals("application/vnd.ekstep.content-collection", mimeType) && StringUtils.equals(action, "post-publish-process")) {
       // Check shallow copied contents and publish.
       val shallowCopied = getShallowCopiedContents(identifier)
+      logger.info("Shallow copied by this content - " + identifier + " are: " + shallowCopied.size)
       if (shallowCopied.size > 0) {
-        println("Shallow copied:" + shallowCopied)
         val shallowCopyInput = new util.HashMap[String, AnyRef](eData) {{ put("shallowCopied", shallowCopied)}}
         context.output(config.shallowContentPublishOutTag, shallowCopyInput)
       }
