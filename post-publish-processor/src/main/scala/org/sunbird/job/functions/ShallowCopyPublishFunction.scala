@@ -35,8 +35,7 @@ class ShallowCopyPublishFunction (config: PostPublishProcessorConfig)
     logger.info("Shallow copied contents to publish:" + shallowCopied.size)
     shallowCopied.map(metadata => {
       val epochTime = System.currentTimeMillis
-      val event = s"""{"eid":"BE_JOB_REQUEST","ets":${epochTime},"mid":"LP.${epochTime}.${UUID.randomUUID()}","actor":{"id":"Publish Samza Job","type":"System"},"context":{"pdata":{"ver":"1.0","id":"org.ekstep.platform"},"channel":"sunbird","env":"sunbirddev"},"object":{"ver":"${metadata.pkgVersion}","id":"${metadata.identifier}"},"edata":{"publish_type":"public","metadata":{"mimeType":"${metadata.mimeType}","lastPublishedBy":"System","pkgVersion":${metadata.pkgVersion},"action":"publish","iteration":1,"contentType":"${metadata.contentType}"}}"""
-      println("Event: " + event)
+      val event = s"""{"eid":"BE_JOB_REQUEST","ets":${epochTime},"mid":"LP.${epochTime}.${UUID.randomUUID()}","actor":{"id":"Publish Samza Job","type":"System"},"context":{"pdata":{"ver":"1.0","id":"org.ekstep.platform"},"channel":"sunbird","env":"sunbirddev"},"object":{"ver":"${metadata.pkgVersion}","id":"${metadata.identifier}"},"edata":{"publish_type":"public","metadata":{"mimeType":"${metadata.mimeType}","lastPublishedBy":"System","pkgVersion":${metadata.pkgVersion},"action":"publish","iteration":1,"contentType":"${metadata.contentType}"}}}"""
       context.output(config.publishEventOutTag, event)
       event
     }).toList

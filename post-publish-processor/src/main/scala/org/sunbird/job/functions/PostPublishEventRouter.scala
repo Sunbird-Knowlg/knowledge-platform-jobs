@@ -68,7 +68,7 @@ class PostPublishEventRouter(config: PostPublishProcessorConfig, httpUtil: HttpU
   }
 
   def getShallowCopiedContents(identifier: String): List[PublishMetadata] = {
-    val httpRequest = s"""{"request":{"filters":{"status":["Draft","Review","Live","Unlisted"],"origin":"${identifier}"},"fields":["identifier","mimeType","contentType","versionKey","channel","status","pkgVersion","lastPublishedBy","origin","originData"]}}"""
+    val httpRequest = s"""{"request":{"filters":{"status":["Draft","Review","Live","Unlisted","Failed"],"origin":"${identifier}"},"fields":["identifier","mimeType","contentType","versionKey","channel","status","pkgVersion","lastPublishedBy","origin","originData"]}}"""
     val httpResponse = httpUtil.post(config.searchBaseUrl + "/v3/search", httpRequest)
     if (httpResponse.status == 200) {
       val response = mapper.readValue(httpResponse.body, classOf[java.util.Map[String, AnyRef]])
@@ -87,7 +87,7 @@ class PostPublishEventRouter(config: PostPublishProcessorConfig, httpUtil: HttpU
         val copiedContentType = c.get("contentType").asInstanceOf[String]
         PublishMetadata(copiedId, copiedContentType, copiedMimeType, copiedPKGVersion.intValue())
       }).toList
-    }else {
+    } else {
       throw new Exception("Content search failed for shallow copy check:" + identifier)
     }
   }
