@@ -4,7 +4,7 @@ import kong.unirest.Unirest
 
 case class HTTPResponse(status: Int, body: String)
 
-class HttpUtil {
+class HttpUtil extends Serializable {
 
   def get(url: String): HTTPResponse = {
     val response = Unirest.get(url).header("Content-Type", "application/json").asString()

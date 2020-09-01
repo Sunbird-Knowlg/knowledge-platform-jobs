@@ -13,9 +13,13 @@ class PostPublishProcessorConfig(override val config: Config) extends BaseJobCon
   implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
   implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
 
+  // Job Configuration
+  val jobEnv: String = config.getString("job.env")
+
   // Kafka Topics Configuration
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
+  val contentPublishTopic: String = config.getString("kafka.publish.topic")
 
   val inputConsumerName = "post-publish-event-consumer"
 
@@ -39,6 +43,7 @@ class PostPublishProcessorConfig(override val config: Config) extends BaseJobCon
   val batchCreateOutTag: OutputTag[java.util.Map[String, AnyRef]] = OutputTag[java.util.Map[String, AnyRef]]("batch-create")
   val linkDIALCodeOutTag: OutputTag[java.util.Map[String, AnyRef]] = OutputTag[java.util.Map[String, AnyRef]]("dialcode-link")
   val shallowContentPublishOutTag: OutputTag[java.util.Map[String, AnyRef]] = OutputTag[java.util.Map[String, AnyRef]]("shallow-copied-content-publish")
+  val publishEventOutTag: OutputTag[String] = OutputTag[String]("content-publish-request")
 
 
   val searchBaseUrl = config.getString("content.search.basePath")
