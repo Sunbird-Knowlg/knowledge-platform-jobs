@@ -12,8 +12,7 @@ import org.sunbird.job.task.PostPublishProcessorConfig
 import org.sunbird.job.util.CassandraUtil
 
 class BatchCreateFunction(config: PostPublishProcessorConfig)
-                         (implicit val stringTypeInfo: TypeInformation[String],
-                          @transient var cassandraUtil: CassandraUtil = null)
+                         (implicit val stringTypeInfo: TypeInformation[String])
   extends BaseProcessFunction[java.util.Map[String, AnyRef], String](config) {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[BatchCreateFunction])
@@ -21,11 +20,9 @@ class BatchCreateFunction(config: PostPublishProcessorConfig)
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
-    cassandraUtil = new CassandraUtil(config.dbHost, config.dbPort)
   }
 
   override def close(): Unit = {
-    cassandraUtil.close()
     super.close()
   }
 
