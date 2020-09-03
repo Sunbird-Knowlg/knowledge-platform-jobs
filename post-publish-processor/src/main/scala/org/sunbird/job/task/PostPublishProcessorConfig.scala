@@ -38,6 +38,10 @@ class PostPublishProcessorConfig(override val config: Config) extends BaseJobCon
   val lmsKeyspaceName = config.getString("lms-cassandra.keyspace")
   val batchTableName = config.getString("lms-cassandra.batchTable")
 
+  // Neo4J Configurations
+  val graphRoutePath = config.getString("neo4j.routePath")
+  val graphName = config.getString("neo4j.graph")
+
 
   // Tags
   val batchCreateOutTag: OutputTag[java.util.Map[String, AnyRef]] = OutputTag[java.util.Map[String, AnyRef]]("batch-create")

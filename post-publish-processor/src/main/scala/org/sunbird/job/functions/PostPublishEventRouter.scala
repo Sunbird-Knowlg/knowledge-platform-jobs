@@ -5,7 +5,7 @@ import java.util
 
 import com.datastax.driver.core.querybuilder.QueryBuilder
 import com.google.gson.reflect.TypeToken
-import org.apache.commons.collections.CollectionUtils
+import org.apache.commons.collections.{CollectionUtils, MapUtils}
 import org.apache.commons.lang3.StringUtils
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
@@ -14,7 +14,7 @@ import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 import org.sunbird.job.task.PostPublishProcessorConfig
-import org.sunbird.job.util.{CassandraUtil, HttpUtil}
+import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
 
 import scala.collection.JavaConverters._
 
@@ -22,7 +22,8 @@ case class PublishMetadata(identifier: String, contentType: String, mimeType: St
 
 class PostPublishEventRouter(config: PostPublishProcessorConfig, httpUtil: HttpUtil)
                             (implicit val stringTypeInfo: TypeInformation[String],
-                             @transient var cassandraUtil: CassandraUtil = null)
+                             @transient var cassandraUtil: CassandraUtil = null,
+                              @transient var neo4JUtil: Neo4JUtil = null)
   extends BaseProcessFunction[java.util.Map[String, AnyRef], String](config) {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[PostPublishEventRouter])
@@ -32,10 +33,12 @@ class PostPublishEventRouter(config: PostPublishProcessorConfig, httpUtil: HttpU
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
     cassandraUtil = new CassandraUtil(config.dbHost, config.dbPort)
+    neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName)
   }
 
   override def close(): Unit = {
     cassandraUtil.close()
+    neo4JUtil.close()
     super.close()
   }
 
@@ -52,11 +55,15 @@ class PostPublishEventRouter(config: PostPublishProcessorConfig, httpUtil: HttpU
         val shallowCopyInput = new util.HashMap[String, AnyRef](eData) {{ put("shallowCopied", shallowCopied)}}
         context.output(config.shallowContentPublishOutTag, shallowCopyInput)
       }
-      // Validate and trigger batch creation.
-      if (!isBatchExists(identifier)) context.output(config.batchCreateOutTag, eData)
-      // Check DIAL Code exist or not and trigger create and link.
-      context.output(config.linkDIALCodeOutTag, eData)
 
+      val metadata = neo4JUtil.getNodeProperties(identifier)
+      // Validate and trigger batch creation.
+      val trackable = isTrackable(metadata, identifier)
+      val batchExists = isBatchExists(identifier)
+      if (trackable && !batchExists) context.output(config.batchCreateOutTag, eData)
+
+      // Check DIAL Code exist or not and trigger create and link.
+      if (!reservedDIALExists(metadata, identifier)) context.output(config.linkDIALCodeOutTag, eData)
     } else {
       metrics.incCounter(config.skippedEventCount)
     }
@@ -106,6 +113,32 @@ class PostPublishEventRouter(config: PostPublishProcessorConfig, httpUtil: HttpU
         logger.info("Collection has a active batch: " + activeBatches.head.toString)
       activeBatches.nonEmpty
     } else false
+  }
+
+  def isTrackable(metadata: java.util.Map[String, AnyRef], identifier: String): Boolean = {
+    if (MapUtils.isNotEmpty(metadata)) {
+      val trackableStr = metadata.getOrDefault("trackable", "{}").asInstanceOf[String]
+      val trackableObj = mapper.readValue(trackableStr, classOf[java.util.Map[String, AnyRef]])
+      val trackingEnabled = trackableObj.getOrDefault("enabled", "No").asInstanceOf[String]
+      val autoBatchCreateEnabled = trackableObj.getOrDefault("autoBatch", "No").asInstanceOf[String]
+      val trackable = (StringUtils.equalsIgnoreCase(trackingEnabled, "Yes") && StringUtils.equalsIgnoreCase(autoBatchCreateEnabled, "Yes"))
+      logger.info("Trackable for " +identifier + " : " + trackable)
+      trackable
+    } else {
+      throw new Exception("Metadata [isTrackable] is not found for object: " + identifier)
+    }
+  }
+
+  def reservedDIALExists(metadata: java.util.Map[String, AnyRef], identifier: String): Boolean = {
+    if (MapUtils.isNotEmpty(metadata)) {
+      val reserved = metadata.containsKey("reservedDialcodes")
+//      val required = metadata.getOrDefault("dialcodeRequired", "No").asInstanceOf[String]
+//      (StringUtils.equalsIgnoreCase("Yes", required) && reserved)
+      logger.info("Reserved DIAL Codes exists for " + identifier + " : " + reserved)
+      reserved
+    } else {
+      throw new Exception("Metadata [reservedDIALExists] is not found for object: " + identifier)
+    }
   }
 
 }
