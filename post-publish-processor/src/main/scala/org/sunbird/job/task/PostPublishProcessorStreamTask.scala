@@ -27,7 +27,7 @@ class PostPublishProcessorStreamTask(config: PostPublishProcessorConfig, kafkaCo
       .name("post-publish-event-router").uid("post-publish-event-router")
       .setParallelism(config.eventRouterParallelism)
 
-    processStreamTask.getSideOutput(config.batchCreateOutTag).rebalance().process(new BatchCreateFunction(config))
+    processStreamTask.getSideOutput(config.batchCreateOutTag).rebalance().process(new BatchCreateFunction(config,httpUtil))
       .name("batch-create-process").uid("batch-create-process").setParallelism(1)
     processStreamTask.getSideOutput(config.linkDIALCodeOutTag).rebalance().process(new DIALCodeLinkFunction(config))
       .name("dialcode-link-process").uid("dialcode-link-process").setParallelism(1)

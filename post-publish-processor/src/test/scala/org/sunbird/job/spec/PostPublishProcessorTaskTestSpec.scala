@@ -1,5 +1,8 @@
 package org.sunbird.job.spec
 
+import java.time.format.DateTimeFormatter
+import java.time.{ZoneId, ZoneOffset, ZonedDateTime}
+
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
@@ -47,10 +50,13 @@ class PostPublishProcessorTaskTestSpec extends BaseTestSpec {
     list should contain allOf("do_113005885057662976128", "do_113005885161611264130", "do_113005882957578240124", "do_113005820474007552111")
   }
 
-//  it should "return data for a given id" in {
-//    val neo4JUtil = new Neo4JUtil(jobConfig.graphRoutePath, jobConfig.graphName)
-//    val metadata = neo4JUtil.getNodeProperties("adf")
-//
-//  }
+  it should "return data for a given id" in {
+    val dateFormat = DateTimeFormatter.ofPattern("yyyy-mm-dd HH")
+    val dateTime = ZonedDateTime.now(ZoneId.of("Asia/Kolkata")).format(dateFormat)
+    val utcDateTime = ZonedDateTime.now(ZoneOffset.UTC).format(dateFormat)
+    println("DateTime IST: " + dateTime)
+    println("DateTime UTC: " + utcDateTime)
+
+  }
 
 }

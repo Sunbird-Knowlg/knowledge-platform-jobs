@@ -51,6 +51,7 @@ class PostPublishProcessorConfig(override val config: Config) extends BaseJobCon
 
 
   val searchBaseUrl = config.getString("content.search.basePath")
+  val lmsBaseUrl = config.getString("lms.basePath")
 
 
 }
