@@ -66,7 +66,10 @@ class PostPublishEventRouter(config: PostPublishProcessorConfig, httpUtil: HttpU
       }
 
       // Check DIAL Code exist or not and trigger create and link.
-      if (!reservedDIALExists(metadata, identifier)) context.output(config.linkDIALCodeOutTag, eData)
+      if (!linkedDIALCodes(metadata, identifier)) {
+        eData.put("channel", metadata.get("channel"))
+        context.output(config.linkDIALCodeOutTag, eData)
+      }
     } else {
       metrics.incCounter(config.skippedEventCount)
     }
@@ -132,13 +135,11 @@ class PostPublishEventRouter(config: PostPublishProcessorConfig, httpUtil: HttpU
     }
   }
 
-  def reservedDIALExists(metadata: java.util.Map[String, AnyRef], identifier: String): Boolean = {
+  def linkedDIALCodes(metadata: java.util.Map[String, AnyRef], identifier: String): Boolean = {
     if (MapUtils.isNotEmpty(metadata)) {
-      val reserved = metadata.containsKey("reservedDialcodes")
-//      val required = metadata.getOrDefault("dialcodeRequired", "No").asInstanceOf[String]
-//      (StringUtils.equalsIgnoreCase("Yes", required) && reserved)
-      logger.info("Reserved DIAL Codes exists for " + identifier + " : " + reserved)
-      reserved
+      val dialExist = metadata.containsKey("dialcodes")
+      logger.info("Reserved DIAL Codes exists for " + identifier + " : " + dialExist)
+      dialExist
     } else {
       throw new Exception("Metadata [reservedDIALExists] is not found for object: " + identifier)
     }
