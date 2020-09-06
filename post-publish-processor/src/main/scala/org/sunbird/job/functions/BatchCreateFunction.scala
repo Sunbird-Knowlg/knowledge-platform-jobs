@@ -50,10 +50,9 @@ class BatchCreateFunction(config: PostPublishProcessorConfig, httpUtil: HttpUtil
     println("HTTP Request: " + httpRequest)
     val httpResponse = httpUtil.post(config.lmsBaseUrl + "/private/v1/course/batch/create", httpRequest)
     if (httpResponse.status == 200) {
-      println("Batch create success: " + httpResponse.body)
+      logger.info("Batch create success: " + httpResponse.body)
     } else {
-      println("Batch create failed: " + httpResponse.status)
-      println("Batch create failed: " + httpResponse.body)
+      logger.error("Batch create failed: " + httpResponse.status + " :: " + httpResponse.body)
     }
   }
 
