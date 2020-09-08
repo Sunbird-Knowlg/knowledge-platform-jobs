@@ -24,7 +24,8 @@ case class PublishMetadata(identifier: String, contentType: String, mimeType: St
 
 class PostPublishEventRouter(config: PostPublishProcessorConfig)
                             (implicit val stringTypeInfo: TypeInformation[String],
-                             @transient var cassandraUtil: CassandraUtil = null)
+                             @transient var cassandraUtil: CassandraUtil = null,
+                             @transient var neo4JUtil: Neo4JUtil = null)
   extends BaseProcessFunction[java.util.Map[String, AnyRef], String](config) {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[PostPublishEventRouter])
@@ -34,6 +35,7 @@ class PostPublishEventRouter(config: PostPublishProcessorConfig)
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
     cassandraUtil = new CassandraUtil(config.dbHost, config.dbPort)
+    neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName)
   }
 
   override def close(): Unit = {
@@ -55,7 +57,7 @@ class PostPublishEventRouter(config: PostPublishProcessorConfig)
         context.output(config.shallowContentPublishOutTag, shallowCopyInput)
       }
 
-      val metadata = PPPStreamTask.neo4JUtil.getNodeProperties(identifier)
+      val metadata = neo4JUtil.getNodeProperties(identifier)
       // Validate and trigger batch creation.
       val trackable = isTrackable(metadata, identifier)
       val batchExists = isBatchExists(identifier)

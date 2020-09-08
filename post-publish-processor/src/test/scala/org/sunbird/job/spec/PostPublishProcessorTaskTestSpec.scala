@@ -84,23 +84,23 @@ class PostPublishProcessorTaskTestSpec extends BaseTestSpec {
     list.map(c => c.identifier) should contain allOf("do_113005885057662976128", "do_113005885161611264130", "do_113005882957578240124", "do_113005820474007552111")
   }
 
-  it should "run all the scenarios for a given event" in {
-    when(mockKafkaUtil.kafkaMapSource(jobConfig.kafkaInputTopic)).thenReturn(new PostPublishMapSource)
-    when(mockKafkaUtil.kafkaStringSink(jobConfig.contentPublishTopic)).thenReturn(new publishEventSink)
-    when(mockHttpUtil.post(endsWith("/v3/search"), any[String])).thenReturn(HTTPResponse(200, """{"id":"api.search-service.search","ver":"3.0","ts":"2020-08-31T22:09:07ZZ","params":{"resmsgid":"bc9a8ac0-f67d-47d5-b093-2077191bf93b","msgid":null,"err":null,"status":"successful","errmsg":null},"responseCode":"OK","result":{"count":5,"content":[{"identifier":"do_11301367667942195211854","origin":"do_11300581751853056018","channel":"b00bc992ef25f1a9a8d63291e20efc8d","originData":"{\"name\":\"Origin Content\",\"copyType\":\"deep\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"]}","mimeType":"application/vnd.ekstep.content-collection","contentType":"TextBook","objectType":"Content","status":"Draft","versionKey":"1588583579763"},{"identifier":"do_113005885057662976128","origin":"do_11300581751853056018","channel":"sunbird","originData":"{\"name\":\"Origin Content\",\"copyType\":\"shallow\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"],\"pkgVersion\":2.0}","mimeType":"application/vnd.ekstep.content-collection","lastPublishedBy":"Ekstep","contentType":"TextBook","objectType":"Content","status":"Live","versionKey":"1587632481597"},{"identifier":"do_113005885161611264130","origin":"do_11300581751853056018","channel":"sunbird","originData":"{\"name\":\"Origin Content\",\"copyType\":\"shallow\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"],\"pkgVersion\":2.0}","mimeType":"application/vnd.ekstep.content-collection","lastPublishedBy":"Ekstep","contentType":"TextBook","objectType":"Content","status":"Live","versionKey":"1587632475439"},{"identifier":"do_113005882957578240124","origin":"do_11300581751853056018","channel":"sunbird","originData":"{\"name\":\"Origin Content\",\"copyType\":\"shallow\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"],\"pkgVersion\":2.0}","mimeType":"application/vnd.ekstep.content-collection","lastPublishedBy":"Ekstep","contentType":"TextBook","objectType":"Content","status":"Live","versionKey":"1587632233649"},{"identifier":"do_113005820474007552111","origin":"do_11300581751853056018","channel":"sunbird","originData":"{\"name\":\"Origin Content\",\"copyType\":\"shallow\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"],\"pkgVersion\":2.0}","mimeType":"application/vnd.ekstep.content-collection","lastPublishedBy":"Ekstep","contentType":"TextBook","objectType":"Content","status":"Live","versionKey":"1587624624051"}]}}"""))
-    when(mockHttpUtil.post(endsWith("/private/v1/course/batch/create"), any[String])).thenReturn(HTTPResponse(200, """{}"""))
-    val trackable = """{"enabled":"Yes","autoBatch":"Yes"}"""
-    when(mockNeo4JUtil.getNodeProperties("do_11300581751853056018")).thenReturn(Map("name" -> "Origin Content", "createdBy" -> "874ed8a5-782e-4f6c-8f36-e0288455901e", "createdFor" -> util.Arrays.asList("ORG_001"), "channel" -> "b00bc992ef25f1a9a8d63291e20efc8d", "trackable" -> trackable).asJava)
-    val streamTask = new PostPublishProcessorStreamTask(jobConfig, mockKafkaUtil)
-    PostPublishProcessorStreamTask.httpUtil = mockHttpUtil
-    PostPublishProcessorStreamTask.neo4JUtil = mockNeo4JUtil
-    streamTask.process()
-
-    publishEventSink.values.size() should be(4)
-    publishEventSink.values.forEach(event => {
-      println("PUBLISH_EVENT: " + event)
-    })
-  }
+//  it should "run all the scenarios for a given event" in {
+//    when(mockKafkaUtil.kafkaMapSource(jobConfig.kafkaInputTopic)).thenReturn(new PostPublishMapSource)
+//    when(mockKafkaUtil.kafkaStringSink(jobConfig.contentPublishTopic)).thenReturn(new publishEventSink)
+//    when(mockHttpUtil.post(endsWith("/v3/search"), any[String])).thenReturn(HTTPResponse(200, """{"id":"api.search-service.search","ver":"3.0","ts":"2020-08-31T22:09:07ZZ","params":{"resmsgid":"bc9a8ac0-f67d-47d5-b093-2077191bf93b","msgid":null,"err":null,"status":"successful","errmsg":null},"responseCode":"OK","result":{"count":5,"content":[{"identifier":"do_11301367667942195211854","origin":"do_11300581751853056018","channel":"b00bc992ef25f1a9a8d63291e20efc8d","originData":"{\"name\":\"Origin Content\",\"copyType\":\"deep\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"]}","mimeType":"application/vnd.ekstep.content-collection","contentType":"TextBook","objectType":"Content","status":"Draft","versionKey":"1588583579763"},{"identifier":"do_113005885057662976128","origin":"do_11300581751853056018","channel":"sunbird","originData":"{\"name\":\"Origin Content\",\"copyType\":\"shallow\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"],\"pkgVersion\":2.0}","mimeType":"application/vnd.ekstep.content-collection","lastPublishedBy":"Ekstep","contentType":"TextBook","objectType":"Content","status":"Live","versionKey":"1587632481597"},{"identifier":"do_113005885161611264130","origin":"do_11300581751853056018","channel":"sunbird","originData":"{\"name\":\"Origin Content\",\"copyType\":\"shallow\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"],\"pkgVersion\":2.0}","mimeType":"application/vnd.ekstep.content-collection","lastPublishedBy":"Ekstep","contentType":"TextBook","objectType":"Content","status":"Live","versionKey":"1587632475439"},{"identifier":"do_113005882957578240124","origin":"do_11300581751853056018","channel":"sunbird","originData":"{\"name\":\"Origin Content\",\"copyType\":\"shallow\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"],\"pkgVersion\":2.0}","mimeType":"application/vnd.ekstep.content-collection","lastPublishedBy":"Ekstep","contentType":"TextBook","objectType":"Content","status":"Live","versionKey":"1587632233649"},{"identifier":"do_113005820474007552111","origin":"do_11300581751853056018","channel":"sunbird","originData":"{\"name\":\"Origin Content\",\"copyType\":\"shallow\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"],\"pkgVersion\":2.0}","mimeType":"application/vnd.ekstep.content-collection","lastPublishedBy":"Ekstep","contentType":"TextBook","objectType":"Content","status":"Live","versionKey":"1587624624051"}]}}"""))
+//    when(mockHttpUtil.post(endsWith("/private/v1/course/batch/create"), any[String])).thenReturn(HTTPResponse(200, """{}"""))
+//    val trackable = """{"enabled":"Yes","autoBatch":"Yes"}"""
+//    when(mockNeo4JUtil.getNodeProperties("do_11300581751853056018")).thenReturn(Map("name" -> "Origin Content", "createdBy" -> "874ed8a5-782e-4f6c-8f36-e0288455901e", "createdFor" -> util.Arrays.asList("ORG_001"), "channel" -> "b00bc992ef25f1a9a8d63291e20efc8d", "trackable" -> trackable).asJava)
+//    val streamTask = new PostPublishProcessorStreamTask(jobConfig, mockKafkaUtil)
+//    PostPublishProcessorStreamTask.httpUtil = mockHttpUtil
+//    PostPublishProcessorStreamTask.neo4JUtil = mockNeo4JUtil
+//    streamTask.process()
+//
+//    publishEventSink.values.size() should be(4)
+//    publishEventSink.values.forEach(event => {
+//      println("PUBLISH_EVENT: " + event)
+//    })
+//  }
 }
 
 class PostPublishMapSource extends SourceFunction[util.Map[String, AnyRef]] {

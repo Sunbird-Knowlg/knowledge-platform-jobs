@@ -45,7 +45,6 @@ class PostPublishProcessorStreamTask(config: PostPublishProcessorConfig, kafkaCo
 // $COVERAGE-OFF$ Disabling scoverage as the below code can only be invoked within flink cluster
 object PostPublishProcessorStreamTask {
   var httpUtil = new HttpUtil
-  var neo4JUtil: Neo4JUtil = _
   def main(args: Array[String]): Unit = {
     val configFilePath = Option(ParameterTool.fromArgs(args).get("config.file.path"))
     val config = configFilePath.map {
@@ -53,7 +52,6 @@ object PostPublishProcessorStreamTask {
     }.getOrElse(ConfigFactory.load("post-publish-processor.conf").withFallback(ConfigFactory.systemEnvironment()))
     val pppConfig = new PostPublishProcessorConfig(config)
     val kafkaUtil = new FlinkKafkaConnector(pppConfig)
-    neo4JUtil = new Neo4JUtil(pppConfig.graphRoutePath, pppConfig.graphName)
     val task = new PostPublishProcessorStreamTask(pppConfig, kafkaUtil)
     task.process()
   }
