@@ -12,10 +12,10 @@ import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMap
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.{BaseProcessFunction, Metrics}
-import org.sunbird.job.task.PostPublishProcessorConfig
+import org.sunbird.job.task.{PostPublishProcessorConfig, PostPublishProcessorStreamTask}
 import org.sunbird.job.util.{CassandraUtil, HttpUtil}
 
-class BatchCreateFunction(config: PostPublishProcessorConfig, httpUtil: HttpUtil)
+class BatchCreateFunction(config: PostPublishProcessorConfig)
                          (implicit val stringTypeInfo: TypeInformation[String])
   extends BaseProcessFunction[java.util.Map[String, AnyRef], String](config) {
 
@@ -48,7 +48,7 @@ class BatchCreateFunction(config: PostPublishProcessorConfig, httpUtil: HttpUtil
     }}
     val httpRequest = mapper.writeValueAsString(request)
     println("HTTP Request: " + httpRequest)
-    val httpResponse = httpUtil.post(config.lmsBaseUrl + "/private/v1/course/batch/create", httpRequest)
+    val httpResponse = PostPublishProcessorStreamTask.httpUtil.post(config.lmsBaseUrl + "/private/v1/course/batch/create", httpRequest)
     if (httpResponse.status == 200) {
       logger.info("Batch create success: " + httpResponse.body)
     } else {

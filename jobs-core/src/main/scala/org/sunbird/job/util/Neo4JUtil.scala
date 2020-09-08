@@ -9,7 +9,6 @@ class Neo4JUtil(routePath: String, graphId: String) {
   private[this] val logger = LoggerFactory.getLogger(classOf[Neo4JUtil])
 
   val maxIdleSession = 20
-
   val driver = GraphDatabase.driver(routePath, getConfig)
 
   def getConfig: Config = {
@@ -20,10 +19,15 @@ class Neo4JUtil(routePath: String, graphId: String) {
     config.toConfig
   }
 
-  def close() = {
-    if (driver != null)
-      driver.close()
-  }
+  Runtime.getRuntime.addShutdownHook(new Thread() {
+    override def run(): Unit = {
+      try {
+        driver.close()
+      } catch {
+        case e: Throwable => e.printStackTrace()
+      }
+    }
+  })
 
   def getNodeProperties(identifier: String): java.util.Map[String, AnyRef] = {
     val session = driver.session()
@@ -31,5 +35,11 @@ class Neo4JUtil(routePath: String, graphId: String) {
     val statementResult = session.run(query)
     statementResult.single().get("n").asMap()
   }
+
+  def executeQuery(query: String) = {
+    val session = driver.session()
+    session.run(query)
+  }
+
 
 }

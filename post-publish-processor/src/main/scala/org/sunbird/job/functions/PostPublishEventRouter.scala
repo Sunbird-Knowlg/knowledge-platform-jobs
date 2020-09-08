@@ -14,16 +14,17 @@ import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 import org.sunbird.job.task.PostPublishProcessorConfig
-import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
+import org.sunbird.job.util.{CassandraUtil, Neo4JUtil}
+
+import org.sunbird.job.task.{PostPublishProcessorStreamTask => PPPStreamTask }
 
 import scala.collection.JavaConverters._
 
 case class PublishMetadata(identifier: String, contentType: String, mimeType: String, pkgVersion: Int)
 
-class PostPublishEventRouter(config: PostPublishProcessorConfig, httpUtil: HttpUtil)
+class PostPublishEventRouter(config: PostPublishProcessorConfig)
                             (implicit val stringTypeInfo: TypeInformation[String],
-                             @transient var cassandraUtil: CassandraUtil = null,
-                              @transient var neo4JUtil: Neo4JUtil = null)
+                             @transient var cassandraUtil: CassandraUtil = null)
   extends BaseProcessFunction[java.util.Map[String, AnyRef], String](config) {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[PostPublishEventRouter])
@@ -33,12 +34,10 @@ class PostPublishEventRouter(config: PostPublishProcessorConfig, httpUtil: HttpU
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
     cassandraUtil = new CassandraUtil(config.dbHost, config.dbPort)
-    neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName)
   }
 
   override def close(): Unit = {
     cassandraUtil.close()
-    neo4JUtil.close()
     super.close()
   }
 
@@ -56,7 +55,7 @@ class PostPublishEventRouter(config: PostPublishProcessorConfig, httpUtil: HttpU
         context.output(config.shallowContentPublishOutTag, shallowCopyInput)
       }
 
-      val metadata = neo4JUtil.getNodeProperties(identifier)
+      val metadata = PPPStreamTask.neo4JUtil.getNodeProperties(identifier)
       // Validate and trigger batch creation.
       val trackable = isTrackable(metadata, identifier)
       val batchExists = isBatchExists(identifier)
@@ -82,7 +81,7 @@ class PostPublishEventRouter(config: PostPublishProcessorConfig, httpUtil: HttpU
 
   def getShallowCopiedContents(identifier: String): List[PublishMetadata] = {
     val httpRequest = s"""{"request":{"filters":{"status":["Draft","Review","Live","Unlisted","Failed"],"origin":"${identifier}"},"fields":["identifier","mimeType","contentType","versionKey","channel","status","pkgVersion","lastPublishedBy","origin","originData"]}}"""
-    val httpResponse = httpUtil.post(config.searchBaseUrl + "/v3/search", httpRequest)
+    val httpResponse = PPPStreamTask.httpUtil.post(config.searchBaseUrl + "/v3/search", httpRequest)
     if (httpResponse.status == 200) {
       val response = mapper.readValue(httpResponse.body, classOf[java.util.Map[String, AnyRef]])
       val result = response.getOrDefault("result", new java.util.HashMap[String, AnyRef]()).asInstanceOf[java.util.Map[String, AnyRef]]

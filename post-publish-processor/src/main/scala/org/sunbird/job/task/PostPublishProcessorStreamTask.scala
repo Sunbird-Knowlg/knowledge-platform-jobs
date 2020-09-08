@@ -10,24 +10,24 @@ import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.functions.{BatchCreateFunction, DIALCodeLinkFunction, PostPublishEventRouter, ShallowCopyPublishFunction}
-import org.sunbird.job.util.{FlinkUtil, HttpUtil}
+import org.sunbird.job.util.{FlinkUtil, HttpUtil, Neo4JUtil}
 
 class PostPublishProcessorStreamTask(config: PostPublishProcessorConfig, kafkaConnector: FlinkKafkaConnector) {
+
   def process(): Unit = {
     implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
     implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
     val source = kafkaConnector.kafkaMapSource(config.kafkaInputTopic)
-    val httpUtil = new HttpUtil()
 
     val processStreamTask = env.addSource(source, config.inputConsumerName)
       .uid(config.inputConsumerName).setParallelism(config.kafkaConsumerParallelism)
       .rebalance()
-      .process(new PostPublishEventRouter(config, httpUtil))
+      .process(new PostPublishEventRouter(config))
       .name("post-publish-event-router").uid("post-publish-event-router")
       .setParallelism(config.eventRouterParallelism)
 
-    processStreamTask.getSideOutput(config.batchCreateOutTag).rebalance().process(new BatchCreateFunction(config,httpUtil))
+    processStreamTask.getSideOutput(config.batchCreateOutTag).rebalance().process(new BatchCreateFunction(config))
       .name("batch-create-process").uid("batch-create-process").setParallelism(1)
     processStreamTask.getSideOutput(config.linkDIALCodeOutTag).rebalance().process(new DIALCodeLinkFunction(config))
       .name("dialcode-link-process").uid("dialcode-link-process").setParallelism(1)
@@ -44,6 +44,8 @@ class PostPublishProcessorStreamTask(config: PostPublishProcessorConfig, kafkaCo
 
 // $COVERAGE-OFF$ Disabling scoverage as the below code can only be invoked within flink cluster
 object PostPublishProcessorStreamTask {
+  var httpUtil = new HttpUtil
+  var neo4JUtil: Neo4JUtil = _
   def main(args: Array[String]): Unit = {
     val configFilePath = Option(ParameterTool.fromArgs(args).get("config.file.path"))
     val config = configFilePath.map {
@@ -51,6 +53,7 @@ object PostPublishProcessorStreamTask {
     }.getOrElse(ConfigFactory.load("post-publish-processor.conf").withFallback(ConfigFactory.systemEnvironment()))
     val pppConfig = new PostPublishProcessorConfig(config)
     val kafkaUtil = new FlinkKafkaConnector(pppConfig)
+    neo4JUtil = new Neo4JUtil(pppConfig.graphRoutePath, pppConfig.graphName)
     val task = new PostPublishProcessorStreamTask(pppConfig, kafkaUtil)
     task.process()
   }
