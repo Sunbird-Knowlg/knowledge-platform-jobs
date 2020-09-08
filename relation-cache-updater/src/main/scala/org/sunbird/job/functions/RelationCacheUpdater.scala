@@ -51,7 +51,7 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
     override def processElement(event: java.util.Map[String, AnyRef], context: ProcessFunction[java.util.Map[String, AnyRef], String]#Context, metrics: Metrics): Unit = {
         val eData = event.get("edata").asInstanceOf[java.util.Map[String, AnyRef]]
         if (isValidEvent(eData)) {
-            val rootId = eData.get("id").asInstanceOf[String]
+            val rootId = eData.get("identifier").asInstanceOf[String]
             logger.info("Processing - identifier: " + rootId)
             val hierarchy = getHierarchy(rootId)(metrics)
             if (MapUtils.isNotEmpty(hierarchy)) {
@@ -82,9 +82,9 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
     private def isValidEvent(eData: java.util.Map[String, AnyRef]): Boolean = {
         val action = eData.getOrDefault("action", "").asInstanceOf[String]
         val mimeType = eData.getOrDefault("mimeType", "").asInstanceOf[String]
-        val identifier = eData.getOrDefault("id", "").asInstanceOf[String]
+        val identifier = eData.getOrDefault("identifier", "").asInstanceOf[String]
 
-        StringUtils.equalsIgnoreCase(action, "link-dialcode") &&
+        StringUtils.equalsIgnoreCase(action, "post-publish-process") &&
             StringUtils.equalsIgnoreCase(mimeType, "application/vnd.ekstep.content-collection") &&
             StringUtils.isNotBlank(identifier)
     }
