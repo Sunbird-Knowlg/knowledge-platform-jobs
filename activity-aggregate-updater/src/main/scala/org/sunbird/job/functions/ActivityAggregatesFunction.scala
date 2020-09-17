@@ -47,11 +47,10 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
   }
 
   def process(key: String, context: ProcessWindowFunction[util.Map[String, AnyRef], String, String, TimeWindow]#Context, events: lang.Iterable[util.Map[String, AnyRef]], metrics: Metrics): Unit = {
-    logger.info("EventsSize" + events.asScala.toList.size)
+    logger.info("Input Events Size: " + events.asScala.toList.size)
     val contentConsumptionEvents = events.asScala.filter(event => {
       val isBatchEnrollmentEvent: Boolean = StringUtils.equalsIgnoreCase(event.get(config.eData).asInstanceOf[util.Map[String, AnyRef]].asScala.getOrElse(config.action, "").asInstanceOf[String], config.batchEnrolmentUpdateCode)
       if (isBatchEnrollmentEvent) {
-        logger.info("Processing batch-enrolment-update - MID: " + event.get("mid"))
         metrics.incCounter(config.batchEnrolmentUpdateEventCount)
         isBatchEnrollmentEvent
       } else {
@@ -59,6 +58,12 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
         isBatchEnrollmentEvent
       }
     })
+
+    if (contentConsumptionEvents.size > 0)
+      logger.info("Last event for batch-enrolment-update - MID: " + contentConsumptionEvents.last.get("mid"))
+    else
+      logger.info("No batch-enrolment-update events after filtering.")
+
     val eDataBatch: List[Map[String, AnyRef]] = contentConsumptionEvents.map(f => f.get(config.eData).asInstanceOf[util.Map[String, AnyRef]].asScala.toMap).toList
     // Grouping the contents to avoid the duplicate of contents
     val groupedData: List[Map[String, AnyRef]] = eDataBatch.groupBy(key => (key.get(config.courseId), key.get(config.batchId), key.get(config.userId)))
@@ -115,7 +120,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
     if (leafNodes.isEmpty) {
       metrics.incCounter(config.failedEventCount)
       logger.error(s"leaf nodes are not available for: $key")
-//      throw new Exception(s"leaf nodes are not available: $key")
+      throw new Exception(s"leaf nodes are not available: $key")
     }
     val completedCount = leafNodes.intersect(userConsumption.contents.filter(cc => cc._2.status == 2).map(cc => cc._2.contentId).toList.distinct).size
     UserActivityAgg("Course", userId, courseId, contextId, Map("completedCount" -> completedCount), Map("completedCount" -> System.currentTimeMillis()))
