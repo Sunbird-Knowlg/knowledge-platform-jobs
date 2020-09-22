@@ -93,7 +93,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
     updateDB(config.thresholdBatchWriteSize, userConsumptionQueries)(metrics)
 
     // Course Level Agg using the merged data of ContentConsumption per user, course and batch.
-    val courseAggs = finalUserConsumptionList.map(userConsumption => courseActivityAgg(userConsumption)(metrics))
+    val courseAggs = finalUserConsumptionList.map(userConsumption => courseActivityAgg(userConsumption, context)(metrics))
 
     // Identified the children of the course (only collections) for which aggregates computation required.
     // Computation of aggregates using leafNodes (of the specific collection) and user completed contents.
