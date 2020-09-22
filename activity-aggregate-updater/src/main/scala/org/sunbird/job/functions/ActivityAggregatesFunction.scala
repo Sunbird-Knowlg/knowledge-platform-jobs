@@ -59,9 +59,10 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
       }
     })
 
-    if (contentConsumptionEvents.size > 0)
+    if (contentConsumptionEvents.size > 0) {
+      logger.info("Content consumption events size:" + contentConsumptionEvents.size)
       logger.info("Last event for batch-enrolment-update - MID: " + contentConsumptionEvents.last.get("mid"))
-    else
+    } else
       logger.info("No batch-enrolment-update events after filtering.")
 
     val eDataBatch: List[Map[String, AnyRef]] = contentConsumptionEvents.map(f => f.get(config.eData).asInstanceOf[util.Map[String, AnyRef]].asScala.toMap).toList
@@ -111,7 +112,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
   /**
    * Course Level Agg using the merged data of ContentConsumption per user, course and batch.
    */
-  def courseActivityAgg(userConsumption: UserContentConsumption)(implicit metrics: Metrics): UserActivityAgg = {
+  def courseActivityAgg(userConsumption: UserContentConsumption, context: ProcessWindowFunction[util.Map[String, AnyRef], String, String, TimeWindow]#Context)(implicit metrics: Metrics): UserActivityAgg = {
     val courseId = userConsumption.courseId
     val userId = userConsumption.userId
     val contextId = "cb:" + userConsumption.batchId
@@ -120,7 +121,8 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
     if (leafNodes.isEmpty) {
       metrics.incCounter(config.failedEventCount)
       logger.error(s"leaf nodes are not available for: $key")
-      throw new Exception(s"leaf nodes are not available: $key")
+      context.output(config.auditEventOutputTag, gson.toJson(userConsumption))
+//      throw new Exception(s"leaf nodes are not available: $key")
     }
     val completedCount = leafNodes.intersect(userConsumption.contents.filter(cc => cc._2.status == 2).map(cc => cc._2.contentId).toList.distinct).size
     UserActivityAgg("Course", userId, courseId, contextId, Map("completedCount" -> completedCount), Map("completedCount" -> System.currentTimeMillis()))
