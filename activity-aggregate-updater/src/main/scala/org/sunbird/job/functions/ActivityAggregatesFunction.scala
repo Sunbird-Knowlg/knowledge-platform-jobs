@@ -121,7 +121,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
     if (leafNodes.isEmpty) {
       metrics.incCounter(config.failedEventCount)
       logger.error(s"leaf nodes are not available for: $key")
-      context.output(config.auditEventOutputTag, gson.toJson(userConsumption))
+      context.output(config.failedEventOutputTag, gson.toJson(userConsumption))
 //      throw new Exception(s"leaf nodes are not available: $key")
     }
     val completedCount = leafNodes.intersect(userConsumption.contents.filter(cc => cc._2.status == 2).map(cc => cc._2.contentId).toList.distinct).size
