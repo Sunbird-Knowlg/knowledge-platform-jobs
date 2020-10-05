@@ -34,6 +34,7 @@ class ActivityAggregateUpdaterStreamTask(config: ActivityAggregateUpdaterConfig,
         .setParallelism(config.activityAggregateUpdaterParallelism)
 
     progressStream.getSideOutput(config.auditEventOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaAuditEventTopic)).name(config.activityAggregateUpdaterProducer).uid(config.activityAggregateUpdaterProducer)
+    progressStream.getSideOutput(config.failedEventOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaFailedEventTopic)).name(config.activityAggFailedEventProducer).uid(config.activityAggFailedEventProducer)
     env.execute(config.jobName)
   }
 
