@@ -62,8 +62,15 @@ class PostPublishEventRouter(config: PostPublishProcessorConfig)
       val trackable = isTrackable(metadata, identifier)
       val batchExists = isBatchExists(identifier)
       if (trackable && !batchExists) {
-        val batchData = metadata.asScala -- (metadata.keySet.asScala -- List("name", "createdBy", "createdFor")) + ("identifier" -> identifier)
-        context.output(config.batchCreateOutTag, batchData.asJava)
+        val createdFor = metadata.get("createdFor").asInstanceOf[java.util.List[String]]
+        val batchData = new util.HashMap[String, AnyRef]() {{
+          put("identifier", identifier)
+          put("name", metadata.get("name"))
+          put("createdBy", metadata.get("createdBy"))
+          if (CollectionUtils.isNotEmpty(createdFor))
+            put("createdFor", new util.ArrayList[String](createdFor))
+        }}
+        context.output(config.batchCreateOutTag, batchData)
       }
 
       // Check DIAL Code exist or not and trigger create and link.
