@@ -161,7 +161,7 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
         try {
             dataMap.foreach(each => each._2 match {
                 case value: List[String] =>
-                    cache.addListWithRetry(finalPrefix + each._1 + finalSuffix, each._2.asInstanceOf[List[String]])
+                    cache.createListWithRetry(finalPrefix + each._1 + finalSuffix, each._2.asInstanceOf[List[String]])
                     metrics.incCounter(config.cacheWrite)
                 case _ =>
                     cache.setWithRetry(finalPrefix + each._1 + finalSuffix, each._2.asInstanceOf[String])
