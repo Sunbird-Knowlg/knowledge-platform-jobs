@@ -88,6 +88,7 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
   "Aggregator " should "Compute and update to cassandra database" in {
     when(mockKafkaUtil.kafkaMapSource(courseAggregatorConfig.kafkaInputTopic)).thenReturn(new CourseAggregatorMapSource)
     when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaAuditEventTopic)).thenReturn(new auditEventSink)
+    when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaFailedEventTopic)).thenReturn(new failedEventSink)
     new ActivityAggregateUpdaterStreamTask(courseAggregatorConfig, mockKafkaUtil).process()
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.batchEnrolmentUpdateEventCount}").getValue() should be(4)
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.dbReadCount}").getValue() should be(1) // 10
@@ -281,6 +282,19 @@ class auditEventSink extends SinkFunction[String] {
 }
 
 object auditEventSink {
+  val values: util.List[String] = new util.ArrayList()
+}
+
+class failedEventSink extends SinkFunction[String] {
+
+  override def invoke(value: String): Unit = {
+    synchronized {
+      failedEventSink.values.add(value)
+    }
+  }
+}
+
+object failedEventSink {
   val values: util.List[String] = new util.ArrayList()
 }
 
