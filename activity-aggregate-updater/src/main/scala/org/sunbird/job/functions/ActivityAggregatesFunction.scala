@@ -342,8 +342,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
             val contentId = entry._1
             val status = contentStatus.getOrElse(config.status, 1).asInstanceOf[Number].intValue()
             val viewCount = contentStatus.getOrElse(config.viewcount, 0).asInstanceOf[Number].intValue()
-            val defaultCompletedCount = if (status == 2) 1 else 0
-            val completedCount = contentStatus.getOrElse(config.completedcount, defaultCompletedCount).asInstanceOf[Number].intValue()
+            val completedCount = contentStatus.getOrElse(config.completedcount, 0).asInstanceOf[Number].intValue()
             (contentId, ContentStatus(contentId, status, completedCount, viewCount))
           }).toMap
 
