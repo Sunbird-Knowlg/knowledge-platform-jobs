@@ -367,12 +367,14 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
     contentsForEvents.flatMap(c => {
       c.eventsFor.map(action => {
         val properties = if (StringUtils.equalsIgnoreCase(action, config.complete)) Array(config.viewcount, config.completedcount) else Array(config.viewcount)
-        TelemetryEvent(
+        val event = TelemetryEvent(
           actor = ActorObject(id = userId),
           edata = EventData(props = properties, `type` = action), // action values are "start", "complete".
           context = EventContext(cdata = Array(Map("type" -> config.courseBatch, "id" -> batchId).asJava)),
           `object` = EventObject(id = c.contentId, `type` = "Content", rollup = Map[String, String]("l1" -> courseId).asJava)
         )
+        println("AUDIT Event: " + event)
+        event
       })
     }).toList
   }
