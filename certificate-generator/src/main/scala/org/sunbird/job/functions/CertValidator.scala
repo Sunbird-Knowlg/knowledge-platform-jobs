@@ -3,15 +3,14 @@ package org.sunbird.job.functions
 
 import org.apache.commons.collections.{CollectionUtils, MapUtils}
 import org.apache.commons.lang3.StringUtils
-import java.net.URI
-import java.net.URISyntaxException
-import java.text.MessageFormat
+import java.net.{MalformedURLException, URI, URL}
 import java.util
 import java.util.Arrays
 import java.util.Map
 import java.util.regex.Pattern
+import java.net.URISyntaxException
+import java.text.MessageFormat
 
-import org.apache.commons.validator.UrlValidator
 import org.sunbird.incredible.processor.JsonKey
 import org.sunbird.job.Exceptions.{ErrorCodes, ErrorMessages, ValidationException}
 
@@ -137,11 +136,22 @@ class CertValidator {
 
   @throws[ValidationException]
   private def validateBasePath(basePath: String): Unit = {
-    val urlValidator: UrlValidator = new UrlValidator()
-    val isValid: Boolean = urlValidator.isValid(basePath)
+    val isValid: Boolean = isUrlValid(basePath)
     if (!isValid) {
       throw ValidationException(ErrorCodes.INVALID_PARAM_VALUE, MessageFormat.format(ErrorMessages.INVALID_PARAM_VALUE, basePath, JsonKey.CERTIFICATE + "." + JsonKey.BASE_PATH))
     }
+  }
+
+
+  private def isUrlValid(url: String): Boolean = try {
+    val obj: URL = new URL(url)
+    obj.toURI
+    true
+  } catch {
+    case e: MalformedURLException =>
+      false
+    case e: URISyntaxException =>
+      false
   }
 
   /**
@@ -151,9 +161,9 @@ class CertValidator {
   @throws[ValidationException]
   private def validateTagId(tag: String): Unit = {
     if (StringUtils.isNotBlank(tag)) {
-      val pattern: Pattern = Pattern.compile(TAG_REGX)
+      val pattern = Pattern.compile(TAG_REGX)
       if (pattern.matcher(tag).find()) {
-        throw ValidationException(ErrorCodes.INVALID_PARAM_VALUE, MessageFormat.format(ErrorCodes.INVALID_PARAM_VALUE, tag, JsonKey.TAG))
+        throw ValidationException(ErrorCodes.INVALID_PARAM_VALUE, MessageFormat.format(ErrorMessages.INVALID_PARAM_VALUE, tag, JsonKey.TAG))
       }
     }
   }

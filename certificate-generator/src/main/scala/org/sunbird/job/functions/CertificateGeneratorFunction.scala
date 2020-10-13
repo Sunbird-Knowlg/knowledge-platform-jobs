@@ -32,7 +32,7 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig)
   private[this] val logger = LoggerFactory.getLogger(classOf[CertificateGeneratorFunction])
   val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
   val storageType: String = config.storageType
-  val directory: String = "conf/"
+  val directory: String = "certificates/"
   val certStore: ICertStore = getStorageService
   lazy private val mapper: ObjectMapper = new ObjectMapper()
   mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL)
@@ -46,7 +46,6 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig)
   }
 
   override def processElement(event: java.util.Map[String, AnyRef], context: ProcessFunction[java.util.Map[String, AnyRef], String]#Context, metrics: Metrics): Unit = {
-    logger.info("Processing - identifier: " + event)
     val certReq: util.Map[String, AnyRef] = event.get(config.EDATA).asInstanceOf[util.Map[String, AnyRef]]
     metrics.incCounter(config.totalEventsCount)
     try {
@@ -150,7 +149,7 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig)
       val keyId: String = keysObject.get(JsonKey.ID).asInstanceOf[String]
       properties.put(JsonKey.KEY_ID, keyId)
       properties.put(JsonKey.SIGN_CREATOR, basePath.concat("/").concat(keyId).concat(config.PUBLIC_KEY_URL))
-      properties.put(JsonKey.PUBLIC_KEY_URL, basePath.concat("/").concat(JsonKey.KEYS).concat("/").concat(config.PUBLIC_KEY_URL))
+      properties.put(JsonKey.PUBLIC_KEY_URL, basePath.concat("/").concat(JsonKey.KEYS).concat("/").concat(keyId).concat(config.PUBLIC_KEY_URL))
       logger.info("populatePropertiesMap: keys after {}", keyId)
     }
     properties.put(JsonKey.BASE_PATH, basePath)
@@ -194,10 +193,10 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig)
   private def cleanUp(fileName: String, path: String): Unit = {
     try {
       val directory = new File(path)
-      val files = directory.listFiles
-      for (file <- files) {
+      val files: Array[File] = directory.listFiles
+      files.foreach(file => {
         if (file.getName.startsWith(fileName)) file.delete
-      }
+      })
       logger.info("cleanUp completed")
     } catch {
       case ex: Exception =>

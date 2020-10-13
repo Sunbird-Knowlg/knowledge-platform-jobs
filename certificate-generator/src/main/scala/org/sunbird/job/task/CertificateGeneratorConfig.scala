@@ -6,7 +6,6 @@ import com.typesafe.config.Config
 import org.apache.commons.lang.StringUtils
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
-import org.apache.flink.streaming.api.scala.OutputTag
 import org.sunbird.job.BaseJobConfig
 
 class CertificateGeneratorConfig(override val config: Config) extends BaseJobConfig(config, "certificate-generator") {
@@ -27,8 +26,6 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   val successEventCount = "success-events-count"
   val failedEventCount = "failed-events-count"
   val skippedEventCount = "skipped-event-count"
-  val cacheWrite = "cache-write-count"
-  val dbReadCount = "db-read-count"
 
   // Consumers
   val certificateGeneratorConsumer = "certificate"
@@ -45,10 +42,6 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   val slug: String = config.getString("sunbird_cert_slug")
   val basePath: String = domainUrl.concat("/").concat(if (StringUtils.isNotBlank(slug)) slug else "certs")
   val certRegistryBaseUrl = "http://localhost:9000"
-
-  //tags
-  val addCertificateOutTag: OutputTag[java.util.Map[String, AnyRef]] = OutputTag[java.util.Map[String, AnyRef]]("add-certificate")
-
 
   //constant
   val DATA: String = "data"

@@ -47,6 +47,8 @@ public class SvgGenerator {
         if (!file.exists()) {
             logger.info("{} file does not exits , downloading", svgFileName);
             download(svgFileName);
+        }
+        if (!cachedSvgTemplates.containsKey(this.svgTemplate)) {
             svgContent = readSvgContent(file.getAbsolutePath());
             String encodedSvg = "data:image/svg+xml," + encodeData(svgContent);
             encodedSvg = encodedSvg.replaceAll("\n", "").replaceAll("\t", "");
