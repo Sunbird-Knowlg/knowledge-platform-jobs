@@ -18,7 +18,6 @@ class CertMapper(properties: java.util.Map[String, String]) {
   lazy private val mapper: ObjectMapper = new ObjectMapper()
 
   def mapReqToCertModel(certReq: java.util.Map[String, AnyRef]): java.util.List[CertModel] = {
-    println("properties " + properties)
     val dataList: java.util.List[java.util.Map[String, AnyRef]] = certReq.get(JsonKey.DATA).asInstanceOf[java.util.List[java.util.Map[String, AnyRef]]]
     val certList: java.util.List[CertModel] = dataList.stream().map[CertModel]((data: java.util.Map[String, AnyRef]) => getCertModel(data)).collect(Collectors.toList())
     val issuerData: java.util.Map[String, AnyRef] = certReq.get(JsonKey.ISSUER).asInstanceOf[java.util.Map[String, AnyRef]]

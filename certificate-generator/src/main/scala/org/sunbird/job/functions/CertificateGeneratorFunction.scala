@@ -26,19 +26,19 @@ import org.sunbird.job.Exceptions.ValidationException
 
 
 class CertificateGeneratorFunction(config: CertificateGeneratorConfig)
-                                  (implicit val stringTypeInfo: TypeInformation[String])
+                                  (implicit val stringTypeInfo: TypeInformation[String], @transient var certStore: ICertStore = null)
   extends BaseProcessFunction[java.util.Map[String, AnyRef], String](config) {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[CertificateGeneratorFunction])
   val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
   val storageType: String = config.storageType
   val directory: String = "certificates/"
-  val certStore: ICertStore = getStorageService
   lazy private val mapper: ObjectMapper = new ObjectMapper()
   mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL)
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
+    getStorageService()
   }
 
   override def close(): Unit = {
@@ -78,7 +78,7 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig)
         certificateExtension.setPrintUri(svgGenerator.generate(certificateExtension, encodedQrCode))
         uuid = certificateGenerator.getUUID(certificateExtension)
         val jsonUrl = uploadJson(certificateExtension, directory.concat(uuid).concat(".json"), certReq.get(JsonKey.TAG).asInstanceOf[String])
-
+        println("json url " + jsonUrl)
         //adding certificate to registry
         val request = new java.util.HashMap[String, AnyRef]() {
           {
@@ -137,7 +137,7 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig)
     logger.info("uploadJson: uploading json file started {}", fileName)
     val file = new File(fileName)
     mapper.writeValue(file, certificateExtension)
-    certStore.save(file, cloudPath)
+    certStore.save(file, cloudPath.concat("/"))
   }
 
   private def populatesPropertiesMap(req: util.Map[String, AnyRef]): util.Map[String, String] = {
@@ -165,29 +165,29 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig)
   }
 
   @throws[Exception]
-  def getStorageService: ICertStore = {
-    var certStore: ICertStore = null
+  def getStorageService():Unit = {
     val storeParams = new java.util.HashMap[String, AnyRef]
     storeParams.put(JsonKey.TYPE, storageType)
-    if (StringUtils.equalsIgnoreCase(storageType, JsonKey.AZURE)) {
-      val azureParams = new java.util.HashMap[String, String]
-      azureParams.put(JsonKey.containerName, config.containerName)
-      azureParams.put(JsonKey.ACCOUNT, config.azureStorageKey)
-      azureParams.put(JsonKey.KEY, config.azureStorageSecret)
-      storeParams.put(JsonKey.AZURE, azureParams)
-      val storeConfig = new StoreConfig(storeParams)
-      certStore = new AzureStore(storeConfig)
-    } else if (StringUtils.equalsIgnoreCase(storageType, JsonKey.AWS)) {
-      val awsParams = new java.util.HashMap[String, String]
-      awsParams.put(JsonKey.containerName, config.containerName)
-      awsParams.put(JsonKey.ACCOUNT, config.awsStorageKey)
-      awsParams.put(JsonKey.KEY, config.awsStorageSecret)
-      storeParams.put(JsonKey.AWS, awsParams)
-      val storeConfig = new StoreConfig(storeParams)
-      certStore = new AwsStore(storeConfig)
+    if (certStore == null) {
+      if (StringUtils.equalsIgnoreCase(storageType, JsonKey.AZURE)) {
+        val azureParams = new java.util.HashMap[String, String]
+        azureParams.put(JsonKey.containerName, config.containerName)
+        azureParams.put(JsonKey.ACCOUNT, config.azureStorageKey)
+        azureParams.put(JsonKey.KEY, config.azureStorageSecret)
+        storeParams.put(JsonKey.AZURE, azureParams)
+        val storeConfig = new StoreConfig(storeParams)
+        certStore = new AzureStore(storeConfig)
+      } else if (StringUtils.equalsIgnoreCase(storageType, JsonKey.AWS)) {
+        val awsParams = new java.util.HashMap[String, String]
+        awsParams.put(JsonKey.containerName, config.containerName)
+        awsParams.put(JsonKey.ACCOUNT, config.awsStorageKey)
+        awsParams.put(JsonKey.KEY, config.awsStorageSecret)
+        storeParams.put(JsonKey.AWS, awsParams)
+        val storeConfig = new StoreConfig(storeParams)
+        certStore = new AwsStore(storeConfig)
 
-    } else throw new Exception("Error while initialising cloud storage")
-    certStore
+      } else throw new Exception("Error while initialising cloud storage")
+    }
   }
 
   private def cleanUp(fileName: String, path: String): Unit = {

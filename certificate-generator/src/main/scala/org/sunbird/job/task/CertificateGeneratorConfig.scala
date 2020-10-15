@@ -41,7 +41,7 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   val encServiceUrl: String = config.getString("sunbird_cert_enc_service_url")
   val slug: String = config.getString("sunbird_cert_slug")
   val basePath: String = domainUrl.concat("/").concat(if (StringUtils.isNotBlank(slug)) slug else "certs")
-  val certRegistryBaseUrl = "http://localhost:9000"
+  val certRegistryBaseUrl: String = if (StringUtils.isNotBlank(config.getString("sunbird_certreg_service_url"))) config.getString("sunbird_certreg_service_url") else "http://localhost:9000"
 
   //constant
   val DATA: String = "data"

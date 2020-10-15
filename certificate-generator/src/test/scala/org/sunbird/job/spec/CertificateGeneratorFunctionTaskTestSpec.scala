@@ -14,7 +14,7 @@ import org.apache.flink.test.util.MiniClusterWithClientResource
 import org.mockito.ArgumentMatchers.{any, endsWith}
 import org.mockito.Mockito
 import org.mockito.Mockito._
-import org.sunbird.incredible.processor.store.AzureStore
+import org.sunbird.incredible.processor.store.{AzureStore, ICertStore}
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.fixture.EventFixture
 import org.sunbird.job.task.{CertificateGeneratorConfig, CertificateGeneratorStreamTask}
@@ -35,19 +35,19 @@ class CertificateGeneratorFunctionTaskTestSpec extends BaseTestSpec {
 
   val mockKafkaUtil: FlinkKafkaConnector = mock[FlinkKafkaConnector](Mockito.withSettings().serializable())
   val gson = new Gson()
-  val config: Config = ConfigFactory.load("test.conf")
+  val config: Config = ConfigFactory.load("test.conf").withFallback(ConfigFactory.systemEnvironment())
   val jobConfig: CertificateGeneratorConfig = new CertificateGeneratorConfig(config)
   val mockHttpUtil = mock[HttpUtil]
-  val azureStore = mock[AzureStore]
-
+  var certStore: ICertStore = _
+  val azureStore: AzureStore = mock[AzureStore]
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
     // Clear the metrics
     BaseMetricsReporter.gaugeMetrics.clear()
     flinkCluster.before()
-    when(mockHttpUtil.post(endsWith("/v3/search"), any[String])).thenReturn(HTTPResponse(200, """{"id":"api.search-service.search","ver":"3.0","ts":"2020-08-31T22:09:07ZZ","params":{"resmsgid":"bc9a8ac0-f67d-47d5-b093-2077191bf93b","msgid":null,"err":null,"status":"successful","errmsg":null},"responseCode":"OK","result":{"count":5,"content":[{"identifier":"do_11301367667942195211854","origin":"do_11300581751853056018","channel":"b00bc992ef25f1a9a8d63291e20efc8d","originData":"{\"name\":\"Origin Content\",\"copyType\":\"deep\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"]}","mimeType":"application/vnd.ekstep.content-collection","contentType":"TextBook","objectType":"Content","status":"Draft","versionKey":"1588583579763"},{"identifier":"do_113005885057662976128","origin":"do_11300581751853056018","channel":"sunbird","originData":"{\"name\":\"Origin Content\",\"copyType\":\"shallow\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"],\"pkgVersion\":2.0}","mimeType":"application/vnd.ekstep.content-collection","lastPublishedBy":"Ekstep","contentType":"TextBook","objectType":"Content","status":"Live","versionKey":"1587632481597"},{"identifier":"do_113005885161611264130","origin":"do_11300581751853056018","channel":"sunbird","originData":"{\"name\":\"Origin Content\",\"copyType\":\"shallow\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"],\"pkgVersion\":2.0}","mimeType":"application/vnd.ekstep.content-collection","lastPublishedBy":"Ekstep","contentType":"TextBook","objectType":"Content","status":"Live","versionKey":"1587632475439"},{"identifier":"do_113005882957578240124","origin":"do_11300581751853056018","channel":"sunbird","originData":"{\"name\":\"Origin Content\",\"copyType\":\"shallow\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"],\"pkgVersion\":2.0}","mimeType":"application/vnd.ekstep.content-collection","lastPublishedBy":"Ekstep","contentType":"TextBook","objectType":"Content","status":"Live","versionKey":"1587632233649"},{"identifier":"do_113005820474007552111","origin":"do_11300581751853056018","channel":"sunbird","originData":"{\"name\":\"Origin Content\",\"copyType\":\"shallow\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"],\"pkgVersion\":2.0}","mimeType":"application/vnd.ekstep.content-collection","lastPublishedBy":"Ekstep","contentType":"TextBook","objectType":"Content","status":"Live","versionKey":"1587624624051"}]}}"""))
-    when(azureStore.save(any[File],any[String])).thenReturn("http://basepath/id.json")
+    when(mockHttpUtil.post(endsWith("/certs/v2/registry/add"), any[String])).thenReturn(HTTPResponse(200, """{"id":"api.certs.registry.add","ver":"v2","ts":"1602590393507","params":null,"responseCode":"OK","result":{"id":"c96d60f8-9c76-4a73-9ef0-9e01d0f726c6"}}"""))
+    when(azureStore.save(any[File], any[String])).thenReturn("http://basepath/id.json")
   }
 
   override protected def afterAll(): Unit = {
@@ -57,11 +57,12 @@ class CertificateGeneratorFunctionTaskTestSpec extends BaseTestSpec {
 
 
   "CertificateGenerator " should "generate certificate and add to the registry" in {
+    CertificateGeneratorStreamTask.httpUtil = mockHttpUtil
     when(mockKafkaUtil.kafkaMapSource(jobConfig.kafkaInputTopic)).thenReturn(new CertificateGeneratorMapSource)
     new CertificateGeneratorStreamTask(jobConfig, mockKafkaUtil).process()
-    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(1)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(2)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.successEventCount}").getValue() should be(1)
-    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.failedEventCount}").getValue() should be(0)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.failedEventCount}").getValue() should be(1)
   }
 
 
@@ -71,7 +72,9 @@ class CertificateGeneratorMapSource extends SourceFunction[java.util.Map[String,
   override def run(ctx: SourceContext[util.Map[String, AnyRef]]): Unit = {
     val gson = new Gson()
     val eventMap1 = gson.fromJson(EventFixture.EVENT_1, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]].asScala
+    val eventMap2 = gson.fromJson(EventFixture.EVENT_2, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]].asScala
     ctx.collect(eventMap1.asJava)
+    ctx.collect(eventMap2.asJava)
   }
 
   override def cancel() = {}
