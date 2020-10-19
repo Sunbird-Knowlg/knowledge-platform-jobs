@@ -25,7 +25,9 @@ class BaseJobConfig(val config: Config, val jobName: String) extends Serializabl
   val kafkaAutoOffsetReset: Option[String] = if (config.hasPath("kafka.auto.offset.reset")) Option(config.getString("kafka.auto.offset.reset")) else None
 
   // Checkpointing config
+  val enableCompressedCheckpointing: Boolean = config.getBoolean("task.checkpointing.compressed")
   val checkpointingInterval: Int = config.getInt("task.checkpointing.interval")
+  val checkpointingPauseSeconds: Int = config.getInt("task.checkpointing.pause.between.seconds")
   val enableDistributedCheckpointing: Option[Boolean] = if (config.hasPath("job")) Option(config.getBoolean("job.enable.distributed.checkpointing")) else None
   val checkpointingBaseUrl: Option[String] = if (config.hasPath("job")) Option(config.getString("job.statebackend.base.url")) else None
 
