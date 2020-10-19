@@ -44,6 +44,8 @@ object EventFixture {
       |task {
       |  parallelism = 2
       |  consumer.parallelism = 1
+      |  checkpointing.compressed = true
+      |  checkpointing.pause.between.seconds = 30000
       |  checkpointing.interval = 60000
       |  metrics.window.size = 100 # 3 min
       |  restart-strategy.attempts = 1 # retry once
