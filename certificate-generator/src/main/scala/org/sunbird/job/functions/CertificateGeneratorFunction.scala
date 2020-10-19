@@ -142,7 +142,7 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig)
 
   private def populatesPropertiesMap(req: util.Map[String, AnyRef]): util.Map[String, String] = {
     val properties: util.HashMap[String, String] = new util.HashMap[String, String]
-    val basePath: String = req.getOrDefault(JsonKey.BASE_PATH, config.basePath).asInstanceOf[String]
+    val basePath: String = req.getOrDefault(req.get(JsonKey.BASE_PATH), config.basePath).asInstanceOf[String]
     val tag: String = req.get(JsonKey.TAG).asInstanceOf[String]
     val keysObject: util.Map[String, AnyRef] = req.get(JsonKey.KEYS).asInstanceOf[util.Map[String, AnyRef]]
     if (MapUtils.isNotEmpty(keysObject)) {

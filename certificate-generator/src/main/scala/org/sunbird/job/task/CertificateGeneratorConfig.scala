@@ -31,17 +31,16 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   val certificateGeneratorConsumer = "certificate"
 
   // env vars
-  val storageType: String = config.getString("CLOUD_STORAGE_TYPE")
-  val containerName: String = config.getString("CONTAINER_NAME")
-  val azureStorageSecret: String = config.getString("AZURE_STORAGE_SECRET")
-  val azureStorageKey: String = config.getString("AZURE_STORAGE_KEY")
+  val storageType: String = config.getString("cert_cloud_storage_type")
+  val containerName: String = config.getString("cert_container_name")
+  val azureStorageSecret: String = config.getString("cert_azure_storage_secret")
+  val azureStorageKey: String = config.getString("cert_azure_storage_key")
+  val domainUrl: String = config.getString("cert_domain_url")
+  val encServiceUrl: String = config.getString("enc-service.basePath")
+  val certRegistryBaseUrl: String = config.getString("cert-reg.basePath")
+  val basePath: String = domainUrl.concat("/").concat( "certs")
   val awsStorageSecret: String = ""
   val awsStorageKey: String = ""
-  val domainUrl: String = config.getString("sunbird_cert_domain_url")
-  val encServiceUrl: String = config.getString("sunbird_cert_enc_service_url")
-  val slug: String = config.getString("sunbird_cert_slug")
-  val basePath: String = domainUrl.concat("/").concat(if (StringUtils.isNotBlank(slug)) slug else "certs")
-  val certRegistryBaseUrl: String = if (StringUtils.isNotBlank(config.getString("sunbird_certreg_service_url"))) config.getString("sunbird_certreg_service_url") else "http://localhost:9000"
 
   //constant
   val DATA: String = "data"
