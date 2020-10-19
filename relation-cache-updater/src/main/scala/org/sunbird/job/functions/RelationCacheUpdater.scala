@@ -34,10 +34,16 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
     override def open(parameters: Configuration): Unit = {
         super.open(parameters)
         cassandraUtil = new CassandraUtil(config.dbHost, config.dbPort)
-        val redisConnect = new RedisConnect(config)
-        dataCache = new DataCache(config, redisConnect, config.relationCacheStore, List())
-        collectionCache = new DataCache(config, redisConnect, config.collectionCacheStore, List())
+
+        // Using LP cache for leafnodes, ancestors cache for the collection.
+        val lpCacheConnect = new RedisConnect(config)
+        dataCache = new DataCache(config, lpCacheConnect, config.relationCacheStore, List())
         dataCache.init()
+
+        // Using DP cache to save the collection metadata cache to existing DP redis cache.
+        // This job pushes only visibility: Parent data to redis.
+        val dpCacheConnect = new RedisConnect(config, Option(config.dpRedisHost), Option(config.dpRedisPort))
+        collectionCache = new DataCache(config, dpCacheConnect, config.collectionCacheStore, List())
         collectionCache.init()
     }
 
