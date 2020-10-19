@@ -26,11 +26,11 @@ class CertificateGeneratorStreamTask(config: CertificateGeneratorConfig, kafkaCo
       .process(new CertificateGeneratorFunction(config))
       .name("certificate-generator").uid("certificate-generator")
       .setParallelism(config.parallelism)
-//
-//    processStreamTask.getSideOutput(config.failedEventOutputTag)
-//      .addSink(kafkaConnector.kafkaStringSink(config.kafkaFailedEventTopic))
-//      .name(config.certificateGeneratorFailedEventProducer)
-//      .uid(config.certificateGeneratorFailedEventProducer)
+
+    processStreamTask.getSideOutput(config.failedEventOutputTag)
+      .addSink(kafkaConnector.kafkaStringSink(config.kafkaFailedEventTopic))
+      .name(config.certificateGeneratorFailedEventProducer)
+      .uid(config.certificateGeneratorFailedEventProducer)
 
     env.execute(config.jobName)
   }

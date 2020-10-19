@@ -10,6 +10,7 @@ object ErrorMessages {
 object ErrorCodes {
   val MANDATORY_PARAMETER_MISSING: String = "MANDATORY_PARAMETER_MISSING"
   val INVALID_PARAM_VALUE: String = "INVALID_PARAM_VALUE"
+  val SYSTEM_ERROR: String = "SYSTEM_ERROR"
 }
 
 

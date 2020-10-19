@@ -5,10 +5,12 @@ import java.lang.reflect.Type
 import java.util
 import java.util.Base64
 
+import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import org.apache.commons.collections.MapUtils
 import org.apache.commons.io.FileUtils
 import org.apache.commons.lang.StringUtils
+import org.apache.commons.lang.exception.ExceptionUtils
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonInclude
@@ -22,7 +24,8 @@ import org.sunbird.incredible.pojos.CertificateExtension
 import org.sunbird.incredible.processor.{CertModel, JsonKey}
 import org.sunbird.incredible.processor.store.{AwsStore, AzureStore, ICertStore, StoreConfig}
 import org.sunbird.incredible.processor.views.SvgGenerator
-import org.sunbird.job.Exceptions.ValidationException
+import org.sunbird.job.Exceptions.{ErrorCodes, ServerException, ValidationException}
+import org.sunbird.job.domain.FailedEvent
 
 
 class CertificateGeneratorFunction(config: CertificateGeneratorConfig)
@@ -35,6 +38,7 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig)
   val directory: String = "certificates/"
   lazy private val mapper: ObjectMapper = new ObjectMapper()
   mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL)
+  lazy private val gson = new Gson()
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
@@ -50,13 +54,30 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig)
     metrics.incCounter(config.totalEventsCount)
     try {
       new CertValidator().validateGenerateCertRequest(certReq)
-      generateCertificate(certReq)(metrics)
+      generateCertificate(certReq, context)(metrics)
     } catch {
       case e: ValidationException =>
-        metrics.incCounter(config.failedEventCount)
         logger.info("Certificate generation failed {}", e)
-      //todo failed event put it into kafka topic
+        pushEventToFailedTopic(context, event, e.errorCode, e)(metrics)
+      case e: ServerException =>
+        logger.info("Certificate generation failed {}", e)
+        pushEventToFailedTopic(context, event, ErrorCodes.SYSTEM_ERROR, e)(metrics)
+      case e: Exception =>
+        logger.info("Certificate generation failed {}", e)
+        pushEventToFailedTopic(context, event, ErrorCodes.SYSTEM_ERROR, e)(metrics)
     }
+  }
+
+
+  def pushEventToFailedTopic(context: ProcessFunction[java.util.Map[String, AnyRef], String]#Context, event: java.util.Map[String, AnyRef], errorCode: String, error: Throwable)(implicit metrics: Metrics): Unit = {
+    metrics.incCounter(config.failedEventCount)
+    val errorString: List[String] = ExceptionUtils.getStackTrace(error).split("\\n\\t").toList
+    var stackTrace: List[String] = null
+    if (errorString.length > 21) {
+      stackTrace = errorString.slice(errorString.length - 21, errorString.length - 1)
+    }
+    event.put("failInfo", FailedEvent(errorCode, error.getMessage + " : : " + stackTrace))
+    context.output(config.failedEventOutputTag, gson.toJson(event))
   }
 
   override def metricsList(): List[String] = {
@@ -64,7 +85,8 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig)
   }
 
 
-  def generateCertificate(certReq: java.util.Map[String, AnyRef])(implicit metrics: Metrics): Unit = {
+  @throws[Exception]
+  def generateCertificate(certReq: java.util.Map[String, AnyRef], context: ProcessFunction[java.util.Map[String, AnyRef], String]#Context)(implicit metrics: Metrics): Unit = {
     val properties: util.Map[String, String] = populatesPropertiesMap(certReq)
     val certModelList: java.util.List[CertModel] = new CertMapper(properties).mapReqToCertModel(certReq)
     val certificateGenerator = new CertificateGenerator(properties, directory)
@@ -78,7 +100,6 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig)
         certificateExtension.setPrintUri(svgGenerator.generate(certificateExtension, encodedQrCode))
         uuid = certificateGenerator.getUUID(certificateExtension)
         val jsonUrl = uploadJson(certificateExtension, directory.concat(uuid).concat(".json"), certReq.get(JsonKey.TAG).asInstanceOf[String])
-        println("json url " + jsonUrl)
         //adding certificate to registry
         val request = new java.util.HashMap[String, AnyRef]() {
           {
@@ -101,27 +122,24 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig)
         addCertToRegistry(request)(metrics)
         //cert-registry end
 
-      } catch {
-        case e: Exception =>
-          metrics.incCounter(config.failedEventCount)
-          logger.info("Certificate generation failed {}", e)
-        //todo failed event put it into kafka topic
       } finally {
         cleanUp(uuid, directory)
       }
     })
   }
 
+  @throws[ServerException]
   def addCertToRegistry(request: java.util.HashMap[String, AnyRef])(implicit metrics: Metrics): Unit = {
     val httpRequest = mapper.writeValueAsString(request)
     val httpResponse = CertificateGeneratorStreamTask.httpUtil.post(config.certRegistryBaseUrl + "/certs/v2/registry/add", httpRequest)
     if (httpResponse.status == 200) {
       logger.info("certificate added successfully to the registry " + httpResponse.body)
       metrics.incCounter(config.successEventCount)
+      //todo push event to the post certificate processor
     } else {
-      metrics.incCounter(config.failedEventCount)
       logger.error("certificate addition to registry failed: " + httpResponse.status + " :: " + httpResponse.body)
-      //todo failed event put it into kafka topic
+      throw ServerException("ERR_API_CALL", "Something Went Wrong While Making API Call | Status is: " + httpResponse.status + " :: " + httpResponse.body)
+
     }
   }
 
@@ -165,7 +183,7 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig)
   }
 
   @throws[Exception]
-  def getStorageService():Unit = {
+  def getStorageService() = {
     val storeParams = new java.util.HashMap[String, AnyRef]
     storeParams.put(JsonKey.TYPE, storageType)
     if (certStore == null) {

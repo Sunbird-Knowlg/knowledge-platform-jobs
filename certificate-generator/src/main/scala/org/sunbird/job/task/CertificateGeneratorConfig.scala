@@ -3,9 +3,9 @@ package org.sunbird.job.task
 import java.util
 
 import com.typesafe.config.Config
-import org.apache.commons.lang.StringUtils
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
+import org.apache.flink.streaming.api.scala.OutputTag
 import org.sunbird.job.BaseJobConfig
 
 class CertificateGeneratorConfig(override val config: Config) extends BaseJobConfig(config, "certificate-generator") {
@@ -17,6 +17,10 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
 
   // Kafka Topics Configuration
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
+  val kafkaFailedEventTopic: String = config.getString("kafka.output.failed.topic")
+
+  // Producers
+  val certificateGeneratorFailedEventProducer = "certificate-generate-failed-sink"
 
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
 
@@ -57,4 +61,9 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   val EDATA: String = "edata"
   val RELATED: String = "related"
   val OLD_ID: String = "oldId"
+
+  // Tags
+
+  val failedEventOutputTagName = "failed-events"
+  val failedEventOutputTag: OutputTag[String] = OutputTag[String](failedEventOutputTagName)
 }

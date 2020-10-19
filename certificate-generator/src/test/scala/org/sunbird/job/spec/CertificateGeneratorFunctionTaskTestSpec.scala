@@ -8,6 +8,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
+import org.apache.flink.streaming.api.functions.sink.SinkFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext
 import org.apache.flink.test.util.MiniClusterWithClientResource
@@ -58,11 +59,13 @@ class CertificateGeneratorFunctionTaskTestSpec extends BaseTestSpec {
 
   "CertificateGenerator " should "generate certificate and add to the registry" in {
     CertificateGeneratorStreamTask.httpUtil = mockHttpUtil
+    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaFailedEventTopic)).thenReturn(new failedEventSink)
     when(mockKafkaUtil.kafkaMapSource(jobConfig.kafkaInputTopic)).thenReturn(new CertificateGeneratorMapSource)
     new CertificateGeneratorStreamTask(jobConfig, mockKafkaUtil).process()
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(2)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.successEventCount}").getValue() should be(1)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.failedEventCount}").getValue() should be(1)
+    failedEventSink.values.size() should be(1)
   }
 
 
@@ -78,4 +81,17 @@ class CertificateGeneratorMapSource extends SourceFunction[java.util.Map[String,
   }
 
   override def cancel() = {}
+}
+
+class failedEventSink extends SinkFunction[String] {
+
+  override def invoke(value: String): Unit = {
+    synchronized {
+      failedEventSink.values.add(value)
+    }
+  }
+}
+
+object failedEventSink {
+  val values: util.List[String] = new util.ArrayList()
 }
