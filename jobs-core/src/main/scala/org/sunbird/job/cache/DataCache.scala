@@ -103,6 +103,33 @@ class DataCache(val config: BaseJobConfig, val redisConnect: RedisConnect, val d
     }
   }
 
+  /**
+   * The cache will be created by clearing the existing data from smembers.
+   * @param key
+   * @param value
+   */
+  def createListWithRetry(key: String, value: List[String]): Unit = {
+    try {
+      redisConnection.del(key)
+      redisConnection.sadd(key, value.map(_.asInstanceOf[String]): _*)
+    } catch {
+      // Write testcase for catch block
+      // $COVERAGE-OFF$ Disabling scoverage
+      case ex: JedisException => {
+        logger.error("Exception when inserting data to redis cache", ex)
+        this.redisConnection.close()
+        this.redisConnection = redisConnect.getConnection(dbIndex)
+        redisConnection.del(key)
+        redisConnection.sadd(key, value.map(_.asInstanceOf[String]): _*)
+      }
+    }
+  }
+
+  /**
+   * The cache will add the given members if already exists otherwise, it will create cache with the given members.
+   * @param key
+   * @param value
+   */
   def addListWithRetry(key: String, value: List[String]): Unit = {
     try {
       redisConnection.sadd(key, value.map(_.asInstanceOf[String]): _*)
@@ -110,7 +137,6 @@ class DataCache(val config: BaseJobConfig, val redisConnect: RedisConnect, val d
       // Write testcase for catch block
       // $COVERAGE-OFF$ Disabling scoverage
       case ex: JedisException => {
-        println("dataCache")
         logger.error("Exception when inserting data to redis cache", ex)
         this.redisConnection.close()
         this.redisConnection = redisConnect.getConnection(dbIndex)
