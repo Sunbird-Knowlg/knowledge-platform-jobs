@@ -16,8 +16,6 @@ class RedisConnect(jobConfig: BaseJobConfig, host: Option[String] = None, port: 
 
   private def getConnection(backoffTimeInMillis: Long): Jedis = {
     val defaultTimeOut = 30000
-    val redisHost: String = Option(config.getString("redis.host")).getOrElse("localhost")
-    val redisPort = Option(config.getInt("redis.port")).getOrElse(6379)
     if (backoffTimeInMillis > 0) try Thread.sleep(backoffTimeInMillis)
     catch {
       case e: InterruptedException =>
