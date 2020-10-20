@@ -24,7 +24,8 @@
 		<module>relation-cache-updater</module>
 		<module>activity-aggregate-updater</module>
         <module>post-publish-processor</module>
-	</modules>
+        <module>certificate-pre-processor</module>
+    </modules>
 
 	<properties>
 		<!-- maven specific properties -->
