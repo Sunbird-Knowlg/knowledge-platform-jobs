@@ -12,6 +12,7 @@ object FlinkUtil {
 
   def getExecutionContext(config: BaseJobConfig): StreamExecutionEnvironment = {
     val env: StreamExecutionEnvironment = StreamExecutionEnvironment.getExecutionEnvironment
+    env.getConfig.setUseSnapshotCompression(config.enableCompressedCheckpointing)
     env.enableCheckpointing(config.checkpointingInterval)
 
     /**
@@ -24,6 +25,7 @@ object FlinkUtil {
         env.setStateBackend(stateBackend)
         val checkpointConfig: CheckpointConfig = env.getCheckpointConfig
         checkpointConfig.enableExternalizedCheckpoints(ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION)
+        checkpointConfig.setMinPauseBetweenCheckpoints(config.checkpointingPauseSeconds)
       }
       case _ => // Do nothing
     }
