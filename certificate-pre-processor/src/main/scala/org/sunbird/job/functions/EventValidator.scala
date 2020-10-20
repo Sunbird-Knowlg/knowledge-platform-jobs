@@ -21,7 +21,8 @@ class EventValidator(config: CertificatePreProcessorConfig) {
     val courseId = edata.getOrDefault(config.courseId, "").asInstanceOf[String]
     val batchId = edata.getOrDefault(config.batchId, "").asInstanceOf[String]
     val userIds = edata.getOrDefault(config.userIds, "").asInstanceOf[util.ArrayList[String]]
-
+    println(StringUtils.equalsIgnoreCase(action, config.issueCertificate) + " " + StringUtils.isNotBlank(courseId)
+      + " " + StringUtils.isNotBlank(batchId) + " " + CollectionUtils.isNotEmpty(userIds))
     StringUtils.equalsIgnoreCase(action, config.issueCertificate) &&
       StringUtils.isNotBlank(courseId) && StringUtils.isNotBlank(batchId) && CollectionUtils.isNotEmpty(userIds)
   }
@@ -35,7 +36,8 @@ class EventValidator(config: CertificatePreProcessorConfig) {
   }
 
   def validateCriteria(template: util.Map[String, AnyRef]): util.Map[String, AnyRef] = {
-    val criteriaString = template.get(config.criteria).asInstanceOf[String]
+    println("validateCriteria called : " + template.get(config.criteria).asInstanceOf[String])
+    val criteriaString = template.getOrDefault(config.criteria, "").asInstanceOf[String]
     if (StringUtils.isEmpty(criteriaString)) {
       throw new Exception("Certificate template has empty criteria: " + template.toString)
     }

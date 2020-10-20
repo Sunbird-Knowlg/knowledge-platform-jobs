@@ -20,7 +20,6 @@ class IssueCertificateRequestGenerator(config: CertificatePreProcessorConfig)
   val eventValidator: EventValidator = new EventValidator(config)
 
   def prepareEventData(edata: util.Map[String, AnyRef], collectionCache: DataCache) {
-    println("edata : " + edata)
     certTemplatesOperation(edata)
     //validate criteria as old issue
       //store asset into redis
@@ -61,6 +60,7 @@ class IssueCertificateRequestGenerator(config: CertificatePreProcessorConfig)
   }
 
   private def getUserFromEnrolmentCriteria(enrollmentCriteria: util.Map[String, AnyRef], edata: util.Map[String, AnyRef], template: util.Map[String, AnyRef]): util.ArrayList[String] = {
+    println("getUserFromEnrolmentCriteria called : " + enrollmentCriteria)
     if (MapUtils.isNotEmpty(enrollmentCriteria)) {
       certificateService.readUserIdsFromDb(enrollmentCriteria, edata, template.get(config.name).asInstanceOf[String])
     }

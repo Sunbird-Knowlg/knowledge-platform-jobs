@@ -51,6 +51,7 @@ class CertificatePreProcessorConfig(override val config: Config) extends BaseJob
   // BaseUrl
   val lmsBaseUrl = config.getString("lms.basePath")
   val searchBaseUrl = config.getString("user.search.basePath")
+  val contentBaseUrl = config.getString("content.basePath")
 
   // certFilterKeys
   val certFilterKeys: List[String] = List("enrollment","assessment", "user")

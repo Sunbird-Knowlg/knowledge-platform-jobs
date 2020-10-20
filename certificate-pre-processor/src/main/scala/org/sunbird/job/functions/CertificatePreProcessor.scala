@@ -23,7 +23,7 @@ class CertificatePreProcessor(config: CertificatePreProcessorConfig)
   private var collectionCache: DataCache = _
 
   override def metricsList(): List[String] = {
-    List(config.successEventCount, config.failedEventCount, config.skippedEventCount, config.totalEventsCount, config.dbUpdateCount)
+    List(config.successEventCount, config.failedEventCount, config.skippedEventCount, config.totalEventsCount, config.dbReadCount, config.dbUpdateCount)
   }
 
   override def open(parameters: Configuration): Unit = {
@@ -42,6 +42,7 @@ class CertificatePreProcessor(config: CertificatePreProcessorConfig)
 
   override def processElement(event: util.Map[String, AnyRef], context: ProcessFunction[util.Map[String, AnyRef], String]#Context, metrics: Metrics) {
     val edata: util.Map[String, AnyRef] = event.get(config.eData).asInstanceOf[util.Map[String, AnyRef]]
+    println("edata : " + edata)
     if (new EventValidator(config).isValidEvent(edata)) {
       // prepare generate event request
       new IssueCertificateRequestGenerator(config)(metrics,cassandraUtil).prepareEventData(edata, collectionCache)

@@ -38,7 +38,7 @@ class CertificateService(config: CertificatePreProcessorConfig)
   }
 
   def readAsset(assetId: String): util.Map[String, AnyRef] = {
-    val httpResponse = CertificatePreProcessorStreamTask.httpUtil.get(config.lmsBaseUrl + "/asset/v4/read/" + assetId)
+    val httpResponse = CertificatePreProcessorStreamTask.httpUtil.get(config.contentBaseUrl + "/asset/v4/read/" + assetId)
     if (httpResponse.status == 200) {
       logger.info("Asset read success: " + httpResponse.body)
       val response = mapper.readValue(httpResponse.body, classOf[util.Map[String, AnyRef]])
@@ -53,7 +53,8 @@ class CertificateService(config: CertificatePreProcessorConfig)
     }
   }
 
-  def updateCertTemplates(certTemplates: util.Map[String, AnyRef], edata: util.Map[String, AnyRef]) {
+  def updateCertTemplates(certTemplates: util.Map[String, AnyRef], edata: util.Map[String, AnyRef]): Unit = {
+    println("updateCertTemplates called : " + certTemplates)
     val updateQuery = QueryBuilder.update(config.dbKeyspace, config.dbBatchTable)
       .`with`(QueryBuilder.set(config.certTemplates, certTemplates))
       .where(QueryBuilder.eq(config.courseBatchPrimaryKey.head, edata.get(config.batchId).asInstanceOf[String]))
@@ -67,6 +68,7 @@ class CertificateService(config: CertificatePreProcessorConfig)
   }
 
   def readUserIdsFromDb(enrollmentCriteria: util.Map[String, AnyRef], edata: util.Map[String, AnyRef], templateName: String): Unit = {
+    println("readUserIdsFromDb called : " + enrollmentCriteria)
     val selectQuery = QueryBuilder.select().all().from(config.dbKeyspace, config.dbUserTable)
     enrollmentCriteria.entrySet().forEach(enrol => {selectQuery.where.and(QueryBuilder.eq(enrol.getKey, enrol.getValue))})
     selectQuery.where.and(QueryBuilder.eq(config.userEnrolmentsPrimaryKey.head, edata.get(config.userIds).asInstanceOf[util.ArrayList[String]])).
