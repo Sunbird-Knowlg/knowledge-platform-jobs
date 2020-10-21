@@ -43,7 +43,7 @@ class CertificatePreProcessor(config: CertificatePreProcessorConfig)
   override def processElement(event: util.Map[String, AnyRef], context: ProcessFunction[util.Map[String, AnyRef], String]#Context, metrics: Metrics) {
     val edata: util.Map[String, AnyRef] = event.get(config.eData).asInstanceOf[util.Map[String, AnyRef]]
     println("edata : " + edata)
-    if (new EventValidator(config).isValidEvent(edata)) {
+    if (EventValidator.isValidEvent(edata, config)) {
       // prepare generate event request
       new IssueCertificateRequestGenerator(config)(metrics,cassandraUtil).prepareEventData(edata, collectionCache)
       // generate certificate event

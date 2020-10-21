@@ -2,7 +2,8 @@ package org.sunbird.job.functions
 
 import java.util
 
-import org.apache.commons.collections.MapUtils
+import com.datastax.driver.core.Row
+import org.apache.commons.collections.{CollectionUtils, MapUtils}
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
 import org.sunbird.job.Metrics
@@ -10,81 +11,87 @@ import org.sunbird.job.cache.DataCache
 import org.sunbird.job.task.CertificatePreProcessorConfig
 import org.sunbird.job.util.CassandraUtil
 
+import scala.collection.JavaConverters._
+
 class IssueCertificateRequestGenerator(config: CertificatePreProcessorConfig)
                                       (implicit val metrics: Metrics,
                                        @transient var cassandraUtil: CassandraUtil = null) {
 
   lazy private val mapper: ObjectMapper = new ObjectMapper()
   private[this] val logger = LoggerFactory.getLogger(classOf[IssueCertificateRequestGenerator])
-  val certificateService = new CertificateService(config)(metrics, cassandraUtil)
-  val eventValidator: EventValidator = new EventValidator(config)
 
   def prepareEventData(edata: util.Map[String, AnyRef], collectionCache: DataCache) {
-    certTemplatesOperation(edata)
-    //validate criteria as old issue
-      //store asset into redis
-    //    eventValidator.validateTemplate(edata)
-    //iterate over users and send event to generate method
-  }
-
-  private def certTemplatesOperation(edata: util.Map[String, AnyRef]) {
-    val certTemplates = certificateService.readCertTemplates(edata)
-    logger.info("cert fetch success : " + certTemplates.toString)
-    if (MapUtils.isEmpty(certTemplates)) {
-      throw new Exception("Certificate template is not available for batchId : " + edata.get(config.batchId) + " and courseId : " + edata.get(config.courseId))
-    }
-    certTemplates.keySet().forEach(key => {
-      val templateAsset = certificateService.readAsset(key)
-      logger.info("asset read success : " + templateAsset)
-      // update certTemplates based on asset response
-      certTemplates.get(key).asInstanceOf[util.Map[String, AnyRef]].putAll(templateAsset)
-      // fetch all the user based on criteria
-      getUserIds(certTemplates.get(key).asInstanceOf[util.Map[String, AnyRef]], edata)
+    val certTemplates = fetchCertTemplates(edata)
+    certTemplates.keySet().forEach(templateId => {
+      //validate criteria
+      val userIds = getUserIdsBasedOnCriteria(certTemplates.get(templateId).asInstanceOf[util.Map[String, AnyRef]], edata)
+      //iterate over users and send to generate event method
+      userIds.foreach(user => {
+        generateCertificatesEvent(user, certTemplates.get(templateId).asInstanceOf[util.Map[String, AnyRef]], templateId)
+      })
     })
-    certificateService.updateCertTemplates(certTemplates, edata)
-    logger.info("cert update success : " + certTemplates.toString)
   }
 
-  private def getUserIds(template: util.Map[String, AnyRef], edata: util.Map[String, AnyRef]) {
-    val criteria = eventValidator.validateCriteria(template)
+  private def fetchCertTemplates(edata: util.Map[String, AnyRef]): util.Map[String, AnyRef] = {
+    val certTemplates = CertificateService.readCertTemplates(edata, config)(metrics, cassandraUtil)
+    println("cert fetch success : " + certTemplates.toString)
+    EventValidator.validateTemplate(certTemplates, edata, config)(metrics)
+    certTemplates
+  }
+
+  private def getUserIdsBasedOnCriteria(template: util.Map[String, AnyRef], edata: util.Map[String, AnyRef]): List[String] = {
+    println("getUserIdsBasedOnCriteria called")
+    val criteria = EventValidator.validateCriteria(template, config)
     val enrollmentList = getUserFromEnrolmentCriteria(criteria.get(config.certFilterKeys(0)).asInstanceOf[util.Map[String, AnyRef]], edata, template)
-    println("userIds : enrollmentList : " + enrollmentList)
+    println("getUserIdsBasedOnCriteria : enrollmentList : " + enrollmentList)
     val assessmentList = getUsersFromAssessmentCriteria(criteria.get(config.certFilterKeys(1)).asInstanceOf[util.Map[String, AnyRef]], edata, template)
-    val userList = getUsersFromUserCriteria(criteria.get(config.certFilterKeys(2)).asInstanceOf[util.Map[String, AnyRef]], edata, template, new util.ArrayList[String]() {
-      {
-        addAll(enrollmentList)
-        addAll(assessmentList)
-      }
-    })
-    generateCertificatesForEnrollment(enrollmentList)
+    println("getUserIdsBasedOnCriteria : assessmentList : " + assessmentList)
+    val userList = getUsersFromUserCriteria(criteria.get(config.certFilterKeys(2)).asInstanceOf[util.Map[String, AnyRef]], edata,
+      enrollmentList ++ assessmentList, template)
+    println("getUserIdsBasedOnCriteria : userList : " + userList)
+    userList
   }
 
-  private def getUserFromEnrolmentCriteria(enrollmentCriteria: util.Map[String, AnyRef], edata: util.Map[String, AnyRef], template: util.Map[String, AnyRef]): util.ArrayList[String] = {
+  private def getUserFromEnrolmentCriteria(enrollmentCriteria: util.Map[String, AnyRef], edata: util.Map[String, AnyRef], template: util.Map[String, AnyRef]): List[String] = {
     println("getUserFromEnrolmentCriteria called : " + enrollmentCriteria)
     if (MapUtils.isNotEmpty(enrollmentCriteria)) {
-      certificateService.readUserIdsFromDb(enrollmentCriteria, edata, template.get(config.name).asInstanceOf[String])
+      val templateName = template.get(config.name).asInstanceOf[String]
+      val rows = CertificateService.readUserIdsFromDb(enrollmentCriteria, edata, config)(metrics, cassandraUtil)
+      val userIds = IssueCertificateUtil.getActiveUserIds(rows, edata, templateName, config)
+      println("getUserFromEnrolmentCriteria active userids : " + userIds.toString)
+      userIds
+    } else List()
+  }
+
+  private def getUsersFromAssessmentCriteria(assessmentCriteria: util.Map[String, AnyRef], edata: util.Map[String, AnyRef], template: util.Map[String, AnyRef]): List[String] = {
+    println("getUsersFromAssessmentCriteria called : " + assessmentCriteria)
+    if (MapUtils.isNotEmpty(assessmentCriteria)) {
+      val rows = CertificateService.fetchAssessedUsersFromDB(edata, config)(metrics, cassandraUtil)
+      val assessedUserIds = IssueCertificateUtil.getAssessedUserIds(rows, assessmentCriteria, edata, config)
+      // ask in old we are checking userid we should ??
+      if (assessedUserIds.nonEmpty) {
+        val userIds = edata.get(config.userIds).asInstanceOf[util.List[String]].asScala.intersect(assessedUserIds).toList
+        userIds
+      } else {
+        logger.info("No users satisfy assessment criteria for batchID: " + edata.get(config.batchId) + " and courseID: " + edata.get(config.courseId))
+        List()
+      }
+    } else List()
+  }
+
+  private def getUsersFromUserCriteria(userCriteria: util.Map[String, AnyRef], edata: util.Map[String, AnyRef], userIds: List[String], template: util.Map[String, AnyRef]): List[String] = {
+    if (MapUtils.isNotEmpty(userCriteria)) {
+      CertificateService.readUserIdsFromDb(userCriteria, edata, config)(metrics, cassandraUtil)
+      )
+      List()
     }
-    new util.ArrayList[String]()
+    else List()
   }
 
-  private def getUsersFromAssessmentCriteria(assessmentCriteria: util.Map[String, AnyRef], edata: util.Map[String, AnyRef], template: util.Map[String, AnyRef]): util.ArrayList[String] = {
-    //    if(MapUtils.isNotEmpty(assessmentCriteria)) {
-    //      certificateService.readUserIdsFromDb(assessmentCriteria, edata, template.get(config.name).asInstanceOf[String])
-    //    }
-    new util.ArrayList[String]()
-  }
-
-  private def getUsersFromUserCriteria(userCriteria: util.Map[String, AnyRef], edata: util.Map[String, AnyRef], template: util.Map[String, AnyRef], userIds: util.ArrayList[String]): util.ArrayList[String] = {
-    //    if(MapUtils.isNotEmpty(userCriteria)) {
-    //      certificateService.readUserIdsFromDb(userCriteria, edata, template.get(config.name).asInstanceOf[String])
-    //    }
-    new util.ArrayList[String]()
-  }
-
-  private def generateCertificatesForEnrollment(usersToIssue:util.ArrayList[String]): Unit ={
-    usersToIssue.forEach(user => {
-      println("userIds to issue certificate : " + usersToIssue)
-    })
+  private def generateCertificatesEvent(userId: String, template: util.Map[String, AnyRef], templateId: String): Unit = {
+    println("generateCertificatesEvent called userId : " + userId)
+    //call event generate
+    //push event to next topic
   }
 
 }

@@ -16,11 +16,8 @@ class CertificateEventGenerator(config: CertificatePreProcessorConfig)
                                (implicit val metrics: Metrics,
                                 @transient var cassandraUtil: CassandraUtil = null) {
 
-  val certificateService = new CertificateService(config)(metrics, cassandraUtil)
-
   def prepareEventData(edata: util.Map[String, AnyRef], collectionCache: DataCache) {
-    val eventValidator: EventValidator = new EventValidator(config)
-    eventValidator.validateTemplate(edata)
+    EventValidator.validateTemplate(edata,config)
     setIssuedCertificate(edata)
     setUserData(edata)
     setEventSvgData(edata)
@@ -32,7 +29,7 @@ class CertificateEventGenerator(config: CertificatePreProcessorConfig)
   }
 
   private def setIssuedCertificate(edata: util.Map[String, AnyRef]) {
-    certificateService.readUserCertificate(edata)
+    CertificateService.readUserCertificate(edata,config)(metrics, cassandraUtil)
     val issuedCertificates = edata.getOrDefault(config.issued_certificates, new util.ArrayList[util.Map[String, AnyRef]]()).asInstanceOf[util.ArrayList[util.Map[String, AnyRef]]]
     val certTemplate = edata.get(config.template).asInstanceOf[util.Map[String, AnyRef]]
     if (CollectionUtils.isNotEmpty(issuedCertificates) && edata.get(config.reIssue).asInstanceOf[Boolean]) {
@@ -42,7 +39,7 @@ class CertificateEventGenerator(config: CertificatePreProcessorConfig)
   }
 
   private def setUserData(edata: util.Map[String, AnyRef]) {
-    val userResponse = certificateService.getUserDetails(edata.get(config.userId).asInstanceOf[String])
+    val userResponse = CertificateService.getUserDetails(edata.get(config.userId).asInstanceOf[String],config)
     val userDetails = UserDetails(data = new util.ArrayList[Data]() {
       {
         Data(recipientId = edata.get(config.userId).asInstanceOf[String],
@@ -59,13 +56,13 @@ class CertificateEventGenerator(config: CertificatePreProcessorConfig)
   }
 
   private def setEventOrgData(edata: util.Map[String, AnyRef]) {
-    val keys = certificateService.readOrgKeys(edata.get(config.orgId).asInstanceOf[String])
+    val keys = CertificateService.readOrgKeys(edata.get(config.orgId).asInstanceOf[String],config)
     val orgDetails = OrgDetails(keys = keys)
     edata.putAll(orgDetails.getClass.getDeclaredFields.map(_.getName).zip(orgDetails.productIterator.to).toMap.asInstanceOf[Map[String, AnyRef]].asJava)
   }
 
   private def setCourseDetails(edata: util.Map[String, AnyRef], collectionCache: DataCache) {
-    val content = certificateService.readContent(edata.get(config.courseId).asInstanceOf[String], collectionCache)
+    val content = CertificateService.readContent(edata.get(config.courseId).asInstanceOf[String], collectionCache,config)
     val courseDetails = CourseDetails(courseName = content.get(config.name).asInstanceOf[String])
     edata.putAll(courseDetails.getClass.getDeclaredFields.map(_.getName).zip(courseDetails.productIterator.to).toMap.asInstanceOf[Map[String, AnyRef]].asJava)
   }

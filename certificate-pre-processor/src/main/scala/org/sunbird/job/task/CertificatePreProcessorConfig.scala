@@ -39,6 +39,7 @@ class CertificatePreProcessorConfig(override val config: Config) extends BaseJob
   // Cassandra Configurations
   val dbBatchTable: String = config.getString("lms-cassandra.batchTable")
   val dbUserTable: String = config.getString("lms-cassandra.userTable")
+  val dbAssessmentAggregator: String = config.getString("lms-cassandra.assessmentAggregatorTable")
   val dbKeyspace: String = config.getString("lms-cassandra.keyspace")
   val dbHost: String = config.getString("lms-cassandra.host")
   val dbPort: Int = config.getInt("lms-cassandra.port")
@@ -67,6 +68,7 @@ class CertificatePreProcessorConfig(override val config: Config) extends BaseJob
   val eData = "edata"
   val action = "action"
   val template = "template"
+  val templates = "templates"
   val generateCourseCertificate = "generate-course-certificate"
   val reIssue = "reIssue"
   val oldId = "oldId"

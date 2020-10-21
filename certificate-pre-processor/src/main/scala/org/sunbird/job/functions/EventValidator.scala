@@ -5,18 +5,16 @@ import java.util
 import org.apache.commons.collections.{CollectionUtils, MapUtils}
 import org.apache.commons.lang3.StringUtils
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper
-import org.slf4j.LoggerFactory
 import org.sunbird.job.Metrics
 import org.sunbird.job.task.CertificatePreProcessorConfig
 
 import scala.collection.JavaConverters._
 
-class EventValidator(config: CertificatePreProcessorConfig) {
+object EventValidator {
 
   lazy private val mapper: ObjectMapper = new ObjectMapper()
-  private[this] val logger = LoggerFactory.getLogger(classOf[EventValidator])
 
-  def isValidEvent(edata: util.Map[String, AnyRef]): Boolean = {
+  def isValidEvent(edata: util.Map[String, AnyRef], config: CertificatePreProcessorConfig): Boolean = {
     val action = edata.getOrDefault(config.action, "").asInstanceOf[String]
     val courseId = edata.getOrDefault(config.courseId, "").asInstanceOf[String]
     val batchId = edata.getOrDefault(config.batchId, "").asInstanceOf[String]
@@ -27,25 +25,45 @@ class EventValidator(config: CertificatePreProcessorConfig) {
       StringUtils.isNotBlank(courseId) && StringUtils.isNotBlank(batchId) && CollectionUtils.isNotEmpty(userIds)
   }
 
-  def validateTemplate(edata: util.Map[String, AnyRef])(implicit metrics: Metrics) {
-    val template = edata.getOrDefault(config.template, new util.HashMap).asInstanceOf[util.Map[String, AnyRef]]
-    if (MapUtils.isEmpty(template)) {
-      logger.error("Certificate template is not available for batchId : " + edata.get(config.batchId).asInstanceOf[String] + " and courseId : " + edata.get(config.courseId).asInstanceOf[String])
+  def validateTemplate(certTemplates: util.Map[String, AnyRef], edata: util.Map[String, AnyRef],
+                       config: CertificatePreProcessorConfig)(implicit metrics: Metrics) {
+    println("validateTemplate called : " + certTemplates)
+    if (MapUtils.isEmpty(certTemplates)) {
       metrics.incCounter(config.skippedEventCount)
+      throw new Exception("Certificate template is not available for batchId : " + edata.get(config.batchId) + " and courseId : " + edata.get(config.courseId)
     }
   }
 
-  def validateCriteria(template: util.Map[String, AnyRef]): util.Map[String, AnyRef] = {
+  def validateCriteria(template: util.Map[String, AnyRef], config: CertificatePreProcessorConfig)(implicit metrics: Metrics): util.Map[String, AnyRef] = {
     println("validateCriteria called : " + template.get(config.criteria).asInstanceOf[String])
     val criteriaString = template.getOrDefault(config.criteria, "").asInstanceOf[String]
     if (StringUtils.isEmpty(criteriaString)) {
+      metrics.incCounter(config.skippedEventCount)
       throw new Exception("Certificate template has empty criteria: " + template.toString)
     }
     val criteria = mapper.readValue(criteriaString, classOf[util.Map[String, AnyRef]])
     if (MapUtils.isEmpty(criteria) && CollectionUtils.isEmpty(CollectionUtils.intersection(criteria.keySet(), config.certFilterKeys.asJava))) {
+      metrics.incCounter(config.skippedEventCount)
       throw new Exception("Certificate template has empty/invalid criteria: " + template.toString)
     }
     criteria
+  }
+
+  def isValidAssessUser(actualScore: Double, criteria: Map[String, AnyRef]): Boolean = {
+    val operation = criteria.head._1
+    val score = criteria.get(operation).asInstanceOf[Double]
+    operation match {
+      case "EQ" => actualScore == score
+      case "eq" => actualScore == score
+      case "=" => actualScore == score
+      case ">" => actualScore > score
+      case "<" => actualScore < score
+      case ">=" => actualScore >= score
+      case "<=" => actualScore <= score
+      case "ne" => actualScore != score
+      case "!=" => actualScore != score
+      case _ => false
+    }
   }
 
 }
