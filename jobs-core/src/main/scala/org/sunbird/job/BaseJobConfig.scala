@@ -26,8 +26,8 @@ class BaseJobConfig(val config: Config, val jobName: String) extends Serializabl
 
   // Checkpointing config
   val checkpointingInterval: Int = config.getInt("task.checkpointing.interval")
-  val enableDistributedCheckpointing: Option[Boolean] = if (config.hasPath("job")) Option(config.getBoolean("job.enable.distributed.checkpointing")) else None
-  val checkpointingBaseUrl: Option[String] = if (config.hasPath("job")) Option(config.getString("job.statebackend.base.url")) else None
+  val enableDistributedCheckpointing: Option[Boolean] = if (config.hasPath("job.enable.distributed.checkpointing")) Option(config.getBoolean("job.enable.distributed.checkpointing")) else None
+  val checkpointingBaseUrl: Option[String] = if (config.hasPath("job.statebackend.base.url")) Option(config.getString("job.statebackend.base.url")) else None
 
 
   def kafkaConsumerProperties: Properties = {

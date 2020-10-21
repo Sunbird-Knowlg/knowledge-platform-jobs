@@ -18,6 +18,7 @@ class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJo
   // Kafka Topics Configuration
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
   val kafkaAuditEventTopic: String = config.getString("kafka.output.audit.topic")
+  val kafkaFailedEventTopic: String = config.getString("kafka.output.failed.topic")
 
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
   val activityAggregateUpdaterParallelism: Int = config.getInt("task.activity.agg.parallelism")
@@ -45,6 +46,8 @@ class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJo
   // Tags
   val auditEventOutputTagName = "audit-events"
   val auditEventOutputTag: OutputTag[String] = OutputTag[String](auditEventOutputTagName)
+  val failedEventOutputTagName = "failed-events"
+  val failedEventOutputTag: OutputTag[String] = OutputTag[String](failedEventOutputTagName)
 
   // constans
   val activityType = "activity_type"
@@ -81,6 +84,7 @@ class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJo
 
   // Producers
   val activityAggregateUpdaterProducer = "activity-aggregate-updater-audit-events-sink"
+  val activityAggFailedEventProducer = "activity-aggregate-updater-failed-sink"
 
   //Thresholds
   val thresholdBatchReadInterval: Int = config.getInt("threshold.batch.read.interval")

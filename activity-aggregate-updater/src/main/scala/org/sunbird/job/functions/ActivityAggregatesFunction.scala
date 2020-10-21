@@ -47,11 +47,10 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
   }
 
   def process(key: String, context: ProcessWindowFunction[util.Map[String, AnyRef], String, String, TimeWindow]#Context, events: lang.Iterable[util.Map[String, AnyRef]], metrics: Metrics): Unit = {
-    logger.info("EventsSize" + events.asScala.toList.size)
+    logger.info("Input Events Size: " + events.asScala.toList.size)
     val contentConsumptionEvents = events.asScala.filter(event => {
       val isBatchEnrollmentEvent: Boolean = StringUtils.equalsIgnoreCase(event.get(config.eData).asInstanceOf[util.Map[String, AnyRef]].asScala.getOrElse(config.action, "").asInstanceOf[String], config.batchEnrolmentUpdateCode)
       if (isBatchEnrollmentEvent) {
-        logger.info("Processing batch-enrolment-update - MID: " + event.get("mid"))
         metrics.incCounter(config.batchEnrolmentUpdateEventCount)
         isBatchEnrollmentEvent
       } else {
@@ -59,6 +58,13 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
         isBatchEnrollmentEvent
       }
     })
+
+    if (contentConsumptionEvents.size > 0) {
+      logger.info("Content consumption events size:" + contentConsumptionEvents.size)
+      logger.info("Last event for batch-enrolment-update - MID: " + contentConsumptionEvents.last.get("mid"))
+    } else
+      logger.info("No batch-enrolment-update events after filtering.")
+
     val eDataBatch: List[Map[String, AnyRef]] = contentConsumptionEvents.map(f => f.get(config.eData).asInstanceOf[util.Map[String, AnyRef]].asScala.toMap).toList
     // Grouping the contents to avoid the duplicate of contents
     val groupedData: List[Map[String, AnyRef]] = eDataBatch.groupBy(key => (key.get(config.courseId), key.get(config.batchId), key.get(config.userId)))
@@ -87,7 +93,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
     updateDB(config.thresholdBatchWriteSize, userConsumptionQueries)(metrics)
 
     // Course Level Agg using the merged data of ContentConsumption per user, course and batch.
-    val courseAggs = finalUserConsumptionList.map(userConsumption => courseActivityAgg(userConsumption)(metrics))
+    val courseAggs = finalUserConsumptionList.map(userConsumption => courseActivityAgg(userConsumption, context)(metrics))
 
     // Identified the children of the course (only collections) for which aggregates computation required.
     // Computation of aggregates using leafNodes (of the specific collection) and user completed contents.
@@ -106,7 +112,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
   /**
    * Course Level Agg using the merged data of ContentConsumption per user, course and batch.
    */
-  def courseActivityAgg(userConsumption: UserContentConsumption)(implicit metrics: Metrics): UserActivityAgg = {
+  def courseActivityAgg(userConsumption: UserContentConsumption, context: ProcessWindowFunction[util.Map[String, AnyRef], String, String, TimeWindow]#Context)(implicit metrics: Metrics): UserActivityAgg = {
     val courseId = userConsumption.courseId
     val userId = userConsumption.userId
     val contextId = "cb:" + userConsumption.batchId
@@ -115,6 +121,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
     if (leafNodes.isEmpty) {
       metrics.incCounter(config.failedEventCount)
       logger.error(s"leaf nodes are not available for: $key")
+      context.output(config.failedEventOutputTag, gson.toJson(userConsumption))
 //      throw new Exception(s"leaf nodes are not available: $key")
     }
     val completedCount = leafNodes.intersect(userConsumption.contents.filter(cc => cc._2.status == 2).map(cc => cc._2.contentId).toList.distinct).size
@@ -335,8 +342,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
             val contentId = entry._1
             val status = contentStatus.getOrElse(config.status, 1).asInstanceOf[Number].intValue()
             val viewCount = contentStatus.getOrElse(config.viewcount, 0).asInstanceOf[Number].intValue()
-            val defaultCompletedCount = if (status == 2) 1 else 0
-            val completedCount = contentStatus.getOrElse(config.completedcount, defaultCompletedCount).asInstanceOf[Number].intValue()
+            val completedCount = contentStatus.getOrElse(config.completedcount, 0).asInstanceOf[Number].intValue()
             (contentId, ContentStatus(contentId, status, completedCount, viewCount))
           }).toMap
 
