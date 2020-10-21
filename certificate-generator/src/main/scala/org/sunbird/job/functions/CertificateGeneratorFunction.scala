@@ -25,7 +25,7 @@ import org.sunbird.incredible.processor.{CertModel, JsonKey}
 import org.sunbird.incredible.processor.store.{AwsStore, AzureStore, ICertStore, StoreConfig}
 import org.sunbird.incredible.processor.views.SvgGenerator
 import org.sunbird.job.Exceptions.{ErrorCodes, ServerException, ValidationException}
-import org.sunbird.job.domain.FailedEvent
+import org.sunbird.job.domain.{ActorObject, Certificate, EventContext, EventData, EventObject, FailedEvent, PostCertificateProcessEvent}
 
 
 class CertificateGeneratorFunction(config: CertificateGeneratorConfig)
@@ -119,7 +119,7 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig)
             })
           }
         }
-        addCertToRegistry(request)(metrics)
+        addCertToRegistry(certReq, request, context)(metrics)
         //cert-registry end
 
       } finally {
@@ -129,13 +129,28 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig)
   }
 
   @throws[ServerException]
-  def addCertToRegistry(request: java.util.HashMap[String, AnyRef])(implicit metrics: Metrics): Unit = {
+  def addCertToRegistry(certReq: java.util.Map[String, AnyRef], request: java.util.HashMap[String, AnyRef], context: ProcessFunction[java.util.Map[String, AnyRef], String]#Context)(implicit metrics: Metrics): Unit = {
     val httpRequest = mapper.writeValueAsString(request)
     val httpResponse = CertificateGeneratorStreamTask.httpUtil.post(config.certRegistryBaseUrl + "/certs/v2/registry/add", httpRequest)
     if (httpResponse.status == 200) {
       logger.info("certificate added successfully to the registry " + httpResponse.body)
       metrics.incCounter(config.successEventCount)
-      //todo push event to the post certificate processor
+      val req = request.get(JsonKey.REQUEST).asInstanceOf[java.util.Map[String, AnyRef]]
+      val related = request.get(config.RELATED).asInstanceOf[java.util.Map[String, AnyRef]]
+      val batchId = related.get(config.BATCH_ID).asInstanceOf[String]
+      val courseId = related.get(config.COURSE_ID).asInstanceOf[String]
+      val event = PostCertificateProcessEvent(
+        actor = ActorObject(),
+        edata = EventData(batchId = batchId,
+          userId = req.get(JsonKey.RECIPIENT_ID).asInstanceOf[String],
+          courseId = courseId,
+          courseName = certReq.get(JsonKey.COURSE_NAME).asInstanceOf[String],
+          templateId = certReq.get(config.TEMPLATE_ID).asInstanceOf[String],
+          certificate = Certificate(id = req.get(JsonKey.ID).asInstanceOf[String], name = certReq.get(JsonKey.CERTIFICATE_NAME).asInstanceOf[String], token = req.get(JsonKey.ACCESS_CODE).asInstanceOf[String], lastIssuedOn = "")),
+        context = EventContext(),
+        `object` = EventObject(id = batchId.concat("_".concat(courseId)))
+      )
+      context.output(config.postCertificateProcessEventOutputTag, gson.toJson(event))
     } else {
       logger.error("certificate addition to registry failed: " + httpResponse.status + " :: " + httpResponse.body)
       throw ServerException("ERR_API_CALL", "Something Went Wrong While Making API Call | Status is: " + httpResponse.status + " :: " + httpResponse.body)

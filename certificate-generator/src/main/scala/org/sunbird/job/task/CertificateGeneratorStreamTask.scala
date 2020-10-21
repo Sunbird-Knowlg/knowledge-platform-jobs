@@ -32,6 +32,11 @@ class CertificateGeneratorStreamTask(config: CertificateGeneratorConfig, kafkaCo
       .name(config.certificateGeneratorFailedEventProducer)
       .uid(config.certificateGeneratorFailedEventProducer)
 
+    processStreamTask.getSideOutput(config.postCertificateProcessEventOutputTag)
+      .addSink(kafkaConnector.kafkaStringSink(config.kafkaFailedEventTopic))
+      .name(config.postCertificateProcessEventProducer)
+      .uid(config.postCertificateProcessEventProducer)
+
     env.execute(config.jobName)
   }
 }

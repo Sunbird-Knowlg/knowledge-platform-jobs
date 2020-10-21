@@ -18,9 +18,12 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   // Kafka Topics Configuration
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
   val kafkaFailedEventTopic: String = config.getString("kafka.output.failed.topic")
+  val kafkaPostCertificateProcessEventTopic: String = config.getString("kafka.output.post).topic")
+
 
   // Producers
   val certificateGeneratorFailedEventProducer = "certificate-generate-failed-sink"
+  val postCertificateProcessEventProducer = "post-certificate-process-sink"
 
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
 
@@ -42,7 +45,7 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   val domainUrl: String = config.getString("cert_domain_url")
   val encServiceUrl: String = config.getString("enc-service.basePath")
   val certRegistryBaseUrl: String = config.getString("cert-reg.basePath")
-  val basePath: String = domainUrl.concat("/").concat( "certs")
+  val basePath: String = domainUrl.concat("/").concat("certs")
   val awsStorageSecret: String = ""
   val awsStorageKey: String = ""
 
@@ -61,9 +64,15 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   val EDATA: String = "edata"
   val RELATED: String = "related"
   val OLD_ID: String = "oldId"
+  val BATCH_ID: String = "batchId"
+  val COURSE_ID: String = "courseId"
+  val TEMPLATE_ID: String = "templateId"
 
   // Tags
 
   val failedEventOutputTagName = "failed-events"
   val failedEventOutputTag: OutputTag[String] = OutputTag[String](failedEventOutputTagName)
+  val postCertificateProcessEventOutputTagName = "post-certificate-process-events"
+  val postCertificateProcessEventOutputTag: OutputTag[String] = OutputTag[String](postCertificateProcessEventOutputTagName)
+
 }
