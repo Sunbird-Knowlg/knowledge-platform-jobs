@@ -9,6 +9,7 @@ import java.util.stream.Collectors
 import com.datastax.driver.core.Row
 import com.datastax.driver.core.TypeTokens
 import com.datastax.driver.core.querybuilder.{QueryBuilder, Select, Update}
+import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import org.apache.commons.collections.MapUtils
 import org.apache.commons.lang3.StringUtils
@@ -17,6 +18,7 @@ import org.apache.flink.configuration.Configuration
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
+import org.sunbird.job.domain.FailedEvent
 import org.sunbird.job.task.{PostCertificateProcessorConfig, PostCertificateProcessorStreamTask}
 import org.sunbird.job.util.CassandraUtil
 import org.sunbird.job.{BaseProcessFunction, Metrics}
@@ -34,6 +36,7 @@ class PostCertificateProcessFunction(config: PostCertificateProcessorConfig)
 
   lazy private val mapper: ObjectMapper = new ObjectMapper()
   private val dateFormatter = new SimpleDateFormat("yyyy-MM-dd")
+  lazy private val gson = new Gson()
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
@@ -88,6 +91,8 @@ class PostCertificateProcessFunction(config: PostCertificateProcessorConfig)
             metrics.incCounter(config.successEventCount)
           } else {
             metrics.incCounter(config.failedEventCount)
+            event.put("failInfo", FailedEvent("ERR_DB_UPDATION_FAILED", "db update failed"))
+            context.output(config.failedEventOutputTag, gson.toJson(event))
             logger.info("Database update has failed {}", query)
           }
 
@@ -111,7 +116,7 @@ class PostCertificateProcessFunction(config: PostCertificateProcessorConfig)
     if (userResponse != null) {
       val certTemplate = row.getMap(config.cert_templates, com.google.common.reflect.TypeToken.of(classOf[String]), TypeTokens.mapOf(classOf[String], classOf[String]))
       val url = config.learnerServiceBaseUrl + "/v2/notification"
-      if (certTemplate != null && certTemplate.containsKey(templateId) && certTemplate.get(templateId).containsKey(config.notifyTemplate)) {
+      if (certTemplate != null && StringUtils.isNotBlank(templateId) && certTemplate.containsKey(templateId) && certTemplate.get(templateId).containsKey(config.notifyTemplate)) {
         logger.info("notification template is present in the cert-templates object {}", certTemplate.get(templateId).containsKey(config.notifyTemplate))
         val notifyTemplate = getNotificationTemplate(certTemplate.get(templateId))
         val request = new java.util.HashMap[String, AnyRef]() {
@@ -263,8 +268,11 @@ class PostCertificateProcessFunction(config: PostCertificateProcessorConfig)
   private def isValidEvent(eData: java.util.Map[String, AnyRef]): Boolean = {
     val action = eData.getOrDefault("action", "").asInstanceOf[String]
     val certificate = eData.getOrDefault("certificate", "").asInstanceOf[util.Map[String, AnyRef]]
+    val courseId: String = eData.get(config.courseId).asInstanceOf[String]
+    val userId: String = eData.get(config.userId).asInstanceOf[String]
+    val batchId: String = eData.get(config.batchId).asInstanceOf[String]
     StringUtils.equalsIgnoreCase(action, "post-process-certificate") &&
-      MapUtils.isNotEmpty(certificate)
+      MapUtils.isNotEmpty(certificate) && StringUtils.isNotBlank(courseId) && StringUtils.isNotBlank(userId) && StringUtils.isNotBlank(batchId)
   }
 
 }

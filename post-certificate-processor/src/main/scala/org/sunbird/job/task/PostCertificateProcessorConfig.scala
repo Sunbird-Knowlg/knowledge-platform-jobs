@@ -5,6 +5,7 @@ import java.util
 import com.typesafe.config.Config
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
+import org.apache.flink.streaming.api.scala.OutputTag
 import org.sunbird.job.BaseJobConfig
 
 class PostCertificateProcessorConfig(override val config: Config) extends BaseJobConfig(config, "post-certificate-process") {
@@ -16,6 +17,7 @@ class PostCertificateProcessorConfig(override val config: Config) extends BaseJo
 
   // Kafka Topics Configuration
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
+  val kafkaFailedEventTopic: String = config.getString("kafka.output.failed.topic")
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
 
   // Metric List
@@ -31,6 +33,8 @@ class PostCertificateProcessorConfig(override val config: Config) extends BaseJo
 
   // Consumers
   val postCertificateProcessConsumer = "post-certificate-producer-consumer"
+  val postCertificateProcessFailedEventProducer = "certificate-generate-failed-sink"
+
 
   // Cassandra Configurations
   val dbEnrollmentTable: String = config.getString("lms-cassandra.enrollment.table")
@@ -41,6 +45,10 @@ class PostCertificateProcessorConfig(override val config: Config) extends BaseJo
   val learnerServiceBaseUrl: String = config.getString("learner-service.base_url")
   val dbCourseBatchTable: String = config.getString("lms-cassandra.course_batch.table")
   val notificationEndPoint: String = "/v2/notification"
+
+
+  val failedEventOutputTagName = "failed-events"
+  val failedEventOutputTag: OutputTag[String] = OutputTag[String](failedEventOutputTagName)
 
   // constants
 

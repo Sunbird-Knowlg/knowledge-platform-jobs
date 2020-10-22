@@ -19,13 +19,17 @@ class PostCertificateProcessorStreamTask(config: PostCertificateProcessorConfig,
     implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
     val source = kafkaConnector.kafkaMapSource(config.kafkaInputTopic)
-
-    env.addSource(source, config.postCertificateProcessConsumer)
+    val processStreamTask = env.addSource(source, config.postCertificateProcessConsumer)
       .uid(config.postCertificateProcessConsumer).setParallelism(config.kafkaConsumerParallelism)
       .rebalance()
       .process(new PostCertificateProcessFunction(config))
       .name("post-certificate-process").uid("post-certificate-process")
       .setParallelism(config.parallelism)
+
+    processStreamTask.getSideOutput(config.failedEventOutputTag)
+      .addSink(kafkaConnector.kafkaStringSink(config.kafkaFailedEventTopic))
+      .name(config.postCertificateProcessFailedEventProducer)
+      .uid(config.postCertificateProcessFailedEventProducer)
 
     env.execute(config.jobName)
   }

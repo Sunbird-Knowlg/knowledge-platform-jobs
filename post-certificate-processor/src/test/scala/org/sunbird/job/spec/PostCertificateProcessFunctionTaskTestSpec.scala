@@ -7,6 +7,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
+import org.apache.flink.streaming.api.functions.sink.SinkFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext
 import org.apache.flink.test.util.MiniClusterWithClientResource
@@ -73,16 +74,18 @@ class PostCertificateProcessFunctionTaskTestSpec extends BaseTestSpec {
 
   "PostCertificateProcess" should "update issued-certificates and notify user" in {
     PostCertificateProcessorStreamTask.httpUtil = mockHttpUtil
+    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaFailedEventTopic)).thenReturn(new failedEventSink)
     when(mockKafkaUtil.kafkaMapSource(jobConfig.kafkaInputTopic)).thenReturn(new PostCertificateProcessMapSource)
     new PostCertificateProcessorStreamTask(jobConfig, mockKafkaUtil).process()
-    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(1)
-    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.successEventCount}").getValue() should be(1)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(2)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.successEventCount}").getValue() should be(2)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.failedEventCount}").getValue() should be(0)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skippedEventCount}").getValue() should be(0)
-    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.dbReadCount}").getValue() should be(2)
-    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.dbUpdateCount}").getValue() should be(1)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.dbReadCount}").getValue() should be(4)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.dbUpdateCount}").getValue() should be(2)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.notifiedUserCount}").getValue() should be(1)
-    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skipNotifyUserCount}").getValue() should be(0)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skipNotifyUserCount}").getValue() should be(1)
+    failedEventSink.values.size() should be(0)
   }
 
   def testCassandraUtil(cassandraUtil: CassandraUtil): Unit = {
@@ -95,8 +98,23 @@ class PostCertificateProcessMapSource extends SourceFunction[java.util.Map[Strin
   override def run(ctx: SourceContext[util.Map[String, AnyRef]]): Unit = {
     val gson = new Gson()
     val eventMap1 = gson.fromJson(EventFixture.EVENT_1, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]].asScala
+    val eventMap2 = gson.fromJson(EventFixture.EVENT_2, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]].asScala
     ctx.collect(eventMap1.asJava)
+    ctx.collect(eventMap2.asJava)
   }
 
   override def cancel() = {}
+}
+
+class failedEventSink extends SinkFunction[String] {
+
+  override def invoke(value: String): Unit = {
+    synchronized {
+      failedEventSink.values.add(value)
+    }
+  }
+}
+
+object failedEventSink {
+  val values: util.List[String] = new util.ArrayList()
 }
