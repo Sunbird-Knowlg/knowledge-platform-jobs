@@ -84,4 +84,7 @@ class CertificatePreProcessorConfig(override val config: Config) extends BaseJob
   val orgId = "orgId"
   val criteria = "criteria"
   val artifactUrl = "artifactUrl"
+  val issuer = "issuer"
+  val signatoryList = "signatoryList"
+  val notifyTemplate = "notifyTemplate"
 }

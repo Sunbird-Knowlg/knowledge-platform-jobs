@@ -30,7 +30,7 @@ object EventValidator {
     println("validateTemplate called : " + certTemplates)
     if (MapUtils.isEmpty(certTemplates)) {
       metrics.incCounter(config.skippedEventCount)
-      throw new Exception("Certificate template is not available for batchId : " + edata.get(config.batchId) + " and courseId : " + edata.get(config.courseId)
+      throw new Exception("Certificate template is not available for batchId : " + edata.get(config.batchId) + " and courseId : " + edata.get(config.courseId))
     }
   }
 
