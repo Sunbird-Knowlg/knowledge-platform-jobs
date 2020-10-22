@@ -32,8 +32,8 @@ class PostCertificateProcessorConfig(override val config: Config) extends BaseJo
 
 
   // Consumers
-  val postCertificateProcessConsumer = "post-certificate-producer-consumer"
-  val postCertificateProcessFailedEventProducer = "certificate-generate-failed-sink"
+  val postCertificateProcessConsumer = "post-certificate-process-consumer"
+  val postCertificateProcessFailedEventProducer = "post-certificate-process-failed-sink"
 
 
   // Cassandra Configurations

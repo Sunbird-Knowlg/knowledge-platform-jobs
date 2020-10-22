@@ -65,7 +65,7 @@ class PostCertificateProcessFunction(config: PostCertificateProcessorConfig)
           if (null == certificatesList && certificatesList.isEmpty) {
             certificatesList = new util.ArrayList[util.Map[String, String]]()
           }
-          val updatedCerts: util.List[util.Map[String, String]] = certificatesList.stream().filter(cert => !StringUtils.equalsIgnoreCase(certificate.get(config.name), cert.get(config.name))).collect(Collectors.toList())
+          val updatedCerts: util.List[util.Map[String, String]] = certificatesList.stream().filter(cert => !StringUtils.equalsIgnoreCase(certificate.get("name"), cert.get("name"))).collect(Collectors.toList())
           updatedCerts.add(new java.util.HashMap[String, String]() {
             {
               put(config.name, certificate.get(config.name))
@@ -227,7 +227,6 @@ class PostCertificateProcessFunction(config: PostCertificateProcessorConfig)
     try {
       val userSearchRequest = prepareUserSearchRequest(userId)
       val httpResponse = PostCertificateProcessorStreamTask.httpUtil.post(config.learnerServiceBaseUrl + "/private/user/v1/search", userSearchRequest)
-      logger.info("user search response status {} :: {} ", httpResponse.status, httpResponse.body)
       if (httpResponse.status == 200) {
         logger.info("user search response status {} :: {} ", httpResponse.status, httpResponse.body)
         val response = mapper.readValue(httpResponse.body, classOf[java.util.Map[String, AnyRef]])
@@ -249,7 +248,7 @@ class PostCertificateProcessFunction(config: PostCertificateProcessorConfig)
         put(config.request, new java.util.HashMap[String, AnyRef]() {
           put(config.filters, new java.util.HashMap[String, AnyRef]() {
             {
-              put(config.filters, userId)
+              put(config.identifier, userId)
             }
           })
           put(config.fields, util.Arrays.asList("firstName", "lastName", "userName", "rootOrgName", "rootOrgId", "maskedPhone"))
