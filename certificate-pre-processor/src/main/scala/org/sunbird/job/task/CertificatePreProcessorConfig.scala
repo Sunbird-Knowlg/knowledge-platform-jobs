@@ -87,4 +87,8 @@ class CertificatePreProcessorConfig(override val config: Config) extends BaseJob
   val issuer = "issuer"
   val signatoryList = "signatoryList"
   val notifyTemplate = "notifyTemplate"
+  val active = "active"
+  val score = "score"
+  val maxScore = "maxScore"
+  val total_max_score = "total_max_score"
 }

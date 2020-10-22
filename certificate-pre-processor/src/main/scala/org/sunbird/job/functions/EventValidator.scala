@@ -34,7 +34,8 @@ object EventValidator {
     }
   }
 
-  def validateCriteria(template: util.Map[String, AnyRef], config: CertificatePreProcessorConfig)(implicit metrics: Metrics): util.Map[String, AnyRef] = {
+  def validateCriteria(template: util.Map[String, AnyRef], config: CertificatePreProcessorConfig)
+                      (implicit metrics: Metrics): util.Map[String, AnyRef] = {
     println("validateCriteria called : " + template.get(config.criteria).asInstanceOf[String])
     val criteriaString = template.getOrDefault(config.criteria, "").asInstanceOf[String]
     if (StringUtils.isEmpty(criteriaString)) {

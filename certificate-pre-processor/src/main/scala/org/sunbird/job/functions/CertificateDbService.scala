@@ -13,7 +13,9 @@ import scala.collection.JavaConverters._
 
 object CertificateDbService {
 
-  def readCertTemplates(edata: util.Map[String, AnyRef], config: CertificatePreProcessorConfig)(implicit metrics: Metrics, @transient cassandraUtil: CassandraUtil): util.Map[String, AnyRef] = {
+  def readCertTemplates(edata: util.Map[String, AnyRef])
+                       (implicit metrics: Metrics, @transient cassandraUtil: CassandraUtil,
+                        config: CertificatePreProcessorConfig): util.Map[String, AnyRef] = {
     println("readCertTemplates called : ")
     val dataToSelect = Map(config.courseBatchPrimaryKey.head -> edata.get(config.batchId).asInstanceOf[String],
       config.courseBatchPrimaryKey(1) -> edata.get(config.courseId).asInstanceOf[String])
@@ -27,7 +29,9 @@ object CertificateDbService {
       throw new Exception("Certificate template is not available : " + selectQuery)
   }
 
-  def readUserIdsFromDb(enrollmentCriteria: util.Map[String, AnyRef], edata: util.Map[String, AnyRef], config: CertificatePreProcessorConfig)(implicit metrics: Metrics, @transient cassandraUtil: CassandraUtil): util.List[Row] = {
+  def readUserIdsFromDb(enrollmentCriteria: util.Map[String, AnyRef], edata: util.Map[String, AnyRef])
+                       (implicit metrics: Metrics, @transient cassandraUtil: CassandraUtil,
+                        config: CertificatePreProcessorConfig): util.List[Row] = {
     println("readUserIdsFromDb called : " + enrollmentCriteria)
     val dataToSelect = Map(config.userEnrolmentsPrimaryKey.head -> edata.get(config.userIds).asInstanceOf[util.ArrayList[String]],
       config.userEnrolmentsPrimaryKey(1) -> edata.get(config.courseId).asInstanceOf[String],
@@ -42,7 +46,9 @@ object CertificateDbService {
       throw new Exception("User read failed : " + selectQuery)
   }
 
-  def fetchAssessedUsersFromDB(edata: util.Map[String, AnyRef], config: CertificatePreProcessorConfig)(implicit metrics: Metrics, @transient cassandraUtil: CassandraUtil): util.List[Row] = {
+  def fetchAssessedUsersFromDB(edata: util.Map[String, AnyRef])
+                              (implicit metrics: Metrics, @transient cassandraUtil: CassandraUtil,
+                               config: CertificatePreProcessorConfig): util.List[Row] = {
     val query = "SELECT user_id, max(total_score) as score, total_max_score FROM " + config.dbKeyspace +
       "." + config.dbAssessmentAggregator + " where course_id='" + edata.get(config.courseId).asInstanceOf[String] + "' AND batch_id='" +
       edata.get(config.batchId).asInstanceOf[String] + "' " + "GROUP BY course_id,batch_id,user_id,content_id ORDER BY batch_id,user_id,content_id;"
@@ -55,7 +61,8 @@ object CertificateDbService {
       throw new Exception("Assess User read failed : " + query)
   }
 
-  def readUserCertificate(edata: util.Map[String, AnyRef], config: CertificatePreProcessorConfig)(implicit metrics: Metrics, @transient cassandraUtil: CassandraUtil) {
+  def readUserCertificate(edata: util.Map[String, AnyRef], config: CertificatePreProcessorConfig)
+                         (implicit metrics: Metrics, @transient cassandraUtil: CassandraUtil) {
     val selectQuery = QueryBuilder.select().all().from(config.dbKeyspace, config.dbUserTable)
     selectQuery.where.and(QueryBuilder.eq(config.userEnrolmentsPrimaryKey.head, edata.get(config.userId).asInstanceOf[String])).
       and(QueryBuilder.eq(config.userEnrolmentsPrimaryKey(1), edata.get(config.courseId).asInstanceOf[String])).

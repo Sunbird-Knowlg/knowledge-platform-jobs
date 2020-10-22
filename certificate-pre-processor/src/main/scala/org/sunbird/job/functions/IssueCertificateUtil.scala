@@ -13,18 +13,20 @@ object IssueCertificateUtil {
 
   private[this] val logger = LoggerFactory.getLogger(IssueCertificateUtil.getClass)
 
-  def getActiveUserIds(rows: util.List[Row], edata: util.Map[String, AnyRef], templateName: String, config: CertificatePreProcessorConfig): List[String] = {
+  def getActiveUserIds(rows: util.List[Row], edata: util.Map[String, AnyRef], templateName: String)
+                      (implicit config: CertificatePreProcessorConfig): List[String] = {
     println("getActiveUserIds called : ")
     val userIds = rows.asScala.filter(row => {
-      val issuedCertificates: util.List[util.Map[String, String]] = row.getList("issued_certificates", TypeTokens.mapOf(classOf[String], classOf[String]))
+      val issuedCertificates: util.List[util.Map[String, String]] = row.getList(config.issued_certificates, TypeTokens.mapOf(classOf[String], classOf[String]))
       val isCertIssued = !issuedCertificates.isEmpty && issuedCertificates.asScala.exists(a => a.get(config.name) == templateName)
       println("getActiveUserIds : isCertIssued : " + isCertIssued)
-      row.getBool("active") && (!isCertIssued || edata.containsKey(config.reIssue) && edata.get(config.reIssue).asInstanceOf[Boolean])
+      row.getBool(config.active) && (!isCertIssued || edata.containsKey(config.reIssue) && edata.get(config.reIssue).asInstanceOf[Boolean])
     }).map(row => row.getString("userid")).toList
     userIds
   }
 
-  def getAssessedUserIds(rows: util.List[Row], assessmentCriteria: util.Map[String, AnyRef], edata: util.Map[String, AnyRef], config: CertificatePreProcessorConfig): List[String] = {
+  def getAssessedUserIds(rows: util.List[Row], assessmentCriteria: util.Map[String, AnyRef], edata: util.Map[String, AnyRef])
+                        (implicit config: CertificatePreProcessorConfig): List[String] = {
     println("getAssessedUserIds called : ")
     val userScores: Map[String, Double] = getAssessedUser(rows)
     println("getAssessedUserIds userScores : " + userScores)
@@ -39,35 +41,38 @@ object IssueCertificateUtil {
   }
 
   // see if can change in better way
-  private def getAssessedUser(rows: util.List[Row]): Map[String, Double] = {
+  private def getAssessedUser(rows: util.List[Row])
+                             (implicit config: CertificatePreProcessorConfig): Map[String, Double] = {
     var userScore = scala.collection.mutable.Map[String, Map[String, Double]]()
     rows.asScala.map(row => {
       val userId = row.getString("user_id")
       if (!userScore.contains(userId)) {
         val scoreMap = userScore.get(userId).asInstanceOf[Map[String, Double]]
-        userScore += (userId -> Map("score" -> (scoreMap.get("score").asInstanceOf[Double] + row.getDouble("score")),
-          ("maxScore" -> (scoreMap.get("maxScore").asInstanceOf[Double] + row.getDouble("total_max_score")))))
+        userScore += (userId -> Map(config.score -> (scoreMap.get(config.score).asInstanceOf[Double] + row.getDouble(config.score)),
+          (config.maxScore -> (scoreMap.get(config.maxScore).asInstanceOf[Double] + row.getDouble(config.total_max_score)))))
       } else {
-        userScore += (userId -> Map("score" -> row.getDouble("score"), "maxScore" -> row.getDouble("total_max_score")))
+        userScore += (userId -> Map(config.score -> row.getDouble(config.score), config.maxScore -> row.getDouble(config.total_max_score)))
       }
     })
     println("getAssessedUserIds userScore : " + userScore)
     val assessedUserMap: Map[String, Double] = userScore.map(score => {
-      Map(score._1 -> ((score._2.get("score").asInstanceOf[Double] * 100) / score._2.get("maxScore").asInstanceOf[Double]))
+      Map(score._1 -> ((score._2.get(config.score).asInstanceOf[Double] * 100) / score._2.get(config.maxScore).asInstanceOf[Double]))
     }).flatten.toMap
     println("getAssessedUserIds assessedUserMap : " + assessedUserMap)
     assessedUserMap
   }
 
-  private def getAssessmentOperation(assessmentCriteria: util.Map[String, AnyRef]): Map[String, AnyRef] = {
-    if (assessmentCriteria.get("score").isInstanceOf[util.Map[String, Double]]) {
-      assessmentCriteria.get("score").asInstanceOf[Map[String, AnyRef]]
+  private def getAssessmentOperation(assessmentCriteria: util.Map[String, AnyRef])
+                                    (implicit config: CertificatePreProcessorConfig): Map[String, AnyRef] = {
+    if (assessmentCriteria.get(config.score).isInstanceOf[util.HashMap[String, Double]]) {
+      assessmentCriteria.get(config.score).asInstanceOf[Map[String, AnyRef]]
     } else {
-      Map("EQ" -> assessmentCriteria.get("score"))
+      Map("EQ" -> assessmentCriteria.get(config.score))
     }
   }
 
-  def prepareTemplate(template: util.Map[String, AnyRef], config: CertificatePreProcessorConfig): CertTemplate = {
+  def prepareTemplate(template: util.Map[String, AnyRef])
+                     (implicit config: CertificatePreProcessorConfig): CertTemplate = {
     CertTemplate(templateId = template.getOrDefault(config.identifier, "").asInstanceOf[String],
       name = template.getOrDefault(config.name, "").asInstanceOf[String],
       notifyTemplate = template.getOrDefault(config.notifyTemplate, new util.HashMap()).asInstanceOf[util.Map[String, AnyRef]],
@@ -76,7 +81,8 @@ object IssueCertificateUtil {
       criteria = template.getOrDefault(config.criteria, new util.HashMap()).asInstanceOf[util.Map[String, String]])
   }
 
-  def prepareGenerateRequest(edata: util.Map[String, AnyRef], template: CertTemplate, userId: String, config: CertificatePreProcessorConfig): GenerateRequest = {
+  def prepareGenerateRequest(edata: util.Map[String, AnyRef], template: CertTemplate, userId: String)
+                            (implicit config: CertificatePreProcessorConfig): GenerateRequest = {
     GenerateRequest(batchId = edata.get(config.batchId).asInstanceOf[String],
       courseId = edata.get(config.courseId).asInstanceOf[String],
       userId = userId,
