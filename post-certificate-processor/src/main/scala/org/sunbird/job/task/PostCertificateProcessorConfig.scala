@@ -18,6 +18,8 @@ class PostCertificateProcessorConfig(override val config: Config) extends BaseJo
   // Kafka Topics Configuration
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
   val kafkaFailedEventTopic: String = config.getString("kafka.output.failed.topic")
+  val kafkaAuditEventTopic: String = config.getString("kafka.output.audit.topic")
+
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
 
   // Metric List
@@ -33,7 +35,10 @@ class PostCertificateProcessorConfig(override val config: Config) extends BaseJo
 
   // Consumers
   val postCertificateProcessConsumer = "post-certificate-process-consumer"
-  val postCertificateProcessFailedEventProducer = "post-certificate-process-failed-sink"
+
+  // Producers
+  val postCertificateProcessFailedEventProducer = "post-certificate-process-failed-events-sink"
+  val postCertificateProcessAuditProducer = "post-certificate-process-audit-events-sink"
 
 
   // Cassandra Configurations
@@ -46,7 +51,9 @@ class PostCertificateProcessorConfig(override val config: Config) extends BaseJo
   val dbCourseBatchTable: String = config.getString("lms-cassandra.course_batch.table")
   val notificationEndPoint: String = "/v2/notification"
 
-
+  // tags
+  val auditEventOutputTagName = "audit-events"
+  val auditEventOutputTag: OutputTag[String] = OutputTag[String](auditEventOutputTagName)
   val failedEventOutputTagName = "failed-events"
   val failedEventOutputTag: OutputTag[String] = OutputTag[String](failedEventOutputTagName)
 
@@ -72,9 +79,13 @@ class PostCertificateProcessorConfig(override val config: Config) extends BaseJo
   val token = "token"
   val lastIssuedOn = "lastIssuedOn"
   val certificate = "certificate"
+  val action = "action"
   val courseName = "courseName"
   val templateId = "templateId"
   val cert_templates = "cert_templates"
+  val courseBatch = "CourseBatch"
+  val l1 = "l1"
+  val id = "id"
 
 
 }

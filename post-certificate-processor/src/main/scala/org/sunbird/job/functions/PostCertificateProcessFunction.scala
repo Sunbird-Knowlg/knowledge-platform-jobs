@@ -18,7 +18,7 @@ import org.apache.flink.configuration.Configuration
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
-import org.sunbird.job.domain.FailedEvent
+import org.sunbird.job.domain.{Actor, CertificateAuditEvent, EventContext, EventData, EventObject, FailedEvent}
 import org.sunbird.job.task.{PostCertificateProcessorConfig, PostCertificateProcessorStreamTask}
 import org.sunbird.job.util.CassandraUtil
 import org.sunbird.job.{BaseProcessFunction, Metrics}
@@ -69,7 +69,7 @@ class PostCertificateProcessFunction(config: PostCertificateProcessorConfig)
           updatedCerts.add(new java.util.HashMap[String, String]() {
             {
               put(config.name, certificate.get(config.name))
-              put(config.identifier, certificate.get("id"))
+              put(config.identifier, certificate.get(config.id))
               put(config.token, certificate.get(config.token))
               if (StringUtils.isNotBlank(certificate.get(config.lastIssuedOn)))
                 put(config.lastIssuedOn, certificate.get(config.lastIssuedOn))
@@ -89,6 +89,10 @@ class PostCertificateProcessFunction(config: PostCertificateProcessorConfig)
             metrics.incCounter(config.dbUpdateCount)
             notifyUser(userId, eData.get(config.courseName).asInstanceOf[String], issuedOn, courseId, batchId, eData.get(config.templateId).asInstanceOf[String])(metrics)
             metrics.incCounter(config.successEventCount)
+            val certificateAuditEvent = generateAuditEvent(userId, courseId, batchId, certificate)
+            logger.info("pushAuditEvent: audit event generated for certificate : " + certificateAuditEvent.`object`.id + " with mid : " + certificateAuditEvent.mid)
+            context.output(config.auditEventOutputTag, gson.toJson(certificateAuditEvent))
+            logger.info("pushAuditEvent: certificate audit event success")
           } else {
             metrics.incCounter(config.failedEventCount)
             event.put("failInfo", FailedEvent("ERR_DB_UPDATION_FAILED", "db update failed"))
@@ -101,6 +105,9 @@ class PostCertificateProcessFunction(config: PostCertificateProcessorConfig)
     }
   }
 
+  /**
+    * returns query for updating issued_certificates in user_enrollment table
+    */
   def getUpdateIssuedCertQuery(updatedCerts: util.List[util.Map[String, String]], propertiesToSelect: util.Map[String, AnyRef]):
   Update.Where = QueryBuilder.update(config.dbKeyspace, config.dbEnrollmentTable).where()
     .`with`(QueryBuilder.set(config.issued_certificates, updatedCerts))
@@ -259,14 +266,23 @@ class PostCertificateProcessFunction(config: PostCertificateProcessorConfig)
     mapper.writeValueAsString(request)
   }
 
+  private def generateAuditEvent(userId: String, courseId: String, batchId: String, certificate: util.Map[String, String]): CertificateAuditEvent = {
+    CertificateAuditEvent(
+      actor = Actor(id = userId),
+      edata = EventData(props = Array("certificates"), `type` = "certificate-issued-svg"),
+      context = EventContext(cdata = Array(Map("type" -> config.courseBatch, config.id -> batchId).asJava)),
+      `object` = EventObject(id = certificate.get(config.id), `type` = "Certificate", rollup = Map[String, String](config.l1 -> courseId).asJava)
+    )
+  }
+
 
   override def metricsList(): List[String] = {
     List(config.successEventCount, config.failedEventCount, config.skippedEventCount, config.dbUpdateCount, config.dbReadCount, config.totalEventsCount, config.skipNotifyUserCount, config.notifiedUserCount)
   }
 
   private def isValidEvent(eData: java.util.Map[String, AnyRef]): Boolean = {
-    val action = eData.getOrDefault("action", "").asInstanceOf[String]
-    val certificate = eData.getOrDefault("certificate", "").asInstanceOf[util.Map[String, AnyRef]]
+    val action = eData.getOrDefault(config.action, "").asInstanceOf[String]
+    val certificate = eData.getOrDefault(config.certificate, "").asInstanceOf[util.Map[String, AnyRef]]
     val courseId: String = eData.get(config.courseId).asInstanceOf[String]
     val userId: String = eData.get(config.userId).asInstanceOf[String]
     val batchId: String = eData.get(config.batchId).asInstanceOf[String]

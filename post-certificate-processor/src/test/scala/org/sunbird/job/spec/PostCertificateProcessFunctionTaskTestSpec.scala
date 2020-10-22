@@ -75,6 +75,7 @@ class PostCertificateProcessFunctionTaskTestSpec extends BaseTestSpec {
   "PostCertificateProcess" should "update issued-certificates and notify user" in {
     PostCertificateProcessorStreamTask.httpUtil = mockHttpUtil
     when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaFailedEventTopic)).thenReturn(new failedEventSink)
+    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaAuditEventTopic)).thenReturn(new auditEventSink)
     when(mockKafkaUtil.kafkaMapSource(jobConfig.kafkaInputTopic)).thenReturn(new PostCertificateProcessMapSource)
     new PostCertificateProcessorStreamTask(jobConfig, mockKafkaUtil).process()
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(2)
@@ -86,6 +87,7 @@ class PostCertificateProcessFunctionTaskTestSpec extends BaseTestSpec {
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.notifiedUserCount}").getValue() should be(1)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skipNotifyUserCount}").getValue() should be(1)
     failedEventSink.values.size() should be(0)
+    auditEventSink.values.size() should be(2)
   }
 
   def testCassandraUtil(cassandraUtil: CassandraUtil): Unit = {
@@ -116,5 +118,18 @@ class failedEventSink extends SinkFunction[String] {
 }
 
 object failedEventSink {
+  val values: util.List[String] = new util.ArrayList()
+}
+
+class auditEventSink extends SinkFunction[String] {
+
+  override def invoke(value: String): Unit = {
+    synchronized {
+      auditEventSink.values.add(value)
+    }
+  }
+}
+
+object auditEventSink {
   val values: util.List[String] = new util.ArrayList()
 }

@@ -31,6 +31,11 @@ class PostCertificateProcessorStreamTask(config: PostCertificateProcessorConfig,
       .name(config.postCertificateProcessFailedEventProducer)
       .uid(config.postCertificateProcessFailedEventProducer)
 
+    processStreamTask.getSideOutput(config.auditEventOutputTag)
+      .addSink(kafkaConnector.kafkaStringSink(config.kafkaAuditEventTopic))
+      .name(config.postCertificateProcessAuditProducer)
+      .uid(config.postCertificateProcessAuditProducer)
+
     env.execute(config.jobName)
   }
 }
