@@ -36,19 +36,26 @@ object CertificateApiService {
     })
   }
 
-  def readContent(courseId: String, cache: DataCache, config: CertificatePreProcessorConfig): util.Map[String, AnyRef] = {
-    val httpResponse = CertificatePreProcessorStreamTask.httpUtil.get(config.lmsBaseUrl + "/content/v3/read/" + courseId)
-    if (httpResponse.status == 200) {
-      println("Content read success: " + httpResponse.body)
-      val response = mapper.readValue(httpResponse.body, classOf[util.Map[String, AnyRef]])
-      val result = response.getOrDefault("result", new util.HashMap()).asInstanceOf[util.Map[String, AnyRef]]
-      val content = result.getOrDefault("content", new util.HashMap()).asInstanceOf[util.Map[String, AnyRef]]
-      if (MapUtils.isEmpty(content)) throw new Exception("Content is empty for courseId : " + courseId)
-      content
-    } else throw new Exception("Content read failed for courseId : " + courseId + " " + httpResponse.status + " :: " + httpResponse.body)
+  def readContent(courseId: String, collectionCache: DataCache)(implicit config: CertificatePreProcessorConfig): util.Map[String, AnyRef] = {
+    println("readContent called : courseId : " + courseId)
+    val courseData = collectionCache.getWithRetry(courseId).asInstanceOf[Map[String, AnyRef]]
+    println("readContent cache call : courseData : " + courseId)
+    if (courseData.nonEmpty) {
+      courseData.get(courseId).asInstanceOf[util.Map[String, AnyRef]]
+    } else {
+      val httpResponse = CertificatePreProcessorStreamTask.httpUtil.get(config.lmsBaseUrl + "/content/v3/read/" + courseId)
+      if (httpResponse.status == 200) {
+        println("Content read success: " + httpResponse.body)
+        val response = mapper.readValue(httpResponse.body, classOf[util.Map[String, AnyRef]])
+        val result = response.getOrDefault("result", new util.HashMap()).asInstanceOf[util.Map[String, AnyRef]]
+        val content = result.getOrDefault("content", new util.HashMap()).asInstanceOf[util.Map[String, AnyRef]]
+        if (MapUtils.isEmpty(content)) throw new Exception("Content is empty for courseId : " + courseId)
+        content
+      } else throw new Exception("Content read failed for courseId : " + courseId + " " + httpResponse.status + " :: " + httpResponse.body)
+    }
   }
 
-  def getUserDetails(userId: String, config: CertificatePreProcessorConfig): util.Map[String, AnyRef] = {
+  def getUserDetails(userId: String)(implicit config: CertificatePreProcessorConfig): util.Map[String, AnyRef] = {
     val httpRequest = s"""{"request":{"filters":{"identifier":"${userId}"},"fields":["firstName", "lastName", "userName", "rootOrgName", "rootOrgId","maskedPhone"]}}"""
     val httpResponse = CertificatePreProcessorStreamTask.httpUtil.post(config.searchBaseUrl + "/private/user/v1/search", httpRequest)
     if (httpResponse.status == 200) {
@@ -63,7 +70,7 @@ object CertificateApiService {
     } else throw new Exception("User not found for userId : " + userId + " " + httpResponse.status + " :: " + httpResponse.body)
   }
 
-  def readOrgKeys(rootOrgId: String, config: CertificatePreProcessorConfig): util.Map[String, AnyRef] = {
+  def readOrgKeys(rootOrgId: String)(implicit config: CertificatePreProcessorConfig): util.Map[String, AnyRef] = {
     val httpRequest = s"""{"request":{"organisationId":"${rootOrgId}"}}}"""
     val httpResponse = CertificatePreProcessorStreamTask.httpUtil.post(config.lmsBaseUrl + "/v1/org/read", httpRequest)
     if (httpResponse.status == 200) {

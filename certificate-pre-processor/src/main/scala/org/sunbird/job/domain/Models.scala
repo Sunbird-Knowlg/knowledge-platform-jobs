@@ -47,9 +47,11 @@ case class CertTemplate(templateId: String,
                         notifyTemplate: util.Map[String, AnyRef],
                         signatoryList: util.ArrayList[util.Map[String, String]],
                         issuer: util.Map[String, String],
-                        criteria: util.Map[String, String])
+                        criteria: util.Map[String, String],
+                        svgTemplate: String)
 
-case class CertificateData(svgTemplate: String, issuedDate: String, basePath: String, oldId: Option[String])
+//done
+case class CertificateData(issuedDate: String, basePath: String)
 
 // generate event request
 case class GenerateRequest(batchId: String,

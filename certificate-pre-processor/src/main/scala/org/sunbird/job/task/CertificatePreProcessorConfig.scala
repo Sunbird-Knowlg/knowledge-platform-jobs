@@ -53,6 +53,7 @@ class CertificatePreProcessorConfig(override val config: Config) extends BaseJob
   val lmsBaseUrl = config.getString("lms.basePath")
   val searchBaseUrl = config.getString("user.search.basePath")
   val contentBaseUrl = config.getString("content.basePath")
+  val basePath = config.getString("cert.basePath")
 
   // certFilterKeys
   val certFilterKeys: List[String] = List("enrollment","assessment", "user")
@@ -91,4 +92,5 @@ class CertificatePreProcessorConfig(override val config: Config) extends BaseJob
   val score = "score"
   val maxScore = "maxScore"
   val total_max_score = "total_max_score"
+  val svgTemplate = "svgTemplate"
 }

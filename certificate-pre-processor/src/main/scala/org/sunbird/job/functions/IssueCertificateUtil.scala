@@ -78,7 +78,8 @@ object IssueCertificateUtil {
       notifyTemplate = template.getOrDefault(config.notifyTemplate, new util.HashMap()).asInstanceOf[util.Map[String, AnyRef]],
       signatoryList = template.getOrDefault(config.signatoryList, new util.HashMap()).asInstanceOf[util.ArrayList[util.Map[String, String]]],
       issuer = template.getOrDefault(config.issuer, new util.HashMap()).asInstanceOf[util.Map[String, String]],
-      criteria = template.getOrDefault(config.criteria, new util.HashMap()).asInstanceOf[util.Map[String, String]])
+      criteria = template.getOrDefault(config.criteria, new util.HashMap()).asInstanceOf[util.Map[String, String]],
+      svgTemplate = template.getOrDefault(config.svgTemplate, "").asInstanceOf[String])
   }
 
   def prepareGenerateRequest(edata: util.Map[String, AnyRef], template: CertTemplate, userId: String)
