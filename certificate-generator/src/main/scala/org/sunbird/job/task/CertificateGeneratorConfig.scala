@@ -18,7 +18,7 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   // Kafka Topics Configuration
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
   val kafkaFailedEventTopic: String = config.getString("kafka.output.failed.topic")
-  val kafkaPostCertificateProcessEventTopic: String = config.getString("kafka.output.post).topic")
+  val kafkaPostCertificateProcessEventTopic: String = config.getString("kafka.output.post.certificate.processor.topic")
 
 
   // Producers

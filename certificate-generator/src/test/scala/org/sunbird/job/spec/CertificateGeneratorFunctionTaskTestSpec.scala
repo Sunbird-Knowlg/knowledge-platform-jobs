@@ -18,6 +18,7 @@ import org.mockito.Mockito._
 import org.sunbird.incredible.processor.store.{AzureStore, ICertStore}
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.fixture.EventFixture
+import org.sunbird.job.functions.StorageService
 import org.sunbird.job.task.{CertificateGeneratorConfig, CertificateGeneratorStreamTask}
 import org.sunbird.job.util.{HTTPResponse, HttpUtil}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
@@ -36,11 +37,10 @@ class CertificateGeneratorFunctionTaskTestSpec extends BaseTestSpec {
 
   val mockKafkaUtil: FlinkKafkaConnector = mock[FlinkKafkaConnector](Mockito.withSettings().serializable())
   val gson = new Gson()
-  val config: Config = ConfigFactory.load("test.conf").withFallback(ConfigFactory.systemEnvironment())
+  val config: Config = ConfigFactory.load("test.conf")
   val jobConfig: CertificateGeneratorConfig = new CertificateGeneratorConfig(config)
-  val mockHttpUtil = mock[HttpUtil]
-  var certStore: ICertStore = _
-  val azureStore: AzureStore = mock[AzureStore]
+  val mockHttpUtil: HttpUtil = mock[HttpUtil]
+  var certStore: ICertStore = mock[AzureStore]
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
@@ -48,7 +48,7 @@ class CertificateGeneratorFunctionTaskTestSpec extends BaseTestSpec {
     BaseMetricsReporter.gaugeMetrics.clear()
     flinkCluster.before()
     when(mockHttpUtil.post(endsWith("/certs/v2/registry/add"), any[String])).thenReturn(HTTPResponse(200, """{"id":"api.certs.registry.add","ver":"v2","ts":"1602590393507","params":null,"responseCode":"OK","result":{"id":"c96d60f8-9c76-4a73-9ef0-9e01d0f726c6"}}"""))
-    when(azureStore.save(any[File], any[String])).thenReturn("http://basepath/id.json")
+    when(certStore.save(any[File], any[String])).thenReturn("http://basepath/uuid.json")
   }
 
   override protected def afterAll(): Unit = {
@@ -59,13 +59,16 @@ class CertificateGeneratorFunctionTaskTestSpec extends BaseTestSpec {
 
   "CertificateGenerator " should "generate certificate and add to the registry" in {
     CertificateGeneratorStreamTask.httpUtil = mockHttpUtil
+    CertificateGeneratorStreamTask.certStore = certStore
     when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaFailedEventTopic)).thenReturn(new failedEventSink)
+    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaPostCertificateProcessEventTopic)).thenReturn(new postCertificateProcessEventSink)
     when(mockKafkaUtil.kafkaMapSource(jobConfig.kafkaInputTopic)).thenReturn(new CertificateGeneratorMapSource)
     new CertificateGeneratorStreamTask(jobConfig, mockKafkaUtil).process()
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(2)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.successEventCount}").getValue() should be(1)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.failedEventCount}").getValue() should be(1)
     failedEventSink.values.size() should be(1)
+    postCertificateProcessEventSink.values.size() should be (1)
   }
 
 
@@ -93,5 +96,18 @@ class failedEventSink extends SinkFunction[String] {
 }
 
 object failedEventSink {
+  val values: util.List[String] = new util.ArrayList()
+}
+
+class postCertificateProcessEventSink extends SinkFunction[String] {
+
+  override def invoke(value: String): Unit = {
+    synchronized {
+      postCertificateProcessEventSink.values.add(value)
+    }
+  }
+}
+
+object postCertificateProcessEventSink {
   val values: util.List[String] = new util.ArrayList()
 }

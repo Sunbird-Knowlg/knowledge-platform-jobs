@@ -29,9 +29,7 @@ case class PostCertificateProcessEvent(actor: ActorObject,
                                        ets: Long = System.currentTimeMillis(),
                                        context: EventContext = EventContext(),
                                        mid: String = s"LP.1564144562948.${UUID.randomUUID().toString}",
-                                       `object`: EventObject,
-                                       tags: util.List[AnyRef] = new util.ArrayList[AnyRef]()
-                                      )
+                                       `object`: EventObject)
 
 case class Certificate(id: String,
                        name: String,
