@@ -75,7 +75,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
       }).toList
 
     // Fetch the content status from the table in batch format
-    val dbUserConsumption: Map[String, UserContentConsumption] = getContentStatusFromDB(batchEventsEdata, metrics)
+    val dbUserConsumption: Map[String, UserContentConsumption] = getContentStatusFromDB(contentConsumptionEvents, metrics)
 
     // Final User's ContentConsumption after merging with DB data.
     // Here we have final viewcount, completedcount and identified the content which should generate AUDIT events for start and complete.
