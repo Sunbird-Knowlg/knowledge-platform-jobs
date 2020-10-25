@@ -25,7 +25,7 @@ class CertificatePreProcessor(config: CertificatePreProcessorConfig)
   private var collectionCache: DataCache = _
 
   override def metricsList(): List[String] = {
-    List(config.successEventCount, config.failedEventCount, config.skippedEventCount, config.totalEventsCount, config.dbReadCount, config.dbUpdateCount)
+    List(config.successEventCount, config.failedEventCount, config.skippedEventCount, config.totalEventsCount, config.dbReadCount, config.cacheReadCount)
   }
 
   override def open(parameters: Configuration): Unit = {
@@ -66,7 +66,11 @@ class CertificatePreProcessor(config: CertificatePreProcessorConfig)
       //iterate over users and send to generate event method
       val template = IssueCertificateUtil.prepareTemplate(certTemplate)(config)
       usersToIssue.foreach(user => {
-        generateCertificateEvent(user, template, edata, collectionCache, context)
+        val certEvent = generateCertificateEvent(user, template, edata, collectionCache)
+        println("final event send to next topic : " + gson.toJson(certEvent))
+        context.output(config.generateCertificateOutputTag, gson.toJson(certEvent))
+        logger.info("Certificate generate event successfully send to next topic")
+        metrics.incCounter(config.successEventCount)
       })
     })
   }
@@ -78,27 +82,15 @@ class CertificatePreProcessor(config: CertificatePreProcessorConfig)
     certTemplates
   }
 
-  private def generateCertificateEvent(userId: String, template: CertTemplate, edata: util.Map[String, AnyRef], collectionCache: DataCache,
-                                       context: ProcessFunction[util.Map[String, AnyRef], String]#Context)
-                                      (implicit metrics: Metrics): Unit = {
+  private def generateCertificateEvent(userId: String, template: CertTemplate, edata: util.Map[String, AnyRef], collectionCache: DataCache)
+                                      (implicit metrics: Metrics): CertificateGenerateEvent = {
     println("generateCertificatesEvent called userId : " + userId)
     val generateRequest = IssueCertificateUtil.prepareGenerateRequest(edata, template, userId)(config)
     val edataRequest = generateRequest.getClass.getDeclaredFields.map(_.getName).zip(generateRequest.productIterator.to).toMap.asInstanceOf[Map[String, AnyRef]].asJava
     // generate certificate event edata
     val eventEdata = new CertificateEventGenerator(config)(metrics, cassandraUtil).prepareGenerateEventEdata(edataRequest, collectionCache)
     println("generateCertificateEvent : eventEdata : " + eventEdata)
-    pushEventToNextTopic(eventEdata, context)
-  }
-
-  private def pushEventToNextTopic(edata: util.Map[String, AnyRef], context: ProcessFunction[util.Map[String, AnyRef], String]#Context)
-                                  (implicit metrics: Metrics): Unit = {
-    println("pushEventToNextTopic called : ")
-    val certEvent: CertificateGenerateEvent = generateCertificateEvent(edata)
-    println("pushEventToNextTopic certEvent send to next topic : " + certEvent)
-    // send event to next topic to generate certificate
-    context.output(config.generateCertificateOutputTag, gson.toJson(certEvent))
-    logger.info("Certificate generate event successfully send to next topic")
-    metrics.incCounter(config.successEventCount)
+    generateCertificateEvent(edata)
   }
 
   private def generateCertificateEvent(edata: util.Map[String, AnyRef]): CertificateGenerateEvent = {

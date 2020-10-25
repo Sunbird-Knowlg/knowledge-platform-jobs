@@ -78,7 +78,7 @@ class CertificateEventGenerator(config: CertificatePreProcessorConfig)
 
   private def setCourseDetails(edata: util.Map[String, AnyRef], collectionCache: DataCache) {
     println("setCourseDetails called edata : " + edata)
-    val content = CertificateApiService.readContent(edata.get(config.courseId).asInstanceOf[String], collectionCache)(config)
+    val content = CertificateApiService.readContent(edata.get(config.courseId).asInstanceOf[String], collectionCache)(config, metrics)
     val courseDetails = CourseDetails(courseName = content.get(config.name).asInstanceOf[String],
       tag = edata.get(config.batchId).asInstanceOf[String])
     edata.putAll(courseDetails.getClass.getDeclaredFields.map(_.getName).zip(courseDetails.productIterator.to).toMap.asInstanceOf[Map[String, AnyRef]].asJava)

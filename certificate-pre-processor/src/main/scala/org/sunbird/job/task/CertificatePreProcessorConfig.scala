@@ -24,7 +24,7 @@ class CertificatePreProcessorConfig(override val config: Config) extends BaseJob
   val failedEventCount = "failed-events-count"
   val skippedEventCount = "skipped-event-count"
   val dbReadCount = "db-read-count"
-  val dbUpdateCount = "db-update-count"
+  val cacheReadCount = "cache-read-count"
 
   // Consumers
   val certificatePreProcessorConsumer = "certificate-pre-processor-consumer"
@@ -47,13 +47,20 @@ class CertificatePreProcessorConfig(override val config: Config) extends BaseJob
   val courseBatchPrimaryKey: List[String] = List("courseid","batchid")
 
   // Redis Configurations
-  val collectionCacheStore: Int = config.getInt("redis.database.collectionCache.id")
+  val dpRedisHost: String = config.getString("dp-redis.host")
+  val dpRedisPort: Int = config.getInt("dp-redis.port")
+  val collectionCacheStore: Int = config.getInt("dp-redis.database.index")
 
   // BaseUrl
   val lmsBaseUrl = config.getString("lms.basePath")
   val searchBaseUrl = config.getString("user.search.basePath")
   val contentBaseUrl = config.getString("content.basePath")
   val basePath = config.getString("cert.basePath")
+
+  // ApiUrl
+  val contentV3Read = config.getString("content.v3.read")
+  val userV1Search = config.getString("user.v1.search")
+  val orgV1Read = config.getString("org.v1.read")
 
   // certFilterKeys
   val certFilterKeys: List[String] = List("enrollment","assessment", "user")

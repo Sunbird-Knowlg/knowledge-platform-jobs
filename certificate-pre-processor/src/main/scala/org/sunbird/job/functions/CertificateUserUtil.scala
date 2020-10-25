@@ -69,7 +69,7 @@ object CertificateUserUtil {
                                       (implicit config: CertificatePreProcessorConfig): List[String] = {
     println("getUsersFromUserCriteria called : " + userCriteria)
     if (MapUtils.isNotEmpty(userCriteria)) {
-      val filteredUserIds = CertificateApiService.getUsersFromUserCriteria(userCriteria, userIds, config)
+      val filteredUserIds = CertificateApiService.getUsersFromUserCriteria(userCriteria, userIds)(config)
       println("getUsersFromUserCriteria : final filtered User : " + filteredUserIds)
       filteredUserIds
     }
