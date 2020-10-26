@@ -52,7 +52,7 @@ object EventValidator {
 
   def isValidAssessUser(actualScore: Double, criteria: Map[String, AnyRef]): Boolean = {
     val operation = criteria.head._1
-    val score = criteria.get(operation).asInstanceOf[Double]
+    val score = criteria.asJava.get(operation).asInstanceOf[Int].toDouble
     operation match {
       case "EQ" => actualScore == score
       case "eq" => actualScore == score

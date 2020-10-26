@@ -46,7 +46,7 @@ object IssueCertificateUtil {
     var userScore = scala.collection.mutable.Map[String, Map[String, Double]]()
     rows.asScala.map(row => {
       val userId = row.getString("user_id")
-      if (!userScore.contains(userId)) {
+      if (userScore.contains(userId)) {
         val scoreMap = userScore.get(userId).asInstanceOf[Map[String, Double]]
         userScore += (userId -> Map(config.score -> (scoreMap.get(config.score).asInstanceOf[Double] + row.getDouble(config.score)),
           (config.maxScore -> (scoreMap.get(config.maxScore).asInstanceOf[Double] + row.getDouble(config.total_max_score)))))
@@ -56,7 +56,7 @@ object IssueCertificateUtil {
     })
     println("getAssessedUserIds userScore : " + userScore)
     val assessedUserMap: Map[String, Double] = userScore.map(score => {
-      Map(score._1 -> ((score._2.get(config.score).asInstanceOf[Double] * 100) / score._2.get(config.maxScore).asInstanceOf[Double]))
+      Map(score._1 -> ((score._2.asJava.get(config.score) * 100) / score._2.asJava.get(config.maxScore)))
     }).flatten.toMap
     println("getAssessedUserIds assessedUserMap : " + assessedUserMap)
     assessedUserMap

@@ -40,8 +40,7 @@ object CertificateUserUtil {
     println("getUserFromEnrolmentCriteria called : " + enrollmentCriteria)
     if (MapUtils.isNotEmpty(enrollmentCriteria)) {
       val templateName = template.get(config.name).asInstanceOf[String]
-      val rows = CertificateDbService.readUserIdsFromDb(enrollmentCriteria, edata)(metrics, cassandraUtil, config)
-      val userIds = IssueCertificateUtil.getActiveUserIds(rows, edata, templateName)
+      val userIds = CertificateDbService.readUserIdsFromDb(enrollmentCriteria, edata, templateName)(metrics, cassandraUtil, config)
       println("getUserFromEnrolmentCriteria active userids : " + userIds.toString)
       userIds
     } else List()
@@ -52,8 +51,7 @@ object CertificateUserUtil {
                                              config: CertificatePreProcessorConfig): List[String] = {
     println("getUsersFromAssessmentCriteria called : " + assessmentCriteria)
     if (MapUtils.isNotEmpty(assessmentCriteria)) {
-      val rows = CertificateDbService.fetchAssessedUsersFromDB(edata)(metrics, cassandraUtil, config)
-      val assessedUserIds = IssueCertificateUtil.getAssessedUserIds(rows, assessmentCriteria, edata)
+      val assessedUserIds = CertificateDbService.fetchAssessedUsersFromDB(edata, assessmentCriteria)(metrics, cassandraUtil, config)
       // ask in old we are checking userid we should ??
       if (assessedUserIds.nonEmpty) {
         val userIds = edata.get(config.userIds).asInstanceOf[util.List[String]].asScala.intersect(assessedUserIds).toList
