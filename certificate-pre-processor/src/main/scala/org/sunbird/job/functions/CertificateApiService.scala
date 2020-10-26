@@ -6,13 +6,15 @@ import org.apache.commons.collections.{CollectionUtils, MapUtils}
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper
 import org.sunbird.job.Metrics
 import org.sunbird.job.cache.DataCache
-import org.sunbird.job.task.{CertificatePreProcessorConfig, CertificatePreProcessorStreamTask}
+import org.sunbird.job.task.CertificatePreProcessorConfig
+import org.sunbird.job.util.HttpUtil
 
 import scala.collection.JavaConverters._
 
 object CertificateApiService {
 
   lazy private val mapper: ObjectMapper = new ObjectMapper()
+  var httpUtil = new HttpUtil
 
   def getUsersFromUserCriteria(userCriteria: util.Map[String, AnyRef], userIds: List[String])(implicit config: CertificatePreProcessorConfig): List[String] = {
     val batchSize = 50
@@ -20,7 +22,7 @@ object CertificateApiService {
     println("getUsersFromUserCriteria called : " + batchList)
     batchList.flatMap(batch => {
       val httpRequest = s"""{"request":{"filters":{"identifier":"${batch}, ${userCriteria}"},"fields":["identifier"]}}"""
-      val httpResponse = CertificatePreProcessorStreamTask.httpUtil.post(config.searchBaseUrl + config.userV1Search, httpRequest)
+      val httpResponse = httpUtil.post(config.searchBaseUrl + config.userV1Search, httpRequest)
       if (httpResponse.status == 200) {
         println("User search success: " + httpResponse.body)
         val response = mapper.readValue(httpResponse.body, classOf[util.Map[String, AnyRef]])
@@ -46,7 +48,7 @@ object CertificateApiService {
       println("readContent cache called : courseData : " + courseId)
       courseData.toMap
     } else {
-      val httpResponse = CertificatePreProcessorStreamTask.httpUtil.get(config.lmsBaseUrl + config.contentV3Read + courseId)
+      val httpResponse = httpUtil.get(config.lmsBaseUrl + config.contentV3Read + courseId)
       if (httpResponse.status == 200) {
         println("Content read success: " + httpResponse.body)
         val response = mapper.readValue(httpResponse.body, classOf[util.Map[String, AnyRef]])
@@ -60,7 +62,7 @@ object CertificateApiService {
 
   def getUserDetails(userId: String)(implicit config: CertificatePreProcessorConfig): util.Map[String, AnyRef] = {
     val httpRequest = s"""{"request":{"filters":{"identifier":"${userId}"},"fields":["firstName", "lastName", "userName", "rootOrgName", "rootOrgId","maskedPhone"]}}"""
-    val httpResponse = CertificatePreProcessorStreamTask.httpUtil.post(config.searchBaseUrl + config.userV1Search, httpRequest)
+    val httpResponse = httpUtil.post(config.searchBaseUrl + config.userV1Search, httpRequest)
     if (httpResponse.status == 200) {
       println("User search success: " + httpResponse.body)
       val response = mapper.readValue(httpResponse.body, classOf[util.Map[String, AnyRef]])
@@ -75,7 +77,7 @@ object CertificateApiService {
 
   def readOrgKeys(rootOrgId: String)(implicit config: CertificatePreProcessorConfig): util.Map[String, AnyRef] = {
     val httpRequest = s"""{"request":{"organisationId":"${rootOrgId}"}}}"""
-    val httpResponse = CertificatePreProcessorStreamTask.httpUtil.post(config.lmsBaseUrl + config.orgV1Read, httpRequest)
+    val httpResponse = httpUtil.post(config.lmsBaseUrl + config.orgV1Read, httpRequest)
     if (httpResponse.status == 200) {
       println("Org read success: " + httpResponse.body)
       val response = mapper.readValue(httpResponse.body, classOf[util.Map[String, AnyRef]])

@@ -1,6 +1,6 @@
-CREATE KEYSPACE sunbird_courses with replication = {'class':'SimpleStrategy','replication_factor':1};
+CREATE KEYSPACE IF NOT EXISTS sunbird_courses with replication = {'class':'SimpleStrategy','replication_factor':1};
 
-CREATE TABLE sunbird_courses.course_batch (
+CREATE TABLE IF NOT EXISTS sunbird_courses.course_batch (
     courseid text,
     batchid text,
     cert_templates map<text, frozen<map<text, text>>>,
@@ -19,7 +19,7 @@ CREATE TABLE sunbird_courses.course_batch (
     PRIMARY KEY (courseid, batchid)
 );
 
-CREATE TABLE sunbird_courses.user_enrolments (
+CREATE TABLE IF NOT EXISTS sunbird_courses.user_enrolments (
     userid text,
     courseid text,
     batchid text,
@@ -39,7 +39,7 @@ CREATE TABLE sunbird_courses.user_enrolments (
     PRIMARY KEY (userid, courseid, batchid)
 );
 
-CREATE TABLE sunbird_courses.assessment_aggregator (
+CREATE TABLE IF NOT EXISTS sunbird_courses.assessment_aggregator (
     course_id text,
     batch_id text,
     user_id text,

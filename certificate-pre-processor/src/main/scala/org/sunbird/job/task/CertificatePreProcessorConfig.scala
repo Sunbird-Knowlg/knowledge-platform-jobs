@@ -16,6 +16,8 @@ class CertificatePreProcessorConfig(override val config: Config) extends BaseJob
   // Kafka Topics Configuration
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
   val kafkaOutputTopic: String = config.getString("kafka.output.topic")
+  val kafkaFailedEventTopic: String = config.getString("kafka.output.failed.topic")
+
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
 
   // Metric List
@@ -32,9 +34,12 @@ class CertificatePreProcessorConfig(override val config: Config) extends BaseJob
   // Tags
   val generateCertificateOutputTagName = "generate-certificate-request"
   val generateCertificateOutputTag: OutputTag[String] = OutputTag[String](generateCertificateOutputTagName)
+  val failedEventOutputTagName = "failed-events"
+  val failedEventOutputTag: OutputTag[String] = OutputTag[String](failedEventOutputTagName)
 
   // Producers
   val generateCertificateProducer = "generate-certificate-sink"
+  val generateCertificateFailedEventProducer = "generate-certificate-failed-sink"
 
   // Cassandra Configurations
   val dbBatchTable: String = config.getString("lms-cassandra.batchTable")
