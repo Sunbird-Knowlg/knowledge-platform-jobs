@@ -56,7 +56,7 @@ class CassandraUtil(host: String, port: Int) {
     this.session.close()
   }
 
-  def update(query: String): Boolean = {
+  def update(query: Statement): Boolean = {
     val rs: ResultSet = session.execute(query)
     rs.wasApplied
   }

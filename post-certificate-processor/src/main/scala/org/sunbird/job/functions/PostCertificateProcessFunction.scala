@@ -82,7 +82,7 @@ class PostCertificateProcessFunction(config: PostCertificateProcessorConfig)
               put(config.batchId, eData.get(config.batchId))
             }
           }
-          val query = getUpdateIssuedCertQuery(updatedCerts, dataToSelect).getQueryString
+          val query = getUpdateIssuedCertQuery(updatedCerts, dataToSelect)
           val result = cassandraUtil.update(query)
           if (result) {
             logger.info("issued certificates in user-enrollment table  updated successfully")
