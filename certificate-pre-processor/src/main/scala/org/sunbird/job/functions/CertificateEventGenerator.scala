@@ -3,6 +3,7 @@ package org.sunbird.job.functions
 import java.util
 
 import com.google.gson.Gson
+import org.apache.commons.collections.CollectionUtils
 import org.apache.commons.lang3.StringUtils
 import org.sunbird.job.Metrics
 import org.sunbird.job.cache.DataCache
@@ -40,7 +41,8 @@ class CertificateEventGenerator(config: CertificatePreProcessorConfig)
     val certTemplate = edata.get(config.template).asInstanceOf[util.Map[String, AnyRef]]
     if (edata.containsKey(config.reIssue) && edata.get(config.reIssue).asInstanceOf[Boolean]) {
       val certificates = issuedCertificates.asScala.filter((cert: util.Map[String, AnyRef]) => StringUtils.equalsIgnoreCase(cert.get(config.name).asInstanceOf[String], certTemplate.get(config.name).asInstanceOf[String])).toList
-      edata.put(config.oldId, certificates.head.getOrDefault(config.identifier, ""))
+      if (certificates.nonEmpty)
+        edata.put(config.oldId, certificates.head.getOrDefault(config.identifier, ""))
     }
     edata.putAll(gson.fromJson(gson.toJson(CertificateData(issuedDate = issuedDate, basePath = config.certBasePath)), new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]])
     println("setIssuedCertificate finish edata : " + edata.toString)

@@ -69,7 +69,7 @@ object CertificateDbService {
                          (implicit metrics: Metrics, @transient cassandraUtil: CassandraUtil, config: CertificatePreProcessorConfig): util.Map[String, AnyRef] = {
     println("readUserCertificate called edata : " + edata)
     val selectQuery = QueryBuilder.select().all().from(config.dbKeyspace, config.dbUserTable)
-    selectQuery.where.and(QueryBuilder.in(config.userEnrolmentsPrimaryKey.head, edata.get(config.userId).asInstanceOf[String])).
+    selectQuery.where.and(QueryBuilder.eq(config.userEnrolmentsPrimaryKey.head, edata.get(config.userId).asInstanceOf[String])).
       and(QueryBuilder.eq(config.userEnrolmentsPrimaryKey(1), edata.get(config.courseId).asInstanceOf[String])).
       and(QueryBuilder.eq(config.userEnrolmentsPrimaryKey(2), edata.get(config.batchId).asInstanceOf[String]))
     selectQuery.allowFiltering()
