@@ -82,17 +82,17 @@ class PostCertificateProcessFunction(config: PostCertificateProcessorConfig)
               put(config.batchId, eData.get(config.batchId))
             }
           }
-          val query = getUpdateIssuedCertQuery(updatedCerts, dataToSelect).toString
+          val query = getUpdateIssuedCertQuery(updatedCerts, dataToSelect).getQueryString
           val result = cassandraUtil.update(query)
           if (result) {
             logger.info("issued certificates in user-enrollment table  updated successfully")
             metrics.incCounter(config.dbUpdateCount)
-            notifyUser(userId, eData.get(config.courseName).asInstanceOf[String], issuedOn, courseId, batchId, eData.get(config.templateId).asInstanceOf[String])(metrics)
-            metrics.incCounter(config.successEventCount)
             val certificateAuditEvent = generateAuditEvent(userId, courseId, batchId, certificate)
             logger.info("pushAuditEvent: audit event generated for certificate : " + certificateAuditEvent.`object`.id + " with mid : " + certificateAuditEvent.mid)
             context.output(config.auditEventOutputTag, gson.toJson(certificateAuditEvent))
             logger.info("pushAuditEvent: certificate audit event success")
+            notifyUser(userId, eData.get(config.courseName).asInstanceOf[String], issuedOn, courseId, batchId, eData.get(config.templateId).asInstanceOf[String])(metrics)
+            metrics.incCounter(config.successEventCount)
           } else {
             metrics.incCounter(config.failedEventCount)
             event.put("failInfo", FailedEvent("ERR_DB_UPDATION_FAILED", "db update failed"))
