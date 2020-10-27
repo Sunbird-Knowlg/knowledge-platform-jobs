@@ -13,8 +13,6 @@ import org.sunbird.job.{BaseProcessFunction, Metrics}
 import org.sunbird.job.task.CertificatePreProcessorConfig
 import org.sunbird.job.util.CassandraUtil
 
-import scala.collection.JavaConverters._
-
 class CertificatePreProcessor(config: CertificatePreProcessorConfig)
                              (implicit val stringTypeInfo: TypeInformation[String],
                               @transient var cassandraUtil: CassandraUtil = null)

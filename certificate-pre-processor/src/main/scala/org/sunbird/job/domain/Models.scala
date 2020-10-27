@@ -35,10 +35,9 @@ case class Related(courseId: String, `type`: String = "course-completion", batch
 // template related data need to add into generate event
 case class CertTemplate(templateId: String,
                         name: String,
-                        notifyTemplate: util.Map[String, AnyRef],
                         signatoryList: util.ArrayList[util.Map[String, String]],
-                        issuer: util.Map[String, String],
-                        criteria: util.Map[String, String],
+                        issuer: util.Map[String, AnyRef],
+                        criteria: util.Map[String, AnyRef],
                         svgTemplate: String)
 
 case class CertificateData(issuedDate: String, basePath: String)

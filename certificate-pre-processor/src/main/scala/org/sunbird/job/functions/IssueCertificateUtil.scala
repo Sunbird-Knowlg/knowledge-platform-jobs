@@ -4,6 +4,8 @@ import java.util
 
 import com.datastax.driver.core.{Row, TypeTokens}
 import com.google.gson.Gson
+import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.core.`type`.TypeReference
+import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
 import org.sunbird.job.domain.{CertTemplate, GenerateRequest}
 import org.sunbird.job.task.CertificatePreProcessorConfig
@@ -14,6 +16,7 @@ object IssueCertificateUtil {
 
   private[this] val logger = LoggerFactory.getLogger(IssueCertificateUtil.getClass)
   lazy private val gson = new Gson()
+  lazy private val mapper: ObjectMapper = new ObjectMapper()
 
   def getActiveUserIds(rows: util.List[Row], edata: util.Map[String, AnyRef], templateName: String)
                       (implicit config: CertificatePreProcessorConfig): List[String] = {
@@ -77,10 +80,9 @@ object IssueCertificateUtil {
                      (implicit config: CertificatePreProcessorConfig): CertTemplate = {
     CertTemplate(templateId = template.getOrDefault(config.identifier, "").asInstanceOf[String],
       name = template.getOrDefault(config.name, "").asInstanceOf[String],
-      notifyTemplate = template.getOrDefault(config.notifyTemplate, new util.HashMap()).asInstanceOf[util.Map[String, AnyRef]],
-      signatoryList = template.getOrDefault(config.signatoryList, new util.HashMap()).asInstanceOf[util.ArrayList[util.Map[String, String]]],
-      issuer = template.getOrDefault(config.issuer, new util.HashMap()).asInstanceOf[util.Map[String, String]],
-      criteria = template.getOrDefault(config.criteria, new util.HashMap()).asInstanceOf[util.Map[String, String]],
+      signatoryList = mapper.readValue(template.getOrDefault(config.signatoryList, "").asInstanceOf[String], new TypeReference[util.ArrayList[util.Map[String,String]]]() {}),
+      issuer = mapper.readValue(template.getOrDefault(config.issuer, "").asInstanceOf[String], new TypeReference[util.Map[String,AnyRef]]() {}),
+      criteria = mapper.readValue(template.getOrDefault(config.criteria, "").asInstanceOf[String], new TypeReference[util.Map[String,AnyRef]]() {}),
       svgTemplate = template.getOrDefault(config.svgTemplate, "").asInstanceOf[String])
   }
 
