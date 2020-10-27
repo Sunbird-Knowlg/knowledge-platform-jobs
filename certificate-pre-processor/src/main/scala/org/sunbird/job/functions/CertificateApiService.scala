@@ -40,13 +40,13 @@ object CertificateApiService {
   }
 
   def readContent(courseId: String, collectionCache: DataCache)
-                 (implicit config: CertificatePreProcessorConfig, metrics: Metrics): Map[String, AnyRef] = {
+                 (implicit config: CertificatePreProcessorConfig, metrics: Metrics): util.Map[String, AnyRef] = {
     println("readContent called : courseId : " + courseId)
     val courseData = collectionCache.getWithRetry(courseId)
     metrics.incCounter(config.cacheReadCount)
     if (courseData.nonEmpty) {
       println("readContent cache called : courseData : " + courseId)
-      courseData.toMap
+      courseData.asJava
     } else {
       val httpResponse = httpUtil.get(config.lmsBaseUrl + config.contentV3Read + courseId)
       if (httpResponse.status == 200) {
@@ -55,7 +55,7 @@ object CertificateApiService {
         val result = response.getOrDefault("result", new util.HashMap()).asInstanceOf[util.Map[String, AnyRef]]
         val content = result.getOrDefault("content", new util.HashMap()).asInstanceOf[util.Map[String, AnyRef]]
         if (MapUtils.isEmpty(content)) throw new Exception("Content is empty for courseId : " + courseId)
-        content.asScala.toMap
+        content
       } else throw new Exception("Content read failed for courseId : " + courseId + " " + httpResponse.status + " :: " + httpResponse.body)
     }
   }

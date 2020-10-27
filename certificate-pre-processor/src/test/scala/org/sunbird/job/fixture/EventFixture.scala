@@ -2,44 +2,13 @@ package org.sunbird.job.fixture
 
 object EventFixture {
 
-  val EVENT_1: String =
-    """
-      |{ "actor": {
-      |    "id": "Course Certificate Pre Processor",
-      |    "type": "System"
-      |  },
-      |  "eid": "BE_JOB_REQUEST",,"edata":{"action":"issue-certificate","userIds":["95e4942d-cbe8-477d-aebd-ad8e6de4bfc8"],"courseId":"do_11305984881537024012255","batchId":"0130598559365038081","reIssue":true}, "ets": 1564144562948,
-      |  "context": {
-      |    "pdata": {
-      |      "ver": "1.0",
-      |      "id": "org.sunbird.platform"
-      |    }
-      |  },
-      |  "mid": "LP.1564144562948.0deae013-378e-4d3b-ac16-237e3fc6149a",
-      |  "object": {
-      |    "id": "batchId_courseId",
-      |    "type": "CourseCertificatePreProcessor"
-      |  }}
-      |""".stripMargin
+  val EVENT_1: String = """{ "actor": {"id": "Course Certificate Pre Processor", "type": "System"},"eid": "BE_JOB_REQUEST","edata":{"action":"issue-certificate","userIds":["95e4942d-cbe8-477d-aebd-ad8e6de4bfc8"],"courseId":"do_11305984881537024012255","batchId":"0130598559365038081","reIssue":true},"ets": 1564144562948,"context": { "pdata": {"ver": "1.0","id": "org.sunbird.platform" }},"mid": "LP.1564144562948.0deae013-378e-4d3b-ac16-237e3fc6149a","object": {"id": "batchId_courseId", "type": "CourseCertificatePreProcessor"}}""".stripMargin
 
-  val EVENT_2: String =
-    """
-      |{ "actor": {
-      |    "id": "Course Certificate Pre Processor",
-      |    "type": "System"
-      |  },
-      |  "eid": "BE_JOB_REQUEST",,"edata":{"action":"issue-certificate","userIds":["95e4942d-cbe8-477d-aebd-ad8e6de4bfc8"],"courseId":"do_11305984881537024012255","batchId":"0130598559365038081","reIssue":true}, "ets": 1564144562948,
-      |  "context": {
-      |    "pdata": {
-      |      "ver": "1.0",
-      |      "id": "org.sunbird.platform"
-      |    }
-      |  },
-      |  "mid": "LP.1564144562948.0deae013-378e-4d3b-ac16-237e3fc6149a",
-      |  "object": {
-      |    "id": "batchId_courseId",
-      |    "type": "CourseCertificatePreProcessor"
-      |  }}
-      |""".stripMargin
+  val EVENT_2: String = """{ "actor": { "id": "Course Certificate Pre Processor", "type": "System"},"eid": "BE_JOB_REQUEST","edata":{"action":"issue-certificate","userIds":["95e4942d-cbe8-477d-aebd-ad8e6de4bfc8"],"courseId":"do_11305984881537024012255","batchId":"0130598559365038081","reIssue":true},"ets": 1564144562948,"context": { "pdata": {"ver": "1.0","id": "org.sunbird.platform" }},"mid": "LP.1564144562948.0deae013-378e-4d3b-ac16-237e3fc6149a","object": {"id": "batchId_courseId", "type": "CourseCertificatePreProcessor"}}""".stripMargin
 
+  val REQUEST_EVENT:String = """{"batchId":"0131000245281587206","userId":"user001","courseId":"do_11309999837886054415","template":{"templateId":"cert_template_id","name":"Course merit certificate","notifyTemplate":{"":""},"signatoryList":[{}],"issuer":{"name":"Gujarat Council of Educational Research and Training","url":"https://gcert.gujarat.gov.in/gcert/"},"criteria":{"narrative":"course completion certificate"},"svgTemplate":"template-url.svg"},"reIssue":true}""".stripMargin
+  // reissue false
+  val REQUEST_EVENT2:String = """{"batchId":"0131000245281587206","userId":"user001","courseId":"do_11309999837886054415","template":{"templateId":"cert_template_id","name":"Course merit certificate","notifyTemplate":{"":""},"signatoryList":[{}],"issuer":{"name":"Gujarat Council of Educational Research and Training","url":"https://gcert.gujarat.gov.in/gcert/"},"criteria":{"narrative":"course completion certificate"},"svgTemplate":"template-url.svg"},"reIssue":false}""".stripMargin
+
+  val FINAL_EDATA = """{"batchId":"0131000245281587206","userId":"user001","courseId":"do_11309999837886054415","oldId":"certificateId","issuedDate":"2020-10-27","basePath":"test-path","data":[{"recipientName":"Reviewer User","recipientId":"user001"}],"orgId":"ORG_001","keys":{"id":{"testKey":"testValue"}},"courseName":"Test-audit-svg-7-oct-2","tag":"0131000245281587206","related":{"courseId":"do_11309999837886054415","type":"course-completion","batchId":"0131000245281587206"},"templateId":"cert_template_id","name":"Course merit certificate","notifyTemplate":{"":""},"signatoryList":[{}],"issuer":{"name":"Gujarat Council of Educational Research and Training","url":"https://gcert.gujarat.gov.in/gcert/"},"criteria":{"narrative":"course completion certificate"},"svgTemplate":"template-url.svg"}""".stripMargin
 }

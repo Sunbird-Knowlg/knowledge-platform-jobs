@@ -3,7 +3,6 @@ package org.sunbird.job.functions
 import java.util
 
 import com.google.gson.Gson
-import org.apache.commons.collections.CollectionUtils
 import org.apache.commons.lang3.StringUtils
 import org.sunbird.job.Metrics
 import org.sunbird.job.cache.DataCache
@@ -82,7 +81,7 @@ class CertificateEventGenerator(config: CertificatePreProcessorConfig)
     println("setEventRelatedData called edata : " + edata)
     val related = Related(courseId = edata.get(config.courseId).asInstanceOf[String],
       batchId = edata.get(config.batchId).asInstanceOf[String])
-    edata.putAll(gson.fromJson(gson.toJson(related), new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]])
+    edata.put(config.related, gson.fromJson(gson.toJson(related), new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]])
     println("setEventRelatedData called edata : " + edata)
   }
 
