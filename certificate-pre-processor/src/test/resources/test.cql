@@ -61,3 +61,6 @@ INSERT INTO sunbird_courses.assessment_aggregator(user_id, course_id, batch_id, 
 //event 2
 INSERT INTO sunbird_courses.course_batch(courseid, batchid,cert_templates) VALUES ('do_11309999837886054416','0131000245281587207',{'template_01_dev_001':{'criteria': '{"enrollment":{"status":2}}', 'identifier': 'template_01_dev_001', 'issuer': '{"name":"Gujarat Council of Educational Research and Training","publicKey":["7","8"],"url":"https://gcert.gujarat.gov.in/gcert/"}', 'name': 'Course merit certificate', 'signatoryList': '[{"image":"https://cdn.pixabay.com/photo/2014/11/09/08/06/signature-523237__340.jpg","name":"CEO Gujarat","id":"CEO","designation":"CEO"}]'}});
 INSERT INTO sunbird_courses.user_enrolments(userid, courseid, batchid,completedon) VALUES ('user002','do_11309999837886054416','0131000245281587207', toTimeStamp(toDate(now())));
+//event 3
+//empty cert_template
+INSERT INTO sunbird_courses.course_batch(courseid, batchid, cert_templates) VALUES ('course_002','batch_002',{});
