@@ -4,6 +4,7 @@ import java.util
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
+import com.google.gson.Gson
 import com.typesafe.config.{Config, ConfigFactory}
 import org.cassandraunit.CQLDataLoader
 import org.cassandraunit.dataset.cql.FileCQLDataSet
@@ -35,6 +36,7 @@ class CertificateEventGeneratorSpec extends BaseTestSpec {
   var cassandraUtil: CassandraUtil = _
   var redisServer: RedisServer = _
   val redisConnect = new RedisConnect(jobConfig)
+  lazy private val gson = new Gson()
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
@@ -67,8 +69,7 @@ class CertificateEventGeneratorSpec extends BaseTestSpec {
   it should "prepareGenerateEventEdata" in {
     mockAll()
     val dataCache = new DataCache(jobConfig, redisConnect, 2, List())
-    val generateRequest = prepareGenerateRequest()
-    val edata = generateRequest.getClass.getDeclaredFields.map(_.getName).zip(generateRequest.productIterator.to).toMap.asInstanceOf[Map[String, AnyRef]].asJava
+    val edata = gson.fromJson(gson.toJson(prepareGenerateRequest()), new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]]
 //    new CertificateEventGenerator(jobConfig)(metrics, cassandraUtil).prepareGenerateEventEdata(edata, dataCache)
   }
 
@@ -79,10 +80,11 @@ class CertificateEventGeneratorSpec extends BaseTestSpec {
     when(mockHttpUtil.post(endsWith("/v1/org/read"), any[String])).thenReturn(HTTPResponse(200, """{ "id": "api.org.read", "ver": "v1", "ts": "2020-10-24 14:47:23:631+0000", "params": { "resmsgid": null, "msgid": "cc58e03e2789f6db8b4695a43a5c8a39", "err": null, "status": "success", "errmsg": null }, "responseCode": "OK", "result": {"keys": {"signKeys": [{"testKey": "testValue"}]}}}""".stripMargin))
   }
 
+  // instead create a event in event fixture
   private def prepareGenerateRequest() = {
     val edata = Map(jobConfig.batchId -> "0131000245281587206", jobConfig.courseId -> "do_11309999837886054415").asInstanceOf[Map[String, AnyRef]].asJava
     val certTemplate = CertTemplate(templateId = "cert_template_id",
-      name = "cert_template_name",
+      name = "Course merit certificate",
       notifyTemplate = Map("" -> "".asInstanceOf[AnyRef]).asJava,
       signatoryList = new util.ArrayList[util.Map[String, String]]() {
         {
@@ -93,12 +95,12 @@ class CertificateEventGeneratorSpec extends BaseTestSpec {
         "url" -> "https://gcert.gujarat.gov.in/gcert/").asJava,
       criteria = Map("narrative" -> "course completion certificate").asJava,
       svgTemplate = "template-url.svg")
-    val template = certTemplate.getClass.getDeclaredFields.map(_.getName).zip(certTemplate.productIterator.to).toMap.asInstanceOf[Map[String, AnyRef]].asJava
+    val template = gson.fromJson(gson.toJson(certTemplate), new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]]
     GenerateRequest(batchId = edata.get(jobConfig.batchId).asInstanceOf[String],
       courseId = edata.get(jobConfig.courseId).asInstanceOf[String],
       userId = "user001",
       template = template,
-      reIssue = if (edata.containsKey(jobConfig.reIssue)) edata.get(jobConfig.reIssue).asInstanceOf[Boolean] else false)
+      reIssue = if (edata.containsKey(jobConfig.reIssue)) edata.get(jobConfig.reIssue).asInstanceOf[Boolean] else true)
   }
 
   private def testCassandraUtil(cassandraUtil: CassandraUtil): Unit = {

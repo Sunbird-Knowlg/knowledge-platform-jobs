@@ -3,6 +3,7 @@ package org.sunbird.job.functions
 import java.util
 
 import com.datastax.driver.core.{Row, TypeTokens}
+import com.google.gson.Gson
 import org.slf4j.LoggerFactory
 import org.sunbird.job.domain.{CertTemplate, GenerateRequest}
 import org.sunbird.job.task.CertificatePreProcessorConfig
@@ -12,6 +13,7 @@ import scala.collection.JavaConverters._
 object IssueCertificateUtil {
 
   private[this] val logger = LoggerFactory.getLogger(IssueCertificateUtil.getClass)
+  lazy private val gson = new Gson()
 
   def getActiveUserIds(rows: util.List[Row], edata: util.Map[String, AnyRef], templateName: String)
                       (implicit config: CertificatePreProcessorConfig): List[String] = {
@@ -84,7 +86,7 @@ object IssueCertificateUtil {
 
   def prepareGenerateRequest(edata: util.Map[String, AnyRef], certTemplate: CertTemplate, userId: String)
                             (implicit config: CertificatePreProcessorConfig): GenerateRequest = {
-    val template = certTemplate.getClass.getDeclaredFields.map(_.getName).zip(certTemplate.productIterator.to).toMap.asInstanceOf[Map[String, AnyRef]].asJava
+    val template = gson.fromJson(gson.toJson(certTemplate), new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]]
     GenerateRequest(batchId = edata.get(config.batchId).asInstanceOf[String],
       courseId = edata.get(config.courseId).asInstanceOf[String],
       userId = userId,

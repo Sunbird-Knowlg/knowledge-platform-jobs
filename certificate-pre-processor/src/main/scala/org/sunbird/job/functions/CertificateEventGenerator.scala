@@ -2,6 +2,7 @@ package org.sunbird.job.functions
 
 import java.util
 
+import com.google.gson.Gson
 import org.apache.commons.collections.CollectionUtils
 import org.apache.commons.lang3.StringUtils
 import org.sunbird.job.Metrics
@@ -15,6 +16,8 @@ import scala.collection.JavaConverters._
 class CertificateEventGenerator(config: CertificatePreProcessorConfig)
                                (implicit val metrics: Metrics,
                                 @transient var cassandraUtil: CassandraUtil = null) {
+
+  lazy private val gson = new Gson()
 
   def prepareGenerateEventEdata(edata: util.Map[String, AnyRef], collectionCache: DataCache): util.Map[String, AnyRef] = {
     println("prepareGenerateEventEdata called : " + edata)
@@ -36,15 +39,12 @@ class CertificateEventGenerator(config: CertificatePreProcessorConfig)
     val issuedCertificates = issuedCertificatesResultMap.get(config.issued_certificates).asInstanceOf[util.ArrayList[util.Map[String, AnyRef]]]
     val issuedDate = issuedCertificatesResultMap.get(config.issuedDate).asInstanceOf[String]
     val certTemplate = edata.get(config.template).asInstanceOf[util.Map[String, AnyRef]]
-    if (CollectionUtils.isNotEmpty(issuedCertificates) && edata.get(config.reIssue).asInstanceOf[Boolean]) {
+    if (edata.containsKey(config.reIssue) && edata.get(config.reIssue).asInstanceOf[Boolean]) {
       val certificates = issuedCertificates.asScala.filter((cert: util.Map[String, AnyRef]) => StringUtils.equalsIgnoreCase(cert.get(config.name).asInstanceOf[String], certTemplate.get(config.name).asInstanceOf[String])).toList
-      //quetion : is alweays only one certificate will be there for one template
-      val certData = CertificateData(issuedDate = issuedDate, basePath = "https://" + config.basePath + "/certs")
-      if (edata.containsKey(config.reIssue) && edata.get(config.reIssue).asInstanceOf[Boolean])
-        edata.put(config.oldId, certificates.head.getOrDefault(config.identifier, ""))
-      edata.putAll(certData.getClass.getDeclaredFields.map(_.getName).zip(certData.productIterator.to).toMap.asInstanceOf[Map[String, AnyRef]].asJava)
-      println("setIssuedCertificate finish edata : " + edata.toString)
+      edata.put(config.oldId, certificates.head.getOrDefault(config.identifier, ""))
     }
+    edata.putAll(gson.fromJson(gson.toJson(CertificateData(issuedDate = issuedDate, basePath = config.certBasePath)), new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]])
+    println("setIssuedCertificate finish edata : " + edata.toString)
   }
 
   private def setUserData(edata: util.Map[String, AnyRef]) {
@@ -58,15 +58,14 @@ class CertificateEventGenerator(config: CertificatePreProcessorConfig)
     },
       orgId = userResponse.get(config.rootOrgId).asInstanceOf[String]
     )
-    edata.putAll(userDetails.getClass.getDeclaredFields.map(_.getName).zip(userDetails.productIterator.to).toMap.asInstanceOf[Map[String, AnyRef]].asJava)
+    edata.putAll(gson.fromJson(gson.toJson(userDetails), new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]])
     println("setUserData finished edata : " + edata.toString)
   }
 
   private def setEventOrgData(edata: util.Map[String, AnyRef]) {
     println("setEventOrgData called edata : " + edata.toString)
     val keys = CertificateApiService.readOrgKeys(edata.get(config.orgId).asInstanceOf[String])(config)
-    val orgDetails = OrgDetails(keys = keys)
-    edata.putAll(orgDetails.getClass.getDeclaredFields.map(_.getName).zip(orgDetails.productIterator.to).toMap.asInstanceOf[Map[String, AnyRef]].asJava)
+    edata.putAll(gson.fromJson(gson.toJson(OrgDetails(keys = keys)), new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]])
     println("setEventOrgData finished edata : " + edata.toString)
   }
 
@@ -75,7 +74,7 @@ class CertificateEventGenerator(config: CertificatePreProcessorConfig)
     val content = CertificateApiService.readContent(edata.get(config.courseId).asInstanceOf[String], collectionCache)(config, metrics)
     val courseDetails = CourseDetails(courseName = content.get(config.name).asInstanceOf[String],
       tag = edata.get(config.batchId).asInstanceOf[String])
-    edata.putAll(courseDetails.getClass.getDeclaredFields.map(_.getName).zip(courseDetails.productIterator.to).toMap.asInstanceOf[Map[String, AnyRef]].asJava)
+    edata.putAll(gson.fromJson(gson.toJson(courseDetails), new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]])
     println("setCourseDetails finished edata : " + edata)
   }
 
@@ -83,7 +82,7 @@ class CertificateEventGenerator(config: CertificatePreProcessorConfig)
     println("setEventRelatedData called edata : " + edata)
     val related = Related(courseId = edata.get(config.courseId).asInstanceOf[String],
       batchId = edata.get(config.batchId).asInstanceOf[String])
-    edata.putAll(related.getClass.getDeclaredFields.map(_.getName).zip(related.productIterator.to).toMap.asInstanceOf[Map[String, AnyRef]].asJava)
+    edata.putAll(gson.fromJson(gson.toJson(related), new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]])
     println("setEventRelatedData called edata : " + edata)
   }
 
