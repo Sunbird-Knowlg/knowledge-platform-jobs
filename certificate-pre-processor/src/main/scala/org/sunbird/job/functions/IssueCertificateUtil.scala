@@ -82,8 +82,9 @@ object IssueCertificateUtil {
       svgTemplate = template.getOrDefault(config.svgTemplate, "").asInstanceOf[String])
   }
 
-  def prepareGenerateRequest(edata: util.Map[String, AnyRef], template: CertTemplate, userId: String)
+  def prepareGenerateRequest(edata: util.Map[String, AnyRef], certTemplate: CertTemplate, userId: String)
                             (implicit config: CertificatePreProcessorConfig): GenerateRequest = {
+    val template = certTemplate.getClass.getDeclaredFields.map(_.getName).zip(certTemplate.productIterator.to).toMap.asInstanceOf[Map[String, AnyRef]].asJava
     GenerateRequest(batchId = edata.get(config.batchId).asInstanceOf[String],
       courseId = edata.get(config.courseId).asInstanceOf[String],
       userId = userId,

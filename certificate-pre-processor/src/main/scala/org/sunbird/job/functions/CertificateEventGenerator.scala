@@ -18,17 +18,11 @@ class CertificateEventGenerator(config: CertificatePreProcessorConfig)
 
   def prepareGenerateEventEdata(edata: util.Map[String, AnyRef], collectionCache: DataCache): util.Map[String, AnyRef] = {
     println("prepareGenerateEventEdata called : " + edata)
-    //done
     setIssuedCertificate(edata)
-    //done
     setUserData(edata)
-    //done
     setEventOrgData(edata)
-    //done
     setCourseDetails(edata, collectionCache)
-    //done
     setEventRelatedData(edata)
-    //done
     setEventSvgData(edata)
     if (edata.containsKey(config.reIssue))
       edata.remove(config.reIssue)
@@ -58,8 +52,8 @@ class CertificateEventGenerator(config: CertificatePreProcessorConfig)
     val userResponse = CertificateApiService.getUserDetails(edata.get(config.userId).asInstanceOf[String])(config)
     val userDetails = UserDetails(data = new util.ArrayList[Data]() {
       {
-        Data(recipientId = edata.get(config.userId).asInstanceOf[String],
-          recipientName = (userResponse.get(config.firstName) + " " + userResponse.get(config.lastName)).trim)
+        add(Data(recipientId = edata.get(config.userId).asInstanceOf[String],
+          recipientName = (userResponse.get(config.firstName) + " " + userResponse.get(config.lastName)).trim))
       }
     },
       orgId = userResponse.get(config.rootOrgId).asInstanceOf[String]

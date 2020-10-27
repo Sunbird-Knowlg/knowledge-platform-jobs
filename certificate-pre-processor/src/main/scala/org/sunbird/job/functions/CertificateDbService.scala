@@ -66,7 +66,7 @@ object CertificateDbService {
   }
 
   def readUserCertificate(edata: util.Map[String, AnyRef])
-                         (implicit metrics: Metrics, @transient cassandraUtil: CassandraUtil, config: CertificatePreProcessorConfig): Map[String, AnyRef] = {
+                         (implicit metrics: Metrics, @transient cassandraUtil: CassandraUtil, config: CertificatePreProcessorConfig): util.Map[String, AnyRef] = {
     println("readUserCertificate called edata : " + edata)
     val selectQuery = QueryBuilder.select().all().from(config.dbKeyspace, config.dbUserTable)
     selectQuery.where.and(QueryBuilder.in(config.userEnrolmentsPrimaryKey.head, edata.get(config.userId).asInstanceOf[String])).
@@ -78,7 +78,7 @@ object CertificateDbService {
     metrics.incCounter(config.dbReadCount)
     if (CollectionUtils.isNotEmpty(rows)) {
       Map(config.issued_certificates -> rows.asScala.head.getObject(config.issued_certificates),
-        config.issuedDate -> simpleDateFormat.format(rows.asScala.head.getTimestamp(config.completedOn)))
+        config.issuedDate -> simpleDateFormat.format(rows.asScala.head.getTimestamp(config.completedOn))).asJava
     } else {
       throw new Exception("User : " + edata.get(config.userId) + " is not enrolled for batch :  "
         + edata.get(config.batchId) + " and course : " + edata.get(config.courseId))

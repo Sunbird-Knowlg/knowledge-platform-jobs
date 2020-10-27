@@ -30,6 +30,9 @@ import scala.collection.JavaConverters._
 class CertificatePreProcessorStreamTaskTestSpec extends BaseTestSpec {
 
 
+  val config: Config = ConfigFactory.load("test.conf")
+  val jobConfig: CertificatePreProcessorConfig = new CertificatePreProcessorConfig(config)
+
   implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
   implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
 
@@ -43,8 +46,6 @@ class CertificatePreProcessorStreamTaskTestSpec extends BaseTestSpec {
   var contentCacheDb: Jedis = _
   val mockKafkaUtil: FlinkKafkaConnector = mock[FlinkKafkaConnector](Mockito.withSettings().serializable())
   val gson = new Gson()
-  val config: Config = ConfigFactory.load("test.conf")
-  val jobConfig: CertificatePreProcessorConfig = new CertificatePreProcessorConfig(config)
   var cassandraUtil: CassandraUtil = _
 
   override protected def beforeAll(): Unit = {
