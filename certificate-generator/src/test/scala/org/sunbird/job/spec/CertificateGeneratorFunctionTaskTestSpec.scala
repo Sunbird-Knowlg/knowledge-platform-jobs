@@ -18,7 +18,6 @@ import org.mockito.Mockito._
 import org.sunbird.incredible.processor.store.{AzureStore, ICertStore}
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.fixture.EventFixture
-import org.sunbird.job.functions.StorageService
 import org.sunbird.job.task.{CertificateGeneratorConfig, CertificateGeneratorStreamTask}
 import org.sunbird.job.util.{HTTPResponse, HttpUtil}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
