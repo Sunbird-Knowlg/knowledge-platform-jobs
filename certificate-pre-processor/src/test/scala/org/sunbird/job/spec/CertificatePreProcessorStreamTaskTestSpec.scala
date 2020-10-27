@@ -83,6 +83,7 @@ class CertificatePreProcessorStreamTaskTestSpec extends BaseTestSpec {
   "CertificatePreProcessor" should "send generate event to next topic" in {
     when(mockKafkaUtil.kafkaMapSource(jobConfig.kafkaInputTopic)).thenReturn(new CertificatePreProcessorMapSource)
     when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaOutputTopic)).thenReturn(new outputEventSink)
+    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaFailedEventTopic)).thenReturn(new outputFailedEventSink)
 //    new CertificatePreProcessorStreamTask(jobConfig, mockKafkaUtil).process()
   }
 
@@ -95,6 +96,19 @@ class CertificatePreProcessorStreamTaskTestSpec extends BaseTestSpec {
     override def invoke(value: String): Unit = {
       synchronized {
         OutputEventSink.values.add(value)
+      }
+    }
+  }
+
+  object OutputFailedEventSink {
+    val values: util.List[String] = new util.ArrayList()
+  }
+
+  class outputFailedEventSink extends SinkFunction[String] {
+
+    override def invoke(value: String): Unit = {
+      synchronized {
+        OutputFailedEventSink.values.add(value)
       }
     }
   }

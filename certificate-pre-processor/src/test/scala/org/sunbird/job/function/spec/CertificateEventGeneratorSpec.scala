@@ -69,6 +69,16 @@ class CertificateEventGeneratorSpec extends BaseTestSpec {
     dataCache.close()
   }
 
+  it should "prepareGenerateEventEdata with reIssue false" in {
+    mockAll()
+    val dataCache = new DataCache(jobConfig, redisConnect, 2, List())
+    dataCache.init()
+    val edata = gson.fromJson(EventFixture.REQUEST_EVENT_2, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]]
+    new CertificateEventGenerator(jobConfig)(metrics, cassandraUtil).prepareGenerateEventEdata(edata, dataCache)
+    assert(gson.toJson(edata).equals(EventFixture.FINAL_EDATA_2))
+    dataCache.close()
+  }
+
   private def mockAll(): Unit = {
     CertificateApiService.httpUtil = mockHttpUtil
     when(mockHttpUtil.post(endsWith("/v1/search"), any[String])).thenReturn(HTTPResponse(200, """{"id":"api.user.search","ver":"v1","ts":"2020-10-24 14:24:57:555+0000","params":{"resmsgid":null,"msgid":"df3342f1082aa191128453838fb4e61f","err":null,"status":"success","errmsg":null},"responseCode":"OK","result":{"count":1,"content":[{"firstName":"Reviewer","lastName":"User","maskedPhone":"******7418","rootOrgName":"Sunbird","userName":"ntptest103","rootOrgId":"ORG_001"}]}}""".stripMargin))

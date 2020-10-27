@@ -28,8 +28,8 @@ object CertificateUserUtil {
 
     val templateFilterKeys: List[String] = (criteria.keySet().asScala ++ config.certFilterKeys).toList.distinct
     val usersMap: Map[String, List[String]] = Map("enrollment" -> enrollmentList, "assessment" -> assessmentList, "user" -> userList)
-    val usersToIssue = templateFilterKeys.filter(key => criteria.containsKey(key)).flatMap(key => usersMap.get(key).asInstanceOf[List[String]]).distinct
-    println("getUserIdsBasedOnCriteria usersToIssue : " + usersToIssue)
+    val usersToIssue = templateFilterKeys.filter(key => criteria.containsKey(key)).flatMap(key => usersMap.asJava.get(key).asInstanceOf[List[String]]).distinct
+    println("getUserIdsBasedOnCriteria finished usersToIssue : " + usersToIssue)
     usersToIssue
   }
 

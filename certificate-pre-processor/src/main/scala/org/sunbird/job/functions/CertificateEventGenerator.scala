@@ -19,7 +19,7 @@ class CertificateEventGenerator(config: CertificatePreProcessorConfig)
   lazy private val gson = new Gson()
 
   def prepareGenerateEventEdata(edata: util.Map[String, AnyRef], collectionCache: DataCache): util.Map[String, AnyRef] = {
-    println("prepareGenerateEventEdata called : " + edata)
+    println("prepareGenerateEventEdata called edata : " + edata)
     setIssuedCertificate(edata)
     setUserData(edata)
     setEventOrgData(edata)
@@ -28,7 +28,7 @@ class CertificateEventGenerator(config: CertificatePreProcessorConfig)
     setEventSvgData(edata)
     if (edata.containsKey(config.reIssue))
       edata.remove(config.reIssue)
-    println("prepareGenerateEventEdata called : " + edata)
+    println("prepareGenerateEventEdata finished edata : " + edata)
     edata
   }
 
