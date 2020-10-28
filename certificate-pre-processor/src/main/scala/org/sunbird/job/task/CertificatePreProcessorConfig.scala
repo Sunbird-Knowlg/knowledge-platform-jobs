@@ -107,4 +107,5 @@ class CertificatePreProcessorConfig(override val config: Config) extends BaseJob
   val total_max_score = "total_max_score"
   val svgTemplate = "svgTemplate"
   val related = "related"
+  val url = "url"
 }
