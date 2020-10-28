@@ -64,7 +64,7 @@ class CertificatePreProcessorConfig(override val config: Config) extends BaseJob
   val learnerBasePath = config.getString("learner-service.basePath")
 
   // ApiUrl
-  val contentV3Read = "/content/v3/read"
+  val contentV3Read = "/content/v3/read/"
   val userV1Search = "/private/user/v1/search"
   val orgV1Read = "/v1/org/read"
 
