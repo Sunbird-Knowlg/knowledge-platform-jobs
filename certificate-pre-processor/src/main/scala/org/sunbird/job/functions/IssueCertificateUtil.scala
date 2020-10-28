@@ -92,8 +92,8 @@ object IssueCertificateUtil {
     println("prepareGenerateRequest called : certTemplate : " + certTemplate.toString)
     val template = gson.fromJson(gson.toJson(certTemplate), new util.HashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]]
     GenerateRequest(edata.get(config.batchId).asInstanceOf[String],
-      edata.get(config.courseId).asInstanceOf[String],
       userId,
+      edata.get(config.courseId).asInstanceOf[String],
       template,
       {if (edata.containsKey(config.reIssue)) edata.get(config.reIssue).asInstanceOf[Boolean] else false})
   }
