@@ -102,7 +102,7 @@ class CertificatePreProcessor(config: CertificatePreProcessorConfig)
   private def generateCertificateEvent(edata: util.Map[String, AnyRef]): CertificateGenerateEvent = {
     CertificateGenerateEvent(
       edata = edata,
-      `object` = EventObject(id = edata.get(config.userId).asInstanceOf[String], `type` = "GenerateCertificate")
+      `object` = EventObject(edata.get(config.userId).asInstanceOf[String], "GenerateCertificate")
     )
   }
 }
