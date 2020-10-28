@@ -56,21 +56,29 @@ class CertificatePreProcessor(config: CertificatePreProcessorConfig)
   private def prepareEventData(edata: util.Map[String, AnyRef], collectionCache: DataCache,
                                context: ProcessFunction[util.Map[String, AnyRef], String]#Context)
                               (implicit metrics: Metrics, config: CertificatePreProcessorConfig) {
-    val certTemplates = fetchCertTemplates(edata)(metrics)
-    certTemplates.keySet().forEach(templateId => {
-      //validate criteria
-      val certTemplate = certTemplates.get(templateId).asInstanceOf[util.Map[String, AnyRef]]
-      val usersToIssue = CertificateUserUtil.getUserIdsBasedOnCriteria(certTemplate, edata)
-      //iterate over users and send to generate event method
-      val template = IssueCertificateUtil.prepareTemplate(certTemplate)(config)
-      usersToIssue.foreach(user => {
-        val certEvent = generateCertificateEvent(user, template, edata, collectionCache)
-        println("final event send to next topic : " + gson.toJson(certEvent))
-        context.output(config.generateCertificateOutputTag, gson.toJson(certEvent))
-        logger.info("Certificate generate event successfully send to next topic")
-        metrics.incCounter(config.successEventCount)
+    try {
+      val certTemplates = fetchCertTemplates(edata)(metrics)
+      certTemplates.keySet().forEach(templateId => {
+        //validate criteria
+        val certTemplate = certTemplates.get(templateId).asInstanceOf[util.Map[String, AnyRef]]
+        val usersToIssue = CertificateUserUtil.getUserIdsBasedOnCriteria(certTemplate, edata)
+        //iterate over users and send to generate event method
+        val template = IssueCertificateUtil.prepareTemplate(certTemplate)(config)
+        usersToIssue.foreach(user => {
+          val certEvent = generateCertificateEvent(user, template, edata, collectionCache)
+          println("final event send to next topic : " + gson.toJson(certEvent))
+          context.output(config.generateCertificateOutputTag, gson.toJson(certEvent))
+          logger.info("Certificate generate event successfully sent to next topic")
+          metrics.incCounter(config.successEventCount)
+        })
       })
-    })
+    } catch {
+      case ex: Exception => {
+        context.output(config.failedEventOutputTag, gson.toJson(edata))
+        logger.info("Certificate generate event failed sent to next topic : " + ex.getMessage + " " + ex )
+        metrics.incCounter(config.failedEventCount)
+      }
+    }
   }
 
   private def fetchCertTemplates(edata: util.Map[String, AnyRef])(implicit metrics: Metrics): util.Map[String, AnyRef] = {

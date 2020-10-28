@@ -39,10 +39,13 @@ class CertificateEventGenerator(config: CertificatePreProcessorConfig)
     val issuedCertificates = issuedCertificatesResultMap.get(config.issued_certificates).asInstanceOf[util.ArrayList[util.Map[String, AnyRef]]]
     val issuedDate = issuedCertificatesResultMap.get(config.issuedDate).asInstanceOf[String]
     val certTemplate = edata.get(config.template).asInstanceOf[util.Map[String, AnyRef]]
-    if (edata.containsKey(config.reIssue) && edata.get(config.reIssue).asInstanceOf[Boolean]) {
-      val certificates = issuedCertificates.asScala.filter((cert: util.Map[String, AnyRef]) => StringUtils.equalsIgnoreCase(cert.get(config.name).asInstanceOf[String], certTemplate.get(config.name).asInstanceOf[String])).toList
-      if (certificates.nonEmpty)
-        edata.put(config.oldId, certificates.head.getOrDefault(config.identifier, ""))
+    val certificates = issuedCertificates.asScala.filter((cert: util.Map[String, AnyRef]) => StringUtils.equalsIgnoreCase(cert.get(config.name).asInstanceOf[String], certTemplate.get(config.name).asInstanceOf[String])).toList
+    if (certificates.nonEmpty && !edata.get(config.reIssue).asInstanceOf[Boolean]) {
+      throw new Exception("Certificate is available for batchId : " + edata.get(config.batchId) +
+        ", courseId : " + edata.get(config.courseId) + " and userId : " + edata.get(config.userId) + ". Not applied for reIssue.")
+    }
+    if (certificates.nonEmpty) {
+      edata.put(config.oldId, certificates.head.getOrDefault(config.identifier, ""))
     }
     edata.putAll(gson.fromJson(gson.toJson(CertificateData(issuedDate = issuedDate, basePath = config.certBasePath)), new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]])
     println("setIssuedCertificate finish edata : " + edata.toString)
