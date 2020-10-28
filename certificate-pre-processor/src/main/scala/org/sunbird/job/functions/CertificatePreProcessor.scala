@@ -103,11 +103,17 @@ class CertificatePreProcessor(config: CertificatePreProcessorConfig)
   }
 
   private def generateCertificateFinalEvent(edata: util.Map[String, AnyRef]): util.Map[String, AnyRef] = {
-    Map("eid" -> "BE_JOB_REQUEST", "ets" -> System.currentTimeMillis().asInstanceOf[AnyRef],
-     "mid" -> s"LMS.${UUID.randomUUID().toString}", "edata" -> edata,
-     "object" -> Map("id" -> edata.get(config.userId).asInstanceOf[String], "type" -> "GenerateCertificate"),
-     "context" -> Map("pdata" -> Map("ver" -> "1.0", "id" -> "org.sunbird.platform")),
-     "actor" -> Map("id" -> "Certificate Generator", "type" -> "System")
-   ).asJava
+    new util.HashMap[String, AnyRef](){{
+      put("eid","BE_JOB_REQUEST")
+      put("ets",System.currentTimeMillis().asInstanceOf[AnyRef])
+      put("mid",s"LMS.${UUID.randomUUID().toString}")
+      put("edata",edata)
+      put("object",new util.HashMap[String, AnyRef]{{put("id",edata.get(config.userId).asInstanceOf[String])}})
+      put("type","GenerateCertificate")
+      put("context",new util.HashMap[String, AnyRef]{{put("pdata", new util.HashMap[String, AnyRef](){{put("ver" -> "1.0")
+        put("id","org.sunbird.platform")}})}})
+      put("actor",new util.HashMap[String, AnyRef]{{put("id","Certificate Generator")
+         put("type","System")}})
+    }}
   }
 }

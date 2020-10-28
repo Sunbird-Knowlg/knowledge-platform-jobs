@@ -78,6 +78,7 @@ object IssueCertificateUtil {
 
   def prepareTemplate(template: util.Map[String, AnyRef])
                      (implicit config: CertificatePreProcessorConfig): CertTemplate = {
+    println("prepareTemplate called : template : " + template.toString)
     CertTemplate(templateId = template.getOrDefault(config.identifier, "").asInstanceOf[String],
       name = template.getOrDefault(config.name, "").asInstanceOf[String],
       signatoryList = mapper.readValue(template.getOrDefault(config.signatoryList, "").asInstanceOf[String], new TypeReference[util.ArrayList[util.Map[String,String]]]() {}),
