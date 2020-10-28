@@ -1,0 +1,19 @@
+{
+  "title": "Signatory Extension",
+  "@context": {
+    "id": "@id",
+    "type": "@type",
+    "obi": "https://w3id.org/openbadges#",
+    "signatoryExtension": "http://localhost:8080/_schemas/Extensions/SignatoryExtension#",
+    "schema": "http://schema.org/",
+    "designation": "signatoryExtension:designation",
+    "image": "signatoryExtension:image",
+    "publicKey": "signatoryExtension:publicKey"
+  },
+  "obi:validation": [
+    {
+      "obi:validatesType": "extensions:SignatoryExtension",
+      "obi:validationSchema": "http://localhost:8080/_schemas/Extensions/SignatoryExtension/schema.json"
+    }
+  ]
+}
