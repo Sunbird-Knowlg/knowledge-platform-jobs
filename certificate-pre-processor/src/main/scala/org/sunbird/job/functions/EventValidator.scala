@@ -18,7 +18,7 @@ object EventValidator {
     val action = edata.getOrDefault(config.action, "").asInstanceOf[String]
     val courseId = edata.getOrDefault(config.courseId, "").asInstanceOf[String]
     val batchId = edata.getOrDefault(config.batchId, "").asInstanceOf[String]
-    val userIds = edata.getOrDefault(config.userIds, "").asInstanceOf[util.ArrayList[String]]
+    val userIds = edata.getOrDefault(config.userIds, new util.ArrayList[String](){}).asInstanceOf[util.ArrayList[String]]
     println(StringUtils.equalsIgnoreCase(action, config.issueCertificate) + " " + StringUtils.isNotBlank(courseId)
       + " " + StringUtils.isNotBlank(batchId) + " " + CollectionUtils.isNotEmpty(userIds))
     StringUtils.equalsIgnoreCase(action, config.issueCertificate) &&
