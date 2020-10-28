@@ -3,10 +3,10 @@ package org.sunbird.job.functions
 import java.util
 import java.util.UUID
 
-import com.google.gson.Gson
 import org.apache.commons.lang3.StringUtils
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
+import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cache.{DataCache, RedisConnect}
@@ -20,7 +20,7 @@ class CertificatePreProcessor(config: CertificatePreProcessorConfig)
                               @transient var cassandraUtil: CassandraUtil = null)
   extends BaseProcessFunction[java.util.Map[String, AnyRef], String](config) {
 
-  lazy private val gson = new Gson()
+  lazy private val mapper: ObjectMapper = new ObjectMapper()()
   private[this] val logger = LoggerFactory.getLogger(classOf[CertificatePreProcessor])
   private var collectionCache: DataCache = _
 
@@ -65,24 +65,27 @@ class CertificatePreProcessor(config: CertificatePreProcessorConfig)
         val certTemplate = certTemplates.get(templateId).asInstanceOf[util.Map[String, AnyRef]]
         val usersToIssue = CertificateUserUtil.getUserIdsBasedOnCriteria(certTemplate, edata)
         val templateUrl = certTemplate.getOrDefault(config.url, "").asInstanceOf[String]
-        if(StringUtils.isBlank(templateUrl) || !StringUtils.endsWith(templateUrl, ".svg")) {
-          logger.info("Invalid template: Certificate generate event is skipped: " + edata)
-          metrics.incCounter(config.skippedEventCount)
-          return 
+        scala.util.control.Breaks.breakable {
+          if(StringUtils.isBlank(templateUrl) || !StringUtils.endsWith(templateUrl, ".svg")) {
+            logger.info("Invalid template: Certificate generate event is skipped: " + edata)
+            metrics.incCounter(config.skippedEventCount)
+            scala.util.control.Breaks.break
+          } else {
+            //iterate over users and send to generate event method
+            val template = IssueCertificateUtil.prepareTemplate(certTemplate)(config)
+            usersToIssue.foreach(user => {
+              val certEvent = generateCertificateEvent(user, template, edata, collectionCache)
+              println("final event send to next topic : " + mapper.writeValueAsString(certEvent))
+              context.output(config.generateCertificateOutputTag, mapper.writeValueAsString(certEvent))
+              logger.info("Certificate generate event successfully sent to next topic")
+              metrics.incCounter(config.successEventCount)
+            })
+          }
         }
-        //iterate over users and send to generate event method
-        val template = IssueCertificateUtil.prepareTemplate(certTemplate)(config)
-        usersToIssue.foreach(user => {
-          val certEvent = generateCertificateEvent(user, template, edata, collectionCache)
-          println("final event send to next topic : " + gson.toJson(certEvent))
-          context.output(config.generateCertificateOutputTag, certEvent)
-          logger.info("Certificate generate event successfully sent to next topic")
-          metrics.incCounter(config.successEventCount)
-        })
       })
     } catch {
       case ex: Exception => {
-        context.output(config.failedEventOutputTag, gson.toJson(edata))
+        context.output(config.failedEventOutputTag, mapper.writeValueAsString(edata))
         logger.info("Certificate generate event failed sent to next topic : " + ex.getMessage + " " + ex )
         metrics.incCounter(config.failedEventCount)
       }
@@ -100,7 +103,7 @@ class CertificatePreProcessor(config: CertificatePreProcessorConfig)
                                       (implicit metrics: Metrics): java.util.Map[String, AnyRef] = {
     println("generateCertificatesEvent called userId : " + userId)
     val generateRequest = IssueCertificateUtil.prepareGenerateRequest(edata, template, userId)(config)
-    val edataRequest = gson.fromJson(gson.toJson(generateRequest), new util.HashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]]
+    val edataRequest = mapper.readValue(mapper.writeValueAsString(generateRequest), classOf[java.util.Map[String, AnyRef]]).asInstanceOf[util.Map[String, AnyRef]]
     // generate certificate event edata
     val eventEdata = new CertificateEventGenerator(config)(metrics, cassandraUtil).prepareGenerateEventEdata(edataRequest, collectionCache)
     println("generateCertificateEvent : eventEdata : " + eventEdata)
