@@ -63,12 +63,18 @@ class CertificatePreProcessor(config: CertificatePreProcessorConfig)
         //validate criteria
         val certTemplate = certTemplates.get(templateId).asInstanceOf[util.Map[String, AnyRef]]
         val usersToIssue = CertificateUserUtil.getUserIdsBasedOnCriteria(certTemplate, edata)
+        val templateUrl = certTemplate.getOrDefault(config.url, "").asInstanceOf[String]
+        if(templateUrl.isBlank || !templateUrl.endsWith(".svg")) {
+          logger.info("Invalid template: Certificate generate event is skipped: " + edata)
+          metrics.incCounter(config.skippedEventCount)
+          return 
+        }
         //iterate over users and send to generate event method
         val template = IssueCertificateUtil.prepareTemplate(certTemplate)(config)
         usersToIssue.foreach(user => {
           val certEvent = generateCertificateEvent(user, template, edata, collectionCache)
           println("final event send to next topic : " + gson.toJson(certEvent))
-          context.output(config.generateCertificateOutputTag, gson.toJson(certEvent))
+          context.output(config.generateCertificateOutputTag, certEvent)
           logger.info("Certificate generate event successfully sent to next topic")
           metrics.incCounter(config.successEventCount)
         })
