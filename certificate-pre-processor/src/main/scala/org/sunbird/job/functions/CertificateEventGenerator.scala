@@ -3,7 +3,6 @@ package org.sunbird.job.functions
 import java.util
 
 import com.google.gson.Gson
-import org.apache.commons.collections.CollectionUtils
 import org.apache.commons.lang3.StringUtils
 import org.sunbird.job.Metrics
 import org.sunbird.job.cache.DataCache

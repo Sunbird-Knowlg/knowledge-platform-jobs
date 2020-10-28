@@ -84,10 +84,10 @@ object CertificateApiService {
       val response = mapper.readValue(httpResponse.body, classOf[util.Map[String, AnyRef]])
       val result = response.getOrDefault("result", new util.HashMap()).asInstanceOf[util.Map[String, AnyRef]]
       val keys = result.getOrDefault("keys", new util.HashMap()).asInstanceOf[util.Map[String, AnyRef]]
-      if (MapUtils.isNotEmpty(keys) && CollectionUtils.isNotEmpty(keys.get("signKeys").asInstanceOf[util.List[util.Map[String, AnyRef]]])) {
+      if (MapUtils.isNotEmpty(keys) && CollectionUtils.isNotEmpty(keys.get("signKeys").asInstanceOf[util.List[String]])) {
         val signKeys = new util.HashMap[String, AnyRef]() {
           {
-            put("id", keys.get("signKeys").asInstanceOf[util.List[util.Map[String, AnyRef]]].get(0))
+            put("id", keys.get("signKeys").asInstanceOf[util.List[String]].get(0))
           }
         }
         signKeys
