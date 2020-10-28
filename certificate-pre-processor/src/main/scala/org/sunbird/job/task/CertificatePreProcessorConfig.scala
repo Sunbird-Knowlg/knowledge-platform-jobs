@@ -52,9 +52,9 @@ class CertificatePreProcessorConfig(override val config: Config) extends BaseJob
   val courseBatchPrimaryKey: List[String] = List("courseid","batchid")
 
   // Redis Configurations
-  val dpRedisHost: String = config.getString("dp-redis.host")
-  val dpRedisPort: Int = config.getInt("dp-redis.port")
-  val collectionCacheStore: Int = config.getInt("dp-redis.database.index")
+  val dpRedisHost: String = config.getString("redis.host")
+  val dpRedisPort: Int = config.getInt("redis.port")
+  val collectionCacheStore: Int = 0
 
   // BaseUrl
   val lmsBaseUrl = config.getString("lms.basePath")
