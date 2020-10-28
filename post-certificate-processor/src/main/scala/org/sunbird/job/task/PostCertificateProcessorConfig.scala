@@ -47,7 +47,7 @@ class PostCertificateProcessorConfig(override val config: Config) extends BaseJo
   val dbHost: String = config.getString("lms-cassandra.host")
   val dbPort: Int = config.getInt("lms-cassandra.port")
 
-  val learnerServiceBaseUrl: String = config.getString("learner-service.base_url")
+  val learnerServiceBaseUrl: String = config.getString("learner-service.basePath")
   val dbCourseBatchTable: String = config.getString("lms-cassandra.course_batch.table")
   val notificationEndPoint: String = "/v2/notification"
 
