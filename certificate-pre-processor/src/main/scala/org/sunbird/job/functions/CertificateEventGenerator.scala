@@ -102,6 +102,5 @@ class CertificateEventGenerator(config: CertificatePreProcessorConfig)
       edata.remove(config.reIssue)
     edata.remove(config.courseId)
     edata.remove(config.batchId)
-    edata.remove(config.userId)
   }
 }
