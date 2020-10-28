@@ -24,6 +24,8 @@
 		<module>relation-cache-updater</module>
 		<module>activity-aggregate-updater</module>
         <module>post-publish-processor</module>
+		<module>certificate-generator</module>
+		<module>cert-processor</module>
 		<module>post-certificate-processor</module>
 	</modules>
 
@@ -90,6 +92,7 @@
 						<scalaVersion>${scala.version}</scalaVersion>
 						<aggregate>true</aggregate>
 						<highlighting>true</highlighting>
+						<excludedPackages>org.sunbird.incredible</excludedPackages>
 					</configuration>
 				</plugin>
 			</plugins>

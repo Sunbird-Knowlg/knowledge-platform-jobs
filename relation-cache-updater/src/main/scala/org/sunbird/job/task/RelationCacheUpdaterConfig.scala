@@ -37,7 +37,9 @@ class RelationCacheUpdaterConfig(override val config: Config) extends BaseJobCon
   val hierarchyPrimaryKey: List[String] = List("identifier")
 
   // Redis Configurations
-  val relationCacheStore: Int = config.getInt("redis.database.relationCache.id")
-  val collectionCacheStore: Int = config.getInt("redis.database.collectionCache.id")
+  val relationCacheStore: Int = config.getInt("redis.database.index")
+  val dpRedisHost: String = config.getString("dp-redis.host")
+  val dpRedisPort: Int = config.getInt("dp-redis.port")
+  val collectionCacheStore: Int = config.getInt("dp-redis.database.index")
 
 }
