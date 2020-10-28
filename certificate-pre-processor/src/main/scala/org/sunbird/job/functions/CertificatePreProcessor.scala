@@ -96,7 +96,7 @@ class CertificatePreProcessor(config: CertificatePreProcessorConfig)
     // generate certificate event edata
     val eventEdata = new CertificateEventGenerator(config)(metrics, cassandraUtil).prepareGenerateEventEdata(edataRequest, collectionCache)
     println("generateCertificateEvent : eventEdata : " + eventEdata)
-    generateCertificateEvent(edata)
+    generateCertificateEvent(eventEdata)
   }
 
   private def generateCertificateEvent(edata: util.Map[String, AnyRef]): CertificateGenerateEvent = {
