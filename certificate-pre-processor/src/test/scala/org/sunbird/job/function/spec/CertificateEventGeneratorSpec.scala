@@ -25,10 +25,12 @@ class CertificateEventGeneratorSpec extends BaseTestSpec {
   val config: Config = ConfigFactory.load("test.conf")
   val jobConfig = new CertificatePreProcessorConfig(config)
   val mockHttpUtil = mock[HttpUtil]
-  val metrics = Metrics(new ConcurrentHashMap[String, AtomicLong]() {{
+  val metrics = Metrics(new ConcurrentHashMap[String, AtomicLong]() {
+    {
       put(jobConfig.dbReadCount, new AtomicLong())
       put(jobConfig.cacheReadCount, new AtomicLong())
-    }})
+    }
+  })
   var cassandraUtil: CassandraUtil = _
   var redisServer: RedisServer = _
   val redisConnect = new RedisConnect(jobConfig)
@@ -73,9 +75,18 @@ class CertificateEventGeneratorSpec extends BaseTestSpec {
     mockAll()
     val dataCache = new DataCache(jobConfig, redisConnect, 2, List())
     dataCache.init()
-    val edata = gson.fromJson(EventFixture.REQUEST_EVENT_2, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]]
+    val edata = gson.fromJson(EventFixture.REQUEST_EVENT_4, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]]
     new CertificateEventGenerator(jobConfig)(metrics, cassandraUtil).prepareGenerateEventEdata(edata, dataCache)
     assert(gson.toJson(edata).equals(EventFixture.FINAL_EDATA_2))
+    dataCache.close()
+  }
+
+  it should "thow exception for prepareGenerateEventEdata with reIssue false and issued certificate exist" in intercept[Exception] {
+    mockAll()
+    val dataCache = new DataCache(jobConfig, redisConnect, 2, List())
+    dataCache.init()
+    val edata = gson.fromJson(EventFixture.REQUEST_EVENT_2, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]]
+    new CertificateEventGenerator(jobConfig)(metrics, cassandraUtil).prepareGenerateEventEdata(edata, dataCache)
     dataCache.close()
   }
 
