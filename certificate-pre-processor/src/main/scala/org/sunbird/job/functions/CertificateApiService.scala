@@ -22,7 +22,7 @@ object CertificateApiService {
     println("getUsersFromUserCriteria called : " + batchList)
     batchList.flatMap(batch => {
       val httpRequest = s"""{"request":{"filters":{"identifier":"${batch}, ${userCriteria}"},"fields":["identifier"]}}"""
-      val httpResponse = httpUtil.post(config.searchBaseUrl + config.userV1Search, httpRequest)
+      val httpResponse = httpUtil.post(config.learnerBasePath + config.userV1Search, httpRequest)
       if (httpResponse.status == 200) {
         println("User search success: " + httpResponse.body)
         val response = mapper.readValue(httpResponse.body, classOf[util.Map[String, AnyRef]])
@@ -48,7 +48,7 @@ object CertificateApiService {
       println("readContent cache called : courseData : " + courseId)
       courseData.asJava
     } else {
-      val httpResponse = httpUtil.get(config.lmsBaseUrl + config.contentV3Read + courseId)
+      val httpResponse = httpUtil.get(config.contentBaseUrl + config.contentV3Read + courseId)
       if (httpResponse.status == 200) {
         println("Content read success: " + httpResponse.body)
         val response = mapper.readValue(httpResponse.body, classOf[util.Map[String, AnyRef]])
@@ -62,7 +62,7 @@ object CertificateApiService {
 
   def getUserDetails(userId: String)(implicit config: CertificatePreProcessorConfig): util.Map[String, AnyRef] = {
     val httpRequest = s"""{"request":{"filters":{"identifier":"${userId}"},"fields":["firstName", "lastName", "userName", "rootOrgName", "rootOrgId","maskedPhone"]}}"""
-    val httpResponse = httpUtil.post(config.searchBaseUrl + config.userV1Search, httpRequest)
+    val httpResponse = httpUtil.post(config.learnerBasePath + config.userV1Search, httpRequest)
     if (httpResponse.status == 200) {
       println("User search success: " + httpResponse.body)
       val response = mapper.readValue(httpResponse.body, classOf[util.Map[String, AnyRef]])
