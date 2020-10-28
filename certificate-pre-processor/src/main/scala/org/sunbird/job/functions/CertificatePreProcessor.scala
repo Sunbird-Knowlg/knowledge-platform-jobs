@@ -1,6 +1,7 @@
 package org.sunbird.job.functions
 
 import java.util
+import java.util.UUID
 
 import com.google.gson.Gson
 import org.apache.flink.api.common.typeinfo.TypeInformation
@@ -12,6 +13,8 @@ import org.sunbird.job.domain.{CertTemplate, CertificateGenerateEvent, EventObje
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 import org.sunbird.job.task.CertificatePreProcessorConfig
 import org.sunbird.job.util.CassandraUtil
+
+import scala.collection.JavaConverters._
 
 class CertificatePreProcessor(config: CertificatePreProcessorConfig)
                              (implicit val stringTypeInfo: TypeInformation[String],
@@ -89,20 +92,22 @@ class CertificatePreProcessor(config: CertificatePreProcessorConfig)
   }
 
   private def generateCertificateEvent(userId: String, template: CertTemplate, edata: util.Map[String, AnyRef], collectionCache: DataCache)
-                                      (implicit metrics: Metrics): CertificateGenerateEvent = {
+                                      (implicit metrics: Metrics): util.Map[String, AnyRef] = {
     println("generateCertificatesEvent called userId : " + userId)
     val generateRequest = IssueCertificateUtil.prepareGenerateRequest(edata, template, userId)(config)
     val edataRequest = gson.fromJson(gson.toJson(generateRequest), new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]]
     // generate certificate event edata
     val eventEdata = new CertificateEventGenerator(config)(metrics, cassandraUtil).prepareGenerateEventEdata(edataRequest, collectionCache)
     println("generateCertificateEvent : eventEdata : " + eventEdata)
-    generateCertificateEvent(eventEdata)
+    generateCertificateFinalEvent(eventEdata)
   }
 
-  private def generateCertificateEvent(edata: util.Map[String, AnyRef]): CertificateGenerateEvent = {
-    CertificateGenerateEvent(
-      edata = edata,
-      `object` = EventObject(id = edata.get(config.userId).asInstanceOf[String], `type` = "GenerateCertificate")
-    )
+  private def generateCertificateFinalEvent(edata: util.Map[String, AnyRef]): util.Map[String, AnyRef] = {
+    Map("eid" -> "BE_JOB_REQUEST", "ets" -> System.currentTimeMillis().asInstanceOf[AnyRef],
+     "mid" -> s"LMS.${UUID.randomUUID().toString}", "edata" -> edata,
+     "object" -> Map("id" -> edata.get(config.userId).asInstanceOf[String], "type" -> "GenerateCertificate"),
+     "context" -> Map("pdata" -> Map("ver" -> "1.0", "id" -> "org.sunbird.platform")),
+     "actor" -> Map("id" -> "Certificate Generator", "type" -> "System")
+   ).asJava
   }
 }
