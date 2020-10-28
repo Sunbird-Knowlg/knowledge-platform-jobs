@@ -103,7 +103,8 @@ class CertificatePreProcessor(config: CertificatePreProcessorConfig)
                                       (implicit metrics: Metrics): java.util.Map[String, AnyRef] = {
     println("generateCertificatesEvent called userId : " + userId)
     val generateRequest = IssueCertificateUtil.prepareGenerateRequest(edata, template, userId)(config)
-    val edataRequest = mapper.readValue(mapper.writeValueAsString(generateRequest), classOf[java.util.Map[String, AnyRef]]).asInstanceOf[util.Map[String, AnyRef]]
+    println("prepareGenerateRequest output: " + mapper.writeValueAsString(generateRequest))
+    val edataRequest = mapper.readValue(mapper.writeValueAsString(generateRequest), classOf[java.util.Map[String, AnyRef]])
     // generate certificate event edata
     val eventEdata = new CertificateEventGenerator(config)(metrics, cassandraUtil).prepareGenerateEventEdata(edataRequest, collectionCache)
     println("generateCertificateEvent : eventEdata : " + eventEdata)
