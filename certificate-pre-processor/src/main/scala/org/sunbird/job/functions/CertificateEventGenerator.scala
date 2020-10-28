@@ -26,8 +26,7 @@ class CertificateEventGenerator(config: CertificatePreProcessorConfig)
     setCourseDetails(edata, collectionCache)
     setEventRelatedData(edata)
     setEventSvgData(edata)
-    if (edata.containsKey(config.reIssue))
-      edata.remove(config.reIssue)
+    removeExtraData(edata)
     println("prepareGenerateEventEdata finished edata : " + edata)
     edata
   }
@@ -96,5 +95,13 @@ class CertificateEventGenerator(config: CertificatePreProcessorConfig)
     edata.putAll(edata.get(config.template).asInstanceOf[util.Map[String, AnyRef]])
     edata.remove(config.template)
     println("setEventSvgData finished edata : " + edata)
+  }
+
+  private def removeExtraData(edata: util.Map[String, AnyRef]): Unit = {
+    if (edata.containsKey(config.reIssue))
+      edata.remove(config.reIssue)
+    edata.remove(config.courseId)
+    edata.remove(config.batchId)
+    edata.remove(config.userId)
   }
 }
