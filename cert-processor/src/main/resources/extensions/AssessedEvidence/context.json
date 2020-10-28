@@ -1,0 +1,23 @@
+{
+  "title": "Assessed",
+  "@context": {
+    "id": "@id",
+    "type": "@type",
+    "obi": "https://w3id.org/openbadges#",
+    "assessedEvidence": "http://localhost:8080/_schemas/Extensions/AssessedEvidence#",
+    "schema": "http://schema.org/",
+    "subject": "assessedEvidence:subject",
+    "assessedBy": "assessedEvidence:assessedBy",
+    "assessedOn": "assessedEvidence:assessedOn",
+    "assessment": "assessedEvidence:assessment",
+    "type": "assessedEvidence:type",
+    "value": "assessedEvidence:value",
+    "signature": "assessedEvidence:signature"
+  },
+  "obi:validation": [
+    {
+      "obi:validatesType": "extensions:AssessedEvidence",
+      "obi:validationSchema": "http://localhost:8080/_schemas/Extensions/AssessedEvidence/schema.json"
+    }
+  ]
+}
