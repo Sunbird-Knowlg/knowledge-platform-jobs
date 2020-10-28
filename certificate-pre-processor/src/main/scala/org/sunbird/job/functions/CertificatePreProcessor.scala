@@ -1,6 +1,7 @@
 package org.sunbird.job.functions
 
 import java.util
+import java.util.UUID
 
 import com.google.gson.Gson
 import org.apache.flink.api.common.typeinfo.TypeInformation
@@ -89,20 +90,28 @@ class CertificatePreProcessor(config: CertificatePreProcessorConfig)
   }
 
   private def generateCertificateEvent(userId: String, template: CertTemplate, edata: util.Map[String, AnyRef], collectionCache: DataCache)
-                                      (implicit metrics: Metrics): CertificateGenerateEvent = {
+                                      (implicit metrics: Metrics): java.util.Map[String, AnyRef] = {
     println("generateCertificatesEvent called userId : " + userId)
     val generateRequest = IssueCertificateUtil.prepareGenerateRequest(edata, template, userId)(config)
-    val edataRequest = gson.fromJson(gson.toJson(generateRequest), new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]]
+    val edataRequest = gson.fromJson(gson.toJson(generateRequest), new util.HashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]]
     // generate certificate event edata
     val eventEdata = new CertificateEventGenerator(config)(metrics, cassandraUtil).prepareGenerateEventEdata(edataRequest, collectionCache)
     println("generateCertificateEvent : eventEdata : " + eventEdata)
-    generateCertificateEvent(eventEdata)
+    generateCertificateFinalEvent(eventEdata)
   }
 
-  private def generateCertificateEvent(edata: util.Map[String, AnyRef]): CertificateGenerateEvent = {
-    CertificateGenerateEvent(
-      edata = edata,
-      `object` = EventObject(edata.get(config.userId).asInstanceOf[String], "GenerateCertificate")
-    )
+  private def generateCertificateFinalEvent(edata: util.Map[String, AnyRef]): util.Map[String, AnyRef] = {
+    new util.HashMap[String, AnyRef](){{
+      put("eid","BE_JOB_REQUEST")
+      put("ets",System.currentTimeMillis().asInstanceOf[AnyRef])
+      put("mid",s"LMS.${UUID.randomUUID().toString}")
+      put("edata",edata)
+      put("object",new util.HashMap[String, AnyRef]{{put("id",edata.get(config.userId).asInstanceOf[String])}})
+      put("type","GenerateCertificate")
+      put("context",new util.HashMap[String, AnyRef]{{put("pdata", new util.HashMap[String, AnyRef](){{put("ver","1.0")
+        put("id","org.sunbird.platform")}})}})
+      put("actor",new util.HashMap[String, AnyRef]{{put("id","Certificate Generator")
+        put("type","System")}})
+    }}
   }
 }
