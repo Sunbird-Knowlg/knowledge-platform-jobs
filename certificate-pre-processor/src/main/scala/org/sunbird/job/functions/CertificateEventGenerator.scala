@@ -2,8 +2,8 @@ package org.sunbird.job.functions
 
 import java.util
 
-import com.google.gson.Gson
 import org.apache.commons.lang3.StringUtils
+import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper
 import org.sunbird.job.Metrics
 import org.sunbird.job.cache.DataCache
 import org.sunbird.job.domain.{CertificateData, CourseDetails, Data, OrgDetails, Related, UserDetails}
@@ -16,7 +16,7 @@ class CertificateEventGenerator(config: CertificatePreProcessorConfig)
                                (implicit val metrics: Metrics,
                                 @transient var cassandraUtil: CassandraUtil = null) {
 
-  lazy private val gson = new Gson()
+  lazy private val mapper: ObjectMapper = new ObjectMapper()
 
   def prepareGenerateEventEdata(edata: util.Map[String, AnyRef], collectionCache: DataCache): util.Map[String, AnyRef] = {
     println("prepareGenerateEventEdata called edata : " + edata)
@@ -45,7 +45,7 @@ class CertificateEventGenerator(config: CertificatePreProcessorConfig)
     if (certificates.nonEmpty) {
       edata.put(config.oldId, certificates.head.getOrDefault(config.identifier, ""))
     }
-    edata.putAll(gson.fromJson(gson.toJson(CertificateData(issuedDate = issuedDate, basePath = config.certBasePath)), new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]])
+    edata.putAll(mapper.readValue(mapper.writeValueAsString(CertificateData(issuedDate = issuedDate, basePath = config.certBasePath)), classOf[java.util.Map[String, AnyRef]]))
     println("setIssuedCertificate finish edata : " + edata.toString)
   }
 
@@ -62,14 +62,14 @@ class CertificateEventGenerator(config: CertificatePreProcessorConfig)
       orgId = userResponse.get(config.rootOrgId).asInstanceOf[String]
     )
     println("setUserData final userDetails : " + userDetails.toString)
-    edata.putAll(gson.fromJson(gson.toJson(userDetails), new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]])
+    edata.putAll(mapper.readValue(mapper.writeValueAsString(userDetails), classOf[java.util.Map[String, AnyRef]]))
     println("setUserData finished edata : " + edata.toString)
   }
 
   private def setEventOrgData(edata: util.Map[String, AnyRef]) {
     println("setEventOrgData called edata : " + edata.toString)
     val keys = CertificateApiService.readOrgKeys(edata.get(config.orgId).asInstanceOf[String])(config)
-    edata.putAll(gson.fromJson(gson.toJson(OrgDetails(keys = keys)), new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]])
+    edata.putAll(mapper.readValue(mapper.writeValueAsString(OrgDetails(keys = keys)), classOf[java.util.Map[String, AnyRef]]))
     println("setEventOrgData finished edata : " + edata.toString)
   }
 
@@ -78,7 +78,7 @@ class CertificateEventGenerator(config: CertificatePreProcessorConfig)
     val content = CertificateApiService.readContent(edata.get(config.courseId).asInstanceOf[String], collectionCache)(config, metrics)
     val courseDetails = CourseDetails(courseName = content.get(config.name).asInstanceOf[String],
       tag = edata.get(config.batchId).asInstanceOf[String])
-    edata.putAll(gson.fromJson(gson.toJson(courseDetails), new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]])
+    edata.putAll(mapper.readValue(mapper.writeValueAsString(courseDetails), classOf[java.util.Map[String, AnyRef]]))
     println("setCourseDetails finished edata : " + edata)
   }
 
@@ -86,7 +86,7 @@ class CertificateEventGenerator(config: CertificatePreProcessorConfig)
     println("setEventRelatedData called edata : " + edata)
     val related = Related(courseId = edata.get(config.courseId).asInstanceOf[String],
       batchId = edata.get(config.batchId).asInstanceOf[String])
-    edata.put(config.related, gson.fromJson(gson.toJson(related), new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]])
+    edata.put(config.related, mapper.readValue(mapper.writeValueAsString(related), classOf[java.util.Map[String, AnyRef]]))
     println("setEventRelatedData called edata : " + edata)
   }
 

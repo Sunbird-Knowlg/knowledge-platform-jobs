@@ -20,7 +20,7 @@ class CertificatePreProcessor(config: CertificatePreProcessorConfig)
                               @transient var cassandraUtil: CassandraUtil = null)
   extends BaseProcessFunction[java.util.Map[String, AnyRef], String](config) {
 
-  lazy private val mapper: ObjectMapper = new ObjectMapper()()
+  lazy private val mapper: ObjectMapper = new ObjectMapper()
   private[this] val logger = LoggerFactory.getLogger(classOf[CertificatePreProcessor])
   private var collectionCache: DataCache = _
 
