@@ -27,7 +27,8 @@
 		<module>certificate-generator</module>
 		<module>cert-processor</module>
 		<module>post-certificate-processor</module>
-	</modules>
+        <module>certificate-pre-processor</module>
+    </modules>
 
 	<properties>
 		<!-- maven specific properties -->
