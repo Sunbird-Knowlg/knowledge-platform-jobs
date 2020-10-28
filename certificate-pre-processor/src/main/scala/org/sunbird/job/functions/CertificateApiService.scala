@@ -67,7 +67,8 @@ object CertificateApiService {
       println("User search success: " + httpResponse.body)
       val response = mapper.readValue(httpResponse.body, classOf[util.Map[String, AnyRef]])
       val result = response.getOrDefault("result", new util.HashMap()).asInstanceOf[util.Map[String, AnyRef]]
-      val contents = result.getOrDefault("content", new util.ArrayList[util.Map[String, AnyRef]]()).asInstanceOf[util.List[util.Map[String, AnyRef]]]
+      val responseBody = result.getOrDefault("response", new util.HashMap()).asInstanceOf[util.Map[String, AnyRef]]
+      val contents = responseBody.getOrDefault("content", new util.ArrayList[util.Map[String, AnyRef]]()).asInstanceOf[util.List[util.Map[String, AnyRef]]]
       val userDetails = contents.get(0)
       if (MapUtils.isEmpty(userDetails))
         throw new Exception("User not found for userId : " + userId)

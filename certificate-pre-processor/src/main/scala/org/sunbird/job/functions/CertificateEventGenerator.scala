@@ -54,6 +54,7 @@ class CertificateEventGenerator(config: CertificatePreProcessorConfig)
   private def setUserData(edata: util.Map[String, AnyRef]) {
     println("setUserData called edata : " + edata.toString)
     val userResponse = CertificateApiService.getUserDetails(edata.get(config.userId).asInstanceOf[String])(config)
+    println("setUserData userResponse : " + userResponse.toString)
     val userDetails = UserDetails(data = new util.ArrayList[Data]() {
       {
         add(Data(recipientId = edata.get(config.userId).asInstanceOf[String],
@@ -62,6 +63,7 @@ class CertificateEventGenerator(config: CertificatePreProcessorConfig)
     },
       orgId = userResponse.get(config.rootOrgId).asInstanceOf[String]
     )
+    println("setUserData final userDetails : " + userDetails.toString)
     edata.putAll(gson.fromJson(gson.toJson(userDetails), new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]])
     println("setUserData finished edata : " + edata.toString)
   }

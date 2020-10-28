@@ -68,7 +68,7 @@ class CertificateApiServiceSpec extends BaseTestSpec {
   it should "getUserDetails" in {
     val userId = "95e4942d-cbe8-477d-aebd-ad8e6de4bfc8"
     CertificateApiService.httpUtil = mockHttpUtil
-    when(mockHttpUtil.post(endsWith("/v1/search"), any[String])).thenReturn(HTTPResponse(200, """{"id":"api.user.search","ver":"v1","ts":"2020-10-24 14:24:57:555+0000","params":{"resmsgid":null,"msgid":"df3342f1082aa191128453838fb4e61f","err":null,"status":"success","errmsg":null},"responseCode":"OK","result":{"count":1,"content":[{"firstName":"Reviewer","lastName":"User","maskedPhone":"******7418","rootOrgName":"Sunbird","userName":"ntptest103","rootOrgId":"ORG_001"}]}}""".stripMargin))
+    when(mockHttpUtil.post(endsWith("/v1/search"), any[String])).thenReturn(HTTPResponse(200, """{"id":"","ver":"private","ts":"2020-10-28 07:31:36:637+0000","params":{"resmsgid":null,"msgid":"8e27cbf5-e299-43b0-bca7-8347f7e5abcf","err":null,"status":"success","errmsg":null},"responseCode":"OK","result":{"response":{"count":1,"content":[{"firstName":"Reviewer","lastName":"User","maskedPhone":"******7418","rootOrgName":"Sunbird","userName":"ntptest103","rootOrgId":"ORG_001"}]}}}""".stripMargin))
     val map = CertificateApiService.getUserDetails(userId)(jobConfig)
     map.asScala.keySet.map(c => c) should contain allOf("firstName", "lastName", "maskedPhone", "rootOrgName", "userName", "rootOrgId")
   }
@@ -76,14 +76,14 @@ class CertificateApiServiceSpec extends BaseTestSpec {
   it should "throw error for invalid userId search" in intercept[Exception] {
     val userId = "95e4942d-cbe8-477d-aebd-ad8e6de4bfc8"
     CertificateApiService.httpUtil = mockHttpUtil
-    when(mockHttpUtil.post(endsWith("/v1/search"), any[String])).thenReturn(HTTPResponse(200, """{"id":"api.user.search","ver":"v1","ts":"2020-10-24 14:24:57:555+0000","params":{"resmsgid":null,"msgid":"df3342f1082aa191128453838fb4e61f","err":null,"status":"success","errmsg":null},"responseCode":"OK","result":{ "count": 0,"content": []}}""".stripMargin))
+    when(mockHttpUtil.post(endsWith("/v1/search"), any[String])).thenReturn(HTTPResponse(500, """{"id":"api.user.search","ver":"v1","ts":"2020-10-24 14:24:57:555+0000","params":{"resmsgid":null,"msgid":"df3342f1082aa191128453838fb4e61f","err":null,"status":"success","errmsg":null},"responseCode":"OK","result":{ "count": 0,"content": []}}""".stripMargin))
     CertificateApiService.getUserDetails(userId)(jobConfig)
   }
 
   it should "throw error while userId search" in intercept[Exception] {
     val userId = "95e4942d-cbe8-477d-aebd-ad8e6de4bfc8"
     CertificateApiService.httpUtil = mockHttpUtil
-    when(mockHttpUtil.post(endsWith("/v1/search"), any[String])).thenReturn(HTTPResponse(500, """{"id": "api.user.search","ver": "v1","ts": "2020-10-24 14:01:25:831+0000","params": {"resmsgid": null,"msgid": "e783983e25c18b9c81e6a9be53dbbc95","err": null,"status": "failed","errmsg": "server error" },"responseCode":"SERVER_ERROR","result": {"messages": null}}""".stripMargin))
+    when(mockHttpUtil.post(endsWith("/v1/search"), any[String])).thenReturn(HTTPResponse(500, """{"id":"","ver":"private","ts":"2020-10-28 07:31:36:637+0000","params":{"resmsgid":null,"msgid":"8e27cbf5-e299-43b0-bca7-8347f7e5abcf","err":null,"status":"success","errmsg":null},"responseCode":"OK","result":{"response":{"count":1,"content":[{"firstName":"Reviewer","lastName":"User","maskedPhone":"******7418","rootOrgName":"Sunbird","userName":"ntptest103","rootOrgId":"ORG_001"}]}}}""".stripMargin))
     CertificateApiService.getUserDetails(userId)(jobConfig)
   }
 
