@@ -52,21 +52,21 @@ class CertificatePreProcessorConfig(override val config: Config) extends BaseJob
   val courseBatchPrimaryKey: List[String] = List("courseid","batchid")
 
   // Redis Configurations
-  val dpRedisHost: String = config.getString("dp-redis.host")
-  val dpRedisPort: Int = config.getInt("dp-redis.port")
-  val collectionCacheStore: Int = config.getInt("dp-redis.database.index")
+  val dpRedisHost: String = config.getString("redis.host")
+  val dpRedisPort: Int = config.getInt("redis.port")
+  val collectionCacheStore: Int = 0
 
   // BaseUrl
   val lmsBaseUrl = config.getString("lms.basePath")
   val searchBaseUrl = config.getString("content.search.basePath")
   val contentBaseUrl = config.getString("content.basePath")
   val certBasePath = config.getString("cert.basePath")
-  val learnerBasePath = config.getString("learner.basePath")
+  val learnerBasePath = config.getString("learner-service.basePath")
 
   // ApiUrl
-  val contentV3Read = config.getString("content.v3.read")
-  val userV1Search = config.getString("user.v1.search")
-  val orgV1Read = config.getString("org.v1.read")
+  val contentV3Read = "/content/v3/read/"
+  val userV1Search = "/private/user/v1/search"
+  val orgV1Read = "/v1/org/read"
 
   // certFilterKeys
   val certFilterKeys: List[String] = List("enrollment","assessment", "user")
@@ -107,4 +107,5 @@ class CertificatePreProcessorConfig(override val config: Config) extends BaseJob
   val total_max_score = "total_max_score"
   val svgTemplate = "svgTemplate"
   val related = "related"
+  val url = "url"
 }

@@ -83,7 +83,7 @@ object IssueCertificateUtil {
       signatoryList = mapper.readValue(template.getOrDefault(config.signatoryList, "").asInstanceOf[String], new TypeReference[util.ArrayList[util.Map[String,String]]]() {}),
       issuer = mapper.readValue(template.getOrDefault(config.issuer, "").asInstanceOf[String], new TypeReference[util.Map[String,AnyRef]]() {}),
       criteria = mapper.readValue(template.getOrDefault(config.criteria, "").asInstanceOf[String], new TypeReference[util.Map[String,AnyRef]]() {}),
-      svgTemplate = template.getOrDefault(config.svgTemplate, "").asInstanceOf[String])
+      svgTemplate = template.getOrDefault(config.url, "").asInstanceOf[String])
   }
 
   def prepareGenerateRequest(edata: util.Map[String, AnyRef], certTemplate: CertTemplate, userId: String)
