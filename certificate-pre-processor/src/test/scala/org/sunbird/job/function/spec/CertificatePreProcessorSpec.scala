@@ -44,7 +44,7 @@ class CertificatePreProcessorSpec extends BaseTestSpec {
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
-    redisServer = new RedisServer(6340)
+    redisServer = new RedisServer(6342)
     redisServer.start()
     EmbeddedCassandraServerHelper.startEmbeddedCassandra(80000L)
     cassandraUtil = new CassandraUtil(jobConfig.dbHost, jobConfig.dbPort)
@@ -80,6 +80,13 @@ class CertificatePreProcessorSpec extends BaseTestSpec {
     val edata =  gson.fromJson(EventFixture.USER_UTIL_EDATA_2, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]]
     val fetchCertTemplates = PrivateMethod[util.Map[String, AnyRef]]('fetchCertTemplates)
     new CertificatePreProcessor(jobConfig)(stringTypeInfo, cassandraUtil) invokePrivate fetchCertTemplates(edata, metrics)
+  }
+
+  it should "test" in{
+    val edata =  gson.fromJson(EventFixture.USER_UTIL_EDATA_2, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]]
+    val generateCertificateFinalEvent = PrivateMethod[util.Map[String, AnyRef]]('generateCertificateFinalEvent)
+    val s = new CertificatePreProcessor(jobConfig)(stringTypeInfo, cassandraUtil) invokePrivate generateCertificateFinalEvent(edata)
+    println(s)
   }
 
   private def mockAll(): Unit = {

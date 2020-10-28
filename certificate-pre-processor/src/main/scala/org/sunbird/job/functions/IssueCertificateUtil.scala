@@ -79,21 +79,22 @@ object IssueCertificateUtil {
   def prepareTemplate(template: util.Map[String, AnyRef])
                      (implicit config: CertificatePreProcessorConfig): CertTemplate = {
     println("prepareTemplate called : template : " + template.toString)
-    CertTemplate(templateId = template.getOrDefault(config.identifier, "").asInstanceOf[String],
-      name = template.getOrDefault(config.name, "").asInstanceOf[String],
-      signatoryList = mapper.readValue(template.getOrDefault(config.signatoryList, "").asInstanceOf[String], new TypeReference[util.ArrayList[util.Map[String,String]]]() {}),
-      issuer = mapper.readValue(template.getOrDefault(config.issuer, "").asInstanceOf[String], new TypeReference[util.Map[String,AnyRef]]() {}),
-      criteria = mapper.readValue(template.getOrDefault(config.criteria, "").asInstanceOf[String], new TypeReference[util.Map[String,AnyRef]]() {}),
-      svgTemplate = template.getOrDefault(config.url, "").asInstanceOf[String])
+    CertTemplate(template.getOrDefault(config.identifier, "").asInstanceOf[String],
+      template.getOrDefault(config.name, "").asInstanceOf[String],
+      mapper.readValue(template.getOrDefault(config.signatoryList, "").asInstanceOf[String], new TypeReference[util.ArrayList[util.Map[String,String]]]() {}),
+      mapper.readValue(template.getOrDefault(config.issuer, "").asInstanceOf[String], new TypeReference[util.Map[String,AnyRef]]() {}),
+      mapper.readValue(template.getOrDefault(config.criteria, "").asInstanceOf[String], new TypeReference[util.Map[String,AnyRef]]() {}),
+      template.getOrDefault(config.url, "").asInstanceOf[String])
   }
 
   def prepareGenerateRequest(edata: util.Map[String, AnyRef], certTemplate: CertTemplate, userId: String)
                             (implicit config: CertificatePreProcessorConfig): GenerateRequest = {
-    val template = gson.fromJson(gson.toJson(certTemplate), new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]]
-    GenerateRequest(batchId = edata.get(config.batchId).asInstanceOf[String],
-      courseId = edata.get(config.courseId).asInstanceOf[String],
-      userId = userId,
-      template = template,
-      reIssue = if (edata.containsKey(config.reIssue)) edata.get(config.reIssue).asInstanceOf[Boolean] else false)
+    println("prepareGenerateRequest called : certTemplate : " + certTemplate.toString)
+    val template = gson.fromJson(gson.toJson(certTemplate), new util.HashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]]
+    GenerateRequest(edata.get(config.batchId).asInstanceOf[String],
+      edata.get(config.courseId).asInstanceOf[String],
+      userId,
+      template,
+      {if (edata.containsKey(config.reIssue)) edata.get(config.reIssue).asInstanceOf[Boolean] else false})
   }
 }
