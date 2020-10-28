@@ -4,6 +4,7 @@ import java.util
 import java.util.UUID
 
 import com.google.gson.Gson
+import org.apache.commons.lang3.StringUtils
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
@@ -64,7 +65,7 @@ class CertificatePreProcessor(config: CertificatePreProcessorConfig)
         val certTemplate = certTemplates.get(templateId).asInstanceOf[util.Map[String, AnyRef]]
         val usersToIssue = CertificateUserUtil.getUserIdsBasedOnCriteria(certTemplate, edata)
         val templateUrl = certTemplate.getOrDefault(config.url, "").asInstanceOf[String]
-        if(templateUrl.isBlank || !templateUrl.endsWith(".svg")) {
+        if(StringUtils.isBlank(templateUrl) || !StringUtils.endsWith(templateUrl, ".svg")) {
           logger.info("Invalid template: Certificate generate event is skipped: " + edata)
           metrics.incCounter(config.skippedEventCount)
           return 
