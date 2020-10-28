@@ -77,7 +77,7 @@ object CertificateApiService {
 
   def readOrgKeys(rootOrgId: String)(implicit config: CertificatePreProcessorConfig): util.Map[String, AnyRef] = {
     val httpRequest = s"""{"request":{"organisationId":"${rootOrgId}"}}}"""
-    val httpResponse = httpUtil.post(config.lmsBaseUrl + config.orgV1Read, httpRequest)
+    val httpResponse = httpUtil.post(config.learnerBasePath + config.orgV1Read, httpRequest)
     if (httpResponse.status == 200) {
       println("Org read success: " + httpResponse.body)
       val response = mapper.readValue(httpResponse.body, classOf[util.Map[String, AnyRef]])
