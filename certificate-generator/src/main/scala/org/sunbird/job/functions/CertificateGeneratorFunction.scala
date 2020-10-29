@@ -146,7 +146,7 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig)
           courseId,
           certReq.get(JsonKey.COURSE_NAME).asInstanceOf[String],
           certReq.get(config.TEMPLATE_ID).asInstanceOf[String],
-          Certificate(id = certRes.get(JsonKey.ID).asInstanceOf[String], name = certReq.get(JsonKey.CERTIFICATE_NAME).asInstanceOf[String], token = certRes.get(JsonKey.ACCESS_CODE).asInstanceOf[String], lastIssuedOn = formatter.format(new Date())),
+          Certificate(certRes.get(JsonKey.ID).asInstanceOf[String], certReq.get(JsonKey.CERTIFICATE_NAME).asInstanceOf[String], certRes.get(JsonKey.ACCESS_CODE).asInstanceOf[String], formatter.format(new Date())),
           "post-process-certificate",
           1
         ),

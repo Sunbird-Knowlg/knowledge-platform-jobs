@@ -23,17 +23,17 @@ case class EventData(batchId: String,
                      courseName: String,
                      templateId: String,
                      certificate: Certificate,
-                     action: String = "post-process-certificate",
-                     iteration: Int = 1)
+                     action: String,
+                     iteration: Int)
 
-case class EventObject(id: String, `type`: String = "CourseCertificatePostProcessor")
+case class EventObject(id: String, `type`: String)
 
 case class PostCertificateProcessEvent(actor: ActorObject,
-                                       eid: String = "BE_JOB_REQUEST",
+                                       eid: String,
                                        edata: EventData,
                                        ets: Long = System.currentTimeMillis(),
                                        context: EventContext = EventContext(),
-                                       mid: String = s"LP.1564144562948.${UUID.randomUUID().toString}",
+                                       mid: String,
                                        `object`: EventObject)
 
 case class Certificate(id: String,
