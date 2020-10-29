@@ -155,7 +155,7 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig)
         s"LP.${System.currentTimeMillis()}.${UUID.randomUUID().toString}",
         EventObject(batchId.concat("_".concat(courseId)), "CourseCertificatePostProcessor")
       )*/
-      context.output(config.postCertificateProcessEventOutputTag, gson.toJson(event))
+      context.output(config.postCertificateProcessEventOutputTag, mapper.writeValueAsString(event))
     } else {
       logger.error("certificate addition to registry failed: " + httpResponse.status + " :: " + httpResponse.body)
       throw ServerException("ERR_API_CALL", "Something Went Wrong While Making API Call | Status is: " + httpResponse.status + " :: " + httpResponse.body)
