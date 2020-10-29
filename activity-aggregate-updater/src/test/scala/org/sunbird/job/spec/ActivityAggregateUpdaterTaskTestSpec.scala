@@ -60,8 +60,8 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
     val session = cassandraUtil.session
 
 
-    val dataLoader = new CQLDataLoader(session);
-    dataLoader.load(new FileCQLDataSet(getClass.getResource("/test.cql").getPath, true, true));
+    val dataLoader = new CQLDataLoader(session)
+    dataLoader.load(new FileCQLDataSet(getClass.getResource("/test.cql").getPath, true, true))
     // Clear the metrics
     testCassandraUtil(cassandraUtil)
     BaseMetricsReporter.gaugeMetrics.clear()
