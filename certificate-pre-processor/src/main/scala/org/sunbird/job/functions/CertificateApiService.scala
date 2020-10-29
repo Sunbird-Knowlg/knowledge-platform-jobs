@@ -92,6 +92,6 @@ object CertificateApiService {
         }
         signKeys
       } else keys
-    } else throw new Exception("Error while reading organisation  : " + rootOrgId + " " + httpResponse.status + " :: " + httpResponse.body)
+    } else new util.HashMap[String, AnyRef]()
   }
 }

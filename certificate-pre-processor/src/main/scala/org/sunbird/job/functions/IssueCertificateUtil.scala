@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory
 import org.sunbird.job.domain.{CertTemplate, GenerateRequest}
 import org.sunbird.job.task.CertificatePreProcessorConfig
 
+import scala.collection.JavaConverters
 import scala.collection.JavaConverters._
 
 object IssueCertificateUtil {
@@ -86,11 +87,17 @@ object IssueCertificateUtil {
 
   def prepareGenerateRequest(edata: util.Map[String, AnyRef], certTemplate: CertTemplate, userId: String)
                             (implicit config: CertificatePreProcessorConfig): GenerateRequest = {
-    val template = mapper.readValue(mapper.writeValueAsString(certTemplate), classOf[java.util.Map[String,AnyRef]])
+    val template = convertToMap(certTemplate)
+    println("template inside prepareGenerateRequest: " + template)
     GenerateRequest(edata.get(config.batchId).asInstanceOf[String], 
       userId,
       edata.get(config.courseId).asInstanceOf[String],
       template,
       {if (edata.containsKey(config.reIssue)) edata.get(config.reIssue).asInstanceOf[Boolean] else false})
+  }
+  
+  def convertToMap(cc: AnyRef) = {
+    JavaConverters.mapAsJavaMap(cc.getClass.getDeclaredFields.foldLeft (Map.empty[String, AnyRef]) { (a, f) => f.setAccessible(true)
+      a + (f.getName -> f.get(cc)) })
   }
 }

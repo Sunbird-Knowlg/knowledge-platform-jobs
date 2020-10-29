@@ -15,6 +15,8 @@ import org.sunbird.job.{BaseProcessFunction, Metrics}
 import org.sunbird.job.task.CertificatePreProcessorConfig
 import org.sunbird.job.util.CassandraUtil
 
+import scala.collection.JavaConverters
+
 class CertificatePreProcessor(config: CertificatePreProcessorConfig)
                              (implicit val stringTypeInfo: TypeInformation[String],
                               @transient var cassandraUtil: CassandraUtil = null)
@@ -65,22 +67,20 @@ class CertificatePreProcessor(config: CertificatePreProcessorConfig)
         val certTemplate = certTemplates.get(templateId).asInstanceOf[util.Map[String, AnyRef]]
         val usersToIssue = CertificateUserUtil.getUserIdsBasedOnCriteria(certTemplate, edata)
         val templateUrl = certTemplate.getOrDefault(config.url, "").asInstanceOf[String]
-        scala.util.control.Breaks.breakable {
-          if(StringUtils.isBlank(templateUrl) || !StringUtils.endsWith(templateUrl, ".svg")) {
-            logger.info("Invalid template: Certificate generate event is skipped: " + edata)
-            metrics.incCounter(config.skippedEventCount)
-            scala.util.control.Breaks.break
-          } else {
-            //iterate over users and send to generate event method
-            val template = IssueCertificateUtil.prepareTemplate(certTemplate)(config)
-            usersToIssue.foreach(user => {
-              val certEvent = generateCertificateEvent(user, template, edata, collectionCache)
-              println("final event send to next topic : " + mapper.writeValueAsString(certEvent))
-              context.output(config.generateCertificateOutputTag, mapper.writeValueAsString(certEvent))
-              logger.info("Certificate generate event successfully sent to next topic")
-              metrics.incCounter(config.successEventCount)
-            })
-          }
+        if(StringUtils.isBlank(templateUrl) || !StringUtils.endsWith(templateUrl, ".svg")) {
+          logger.info("Invalid template: Certificate generate event is skipped: " + edata)
+          metrics.incCounter(config.skippedEventCount)
+        } else {
+          //iterate over users and send to generate event method
+          val template = IssueCertificateUtil.prepareTemplate(certTemplate)(config)
+          println("prepareTemplate output: " + template)
+          usersToIssue.foreach(user => {
+            val certEvent = generateCertificateEvent(user, template, edata, collectionCache)
+            println("final event send to next topic : " + mapper.writeValueAsString(certEvent))
+            context.output(config.generateCertificateOutputTag, mapper.writeValueAsString(certEvent))
+            logger.info("Certificate generate event successfully sent to next topic")
+            metrics.incCounter(config.successEventCount)
+          })
         }
       })
     } catch {
@@ -101,10 +101,10 @@ class CertificatePreProcessor(config: CertificatePreProcessorConfig)
 
   private def generateCertificateEvent(userId: String, template: CertTemplate, edata: util.Map[String, AnyRef], collectionCache: DataCache)
                                       (implicit metrics: Metrics): java.util.Map[String, AnyRef] = {
-    println("generateCertificatesEvent called userId : " + userId)
+    println("generateCertificatesEvent called userId : " + userId +":: "+ template)
     val generateRequest = IssueCertificateUtil.prepareGenerateRequest(edata, template, userId)(config)
-    println("prepareGenerateRequest output: " + mapper.writeValueAsString(generateRequest))
-    val edataRequest = mapper.readValue(mapper.writeValueAsString(generateRequest), classOf[java.util.Map[String, AnyRef]])
+    println("prepareGenerateRequest output: " + convertToMap(generateRequest))
+    val edataRequest = convertToMap(generateRequest)
     // generate certificate event edata
     val eventEdata = new CertificateEventGenerator(config)(metrics, cassandraUtil).prepareGenerateEventEdata(edataRequest, collectionCache)
     println("generateCertificateEvent : eventEdata : " + eventEdata)
@@ -124,5 +124,10 @@ class CertificatePreProcessor(config: CertificatePreProcessorConfig)
       put("actor",new util.HashMap[String, AnyRef]{{put("id","Certificate Generator")
         put("type","System")}})
     }}
+  }
+
+  def convertToMap(cc: AnyRef) = {
+    JavaConverters.mapAsJavaMap(cc.getClass.getDeclaredFields.foldLeft (Map.empty[String, AnyRef]) { (a, f) => f.setAccessible(true)
+      a + (f.getName -> f.get(cc)) })
   }
 }

@@ -95,13 +95,6 @@ class CertificateApiServiceSpec extends BaseTestSpec {
     map.asScala.keySet.map(c => c) should contain("id")
   }
 
-  it should "throw error for readOrgKeys" in intercept[Exception] {
-    val rootOrgId = "ORG_001"
-    CertificateApiService.httpUtil = mockHttpUtil
-    when(mockHttpUtil.post(endsWith("/v1/org/read"), any[String])).thenReturn(HTTPResponse(500, """{ "id": "api.org.read", "ver": "v1", "ts": "2020-10-24 14:47:23:631+0000", "params": { "resmsgid": null, "msgid": "cc58e03e2789f6db8b4695a43a5c8a39", "err": null, "failed": "success", "errmsg": "server error" }, "responseCode": "SERVER_ERROR", "result": {"messages": null}}}""".stripMargin))
-    CertificateApiService.readOrgKeys(rootOrgId)(jobConfig)
-  }
-
   it should "readContent from cache" in {
     val courseId = "do_11312403964547072012070"
     val dataCache = new DataCache(jobConfig, redisConnect, 2, List("name", "status", "code"))
