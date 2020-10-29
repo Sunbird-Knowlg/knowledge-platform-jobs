@@ -138,7 +138,8 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig)
       val related = certReq.get(config.RELATED).asInstanceOf[java.util.Map[String, AnyRef]]
       val batchId = related.get(config.BATCH_ID).asInstanceOf[String]
       val courseId = related.get(config.COURSE_ID).asInstanceOf[String]
-      val event = preparePostProcessEvent(certReq, certRes, batchId, courseId)
+      val userId = certReq.get(config.USER_ID).asInstanceOf[String]
+      val event = preparePostProcessEvent(certReq, certRes, batchId, courseId, userId)
       /*val event = PostCertificateProcessEvent(
         ActorObject("Course Certificate Post Processor", "System"),
         "BE_JOB_REQUEST",
@@ -215,7 +216,7 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig)
     }
   }
 
-  def preparePostProcessEvent(certReq: util.Map[String, AnyRef], certRes: util.Map[String, AnyRef], batchId: String, courseId: String) = {
+  def preparePostProcessEvent(certReq: util.Map[String, AnyRef], certRes: util.Map[String, AnyRef], batchId: String, courseId: String, userId: String) = {
     new java.util.HashMap[String, AnyRef]() {{
       put("actor", new java.util.HashMap[String, AnyRef]() {{
         put("id", "Course Certificate Post Processor")
@@ -224,7 +225,7 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig)
       put("eid", "BE_JOB_REQUEST")
       put("edata", new java.util.HashMap[String, AnyRef]() {{
         put("batchId", batchId)
-        put("userId", certRes.get(JsonKey.RECIPIENT_ID).asInstanceOf[String])
+        put("userId", userId)
         put("courseId", courseId)
         put("courseName", certReq.get(JsonKey.COURSE_NAME).asInstanceOf[String])
         put("templateId", certReq.get(config.TEMPLATE_ID).asInstanceOf[String])

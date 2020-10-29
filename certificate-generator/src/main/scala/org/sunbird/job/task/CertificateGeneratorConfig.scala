@@ -67,6 +67,7 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   val BATCH_ID: String = "batchId"
   val COURSE_ID: String = "courseId"
   val TEMPLATE_ID: String = "templateId"
+  val USER_ID: String = "userId"
 
   // Tags
 
