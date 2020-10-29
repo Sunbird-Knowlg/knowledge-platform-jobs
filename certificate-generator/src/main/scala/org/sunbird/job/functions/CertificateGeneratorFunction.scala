@@ -4,7 +4,7 @@ import java.io.{File, IOException}
 import java.lang.reflect.Type
 import java.text.SimpleDateFormat
 import java.util
-import java.util.{Base64, Date}
+import java.util.{Base64, Date, UUID}
 
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -139,15 +139,18 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig)
       val batchId = related.get(config.BATCH_ID).asInstanceOf[String]
       val courseId = related.get(config.COURSE_ID).asInstanceOf[String]
       val event = PostCertificateProcessEvent(
-        actor = ActorObject(),
-        edata = EventData(batchId = batchId,
-          userId = certRes.get(JsonKey.RECIPIENT_ID).asInstanceOf[String],
-          courseId = courseId,
-          courseName = certReq.get(JsonKey.COURSE_NAME).asInstanceOf[String],
-          templateId = certReq.get(config.TEMPLATE_ID).asInstanceOf[String],
-          certificate = Certificate(id = certRes.get(JsonKey.ID).asInstanceOf[String], name = certReq.get(JsonKey.CERTIFICATE_NAME).asInstanceOf[String], token = certRes.get(JsonKey.ACCESS_CODE).asInstanceOf[String], lastIssuedOn = formatter.format(new Date()))),
-        context = EventContext(),
-        `object` = EventObject(id = batchId.concat("_".concat(courseId)))
+        ActorObject(),
+        "BE_JOB_REQUEST",
+        EventData(batchId,
+          certRes.get(JsonKey.RECIPIENT_ID).asInstanceOf[String],
+          courseId,
+          certReq.get(JsonKey.COURSE_NAME).asInstanceOf[String],
+          certReq.get(config.TEMPLATE_ID).asInstanceOf[String],
+          Certificate(id = certRes.get(JsonKey.ID).asInstanceOf[String], name = certReq.get(JsonKey.CERTIFICATE_NAME).asInstanceOf[String], token = certRes.get(JsonKey.ACCESS_CODE).asInstanceOf[String], lastIssuedOn = formatter.format(new Date()))),
+        System.currentTimeMillis(),
+        EventContext(),
+        s"LP.${System.currentTimeMillis()}.${UUID.randomUUID().toString}",
+        EventObject(batchId.concat("_".concat(courseId)))
       )
       context.output(config.postCertificateProcessEventOutputTag, gson.toJson(event))
     } else {
