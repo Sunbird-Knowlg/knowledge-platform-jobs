@@ -237,7 +237,7 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig)
         put("action", "post-process-certificate")
         put("iteration", 1.asInstanceOf[AnyRef])
       }})
-      put("ets", System.currentTimeMillis())
+      put("ets", System.currentTimeMillis().asInstanceOf[AnyRef])
       put("context", new java.util.HashMap[String, AnyRef]() {{
         put("channel","in.sunbird")
         put("pdata", new java.util.HashMap[String, AnyRef]() {{
