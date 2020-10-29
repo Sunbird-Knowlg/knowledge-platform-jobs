@@ -160,7 +160,6 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig)
     } else {
       logger.error("certificate addition to registry failed: " + httpResponse.status + " :: " + httpResponse.body)
       throw ServerException("ERR_API_CALL", "Something Went Wrong While Making API Call | Status is: " + httpResponse.status + " :: " + httpResponse.body)
-
     }
   }
 

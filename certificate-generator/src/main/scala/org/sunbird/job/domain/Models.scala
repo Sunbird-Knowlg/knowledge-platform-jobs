@@ -6,7 +6,7 @@ import java.util.UUID
 import scala.collection.JavaConverters._
 
 
-case class ActorObject(id: String = "Course Certificate Post Processor", `type`: String = "System") {
+case class ActorObject(id: String, `type`: String) {
     def this() = this("Course Certificate Post Processor", "System")
 }
 
@@ -24,9 +24,13 @@ case class EventData(batchId: String,
                      templateId: String,
                      certificate: Certificate,
                      action: String,
-                     iteration: Int)
+                     iteration: Int) {
+    def this() = this("", "", "", "", "", null, "", 1)
+}
 
-case class EventObject(id: String, `type`: String)
+case class EventObject(id: String, `type`: String) {
+    def this() = this("", "CourseCertificatePostProcessor")
+}
 
 case class PostCertificateProcessEvent(actor: ActorObject,
                                        eid: String,
@@ -34,17 +38,25 @@ case class PostCertificateProcessEvent(actor: ActorObject,
                                        ets: Long = System.currentTimeMillis(),
                                        context: EventContext = EventContext(),
                                        mid: String,
-                                       `object`: EventObject)
+                                       `object`: EventObject) {
+    def this() = this(null, "", null, System.currentTimeMillis(), null, "", null)
+}
 
 case class Certificate(id: String,
                        name: String,
                        token: String,
-                       lastIssuedOn: String)
+                       lastIssuedOn: String) {
+    def this() = this("", "", "", "")
+}
 
 case class FailedEvent(errorCode: String,
-                       error: String)
+                       error: String) {
+    def this() = this("", "")
+}
 
-case class FailedEventMsg(jobName: String = "certificate-generator",
-                          failInfo: FailedEvent)
+case class FailedEventMsg(jobName: String,
+                          failInfo: FailedEvent) {
+    def this() = this("certificate-generator", null)
+}
 
 
