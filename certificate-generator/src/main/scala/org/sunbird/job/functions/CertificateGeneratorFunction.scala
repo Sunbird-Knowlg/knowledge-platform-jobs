@@ -139,18 +139,22 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig)
       val batchId = related.get(config.BATCH_ID).asInstanceOf[String]
       val courseId = related.get(config.COURSE_ID).asInstanceOf[String]
       val event = PostCertificateProcessEvent(
-        ActorObject(),
+        ActorObject("Course Certificate Post Processor", "System"),
         "BE_JOB_REQUEST",
         EventData(batchId,
           certRes.get(JsonKey.RECIPIENT_ID).asInstanceOf[String],
           courseId,
           certReq.get(JsonKey.COURSE_NAME).asInstanceOf[String],
           certReq.get(config.TEMPLATE_ID).asInstanceOf[String],
-          Certificate(id = certRes.get(JsonKey.ID).asInstanceOf[String], name = certReq.get(JsonKey.CERTIFICATE_NAME).asInstanceOf[String], token = certRes.get(JsonKey.ACCESS_CODE).asInstanceOf[String], lastIssuedOn = formatter.format(new Date()))),
+          Certificate(id = certRes.get(JsonKey.ID).asInstanceOf[String], name = certReq.get(JsonKey.CERTIFICATE_NAME).asInstanceOf[String], token = certRes.get(JsonKey.ACCESS_CODE).asInstanceOf[String], lastIssuedOn = formatter.format(new Date())),
+          "post-process-certificate",
+          1
+        ),
         System.currentTimeMillis(),
-        EventContext(),
+        EventContext("in.sunbird", new java.util.HashMap[String, String] {{put("ver", "1.0")
+          put("id", "org.sunbird.platform")}}),
         s"LP.${System.currentTimeMillis()}.${UUID.randomUUID().toString}",
-        EventObject(batchId.concat("_".concat(courseId)))
+        EventObject(batchId.concat("_".concat(courseId)), "CourseCertificatePostProcessor")
       )
       context.output(config.postCertificateProcessEventOutputTag, gson.toJson(event))
     } else {
