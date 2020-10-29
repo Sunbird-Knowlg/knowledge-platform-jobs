@@ -108,4 +108,6 @@ class CertificatePreProcessorConfig(override val config: Config) extends BaseJob
   val svgTemplate = "svgTemplate"
   val related = "related"
   val url = "url"
+  val narrative = "narrative"
+
 }

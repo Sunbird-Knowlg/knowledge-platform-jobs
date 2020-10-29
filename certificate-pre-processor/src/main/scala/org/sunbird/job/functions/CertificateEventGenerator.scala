@@ -32,6 +32,7 @@ class CertificateEventGenerator(config: CertificatePreProcessorConfig)
       eventEdata.remove(config.reIssue)
     eventEdata.remove(config.courseId)
     eventEdata.remove(config.batchId)
+    eventEdata.put(config.criteria, new util.HashMap[String, AnyRef](){{ put(config.narrative, eventEdata.getOrDefault(config.name, "Course Completion Certificate")) }})
     println("prepareGenerateEventEdata finished edata : " + eventEdata)
     eventEdata
   }
