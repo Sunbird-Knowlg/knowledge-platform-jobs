@@ -1,10 +1,12 @@
 package org.sunbird.job.functions
 
 import java.util
+import java.util.UUID
 
-import com.google.gson.Gson
+import org.apache.commons.lang3.StringUtils
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
+import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cache.{DataCache, RedisConnect}
@@ -13,12 +15,14 @@ import org.sunbird.job.{BaseProcessFunction, Metrics}
 import org.sunbird.job.task.CertificatePreProcessorConfig
 import org.sunbird.job.util.CassandraUtil
 
+import scala.collection.JavaConverters
+
 class CertificatePreProcessor(config: CertificatePreProcessorConfig)
                              (implicit val stringTypeInfo: TypeInformation[String],
                               @transient var cassandraUtil: CassandraUtil = null)
   extends BaseProcessFunction[java.util.Map[String, AnyRef], String](config) {
 
-  lazy private val gson = new Gson()
+  lazy private val mapper: ObjectMapper = new ObjectMapper()
   private[this] val logger = LoggerFactory.getLogger(classOf[CertificatePreProcessor])
   private var collectionCache: DataCache = _
 
@@ -62,19 +66,26 @@ class CertificatePreProcessor(config: CertificatePreProcessorConfig)
         //validate criteria
         val certTemplate = certTemplates.get(templateId).asInstanceOf[util.Map[String, AnyRef]]
         val usersToIssue = CertificateUserUtil.getUserIdsBasedOnCriteria(certTemplate, edata)
-        //iterate over users and send to generate event method
-        val template = IssueCertificateUtil.prepareTemplate(certTemplate)(config)
-        usersToIssue.foreach(user => {
-          val certEvent = generateCertificateEvent(user, template, edata, collectionCache)
-          println("final event send to next topic : " + gson.toJson(certEvent))
-          context.output(config.generateCertificateOutputTag, gson.toJson(certEvent))
-          logger.info("Certificate generate event successfully sent to next topic")
-          metrics.incCounter(config.successEventCount)
-        })
+        val templateUrl = certTemplate.getOrDefault(config.url, "").asInstanceOf[String]
+        if(StringUtils.isBlank(templateUrl) || !StringUtils.endsWith(templateUrl, ".svg")) {
+          logger.info("Invalid template: Certificate generate event is skipped: " + edata)
+          metrics.incCounter(config.skippedEventCount)
+        } else {
+          //iterate over users and send to generate event method
+          val template = IssueCertificateUtil.prepareTemplate(certTemplate)(config)
+          println("prepareTemplate output: " + template)
+          usersToIssue.foreach(user => {
+            val certEvent = generateCertificateEvent(user, template, edata, collectionCache)
+            println("final event send to next topic : " + mapper.writeValueAsString(certEvent))
+            context.output(config.generateCertificateOutputTag, mapper.writeValueAsString(certEvent))
+            logger.info("Certificate generate event successfully sent to next topic")
+            metrics.incCounter(config.successEventCount)
+          })
+        }
       })
     } catch {
       case ex: Exception => {
-        context.output(config.failedEventOutputTag, gson.toJson(edata))
+        context.output(config.failedEventOutputTag, mapper.writeValueAsString(edata))
         logger.info("Certificate generate event failed sent to next topic : " + ex.getMessage + " " + ex )
         metrics.incCounter(config.failedEventCount)
       }
@@ -89,20 +100,35 @@ class CertificatePreProcessor(config: CertificatePreProcessorConfig)
   }
 
   private def generateCertificateEvent(userId: String, template: CertTemplate, edata: util.Map[String, AnyRef], collectionCache: DataCache)
-                                      (implicit metrics: Metrics): CertificateGenerateEvent = {
-    println("generateCertificatesEvent called userId : " + userId)
+                                      (implicit metrics: Metrics): java.util.Map[String, AnyRef] = {
+    println("generateCertificatesEvent called userId : " + userId +":: "+ template)
     val generateRequest = IssueCertificateUtil.prepareGenerateRequest(edata, template, userId)(config)
-    val edataRequest = gson.fromJson(gson.toJson(generateRequest), new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]]
+    println("prepareGenerateRequest output: " + convertToMap(generateRequest))
+    val edataRequest = convertToMap(generateRequest)
     // generate certificate event edata
     val eventEdata = new CertificateEventGenerator(config)(metrics, cassandraUtil).prepareGenerateEventEdata(edataRequest, collectionCache)
     println("generateCertificateEvent : eventEdata : " + eventEdata)
-    generateCertificateEvent(eventEdata)
+    generateCertificateFinalEvent(eventEdata)
   }
 
-  private def generateCertificateEvent(edata: util.Map[String, AnyRef]): CertificateGenerateEvent = {
-    CertificateGenerateEvent(
-      edata = edata,
-      `object` = EventObject(edata.get(config.userId).asInstanceOf[String], "GenerateCertificate")
-    )
+  private def generateCertificateFinalEvent(edata: util.Map[String, AnyRef]): util.Map[String, AnyRef] = {
+    new util.HashMap[String, AnyRef](){{
+      put("eid","BE_JOB_REQUEST")
+      put("ets",System.currentTimeMillis().asInstanceOf[AnyRef])
+      put("mid",s"LMS.${UUID.randomUUID().toString}")
+      put("edata",edata)
+      put("object",new util.HashMap[String, AnyRef]{{put("id",edata.get(config.userId).asInstanceOf[String])
+        put("type","GenerateCertificate")
+      }})
+      put("context",new util.HashMap[String, AnyRef]{{put("pdata", new util.HashMap[String, AnyRef](){{put("ver","1.0")
+        put("id","org.sunbird.platform")}})}})
+      put("actor",new util.HashMap[String, AnyRef]{{put("id","Certificate Generator")
+        put("type","System")}})
+    }}
+  }
+
+  def convertToMap(cc: AnyRef) = {
+    JavaConverters.mapAsJavaMap(cc.getClass.getDeclaredFields.foldLeft (Map.empty[String, AnyRef]) { (a, f) => f.setAccessible(true)
+      a + (f.getName -> f.get(cc)) })
   }
 }

@@ -21,7 +21,7 @@ case class EventContext(pdata: util.Map[String, String] = Map("ver" -> "1.0", "i
 case class EventObject(id: String, `type`: String)
 
 // user related data need to add into generate event
-case class UserDetails(data: util.ArrayList[Data], orgId: String)
+case class UserDetails(data: util.ArrayList[java.util.Map[String, AnyRef]], orgId: String)
 
 case class Data(recipientName: String, recipientId: String)
 

@@ -82,6 +82,13 @@ class CertificatePreProcessorSpec extends BaseTestSpec {
     new CertificatePreProcessor(jobConfig)(stringTypeInfo, cassandraUtil) invokePrivate fetchCertTemplates(edata, metrics)
   }
 
+  it should "test" in{
+    val edata =  gson.fromJson(EventFixture.USER_UTIL_EDATA_2, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]]
+    val generateCertificateFinalEvent = PrivateMethod[util.Map[String, AnyRef]]('generateCertificateFinalEvent)
+    val s = new CertificatePreProcessor(jobConfig)(stringTypeInfo, cassandraUtil) invokePrivate generateCertificateFinalEvent(edata)
+    println(s)
+  }
+
   private def mockAll(): Unit = {
     CertificateApiService.httpUtil = mockHttpUtil
     when(mockHttpUtil.post(endsWith("/v1/search"), any[String])).thenReturn(HTTPResponse(200, """{"id":"api.user.search","ver":"v1","ts":"2020-10-24 14:24:57:555+0000","params":{"resmsgid":null,"msgid":"df3342f1082aa191128453838fb4e61f","err":null,"status":"success","errmsg":null},"responseCode":"OK","result":{"count":1,"content":[{"firstName":"Reviewer","lastName":"User","maskedPhone":"******7418","rootOrgName":"Sunbird","userName":"ntptest103","rootOrgId":"ORG_001"}]}}""".stripMargin))

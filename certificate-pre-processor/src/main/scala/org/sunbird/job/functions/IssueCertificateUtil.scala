@@ -3,19 +3,18 @@ package org.sunbird.job.functions
 import java.util
 
 import com.datastax.driver.core.{Row, TypeTokens}
-import com.google.gson.Gson
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.core.`type`.TypeReference
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
 import org.sunbird.job.domain.{CertTemplate, GenerateRequest}
 import org.sunbird.job.task.CertificatePreProcessorConfig
 
+import scala.collection.JavaConverters
 import scala.collection.JavaConverters._
 
 object IssueCertificateUtil {
 
   private[this] val logger = LoggerFactory.getLogger(IssueCertificateUtil.getClass)
-  lazy private val gson = new Gson()
   lazy private val mapper: ObjectMapper = new ObjectMapper()
 
   def getActiveUserIds(rows: util.List[Row], edata: util.Map[String, AnyRef], templateName: String)
@@ -78,21 +77,27 @@ object IssueCertificateUtil {
 
   def prepareTemplate(template: util.Map[String, AnyRef])
                      (implicit config: CertificatePreProcessorConfig): CertTemplate = {
-    CertTemplate(templateId = template.getOrDefault(config.identifier, "").asInstanceOf[String],
-      name = template.getOrDefault(config.name, "").asInstanceOf[String],
-      signatoryList = mapper.readValue(template.getOrDefault(config.signatoryList, "").asInstanceOf[String], new TypeReference[util.ArrayList[util.Map[String,String]]]() {}),
-      issuer = mapper.readValue(template.getOrDefault(config.issuer, "").asInstanceOf[String], new TypeReference[util.Map[String,AnyRef]]() {}),
-      criteria = mapper.readValue(template.getOrDefault(config.criteria, "").asInstanceOf[String], new TypeReference[util.Map[String,AnyRef]]() {}),
-      svgTemplate = template.getOrDefault(config.url, "").asInstanceOf[String])
+    CertTemplate(template.getOrDefault(config.identifier, "").asInstanceOf[String],
+      template.getOrDefault(config.name, "").asInstanceOf[String],
+      mapper.readValue(template.getOrDefault(config.signatoryList, "").asInstanceOf[String], new TypeReference[util.ArrayList[util.Map[String,String]]]() {}),
+      mapper.readValue(template.getOrDefault(config.issuer, "").asInstanceOf[String], new TypeReference[util.Map[String,AnyRef]]() {}),
+      mapper.readValue(template.getOrDefault(config.criteria, "").asInstanceOf[String], new TypeReference[util.Map[String,AnyRef]]() {}),
+      template.getOrDefault(config.url, "").asInstanceOf[String])
   }
 
   def prepareGenerateRequest(edata: util.Map[String, AnyRef], certTemplate: CertTemplate, userId: String)
                             (implicit config: CertificatePreProcessorConfig): GenerateRequest = {
-    val template = gson.fromJson(gson.toJson(certTemplate), new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]]
-    GenerateRequest(batchId = edata.get(config.batchId).asInstanceOf[String],
-      courseId = edata.get(config.courseId).asInstanceOf[String],
-      userId = userId,
-      template = template,
-      reIssue = if (edata.containsKey(config.reIssue)) edata.get(config.reIssue).asInstanceOf[Boolean] else false)
+    val template = convertToMap(certTemplate)
+    println("template inside prepareGenerateRequest: " + template)
+    GenerateRequest(edata.get(config.batchId).asInstanceOf[String], 
+      userId,
+      edata.get(config.courseId).asInstanceOf[String],
+      template,
+      {if (edata.containsKey(config.reIssue)) edata.get(config.reIssue).asInstanceOf[Boolean] else false})
+  }
+  
+  def convertToMap(cc: AnyRef) = {
+    JavaConverters.mapAsJavaMap(cc.getClass.getDeclaredFields.foldLeft (Map.empty[String, AnyRef]) { (a, f) => f.setAccessible(true)
+      a + (f.getName -> f.get(cc)) })
   }
 }

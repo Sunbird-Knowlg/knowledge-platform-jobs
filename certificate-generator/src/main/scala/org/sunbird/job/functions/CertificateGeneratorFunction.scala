@@ -4,7 +4,7 @@ import java.io.{File, IOException}
 import java.lang.reflect.Type
 import java.text.SimpleDateFormat
 import java.util
-import java.util.{Base64, Date}
+import java.util.{Base64, Date, UUID}
 
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -138,22 +138,28 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig)
       val related = certReq.get(config.RELATED).asInstanceOf[java.util.Map[String, AnyRef]]
       val batchId = related.get(config.BATCH_ID).asInstanceOf[String]
       val courseId = related.get(config.COURSE_ID).asInstanceOf[String]
-      val event = PostCertificateProcessEvent(
-        actor = ActorObject(),
-        edata = EventData(batchId = batchId,
-          userId = certRes.get(JsonKey.RECIPIENT_ID).asInstanceOf[String],
-          courseId = courseId,
-          courseName = certReq.get(JsonKey.COURSE_NAME).asInstanceOf[String],
-          templateId = certReq.get(config.TEMPLATE_ID).asInstanceOf[String],
-          certificate = Certificate(id = certRes.get(JsonKey.ID).asInstanceOf[String], name = certReq.get(JsonKey.CERTIFICATE_NAME).asInstanceOf[String], token = certRes.get(JsonKey.ACCESS_CODE).asInstanceOf[String], lastIssuedOn = formatter.format(new Date()))),
-        context = EventContext(),
-        `object` = EventObject(id = batchId.concat("_".concat(courseId)))
-      )
-      context.output(config.postCertificateProcessEventOutputTag, gson.toJson(event))
+      val userId = certReq.get(config.USER_ID).asInstanceOf[String]
+      val event = preparePostProcessEvent(certReq, certRes, batchId, courseId, userId)
+      /*val event = PostCertificateProcessEvent(
+        ActorObject("Course Certificate Post Processor", "System"),
+        "BE_JOB_REQUEST",
+        EventData(batchId,
+          certRes.get(JsonKey.RECIPIENT_ID).asInstanceOf[String],
+          courseId,
+          certReq.get(JsonKey.COURSE_NAME).asInstanceOf[String],
+          certReq.get(config.TEMPLATE_ID).asInstanceOf[String],
+          Certificate(certRes.get(JsonKey.ID).asInstanceOf[String], certReq.get(JsonKey.CERTIFICATE_NAME).asInstanceOf[String], certRes.get(JsonKey.ACCESS_CODE).asInstanceOf[String], formatter.format(new Date())),
+          "post-process-certificate", 1),
+        System.currentTimeMillis(),
+        EventContext("in.sunbird", new java.util.HashMap[String, String] {{put("ver", "1.0")
+          put("id", "org.sunbird.platform")}}),
+        s"LP.${System.currentTimeMillis()}.${UUID.randomUUID().toString}",
+        EventObject(batchId.concat("_".concat(courseId)), "CourseCertificatePostProcessor")
+      )*/
+      context.output(config.postCertificateProcessEventOutputTag, mapper.writeValueAsString(event))
     } else {
       logger.error("certificate addition to registry failed: " + httpResponse.status + " :: " + httpResponse.body)
       throw ServerException("ERR_API_CALL", "Something Went Wrong While Making API Call | Status is: " + httpResponse.status + " :: " + httpResponse.body)
-
     }
   }
 
@@ -210,5 +216,43 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig)
     }
   }
 
+  def preparePostProcessEvent(certReq: util.Map[String, AnyRef], certRes: util.Map[String, AnyRef], batchId: String, courseId: String, userId: String) = {
+    new java.util.HashMap[String, AnyRef]() {{
+      put("actor", new java.util.HashMap[String, AnyRef]() {{
+        put("id", "Course Certificate Post Processor")
+        put("type", "System")
+      }})
+      put("eid", "BE_JOB_REQUEST")
+      put("edata", new java.util.HashMap[String, AnyRef]() {{
+        put("batchId", batchId)
+        put("userId", userId)
+        put("courseId", courseId)
+        put("courseName", certReq.get(JsonKey.COURSE_NAME).asInstanceOf[String])
+        put("templateId", certReq.get(config.TEMPLATE_ID).asInstanceOf[String])
+        put("certificate", new java.util.HashMap[String, AnyRef]() {{
+          put("id", certRes.get(JsonKey.ID).asInstanceOf[String])
+          put("name", certReq.get(JsonKey.CERTIFICATE_NAME).asInstanceOf[String])
+          put("token", certRes.get(JsonKey.ACCESS_CODE).asInstanceOf[String])
+          put("lastIssuedOn", formatter.format(new Date()))
+        }})
+        put("action", "post-process-certificate")
+        put("iteration", 1.asInstanceOf[AnyRef])
+      }})
+      put("ets", System.currentTimeMillis().asInstanceOf[AnyRef])
+      put("context", new java.util.HashMap[String, AnyRef]() {{
+        put("channel","in.sunbird")
+        put("pdata", new java.util.HashMap[String, AnyRef]() {{
+          put("ver", "1.0")
+          put("id" , "org.sunbird.platform")
+        }})
+      }})
+      put("mid", s"LP.${System.currentTimeMillis()}.${UUID.randomUUID().toString}")
+      put("object", new java.util.HashMap[String, AnyRef]() {{ 
+        put("id", batchId.concat("_".concat(courseId)))
+        put("type", "CourseCertificatePostProcessor")
+      }})
+    }}
+  }
+  
 
 }

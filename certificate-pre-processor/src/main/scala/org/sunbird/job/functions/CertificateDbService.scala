@@ -9,6 +9,7 @@ import org.sunbird.job.Metrics
 import org.sunbird.job.task.CertificatePreProcessorConfig
 import org.sunbird.job.util.CassandraUtil
 
+import scala.collection.JavaConverters
 import scala.collection.JavaConverters._
 
 object CertificateDbService {
@@ -72,13 +73,13 @@ object CertificateDbService {
     selectQuery.where.and(QueryBuilder.eq(config.userEnrolmentsPrimaryKey.head, edata.get(config.userId).asInstanceOf[String])).
       and(QueryBuilder.eq(config.userEnrolmentsPrimaryKey(1), edata.get(config.courseId).asInstanceOf[String])).
       and(QueryBuilder.eq(config.userEnrolmentsPrimaryKey(2), edata.get(config.batchId).asInstanceOf[String]))
-    selectQuery.allowFiltering()
     println("readUserCertificate query : " + selectQuery.toString)
     val rows = cassandraUtil.find(selectQuery.toString)
+    println("readUserCertificate count : " + rows.size())
     metrics.incCounter(config.dbReadCount)
     if (CollectionUtils.isNotEmpty(rows)) {
-      Map(config.issued_certificates -> rows.asScala.head.getObject(config.issued_certificates),
-        config.issuedDate -> simpleDateFormat.format(rows.asScala.head.getTimestamp(config.completedOn))).asJava
+      JavaConverters.mapAsJavaMap(Map(config.issued_certificates -> rows.asScala.head.getObject(config.issued_certificates),
+        config.issuedDate -> simpleDateFormat.format(rows.asScala.head.getTimestamp(config.completedOn))))
     } else {
       throw new Exception("User : " + edata.get(config.userId) + " is not enrolled for batch :  "
         + edata.get(config.batchId) + " and course : " + edata.get(config.courseId))
