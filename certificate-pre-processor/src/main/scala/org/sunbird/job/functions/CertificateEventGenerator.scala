@@ -64,8 +64,7 @@ class CertificateEventGenerator(config: CertificatePreProcessorConfig)
     println("setUserData userResponse : " + userResponse.toString)
     val userDetails = UserDetails(data = new util.ArrayList[java.util.Map[String, AnyRef]]() {
       {
-        add(convertToMap(Data(edata.get(config.userId).asInstanceOf[String],
-          (userResponse.get(config.firstName) + " " + userResponse.get(config.lastName)).trim)))
+        add(convertToMap(Data((userResponse.get(config.firstName) + " " + userResponse.get(config.lastName)).trim,edata.get(config.userId).asInstanceOf[String])))
       }
     },
       orgId = userResponse.get(config.rootOrgId).asInstanceOf[String]

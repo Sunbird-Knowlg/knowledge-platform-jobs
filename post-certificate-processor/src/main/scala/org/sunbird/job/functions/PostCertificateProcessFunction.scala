@@ -3,7 +3,7 @@ package org.sunbird.job.functions
 import java.lang.reflect.Type
 import java.text.SimpleDateFormat
 import java.util
-import java.util.Date
+import java.util.{Date, UUID}
 import java.util.stream.Collectors
 
 import com.datastax.driver.core.Row
@@ -88,8 +88,8 @@ class PostCertificateProcessFunction(config: PostCertificateProcessorConfig)
             logger.info("issued certificates in user-enrollment table  updated successfully")
             metrics.incCounter(config.dbUpdateCount)
             val certificateAuditEvent = generateAuditEvent(userId, courseId, batchId, certificate)
-            logger.info("pushAuditEvent: audit event generated for certificate : " + certificateAuditEvent.`object`.id + " with mid : " + certificateAuditEvent.mid)
-            context.output(config.auditEventOutputTag, gson.toJson(certificateAuditEvent))
+            logger.info("pushAuditEvent: audit event generated for certificate : " + certificateAuditEvent)
+            context.output(config.auditEventOutputTag, mapper.writeValueAsString(certificateAuditEvent))
             logger.info("pushAuditEvent: certificate audit event success")
             notifyUser(userId, eData.get(config.courseName).asInstanceOf[String], issuedOn, courseId, batchId, eData.get(config.templateId).asInstanceOf[String])(metrics)
             metrics.incCounter(config.successEventCount)
@@ -266,13 +266,52 @@ class PostCertificateProcessFunction(config: PostCertificateProcessorConfig)
     mapper.writeValueAsString(request)
   }
 
-  private def generateAuditEvent(userId: String, courseId: String, batchId: String, certificate: util.Map[String, String]): CertificateAuditEvent = {
-    CertificateAuditEvent(
-      actor = Actor(id = userId),
-      edata = EventData(props = Array("certificates"), `type` = "certificate-issued-svg"),
-      context = EventContext(cdata = Array(Map("type" -> config.courseBatch, config.id -> batchId).asJava)),
-      `object` = EventObject(id = certificate.get(config.id), `type` = "Certificate", rollup = Map[String, String](config.l1 -> courseId).asJava)
-    )
+  private def generateAuditEvent(userId: String, courseId: String, batchId: String, certificate: util.Map[String, String]): java.util.HashMap[String, AnyRef] = {
+    //    CertificateAuditEvent(
+    //      actor = Actor(id = userId),
+    //      edata = EventData(props = Array("certificates"), `type` = "certificate-issued-svg"),
+    //      context = EventContext(cdata = Array(Map("type" -> config.courseBatch, config.id -> batchId).asJava)),
+    //      `object` = EventObject(id = certificate.get(config.id), `type` = "Certificate", rollup = Map[String, String](config.l1 -> courseId).asJava)
+    //    )
+    new java.util.HashMap[String, AnyRef]() {{
+      put("eid", "BE_JOB_REQUEST")
+      put("ets", System.currentTimeMillis().asInstanceOf[AnyRef])
+      put("mid", s"LP.${System.currentTimeMillis()}.${UUID.randomUUID().toString}")
+      put("ver", "3.0")
+      put("actor", new java.util.HashMap[String, AnyRef]() {{
+        put(config.id, userId)
+        put("type", "User")
+      }})
+      put("context", new java.util.HashMap[String, AnyRef]() {{
+        put("channel", "in.sunbird")
+        put("env", "Course")
+        put("pdata", new java.util.HashMap[String, AnyRef]() {{
+          put("ver", "1.0")
+          put(config.id, "org.sunbird.learning.platform")
+          put("pid", "course-certificate-generator")
+        }})
+        put("cdata", new java.util.ArrayList[java.util.HashMap[String, AnyRef]]() {{
+          add(new java.util.HashMap[String, AnyRef]() {{
+            put(config.id, batchId)
+            put("type", config.courseBatch)
+          }})
+        }})
+      }})
+      put("edata", new java.util.HashMap[String, AnyRef]() {{
+        put("props", new java.util.ArrayList[String]() {{
+          add("certificates")
+        }})
+        put("type", "certificate-issued-svg")
+      }})
+      put("object", new java.util.HashMap[String, AnyRef]() {{
+        put(config.id, certificate.get(config.id))
+        put("type", "Certificate")
+        put("rollup", new java.util.HashMap[String,AnyRef]() {{
+          put(config.l1, courseId)
+        }})
+      }})
+    }
+    }
   }
 
 
