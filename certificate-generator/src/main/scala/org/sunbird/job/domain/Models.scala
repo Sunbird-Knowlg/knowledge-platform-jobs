@@ -24,7 +24,7 @@ case class EventData(batchId: String,
                      templateId: String,
                      certificate: Certificate,
                      action: String,
-                     iteration: Int = 1) {
+                     iteration: Int) {
     def this() = this("", "", "", "", "", null, "", 1)
 }
 
