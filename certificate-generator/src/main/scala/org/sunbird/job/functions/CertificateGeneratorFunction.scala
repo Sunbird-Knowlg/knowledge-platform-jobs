@@ -147,9 +147,7 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig)
           certReq.get(JsonKey.COURSE_NAME).asInstanceOf[String],
           certReq.get(config.TEMPLATE_ID).asInstanceOf[String],
           Certificate(certRes.get(JsonKey.ID).asInstanceOf[String], certReq.get(JsonKey.CERTIFICATE_NAME).asInstanceOf[String], certRes.get(JsonKey.ACCESS_CODE).asInstanceOf[String], formatter.format(new Date())),
-          "post-process-certificate",
-          1
-        ),
+          "post-process-certificate"),
         System.currentTimeMillis(),
         EventContext("in.sunbird", new java.util.HashMap[String, String] {{put("ver", "1.0")
           put("id", "org.sunbird.platform")}}),
