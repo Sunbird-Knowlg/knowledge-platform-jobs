@@ -48,7 +48,8 @@ class PostPublishEventRouter(config: PostPublishProcessorConfig)
     val action = eData.getOrDefault("action", "").asInstanceOf[String]
     val mimeType = eData.getOrDefault("mimeType", "").asInstanceOf[String]
     val identifier = eData.getOrDefault("identifier", "").asInstanceOf[String]
-    if (StringUtils.equals("application/vnd.ekstep.content-collection", mimeType) && StringUtils.equals(action, "post-publish-process")) {
+    val manualSync = eData.getOrDefault("manual-sync", false).asInstanceOf[Boolean]
+    if (validEvent(mimeType, action, manualSync)) {
       // Check shallow copied contents and publish.
       val shallowCopied = getShallowCopiedContents(identifier)
       logger.info("Shallow copied by this content - " + identifier + " are: " + shallowCopied.size)
@@ -86,6 +87,12 @@ class PostPublishEventRouter(config: PostPublishProcessorConfig)
 
   override def metricsList(): List[String] = {
     List(config.successEventCount, config.failedEventCount, config.skippedEventCount, config.totalEventsCount)
+  }
+
+  def validEvent(mimeType: String, action: String, manualSync: Boolean): Boolean = {
+    (StringUtils.equals("application/vnd.ekstep.content-collection", mimeType)
+    && StringUtils.equals(action, "post-publish-process")
+    && !manualSync)
   }
 
   def getShallowCopiedContents(identifier: String): List[PublishMetadata] = {
