@@ -50,6 +50,7 @@ class PostCertificateProcessorConfig(override val config: Config) extends BaseJo
   val learnerServiceBaseUrl: String = config.getString("learner-service.basePath")
   val dbCourseBatchTable: String = config.getString("lms-cassandra.course_batch.table")
   val notificationEndPoint: String = "/v2/notification"
+  val userFeedCreateEndPoint:String = "/private/v1/user/feed/create"
 
   // tags
   val auditEventOutputTagName = "audit-events"
@@ -86,6 +87,11 @@ class PostCertificateProcessorConfig(override val config: Config) extends BaseJo
   val courseBatch = "CourseBatch"
   val l1 = "l1"
   val id = "id"
-
+  val data = "data"
+  val category = "category"
+  val certificates = "certificates"
+  val priority = "priority"
+  val userFeedMsg = "Congratulations! Download your course certificate from your profile page. If you have a problem downloading it on the mobile, update your DIKSHA app"
+  val priorityValue = 1
 
 }

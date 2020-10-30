@@ -58,6 +58,7 @@ class PostCertificateProcessFunctionTaskTestSpec extends BaseTestSpec {
     flinkCluster.before()
     when(mockHttpUtil.post(endsWith("/private/user/v1/search"), any[String])).thenReturn(HTTPResponse(200, """{"id":"","ver":"private","ts":"2020-10-21 14:10:49:964+0000","params":{"resmsgid":null,"msgid":"a6f3e248-c504-4c2f-9bfa-90f54abd2e30","err":null,"status":"success","errmsg":null},"responseCode":"OK","result":{"response":{"count":1,"content":[{"firstName":"test12","lastName":"A","maskedPhone":"******0183","rootOrgName":"ORG_002","userName":"teast123","rootOrgId":"01246944855007232011"}]}}}"""))
     when(mockHttpUtil.post(endsWith("/v2/notification"), any[String])).thenReturn(HTTPResponse(200, """{"id":"api.notification","ver":"v2","ts":"2020-10-21 14:12:09:065+0000","params":{"resmsgid":null,"msgid":"0df38787-1168-4ae0-aa4b-dcea23ea81e4","err":null,"status":"success","errmsg":null},"responseCode":"OK","result":{"response":"SUCCESS"}}"""))
+    when(mockHttpUtil.post(endsWith("/private/v1/user/feed/create"), any[String])).thenReturn(HTTPResponse(200, """{"id":"api.user.feed.create","ver":"v1","ts":"2020-10-30 13:20:54:940+0000","params":{"resmsgid":null,"msgid":"518d3404-cf1f-4001-81a5-0c58647b32fe","err":null,"status":"success","errmsg":null},"responseCode":"OK","result":{"response":"SUCCESS"}}"""))
   }
 
   override protected def afterAll(): Unit = {

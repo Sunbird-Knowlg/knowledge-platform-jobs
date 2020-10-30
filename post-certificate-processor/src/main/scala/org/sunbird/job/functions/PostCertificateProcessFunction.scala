@@ -92,6 +92,7 @@ class PostCertificateProcessFunction(config: PostCertificateProcessorConfig)
             context.output(config.auditEventOutputTag, mapper.writeValueAsString(certificateAuditEvent))
             logger.info("pushAuditEvent: certificate audit event success")
             notifyUser(userId, eData.get(config.courseName).asInstanceOf[String], issuedOn, courseId, batchId, eData.get(config.templateId).asInstanceOf[String])(metrics)
+            createUserFeed(userId, eData.get(config.courseName).asInstanceOf[String], issuedOn)
             metrics.incCounter(config.successEventCount)
           } else {
             metrics.incCounter(config.failedEventCount)
@@ -116,13 +117,46 @@ class PostCertificateProcessFunction(config: PostCertificateProcessorConfig)
     .and(QueryBuilder.eq(config.batchId.toLowerCase, propertiesToSelect.get(config.batchId).asInstanceOf[String]))
 
 
+  private def createUserFeed(userId: String, courseName: String, issuedOn: Date) {
+    val url = config.learnerServiceBaseUrl + config.userFeedCreateEndPoint
+    val request = new java.util.HashMap[String, AnyRef]() {
+      {
+        put(config.request, new util.HashMap[String, AnyRef]() {
+          {
+            put(config.userId, userId)
+            put(config.category, config.certificates)
+            put(config.priority, config.priorityValue.asInstanceOf[AnyRef])
+            put(config.data, new util.HashMap[String, AnyRef]() {
+              {
+                put(config.trainingName, courseName)
+                put(config.heldDate, dateFormatter.format(issuedOn))
+                put("message", config.userFeedMsg)
+              }
+            })
+          }
+        })
+      }
+    }
+    try {
+      val response = PostCertificateProcessorStreamTask.httpUtil.post(url, mapper.writeValueAsString(request))
+      if (response.status == 200) {
+        logger.info("user feed response status {} :: {}", response.status, response.body)
+      }
+      else
+        logger.info("user feed  response status {} :: {}", response.status, response.body)
+    } catch {
+      case e: Exception =>
+        logger.error("Error while creating user feed : {}", userId + e)
+    }
+  }
+
   private def notifyUser(userId: String, courseName: String, issuedOn: Date, courseId: String, batchId: String, templateId: String)(implicit metrics: Metrics): Unit = {
     val userResponse: util.Map[String, AnyRef] = getUserDetails(userId) // call user Service
     val primaryFields = Map(config.courseId.toLowerCase() -> courseId, config.batchId.toLowerCase -> batchId)
     val row = getNotificationTemplates(primaryFields, metrics)
     if (userResponse != null) {
       val certTemplate = row.getMap(config.cert_templates, com.google.common.reflect.TypeToken.of(classOf[String]), TypeTokens.mapOf(classOf[String], classOf[String]))
-      val url = config.learnerServiceBaseUrl + "/v2/notification"
+      val url = config.learnerServiceBaseUrl + config.notificationEndPoint
       if (certTemplate != null && StringUtils.isNotBlank(templateId) && certTemplate.containsKey(templateId) && certTemplate.get(templateId).containsKey(config.notifyTemplate)) {
         logger.info("notification template is present in the cert-templates object {}", certTemplate.get(templateId).containsKey(config.notifyTemplate))
         val notifyTemplate = getNotificationTemplate(certTemplate.get(templateId))
