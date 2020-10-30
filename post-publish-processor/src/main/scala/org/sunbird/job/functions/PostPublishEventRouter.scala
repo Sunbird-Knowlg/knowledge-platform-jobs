@@ -48,7 +48,7 @@ class PostPublishEventRouter(config: PostPublishProcessorConfig)
     val action = eData.getOrDefault("action", "").asInstanceOf[String]
     val mimeType = eData.getOrDefault("mimeType", "").asInstanceOf[String]
     val identifier = eData.getOrDefault("identifier", "").asInstanceOf[String]
-    val manualSync = eData.getOrDefault("manual-sync", false).asInstanceOf[Boolean]
+    val manualSync = eData.getOrDefault("manual-sync", false.asInstanceOf[AnyRef]).asInstanceOf[Boolean]
     if (validEvent(mimeType, action, manualSync)) {
       // Check shallow copied contents and publish.
       val shallowCopied = getShallowCopiedContents(identifier)
