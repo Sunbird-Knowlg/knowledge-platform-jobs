@@ -1,7 +1,7 @@
 package org.sunbird.job.domain
 
 import java.util
-import java.util.UUID
+import java.util.{Date, UUID}
 
 import scala.collection.JavaConverters._
 
@@ -38,7 +38,6 @@ case class ContentStatus(contentId: String, status: Int = 0, completedCount: Int
 
 case class UserContentConsumption(userId: String, batchId: String, courseId: String, contents: Map[String, ContentStatus])
 
-
 case class UserActivityAgg(activity_type: String,
                            user_id: String,
                            activity_id: String,
@@ -47,5 +46,5 @@ case class UserActivityAgg(activity_type: String,
                            agg_last_updated: Map[String, Long]
                    )
 
-
+case class EnrolmentComplete(userId: String, batchId: String, courseId: String, completedOn: Date, contentStatus: Map[String, Int])
 

@@ -7,6 +7,7 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.streaming.api.scala.OutputTag
 import org.sunbird.job.BaseJobConfig
+import org.sunbird.job.domain.EnrolmentComplete
 
 class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJobConfig(config, "activity-aggregate-updater") {
 
@@ -14,6 +15,7 @@ class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJo
 
   implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
   implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
+  implicit val enrolmentCompleteTypeInfo: TypeInformation[EnrolmentComplete] = TypeExtractor.getForClass(classOf[EnrolmentComplete])
 
   // Kafka Topics Configuration
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
@@ -48,6 +50,8 @@ class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJo
   val auditEventOutputTag: OutputTag[String] = OutputTag[String](auditEventOutputTagName)
   val failedEventOutputTagName = "failed-events"
   val failedEventOutputTag: OutputTag[String] = OutputTag[String](failedEventOutputTagName)
+  val enrolmentCompleteOutputTagName = "enrolment-complete-events"
+  val enrolmentCompleteOutputTag: OutputTag[EnrolmentComplete] = OutputTag[EnrolmentComplete](enrolmentCompleteOutputTagName)
 
   // constans
   val activityType = "activity_type"
@@ -78,6 +82,7 @@ class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJo
   val activityAggregateUpdaterFn = "activity-aggregate-updater-fn"
   val partition = "partition"
   val courseBatch = "CourseBatch"
+  val enrolmentCompleteFn = "enrolment-completion-process"
 
   // Consumers
   val activityAggregateUpdaterConsumer = "activity-aggregate-updater-consumer"

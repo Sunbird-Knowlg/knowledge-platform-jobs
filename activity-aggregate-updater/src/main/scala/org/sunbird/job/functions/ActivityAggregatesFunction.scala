@@ -127,6 +127,11 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
 //      throw new Exception(s"leaf nodes are not available: $key")
     }
     val completedCount = leafNodes.intersect(userConsumption.contents.filter(cc => cc._2.status == 2).map(cc => cc._2.contentId).toList.distinct).size
+    if (completedCount >= leafNodes.size) {
+      // TODO: send details for completion output tag.
+      // Enrolment itself should set the status as 1 - in course-service.
+      context.output(config.enrolmentCompleteOutputTag, EnrolmentComplete(userId, userConsumption.batchId, courseId, new java.util.Date(), Map()))
+    }
     UserActivityAgg("Course", userId, courseId, contextId, Map("completedCount" -> completedCount), Map("completedCount" -> System.currentTimeMillis()))
   }
 

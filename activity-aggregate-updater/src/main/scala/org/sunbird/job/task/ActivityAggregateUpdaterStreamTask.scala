@@ -11,7 +11,8 @@ import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.functions.ActivityAggregatesFunction
+import org.sunbird.job.domain.EnrolmentComplete
+import org.sunbird.job.functions.{ActivityAggregatesFunction, EnrolmentCompleteFunction}
 import org.sunbird.job.trigger.CountTriggerWithTimeout
 import org.sunbird.job.util.FlinkUtil
 
@@ -21,6 +22,7 @@ class ActivityAggregateUpdaterStreamTask(config: ActivityAggregateUpdaterConfig,
     implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
     implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
+    implicit val enrolmentCompleteTypeInfo: TypeInformation[EnrolmentComplete] = TypeExtractor.getForClass(classOf[EnrolmentComplete])
     val progressStream =
       env.addSource(kafkaConnector.kafkaMapSource(config.kafkaInputTopic), config.activityAggregateUpdaterConsumer)
         .uid(config.activityAggregateUpdaterConsumer).setParallelism(config.kafkaConsumerParallelism)
@@ -32,6 +34,9 @@ class ActivityAggregateUpdaterStreamTask(config: ActivityAggregateUpdaterConfig,
         .name(config.activityAggregateUpdaterFn)
         .uid(config.activityAggregateUpdaterFn)
         .setParallelism(config.activityAggregateUpdaterParallelism)
+
+    progressStream.getSideOutput(config.enrolmentCompleteOutputTag).rebalance().process(new EnrolmentCompleteFunction(config))
+      .name(config.enrolmentCompleteFn).uid(config.enrolmentCompleteFn).setParallelism(1)
 
     progressStream.getSideOutput(config.auditEventOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaAuditEventTopic)).name(config.activityAggregateUpdaterProducer).uid(config.activityAggregateUpdaterProducer)
     progressStream.getSideOutput(config.failedEventOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaFailedEventTopic)).name(config.activityAggFailedEventProducer).uid(config.activityAggFailedEventProducer)
