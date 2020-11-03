@@ -92,6 +92,7 @@ class PostCertificateProcessFunction(config: PostCertificateProcessorConfig)
             context.output(config.auditEventOutputTag, mapper.writeValueAsString(certificateAuditEvent))
             logger.info("pushAuditEvent: certificate audit event success")
             notifyUser(userId, eData.get(config.courseName).asInstanceOf[String], issuedOn, courseId, batchId, eData.get(config.templateId).asInstanceOf[String])(metrics)
+            createUserFeed(userId, eData.get(config.courseName).asInstanceOf[String], issuedOn)
             metrics.incCounter(config.successEventCount)
           } else {
             metrics.incCounter(config.failedEventCount)
@@ -116,13 +117,29 @@ class PostCertificateProcessFunction(config: PostCertificateProcessorConfig)
     .and(QueryBuilder.eq(config.batchId.toLowerCase, propertiesToSelect.get(config.batchId).asInstanceOf[String]))
 
 
+  private def createUserFeed(userId: String, courseName: String, issuedOn: Date) {
+    val req = s"""{"request":{"data":{"TrainingName":"${courseName}","message":"${config.userFeedMsg}","heldDate":"${dateFormatter.format(issuedOn)}"},"category":"${config.certificates}","priority":${config.priorityValue} ,"userId":"${userId}"}}"""
+    val url = config.learnerServiceBaseUrl + config.userFeedCreateEndPoint
+    try {
+      val response = PostCertificateProcessorStreamTask.httpUtil.post(url, req)
+      if (response.status == 200) {
+        logger.info("user feed response status {} :: {}", response.status, response.body)
+      }
+      else
+        logger.info("user feed  response status {} :: {}", response.status, response.body)
+    } catch {
+      case e: Exception =>
+        logger.error("Error while creating user feed : {}", userId + e)
+    }
+  }
+
   private def notifyUser(userId: String, courseName: String, issuedOn: Date, courseId: String, batchId: String, templateId: String)(implicit metrics: Metrics): Unit = {
     val userResponse: util.Map[String, AnyRef] = getUserDetails(userId) // call user Service
     val primaryFields = Map(config.courseId.toLowerCase() -> courseId, config.batchId.toLowerCase -> batchId)
     val row = getNotificationTemplates(primaryFields, metrics)
     if (userResponse != null) {
       val certTemplate = row.getMap(config.cert_templates, com.google.common.reflect.TypeToken.of(classOf[String]), TypeTokens.mapOf(classOf[String], classOf[String]))
-      val url = config.learnerServiceBaseUrl + "/v2/notification"
+      val url = config.learnerServiceBaseUrl + config.notificationEndPoint
       if (certTemplate != null && StringUtils.isNotBlank(templateId) && certTemplate.containsKey(templateId) && certTemplate.get(templateId).containsKey(config.notifyTemplate)) {
         logger.info("notification template is present in the cert-templates object {}", certTemplate.get(templateId).containsKey(config.notifyTemplate))
         val notifyTemplate = getNotificationTemplate(certTemplate.get(templateId))
@@ -311,7 +328,7 @@ class PostCertificateProcessFunction(config: PostCertificateProcessorConfig)
         }})
       }})
     }
-    }
+   }
   }
 
 
