@@ -119,7 +119,6 @@ class PostCertificateProcessFunction(config: PostCertificateProcessorConfig)
 
   private def createUserFeed(userId: String, courseName: String, issuedOn: Date) {
     val req = s"""{"request":{"data":{"TrainingName":"${courseName}","message":"${config.userFeedMsg}","heldDate":"${dateFormatter.format(issuedOn)}"},"category":"${config.certificates}","priority":${config.priorityValue} ,"userId":"${userId}"}}"""
-    println("req " + req)
     val url = config.learnerServiceBaseUrl + config.userFeedCreateEndPoint
     try {
       val response = PostCertificateProcessorStreamTask.httpUtil.post(url, req)
