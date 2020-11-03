@@ -37,7 +37,6 @@ class PostCertificateProcessFunction(config: PostCertificateProcessorConfig)
   lazy private val mapper: ObjectMapper = new ObjectMapper()
   private val dateFormatter = new SimpleDateFormat("yyyy-MM-dd")
   lazy private val gson = new Gson()
-  private val USER_FEED_REQ = "{\"request\":{\"data\":{\"TrainingName\":\"COURSE_NAME_PLACEHOLDER\",\"message\":\"" + config.userFeedMsg + "\",\"heldDate\":\"ISSUED_ON_PLACEHOLDER\"},\"category\":\"" + config.certificates + "\",\"priority\":" + config.priorityValue + ",\"userId\":\"USER_ID_PLACEHOLDER\"}}"
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
@@ -119,8 +118,9 @@ class PostCertificateProcessFunction(config: PostCertificateProcessorConfig)
 
 
   private def createUserFeed(userId: String, courseName: String, issuedOn: Date) {
+    val req = s"""{"request":{"data":{"TrainingName":"${courseName}","message":"${config.userFeedMsg}","heldDate":"${dateFormatter.format(issuedOn)}"},"category":"${config.certificates}","priority":${config.priorityValue} ,"userId":"${userId}"}}"""
+    println("req " + req)
     val url = config.learnerServiceBaseUrl + config.userFeedCreateEndPoint
-    val req = USER_FEED_REQ.replaceAll("COURSE_NAME_PLACEHOLDER", courseName).replaceAll("ISSUED_ON_PLACEHOLDER", dateFormatter.format(issuedOn)).replaceAll("USER_ID_PLACEHOLDER", userId)
     try {
       val response = PostCertificateProcessorStreamTask.httpUtil.post(url, req)
       if (response.status == 200) {
@@ -291,44 +291,63 @@ class PostCertificateProcessFunction(config: PostCertificateProcessorConfig)
     //      context = EventContext(cdata = Array(Map("type" -> config.courseBatch, config.id -> batchId).asJava)),
     //      `object` = EventObject(id = certificate.get(config.id), `type` = "Certificate", rollup = Map[String, String](config.l1 -> courseId).asJava)
     //    )
-    new java.util.HashMap[String, AnyRef]() {{
-      put("eid", "BE_JOB_REQUEST")
-      put("ets", System.currentTimeMillis().asInstanceOf[AnyRef])
-      put("mid", s"LP.${System.currentTimeMillis()}.${UUID.randomUUID().toString}")
-      put("ver", "3.0")
-      put("actor", new java.util.HashMap[String, AnyRef]() {{
-        put(config.id, userId)
-        put("type", "User")
-      }})
-      put("context", new java.util.HashMap[String, AnyRef]() {{
-        put("channel", "in.sunbird")
-        put("env", "Course")
-        put("pdata", new java.util.HashMap[String, AnyRef]() {{
-          put("ver", "1.0")
-          put(config.id, "org.sunbird.learning.platform")
-          put("pid", "course-certificate-generator")
-        }})
-        put("cdata", new java.util.ArrayList[java.util.HashMap[String, AnyRef]]() {{
-          add(new java.util.HashMap[String, AnyRef]() {{
-            put(config.id, batchId)
-            put("type", config.courseBatch)
-          }})
-        }})
-      }})
-      put("edata", new java.util.HashMap[String, AnyRef]() {{
-        put("props", new java.util.ArrayList[String]() {{
-          add("certificates")
-        }})
-        put("type", "certificate-issued-svg")
-      }})
-      put("object", new java.util.HashMap[String, AnyRef]() {{
-        put(config.id, certificate.get(config.id))
-        put("type", "Certificate")
-        put("rollup", new java.util.HashMap[String,AnyRef]() {{
-          put(config.l1, courseId)
-        }})
-      }})
-    }
+    new java.util.HashMap[String, AnyRef]() {
+      {
+        put("eid", "BE_JOB_REQUEST")
+        put("ets", System.currentTimeMillis().asInstanceOf[AnyRef])
+        put("mid", s"LP.${System.currentTimeMillis()}.${UUID.randomUUID().toString}")
+        put("ver", "3.0")
+        put("actor", new java.util.HashMap[String, AnyRef]() {
+          {
+            put(config.id, userId)
+            put("type", "User")
+          }
+        })
+        put("context", new java.util.HashMap[String, AnyRef]() {
+          {
+            put("channel", "in.sunbird")
+            put("env", "Course")
+            put("pdata", new java.util.HashMap[String, AnyRef]() {
+              {
+                put("ver", "1.0")
+                put(config.id, "org.sunbird.learning.platform")
+                put("pid", "course-certificate-generator")
+              }
+            })
+            put("cdata", new java.util.ArrayList[java.util.HashMap[String, AnyRef]]() {
+              {
+                add(new java.util.HashMap[String, AnyRef]() {
+                  {
+                    put(config.id, batchId)
+                    put("type", config.courseBatch)
+                  }
+                })
+              }
+            })
+          }
+        })
+        put("edata", new java.util.HashMap[String, AnyRef]() {
+          {
+            put("props", new java.util.ArrayList[String]() {
+              {
+                add("certificates")
+              }
+            })
+            put("type", "certificate-issued-svg")
+          }
+        })
+        put("object", new java.util.HashMap[String, AnyRef]() {
+          {
+            put(config.id, certificate.get(config.id))
+            put("type", "Certificate")
+            put("rollup", new java.util.HashMap[String, AnyRef]() {
+              {
+                put(config.l1, courseId)
+              }
+            })
+          }
+        })
+      }
     }
   }
 
