@@ -37,6 +37,7 @@ class PostCertificateProcessFunction(config: PostCertificateProcessorConfig)
   lazy private val mapper: ObjectMapper = new ObjectMapper()
   private val dateFormatter = new SimpleDateFormat("yyyy-MM-dd")
   lazy private val gson = new Gson()
+  private val USER_FEED_REQ = "{\"request\":{\"data\":{\"TrainingName\":\"COURSE_NAME_PLACEHOLDER\",\"message\":\"" + config.userFeedMsg + "\",\"heldDate\":\"ISSUED_ON_PLACEHOLDER\"},\"category\":\"" + config.certificates + "\",\"priority\":" + config.priorityValue + ",\"userId\":\"USER_ID_PLACEHOLDER\"}}"
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
@@ -119,26 +120,9 @@ class PostCertificateProcessFunction(config: PostCertificateProcessorConfig)
 
   private def createUserFeed(userId: String, courseName: String, issuedOn: Date) {
     val url = config.learnerServiceBaseUrl + config.userFeedCreateEndPoint
-    val request = new java.util.HashMap[String, AnyRef]() {
-      {
-        put(config.request, new util.HashMap[String, AnyRef]() {
-          {
-            put(config.userId, userId)
-            put(config.category, config.certificates)
-            put(config.priority, config.priorityValue.asInstanceOf[AnyRef])
-            put(config.data, new util.HashMap[String, AnyRef]() {
-              {
-                put(config.trainingName, courseName)
-                put(config.heldDate, dateFormatter.format(issuedOn))
-                put("message", config.userFeedMsg)
-              }
-            })
-          }
-        })
-      }
-    }
+    val req = USER_FEED_REQ.replaceAll("COURSE_NAME_PLACEHOLDER", courseName).replaceAll("ISSUED_ON_PLACEHOLDER", dateFormatter.format(issuedOn)).replaceAll("USER_ID_PLACEHOLDER", userId)
     try {
-      val response = PostCertificateProcessorStreamTask.httpUtil.post(url, mapper.writeValueAsString(request))
+      val response = PostCertificateProcessorStreamTask.httpUtil.post(url, req)
       if (response.status == 200) {
         logger.info("user feed response status {} :: {}", response.status, response.body)
       }
