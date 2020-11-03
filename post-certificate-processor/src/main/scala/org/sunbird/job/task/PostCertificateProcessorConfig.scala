@@ -91,7 +91,7 @@ class PostCertificateProcessorConfig(override val config: Config) extends BaseJo
   val category = "category"
   val certificates = "certificates"
   val priority = "priority"
-  val userFeedMsg = "Congratulations! Download your course certificate from your profile page. If you have a problem downloading it on the mobile, update your DIKSHA app"
+  val userFeedMsg = "You have earned a certificate! Download it from your profile page."
   val priorityValue = 1
 
 }
