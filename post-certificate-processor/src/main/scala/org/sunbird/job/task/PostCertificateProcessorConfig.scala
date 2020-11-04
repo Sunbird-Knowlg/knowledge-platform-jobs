@@ -50,7 +50,7 @@ class PostCertificateProcessorConfig(override val config: Config) extends BaseJo
   val learnerServiceBaseUrl: String = config.getString("learner-service.basePath")
   val dbCourseBatchTable: String = config.getString("lms-cassandra.course_batch.table")
   val notificationEndPoint: String = "/v2/notification"
-  val userFeedCreateEndPoint:String = "/private/v1/user/feed/create"
+  val userFeedCreateEndPoint:String = "/private/user/feed/v1/create"
 
   // tags
   val auditEventOutputTagName = "audit-events"
