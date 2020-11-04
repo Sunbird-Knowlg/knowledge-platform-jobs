@@ -206,6 +206,7 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig)
     try {
       val directory = new File(path)
       val files: Array[File] = directory.listFiles
+      if(files!=null && files.length > 0)
       files.foreach(file => {
         if (file.getName.startsWith(fileName)) file.delete
       })
