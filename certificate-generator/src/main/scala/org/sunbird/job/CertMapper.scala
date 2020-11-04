@@ -80,9 +80,10 @@ class CertMapper(properties: java.util.Map[String, String]) {
     signatoryExtension
   }
 
-  private def validatePublicKeys(publicKeys: java.util.List[String], keys: java.util.Map[String, AnyRef]): java.util.List[String] = {
-    if (CollectionUtils.isEmpty(publicKeys) && MapUtils.isNotEmpty(keys)) {
-      publicKeys.add(keys.get(JsonKey.ID).asInstanceOf[String])
+  private def validatePublicKeys(issuerPublicKeys: java.util.List[String], keys: java.util.Map[String, AnyRef]): java.util.List[String] = {
+    var publicKeys = issuerPublicKeys
+    if (CollectionUtils.isEmpty(issuerPublicKeys) && MapUtils.isNotEmpty(keys)) {
+      publicKeys = new java.util.ArrayList[String]
     }
     val validatedPublicKeys: java.util.List[String] = new java.util.ArrayList[String]
     if (CollectionUtils.isNotEmpty(publicKeys))
