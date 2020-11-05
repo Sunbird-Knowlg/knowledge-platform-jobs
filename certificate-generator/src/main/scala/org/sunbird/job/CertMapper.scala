@@ -80,17 +80,19 @@ class CertMapper(properties: java.util.Map[String, String]) {
     signatoryExtension
   }
 
-  private def validatePublicKeys(publicKeys: java.util.List[String], keys: java.util.Map[String, AnyRef]): java.util.List[String] = {
-    if (CollectionUtils.isEmpty(publicKeys) && MapUtils.isNotEmpty(keys)) {
+  private def validatePublicKeys(issuerPublicKeys: java.util.List[String], keys: java.util.Map[String, AnyRef]): java.util.List[String] = {
+    var publicKeys = issuerPublicKeys
+    if (CollectionUtils.isEmpty(issuerPublicKeys) && MapUtils.isNotEmpty(keys)) {
+      publicKeys = new java.util.ArrayList[String]
       publicKeys.add(keys.get(JsonKey.ID).asInstanceOf[String])
     }
     val validatedPublicKeys: java.util.List[String] = new java.util.ArrayList[String]
     if (CollectionUtils.isNotEmpty(publicKeys))
       publicKeys.forEach((publicKey: String) => {
-      if (!publicKey.startsWith("http"))
-        validatedPublicKeys.add(properties.get(JsonKey.BASE_PATH).concat("/") + JsonKey.KEYS.concat("/") + publicKey.concat("_publicKey.json"))
-      else validatedPublicKeys.add(publicKey)
-    })
+        if (!publicKey.startsWith("http"))
+          validatedPublicKeys.add(properties.get(JsonKey.BASE_PATH).concat("/") + JsonKey.KEYS.concat("/") + publicKey.concat("_publicKey.json"))
+        else validatedPublicKeys.add(publicKey)
+      })
     validatedPublicKeys
   }
 

@@ -90,7 +90,7 @@ class CertificateApiServiceSpec extends BaseTestSpec {
   it should "readOrgKeys" in {
     val rootOrgId = "ORG_001"
     CertificateApiService.httpUtil = mockHttpUtil
-    when(mockHttpUtil.post(endsWith("/v1/org/read"), any[String])).thenReturn(HTTPResponse(200, """{ "id": "api.org.read", "ver": "v1", "ts": "2020-10-24 14:47:23:631+0000", "params": { "resmsgid": null, "msgid": "cc58e03e2789f6db8b4695a43a5c8a39", "err": null, "status": "success", "errmsg": null }, "responseCode": "OK", "result": {"keys": {"signKeys": [{"testKey": "testValue"}]}}}""".stripMargin))
+    when(mockHttpUtil.post(endsWith("/v1/org/read"), any[String])).thenReturn(HTTPResponse(200, """{ "id": "api.org.read", "ver": "v1", "ts": "2020-10-24 14:47:23:631+0000", "params": { "resmsgid": null, "msgid": "cc58e03e2789f6db8b4695a43a5c8a39", "err": null, "status": "success", "errmsg": null }, "responseCode": "OK", "result":{"response":{"keys": {"signKeys": [{"testKey": "testValue"}]}}}}""".stripMargin))
     val map = CertificateApiService.readOrgKeys(rootOrgId)(jobConfig)
     map.asScala.keySet.map(c => c) should contain("id")
   }

@@ -23,7 +23,7 @@ class CertificateEventGenerator(config: CertificatePreProcessorConfig)
     eventEdata.putAll(edata)
     eventEdata.putAll(setIssuedCertificate(edata))
     eventEdata.putAll(setUserData(edata))
-    eventEdata.putAll(setEventOrgData(edata))
+    eventEdata.putAll(setEventOrgData(eventEdata.get(config.orgId).asInstanceOf[String]))
     eventEdata.putAll(setCourseDetails(edata, collectionCache))
     eventEdata.putAll(setEventRelatedData(edata))
     eventEdata.putAll(edata.get(config.template).asInstanceOf[util.Map[String, AnyRef]])
@@ -73,9 +73,9 @@ class CertificateEventGenerator(config: CertificatePreProcessorConfig)
     convertToMap(userDetails)
   }
 
-  private def setEventOrgData(edata: util.Map[String, AnyRef]) = {
-    println("setEventOrgData called edata : " + edata.toString)
-    val keys = CertificateApiService.readOrgKeys(edata.get(config.orgId).asInstanceOf[String])(config)
+  private def setEventOrgData(orgId: String) = {
+    println("setEventOrgData called edata : " + orgId)
+    val keys = CertificateApiService.readOrgKeys(orgId)(config)
     if(MapUtils.isNotEmpty(keys)) {
       convertToMap(OrgDetails(keys))
     } else new java.util.HashMap[String, AnyRef]
