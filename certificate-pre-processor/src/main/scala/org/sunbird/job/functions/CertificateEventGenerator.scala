@@ -62,9 +62,10 @@ class CertificateEventGenerator(config: CertificatePreProcessorConfig)
     println("setUserData called edata : " + edata.toString)
     val userResponse = CertificateApiService.getUserDetails(edata.get(config.userId).asInstanceOf[String])(config)
     println("setUserData userResponse : " + userResponse.toString)
+    val lastName = if(StringUtils.isNotBlank(userResponse.get(config.lastName).asInstanceOf[String])) userResponse.get(config.lastName) else ""
     val userDetails = UserDetails(data = new util.ArrayList[java.util.Map[String, AnyRef]]() {
       {
-        add(convertToMap(Data((userResponse.get(config.firstName) + " " + userResponse.get(config.lastName)).trim,edata.get(config.userId).asInstanceOf[String])))
+        add(convertToMap(Data((userResponse.get(config.firstName) + " " + lastName).trim,edata.get(config.userId).asInstanceOf[String])))
       }
     },
       orgId = userResponse.get(config.rootOrgId).asInstanceOf[String]
