@@ -37,3 +37,39 @@ CREATE TABLE IF NOT EXISTS sunbird_courses.user_activity_agg (
     agg_last_updated Map<text, timestamp>,
     PRIMARY KEY ((activity_type, activity_id), context_id, user_id)
 );
+
+CREATE TABLE sunbird_courses.user_enrolments (
+    userid text,
+    courseid text,
+    batchid text,
+    active boolean,
+    addedby text,
+    certificates list<frozen<map<text, text>>>,
+    completedon timestamp,
+    completionpercentage int,
+    contentstatus map<text, int>,
+    datetime timestamp,
+    enrolleddate text,
+    issued_certificates list<frozen<map<text, text>>>,
+    lastreadcontentid text,
+    lastreadcontentstatus int,
+    progress int,
+    status int,
+    PRIMARY KEY (userid, courseid, batchid)
+) WITH CLUSTERING ORDER BY (courseid ASC, batchid ASC)
+    AND bloom_filter_fp_chance = 0.01
+    AND caching = {'keys': 'ALL', 'rows_per_partition': 'NONE'}
+    AND comment = ''
+    AND compaction = {'class': 'org.apache.cassandra.db.compaction.SizeTieredCompactionStrategy', 'max_threshold': '32', 'min_threshold': '4'}
+    AND compression = {'chunk_length_in_kb': '64', 'class': 'org.apache.cassandra.io.compress.LZ4Compressor'}
+    AND crc_check_chance = 1.0
+    AND dclocal_read_repair_chance = 0.1
+    AND default_time_to_live = 0
+    AND gc_grace_seconds = 864000
+    AND max_index_interval = 2048
+    AND memtable_flush_period_in_ms = 0
+    AND min_index_interval = 128
+    AND read_repair_chance = 0.0
+    AND speculative_retry = '99PERCENTILE';
+CREATE INDEX inx_ues_status ON sunbird_courses.user_enrolments (status);
+CREATE INDEX inx_ues_certs ON sunbird_courses.user_enrolments (values(certificates));

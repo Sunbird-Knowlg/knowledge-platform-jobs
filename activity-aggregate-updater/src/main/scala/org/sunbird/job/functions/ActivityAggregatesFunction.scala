@@ -71,7 +71,6 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
         event + ("contents" -> List(Map("contentId" -> c.get("contentId"), "status" -> c.get("status"))))
       })
     }
-
     logger.info("Filtered Events Size: " + contentConsumptionEvents.size)
 
     val inputUserConsumptionList: List[UserContentConsumption] =
@@ -81,7 +80,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
         val batchId = value.head(config.batchId).toString
         val userId = value.head(config.userId).toString
         val courseId = value.head(config.courseId).toString
-        val userConsumedContents = value.flatMap(contents => contents(config.contents).asInstanceOf[util.List[Map[String, AnyRef]]].asScala.toList)
+        val userConsumedContents = value.head(config.contents).asInstanceOf[List[Map[String, AnyRef]]]
         val enrichedContents = getContentStatusFromEvent(userConsumedContents)
         UserContentConsumption(userId = userId, batchId = batchId, courseId = courseId, enrichedContents)
       }).toList
@@ -341,9 +340,8 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
    *
    */
   def getContentStatusFromEvent(contents: List[Map[String, AnyRef]]): Map[String, ContentStatus] = {
-    val enrichedContents = contents.asInstanceOf[List[util.Map[String, AnyRef]]].map(content => {
-      val map = content.asScala.toMap
-      (map.getOrElse(config.contentId, "").asInstanceOf[String], map.getOrElse(config.status, 0).asInstanceOf[Number])
+    val enrichedContents = contents.map(content => {
+      (content.getOrElse(config.contentId, "").asInstanceOf[String], content.getOrElse(config.status, 0).asInstanceOf[Number])
     }).filter(t => StringUtils.isNotBlank(t._1) && (t._2.intValue() > 0))
       .map(x => {
         val completedCount = if (x._2.intValue() == 2) 1 else 0
