@@ -89,17 +89,18 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
     when(mockKafkaUtil.kafkaMapSource(courseAggregatorConfig.kafkaInputTopic)).thenReturn(new CourseAggregatorMapSource)
     when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaAuditEventTopic)).thenReturn(new auditEventSink)
     when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaFailedEventTopic)).thenReturn(new failedEventSink)
+    when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaCertIssueTopic)).thenReturn(new certificateIssuedEventsSink)
     new ActivityAggregateUpdaterStreamTask(courseAggregatorConfig, mockKafkaUtil).process()
-    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.batchEnrolmentUpdateEventCount}").getValue() should be(4)
+    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.batchEnrolmentUpdateEventCount}").getValue() should be(0)
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.dbReadCount}").getValue() should be(1) // 10
-    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.dbUpdateCount}").getValue() should be(5) // 3 (This should happend depending on the batch size)
-    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.cacheHitCount}").getValue() should be(18)
-    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.successEventCount}").getValue() should be(5)
+    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.dbUpdateCount}").getValue() should be(3) // 3 (This should happend depending on the batch size)
+    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.cacheHitCount}").getValue() should be(11)
+    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.successEventCount}").getValue() should be(3)
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.failedEventCount}").getValue() should be(0)
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.skipEventsCount}").getValue() should be(1)
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.cacheMissCount}").getValue() should be(0)
 
-    auditEventSink.values.size() should be(5)
+    auditEventSink.values.size() should be(2)
     auditEventSink.values.forEach(event => {
       println("AUDIT_TELEMETRY_EVENT: " + event)
     })
@@ -130,38 +131,21 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
     val event1ContentConsumption = readFromContentConsumptionTable(EventFixture.EVENT_1)
     event1ContentConsumption.forEach(col => {
       if (col.getObject("contentid") == "do_11260735471149056012299") {
-        col.getObject("viewcount") should be(5) // No start telemetry - Validate - with Manju
-        col.getObject("completedcount") should be(3) // No end telemetry - Validate - with Manju
+        col.getObject("viewcount") should be(4) // No start telemetry - Validate - with Manju
+        col.getObject("completedcount") should be(2) // No end telemetry - Validate - with Manju
       }
       if (col.getObject("contentid") == "do_11260735471149056012300") {
-        col.getObject("viewcount") should be(4) // No start telemetry - Validate - with Manju
+        col.getObject("viewcount") should be(2) // No start telemetry - Validate - with Manju
         col.getObject("completedcount") should be(2) // No end telemetry - Validate - with Manju*
       }
       if (col.getObject("contentid") == "do_11260735471149056012301") {
-        col.getObject("viewcount") should be(2) // Start telemetry - Validate - with Manju
+        col.getObject("viewcount") should be(0) // Start telemetry - Validate - with Manju
         col.getObject("completedcount") should be(1) // End telemetry - Validate - with Manju*
       }
     })
 
     val event2Progress = readFromCassandra(EventFixture.EVENT_2)
-    event2Progress.size() should be(3)
-    event2Progress.forEach(col => {
-      if (col.getObject("activity_id") == "unit11") {
-        col.getObject("activity_type") should be("Course")
-        println("aggMap", col.getObject("agg"))
-        col.getObject("agg").asInstanceOf[util.Map[String, Int]].get("completedCount") should equal(2)
-      }
-      if (col.getObject("activity_id") == "unit22") {
-        col.getObject("activity_type") should be("Course")
-        println("aggMap", col.getObject("agg"))
-        col.getObject("agg").asInstanceOf[util.Map[String, Int]].get("completedCount") should equal(1)
-      }
-      if (col.getObject("activity_id") == "C11") {
-        col.getObject("activity_type") should be("Course")
-        println("aggMap", col.getObject("agg"))
-        col.getObject("agg").asInstanceOf[util.Map[String, Int]].get("completedCount") should equal(2)
-      }
-    })
+    event2Progress.size() should be(0)
 
 
     val event2ContentConsumption = readFromContentConsumptionTable(EventFixture.EVENT_2)
@@ -199,15 +183,15 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
     val event3ContentConsumption = readFromContentConsumptionTable(EventFixture.EVENT_2)
     event3ContentConsumption.forEach(col => {
       if (col.getObject("contentid") == "do_R2") {
-        col.getObject("viewcount") should be(2) // No start
+        col.getObject("viewcount") should be(1) // No start
         col.getObject("completedcount") should be(1) // No end - Validate - with Manju*
       }
       if (col.getObject("contentid") == "do_R1") {
-        col.getObject("viewcount") should be(2) // No start
+        col.getObject("viewcount") should be(1) // No start
         col.getObject("completedcount") should be(1) // No end - Validate - with Manju*
       }
       if (col.getObject("contentid") == "do_R3") {
-        col.getObject("viewcount") should be(2) // No start
+        col.getObject("viewcount") should be(1) // No start
         col.getObject("completedcount") should be(1) // No end - Validate - with Manju*
       }
     })
@@ -308,5 +292,19 @@ class SuccessEvent extends SinkFunction[String] {
 }
 
 object SuccessEventSink {
+  val values: util.List[String] = new util.ArrayList()
+}
+
+
+class certificateIssuedEventsSink extends SinkFunction[String] {
+
+  override def invoke(value: String): Unit = {
+    synchronized {
+      certificateIssuedEvents.values.add(value)
+    }
+  }
+}
+
+object certificateIssuedEvents {
   val values: util.List[String] = new util.ArrayList()
 }
