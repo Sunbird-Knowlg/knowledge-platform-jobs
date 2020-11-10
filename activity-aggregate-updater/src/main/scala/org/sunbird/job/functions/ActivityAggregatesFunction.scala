@@ -60,13 +60,16 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
     logger.info("Input Events Size: " + events.asScala.toList.size)
     val batchEventsEdata: List[Map[String, AnyRef]] = events.asScala.map(f => f.get(config.eData).asInstanceOf[util.Map[String, AnyRef]].asScala.toMap).toList
 
-    val contentConsumptionEvents = batchEventsEdata.filter { event =>
+    val contentConsumptionEvents: List[Map[String, AnyRef]] = batchEventsEdata.filter { event =>
       val isBatchEnrollmentEvent: Boolean = StringUtils.equalsIgnoreCase(event.getOrElse(config.action, "").asInstanceOf[String], config.batchEnrolmentUpdateCode)
       if (!isBatchEnrollmentEvent) metrics.incCounter(config.skipEventsCount)
       isBatchEnrollmentEvent
-    }.map { event =>
+    }.flatMap { event =>
       val contents = event.getOrElse(config.contents, new util.ArrayList[java.util.Map[String, AnyRef]]()).asInstanceOf[util.List[java.util.Map[String, AnyRef]]].asScala
-      event
+      val filteredContents = contents.filter(x => x.get("status") == 2).toList
+      filteredContents.map(c => {
+        event + ("contents" -> List(Map("contentId" -> c.get("contentId"), "status" -> c.get("status"))))
+      })
     }
 
     logger.info("Filtered Events Size: " + contentConsumptionEvents.size)
@@ -132,7 +135,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
     val batchId = event.getOrElse(config.batchId, "").asInstanceOf[String]
     val contents = event.getOrElse(config.contents, new util.ArrayList[java.util.Map[String, AnyRef]]()).asInstanceOf[util.List[java.util.Map[String, AnyRef]]].asScala
     if (contents.size > 0) {
-      val content =  contents.head
+      val content = contents.head
       val contentId = content.getOrDefault("contentId", "").asInstanceOf[String]
       val status = content.getOrDefault("status", 0.asInstanceOf[AnyRef]).asInstanceOf[Number].intValue()
       val checksum = getMessageId(courseId, batchId, userId, contentId, status)
@@ -160,7 +163,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
       metrics.incCounter(config.failedEventCount)
       logger.error(s"leaf nodes are not available for: $key")
       context.output(config.failedEventOutputTag, gson.toJson(userConsumption))
-//      throw new Exception(s"leaf nodes are not available: $key")
+      //      throw new Exception(s"leaf nodes are not available: $key")
     }
     val completedCount = leafNodes.intersect(userConsumption.contents.filter(cc => cc._2.status == 2).map(cc => cc._2.contentId).toList.distinct).size
     val enrolmentComplete = if (completedCount >= leafNodes.size) {
@@ -223,7 +226,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
   def finalUserConsumption(inputData: UserContentConsumption, dbData: UserContentConsumption)(implicit metrics: Metrics): UserContentConsumption = {
     val dbContents = dbData.contents
     val processedContents = inputData.contents.map {
-        case (contentId, inputCC) => {
+      case (contentId, inputCC) => {
         // ContentStatus from DB.
           val dbCC: ContentStatus = dbContents.getOrElse(contentId, ContentStatus(contentId, 0, 0, 0))
           val finalStatus = List(inputCC.status, dbCC.status).max // Final status is max of DB and Input ContentStatus.
