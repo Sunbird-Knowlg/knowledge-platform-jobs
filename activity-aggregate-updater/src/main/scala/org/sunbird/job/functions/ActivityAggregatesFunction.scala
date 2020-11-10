@@ -133,17 +133,17 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
     val userId = event.getOrElse(config.userId, "").asInstanceOf[String]
     val courseId = event.getOrElse(config.courseId, "").asInstanceOf[String]
     val batchId = event.getOrElse(config.batchId, "").asInstanceOf[String]
-    val contents = event.getOrElse(config.contents, new util.ArrayList[java.util.Map[String, AnyRef]]()).asInstanceOf[util.List[java.util.Map[String, AnyRef]]].asScala
-    if (contents.size > 0) {
+    val contents = event.getOrElse(config.contents, List[Map[String,AnyRef]]()).asInstanceOf[List[Map[String, AnyRef]]]
+    if (contents.nonEmpty) {
       val content = contents.head
-      val contentId = content.getOrDefault("contentId", "").asInstanceOf[String]
-      val status = content.getOrDefault("status", 0.asInstanceOf[AnyRef]).asInstanceOf[Number].intValue()
+      val contentId = content.getOrElse("contentId", "").asInstanceOf[String]
+      val status = content.getOrElse("status", 0.asInstanceOf[AnyRef]).asInstanceOf[Number].intValue()
       val checksum = getMessageId(courseId, batchId, userId, contentId, status)
       val isUnique = deDupEngine.isUniqueEvent(checksum)
       if (isUnique) deDupEngine.storeChecksum(checksum)
       isUnique
     } else {
-      logger.info("Duplicate Event Found" + event)
+      logger.info("Duplicate Content Found" + contents)
       false
     }
   }
