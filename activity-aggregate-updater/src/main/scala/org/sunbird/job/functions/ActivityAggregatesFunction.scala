@@ -61,10 +61,14 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
     val batchEventsEdata: List[Map[String, AnyRef]] = events.asScala.map(f => f.get(config.eData).asInstanceOf[util.Map[String, AnyRef]].asScala.toMap).toList
 
     val contentConsumptionEvents = batchEventsEdata.filter { event =>
-      val isValid = filterEvent(event)
-      if (!isValid) metrics.incCounter(config.skipEventsCount)
-      isValid
+      val isBatchEnrollmentEvent: Boolean = StringUtils.equalsIgnoreCase(event.getOrElse(config.action, "").asInstanceOf[String], config.batchEnrolmentUpdateCode)
+      if (!isBatchEnrollmentEvent) metrics.incCounter(config.skipEventsCount)
+      isBatchEnrollmentEvent
+    }.map { event =>
+      val contents = event.getOrElse(config.contents, new util.ArrayList[java.util.Map[String, AnyRef]]()).asInstanceOf[util.List[java.util.Map[String, AnyRef]]].asScala
+      event
     }
+
     logger.info("Filtered Events Size: " + contentConsumptionEvents.size)
 
     val inputUserConsumptionList: List[UserContentConsumption] =
@@ -121,14 +125,8 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
 
   }
 
-  def filterEvent(event: Map[String, AnyRef]) : Boolean = {
-    val isBatchEnrollmentEvent: Boolean = StringUtils.equalsIgnoreCase(event.getOrElse(config.action, "").asInstanceOf[String], config.batchEnrolmentUpdateCode)
-    if (isBatchEnrollmentEvent) {
-      if (config.dedupEnabled) isUniqueEvent(event) else true
-    } else false
-  }
 
-  def isUniqueEvent(event: Map[String, AnyRef]): Boolean = {
+  def discardDuplicates(event: Map[String, AnyRef]): Boolean = {
     val userId = event.getOrElse(config.userId, "").asInstanceOf[String]
     val courseId = event.getOrElse(config.courseId, "").asInstanceOf[String]
     val batchId = event.getOrElse(config.batchId, "").asInstanceOf[String]
