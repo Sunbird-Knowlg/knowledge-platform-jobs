@@ -60,31 +60,34 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
     logger.info("Input Events Size: " + events.asScala.toList.size)
     val batchEventsEdata: List[Map[String, AnyRef]] = events.asScala.map(f => f.get(config.eData).asInstanceOf[util.Map[String, AnyRef]].asScala.toMap).toList
 
-    val contentConsumptionEvents = batchEventsEdata.filter { event =>
+    val contentConsumptionEvents: List[Map[String, AnyRef]] = batchEventsEdata.filter { event =>
       val isBatchEnrollmentEvent: Boolean = StringUtils.equalsIgnoreCase(event.getOrElse(config.action, "").asInstanceOf[String], config.batchEnrolmentUpdateCode)
       if (!isBatchEnrollmentEvent) metrics.incCounter(config.skipEventsCount)
       isBatchEnrollmentEvent
-    }.map { event =>
+    }.flatMap { event =>
       val contents = event.getOrElse(config.contents, new util.ArrayList[java.util.Map[String, AnyRef]]()).asInstanceOf[util.List[java.util.Map[String, AnyRef]]].asScala
-      event
+      val filteredContents = contents.filter(x => x.get("status") == 2).toList
+      filteredContents.map(c => {
+        event + ("contents" -> List(Map("contentId" -> c.get("contentId"), "status" -> c.get("status"))))
+      })
     }
-
     logger.info("Filtered Events Size: " + contentConsumptionEvents.size)
 
+    val uniqueContentConsumptionEvents = if (config.dedupEnabled) contentConsumptionEvents.filter(event => discardDuplicates(event)) else contentConsumptionEvents
     val inputUserConsumptionList: List[UserContentConsumption] =
-      contentConsumptionEvents
+      uniqueContentConsumptionEvents
         .groupBy(key => (key.get(config.courseId), key.get(config.batchId), key.get(config.userId)))
         .values.map(value => {
         val batchId = value.head(config.batchId).toString
         val userId = value.head(config.userId).toString
         val courseId = value.head(config.courseId).toString
-        val userConsumedContents = value.flatMap(contents => contents(config.contents).asInstanceOf[util.List[Map[String, AnyRef]]].asScala.toList)
+        val userConsumedContents = value.head(config.contents).asInstanceOf[List[Map[String, AnyRef]]]
         val enrichedContents = getContentStatusFromEvent(userConsumedContents)
         UserContentConsumption(userId = userId, batchId = batchId, courseId = courseId, enrichedContents)
       }).toList
 
     // Fetch the content status from the table in batch format
-    val dbUserConsumption: Map[String, UserContentConsumption] = getContentStatusFromDB(contentConsumptionEvents, metrics)
+    val dbUserConsumption: Map[String, UserContentConsumption] = getContentStatusFromDB(uniqueContentConsumptionEvents, metrics)
 
     // Final User's ContentConsumption after merging with DB data.
     // Here we have final viewcount, completedcount and identified the content which should generate AUDIT events for start and complete.
@@ -130,14 +133,15 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
     val userId = event.getOrElse(config.userId, "").asInstanceOf[String]
     val courseId = event.getOrElse(config.courseId, "").asInstanceOf[String]
     val batchId = event.getOrElse(config.batchId, "").asInstanceOf[String]
-    val contents = event.getOrElse(config.contents, new util.ArrayList[java.util.Map[String, AnyRef]]()).asInstanceOf[util.List[java.util.Map[String, AnyRef]]].asScala
-    if (contents.size > 0) {
-      val content =  contents.head
-      val contentId = content.getOrDefault("contentId", "").asInstanceOf[String]
-      val status = content.getOrDefault("status", 0.asInstanceOf[AnyRef]).asInstanceOf[Number].intValue()
+    val contents = event.getOrElse(config.contents, List[Map[String,AnyRef]]()).asInstanceOf[List[Map[String, AnyRef]]]
+    if (contents.nonEmpty) {
+      val content = contents.head
+      val contentId = content.getOrElse("contentId", "").asInstanceOf[String]
+      val status = content.getOrElse("status", 0.asInstanceOf[AnyRef]).asInstanceOf[Number].intValue()
       val checksum = getMessageId(courseId, batchId, userId, contentId, status)
       val isUnique = deDupEngine.isUniqueEvent(checksum)
       if (isUnique) deDupEngine.storeChecksum(checksum)
+      if(!isUnique) logger.info(s"Duplicate Content $checksum Found in the event $content")
       isUnique
     } else false
   }
@@ -160,7 +164,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
       metrics.incCounter(config.failedEventCount)
       logger.error(s"leaf nodes are not available for: $key")
       context.output(config.failedEventOutputTag, gson.toJson(userConsumption))
-//      throw new Exception(s"leaf nodes are not available: $key")
+      //      throw new Exception(s"leaf nodes are not available: $key")
     }
     val completedCount = leafNodes.intersect(userConsumption.contents.filter(cc => cc._2.status == 2).map(cc => cc._2.contentId).toList.distinct).size
     val enrolmentComplete = if (completedCount >= leafNodes.size) {
@@ -223,7 +227,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
   def finalUserConsumption(inputData: UserContentConsumption, dbData: UserContentConsumption)(implicit metrics: Metrics): UserContentConsumption = {
     val dbContents = dbData.contents
     val processedContents = inputData.contents.map {
-        case (contentId, inputCC) => {
+      case (contentId, inputCC) => {
         // ContentStatus from DB.
           val dbCC: ContentStatus = dbContents.getOrElse(contentId, ContentStatus(contentId, 0, 0, 0))
           val finalStatus = List(inputCC.status, dbCC.status).max // Final status is max of DB and Input ContentStatus.
@@ -338,9 +342,8 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
    *
    */
   def getContentStatusFromEvent(contents: List[Map[String, AnyRef]]): Map[String, ContentStatus] = {
-    val enrichedContents = contents.asInstanceOf[List[util.Map[String, AnyRef]]].map(content => {
-      val map = content.asScala.toMap
-      (map.getOrElse(config.contentId, "").asInstanceOf[String], map.getOrElse(config.status, 0).asInstanceOf[Number])
+    val enrichedContents = contents.map(content => {
+      (content.getOrElse(config.contentId, "").asInstanceOf[String], content.getOrElse(config.status, 0).asInstanceOf[Number])
     }).filter(t => StringUtils.isNotBlank(t._1) && (t._2.intValue() > 0))
       .map(x => {
         val completedCount = if (x._2.intValue() == 2) 1 else 0
