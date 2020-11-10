@@ -73,8 +73,9 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
     }
     logger.info("Filtered Events Size: " + contentConsumptionEvents.size)
 
+    val uniqueContentConsumptionEvents = if (config.dedupEnabled) contentConsumptionEvents.filter(event => discardDuplicates(event)) else contentConsumptionEvents
     val inputUserConsumptionList: List[UserContentConsumption] =
-      contentConsumptionEvents
+      uniqueContentConsumptionEvents
         .groupBy(key => (key.get(config.courseId), key.get(config.batchId), key.get(config.userId)))
         .values.map(value => {
         val batchId = value.head(config.batchId).toString
@@ -86,7 +87,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
       }).toList
 
     // Fetch the content status from the table in batch format
-    val dbUserConsumption: Map[String, UserContentConsumption] = getContentStatusFromDB(contentConsumptionEvents, metrics)
+    val dbUserConsumption: Map[String, UserContentConsumption] = getContentStatusFromDB(uniqueContentConsumptionEvents, metrics)
 
     // Final User's ContentConsumption after merging with DB data.
     // Here we have final viewcount, completedcount and identified the content which should generate AUDIT events for start and complete.
