@@ -141,11 +141,9 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
       val checksum = getMessageId(courseId, batchId, userId, contentId, status)
       val isUnique = deDupEngine.isUniqueEvent(checksum)
       if (isUnique) deDupEngine.storeChecksum(checksum)
+      if(!isUnique) logger.info(s"Duplicate Content $checksum Found in the event $content")
       isUnique
-    } else {
-      logger.info("Duplicate Content Found" + contents)
-      false
-    }
+    } else false
   }
 
   def getMessageId(collectionId: String, batchId: String, userId: String, contentId: String, status: Int): String = {
