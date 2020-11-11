@@ -107,6 +107,7 @@ class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJo
   val thresholdBatchReadInterval: Int = config.getInt("threshold.batch.read.interval")
   val thresholdBatchReadSize: Int = config.getInt("threshold.batch.read.size")
   val thresholdBatchWriteSize: Int = config.getInt("threshold.batch.write.size")
+  val windowShards: Int = config.getInt("task.window.shards")
 
   // Job specific configurations
   val moduleAggEnabled: Boolean = config.getBoolean("activity.module.aggs.enabled")
