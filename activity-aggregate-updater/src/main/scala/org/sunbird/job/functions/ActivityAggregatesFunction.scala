@@ -24,7 +24,7 @@ import org.sunbird.job.{Metrics, WindowBaseProcessFunction}
 
 import scala.collection.JavaConverters._
 
-class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implicit val stringTypeInfo: TypeInformation[String], @transient var cassandraUtil: CassandraUtil = null) extends WindowBaseProcessFunction[util.Map[String, AnyRef], String, String](config) {
+class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implicit val stringTypeInfo: TypeInformation[String], @transient var cassandraUtil: CassandraUtil = null) extends WindowBaseProcessFunction[util.Map[String, AnyRef], String, Int](config) {
   val mapType: Type = new TypeToken[util.Map[String, AnyRef]]() {}.getType
   private[this] val logger = LoggerFactory.getLogger(classOf[ActivityAggregatesFunction])
   private var cache: DataCache = _
@@ -52,8 +52,8 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
     super.close()
   }
 
-  def process(key: String,
-              context: ProcessWindowFunction[util.Map[String, AnyRef], String, String, TimeWindow]#Context,
+  def process(key: Int,
+              context: ProcessWindowFunction[util.Map[String, AnyRef], String, Int, TimeWindow]#Context,
               events: lang.Iterable[util.Map[String, AnyRef]],
               metrics: Metrics): Unit = {
 
@@ -154,7 +154,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
   /**
    * Course Level Agg using the merged data of ContentConsumption per user, course and batch.
    */
-  def courseActivityAgg(userConsumption: UserContentConsumption, context: ProcessWindowFunction[util.Map[String, AnyRef], String, String, TimeWindow]#Context)(implicit metrics: Metrics): UserEnrolmentAgg = {
+  def courseActivityAgg(userConsumption: UserContentConsumption, context: ProcessWindowFunction[util.Map[String, AnyRef], String, Int, TimeWindow]#Context)(implicit metrics: Metrics): UserEnrolmentAgg = {
     val courseId = userConsumption.courseId
     val userId = userConsumption.userId
     val contextId = "cb:" + userConsumption.batchId
