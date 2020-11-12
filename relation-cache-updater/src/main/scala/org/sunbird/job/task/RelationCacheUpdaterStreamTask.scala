@@ -7,7 +7,7 @@ import com.typesafe.config.ConfigFactory
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
-import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
+import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.functions.RelationCacheUpdater
 import org.sunbird.job.util.FlinkUtil
@@ -20,9 +20,9 @@ class RelationCacheUpdaterStreamTask(config: RelationCacheUpdaterConfig, kafkaCo
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
     val source = kafkaConnector.kafkaMapSource(config.kafkaInputTopic)
 
-    env.addSource(source, config.relationCacheConsumer)
+    env.addSource(source).name(config.relationCacheConsumer)
       .uid(config.relationCacheConsumer).setParallelism(config.kafkaConsumerParallelism)
-      .rebalance()
+      .rebalance
       .process(new RelationCacheUpdater(config))
       .name("relation-cache-updater").uid("relation-cache-updater")
       .setParallelism(config.parallelism)

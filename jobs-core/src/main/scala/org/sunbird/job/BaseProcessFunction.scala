@@ -1,14 +1,13 @@
 package org.sunbird.job
 
-import java.lang
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicLong
 
 import org.apache.flink.api.scala.metrics.ScalaGauge
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
-import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction
-import org.apache.flink.streaming.api.windowing.windows.TimeWindow
+import org.apache.flink.streaming.api.scala.function.ProcessWindowFunction
+import org.apache.flink.streaming.api.windowing.windows.GlobalWindow
 import org.apache.flink.util.Collector
 
 case class Metrics(metrics: ConcurrentHashMap[String, AtomicLong]) {
@@ -51,7 +50,7 @@ abstract class BaseProcessFunction[T, R](config: BaseJobConfig) extends ProcessF
   }
 }
 
-abstract class WindowBaseProcessFunction[I, O, K](config: BaseJobConfig) extends ProcessWindowFunction[I, O, K, TimeWindow] with JobMetrics {
+abstract class WindowBaseProcessFunction[I, O, K](config: BaseJobConfig) extends ProcessWindowFunction[I, O, K, GlobalWindow] with JobMetrics {
 
   private val metrics: Metrics = registerMetrics(metricsList())
 
@@ -65,11 +64,11 @@ abstract class WindowBaseProcessFunction[I, O, K](config: BaseJobConfig) extends
   def metricsList(): List[String]
 
   def process(key: K,
-              context: ProcessWindowFunction[I, O, K, TimeWindow]#Context,
-              elements: lang.Iterable[I],
+              context: ProcessWindowFunction[I, O, K, GlobalWindow]#Context,
+              elements: Iterable[I],
               metrics: Metrics): Unit
 
-  override def process(key: K, context: ProcessWindowFunction[I, O, K, TimeWindow]#Context, elements: lang.Iterable[I], out: Collector[O]): Unit = {
+  override def process(key: K, context: Context, elements: Iterable[I], out: Collector[O]): Unit = {
     process(key, context, elements, metrics)
   }
 }
