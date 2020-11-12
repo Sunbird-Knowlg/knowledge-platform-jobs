@@ -5,6 +5,7 @@ import java.util
 
 import com.typesafe.config.ConfigFactory
 import org.apache.flink.api.common.typeinfo.TypeInformation
+import org.apache.flink.api.java.functions.KeySelector
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala._
@@ -26,7 +27,7 @@ class ActivityAggregateUpdaterStreamTask(config: ActivityAggregateUpdaterConfig,
       env.addSource(kafkaConnector.kafkaMapSource(config.kafkaInputTopic)).name(config.activityAggregateUpdaterConsumer)
         .uid(config.activityAggregateUpdaterConsumer).setParallelism(config.kafkaConsumerParallelism)
         .rebalance
-        .keyBy(event => event.getOrDefault(config.userId, "").asInstanceOf[String].hashCode % config.windowShards)
+        .keyBy(new ActivityAggregatorKeySelector(config))
         .countWindow(config.thresholdBatchReadSize)
         .process(new ActivityAggregatesFunction(config))
         .name(config.activityAggregateUpdaterFn)
@@ -64,3 +65,11 @@ object ActivityAggregateUpdaterStreamTask {
   }
 }
 // $COVERAGE-ON$
+
+class ActivityAggregatorKeySelector(config: ActivityAggregateUpdaterConfig) extends KeySelector[util.Map[String, AnyRef], Int] {
+  private val serialVersionUID = 7267989625042068736L
+  private val shards = config.windowShards
+  override def getKey(in: util.Map[String, AnyRef]): Int = {
+    in.getOrDefault(config.userId, "").asInstanceOf[String].hashCode % shards
+  }
+}
