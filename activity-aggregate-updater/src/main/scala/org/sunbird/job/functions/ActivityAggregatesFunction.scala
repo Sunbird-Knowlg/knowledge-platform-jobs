@@ -58,7 +58,10 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
               metrics: Metrics): Unit = {
 
     logger.info("Input Events Size: " + events.asScala.toList.size)
-    val batchEventsEdata: List[Map[String, AnyRef]] = events.asScala.map(f => f.get(config.eData).asInstanceOf[util.Map[String, AnyRef]].asScala.toMap).toList
+    val batchEventsEdata: List[Map[String, AnyRef]] = events.asScala.map { f =>
+      metrics.incCounter(config.batchEnrolmentUpdateEventCount)
+      f.get(config.eData).asInstanceOf[util.Map[String, AnyRef]].asScala.toMap
+    }.toList
 
     val contentConsumptionEvents: List[Map[String, AnyRef]] = batchEventsEdata.filter { event =>
       val isBatchEnrollmentEvent: Boolean = StringUtils.equalsIgnoreCase(event.getOrElse(config.action, "").asInstanceOf[String], config.batchEnrolmentUpdateCode)
@@ -67,6 +70,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
     }.flatMap { event =>
       val contents = event.getOrElse(config.contents, new util.ArrayList[java.util.Map[String, AnyRef]]()).asInstanceOf[util.List[java.util.Map[String, AnyRef]]].asScala
       val filteredContents = contents.filter(x => x.get("status") == 2).toList
+      if (filteredContents.size == 0) metrics.incCounter(config.skipEventsCount)
       filteredContents.map(c => {
         event + ("contents" -> List(Map("contentId" -> c.get("contentId"), "status" -> c.get("status"))))
       })
