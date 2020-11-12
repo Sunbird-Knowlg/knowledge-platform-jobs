@@ -5,7 +5,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 import net.manub.embeddedkafka.EmbeddedKafka._
 import net.manub.embeddedkafka.{EmbeddedKafka, EmbeddedKafkaConfig}
 import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
-import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
+import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.test.util.MiniClusterWithClientResource
 import org.apache.kafka.common.serialization.StringDeserializer
@@ -104,7 +104,7 @@ class BaseProcessFunctionTestSpec extends BaseSpec with Matchers {
 
 
     val mapStream =
-      env.addSource(kafkaConnector.kafkaMapSource(bsConfig.kafkaMapInputTopic), "map-event-consumer")
+      env.addSource(kafkaConnector.kafkaMapSource(bsConfig.kafkaMapInputTopic)).name("map-event-consumer")
         .process(new TestMapStreamFunc(bsConfig)).name("TestMapEventStream")
 
     mapStream.getSideOutput(bsConfig.mapOutputTag)
@@ -112,7 +112,7 @@ class BaseProcessFunctionTestSpec extends BaseSpec with Matchers {
       .name("Map-Event-Producer")
 
     val stringStream =
-      env.addSource(kafkaConnector.kafkaStringSource(bsConfig.kafkaStringInputTopic), "string-event-consumer")
+      env.addSource(kafkaConnector.kafkaStringSource(bsConfig.kafkaStringInputTopic)).name("string-event-consumer")
       .process(new TestStringStreamFunc(bsConfig)).name("TestStringEventStream")
 
     stringStream.getSideOutput(bsConfig.stringOutputTag)

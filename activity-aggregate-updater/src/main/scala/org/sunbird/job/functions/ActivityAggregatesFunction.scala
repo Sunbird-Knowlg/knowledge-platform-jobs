@@ -12,8 +12,8 @@ import org.apache.commons.collections.CollectionUtils
 import org.apache.commons.lang3.StringUtils
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
-import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction
-import org.apache.flink.streaming.api.windowing.windows.TimeWindow
+import org.apache.flink.streaming.api.scala.function.ProcessWindowFunction
+import org.apache.flink.streaming.api.windowing.windows.GlobalWindow
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cache.{DataCache, RedisConnect}
 import org.sunbird.job.dedup.DeDupEngine
@@ -24,7 +24,10 @@ import org.sunbird.job.{Metrics, WindowBaseProcessFunction}
 
 import scala.collection.JavaConverters._
 
-class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implicit val stringTypeInfo: TypeInformation[String], @transient var cassandraUtil: CassandraUtil = null) extends WindowBaseProcessFunction[util.Map[String, AnyRef], String, Int](config) {
+class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig, @transient var cassandraUtil: CassandraUtil = null)
+                                (implicit val stringTypeInfo: TypeInformation[String])
+  extends WindowBaseProcessFunction[util.Map[String, AnyRef], String, Int](config) {
+
   val mapType: Type = new TypeToken[util.Map[String, AnyRef]]() {}.getType
   private[this] val logger = LoggerFactory.getLogger(classOf[ActivityAggregatesFunction])
   private var cache: DataCache = _
@@ -52,17 +55,17 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
     super.close()
   }
 
-  def process(key: Int,
-              context: ProcessWindowFunction[util.Map[String, AnyRef], String, Int, TimeWindow]#Context,
-              events: lang.Iterable[util.Map[String, AnyRef]],
+  override def process(key: Int,
+              context: ProcessWindowFunction[util.Map[String, AnyRef], String, Int, GlobalWindow]#Context,
+              events: Iterable[util.Map[String, AnyRef]],
               metrics: Metrics): Unit = {
 
-    logger.info("Events Size - Input: " + events.asScala.toList.size)
-    val batchEventsEdata: List[Map[String, AnyRef]] = events.asScala.map { f =>
-      metrics.incCounter(config.batchEnrolmentUpdateEventCount)
-      f.get(config.eData).asInstanceOf[util.Map[String, AnyRef]].asScala.toMap
+    logger.info("Input Events Size: " + events.toList.size)
+    val batchEventsEdata: List[Map[String, AnyRef]] = events.map {
+      f => metrics.incCounter(config.batchEnrolmentUpdateEventCount)
+        f.get(config.eData).asInstanceOf[util.Map[String, AnyRef]].asScala.toMap
     }.toList
-
+    
     val contentConsumptionEvents: List[Map[String, AnyRef]] = batchEventsEdata.filter { event =>
       val isBatchEnrollmentEvent: Boolean = StringUtils.equalsIgnoreCase(event.getOrElse(config.action, "").asInstanceOf[String], config.batchEnrolmentUpdateCode)
       if (!isBatchEnrollmentEvent) metrics.incCounter(config.skipEventsCount)
@@ -159,7 +162,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
   /**
    * Course Level Agg using the merged data of ContentConsumption per user, course and batch.
    */
-  def courseActivityAgg(userConsumption: UserContentConsumption, context: ProcessWindowFunction[util.Map[String, AnyRef], String, Int, TimeWindow]#Context)(implicit metrics: Metrics): UserEnrolmentAgg = {
+  def courseActivityAgg(userConsumption: UserContentConsumption, context: ProcessWindowFunction[util.Map[String, AnyRef], String, Int, GlobalWindow]#Context)(implicit metrics: Metrics): UserEnrolmentAgg = {
     val courseId = userConsumption.courseId
     val userId = userConsumption.userId
     val contextId = "cb:" + userConsumption.batchId
