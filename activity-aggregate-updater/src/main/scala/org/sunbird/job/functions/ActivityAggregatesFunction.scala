@@ -33,7 +33,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
 
   override def metricsList(): List[String] = {
     List(config.successEventCount, config.failedEventCount, config.batchEnrolmentUpdateEventCount,
-      config.dbUpdateCount, config.dbReadCount, config.cacheHitCount, config.skipEventsCount, config.cacheMissCount)
+      config.dbUpdateCount, config.dbReadCount, config.cacheHitCount, config.skipEventsCount, config.cacheMissCount, config.processedEnrolmentCount)
   }
 
   override def open(parameters: Configuration): Unit = {
@@ -57,7 +57,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
               events: lang.Iterable[util.Map[String, AnyRef]],
               metrics: Metrics): Unit = {
 
-    logger.info("Input Events Size: " + events.asScala.toList.size)
+    logger.info("Events Size - Input: " + events.asScala.toList.size)
     val batchEventsEdata: List[Map[String, AnyRef]] = events.asScala.map { f =>
       metrics.incCounter(config.batchEnrolmentUpdateEventCount)
       f.get(config.eData).asInstanceOf[util.Map[String, AnyRef]].asScala.toMap
@@ -75,13 +75,15 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
         event + ("contents" -> List(Map("contentId" -> c.get("contentId"), "status" -> c.get("status"))))
       })
     }
-    logger.info("Filtered Events Size: " + contentConsumptionEvents.size)
+    logger.info("Events Size - Filtered: " + contentConsumptionEvents.size)
 
     val uniqueContentConsumptionEvents = if (config.dedupEnabled) contentConsumptionEvents.filter(event => discardDuplicates(event)) else contentConsumptionEvents
+    logger.info("Events Size - (after DeDup) Unique: " + uniqueContentConsumptionEvents.size)
     val inputUserConsumptionList: List[UserContentConsumption] =
       uniqueContentConsumptionEvents
         .groupBy(key => (key.get(config.courseId), key.get(config.batchId), key.get(config.userId)))
         .values.map(value => {
+        metrics.incCounter(config.processedEnrolmentCount)
         val batchId = value.head(config.batchId).toString
         val userId = value.head(config.userId).toString
         val courseId = value.head(config.courseId).toString
@@ -145,7 +147,6 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
       val checksum = getMessageId(courseId, batchId, userId, contentId, status)
       val isUnique = deDupEngine.isUniqueEvent(checksum)
       if (isUnique) deDupEngine.storeChecksum(checksum)
-      if(!isUnique) logger.info(s"Duplicate Content $checksum Found in the event $content")
       isUnique
     } else false
   }

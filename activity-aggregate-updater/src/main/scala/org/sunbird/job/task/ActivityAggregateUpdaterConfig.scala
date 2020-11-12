@@ -36,6 +36,7 @@ class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJo
   val cacheMissCount = "cache-miss-count"
   val batchEnrolmentUpdateEventCount = "batch-enrolment-update-count"
   val skipEventsCount = "skipped-events-count"
+  val processedEnrolmentCount = "processed-enrolment-count"
   val enrolmentCompleteCount = "enrolment-complete-count"
   val certIssueEventsCount = "cert-issue-events-count"
 
