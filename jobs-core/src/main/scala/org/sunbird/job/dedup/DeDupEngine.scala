@@ -35,7 +35,7 @@ class DeDupEngine(val config: BaseJobConfig, val redisConnect: RedisConnect, val
     catch {
       case ex: JedisException =>
         this.redisConnection.close
-        this.redisConnection = redisConnect.getConnection(10000)
+        this.redisConnection = redisConnect.getConnection(store,10000)
         this.redisConnection.select(store)
         redisConnection.setex(checksum, expirySeconds, "")
     }
