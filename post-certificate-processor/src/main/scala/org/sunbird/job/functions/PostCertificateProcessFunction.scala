@@ -291,9 +291,9 @@ class PostCertificateProcessFunction(config: PostCertificateProcessorConfig)
     //      `object` = EventObject(id = certificate.get(config.id), `type` = "Certificate", rollup = Map[String, String](config.l1 -> courseId).asJava)
     //    )
     new java.util.HashMap[String, AnyRef]() {{
-      put("eid", "BE_JOB_REQUEST")
+      put("eid", "AUDIT")
       put("ets", System.currentTimeMillis().asInstanceOf[AnyRef])
-      put("mid", s"LP.${System.currentTimeMillis()}.${UUID.randomUUID().toString}")
+      put("mid", s"LP.AUDIT.${System.currentTimeMillis()}.${UUID.randomUUID().toString}")
       put("ver", "3.0")
       put("actor", new java.util.HashMap[String, AnyRef]() {{
         put(config.id, userId)
