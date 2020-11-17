@@ -91,13 +91,13 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
     when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaFailedEventTopic)).thenReturn(new failedEventSink)
     when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaCertIssueTopic)).thenReturn(new certificateIssuedEventsSink)
     new ActivityAggregateUpdaterStreamTask(courseAggregatorConfig, mockKafkaUtil).process()
-    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.batchEnrolmentUpdateEventCount}").getValue() should be(5)
+    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.batchEnrolmentUpdateEventCount}").getValue() should be(4)
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.dbReadCount}").getValue() should be(1) // 10
-    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.dbUpdateCount}").getValue() should be(3) // 3 (This should happend depending on the batch size)
-    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.cacheHitCount}").getValue() should be(11)
-    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.successEventCount}").getValue() should be(3)
+    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.dbUpdateCount}").getValue() should be(4) // 3 (This should happend depending on the batch size)
+    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.cacheHitCount}").getValue() should be(17)
+    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.successEventCount}").getValue() should be(4)
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.failedEventCount}").getValue() should be(0)
-    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.skipEventsCount}").getValue() should be(2)
+    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.skipEventsCount}").getValue() should be(1)
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.cacheMissCount}").getValue() should be(0)
 
     auditEventSink.values.size() should be(2)
@@ -145,7 +145,7 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
     })
 
     val event2Progress = readFromCassandra(EventFixture.EVENT_2)
-    event2Progress.size() should be(0)
+    event2Progress.size() should be(3)
 
 
     val event2ContentConsumption = readFromContentConsumptionTable(EventFixture.EVENT_2)
@@ -183,16 +183,16 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
     val event3ContentConsumption = readFromContentConsumptionTable(EventFixture.EVENT_2)
     event3ContentConsumption.forEach(col => {
       if (col.getObject("contentid") == "do_R2") {
-        col.getObject("viewcount") should be(1) // No start
-        col.getObject("completedcount") should be(1) // No end - Validate - with Manju*
+        col.getObject("viewcount") should be(1) 
+        col.getObject("completedcount") should be(1)
       }
       if (col.getObject("contentid") == "do_R1") {
-        col.getObject("viewcount") should be(1) // No start
-        col.getObject("completedcount") should be(1) // No end - Validate - with Manju*
+        col.getObject("viewcount") should be(2)
+        col.getObject("completedcount") should be(2)
       }
       if (col.getObject("contentid") == "do_R3") {
-        col.getObject("viewcount") should be(1) // No start
-        col.getObject("completedcount") should be(1) // No end - Validate - with Manju*
+        col.getObject("viewcount") should be(1)
+        col.getObject("completedcount") should be(1)
       }
     })
 

@@ -1,8 +1,6 @@
 package org.sunbird.job.functions
 
 import java.lang.reflect.Type
-import java.security.MessageDigest
-import java.{lang, util}
 
 import com.datastax.driver.core.Row
 import com.datastax.driver.core.querybuilder.{QueryBuilder, Select, Update}
@@ -16,7 +14,6 @@ import org.apache.flink.streaming.api.scala.function.ProcessWindowFunction
 import org.apache.flink.streaming.api.windowing.windows.GlobalWindow
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cache.{DataCache, RedisConnect}
-import org.sunbird.job.dedup.DeDupEngine
 import org.sunbird.job.domain.{UserContentConsumption, _}
 import org.sunbird.job.task.ActivityAggregateUpdaterConfig
 import org.sunbird.job.util.CassandraUtil
@@ -31,27 +28,23 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig, @transi
   val mapType: Type = new TypeToken[Map[String, AnyRef]]() {}.getType
   private[this] val logger = LoggerFactory.getLogger(classOf[ActivityAggregatesFunction])
   private var cache: DataCache = _
-  private var deDupEngine: DeDupEngine = _
   lazy private val gson = new Gson()
 
   override def metricsList(): List[String] = {
-    List(config.successEventCount, config.failedEventCount, config.batchEnrolmentUpdateEventCount,
-      config.dbUpdateCount, config.dbReadCount, config.cacheHitCount, config.skipEventsCount, config.cacheMissCount, config.processedEnrolmentCount)
+    List(config.successEventCount, config.failedEventCount,
+      config.dbUpdateCount, config.dbReadCount, config.cacheHitCount, config.cacheMissCount, config.processedEnrolmentCount)
   }
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
     cassandraUtil = new CassandraUtil(config.dbHost, config.dbPort)
     cache = new DataCache(config, new RedisConnect(config), config.nodeStore, List())
-    deDupEngine = new DeDupEngine(config, new RedisConnect(config, Option(config.deDupRedisHost), Option(config.deDupRedisPort)), config.deDupStore, config.deDupExpirySec)
     cache.init()
-    deDupEngine.init()
   }
 
   override def close(): Unit = {
     cassandraUtil.close()
     cache.close()
-    deDupEngine.close()
     super.close()
   }
 
@@ -61,8 +54,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig, @transi
               metrics: Metrics): Unit = {
 
     logger.debug("Input Events Size: " + events.toList.size)
-    val inputUserConsumptionList: List[UserContentConsumption] =
-      events
+    val inputUserConsumptionList: List[UserContentConsumption] = events
         .groupBy(key => (key.get(config.courseId), key.get(config.batchId), key.get(config.userId)))
         .values.map(value => {
         metrics.incCounter(config.processedEnrolmentCount)
@@ -114,28 +106,6 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig, @transi
     // Content AUDIT Event generation and pushing to output tag.
     finalUserConsumptionList.flatMap(userConsumption => contentAuditEvents(userConsumption)).foreach(event => context.output(config.auditEventOutputTag, gson.toJson(event)))
 
-  }
-
-
-  def discardDuplicates(event: Map[String, AnyRef]): Boolean = {
-    val userId = event.getOrElse(config.userId, "").asInstanceOf[String]
-    val courseId = event.getOrElse(config.courseId, "").asInstanceOf[String]
-    val batchId = event.getOrElse(config.batchId, "").asInstanceOf[String]
-    val contents = event.getOrElse(config.contents, List[Map[String,AnyRef]]()).asInstanceOf[List[Map[String, AnyRef]]]
-    if (contents.nonEmpty) {
-      val content = contents.head
-      val contentId = content.getOrElse("contentId", "").asInstanceOf[String]
-      val status = content.getOrElse("status", 0.asInstanceOf[AnyRef]).asInstanceOf[Number].intValue()
-      val checksum = getMessageId(courseId, batchId, userId, contentId, status)
-      val isUnique = deDupEngine.isUniqueEvent(checksum)
-      if (isUnique) deDupEngine.storeChecksum(checksum)
-      isUnique
-    } else false
-  }
-
-  def getMessageId(collectionId: String, batchId: String, userId: String, contentId: String, status: Int): String = {
-    val key = Array(collectionId, batchId, userId, contentId, status).mkString("|")
-    MessageDigest.getInstance("MD5").digest(key.getBytes).map("%02X".format(_)).mkString;
   }
 
   /**
