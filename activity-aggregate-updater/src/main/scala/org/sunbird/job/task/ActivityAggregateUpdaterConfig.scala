@@ -94,6 +94,7 @@ class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJo
   val action = "action"
   val batchEnrolmentUpdateCode = "batch-enrolment-update"
   val routerFn = "RouterFn"
+  val consumptionDeDupFn= "consumption-dedup-process"
   val activityAggregateUpdaterFn = "activity-aggregate-updater-fn"
   val partition = "partition"
   val courseBatch = "CourseBatch"

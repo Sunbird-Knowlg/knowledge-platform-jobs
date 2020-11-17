@@ -27,7 +27,8 @@ class ActivityAggregateUpdaterStreamTask(config: ActivityAggregateUpdaterConfig,
       env.addSource(kafkaConnector.kafkaMapSource(config.kafkaInputTopic)).name(config.activityAggregateUpdaterConsumer)
         .uid(config.activityAggregateUpdaterConsumer).setParallelism(config.kafkaConsumerParallelism)
         .rebalance
-        .process(new ContentConsumptionDeDupFunction(config))
+        .process(new ContentConsumptionDeDupFunction(config)).name(config.consumptionDeDupFn)
+        .uid(config.consumptionDeDupFn).setParallelism(config.activityAggregateUpdaterParallelism)
         .getSideOutput(config.uniqueConsumptionOutput)
         .keyBy(new ActivityAggregatorKeySelector(config))
         .countWindow(config.thresholdBatchReadSize)
