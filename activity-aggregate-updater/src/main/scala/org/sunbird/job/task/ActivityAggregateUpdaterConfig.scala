@@ -14,6 +14,7 @@ class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJo
   private val serialVersionUID = 2905979434303791379L
 
   implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
+  implicit val scalaMapTypeInfo: TypeInformation[Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[Map[String, AnyRef]])
   implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
   implicit val enrolmentCompleteTypeInfo: TypeInformation[List[EnrolmentComplete]] = TypeExtractor.getForClass(classOf[List[EnrolmentComplete]])
 
@@ -56,6 +57,8 @@ class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJo
   val deDupExpirySec: Int = config.getInt("dedup-redis.database.expiry")
 
   // Tags
+  val uniqueConsumptionOutputTagName = "unique-consumption-events"
+  val uniqueConsumptionOutput: OutputTag[Map[String, AnyRef]] = OutputTag[Map[String, AnyRef]](uniqueConsumptionOutputTagName)
   val auditEventOutputTagName = "audit-events"
   val auditEventOutputTag: OutputTag[String] = OutputTag[String](auditEventOutputTagName)
   val failedEventOutputTagName = "failed-events"

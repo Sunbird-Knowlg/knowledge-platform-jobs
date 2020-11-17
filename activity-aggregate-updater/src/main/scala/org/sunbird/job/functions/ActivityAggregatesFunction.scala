@@ -26,9 +26,9 @@ import scala.collection.JavaConverters._
 
 class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig, @transient var cassandraUtil: CassandraUtil = null)
                                 (implicit val stringTypeInfo: TypeInformation[String])
-  extends WindowBaseProcessFunction[util.Map[String, AnyRef], String, Int](config) {
+  extends WindowBaseProcessFunction[Map[String, AnyRef], String, Int](config) {
 
-  val mapType: Type = new TypeToken[util.Map[String, AnyRef]]() {}.getType
+  val mapType: Type = new TypeToken[Map[String, AnyRef]]() {}.getType
   private[this] val logger = LoggerFactory.getLogger(classOf[ActivityAggregatesFunction])
   private var cache: DataCache = _
   private var deDupEngine: DeDupEngine = _
@@ -56,34 +56,13 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig, @transi
   }
 
   override def process(key: Int,
-              context: ProcessWindowFunction[util.Map[String, AnyRef], String, Int, GlobalWindow]#Context,
-              events: Iterable[util.Map[String, AnyRef]],
+              context: ProcessWindowFunction[Map[String, AnyRef], String, Int, GlobalWindow]#Context,
+              events: Iterable[Map[String, AnyRef]],
               metrics: Metrics): Unit = {
 
-    logger.info("Input Events Size: " + events.toList.size)
-    val batchEventsEdata: List[Map[String, AnyRef]] = events.map {
-      f => metrics.incCounter(config.batchEnrolmentUpdateEventCount)
-        f.get(config.eData).asInstanceOf[util.Map[String, AnyRef]].asScala.toMap
-    }.toList
-    
-    val contentConsumptionEvents: List[Map[String, AnyRef]] = batchEventsEdata.filter { event =>
-      val isBatchEnrollmentEvent: Boolean = StringUtils.equalsIgnoreCase(event.getOrElse(config.action, "").asInstanceOf[String], config.batchEnrolmentUpdateCode)
-      if (!isBatchEnrollmentEvent) metrics.incCounter(config.skipEventsCount)
-      isBatchEnrollmentEvent
-    }.flatMap { event =>
-      val contents = event.getOrElse(config.contents, new util.ArrayList[java.util.Map[String, AnyRef]]()).asInstanceOf[util.List[java.util.Map[String, AnyRef]]].asScala
-      val filteredContents = contents.filter(x => x.get("status") == 2).toList
-      if (filteredContents.size == 0) metrics.incCounter(config.skipEventsCount)
-      filteredContents.map(c => {
-        event + ("contents" -> List(Map("contentId" -> c.get("contentId"), "status" -> c.get("status"))))
-      })
-    }
-    logger.info("Events Size - Filtered: " + contentConsumptionEvents.size)
-
-    val uniqueContentConsumptionEvents = if (config.dedupEnabled) contentConsumptionEvents.filter(event => discardDuplicates(event)) else contentConsumptionEvents
-    logger.info("Events Size - (after DeDup) Unique: " + uniqueContentConsumptionEvents.size)
+    logger.debug("Input Events Size: " + events.toList.size)
     val inputUserConsumptionList: List[UserContentConsumption] =
-      uniqueContentConsumptionEvents
+      events
         .groupBy(key => (key.get(config.courseId), key.get(config.batchId), key.get(config.userId)))
         .values.map(value => {
         metrics.incCounter(config.processedEnrolmentCount)
@@ -96,7 +75,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig, @transi
       }).toList
 
     // Fetch the content status from the table in batch format
-    val dbUserConsumption: Map[String, UserContentConsumption] = getContentStatusFromDB(uniqueContentConsumptionEvents, metrics)
+    val dbUserConsumption: Map[String, UserContentConsumption] = getContentStatusFromDB(events.toList, metrics)
 
     // Final User's ContentConsumption after merging with DB data.
     // Here we have final viewcount, completedcount and identified the content which should generate AUDIT events for start and complete.
@@ -162,7 +141,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig, @transi
   /**
    * Course Level Agg using the merged data of ContentConsumption per user, course and batch.
    */
-  def courseActivityAgg(userConsumption: UserContentConsumption, context: ProcessWindowFunction[util.Map[String, AnyRef], String, Int, GlobalWindow]#Context)(implicit metrics: Metrics): UserEnrolmentAgg = {
+  def courseActivityAgg(userConsumption: UserContentConsumption, context: ProcessWindowFunction[Map[String, AnyRef], String, Int, GlobalWindow]#Context)(implicit metrics: Metrics): UserEnrolmentAgg = {
     val courseId = userConsumption.courseId
     val userId = userConsumption.userId
     val contextId = "cb:" + userConsumption.batchId

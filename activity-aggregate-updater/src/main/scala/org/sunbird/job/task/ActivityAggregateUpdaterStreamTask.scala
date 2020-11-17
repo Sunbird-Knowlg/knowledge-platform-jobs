@@ -12,7 +12,7 @@ import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.domain.EnrolmentComplete
-import org.sunbird.job.functions.{ActivityAggregatesFunction, EnrolmentCompleteFunction}
+import org.sunbird.job.functions.{ActivityAggregatesFunction, ContentConsumptionDeDupFunction, EnrolmentCompleteFunction}
 import org.sunbird.job.util.FlinkUtil
 
 
@@ -27,6 +27,8 @@ class ActivityAggregateUpdaterStreamTask(config: ActivityAggregateUpdaterConfig,
       env.addSource(kafkaConnector.kafkaMapSource(config.kafkaInputTopic)).name(config.activityAggregateUpdaterConsumer)
         .uid(config.activityAggregateUpdaterConsumer).setParallelism(config.kafkaConsumerParallelism)
         .rebalance
+        .process(new ContentConsumptionDeDupFunction(config))
+        .getSideOutput(config.uniqueConsumptionOutput)
         .keyBy(new ActivityAggregatorKeySelector(config))
         .countWindow(config.thresholdBatchReadSize)
         .process(new ActivityAggregatesFunction(config))
@@ -66,10 +68,10 @@ object ActivityAggregateUpdaterStreamTask {
 }
 // $COVERAGE-ON$
 
-class ActivityAggregatorKeySelector(config: ActivityAggregateUpdaterConfig) extends KeySelector[util.Map[String, AnyRef], Int] {
+class ActivityAggregatorKeySelector(config: ActivityAggregateUpdaterConfig) extends KeySelector[Map[String, AnyRef], Int] {
   private val serialVersionUID = 7267989625042068736L
   private val shards = config.windowShards
-  override def getKey(in: util.Map[String, AnyRef]): Int = {
-    in.getOrDefault(config.userId, "").asInstanceOf[String].hashCode % shards
+  override def getKey(in: Map[String, AnyRef]): Int = {
+    in.getOrElse(config.userId, "").asInstanceOf[String].hashCode % shards
   }
 }
