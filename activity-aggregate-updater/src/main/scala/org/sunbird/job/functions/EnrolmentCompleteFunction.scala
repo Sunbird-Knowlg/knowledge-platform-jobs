@@ -41,6 +41,7 @@ class EnrolmentCompleteFunction(config: ActivityAggregateUpdaterConfig)(implicit
   }
 
   def getEnrolmentCompleteQuery(enrolment: EnrolmentComplete): Update.Where = {
+    logger.info("Enrolment completed for userId: " + enrolment.userId + " batchId: " + enrolment.batchId)
     QueryBuilder.update(config.dbKeyspace, config.dbUserEnrolmentsTable)
       .`with`(QueryBuilder.set("status", 2))
       .and(QueryBuilder.set("completedon", enrolment.completedOn))

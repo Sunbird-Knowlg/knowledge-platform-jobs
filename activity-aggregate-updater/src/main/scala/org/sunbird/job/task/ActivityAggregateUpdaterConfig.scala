@@ -26,6 +26,7 @@ class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJo
 
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
   val activityAggregateUpdaterParallelism: Int = config.getInt("task.activity.agg.parallelism")
+  val deDupProcessParallelism: Int = config.getInt("task.dedup.parallelism")
   val enrolmentCompleteParallelism: Int = config.getInt("task.enrolment.complete.parallelism")
 
   // Metric List
