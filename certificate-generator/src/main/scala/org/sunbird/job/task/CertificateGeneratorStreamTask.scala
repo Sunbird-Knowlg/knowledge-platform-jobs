@@ -23,9 +23,9 @@ class CertificateGeneratorStreamTask(config: CertificateGeneratorConfig, kafkaCo
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
     val source = kafkaConnector.kafkaMapSource(config.kafkaInputTopic)
 
-    val processStreamTask = env.addSource(source, config.certificateGeneratorConsumer)
+    val processStreamTask = env.addSource(source).name(config.certificateGeneratorConsumer)
       .uid(config.certificateGeneratorConsumer).setParallelism(config.kafkaConsumerParallelism)
-      .rebalance()
+      .rebalance
       .process(new CertificateGeneratorFunction(config))
       .name("certificate-generator").uid("certificate-generator")
       .setParallelism(config.parallelism)

@@ -20,9 +20,9 @@ class CertificatePreProcessorStreamTask(config: CertificatePreProcessorConfig, k
     val source = kafkaConnector.kafkaMapSource(config.kafkaInputTopic)
 
     val progressStream =
-      env.addSource(source, config.certificatePreProcessorConsumer)
+      env.addSource(source).name(config.certificatePreProcessorConsumer)
         .uid(config.certificatePreProcessorConsumer).setParallelism(config.kafkaConsumerParallelism)
-        .rebalance()
+        .rebalance
         .process(new CertificatePreProcessor(config))
         .name("certificate-pre-processor").uid("certificate-pre-processor")
         .setParallelism(config.parallelism)
