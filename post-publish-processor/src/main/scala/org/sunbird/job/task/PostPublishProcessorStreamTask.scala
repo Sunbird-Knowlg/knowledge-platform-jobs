@@ -15,7 +15,7 @@ import org.sunbird.job.util.{FlinkUtil, HttpUtil}
 class PostPublishProcessorStreamTask(config: PostPublishProcessorConfig, kafkaConnector: FlinkKafkaConnector) {
 
   def process(): Unit = {
-    implicit val env: StreamExecutionEnvironment = FlinkUtil.getExexcutionContext(config)
+    implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
     implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
     val source = kafkaConnector.kafkaMapSource(config.kafkaInputTopic)
