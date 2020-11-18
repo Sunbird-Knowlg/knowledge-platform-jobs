@@ -8,7 +8,7 @@ import org.apache.commons.lang.StringUtils
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
-import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
+import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.incredible.processor.JsonKey
 import org.sunbird.incredible.processor.store.{AwsStore, AzureStore, ICertStore, StoreConfig}
 import org.sunbird.job.connector.FlinkKafkaConnector
