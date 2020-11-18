@@ -88,7 +88,7 @@ class PostPublishEventRouter(config: PostPublishProcessorConfig)
     List(config.successEventCount, config.failedEventCount, config.skippedEventCount, config.totalEventsCount)
   }
 
-  def validEvent(mimeType: String, action: String, manualSync: Boolean): Boolean = {
+  def validEvent(mimeType: String, action: String): Boolean = {
     (StringUtils.equals("application/vnd.ekstep.content-collection", mimeType)
     && StringUtils.equals(action, "post-publish-process"))
   }
