@@ -5,14 +5,14 @@ import java.util
 
 import com.typesafe.config.ConfigFactory
 import org.apache.flink.api.common.typeinfo.TypeInformation
+import org.apache.flink.api.java.functions.KeySelector
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
-import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
-import org.apache.flink.streaming.api.windowing.time.Time
-import org.apache.flink.streaming.api.windowing.windows.TimeWindow
+import org.apache.flink.streaming.api.scala._
+import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.functions.ActivityAggregatesFunction
-import org.sunbird.job.trigger.CountTriggerWithTimeout
+import org.sunbird.job.domain.EnrolmentComplete
+import org.sunbird.job.functions.{ActivityAggregatesFunction, ContentConsumptionDeDupFunction, EnrolmentCompleteFunction}
 import org.sunbird.job.util.FlinkUtil
 
 
@@ -21,20 +21,32 @@ class ActivityAggregateUpdaterStreamTask(config: ActivityAggregateUpdaterConfig,
     implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
     implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
+    implicit val enrolmentCompleteTypeInfo: TypeInformation[List[EnrolmentComplete]] = TypeExtractor.getForClass(classOf[List[EnrolmentComplete]])
+
     val progressStream =
-      env.addSource(kafkaConnector.kafkaMapSource(config.kafkaInputTopic), config.activityAggregateUpdaterConsumer)
+      env.addSource(kafkaConnector.kafkaMapSource(config.kafkaInputTopic)).name(config.activityAggregateUpdaterConsumer)
         .uid(config.activityAggregateUpdaterConsumer).setParallelism(config.kafkaConsumerParallelism)
-        .rebalance()
-        .keyBy(x => x.get("partition").toString)
-        .timeWindow(Time.seconds(config.thresholdBatchReadInterval))
-        .trigger(new CountTriggerWithTimeout[TimeWindow](config.thresholdBatchReadSize, env.getStreamTimeCharacteristic))
+        .rebalance
+        .process(new ContentConsumptionDeDupFunction(config)).name(config.consumptionDeDupFn)
+        .uid(config.consumptionDeDupFn).setParallelism(config.deDupProcessParallelism)
+        .getSideOutput(config.uniqueConsumptionOutput)
+        .keyBy(new ActivityAggregatorKeySelector(config))
+        .countWindow(config.thresholdBatchReadSize)
         .process(new ActivityAggregatesFunction(config))
         .name(config.activityAggregateUpdaterFn)
         .uid(config.activityAggregateUpdaterFn)
         .setParallelism(config.activityAggregateUpdaterParallelism)
 
-    progressStream.getSideOutput(config.auditEventOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaAuditEventTopic)).name(config.activityAggregateUpdaterProducer).uid(config.activityAggregateUpdaterProducer)
-    progressStream.getSideOutput(config.failedEventOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaFailedEventTopic)).name(config.activityAggFailedEventProducer).uid(config.activityAggFailedEventProducer)
+    val enrolmentCompleteStream = progressStream.getSideOutput(config.enrolmentCompleteOutputTag).process(new EnrolmentCompleteFunction(config))
+      .name(config.enrolmentCompleteFn).uid(config.enrolmentCompleteFn).setParallelism(config.enrolmentCompleteParallelism)
+
+    enrolmentCompleteStream.getSideOutput(config.certIssueOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaCertIssueTopic))
+      .name(config.certIssueEventProducer).uid(config.certIssueEventProducer)
+
+    progressStream.getSideOutput(config.auditEventOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaAuditEventTopic))
+      .name(config.activityAggregateUpdaterProducer).uid(config.activityAggregateUpdaterProducer)
+    progressStream.getSideOutput(config.failedEventOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaFailedEventTopic))
+      .name(config.activityAggFailedEventProducer).uid(config.activityAggFailedEventProducer)
     env.execute(config.jobName)
   }
 
@@ -55,5 +67,12 @@ object ActivityAggregateUpdaterStreamTask {
     task.process()
   }
 }
-
 // $COVERAGE-ON$
+
+class ActivityAggregatorKeySelector(config: ActivityAggregateUpdaterConfig) extends KeySelector[Map[String, AnyRef], Int] {
+  private val serialVersionUID = 7267989625042068736L
+  private val shards = config.windowShards
+  override def getKey(in: Map[String, AnyRef]): Int = {
+    in.getOrElse(config.userId, "").asInstanceOf[String].hashCode % shards
+  }
+}

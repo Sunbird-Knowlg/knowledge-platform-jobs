@@ -1,7 +1,6 @@
 package org.sunbird.job.functions
 
 import java.lang.reflect.Type
-import java.{lang, util}
 
 import com.datastax.driver.core.Row
 import com.datastax.driver.core.querybuilder.{QueryBuilder, Select, Update}
@@ -11,26 +10,29 @@ import org.apache.commons.collections.CollectionUtils
 import org.apache.commons.lang3.StringUtils
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
-import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction
-import org.apache.flink.streaming.api.windowing.windows.TimeWindow
+import org.apache.flink.streaming.api.scala.function.ProcessWindowFunction
+import org.apache.flink.streaming.api.windowing.windows.GlobalWindow
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cache.{DataCache, RedisConnect}
-import org.sunbird.job.domain._
+import org.sunbird.job.domain.{UserContentConsumption, _}
 import org.sunbird.job.task.ActivityAggregateUpdaterConfig
 import org.sunbird.job.util.CassandraUtil
 import org.sunbird.job.{Metrics, WindowBaseProcessFunction}
 
 import scala.collection.JavaConverters._
 
+class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig, @transient var cassandraUtil: CassandraUtil = null)
+                                (implicit val stringTypeInfo: TypeInformation[String])
+  extends WindowBaseProcessFunction[Map[String, AnyRef], String, Int](config) {
 
-class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implicit val stringTypeInfo: TypeInformation[String], @transient var cassandraUtil: CassandraUtil = null) extends WindowBaseProcessFunction[util.Map[String, AnyRef], String, String](config) {
-  val mapType: Type = new TypeToken[util.Map[String, AnyRef]]() {}.getType
+  val mapType: Type = new TypeToken[Map[String, AnyRef]]() {}.getType
   private[this] val logger = LoggerFactory.getLogger(classOf[ActivityAggregatesFunction])
   private var cache: DataCache = _
   lazy private val gson = new Gson()
 
   override def metricsList(): List[String] = {
-    List(config.successEventCount, config.failedEventCount, config.batchEnrolmentUpdateEventCount, config.dbUpdateCount, config.dbReadCount, config.cacheHitCount, config.skipEventsCount, config.cacheMissCount)
+    List(config.successEventCount, config.failedEventCount,
+      config.dbUpdateCount, config.dbReadCount, config.cacheHitCount, config.cacheMissCount, config.processedEnrolmentCount)
   }
 
   override def open(parameters: Configuration): Unit = {
@@ -46,40 +48,26 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
     super.close()
   }
 
-  def process(key: String, context: ProcessWindowFunction[util.Map[String, AnyRef], String, String, TimeWindow]#Context, events: lang.Iterable[util.Map[String, AnyRef]], metrics: Metrics): Unit = {
-    logger.info("Input Events Size: " + events.asScala.toList.size)
-    val contentConsumptionEvents = events.asScala.filter(event => {
-      val isBatchEnrollmentEvent: Boolean = StringUtils.equalsIgnoreCase(event.get(config.eData).asInstanceOf[util.Map[String, AnyRef]].asScala.getOrElse(config.action, "").asInstanceOf[String], config.batchEnrolmentUpdateCode)
-      if (isBatchEnrollmentEvent) {
-        metrics.incCounter(config.batchEnrolmentUpdateEventCount)
-        isBatchEnrollmentEvent
-      } else {
-        metrics.incCounter(config.skipEventsCount)
-        isBatchEnrollmentEvent
-      }
-    })
+  override def process(key: Int,
+              context: ProcessWindowFunction[Map[String, AnyRef], String, Int, GlobalWindow]#Context,
+              events: Iterable[Map[String, AnyRef]],
+              metrics: Metrics): Unit = {
 
-    if (contentConsumptionEvents.size > 0) {
-      logger.info("Content consumption events size:" + contentConsumptionEvents.size)
-      logger.info("Last event for batch-enrolment-update - MID: " + contentConsumptionEvents.last.get("mid"))
-    } else
-      logger.info("No batch-enrolment-update events after filtering.")
-
-    val eDataBatch: List[Map[String, AnyRef]] = contentConsumptionEvents.map(f => f.get(config.eData).asInstanceOf[util.Map[String, AnyRef]].asScala.toMap).toList
-    // Grouping the contents to avoid the duplicate of contents
-    val groupedData: List[Map[String, AnyRef]] = eDataBatch.groupBy(key => (key.get(config.courseId), key.get(config.batchId), key.get(config.userId)))
-      .values.map(value => Map(config.batchId -> value.head(config.batchId), config.userId -> value.head(config.userId), config.courseId -> value.head(config.courseId),
-      config.contents -> value.flatMap(contents => contents(config.contents).asInstanceOf[util.List[Map[String, AnyRef]]].asScala.toList))).toList
-
-    // content status from the telemetry event.
-    val inputUserConsumptionList: List[UserContentConsumption] = groupedData.map(ed => {
-      val userConsumedContents = ed(config.contents).asInstanceOf[List[Map[String, AnyRef]]]
-      val enrichedContents = getContentStatusFromEvent(userConsumedContents)
-      UserContentConsumption(ed(config.userId).asInstanceOf[String], ed(config.batchId).asInstanceOf[String], ed(config.courseId).asInstanceOf[String], enrichedContents)
-    })
+    logger.debug("Input Events Size: " + events.toList.size)
+    val inputUserConsumptionList: List[UserContentConsumption] = events
+        .groupBy(key => (key.get(config.courseId), key.get(config.batchId), key.get(config.userId)))
+        .values.map(value => {
+        metrics.incCounter(config.processedEnrolmentCount)
+        val batchId = value.head(config.batchId).toString
+        val userId = value.head(config.userId).toString
+        val courseId = value.head(config.courseId).toString
+        val userConsumedContents = value.head(config.contents).asInstanceOf[List[Map[String, AnyRef]]]
+        val enrichedContents = getContentStatusFromEvent(userConsumedContents)
+        UserContentConsumption(userId = userId, batchId = batchId, courseId = courseId, enrichedContents)
+      }).toList
 
     // Fetch the content status from the table in batch format
-    val dbUserConsumption: Map[String, UserContentConsumption] = getContentStatusFromDB(eDataBatch, metrics).map(e => (getUCKey(e), e)).toMap
+    val dbUserConsumption: Map[String, UserContentConsumption] = getContentStatusFromDB(events.toList, metrics)
 
     // Final User's ContentConsumption after merging with DB data.
     // Here we have final viewcount, completedcount and identified the content which should generate AUDIT events for start and complete.
@@ -92,17 +80,28 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
     val userConsumptionQueries = finalUserConsumptionList.flatMap(userConsumption => getContentConsumptionQueries(userConsumption))
     updateDB(config.thresholdBatchWriteSize, userConsumptionQueries)(metrics)
 
-    // Course Level Agg using the merged data of ContentConsumption per user, course and batch.
-    val courseAggs = finalUserConsumptionList.map(userConsumption => courseActivityAgg(userConsumption, context)(metrics))
 
-    // Identified the children of the course (only collections) for which aggregates computation required.
-    // Computation of aggregates using leafNodes (of the specific collection) and user completed contents.
-    // Here computing only "completedCount" aggregate.
-    val courseChildrenAggs = finalUserConsumptionList.flatMap(userConsumption => courseChildrenActivityAgg(userConsumption)(metrics))
+    val courseAggregations = finalUserConsumptionList.flatMap(userConsumption => {
+
+      // Course Level Agg using the merged data of ContentConsumption per user, course and batch.
+      val courseAggs = List(courseActivityAgg(userConsumption, context)(metrics))
+
+      // Identify the children of the course (only collections) for which aggregates computation required.
+      // Computation of aggregates using leafNodes (of the specific collection) and user completed contents.
+      // Here computing only "completedCount" aggregate.
+      if (config.moduleAggEnabled) {
+        val courseChildrenAggs = courseChildrenActivityAgg(userConsumption)(metrics)
+        courseAggs ++ courseChildrenAggs
+      } else courseAggs
+    })
 
     // Saving all queries for course and it's children (only collection) aggregates.
-    val aggQueries = (courseAggs ++ courseChildrenAggs).map(agg => getUserAggQuery(agg))
+    val aggQueries = courseAggregations.map(agg => getUserAggQuery(agg.activityAgg))
     updateDB(config.thresholdBatchWriteSize, aggQueries)(metrics)
+
+    // Saving enrolment completion data.
+    val enrolmentCompleteList = courseAggregations.filter(agg => agg.enrolmentComplete.nonEmpty).map(agg => agg.enrolmentComplete.get)
+    context.output(config.enrolmentCompleteOutputTag, enrolmentCompleteList)
 
     // Content AUDIT Event generation and pushing to output tag.
     finalUserConsumptionList.flatMap(userConsumption => contentAuditEvents(userConsumption)).foreach(event => context.output(config.auditEventOutputTag, gson.toJson(event)))
@@ -112,7 +111,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
   /**
    * Course Level Agg using the merged data of ContentConsumption per user, course and batch.
    */
-  def courseActivityAgg(userConsumption: UserContentConsumption, context: ProcessWindowFunction[util.Map[String, AnyRef], String, String, TimeWindow]#Context)(implicit metrics: Metrics): UserActivityAgg = {
+  def courseActivityAgg(userConsumption: UserContentConsumption, context: ProcessWindowFunction[Map[String, AnyRef], String, Int, GlobalWindow]#Context)(implicit metrics: Metrics): UserEnrolmentAgg = {
     val courseId = userConsumption.courseId
     val userId = userConsumption.userId
     val contextId = "cb:" + userConsumption.batchId
@@ -122,10 +121,15 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
       metrics.incCounter(config.failedEventCount)
       logger.error(s"leaf nodes are not available for: $key")
       context.output(config.failedEventOutputTag, gson.toJson(userConsumption))
-//      throw new Exception(s"leaf nodes are not available: $key")
+      //      throw new Exception(s"leaf nodes are not available: $key")
     }
     val completedCount = leafNodes.intersect(userConsumption.contents.filter(cc => cc._2.status == 2).map(cc => cc._2.contentId).toList.distinct).size
-    UserActivityAgg("Course", userId, courseId, contextId, Map("completedCount" -> completedCount), Map("completedCount" -> System.currentTimeMillis()))
+    val enrolmentComplete = if (completedCount >= leafNodes.size) {
+      // Enrolment itself should set the status as 1 - in course-service.
+      val contentStatus = userConsumption.contents.map(cc => (cc._2.contentId, cc._2.status)).toMap
+      Option(EnrolmentComplete(userId, userConsumption.batchId, courseId, completedCount, new java.util.Date(), contentStatus))
+    } else None
+    UserEnrolmentAgg(UserActivityAgg("Course", userId, courseId, contextId, Map("completedCount" -> completedCount), Map("completedCount" -> System.currentTimeMillis())), enrolmentComplete)
   }
 
   /**
@@ -133,7 +137,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
    * Computation of aggregates using leafNodes (of the specific collection) and user completed contents.
    * Here computing only "completedCount" aggregate.
    */
-  def courseChildrenActivityAgg(userConsumption: UserContentConsumption)(implicit metrics: Metrics): List[UserActivityAgg] = {
+  def courseChildrenActivityAgg(userConsumption: UserContentConsumption)(implicit metrics: Metrics): List[UserEnrolmentAgg] = {
     val courseId = userConsumption.courseId
     val userId = userConsumption.userId
     val contextId = "cb:" + userConsumption.batchId
@@ -157,8 +161,12 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
       val collectionId = e._1
       val leafNodes = e._2
       val completedCount = leafNodes.intersect(userCompletedContents).size
-      // TODO - Identify how to generate start and end event for CourseUnit.
-      UserActivityAgg("Course", userId, collectionId, contextId, Map("completedCount" -> completedCount), Map("completedCount" -> System.currentTimeMillis()))
+      /* TODO - List
+       TODO 1. Generalise activityType from "Course" to "Collection".
+       TODO 2.Identify how to generate start and end event for CourseUnit.
+       */
+      val activityAgg = UserActivityAgg("Course", userId, collectionId, contextId, Map("completedCount" -> completedCount), Map("completedCount" -> System.currentTimeMillis()))
+      UserEnrolmentAgg(activityAgg, None)
     }).toList
   }
 
@@ -175,26 +183,21 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
    */
   def finalUserConsumption(inputData: UserContentConsumption, dbData: UserContentConsumption)(implicit metrics: Metrics): UserContentConsumption = {
     val dbContents = dbData.contents
-    val processedContents = inputData.contents.map(ccMap => {
-      val contentId = ccMap._1
-      // ContentStatus from Input (From events of Input topic).
-      val inputCC = ccMap._2
-      // ContentStatus from DB.
-      val dbCC: ContentStatus = dbContents.getOrElse(contentId, ContentStatus(contentId, 0, 0, 0))
-      val finalStatus = List(inputCC.status, dbCC.status).max // Final status is max of DB and Input ContentStatus.
-      val views = sumFunc(List(inputCC, dbCC), (x: ContentStatus) => {
-        x.viewCount
-      }) // View Count is sum of DB and Input ContentStatus.
-      val completion = sumFunc(List(inputCC, dbCC), (x: ContentStatus) => {
-        x.completedCount
-      }) // Completed Count is sum of DB and Input ContentStatus.
-      val eventsFor: List[String] = getEventActions(dbCC, inputCC)
-      // Merged ContentStatus.
-      (contentId, ContentStatus(contentId, finalStatus, completion, views, eventsFor))
-    })
+    val processedContents = inputData.contents.map {
+      case (contentId, inputCC) => {
+        // ContentStatus from DB.
+          val dbCC: ContentStatus = dbContents.getOrElse(contentId, ContentStatus(contentId, 0, 0, 0))
+          val finalStatus = List(inputCC.status, dbCC.status).max // Final status is max of DB and Input ContentStatus.
+          val views = sumFunc(List(inputCC, dbCC), (x: ContentStatus) => { x.viewCount }) // View Count is sum of DB and Input ContentStatus.
+          val completion = sumFunc(List(inputCC, dbCC), (x: ContentStatus) => { x.completedCount }) // Completed Count is sum of DB and Input ContentStatus.
+          val eventsFor: List[String] = getEventActions(dbCC, inputCC)
+          // Merged ContentStatus.
+          (contentId, ContentStatus(contentId, finalStatus, completion, views, eventsFor))
+        }
+      }
 
-    val existing = processedContents.keys.toList
-    val remainingContents = dbData.contents.filterKeys(key => !existing.contains(key))
+    val existingContents = processedContents.keys.toList
+    val remainingContents = dbData.contents.filterKeys(key => !existingContents.contains(key))
     val finalContentsMap = processedContents ++ remainingContents
     UserContentConsumption(inputData.userId, inputData.batchId, inputData.courseId, finalContentsMap)
   }
@@ -215,8 +218,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
    *
    * @return
    */
-  def readFromDB(columns: Map[String, AnyRef], keySpace: String, table: String, metrics: Metrics): List[Row]
-  = {
+  def readFromDB(columns: Map[String, AnyRef], keySpace: String, table: String, metrics: Metrics): List[Row] = {
     val selectWhere: Select.Where = QueryBuilder.select().all()
       .from(keySpace, table).
       where()
@@ -246,7 +248,9 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
         metrics.incCounter(config.successEventCount)
         metrics.incCounter(config.dbUpdateCount)
       } else {
-        logger.info("Database update has failed" + cqlBatch.toString)
+        val msg = "Database update has failed: " + cqlBatch.toString
+        logger.error(msg)
+        throw new Exception(msg)
       }
     })
   }
@@ -295,9 +299,8 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
    *
    */
   def getContentStatusFromEvent(contents: List[Map[String, AnyRef]]): Map[String, ContentStatus] = {
-    val enrichedContents = contents.asInstanceOf[List[util.Map[String, AnyRef]]].map(content => {
-      val map = content.asScala.toMap
-      (map.getOrElse(config.contentId, "").asInstanceOf[String], map.getOrElse(config.status, 0).asInstanceOf[Number])
+    val enrichedContents = contents.map(content => {
+      (content.getOrElse(config.contentId, "").asInstanceOf[String], content.getOrElse(config.status, 0).asInstanceOf[Number])
     }).filter(t => StringUtils.isNotBlank(t._1) && (t._2.intValue() > 0))
       .map(x => {
         val completedCount = if (x._2.intValue() == 2) 1 else 0
@@ -329,12 +332,18 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
    * Ex: List(Map("courseId" -> "do_43795", batchId -> "batch1", userId->"user001", contentStatus -> Map("C1"->2, "C2" ->1)))
    *
    */
-  def getContentStatusFromDB(eDataBatch: List[Map[String, AnyRef]], metrics: Metrics): List[UserContentConsumption] = {
-    val primaryFields = Map(config.userId.toLowerCase() -> eDataBatch.map(x => x(config.userId)).distinct, config.batchId.toLowerCase -> eDataBatch.map(x => x(config.batchId)).distinct, config.courseId.toLowerCase -> eDataBatch.map(x => x(config.courseId)).distinct)
-    val records = Option(readFromDB(primaryFields, config.dbKeyspace, config.dbUserContentConsumptionTable, metrics))
+  def getContentStatusFromDB(eDataBatch: List[Map[String, AnyRef]], metrics: Metrics): Map[String, UserContentConsumption] = {
 
+    val contentConsumption = scala.collection.mutable.Map[String, UserContentConsumption]()
+    val primaryFields = Map(
+      config.userId.toLowerCase() -> eDataBatch.map(x => x(config.userId)).distinct,
+      config.batchId.toLowerCase -> eDataBatch.map(x => x(config.batchId)).distinct,
+      config.courseId.toLowerCase -> eDataBatch.map(x => x(config.courseId)).distinct
+    )
+
+    val records = Option(readFromDB(primaryFields, config.dbKeyspace, config.dbUserContentConsumptionTable, metrics))
     records.map(record => record.groupBy(col => Map(config.batchId -> col.getObject(config.batchId.toLowerCase()).asInstanceOf[String], config.userId -> col.getObject(config.userId.toLowerCase()).asInstanceOf[String], config.courseId -> col.getObject(config.courseId.toLowerCase()).asInstanceOf[String])))
-      .map(groupedRecords => groupedRecords.map(entry => {
+      .foreach(groupedRecords => groupedRecords.map(entry => {
         val identifierMap = entry._1
         val consumptionList = entry._2.flatMap(row => Map(row.getObject(config.contentId.toLowerCase()).asInstanceOf[String] -> Map(config.status -> row.getObject(config.status), config.viewcount -> row.getObject(config.viewcount), config.completedcount -> row.getObject(config.completedcount))))
           .map(entry => {
@@ -349,9 +358,12 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig)(implici
         val userId = identifierMap(config.userId)
         val batchId = identifierMap(config.batchId)
         val courseId = identifierMap(config.courseId)
-        UserContentConsumption(userId, batchId, courseId, consumptionList)
 
-      })).getOrElse(List()).toList
+        val userContentConsumption = UserContentConsumption(userId, batchId, courseId, consumptionList)
+        contentConsumption += getUCKey(userContentConsumption) -> userContentConsumption
+
+      }))
+    contentConsumption.toMap
   }
 
   /**
