@@ -90,8 +90,8 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
         val mimeType = eData.getOrDefault("mimeType", "").asInstanceOf[String]
         val identifier = eData.getOrDefault("identifier", "").asInstanceOf[String]
 
-        StringUtils.equalsIgnoreCase(action, "post-publish-process") &&
-            StringUtils.equalsIgnoreCase(mimeType, "application/vnd.ekstep.content-collection") &&
+      (StringUtils.equalsIgnoreCase(action, "post-publish-process") ||
+            StringUtils.equalsIgnoreCase(mimeType, "application/vnd.ekstep.content-collection")) &&
             StringUtils.isNotBlank(identifier)
     }
 
