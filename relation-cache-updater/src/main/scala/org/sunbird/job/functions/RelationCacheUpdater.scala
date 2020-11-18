@@ -29,6 +29,7 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
     private var dataCache: DataCache = _
     private var collectionCache: DataCache = _
     lazy private val mapper: ObjectMapper = new ObjectMapper()
+    private val allowedActions = List("post-publish-process", "relation-cache-update")
 
 
     override def open(parameters: Configuration): Unit = {
@@ -90,8 +91,8 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
         val mimeType = eData.getOrDefault("mimeType", "").asInstanceOf[String]
         val identifier = eData.getOrDefault("identifier", "").asInstanceOf[String]
 
-      (StringUtils.equalsIgnoreCase(action, "post-publish-process") ||
-            StringUtils.equalsIgnoreCase(mimeType, "application/vnd.ekstep.content-collection")) &&
+      allowedActions.contains(action) &&
+            StringUtils.equalsIgnoreCase(mimeType, "application/vnd.ekstep.content-collection") &&
             StringUtils.isNotBlank(identifier)
     }
 
