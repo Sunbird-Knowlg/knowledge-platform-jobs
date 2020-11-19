@@ -31,7 +31,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig, @transi
   lazy private val gson = new Gson()
 
   override def metricsList(): List[String] = {
-    List(config.successEventCount, config.failedEventCount,
+    List(config.failedEventCount,
       config.dbUpdateCount, config.dbReadCount, config.cacheHitCount, config.cacheMissCount, config.processedEnrolmentCount)
   }
 
@@ -245,7 +245,6 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig, @transi
       queries.map(query => cqlBatch.add(query))
       val result = cassandraUtil.upsert(cqlBatch.toString)
       if (result) {
-        metrics.incCounter(config.successEventCount)
         metrics.incCounter(config.dbUpdateCount)
       } else {
         val msg = "Database update has failed: " + cqlBatch.toString

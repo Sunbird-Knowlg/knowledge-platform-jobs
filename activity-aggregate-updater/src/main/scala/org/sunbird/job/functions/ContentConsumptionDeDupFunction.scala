@@ -36,6 +36,7 @@ class ContentConsumptionDeDupFunction(config: ActivityAggregateUpdaterConfig)(im
 
 
   override def processElement(event: util.Map[String, AnyRef], context: ProcessFunction[util.Map[String, AnyRef], String]#Context, metrics: Metrics): Unit = {
+    metrics.incCounter(config.totalEventCount)
     val eData = event.get(config.eData).asInstanceOf[util.Map[String, AnyRef]].asScala
     val isBatchEnrollmentEvent: Boolean = StringUtils.equalsIgnoreCase(eData.getOrElse(config.action, "").asInstanceOf[String], config.batchEnrolmentUpdateCode)
     if (isBatchEnrollmentEvent) {
@@ -52,7 +53,7 @@ class ContentConsumptionDeDupFunction(config: ActivityAggregateUpdaterConfig)(im
   }
 
   override def metricsList(): List[String] = {
-    List(config.skipEventsCount, config.batchEnrolmentUpdateEventCount)
+    List(config.totalEventCount, config.skipEventsCount, config.batchEnrolmentUpdateEventCount)
   }
 
   def discardDuplicates(event: Map[String, AnyRef]): Boolean = {

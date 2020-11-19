@@ -30,7 +30,7 @@ class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJo
   val enrolmentCompleteParallelism: Int = config.getInt("task.enrolment.complete.parallelism")
 
   // Metric List
-  val successEventCount = "success-events-count"
+  val totalEventCount = "total-events-count"
   val failedEventCount = "failed-events-count"
   val dbUpdateCount = "db-update-count"
   val dbReadCount = "db-read-count"
