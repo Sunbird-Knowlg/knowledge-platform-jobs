@@ -85,6 +85,31 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
   }
 
 
+  "Aggregator " should "compute and update enrolment as completed when all the content consumption data processed" in {
+    when(mockKafkaUtil.kafkaMapSource(courseAggregatorConfig.kafkaInputTopic)).thenReturn(new CompleteContentConsumptionMapSource)
+    when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaAuditEventTopic)).thenReturn(new auditEventSink)
+    when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaFailedEventTopic)).thenReturn(new failedEventSink)
+    when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaCertIssueTopic)).thenReturn(new certificateIssuedEventsSink)
+    new ActivityAggregateUpdaterStreamTask(courseAggregatorConfig, mockKafkaUtil).process()
+//    println("Metrics: " + BaseMetricsReporter.gaugeMetrics.map(a => (a._1, a._2.getValue())).toMap)
+    BaseMetricsReporter.gaugeMetrics("activity-aggregate-updater.total-events-count").getValue() should be(3)
+    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.batchEnrolmentUpdateEventCount}").getValue() should be(3)
+    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.dbReadCount}").getValue() should be(3)
+    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.dbUpdateCount}").getValue() should be(6)
+    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.cacheHitCount}").getValue() should be(18)
+    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.processedEnrolmentCount}").getValue() should be(3)
+    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.enrolmentCompleteCount}").getValue() should be(3)
+    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.failedEventCount}").getValue() should be(0)
+    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.skipEventsCount}").getValue() should be(0)
+    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.cacheMissCount}").getValue() should be(0)
+
+
+    auditEventSink.values.size() should be(3)
+    auditEventSink.values.forEach(event => {
+      println("AUDIT_TELEMETRY_EVENT: " + event)
+    })
+  }
+
   "Aggregator " should "Compute and update to cassandra database" in {
     when(mockKafkaUtil.kafkaMapSource(courseAggregatorConfig.kafkaInputTopic)).thenReturn(new CourseAggregatorMapSource)
     when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaAuditEventTopic)).thenReturn(new auditEventSink)
@@ -92,18 +117,18 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
     when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaCertIssueTopic)).thenReturn(new certificateIssuedEventsSink)
     new ActivityAggregateUpdaterStreamTask(courseAggregatorConfig, mockKafkaUtil).process()
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.batchEnrolmentUpdateEventCount}").getValue() should be(4)
-    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.processedEnrolmentCount}").getValue() should be(5)
-    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.dbReadCount}").getValue() should be(5)
-    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.dbUpdateCount}").getValue() should be(10)
-    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.cacheHitCount}").getValue() should be(28)
+    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.processedEnrolmentCount}").getValue() should be(3)
+    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.dbReadCount}").getValue() should be(3)
+    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.dbUpdateCount}").getValue() should be(6)
+    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.cacheHitCount}").getValue() should be(16)
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.totalEventCount}").getValue() should be(5)
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.failedEventCount}").getValue() should be(0)
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.skipEventsCount}").getValue() should be(1)
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.cacheMissCount}").getValue() should be(0)
-    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.enrolmentCompleteCount}").getValue() should be(2)
-    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.certIssueEventsCount}").getValue() should be(2)
+    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.enrolmentCompleteCount}").getValue() should be(0)
+    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.certIssueEventsCount}").getValue() should be(0)
 
-    auditEventSink.values.size() should be(6)
+    auditEventSink.values.size() should be(7)
     auditEventSink.values.forEach(event => {
       println("AUDIT_TELEMETRY_EVENT: " + event)
     })
@@ -186,7 +211,7 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
     val event3ContentConsumption = readFromContentConsumptionTable(EventFixture.EVENT_2)
     event3ContentConsumption.forEach(col => {
       if (col.getObject("contentid") == "do_R2") {
-        col.getObject("viewcount") should be(1) 
+        col.getObject("viewcount") should be(2)
         col.getObject("completedcount") should be(1)
       }
       if (col.getObject("contentid") == "do_R1") {
@@ -194,12 +219,13 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
         col.getObject("completedcount") should be(1)
       }
       if (col.getObject("contentid") == "do_R3") {
-        col.getObject("viewcount") should be(1)
+        col.getObject("viewcount") should be(2)
         col.getObject("completedcount") should be(1)
       }
     })
 
   }
+
 
   def testCassandraUtil(cassandraUtil: CassandraUtil): Unit = {
     cassandraUtil.reconnect()
@@ -246,6 +272,23 @@ class CourseAggregatorMapSource extends SourceFunction[util.Map[String, AnyRef]]
     ctx.collect(jsonToMap(EventFixture.EVENT_3))
     ctx.collect(jsonToMap(EventFixture.EVENT_4))
     ctx.collect(jsonToMap(EventFixture.EVENT_5))
+  }
+
+  override def cancel() = {}
+
+  def jsonToMap(json: String): util.Map[String, AnyRef] = {
+    val gson = new Gson()
+    gson.fromJson(json, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]]
+  }
+
+}
+
+class CompleteContentConsumptionMapSource extends SourceFunction[util.Map[String, AnyRef]] {
+
+  override def run(ctx: SourceContext[util.Map[String, AnyRef]]) {
+    ctx.collect(jsonToMap(EventFixture.CC_EVENT1))
+    ctx.collect(jsonToMap(EventFixture.CC_EVENT2))
+    ctx.collect(jsonToMap(EventFixture.CC_EVENT3))
   }
 
   override def cancel() = {}
