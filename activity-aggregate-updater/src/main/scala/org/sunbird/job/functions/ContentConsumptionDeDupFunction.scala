@@ -69,7 +69,6 @@ class ContentConsumptionDeDupFunction(config: ActivityAggregateUpdaterConfig)(im
         val checksum = getMessageId(courseId, batchId, userId, contentId, status)
         val isUnique = deDupEngine.isUniqueEvent(checksum)
         if (isUnique) deDupEngine.storeChecksum(checksum)
-        println(checksum + " isUnique: " + isUnique)
         isUnique
       } else false
     } else true
