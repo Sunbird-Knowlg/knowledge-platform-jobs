@@ -9,9 +9,11 @@ import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.{BaseProcessFunction, Metrics}
-import org.sunbird.job.domain.EnrolmentComplete
+import org.sunbird.job.domain.{ActorObject, EnrolmentComplete, EventContext, EventData, EventObject, TelemetryEvent}
 import org.sunbird.job.task.ActivityAggregateUpdaterConfig
 import org.sunbird.job.util.CassandraUtil
+
+import scala.collection.JavaConverters._
 
 class EnrolmentCompleteFunction(config: ActivityAggregateUpdaterConfig)(implicit val enrolmentCompleteTypeInfo: TypeInformation[List[EnrolmentComplete]], @transient var cassandraUtil: CassandraUtil = null)
   extends BaseProcessFunction[List[EnrolmentComplete], String](config) {
@@ -38,11 +40,24 @@ class EnrolmentCompleteFunction(config: ActivityAggregateUpdaterConfig)(implicit
     
     val enrolmentQueries = pendingEnrolments.map(enrolmentComplete => getEnrolmentCompleteQuery(enrolmentComplete))
     updateDB(config.thresholdBatchWriteSize, enrolmentQueries)(metrics)
-    pendingEnrolments.foreach(e => createIssueCertEvent(e, context)(metrics))
+    pendingEnrolments.foreach(e => {
+      createIssueCertEvent(e, context)(metrics)
+      generateAuditEvent(e, context)(metrics)
+    })
   }
 
   override def metricsList(): List[String] = {
     List(config.dbUpdateCount, config.dbReadCount, config.enrolmentCompleteCount, config.certIssueEventsCount)
+  }
+
+  def generateAuditEvent(data: EnrolmentComplete, context: ProcessFunction[List[EnrolmentComplete], String]#Context)(implicit metrics: Metrics) = {
+    val auditEvent = TelemetryEvent(
+      actor = ActorObject(id = data.userId),
+      edata = EventData(props = Array("status", "completedon"), `type` = "enrol-complete"), // action values are "start", "complete".
+      context = EventContext(cdata = Array(Map("type" -> config.courseBatch, "id" -> data.batchId).asJava, Map("type" -> "Course", "id" -> data.courseId).asJava)),
+      `object` = EventObject(id = data.userId, `type` = "User", rollup = Map[String, String]("l1" -> data.courseId).asJava)
+    )
+    context.output(config.auditEventOutputTag, gson.toJson(auditEvent))
   }
 
   def getEnrolment(userId: String, courseId: String, batchId: String, metrics: Metrics) = {
