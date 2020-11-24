@@ -2,7 +2,7 @@ package org.sunbird.job.functions
 
 import java.util.UUID
 
-import com.datastax.driver.core.querybuilder.{QueryBuilder, Update}
+import com.datastax.driver.core.querybuilder.{QueryBuilder, Select, Update}
 import com.google.gson.Gson
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
@@ -30,14 +30,30 @@ class EnrolmentCompleteFunction(config: ActivityAggregateUpdaterConfig)(implicit
   }
 
   override def processElement(events: List[EnrolmentComplete], context: ProcessFunction[List[EnrolmentComplete], String]#Context, metrics: Metrics): Unit = {
-    // TODO: check the status of the user_enrolments before updating (to avoid multiple update).
-    val enrolmentQueries = events.map(enrolmentComplete => getEnrolmentCompleteQuery(enrolmentComplete))
+    val pendingEnrolments = events.filter {p =>
+      val row = getEnrolment(p.userId, p.courseId, p.batchId, metrics)
+      val status = row.getInt("status")
+      status != 2
+    }
+    
+    val enrolmentQueries = pendingEnrolments.map(enrolmentComplete => getEnrolmentCompleteQuery(enrolmentComplete))
     updateDB(config.thresholdBatchWriteSize, enrolmentQueries)(metrics)
-    events.foreach(e => createIssueCertEvent(e, context)(metrics))
+    pendingEnrolments.foreach(e => createIssueCertEvent(e, context)(metrics))
   }
 
   override def metricsList(): List[String] = {
-    List(config.dbUpdateCount, config.enrolmentCompleteCount, config.certIssueEventsCount)
+    List(config.dbUpdateCount, config.dbReadCount, config.enrolmentCompleteCount, config.certIssueEventsCount)
+  }
+
+  def getEnrolment(userId: String, courseId: String, batchId: String, metrics: Metrics) = {
+    val selectWhere: Select.Where = QueryBuilder.select().all()
+      .from(config.dbKeyspace, config.dbUserEnrolmentsTable).
+      where()
+    selectWhere.and(QueryBuilder.eq("userid", userId))
+      .and(QueryBuilder.eq("courseid", courseId))
+      .and(QueryBuilder.eq("batchid", batchId))
+    metrics.incCounter(config.dbReadCount)
+    cassandraUtil.findOne(selectWhere.toString)
   }
 
   def getEnrolmentCompleteQuery(enrolment: EnrolmentComplete): Update.Where = {
