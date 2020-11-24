@@ -83,8 +83,7 @@ class ActivityAggregateUpdaterTaskTestSpec extends BaseTestSpec {
     }
     flinkCluster.after()
   }
-
-
+  
   "Aggregator " should "compute and update enrolment as completed when all the content consumption data processed" in {
     when(mockKafkaUtil.kafkaMapSource(courseAggregatorConfig.kafkaInputTopic)).thenReturn(new CompleteContentConsumptionMapSource)
     when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaAuditEventTopic)).thenReturn(new auditEventSink)
