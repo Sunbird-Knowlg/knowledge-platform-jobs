@@ -12,7 +12,7 @@ import org.sunbird.job.serde.{MapDeserializationSchema, MapSerializationSchema, 
 
 class FlinkKafkaConnector(config: BaseJobConfig) extends Serializable {
   def kafkaMapSource(kafkaTopic: String): SourceFunction[util.Map[String, AnyRef]] = {
-    new FlinkKafkaConsumer[util.Map[String, AnyRef]](kafkaTopic, new MapDeserializationSchema, config.kafkaConsumerProperties).setStartFromEarliest()
+    new FlinkKafkaConsumer[util.Map[String, AnyRef]](kafkaTopic, new MapDeserializationSchema, config.kafkaConsumerProperties)
   }
 
   def kafkaMapSink(kafkaTopic: String): SinkFunction[util.Map[String, AnyRef]] = {
