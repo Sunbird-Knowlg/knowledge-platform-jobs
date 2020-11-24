@@ -29,7 +29,7 @@ import redis.embedded.RedisServer
 import scala.collection.JavaConverters._
 import scala.collection.mutable
 
-class CourseAggregatorTaskTestSpec extends BaseTestSpec {
+class ActivityAggregateUpdaterTaskTestSpec extends BaseTestSpec {
 
   implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
 
@@ -92,139 +92,24 @@ class CourseAggregatorTaskTestSpec extends BaseTestSpec {
     when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaCertIssueTopic)).thenReturn(new certificateIssuedEventsSink)
     new ActivityAggregateUpdaterStreamTask(courseAggregatorConfig, mockKafkaUtil).process()
 //    println("Metrics: " + BaseMetricsReporter.gaugeMetrics.map(a => (a._1, a._2.getValue())).toMap)
-    BaseMetricsReporter.gaugeMetrics("activity-aggregate-updater.total-events-count").getValue() should be(3)
+    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.totalEventCount}").getValue() should be(3)
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.batchEnrolmentUpdateEventCount}").getValue() should be(3)
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.dbReadCount}").getValue() should be(3)
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.dbUpdateCount}").getValue() should be(6)
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.cacheHitCount}").getValue() should be(18)
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.processedEnrolmentCount}").getValue() should be(3)
-    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.enrolmentCompleteCount}").getValue() should be(3)
+    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.enrolmentCompleteCount}").getValue() should be(1)
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.failedEventCount}").getValue() should be(0)
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.skipEventsCount}").getValue() should be(0)
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.cacheMissCount}").getValue() should be(0)
 
 
-    auditEventSink.values.size() should be(3)
+    auditEventSink.values.size() should be(4)
     auditEventSink.values.forEach(event => {
       println("AUDIT_TELEMETRY_EVENT: " + event)
     })
   }
 
-  "Aggregator " should "Compute and update to cassandra database" in {
-    when(mockKafkaUtil.kafkaMapSource(courseAggregatorConfig.kafkaInputTopic)).thenReturn(new CourseAggregatorMapSource)
-    when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaAuditEventTopic)).thenReturn(new auditEventSink)
-    when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaFailedEventTopic)).thenReturn(new failedEventSink)
-    when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaCertIssueTopic)).thenReturn(new certificateIssuedEventsSink)
-    new ActivityAggregateUpdaterStreamTask(courseAggregatorConfig, mockKafkaUtil).process()
-    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.batchEnrolmentUpdateEventCount}").getValue() should be(4)
-    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.processedEnrolmentCount}").getValue() should be(3)
-    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.dbReadCount}").getValue() should be(3)
-    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.dbUpdateCount}").getValue() should be(6)
-    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.cacheHitCount}").getValue() should be(16)
-    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.totalEventCount}").getValue() should be(5)
-    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.failedEventCount}").getValue() should be(0)
-    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.skipEventsCount}").getValue() should be(1)
-    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.cacheMissCount}").getValue() should be(0)
-    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.enrolmentCompleteCount}").getValue() should be(0)
-    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.certIssueEventsCount}").getValue() should be(0)
-
-    auditEventSink.values.size() should be(7)
-    auditEventSink.values.forEach(event => {
-      println("AUDIT_TELEMETRY_EVENT: " + event)
-    })
-
-    val event1Progress = readFromCassandra(EventFixture.EVENT_1)
-    event1Progress.size() should be(4)
-    event1Progress.forEach(col => {
-      if (col.getObject("activity_id") == "do_course_unit1") {
-        col.getObject("activity_type") should be("Course")
-        col.getObject("agg").asInstanceOf[util.Map[String, Int]].get("completedCount") should equal(1)
-      }
-      if (col.getObject("activity_id") == "do_course_unit2") {
-        col.getObject("activity_type") should be("Course")
-        col.getObject("agg").asInstanceOf[util.Map[String, Int]].get("completedCount") should equal(1)
-      }
-      if (col.getObject("activity_id") == "do_course_unit3") {
-        col.getObject("activity_type") should be("Course")
-        col.getObject("agg").asInstanceOf[util.Map[String, Int]].get("completedCount") should equal(1)
-      }
-      if (col.getObject("activity_id") == "do_1127212344324751361295") {
-        col.getObject("activity_type") should be("Course")
-        println("aggMap", col.getObject("agg"))
-        col.getObject("agg").asInstanceOf[util.Map[String, Int]].get("completedCount") should equal(2)
-
-      }
-    })
-
-    val event1ContentConsumption = readFromContentConsumptionTable(EventFixture.EVENT_1)
-    event1ContentConsumption.forEach(col => {
-      if (col.getObject("contentid") == "do_11260735471149056012299") {
-        col.getObject("viewcount") should be(4) // No start telemetry - Validate - with Manju
-        col.getObject("completedcount") should be(2) // No end telemetry - Validate - with Manju
-      }
-      if (col.getObject("contentid") == "do_11260735471149056012300") {
-        col.getObject("viewcount") should be(2) // No start telemetry - Validate - with Manju
-        col.getObject("completedcount") should be(2) // No end telemetry - Validate - with Manju*
-      }
-      if (col.getObject("contentid") == "do_11260735471149056012301") {
-        col.getObject("viewcount") should be(0) // Start telemetry - Validate - with Manju
-        col.getObject("completedcount") should be(1) // End telemetry - Validate - with Manju*
-      }
-    })
-
-    val event2Progress = readFromCassandra(EventFixture.EVENT_2)
-    event2Progress.size() should be(3)
-
-
-    val event2ContentConsumption = readFromContentConsumptionTable(EventFixture.EVENT_2)
-    event2ContentConsumption.forEach(col => {
-      if (col.getObject("contentid") == "R11") {
-        col.getObject("viewcount") should be(1) // No start
-        col.getObject("completedcount") should be(1) // end
-      }
-      if (col.getObject("contentid") == "R22") {
-        col.getObject("viewcount") should be(1) // No start
-        col.getObject("completedcount") should be(1) // End
-      }
-    })
-
-    val event3Progress = readFromCassandra(EventFixture.EVENT_3)
-    event3Progress.size() should be(3)
-    event3Progress.forEach(col => {
-      if (col.getObject("activity_id") == "unit1") {
-        col.getObject("activity_type") should be("Course")
-        println("aggMap", col.getObject("agg"))
-        col.getObject("agg").asInstanceOf[util.Map[String, Int]].get("completedCount") should equal(2)
-      }
-      if (col.getObject("activity_id") == "unit2") {
-        col.getObject("activity_type") should be("Course")
-        println("aggMap", col.getObject("agg"))
-        col.getObject("agg").asInstanceOf[util.Map[String, Int]].get("completedCount") should equal(2)
-      }
-      if (col.getObject("activity_id") == "course001") {
-        col.getObject("activity_type") should be("Course")
-        println("aggMap", col.getObject("agg"))
-        col.getObject("agg").asInstanceOf[util.Map[String, Int]].get("completedCount") should equal(3)
-      }
-    })
-
-    val event3ContentConsumption = readFromContentConsumptionTable(EventFixture.EVENT_2)
-    event3ContentConsumption.forEach(col => {
-      if (col.getObject("contentid") == "do_R2") {
-        col.getObject("viewcount") should be(2)
-        col.getObject("completedcount") should be(1)
-      }
-      if (col.getObject("contentid") == "do_R1") {
-        col.getObject("viewcount") should be(2)
-        col.getObject("completedcount") should be(1)
-      }
-      if (col.getObject("contentid") == "do_R3") {
-        col.getObject("viewcount") should be(2)
-        col.getObject("completedcount") should be(1)
-      }
-    })
-
-  }
 
 
   def testCassandraUtil(cassandraUtil: CassandraUtil): Unit = {

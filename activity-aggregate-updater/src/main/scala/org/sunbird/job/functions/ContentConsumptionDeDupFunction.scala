@@ -57,19 +57,22 @@ class ContentConsumptionDeDupFunction(config: ActivityAggregateUpdaterConfig)(im
   }
 
   def discardDuplicates(event: Map[String, AnyRef]): Boolean = {
-    val userId = event.getOrElse(config.userId, "").asInstanceOf[String]
-    val courseId = event.getOrElse(config.courseId, "").asInstanceOf[String]
-    val batchId = event.getOrElse(config.batchId, "").asInstanceOf[String]
-    val contents = event.getOrElse(config.contents, List[Map[String,AnyRef]]()).asInstanceOf[List[Map[String, AnyRef]]]
-    if (contents.nonEmpty) {
-      val content = contents.head
-      val contentId = content.getOrElse("contentId", "").asInstanceOf[String]
-      val status = content.getOrElse("status", 0.asInstanceOf[AnyRef]).asInstanceOf[Number].intValue()
-      val checksum = getMessageId(courseId, batchId, userId, contentId, status)
-      val isUnique = deDupEngine.isUniqueEvent(checksum)
-      if (isUnique) deDupEngine.storeChecksum(checksum)
-      isUnique
-    } else false
+    if (config.dedupEnabled) {
+      val userId = event.getOrElse(config.userId, "").asInstanceOf[String]
+      val courseId = event.getOrElse(config.courseId, "").asInstanceOf[String]
+      val batchId = event.getOrElse(config.batchId, "").asInstanceOf[String]
+      val contents = event.getOrElse(config.contents, List[Map[String,AnyRef]]()).asInstanceOf[List[Map[String, AnyRef]]]
+      if (contents.nonEmpty) {
+        val content = contents.head
+        val contentId = content.getOrElse("contentId", "").asInstanceOf[String]
+        val status = content.getOrElse("status", 0.asInstanceOf[AnyRef]).asInstanceOf[Number].intValue()
+        val checksum = getMessageId(courseId, batchId, userId, contentId, status)
+        val isUnique = deDupEngine.isUniqueEvent(checksum)
+        if (isUnique) deDupEngine.storeChecksum(checksum)
+        println(checksum + " isUnique: " + isUnique)
+        isUnique
+      } else false
+    } else true
   }
 
   def getMessageId(collectionId: String, batchId: String, userId: String, contentId: String, status: Int): String = {

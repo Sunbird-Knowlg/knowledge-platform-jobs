@@ -106,6 +106,7 @@ class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJo
 
   // Producers
   val activityAggregateUpdaterProducer = "activity-aggregate-updater-audit-events-sink"
+  val enrolmentCompleteEventProducer = "enrolment-complete-audit-sink"
   val activityAggFailedEventProducer = "activity-aggregate-updater-failed-sink"
   val certIssueEventProducer = "certificate-issue-event-producer"
 

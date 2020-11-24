@@ -73,3 +73,6 @@ CREATE TABLE sunbird_courses.user_enrolments (
     AND speculative_retry = '99PERCENTILE';
 CREATE INDEX inx_ues_status ON sunbird_courses.user_enrolments (status);
 CREATE INDEX inx_ues_certs ON sunbird_courses.user_enrolments (values(certificates));
+
+
+INSERT INTO sunbird_courses.user_enrolments(userid, courseid, batchid, status) VALUES ('user001', 'course001', 'Batch1', 1)

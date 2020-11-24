@@ -15,7 +15,7 @@ import org.sunbird.job.util.CassandraUtil
 
 import scala.collection.JavaConverters._
 
-class EnrolmentCompleteFunction(config: ActivityAggregateUpdaterConfig)(implicit val enrolmentCompleteTypeInfo: TypeInformation[List[EnrolmentComplete]], @transient var cassandraUtil: CassandraUtil = null)
+class EnrolmentCompleteFunction(config: ActivityAggregateUpdaterConfig)(implicit val enrolmentCompleteTypeInfo: TypeInformation[List[EnrolmentComplete]], val stringTypeInfo: TypeInformation[String], @transient var cassandraUtil: CassandraUtil = null)
   extends BaseProcessFunction[List[EnrolmentComplete], String](config) {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[EnrolmentCompleteFunction])
@@ -33,9 +33,8 @@ class EnrolmentCompleteFunction(config: ActivityAggregateUpdaterConfig)(implicit
 
   override def processElement(events: List[EnrolmentComplete], context: ProcessFunction[List[EnrolmentComplete], String]#Context, metrics: Metrics): Unit = {
     val pendingEnrolments = events.filter {p =>
-      val row = getEnrolment(p.userId, p.courseId, p.batchId, metrics)
-      val status = row.getInt("status")
-      status != 2
+      val row = getEnrolment(p.userId, p.courseId, p.batchId)(metrics)
+      (row != null && row.getInt("status") != 2)
     }
     
     val enrolmentQueries = pendingEnrolments.map(enrolmentComplete => getEnrolmentCompleteQuery(enrolmentComplete))
@@ -47,7 +46,7 @@ class EnrolmentCompleteFunction(config: ActivityAggregateUpdaterConfig)(implicit
   }
 
   override def metricsList(): List[String] = {
-    List(config.dbUpdateCount, config.dbReadCount, config.enrolmentCompleteCount, config.certIssueEventsCount)
+    List(config.dbReadCount, config.dbUpdateCount, config.enrolmentCompleteCount, config.certIssueEventsCount)
   }
 
   def generateAuditEvent(data: EnrolmentComplete, context: ProcessFunction[List[EnrolmentComplete], String]#Context)(implicit metrics: Metrics) = {
@@ -60,7 +59,7 @@ class EnrolmentCompleteFunction(config: ActivityAggregateUpdaterConfig)(implicit
     context.output(config.auditEventOutputTag, gson.toJson(auditEvent))
   }
 
-  def getEnrolment(userId: String, courseId: String, batchId: String, metrics: Metrics) = {
+  def getEnrolment(userId: String, courseId: String, batchId: String)(implicit metrics: Metrics) = {
     val selectWhere: Select.Where = QueryBuilder.select().all()
       .from(config.dbKeyspace, config.dbUserEnrolmentsTable).
       where()
