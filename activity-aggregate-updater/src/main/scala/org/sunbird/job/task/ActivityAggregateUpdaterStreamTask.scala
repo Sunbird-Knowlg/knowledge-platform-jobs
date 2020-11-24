@@ -42,9 +42,11 @@ class ActivityAggregateUpdaterStreamTask(config: ActivityAggregateUpdaterConfig,
 
     enrolmentCompleteStream.getSideOutput(config.certIssueOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaCertIssueTopic))
       .name(config.certIssueEventProducer).uid(config.certIssueEventProducer)
+    enrolmentCompleteStream.getSideOutput(config.auditEventOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaAuditEventTopic))
+      .name(config.activityAggregateUpdaterProducer).uid(config.activityAggregateUpdaterProducer)
 
     progressStream.getSideOutput(config.auditEventOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaAuditEventTopic))
-      .name(config.activityAggregateUpdaterProducer).uid(config.activityAggregateUpdaterProducer)
+      .name(config.enrolmentCompleteEventProducer).uid(config.enrolmentCompleteEventProducer)
     progressStream.getSideOutput(config.failedEventOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaFailedEventTopic))
       .name(config.activityAggFailedEventProducer).uid(config.activityAggFailedEventProducer)
     env.execute(config.jobName)

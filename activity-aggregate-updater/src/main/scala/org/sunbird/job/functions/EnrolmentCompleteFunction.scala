@@ -2,18 +2,20 @@ package org.sunbird.job.functions
 
 import java.util.UUID
 
-import com.datastax.driver.core.querybuilder.{QueryBuilder, Update}
+import com.datastax.driver.core.querybuilder.{QueryBuilder, Select, Update}
 import com.google.gson.Gson
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.{BaseProcessFunction, Metrics}
-import org.sunbird.job.domain.EnrolmentComplete
+import org.sunbird.job.domain.{ActorObject, EnrolmentComplete, EventContext, EventData, EventObject, TelemetryEvent}
 import org.sunbird.job.task.ActivityAggregateUpdaterConfig
 import org.sunbird.job.util.CassandraUtil
 
-class EnrolmentCompleteFunction(config: ActivityAggregateUpdaterConfig)(implicit val enrolmentCompleteTypeInfo: TypeInformation[List[EnrolmentComplete]], @transient var cassandraUtil: CassandraUtil = null)
+import scala.collection.JavaConverters._
+
+class EnrolmentCompleteFunction(config: ActivityAggregateUpdaterConfig)(implicit val enrolmentCompleteTypeInfo: TypeInformation[List[EnrolmentComplete]], val stringTypeInfo: TypeInformation[String], @transient var cassandraUtil: CassandraUtil = null)
   extends BaseProcessFunction[List[EnrolmentComplete], String](config) {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[EnrolmentCompleteFunction])
@@ -30,14 +32,42 @@ class EnrolmentCompleteFunction(config: ActivityAggregateUpdaterConfig)(implicit
   }
 
   override def processElement(events: List[EnrolmentComplete], context: ProcessFunction[List[EnrolmentComplete], String]#Context, metrics: Metrics): Unit = {
-    // TODO: check the status of the user_enrolments before updating (to avoid multiple update).
-    val enrolmentQueries = events.map(enrolmentComplete => getEnrolmentCompleteQuery(enrolmentComplete))
+    val pendingEnrolments = events.filter {p =>
+      val row = getEnrolment(p.userId, p.courseId, p.batchId)(metrics)
+      (row != null && row.getInt("status") != 2)
+    }
+    
+    val enrolmentQueries = pendingEnrolments.map(enrolmentComplete => getEnrolmentCompleteQuery(enrolmentComplete))
     updateDB(config.thresholdBatchWriteSize, enrolmentQueries)(metrics)
-    events.foreach(e => createIssueCertEvent(e, context)(metrics))
+    pendingEnrolments.foreach(e => {
+      createIssueCertEvent(e, context)(metrics)
+      generateAuditEvent(e, context)(metrics)
+    })
   }
 
   override def metricsList(): List[String] = {
-    List(config.dbUpdateCount, config.enrolmentCompleteCount, config.certIssueEventsCount)
+    List(config.dbReadCount, config.dbUpdateCount, config.enrolmentCompleteCount, config.certIssueEventsCount)
+  }
+
+  def generateAuditEvent(data: EnrolmentComplete, context: ProcessFunction[List[EnrolmentComplete], String]#Context)(implicit metrics: Metrics) = {
+    val auditEvent = TelemetryEvent(
+      actor = ActorObject(id = data.userId),
+      edata = EventData(props = Array("status", "completedon"), `type` = "enrol-complete"), // action values are "start", "complete".
+      context = EventContext(cdata = Array(Map("type" -> config.courseBatch, "id" -> data.batchId).asJava, Map("type" -> "Course", "id" -> data.courseId).asJava)),
+      `object` = EventObject(id = data.userId, `type` = "User", rollup = Map[String, String]("l1" -> data.courseId).asJava)
+    )
+    context.output(config.auditEventOutputTag, gson.toJson(auditEvent))
+  }
+
+  def getEnrolment(userId: String, courseId: String, batchId: String)(implicit metrics: Metrics) = {
+    val selectWhere: Select.Where = QueryBuilder.select().all()
+      .from(config.dbKeyspace, config.dbUserEnrolmentsTable).
+      where()
+    selectWhere.and(QueryBuilder.eq("userid", userId))
+      .and(QueryBuilder.eq("courseid", courseId))
+      .and(QueryBuilder.eq("batchid", batchId))
+    metrics.incCounter(config.dbReadCount)
+    cassandraUtil.findOne(selectWhere.toString)
   }
 
   def getEnrolmentCompleteQuery(enrolment: EnrolmentComplete): Update.Where = {

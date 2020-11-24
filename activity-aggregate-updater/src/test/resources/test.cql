@@ -22,9 +22,9 @@ INSERT INTO sunbird_courses.user_content_consumption(userid, contentid, batchid,
 INSERT INTO sunbird_courses.user_content_consumption(userid, contentid, batchid,courseid,progress,status,viewcount,completedcount) VALUES ('8454cb21-3ce9-4e30-85b5-fade097880d8','do_11260735471149056012301','0126083288437637121','do_1127212344324751361295',0, 1,0,1) ;
 
 //Event_2 Testcase Data
-INSERT INTO sunbird_courses.user_content_consumption(userid, contentid, batchid,courseid,progress,status,viewcount,completedcount) VALUES ('user001','do_R1','Batch1','course001',100, 2,1,1) ;
-INSERT INTO sunbird_courses.user_content_consumption(userid, contentid, batchid,courseid,progress,status,viewcount,completedcount) VALUES ('user001','do_R2','Batch1','course001',100, 2,1,1) ;
-INSERT INTO sunbird_courses.user_content_consumption(userid, contentid, batchid,courseid,progress,status,viewcount,completedcount) VALUES ('user001','do_R3','Batch1','course001',100, 2,1,1) ;
+INSERT INTO sunbird_courses.user_content_consumption(userid, contentid, batchid,courseid,progress,status,viewcount,completedcount) VALUES ('user001','do_R1','Batch1','course001',100, 2,1,0) ;
+INSERT INTO sunbird_courses.user_content_consumption(userid, contentid, batchid,courseid,progress,status,viewcount,completedcount) VALUES ('user001','do_R2','Batch1','course001',100, 2,1,0) ;
+INSERT INTO sunbird_courses.user_content_consumption(userid, contentid, batchid,courseid,progress,status,viewcount,completedcount) VALUES ('user001','do_R3','Batch1','course001',100, 2,1,0) ;
 
 
 
@@ -73,3 +73,6 @@ CREATE TABLE sunbird_courses.user_enrolments (
     AND speculative_retry = '99PERCENTILE';
 CREATE INDEX inx_ues_status ON sunbird_courses.user_enrolments (status);
 CREATE INDEX inx_ues_certs ON sunbird_courses.user_enrolments (values(certificates));
+
+
+INSERT INTO sunbird_courses.user_enrolments(userid, courseid, batchid, status) VALUES ('user001', 'course001', 'Batch1', 1)

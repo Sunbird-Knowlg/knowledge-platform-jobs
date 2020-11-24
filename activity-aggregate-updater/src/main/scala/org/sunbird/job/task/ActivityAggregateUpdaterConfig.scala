@@ -30,7 +30,7 @@ class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJo
   val enrolmentCompleteParallelism: Int = config.getInt("task.enrolment.complete.parallelism")
 
   // Metric List
-  val successEventCount = "success-events-count"
+  val totalEventCount = "total-events-count"
   val failedEventCount = "failed-events-count"
   val dbUpdateCount = "db-update-count"
   val dbReadCount = "db-read-count"
@@ -106,6 +106,7 @@ class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJo
 
   // Producers
   val activityAggregateUpdaterProducer = "activity-aggregate-updater-audit-events-sink"
+  val enrolmentCompleteEventProducer = "enrolment-complete-audit-sink"
   val activityAggFailedEventProducer = "activity-aggregate-updater-failed-sink"
   val certIssueEventProducer = "certificate-issue-event-producer"
 

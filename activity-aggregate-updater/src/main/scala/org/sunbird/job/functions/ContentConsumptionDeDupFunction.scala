@@ -36,6 +36,7 @@ class ContentConsumptionDeDupFunction(config: ActivityAggregateUpdaterConfig)(im
 
 
   override def processElement(event: util.Map[String, AnyRef], context: ProcessFunction[util.Map[String, AnyRef], String]#Context, metrics: Metrics): Unit = {
+    metrics.incCounter(config.totalEventCount)
     val eData = event.get(config.eData).asInstanceOf[util.Map[String, AnyRef]].asScala
     val isBatchEnrollmentEvent: Boolean = StringUtils.equalsIgnoreCase(eData.getOrElse(config.action, "").asInstanceOf[String], config.batchEnrolmentUpdateCode)
     if (isBatchEnrollmentEvent) {
@@ -52,23 +53,26 @@ class ContentConsumptionDeDupFunction(config: ActivityAggregateUpdaterConfig)(im
   }
 
   override def metricsList(): List[String] = {
-    List(config.skipEventsCount, config.batchEnrolmentUpdateEventCount)
+    List(config.totalEventCount, config.skipEventsCount, config.batchEnrolmentUpdateEventCount)
   }
 
   def discardDuplicates(event: Map[String, AnyRef]): Boolean = {
-    val userId = event.getOrElse(config.userId, "").asInstanceOf[String]
-    val courseId = event.getOrElse(config.courseId, "").asInstanceOf[String]
-    val batchId = event.getOrElse(config.batchId, "").asInstanceOf[String]
-    val contents = event.getOrElse(config.contents, List[Map[String,AnyRef]]()).asInstanceOf[List[Map[String, AnyRef]]]
-    if (contents.nonEmpty) {
-      val content = contents.head
-      val contentId = content.getOrElse("contentId", "").asInstanceOf[String]
-      val status = content.getOrElse("status", 0.asInstanceOf[AnyRef]).asInstanceOf[Number].intValue()
-      val checksum = getMessageId(courseId, batchId, userId, contentId, status)
-      val isUnique = deDupEngine.isUniqueEvent(checksum)
-      if (isUnique) deDupEngine.storeChecksum(checksum)
-      isUnique
-    } else false
+    if (config.dedupEnabled) {
+      val userId = event.getOrElse(config.userId, "").asInstanceOf[String]
+      val courseId = event.getOrElse(config.courseId, "").asInstanceOf[String]
+      val batchId = event.getOrElse(config.batchId, "").asInstanceOf[String]
+      val contents = event.getOrElse(config.contents, List[Map[String,AnyRef]]()).asInstanceOf[List[Map[String, AnyRef]]]
+      if (contents.nonEmpty) {
+        val content = contents.head
+        val contentId = content.getOrElse("contentId", "").asInstanceOf[String]
+        val status = content.getOrElse("status", 0.asInstanceOf[AnyRef]).asInstanceOf[Number].intValue()
+        val checksum = getMessageId(courseId, batchId, userId, contentId, status)
+        val isUnique = deDupEngine.isUniqueEvent(checksum)
+        if (isUnique) deDupEngine.storeChecksum(checksum)
+        println(checksum + " isUnique: " + isUnique)
+        isUnique
+      } else false
+    } else true
   }
 
   def getMessageId(collectionId: String, batchId: String, userId: String, contentId: String, status: Int): String = {
