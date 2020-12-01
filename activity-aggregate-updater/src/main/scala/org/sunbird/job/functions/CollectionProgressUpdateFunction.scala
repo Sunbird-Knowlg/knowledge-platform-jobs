@@ -56,7 +56,7 @@ class CollectionProgressUpdateFunction(config: ActivityAggregateUpdaterConfig)(i
     QueryBuilder.update(config.dbKeyspace, config.dbUserEnrolmentsTable)
       .`with`(QueryBuilder.set("status", 1))
       .and(QueryBuilder.set("progress", enrolment.progress))
-      .and(QueryBuilder.set("contentstatus", enrolment.contentStatus.asJava))
+      .and(QueryBuilder.putAll("contentstatus", enrolment.contentStatus.asJava))
       .and(QueryBuilder.set("datetime", System.currentTimeMillis))
       .where(QueryBuilder.eq("userid", enrolment.userId))
       .and(QueryBuilder.eq("courseid", enrolment.courseId))
