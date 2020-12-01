@@ -64,8 +64,10 @@ class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJo
   val auditEventOutputTag: OutputTag[String] = OutputTag[String](auditEventOutputTagName)
   val failedEventOutputTagName = "failed-events"
   val failedEventOutputTag: OutputTag[String] = OutputTag[String](failedEventOutputTagName)
-  val collectionCompleteOutputTagName = "collection-complete-events"
+  val collectionCompleteOutputTagName = "collection-progress-complete-events"
   val collectionCompleteOutputTag: OutputTag[List[CollectionProgress]] = OutputTag[List[CollectionProgress]](collectionCompleteOutputTagName)
+  val collectionUpdateOutputTagName = "collection-progress-update-events"
+  val collectionUpdateOutputTag: OutputTag[List[CollectionProgress]] = OutputTag[List[CollectionProgress]](collectionUpdateOutputTagName)
   val certIssueOutputTagName = "certificate-issue-events"
   val certIssueOutputTag: OutputTag[String] = OutputTag[String](certIssueOutputTagName)
 
@@ -99,7 +101,8 @@ class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJo
   val activityAggregateUpdaterFn = "activity-aggregate-updater-fn"
   val partition = "partition"
   val courseBatch = "CourseBatch"
-  val enrolmentCompleteFn = "enrolment-completion-process"
+  val collectionProgressUpdateFn = "progress-update-process"
+  val collectionCompleteFn = "collection-completion-process"
 
   // Consumers
   val activityAggregateUpdaterConsumer = "activity-aggregate-updater-consumer"

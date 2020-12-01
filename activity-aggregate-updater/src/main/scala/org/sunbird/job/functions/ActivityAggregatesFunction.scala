@@ -101,7 +101,12 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig, @transi
     // Saving enrolment completion data.
     val collectionProgressList = courseAggregations.filter(agg => agg.collectionProgress.nonEmpty).map(agg => agg.collectionProgress.get)
 
-    context.output(config.collectionCompleteOutputTag, collectionProgressList)
+    val collectionProgressUpdateList = collectionProgressList.filter(progress => !progress.completed)
+    context.output(config.collectionUpdateOutputTag, collectionProgressUpdateList)
+
+    val collectionProgressCompleteList = collectionProgressList.filter(progress => progress.completed)
+    context.output(config.collectionCompleteOutputTag, collectionProgressCompleteList)
+
 
     // Content AUDIT Event generation and pushing to output tag.
     finalUserConsumptionList.flatMap(userConsumption => contentAuditEvents(userConsumption)).foreach(event => context.output(config.auditEventOutputTag, gson.toJson(event)))

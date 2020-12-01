@@ -12,7 +12,7 @@ import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.domain.CollectionProgress
-import org.sunbird.job.functions.{ActivityAggregatesFunction, ContentConsumptionDeDupFunction, CollectionProgressCompleteFunction}
+import org.sunbird.job.functions.{ActivityAggregatesFunction, CollectionProgressCompleteFunction, CollectionProgressUpdateFunction, ContentConsumptionDeDupFunction}
 import org.sunbird.job.util.FlinkUtil
 
 
@@ -42,8 +42,11 @@ class ActivityAggregateUpdaterStreamTask(config: ActivityAggregateUpdaterConfig,
     progressStream.getSideOutput(config.failedEventOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaFailedEventTopic))
       .name(config.activityAggFailedEventProducer).uid(config.activityAggFailedEventProducer)
 
+    // TODO: set separate parallelism for below task.
+    progressStream.getSideOutput(config.collectionUpdateOutputTag).process(new CollectionProgressUpdateFunction(config))
+      .name(config.collectionProgressUpdateFn).uid(config.collectionProgressUpdateFn).setParallelism(config.enrolmentCompleteParallelism)
     val enrolmentCompleteStream = progressStream.getSideOutput(config.collectionCompleteOutputTag).process(new CollectionProgressCompleteFunction(config))
-      .name(config.enrolmentCompleteFn).uid(config.enrolmentCompleteFn).setParallelism(config.enrolmentCompleteParallelism)
+      .name(config.collectionCompleteFn).uid(config.collectionCompleteFn).setParallelism(config.enrolmentCompleteParallelism)
 
     enrolmentCompleteStream.getSideOutput(config.certIssueOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaCertIssueTopic))
       .name(config.certIssueEventProducer).uid(config.certIssueEventProducer)
