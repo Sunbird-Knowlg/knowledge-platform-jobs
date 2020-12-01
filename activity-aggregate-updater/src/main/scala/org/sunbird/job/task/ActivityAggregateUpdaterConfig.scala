@@ -7,7 +7,7 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.streaming.api.scala.OutputTag
 import org.sunbird.job.BaseJobConfig
-import org.sunbird.job.domain.EnrolmentComplete
+import org.sunbird.job.domain.CollectionProgress
 
 class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJobConfig(config, "activity-aggregate-updater") {
 
@@ -16,7 +16,7 @@ class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJo
   implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
   implicit val scalaMapTypeInfo: TypeInformation[Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[Map[String, AnyRef]])
   implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
-  implicit val enrolmentCompleteTypeInfo: TypeInformation[List[EnrolmentComplete]] = TypeExtractor.getForClass(classOf[List[EnrolmentComplete]])
+  implicit val enrolmentCompleteTypeInfo: TypeInformation[List[CollectionProgress]] = TypeExtractor.getForClass(classOf[List[CollectionProgress]])
 
   // Kafka Topics Configuration
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
@@ -64,8 +64,8 @@ class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJo
   val auditEventOutputTag: OutputTag[String] = OutputTag[String](auditEventOutputTagName)
   val failedEventOutputTagName = "failed-events"
   val failedEventOutputTag: OutputTag[String] = OutputTag[String](failedEventOutputTagName)
-  val enrolmentCompleteOutputTagName = "enrolment-complete-events"
-  val enrolmentCompleteOutputTag: OutputTag[List[EnrolmentComplete]] = OutputTag[List[EnrolmentComplete]](enrolmentCompleteOutputTagName)
+  val collectionCompleteOutputTagName = "collection-complete-events"
+  val collectionCompleteOutputTag: OutputTag[List[CollectionProgress]] = OutputTag[List[CollectionProgress]](collectionCompleteOutputTagName)
   val certIssueOutputTagName = "certificate-issue-events"
   val certIssueOutputTag: OutputTag[String] = OutputTag[String](certIssueOutputTagName)
 

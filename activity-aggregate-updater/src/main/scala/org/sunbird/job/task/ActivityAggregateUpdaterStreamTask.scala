@@ -11,8 +11,8 @@ import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.domain.EnrolmentComplete
-import org.sunbird.job.functions.{ActivityAggregatesFunction, ContentConsumptionDeDupFunction, EnrolmentCompleteFunction}
+import org.sunbird.job.domain.CollectionProgress
+import org.sunbird.job.functions.{ActivityAggregatesFunction, ContentConsumptionDeDupFunction, CollectionProgressCompleteFunction}
 import org.sunbird.job.util.FlinkUtil
 
 
@@ -21,7 +21,7 @@ class ActivityAggregateUpdaterStreamTask(config: ActivityAggregateUpdaterConfig,
     implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
     implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
-    implicit val enrolmentCompleteTypeInfo: TypeInformation[List[EnrolmentComplete]] = TypeExtractor.getForClass(classOf[List[EnrolmentComplete]])
+    implicit val enrolmentCompleteTypeInfo: TypeInformation[List[CollectionProgress]] = TypeExtractor.getForClass(classOf[List[CollectionProgress]])
 
     val progressStream =
       env.addSource(kafkaConnector.kafkaMapSource(config.kafkaInputTopic)).name(config.activityAggregateUpdaterConsumer)
@@ -37,18 +37,19 @@ class ActivityAggregateUpdaterStreamTask(config: ActivityAggregateUpdaterConfig,
         .uid(config.activityAggregateUpdaterFn)
         .setParallelism(config.activityAggregateUpdaterParallelism)
 
-    val enrolmentCompleteStream = progressStream.getSideOutput(config.enrolmentCompleteOutputTag).process(new EnrolmentCompleteFunction(config))
+    progressStream.getSideOutput(config.auditEventOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaAuditEventTopic))
+      .name(config.activityAggregateUpdaterProducer).uid(config.activityAggregateUpdaterProducer)
+    progressStream.getSideOutput(config.failedEventOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaFailedEventTopic))
+      .name(config.activityAggFailedEventProducer).uid(config.activityAggFailedEventProducer)
+
+    val enrolmentCompleteStream = progressStream.getSideOutput(config.collectionCompleteOutputTag).process(new CollectionProgressCompleteFunction(config))
       .name(config.enrolmentCompleteFn).uid(config.enrolmentCompleteFn).setParallelism(config.enrolmentCompleteParallelism)
 
     enrolmentCompleteStream.getSideOutput(config.certIssueOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaCertIssueTopic))
       .name(config.certIssueEventProducer).uid(config.certIssueEventProducer)
     enrolmentCompleteStream.getSideOutput(config.auditEventOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaAuditEventTopic))
-      .name(config.activityAggregateUpdaterProducer).uid(config.activityAggregateUpdaterProducer)
-
-    progressStream.getSideOutput(config.auditEventOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaAuditEventTopic))
       .name(config.enrolmentCompleteEventProducer).uid(config.enrolmentCompleteEventProducer)
-    progressStream.getSideOutput(config.failedEventOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaFailedEventTopic))
-      .name(config.activityAggFailedEventProducer).uid(config.activityAggFailedEventProducer)
+
     env.execute(config.jobName)
   }
 

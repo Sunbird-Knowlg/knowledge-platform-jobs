@@ -9,16 +9,16 @@ import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.{BaseProcessFunction, Metrics}
-import org.sunbird.job.domain.{ActorObject, EnrolmentComplete, EventContext, EventData, EventObject, TelemetryEvent}
+import org.sunbird.job.domain.{ActorObject, CollectionProgress, EventContext, EventData, EventObject, TelemetryEvent}
 import org.sunbird.job.task.ActivityAggregateUpdaterConfig
 import org.sunbird.job.util.CassandraUtil
 
 import scala.collection.JavaConverters._
 
-class EnrolmentCompleteFunction(config: ActivityAggregateUpdaterConfig)(implicit val enrolmentCompleteTypeInfo: TypeInformation[List[EnrolmentComplete]], val stringTypeInfo: TypeInformation[String], @transient var cassandraUtil: CassandraUtil = null)
-  extends BaseProcessFunction[List[EnrolmentComplete], String](config) {
+class CollectionProgressCompleteFunction(config: ActivityAggregateUpdaterConfig)(implicit val enrolmentCompleteTypeInfo: TypeInformation[List[CollectionProgress]], val stringTypeInfo: TypeInformation[String], @transient var cassandraUtil: CassandraUtil = null)
+  extends BaseProcessFunction[List[CollectionProgress], String](config) {
 
-  private[this] val logger = LoggerFactory.getLogger(classOf[EnrolmentCompleteFunction])
+  private[this] val logger = LoggerFactory.getLogger(classOf[CollectionProgressCompleteFunction])
   lazy private val gson = new Gson()
 
   override def open(parameters: Configuration): Unit = {
@@ -31,7 +31,7 @@ class EnrolmentCompleteFunction(config: ActivityAggregateUpdaterConfig)(implicit
     super.close()
   }
 
-  override def processElement(events: List[EnrolmentComplete], context: ProcessFunction[List[EnrolmentComplete], String]#Context, metrics: Metrics): Unit = {
+  override def processElement(events: List[CollectionProgress], context: ProcessFunction[List[CollectionProgress], String]#Context, metrics: Metrics): Unit = {
     val pendingEnrolments = events.filter {p =>
       val row = getEnrolment(p.userId, p.courseId, p.batchId)(metrics)
       (row != null && row.getInt("status") != 2)
@@ -49,7 +49,7 @@ class EnrolmentCompleteFunction(config: ActivityAggregateUpdaterConfig)(implicit
     List(config.dbReadCount, config.dbUpdateCount, config.enrolmentCompleteCount, config.certIssueEventsCount)
   }
 
-  def generateAuditEvent(data: EnrolmentComplete, context: ProcessFunction[List[EnrolmentComplete], String]#Context)(implicit metrics: Metrics) = {
+  def generateAuditEvent(data: CollectionProgress, context: ProcessFunction[List[CollectionProgress], String]#Context)(implicit metrics: Metrics) = {
     val auditEvent = TelemetryEvent(
       actor = ActorObject(id = data.userId),
       edata = EventData(props = Array("status", "completedon"), `type` = "enrol-complete"), // action values are "start", "complete".
@@ -70,12 +70,13 @@ class EnrolmentCompleteFunction(config: ActivityAggregateUpdaterConfig)(implicit
     cassandraUtil.findOne(selectWhere.toString)
   }
 
-  def getEnrolmentCompleteQuery(enrolment: EnrolmentComplete): Update.Where = {
+  def getEnrolmentCompleteQuery(enrolment: CollectionProgress): Update.Where = {
     logger.info("Enrolment completed for userId: " + enrolment.userId + " batchId: " + enrolment.batchId)
     QueryBuilder.update(config.dbKeyspace, config.dbUserEnrolmentsTable)
       .`with`(QueryBuilder.set("status", 2))
       .and(QueryBuilder.set("completedon", enrolment.completedOn))
       .and(QueryBuilder.set("progress", enrolment.progress))
+      .and(QueryBuilder.set("contentstatus", enrolment.contentStatus))
       .where(QueryBuilder.eq("userid", enrolment.userId))
       .and(QueryBuilder.eq("courseid", enrolment.courseId))
       .and(QueryBuilder.eq("batchid", enrolment.batchId))
@@ -107,7 +108,7 @@ class EnrolmentCompleteFunction(config: ActivityAggregateUpdaterConfig)(implicit
    * @param context
    * @param metrics
    */
-  def createIssueCertEvent(enrolment: EnrolmentComplete, context: ProcessFunction[List[EnrolmentComplete], String]#Context)(implicit metrics: Metrics): Unit = {
+  def createIssueCertEvent(enrolment: CollectionProgress, context: ProcessFunction[List[CollectionProgress], String]#Context)(implicit metrics: Metrics): Unit = {
     val ets = System.currentTimeMillis
     val mid = s"""LP.${ets}.${UUID.randomUUID}"""
     val event = s"""{"eid": "BE_JOB_REQUEST","ets": ${ets},"mid": "${mid}","actor": {"id": "Course Certificate Generator","type": "System"},"context": {"pdata": {"ver": "1.0","id": "org.sunbird.platform"}},"object": {"id": "${enrolment.batchId}_${enrolment.courseId}","type": "CourseCertificateGeneration"},"edata": {"userIds": ["${enrolment.userId}"],"action": "issue-certificate","iteration": 1, "trigger": "auto-issue","batchId": "${enrolment.batchId}","reIssue": false,"courseId": "${enrolment.courseId}"}}"""
