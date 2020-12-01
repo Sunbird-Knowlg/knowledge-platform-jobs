@@ -10,6 +10,8 @@ import org.sunbird.job.task.ActivityAggregateUpdaterConfig
 import org.sunbird.job.util.CassandraUtil
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
+import scala.collection.JavaConverters._
+
 class CollectionProgressUpdateFunction(config: ActivityAggregateUpdaterConfig)(implicit val enrolmentCompleteTypeInfo: TypeInformation[List[CollectionProgress]], val stringTypeInfo: TypeInformation[String], @transient var cassandraUtil: CassandraUtil = null)
   extends BaseProcessFunction[List[CollectionProgress], String](config) {
 
@@ -54,7 +56,7 @@ class CollectionProgressUpdateFunction(config: ActivityAggregateUpdaterConfig)(i
     QueryBuilder.update(config.dbKeyspace, config.dbUserEnrolmentsTable)
       .`with`(QueryBuilder.set("status", 1))
       .and(QueryBuilder.set("progress", enrolment.progress))
-      .and(QueryBuilder.set("contentstatus", enrolment.contentStatus))
+      .and(QueryBuilder.set("contentstatus", enrolment.contentStatus.asJava))
       .and(QueryBuilder.set("datetime", System.currentTimeMillis))
       .where(QueryBuilder.eq("userid", enrolment.userId))
       .and(QueryBuilder.eq("courseid", enrolment.courseId))
