@@ -91,7 +91,6 @@ class CollectionProgressCompleteFunction(config: ActivityAggregateUpdaterConfig)
     groupedQueries.foreach(queries => {
       val cqlBatch = QueryBuilder.batch()
       queries.map(query => cqlBatch.add(query))
-      println("Update Query: " + cqlBatch.toString)
       val result = cassandraUtil.upsert(cqlBatch.toString)
       if (result) {
         metrics.incCounter(config.dbUpdateCount)
