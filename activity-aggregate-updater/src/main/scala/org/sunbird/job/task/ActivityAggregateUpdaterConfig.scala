@@ -122,5 +122,6 @@ class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJo
   // Job specific configurations
   val moduleAggEnabled: Boolean = config.getBoolean("activity.module.aggs.enabled")
   val dedupEnabled: Boolean = config.getBoolean("activity.input.dedup.enabled")
+  val filterCompletedEnrolments: Boolean =  if (config.hasPath("activity.filter.processed.enrolments")) config.getBoolean("activity.filter.processed.enrolments") else true
 
 }
