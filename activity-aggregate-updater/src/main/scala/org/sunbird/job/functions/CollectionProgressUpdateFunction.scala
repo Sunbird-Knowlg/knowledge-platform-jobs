@@ -28,10 +28,10 @@ class CollectionProgressUpdateFunction(config: ActivityAggregateUpdaterConfig)(i
   }
 
   override def processElement(events: List[CollectionProgress], context: ProcessFunction[List[CollectionProgress], String]#Context, metrics: Metrics): Unit = {
-    val pendingEnrolments = events.filter { p =>
+    val pendingEnrolments = if (config.filterCompletedEnrolments) events.filter { p =>
       val row = getEnrolment(p.userId, p.courseId, p.batchId)(metrics)
       (row != null && row.getInt("status") != 2)
-    }
+    } else events
     val enrolmentQueries = pendingEnrolments.map(collectionProgress => getEnrolmentUpdateQuery(collectionProgress))
     updateDB(config.thresholdBatchWriteSize, enrolmentQueries)(metrics)
   }
