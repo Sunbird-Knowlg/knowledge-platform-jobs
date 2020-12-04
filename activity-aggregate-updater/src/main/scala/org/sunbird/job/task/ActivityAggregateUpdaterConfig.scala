@@ -7,7 +7,7 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.streaming.api.scala.OutputTag
 import org.sunbird.job.BaseJobConfig
-import org.sunbird.job.domain.EnrolmentComplete
+import org.sunbird.job.domain.CollectionProgress
 
 class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJobConfig(config, "activity-aggregate-updater") {
 
@@ -16,7 +16,7 @@ class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJo
   implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
   implicit val scalaMapTypeInfo: TypeInformation[Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[Map[String, AnyRef]])
   implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
-  implicit val enrolmentCompleteTypeInfo: TypeInformation[List[EnrolmentComplete]] = TypeExtractor.getForClass(classOf[List[EnrolmentComplete]])
+  implicit val enrolmentCompleteTypeInfo: TypeInformation[List[CollectionProgress]] = TypeExtractor.getForClass(classOf[List[CollectionProgress]])
 
   // Kafka Topics Configuration
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
@@ -64,8 +64,10 @@ class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJo
   val auditEventOutputTag: OutputTag[String] = OutputTag[String](auditEventOutputTagName)
   val failedEventOutputTagName = "failed-events"
   val failedEventOutputTag: OutputTag[String] = OutputTag[String](failedEventOutputTagName)
-  val enrolmentCompleteOutputTagName = "enrolment-complete-events"
-  val enrolmentCompleteOutputTag: OutputTag[List[EnrolmentComplete]] = OutputTag[List[EnrolmentComplete]](enrolmentCompleteOutputTagName)
+  val collectionCompleteOutputTagName = "collection-progress-complete-events"
+  val collectionCompleteOutputTag: OutputTag[List[CollectionProgress]] = OutputTag[List[CollectionProgress]](collectionCompleteOutputTagName)
+  val collectionUpdateOutputTagName = "collection-progress-update-events"
+  val collectionUpdateOutputTag: OutputTag[List[CollectionProgress]] = OutputTag[List[CollectionProgress]](collectionUpdateOutputTagName)
   val certIssueOutputTagName = "certificate-issue-events"
   val certIssueOutputTag: OutputTag[String] = OutputTag[String](certIssueOutputTagName)
 
@@ -99,7 +101,8 @@ class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJo
   val activityAggregateUpdaterFn = "activity-aggregate-updater-fn"
   val partition = "partition"
   val courseBatch = "CourseBatch"
-  val enrolmentCompleteFn = "enrolment-completion-process"
+  val collectionProgressUpdateFn = "progress-update-process"
+  val collectionCompleteFn = "collection-completion-process"
 
   // Consumers
   val activityAggregateUpdaterConsumer = "activity-aggregate-updater-consumer"
@@ -119,5 +122,6 @@ class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJo
   // Job specific configurations
   val moduleAggEnabled: Boolean = config.getBoolean("activity.module.aggs.enabled")
   val dedupEnabled: Boolean = config.getBoolean("activity.input.dedup.enabled")
+  val filterCompletedEnrolments: Boolean =  if (config.hasPath("activity.filter.processed.enrolments")) config.getBoolean("activity.filter.processed.enrolments") else true
 
 }

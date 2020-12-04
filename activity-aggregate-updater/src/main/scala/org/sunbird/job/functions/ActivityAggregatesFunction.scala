@@ -99,8 +99,14 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig, @transi
     updateDB(config.thresholdBatchWriteSize, aggQueries)(metrics)
 
     // Saving enrolment completion data.
-    val enrolmentCompleteList = courseAggregations.filter(agg => agg.enrolmentComplete.nonEmpty).map(agg => agg.enrolmentComplete.get)
-    context.output(config.enrolmentCompleteOutputTag, enrolmentCompleteList)
+    val collectionProgressList = courseAggregations.filter(agg => agg.collectionProgress.nonEmpty).map(agg => agg.collectionProgress.get)
+
+    val collectionProgressUpdateList = collectionProgressList.filter(progress => !progress.completed)
+    context.output(config.collectionUpdateOutputTag, collectionProgressUpdateList)
+
+    val collectionProgressCompleteList = collectionProgressList.filter(progress => progress.completed)
+    context.output(config.collectionCompleteOutputTag, collectionProgressCompleteList)
+
 
     // Content AUDIT Event generation and pushing to output tag.
     finalUserConsumptionList.flatMap(userConsumption => contentAuditEvents(userConsumption)).foreach(event => context.output(config.auditEventOutputTag, gson.toJson(event)))
@@ -123,12 +129,13 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig, @transi
       //      throw new Exception(s"leaf nodes are not available: $key")
     }
     val completedCount = leafNodes.intersect(userConsumption.contents.filter(cc => cc._2.status == 2).map(cc => cc._2.contentId).toList.distinct).size
-    val enrolmentComplete = if (completedCount >= leafNodes.size) {
-      // Enrolment itself should set the status as 1 - in course-service.
-      val contentStatus = userConsumption.contents.map(cc => (cc._2.contentId, cc._2.status)).toMap
-      Option(EnrolmentComplete(userId, userConsumption.batchId, courseId, completedCount, new java.util.Date(), contentStatus))
-    } else None
-    UserEnrolmentAgg(UserActivityAgg("Course", userId, courseId, contextId, Map("completedCount" -> completedCount), Map("completedCount" -> System.currentTimeMillis())), enrolmentComplete)
+    val contentStatus = userConsumption.contents.map(cc => (cc._2.contentId, cc._2.status)).toMap
+    val collectionProgress = if (completedCount >= leafNodes.size) {
+      Option(CollectionProgress(userId, userConsumption.batchId, courseId, completedCount, new java.util.Date(), contentStatus, true))
+    } else {
+      Option(CollectionProgress(userId, userConsumption.batchId, courseId, completedCount, null, contentStatus))
+    }
+    UserEnrolmentAgg(UserActivityAgg("Course", userId, courseId, contextId, Map("completedCount" -> completedCount), Map("completedCount" -> System.currentTimeMillis())), collectionProgress)
   }
 
   /**
