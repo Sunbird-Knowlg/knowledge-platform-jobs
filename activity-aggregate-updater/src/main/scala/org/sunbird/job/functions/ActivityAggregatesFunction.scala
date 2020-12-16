@@ -422,12 +422,12 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig,
     val url = config.searchServiceBasePath + "/v3/search"
     val response = ActivityAggregateUpdaterStreamTask.httpUtil.post(url, requestBody)
     if (response.status == 200) {
-      val responseBody = gson.fromJson(response.body, classOf[Map[String, AnyRef]])
-      val result = responseBody.getOrElse("result", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
-      val count = result.getOrElse("count", 0).asInstanceOf[Int]
+      val responseBody = gson.fromJson(response.body, classOf[java.util.Map[String, AnyRef]])
+      val result = responseBody.getOrDefault("result", new java.util.HashMap[String, AnyRef]()).asInstanceOf[java.util.Map[String, AnyRef]]
+      val count = result.getOrDefault("count", 0.asInstanceOf[Number]).asInstanceOf[Number].intValue()
       if (count > 0) {
-        val list = result.getOrElse("content", List()).asInstanceOf[List[Map[String, AnyRef]]]
-        list.head.get("status").get.asInstanceOf[String]
+        val list = result.getOrDefault("content", new java.util.ArrayList[java.util.Map[String, AnyRef]]()).asInstanceOf[java.util.List[java.util.Map[String, AnyRef]]]
+        list.asScala.head.get("status").asInstanceOf[String]
       } else throw new Exception(s"There are no published or retired collection with id: $collectionId")
     } else {
       logger.error("search-service error: " + response.body)
