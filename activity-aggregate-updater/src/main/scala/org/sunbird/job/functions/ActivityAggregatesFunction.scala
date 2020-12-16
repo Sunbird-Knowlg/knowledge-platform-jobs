@@ -19,14 +19,14 @@ import org.slf4j.LoggerFactory
 import org.sunbird.job.cache.{DataCache, RedisConnect}
 import org.sunbird.job.domain.{UserContentConsumption, _}
 import org.sunbird.job.task.ActivityAggregateUpdaterConfig
-import org.sunbird.job.util.{CassandraUtil, Neo4JUtil}
+import org.sunbird.job.util.{CassandraUtil, HttpUtil}
 import org.sunbird.job.{Metrics, WindowBaseProcessFunction}
 
 import scala.collection.JavaConverters._
 
 class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig,
-                                 @transient var cassandraUtil: CassandraUtil = null,
-                                 @transient var neo4JUtil: Neo4JUtil = null)
+                                 @transient var httpUtil: HttpUtil,
+                                 @transient var cassandraUtil: CassandraUtil = null)
                                 (implicit val stringTypeInfo: TypeInformation[String])
   extends WindowBaseProcessFunction[Map[String, AnyRef], String, Int](config) {
 
@@ -45,7 +45,6 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig,
     cassandraUtil = new CassandraUtil(config.dbHost, config.dbPort)
     cache = new DataCache(config, new RedisConnect(config), config.nodeStore, List())
     cache.init()
-    neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName)
     collectionStatusCache = TTLCache[String, String](Duration.apply(3600, TimeUnit.SECONDS))
   }
 
@@ -409,18 +408,40 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig,
     }).toList
   }
 
+  def getDBStatus(collectionId: String): String = {
+    val requestBody = s"""{
+                       |    "request": {
+                       |        "filters": {
+                       |            "objectType": "Collection",
+                       |            "identifier": "$collectionId",
+                       |            "status": ["Live", "Unlisted", "Retired"]
+                       |        },
+                       |        "fields": ["status"]
+                       |    }
+                       |}""".stripMargin
+    val url = config.searchServiceBasePath + "/v3/search"
+    val response = httpUtil.post(url, requestBody)
+    if (response.status == 200) {
+      val responseBody = gson.fromJson(response.body, classOf[Map[String, AnyRef]])
+      val result = responseBody.getOrElse("result", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
+      val count = result.getOrElse("count", 0).asInstanceOf[Int]
+      if (count > 0) {
+        val list = result.getOrElse("content", List()).asInstanceOf[List[Map[String, AnyRef]]]
+        list.head.get("status").get.asInstanceOf[String]
+      } else throw new Exception(s"There are no published or retired collection with id: $collectionId")
+    } else {
+      logger.error("search-service error: " + response.body)
+      throw new Exception("search-service not returning error:" + response.status)
+    }
+  }
+
   def getCollectionStatus(collectionId: String): String = {
     val cacheStatus = collectionStatusCache.getNonExpired(collectionId).getOrElse("")
     if (StringUtils.isEmpty(cacheStatus)) {
-      val query = s"""MATCH (n:domain{IL_FUNC_OBJECT_TYPE: "Collection", IL_UNIQUE_ID:"$collectionId"}) RETURN n.status as status;"""
-      val result = neo4JUtil.executeQuery(query)
-      if (result.hasNext && null !=result) {
-        val dbStatus = result.single().get("status").asString()
-        collectionStatusCache.putClocked(collectionId, dbStatus)
-        dbStatus
-      } else throw new Exception("Unable to fetch collection status from neo4j:" + collectionId)
+      val dbStatus = getDBStatus(collectionId)
+      collectionStatusCache.putClocked(collectionId, dbStatus)
+      dbStatus
     } else cacheStatus
-
 
   }
 }

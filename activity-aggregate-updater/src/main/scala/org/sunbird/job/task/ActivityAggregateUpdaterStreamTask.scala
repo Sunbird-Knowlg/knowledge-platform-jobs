@@ -13,7 +13,7 @@ import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.domain.CollectionProgress
 import org.sunbird.job.functions.{ActivityAggregatesFunction, CollectionProgressCompleteFunction, CollectionProgressUpdateFunction, ContentConsumptionDeDupFunction}
-import org.sunbird.job.util.FlinkUtil
+import org.sunbird.job.util.{FlinkUtil, HttpUtil}
 
 
 class ActivityAggregateUpdaterStreamTask(config: ActivityAggregateUpdaterConfig, kafkaConnector: FlinkKafkaConnector) {
@@ -22,6 +22,7 @@ class ActivityAggregateUpdaterStreamTask(config: ActivityAggregateUpdaterConfig,
     implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
     implicit val enrolmentCompleteTypeInfo: TypeInformation[List[CollectionProgress]] = TypeExtractor.getForClass(classOf[List[CollectionProgress]])
+    val httpUtil = new HttpUtil
 
     val progressStream =
       env.addSource(kafkaConnector.kafkaMapSource(config.kafkaInputTopic)).name(config.activityAggregateUpdaterConsumer)
@@ -32,7 +33,7 @@ class ActivityAggregateUpdaterStreamTask(config: ActivityAggregateUpdaterConfig,
         .getSideOutput(config.uniqueConsumptionOutput)
         .keyBy(new ActivityAggregatorKeySelector(config))
         .countWindow(config.thresholdBatchReadSize)
-        .process(new ActivityAggregatesFunction(config))
+        .process(new ActivityAggregatesFunction(config, httpUtil))
         .name(config.activityAggregateUpdaterFn)
         .uid(config.activityAggregateUpdaterFn)
         .setParallelism(config.activityAggregateUpdaterParallelism)

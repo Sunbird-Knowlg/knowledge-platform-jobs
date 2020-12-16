@@ -119,13 +119,13 @@ class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJo
   val thresholdBatchWriteSize: Int = config.getInt("threshold.batch.write.size")
   val windowShards: Int = config.getInt("task.window.shards")
 
-  // Neo4J Configurations
-  val graphRoutePath = config.getString("neo4j.routePath")
-  val graphName = config.getString("neo4j.graph")
 
   // Job specific configurations
   val moduleAggEnabled: Boolean = config.getBoolean("activity.module.aggs.enabled")
   val dedupEnabled: Boolean = config.getBoolean("activity.input.dedup.enabled")
   val filterCompletedEnrolments: Boolean =  if (config.hasPath("activity.filter.processed.enrolments")) config.getBoolean("activity.filter.processed.enrolments") else true
+
+  // Other services configuration
+  val searchServiceBasePath: String = config.getString("service.search.basePath")
 
 }
