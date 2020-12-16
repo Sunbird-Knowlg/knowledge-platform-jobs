@@ -126,11 +126,14 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig, @transi
       metrics.incCounter(config.failedEventCount)
       logger.error(s"leaf nodes are not available for: $key")
       context.output(config.failedEventOutputTag, gson.toJson(userConsumption))
-      //      throw new Exception(s"leaf nodes are not available: $key")
+      // TODO: check the status of the collection and skip.
+      // counter for skipping where collection is retired.
+      throw new Exception(s"leaf nodes are not available: $key")
+
     }
     val completedCount = leafNodes.intersect(userConsumption.contents.filter(cc => cc._2.status == 2).map(cc => cc._2.contentId).toList.distinct).size
     val contentStatus = userConsumption.contents.map(cc => (cc._2.contentId, cc._2.status)).toMap
-    val collectionProgress = if (completedCount >= leafNodes.size) {
+    val collectionProgress = if (contentStatus.size >= leafNodes.size) {
       Option(CollectionProgress(userId, userConsumption.batchId, courseId, completedCount, new java.util.Date(), contentStatus, true))
     } else {
       Option(CollectionProgress(userId, userConsumption.batchId, courseId, completedCount, null, contentStatus))
