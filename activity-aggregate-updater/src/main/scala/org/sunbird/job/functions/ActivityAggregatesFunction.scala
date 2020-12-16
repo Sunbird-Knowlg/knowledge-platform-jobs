@@ -34,6 +34,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig,
   private var cache: DataCache = _
   private var collectionStatusCache: TTLCache[String, String] = _
   lazy private val gson = new Gson()
+  lazy private val httpUtil = new HttpUtil
 
   override def metricsList(): List[String] = {
     List(config.failedEventCount, config.dbUpdateCount, config.dbReadCount, config.cacheHitCount, config.cacheMissCount, config.processedEnrolmentCount)
@@ -420,7 +421,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig,
                        |    }
                        |}""".stripMargin
     val url = config.searchServiceBasePath + "/v3/search"
-    val response = ActivityAggregateUpdaterStreamTask.httpUtil.post(url, requestBody)
+    val response = httpUtil.post(url, requestBody)
     if (response.status == 200) {
       val responseBody = gson.fromJson(response.body, classOf[java.util.Map[String, AnyRef]])
       val result = responseBody.getOrDefault("result", new java.util.HashMap[String, AnyRef]()).asInstanceOf[java.util.Map[String, AnyRef]]
