@@ -22,7 +22,6 @@ class ActivityAggregateUpdaterStreamTask(config: ActivityAggregateUpdaterConfig,
     implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
     implicit val enrolmentCompleteTypeInfo: TypeInformation[List[CollectionProgress]] = TypeExtractor.getForClass(classOf[List[CollectionProgress]])
-    val httpUtil = new HttpUtil
 
     val progressStream =
       env.addSource(kafkaConnector.kafkaMapSource(config.kafkaInputTopic)).name(config.activityAggregateUpdaterConsumer)
@@ -33,7 +32,7 @@ class ActivityAggregateUpdaterStreamTask(config: ActivityAggregateUpdaterConfig,
         .getSideOutput(config.uniqueConsumptionOutput)
         .keyBy(new ActivityAggregatorKeySelector(config))
         .countWindow(config.thresholdBatchReadSize)
-        .process(new ActivityAggregatesFunction(config, httpUtil))
+        .process(new ActivityAggregatesFunction(config))
         .name(config.activityAggregateUpdaterFn)
         .uid(config.activityAggregateUpdaterFn)
         .setParallelism(config.activityAggregateUpdaterParallelism)
@@ -62,7 +61,7 @@ class ActivityAggregateUpdaterStreamTask(config: ActivityAggregateUpdaterConfig,
 
 // $COVERAGE-OFF$ Disabling scoverage as the below code can only be invoked within flink cluster
 object ActivityAggregateUpdaterStreamTask {
-
+  var httpUtil = new HttpUtil
   def main(args: Array[String]): Unit = {
     val configFilePath = Option(ParameterTool.fromArgs(args).get("config.file.path"))
     val config = configFilePath.map {

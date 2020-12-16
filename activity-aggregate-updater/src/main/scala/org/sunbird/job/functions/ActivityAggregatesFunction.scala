@@ -18,14 +18,13 @@ import org.apache.flink.streaming.api.windowing.windows.GlobalWindow
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cache.{DataCache, RedisConnect}
 import org.sunbird.job.domain.{UserContentConsumption, _}
-import org.sunbird.job.task.ActivityAggregateUpdaterConfig
+import org.sunbird.job.task.{ActivityAggregateUpdaterConfig, ActivityAggregateUpdaterStreamTask}
 import org.sunbird.job.util.{CassandraUtil, HttpUtil}
 import org.sunbird.job.{Metrics, WindowBaseProcessFunction}
 
 import scala.collection.JavaConverters._
 
 class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig,
-                                 @transient var httpUtil: HttpUtil,
                                  @transient var cassandraUtil: CassandraUtil = null)
                                 (implicit val stringTypeInfo: TypeInformation[String])
   extends WindowBaseProcessFunction[Map[String, AnyRef], String, Int](config) {
@@ -135,6 +134,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig,
       context.output(config.failedEventOutputTag, gson.toJson(userConsumption))
       val status = getCollectionStatus(courseId)
       if (StringUtils.equals("Retired", status)) {
+        println(s"contents consumed from a retired collection: $courseId")
         logger.warn(s"contents consumed from a retired collection: $courseId")
         None
       } else {
@@ -420,7 +420,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig,
                        |    }
                        |}""".stripMargin
     val url = config.searchServiceBasePath + "/v3/search"
-    val response = httpUtil.post(url, requestBody)
+    val response = ActivityAggregateUpdaterStreamTask.httpUtil.post(url, requestBody)
     if (response.status == 200) {
       val responseBody = gson.fromJson(response.body, classOf[Map[String, AnyRef]])
       val result = responseBody.getOrElse("result", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
