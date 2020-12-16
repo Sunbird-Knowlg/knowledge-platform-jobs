@@ -1,11 +1,14 @@
 package org.sunbird.job.functions
 
 import java.lang.reflect.Type
+import java.util.concurrent.TimeUnit
 
 import com.datastax.driver.core.Row
 import com.datastax.driver.core.querybuilder.{QueryBuilder, Select, Update}
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.twitter.storehaus.cache.TTLCache
+import com.twitter.util.Duration
 import org.apache.commons.collections.CollectionUtils
 import org.apache.commons.lang3.StringUtils
 import org.apache.flink.api.common.typeinfo.TypeInformation
@@ -16,18 +19,21 @@ import org.slf4j.LoggerFactory
 import org.sunbird.job.cache.{DataCache, RedisConnect}
 import org.sunbird.job.domain.{UserContentConsumption, _}
 import org.sunbird.job.task.ActivityAggregateUpdaterConfig
-import org.sunbird.job.util.CassandraUtil
+import org.sunbird.job.util.{CassandraUtil, Neo4JUtil}
 import org.sunbird.job.{Metrics, WindowBaseProcessFunction}
 
 import scala.collection.JavaConverters._
 
-class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig, @transient var cassandraUtil: CassandraUtil = null)
+class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig,
+                                 @transient var cassandraUtil: CassandraUtil = null,
+                                 @transient var neo4JUtil: Neo4JUtil = null)
                                 (implicit val stringTypeInfo: TypeInformation[String])
   extends WindowBaseProcessFunction[Map[String, AnyRef], String, Int](config) {
 
   val mapType: Type = new TypeToken[Map[String, AnyRef]]() {}.getType
   private[this] val logger = LoggerFactory.getLogger(classOf[ActivityAggregatesFunction])
   private var cache: DataCache = _
+  private var collectionStatusCache: TTLCache[String, String] = _
   lazy private val gson = new Gson()
 
   override def metricsList(): List[String] = {
@@ -39,6 +45,8 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig, @transi
     cassandraUtil = new CassandraUtil(config.dbHost, config.dbPort)
     cache = new DataCache(config, new RedisConnect(config), config.nodeStore, List())
     cache.init()
+    neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName)
+    collectionStatusCache = TTLCache[String, String](Duration.apply(3600, TimeUnit.SECONDS))
   }
 
   override def close(): Unit = {
@@ -83,7 +91,8 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig, @transi
     val courseAggregations = finalUserConsumptionList.flatMap(userConsumption => {
 
       // Course Level Agg using the merged data of ContentConsumption per user, course and batch.
-      val courseAggs = List(courseActivityAgg(userConsumption, context)(metrics))
+      val optCourseAgg = courseActivityAgg(userConsumption, context)(metrics)
+      val courseAggs = if (optCourseAgg.nonEmpty) List(optCourseAgg.get) else List()
 
       // Identify the children of the course (only collections) for which aggregates computation required.
       // Computation of aggregates using leafNodes (of the specific collection) and user completed contents.
@@ -116,26 +125,33 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig, @transi
   /**
    * Course Level Agg using the merged data of ContentConsumption per user, course and batch.
    */
-  def courseActivityAgg(userConsumption: UserContentConsumption, context: ProcessWindowFunction[Map[String, AnyRef], String, Int, GlobalWindow]#Context)(implicit metrics: Metrics): UserEnrolmentAgg = {
+  def courseActivityAgg(userConsumption: UserContentConsumption, context: ProcessWindowFunction[Map[String, AnyRef], String, Int, GlobalWindow]#Context)(implicit metrics: Metrics): Option[UserEnrolmentAgg] = {
     val courseId = userConsumption.courseId
     val userId = userConsumption.userId
     val contextId = "cb:" + userConsumption.batchId
     val key = s"$courseId:$courseId:${config.leafNodes}"
     val leafNodes = readFromCache(key, metrics).distinct
     if (leafNodes.isEmpty) {
-      metrics.incCounter(config.failedEventCount)
       logger.error(s"leaf nodes are not available for: $key")
       context.output(config.failedEventOutputTag, gson.toJson(userConsumption))
-      //      throw new Exception(s"leaf nodes are not available: $key")
-    }
-    val completedCount = leafNodes.intersect(userConsumption.contents.filter(cc => cc._2.status == 2).map(cc => cc._2.contentId).toList.distinct).size
-    val contentStatus = userConsumption.contents.map(cc => (cc._2.contentId, cc._2.status)).toMap
-    val collectionProgress = if (completedCount >= leafNodes.size) {
-      Option(CollectionProgress(userId, userConsumption.batchId, courseId, completedCount, new java.util.Date(), contentStatus, true))
+      val status = getCollectionStatus(courseId)
+      if (StringUtils.equals("Retired", status)) {
+        logger.warn(s"contents consumed from a retired collection: $courseId")
+        None
+      } else {
+        metrics.incCounter(config.failedEventCount)
+        throw new Exception(s"leaf nodes are not available: $key")
+      }
     } else {
-      Option(CollectionProgress(userId, userConsumption.batchId, courseId, completedCount, null, contentStatus))
+      val completedCount = leafNodes.intersect(userConsumption.contents.filter(cc => cc._2.status == 2).map(cc => cc._2.contentId).toList.distinct).size
+      val contentStatus = userConsumption.contents.map(cc => (cc._2.contentId, cc._2.status)).toMap
+      val collectionProgress = if (completedCount >= leafNodes.size) {
+        Option(CollectionProgress(userId, userConsumption.batchId, courseId, completedCount, new java.util.Date(), contentStatus, true))
+      } else {
+        Option(CollectionProgress(userId, userConsumption.batchId, courseId, completedCount, null, contentStatus))
+      }
+      Option(UserEnrolmentAgg(UserActivityAgg("Course", userId, courseId, contextId, Map("completedCount" -> completedCount), Map("completedCount" -> System.currentTimeMillis())), collectionProgress))
     }
-    UserEnrolmentAgg(UserActivityAgg("Course", userId, courseId, contextId, Map("completedCount" -> completedCount), Map("completedCount" -> System.currentTimeMillis())), collectionProgress)
   }
 
   /**
@@ -391,6 +407,21 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig, @transi
         )
       })
     }).toList
+  }
+
+  def getCollectionStatus(collectionId: String): String = {
+    val cacheStatus = collectionStatusCache.getNonExpired(collectionId).getOrElse("")
+    if (StringUtils.isEmpty(cacheStatus)) {
+      val query = s"""MATCH (n:domain{IL_FUNC_OBJECT_TYPE: "Collection", IL_UNIQUE_ID:"$collectionId"}) RETURN n.status as status;"""
+      val result = neo4JUtil.executeQuery(query)
+      if (result.hasNext && null !=result) {
+        val dbStatus = result.single().get("status").asString()
+        collectionStatusCache.putClocked(collectionId, dbStatus)
+        dbStatus
+      } else throw new Exception("Unable to fetch collection status from neo4j:" + collectionId)
+    } else cacheStatus
+
+
   }
 }
 
