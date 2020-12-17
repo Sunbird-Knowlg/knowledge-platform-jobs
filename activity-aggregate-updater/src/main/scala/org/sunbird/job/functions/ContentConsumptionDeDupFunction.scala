@@ -11,6 +11,7 @@ import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cache.RedisConnect
+import org.sunbird.job.common.DeDupHelper
 import org.sunbird.job.dedup.DeDupEngine
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 import org.sunbird.job.task.ActivityAggregateUpdaterConfig
@@ -25,7 +26,6 @@ class ContentConsumptionDeDupFunction(config: ActivityAggregateUpdaterConfig)(im
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
-    print("DedupEngine - define.")
     deDupEngine = new DeDupEngine(config, new RedisConnect(config, Option(config.deDupRedisHost), Option(config.deDupRedisPort)), config.deDupStore, config.deDupExpirySec)
     deDupEngine.init()
   }
@@ -66,14 +66,9 @@ class ContentConsumptionDeDupFunction(config: ActivityAggregateUpdaterConfig)(im
         val content = contents.head
         val contentId = content.getOrElse("contentId", "").asInstanceOf[String]
         val status = content.getOrElse("status", 0.asInstanceOf[AnyRef]).asInstanceOf[Number].intValue()
-        val checksum = getMessageId(courseId, batchId, userId, contentId, status)
+        val checksum = DeDupHelper.getMessageId(courseId, batchId, userId, contentId, status)
         deDupEngine.isUniqueEvent(checksum)
       } else false
     } else true
-  }
-
-  def getMessageId(collectionId: String, batchId: String, userId: String, contentId: String, status: Int): String = {
-    val key = Array(collectionId, batchId, userId, contentId, status).mkString("|")
-    MessageDigest.getInstance("MD5").digest(key.getBytes).map("%02X".format(_)).mkString;
   }
 }
