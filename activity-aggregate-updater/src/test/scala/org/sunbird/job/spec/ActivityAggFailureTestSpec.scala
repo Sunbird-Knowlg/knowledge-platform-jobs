@@ -63,17 +63,21 @@ class ActivityAggFailureTestSpec extends BaseActivityAggregateTestSpec {
     when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaFailedEventTopic)).thenReturn(new failedEventSink)
     when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaCertIssueTopic)).thenReturn(new certificateIssuedEventsSink)
     when(mockHttpUtil.post(courseAggregatorConfig.searchAPIURL, requestBody)).thenReturn(new HTTPResponse(200, """{"id":"api.v1.search","ver":"1.0","ts":"2020-12-16T12:37:40.283Z","params":{"resmsgid":"7c4cf0b0-3f9b-11eb-9b0c-abcfbdf41bc3","msgid":"7c4b1bf0-3f9b-11eb-9b0c-abcfbdf41bc3","status":"successful","err":null,"errmsg":null},"responseCode":"OK","result":{"count":1,"content":[{"identifier":"course001","objectType":"Content","status":"Live"}]}}"""))
-    new ActivityAggregateUpdaterStreamTask(courseAggregatorConfig, mockKafkaUtil, mockHttpUtil).process()
+
+    val activityAggTask = new ActivityAggregateUpdaterStreamTask(courseAggregatorConfig, mockKafkaUtil, mockHttpUtil)
+    the [Exception] thrownBy {
+      activityAggTask.process()
+    } should have message "Job execution failed."
 
     // De-dup should not save the keys for which the processing failed.
     // This will help in processing the same data after restart.
     jedis.select(courseAggregatorConfig.deDupStore)
-    jedis.keys("*").size() should be (3)
+    jedis.keys("*").size() should be (0)
 
     failedEventSink.values.forEach(event => {
       println("FAILED_EVENT_DATA: " + event)
     })
-    failedEventSink.values.size() should be (1)
+    failedEventSink.values.size() should be (2)
 
   }
 }

@@ -1,39 +1,19 @@
 package org.sunbird.job.functions
 
-import java.lang.reflect.Type
-import java.security.MessageDigest
 import java.util
 
-import com.google.gson.reflect.TypeToken
 import org.apache.commons.lang3.StringUtils
 import org.apache.flink.api.common.typeinfo.TypeInformation
-import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
-import org.sunbird.job.cache.RedisConnect
-import org.sunbird.job.dedup.DeDupEngine
-import org.sunbird.job.{BaseProcessFunction, Metrics}
+import org.sunbird.job.Metrics
 import org.sunbird.job.task.ActivityAggregateUpdaterConfig
 
 import scala.collection.JavaConverters._
 
-class ContentConsumptionDeDupFunction(config: ActivityAggregateUpdaterConfig)(implicit val stringTypeInfo: TypeInformation[String]) extends BaseProcessFunction[util.Map[String, AnyRef], String](config) {
+class ContentConsumptionDeDupFunction(config: ActivityAggregateUpdaterConfig)(implicit val stringTypeInfo: TypeInformation[String]) extends BaseCCDeDupFunction(config) {
 
-  val mapType: Type = new TypeToken[Map[String, AnyRef]]() {}.getType
   private[this] val logger = LoggerFactory.getLogger(classOf[ContentConsumptionDeDupFunction])
-  private var deDupEngine: DeDupEngine = _
-
-  override def open(parameters: Configuration): Unit = {
-    super.open(parameters)
-    deDupEngine = new DeDupEngine(config, new RedisConnect(config, Option(config.deDupRedisHost), Option(config.deDupRedisPort)), config.deDupStore, config.deDupExpirySec)
-    deDupEngine.init()
-  }
-
-  override def close(): Unit = {
-    deDupEngine.close()
-    super.close()
-  }
-
 
   override def processElement(event: util.Map[String, AnyRef], context: ProcessFunction[util.Map[String, AnyRef], String]#Context, metrics: Metrics): Unit = {
     metrics.incCounter(config.totalEventCount)
@@ -67,16 +47,8 @@ class ContentConsumptionDeDupFunction(config: ActivityAggregateUpdaterConfig)(im
         val contentId = content.getOrElse("contentId", "").asInstanceOf[String]
         val status = content.getOrElse("status", 0.asInstanceOf[AnyRef]).asInstanceOf[Number].intValue()
         val checksum = getMessageId(courseId, batchId, userId, contentId, status)
-        val isUnique = deDupEngine.isUniqueEvent(checksum)
-        if (isUnique) deDupEngine.storeChecksum(checksum)
-        isUnique
+        deDupEngine.isUniqueEvent(checksum)
       } else false
     } else true
   }
-
-  def getMessageId(collectionId: String, batchId: String, userId: String, contentId: String, status: Int): String = {
-    val key = Array(collectionId, batchId, userId, contentId, status).mkString("|")
-    MessageDigest.getInstance("MD5").digest(key.getBytes).map("%02X".format(_)).mkString;
-  }
-
 }
