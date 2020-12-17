@@ -51,8 +51,10 @@ class CollectionProgressCompleteFunction(config: ActivityAggregateUpdaterConfig)
       generateAuditEvent(e, context)(metrics)
     })
     // Create and update the checksum to DeDup store for the input events.
-    events.map(cp => cp.inputContents.map(c => DeDupHelper.getMessageId(cp.courseId, cp.batchId, cp.userId, c, 2)))
-      .flatten.foreach(checksum => deDupEngine.storeChecksum(checksum))
+    if (config.dedupEnabled) {
+      events.map(cp => cp.inputContents.map(c => DeDupHelper.getMessageId(cp.courseId, cp.batchId, cp.userId, c, 2)))
+        .flatten.foreach(checksum => deDupEngine.storeChecksum(checksum))
+    }
   }
 
   override def metricsList(): List[String] = {
