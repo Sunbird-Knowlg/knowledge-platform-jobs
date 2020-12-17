@@ -24,8 +24,7 @@ import org.sunbird.job.{Metrics, WindowBaseProcessFunction}
 
 import scala.collection.JavaConverters._
 
-class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig,
-                                 @transient var cassandraUtil: CassandraUtil = null)
+class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig, httpUtil: HttpUtil, @transient var cassandraUtil: CassandraUtil = null)
                                 (implicit val stringTypeInfo: TypeInformation[String])
   extends WindowBaseProcessFunction[Map[String, AnyRef], String, Int](config) {
 
@@ -34,7 +33,6 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig,
   private var cache: DataCache = _
   private var collectionStatusCache: TTLCache[String, String] = _
   lazy private val gson = new Gson()
-  lazy private val httpUtil = new HttpUtil
 
   override def metricsList(): List[String] = {
     List(config.failedEventCount, config.dbUpdateCount, config.dbReadCount, config.cacheHitCount, config.cacheMissCount, config.processedEnrolmentCount)
@@ -140,7 +138,9 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig,
         None
       } else {
         metrics.incCounter(config.failedEventCount)
-        throw new Exception(s"leaf nodes are not available: $key")
+        val message = s"leaf nodes are not available for a published collection: $courseId"
+        logger.error(message)
+        throw new Exception(message)
       }
     } else {
       val completedCount = leafNodes.intersect(userConsumption.contents.filter(cc => cc._2.status == 2).map(cc => cc._2.contentId).toList.distinct).size
@@ -420,8 +420,8 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig,
                        |        "fields": ["status"]
                        |    }
                        |}""".stripMargin
-    val url = config.searchServiceBasePath + "/v3/search"
-    val response = httpUtil.post(url, requestBody)
+
+    val response = httpUtil.post(config.searchAPIURL, requestBody)
     if (response.status == 200) {
       val responseBody = gson.fromJson(response.body, classOf[java.util.Map[String, AnyRef]])
       val result = responseBody.getOrDefault("result", new java.util.HashMap[String, AnyRef]()).asInstanceOf[java.util.Map[String, AnyRef]]

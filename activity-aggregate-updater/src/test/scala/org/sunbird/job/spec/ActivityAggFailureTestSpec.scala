@@ -8,15 +8,14 @@ import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceCont
 import org.cassandraunit.CQLDataLoader
 import org.cassandraunit.dataset.cql.FileCQLDataSet
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
-import org.mockito.Mockito._
+import org.mockito.Mockito.when
 import org.sunbird.job.cache.RedisConnect
 import org.sunbird.job.fixture.EventFixture
 import org.sunbird.job.task.ActivityAggregateUpdaterStreamTask
-import org.sunbird.job.util.CassandraUtil
+import org.sunbird.job.util.{CassandraUtil, HTTPResponse}
 import org.sunbird.spec.BaseMetricsReporter
 
-
-class ActivityAggregateUpdaterTaskTestSpec extends BaseActivityAggregateTestSpec {
+class ActivityAggFailureTestSpec extends BaseActivityAggregateTestSpec {
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
@@ -33,9 +32,6 @@ class ActivityAggregateUpdaterTaskTestSpec extends BaseActivityAggregateTestSpec
     BaseMetricsReporter.gaugeMetrics.clear()
     jedis.flushDB()
     flinkCluster.before()
-    updateRedis(jedis, EventFixture.CASE_1.asInstanceOf[Map[String, AnyRef]])
-    updateRedis(jedis, EventFixture.CASE_2.asInstanceOf[Map[String, AnyRef]])
-    updateRedis(jedis, EventFixture.CASE_3.asInstanceOf[Map[String, AnyRef]])
   }
 
   override protected def afterAll(): Unit = {
@@ -49,32 +45,40 @@ class ActivityAggregateUpdaterTaskTestSpec extends BaseActivityAggregateTestSpec
     }
     flinkCluster.after()
   }
-  
-  "ActivityAgg " should " compute and update enrolment as completed when all the content consumption data processed" in {
-    when(mockKafkaUtil.kafkaMapSource(courseAggregatorConfig.kafkaInputTopic)).thenReturn(new CompleteContentConsumptionMapSource)
+
+  val requestBody = s"""{
+                       |    "request": {
+                       |        "filters": {
+                       |            "objectType": "Collection",
+                       |            "identifier": "course001",
+                       |            "status": ["Live", "Unlisted", "Retired"]
+                       |        },
+                       |        "fields": ["status"]
+                       |    }
+                       |}""".stripMargin
+
+  "ActivityAgg " should " throw exception when the cache not available for root collection" in {
+    when(mockKafkaUtil.kafkaMapSource(courseAggregatorConfig.kafkaInputTopic)).thenReturn(new ActivityAggFailureInput1MapSource)
     when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaAuditEventTopic)).thenReturn(new auditEventSink)
     when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaFailedEventTopic)).thenReturn(new failedEventSink)
     when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaCertIssueTopic)).thenReturn(new certificateIssuedEventsSink)
+    when(mockHttpUtil.post(courseAggregatorConfig.searchAPIURL, requestBody)).thenReturn(new HTTPResponse(200, """{"id":"api.v1.search","ver":"1.0","ts":"2020-12-16T12:37:40.283Z","params":{"resmsgid":"7c4cf0b0-3f9b-11eb-9b0c-abcfbdf41bc3","msgid":"7c4b1bf0-3f9b-11eb-9b0c-abcfbdf41bc3","status":"successful","err":null,"errmsg":null},"responseCode":"OK","result":{"count":1,"content":[{"identifier":"course001","objectType":"Content","status":"Live"}]}}"""))
     new ActivityAggregateUpdaterStreamTask(courseAggregatorConfig, mockKafkaUtil, mockHttpUtil).process()
-    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.totalEventCount}").getValue() should be(3)
-    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.batchEnrolmentUpdateEventCount}").getValue() should be(3)
-    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.dbReadCount}").getValue() should be(3)
-    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.dbUpdateCount}").getValue() should be(6)
-    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.cacheHitCount}").getValue() should be(18)
-    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.processedEnrolmentCount}").getValue() should be(3)
-    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.enrolmentCompleteCount}").getValue() should be(1)
-    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.failedEventCount}").getValue() should be(0)
-    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.skipEventsCount}").getValue() should be(0)
-    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.cacheMissCount}").getValue() should be(0)
 
-    auditEventSink.values.size() should be(4)
-    auditEventSink.values.forEach(event => {
-      println("AUDIT_TELEMETRY_EVENT: " + event)
+    // De-dup should not save the keys for which the processing failed.
+    // This will help in processing the same data after restart.
+    jedis.select(courseAggregatorConfig.deDupStore)
+    jedis.keys("*").size() should be (3)
+
+    failedEventSink.values.forEach(event => {
+      println("FAILED_EVENT_DATA: " + event)
     })
+    failedEventSink.values.size() should be (1)
+
   }
 }
 
-private class CompleteContentConsumptionMapSource extends SourceFunction[util.Map[String, AnyRef]] {
+private class ActivityAggFailureInput1MapSource extends SourceFunction[util.Map[String, AnyRef]] {
 
   override def run(ctx: SourceContext[util.Map[String, AnyRef]]) {
     ctx.collect(jsonToMap(EventFixture.CC_EVENT1))
@@ -90,5 +94,3 @@ private class CompleteContentConsumptionMapSource extends SourceFunction[util.Ma
   }
 
 }
-
-

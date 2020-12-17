@@ -128,5 +128,6 @@ class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJo
 
   // Other services configuration
   val searchServiceBasePath: String = config.getString("service.search.basePath")
+  val searchAPIURL = searchServiceBasePath + "/v3/search"
 
 }
