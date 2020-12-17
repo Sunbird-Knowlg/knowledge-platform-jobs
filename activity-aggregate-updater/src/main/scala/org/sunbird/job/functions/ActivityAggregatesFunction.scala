@@ -17,6 +17,7 @@ import org.apache.flink.streaming.api.scala.function.ProcessWindowFunction
 import org.apache.flink.streaming.api.windowing.windows.GlobalWindow
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cache.{DataCache, RedisConnect}
+import org.sunbird.job.common.DeDupHelper
 import org.sunbird.job.domain.{UserContentConsumption, _}
 import org.sunbird.job.task.{ActivityAggregateUpdaterConfig, ActivityAggregateUpdaterStreamTask}
 import org.sunbird.job.util.{CassandraUtil, HttpUtil}
@@ -113,7 +114,6 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig, httpUti
     val collectionProgressCompleteList = collectionProgressList.filter(progress => progress.completed)
     context.output(config.collectionCompleteOutputTag, collectionProgressCompleteList)
 
-
     // Content AUDIT Event generation and pushing to output tag.
     finalUserConsumptionList.flatMap(userConsumption => contentAuditEvents(userConsumption)).foreach(event => context.output(config.auditEventOutputTag, gson.toJson(event)))
 
@@ -145,10 +145,11 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig, httpUti
     } else {
       val completedCount = leafNodes.intersect(userConsumption.contents.filter(cc => cc._2.status == 2).map(cc => cc._2.contentId).toList.distinct).size
       val contentStatus = userConsumption.contents.map(cc => (cc._2.contentId, cc._2.status)).toMap
+      val inputContents = userConsumption.contents.filter(cc => cc._2.fromInput).keys.toList
       val collectionProgress = if (completedCount >= leafNodes.size) {
-        Option(CollectionProgress(userId, userConsumption.batchId, courseId, completedCount, new java.util.Date(), contentStatus, true))
+        Option(CollectionProgress(userId, userConsumption.batchId, courseId, completedCount, new java.util.Date(), contentStatus, inputContents, true))
       } else {
-        Option(CollectionProgress(userId, userConsumption.batchId, courseId, completedCount, null, contentStatus))
+        Option(CollectionProgress(userId, userConsumption.batchId, courseId, completedCount, null, contentStatus, inputContents))
       }
       Option(UserEnrolmentAgg(UserActivityAgg("Course", userId, courseId, contextId, Map("completedCount" -> completedCount), Map("completedCount" -> System.currentTimeMillis())), collectionProgress))
     }
@@ -214,7 +215,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig, httpUti
           val completion = sumFunc(List(inputCC, dbCC), (x: ContentStatus) => { x.completedCount }) // Completed Count is sum of DB and Input ContentStatus.
           val eventsFor: List[String] = getEventActions(dbCC, inputCC)
           // Merged ContentStatus.
-          (contentId, ContentStatus(contentId, finalStatus, completion, views, eventsFor))
+          (contentId, ContentStatus(contentId, finalStatus, completion, views, inputCC.fromInput, eventsFor))
         }
       }
 
@@ -373,7 +374,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig, httpUti
             val status = contentStatus.getOrElse(config.status, 1).asInstanceOf[Number].intValue()
             val viewCount = contentStatus.getOrElse(config.viewcount, 0).asInstanceOf[Number].intValue()
             val completedCount = contentStatus.getOrElse(config.completedcount, 0).asInstanceOf[Number].intValue()
-            (contentId, ContentStatus(contentId, status, completedCount, viewCount))
+            (contentId, ContentStatus(contentId, status, completedCount, viewCount, false))
           }).toMap
 
         val userId = identifierMap(config.userId)
@@ -443,7 +444,6 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig, httpUti
       collectionStatusCache.putClocked(collectionId, dbStatus)
       dbStatus
     } else cacheStatus
-
   }
 }
 

@@ -8,6 +8,9 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
+import org.sunbird.job.cache.RedisConnect
+import org.sunbird.job.common.DeDupHelper
+import org.sunbird.job.dedup.DeDupEngine
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 import org.sunbird.job.domain.{ActorObject, CollectionProgress, EventContext, EventData, EventObject, TelemetryEvent}
 import org.sunbird.job.task.ActivityAggregateUpdaterConfig
@@ -20,14 +23,18 @@ class CollectionProgressCompleteFunction(config: ActivityAggregateUpdaterConfig)
 
   private[this] val logger = LoggerFactory.getLogger(classOf[CollectionProgressCompleteFunction])
   lazy private val gson = new Gson()
+  var deDupEngine: DeDupEngine = _
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
     cassandraUtil = new CassandraUtil(config.dbHost, config.dbPort)
+    deDupEngine = new DeDupEngine(config, new RedisConnect(config, Option(config.deDupRedisHost), Option(config.deDupRedisPort)), config.deDupStore, config.deDupExpirySec)
+    deDupEngine.init()
   }
 
   override def close(): Unit = {
     cassandraUtil.close()
+    deDupEngine.close()
     super.close()
   }
 
@@ -43,6 +50,9 @@ class CollectionProgressCompleteFunction(config: ActivityAggregateUpdaterConfig)
       createIssueCertEvent(e, context)(metrics)
       generateAuditEvent(e, context)(metrics)
     })
+    // Create and update the checksum to DeDup store for the input events.
+    events.map(cp => cp.inputContents.map(c => DeDupHelper.getMessageId(cp.courseId, cp.batchId, cp.userId, c, 2)))
+      .flatten.foreach(checksum => deDupEngine.storeChecksum(checksum))
   }
 
   override def metricsList(): List[String] = {
@@ -57,6 +67,7 @@ class CollectionProgressCompleteFunction(config: ActivityAggregateUpdaterConfig)
       `object` = EventObject(id = data.userId, `type` = "User", rollup = Map[String, String]("l1" -> data.courseId).asJava)
     )
     context.output(config.auditEventOutputTag, gson.toJson(auditEvent))
+
   }
 
   def getEnrolment(userId: String, courseId: String, batchId: String)(implicit metrics: Metrics) = {

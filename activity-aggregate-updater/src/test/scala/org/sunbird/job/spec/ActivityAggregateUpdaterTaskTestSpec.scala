@@ -62,7 +62,6 @@ class ActivityAggregateUpdaterTaskTestSpec extends BaseTestSpec {
                        |}""".stripMargin
 
   override protected def beforeAll(): Unit = {
-    println("Executing beforeAll.......")
     super.beforeAll()
     val redisConnect = new RedisConnect(courseAggregatorConfig)
     jedis = redisConnect.getConnection(courseAggregatorConfig.nodeStore)
@@ -83,7 +82,6 @@ class ActivityAggregateUpdaterTaskTestSpec extends BaseTestSpec {
   }
 
   override protected def afterAll(): Unit = {
-    println("Executing afterAll.......")
     super.afterAll()
     try {
       EmbeddedCassandraServerHelper.cleanEmbeddedCassandra()
@@ -116,11 +114,16 @@ class ActivityAggregateUpdaterTaskTestSpec extends BaseTestSpec {
     auditEventSink.values.forEach(event => {
       println("AUDIT_TELEMETRY_EVENT: " + event)
     })
+    jedis.select(courseAggregatorConfig.deDupStore)
+    val deDupKeys = jedis.keys("*")
+    println("DeDup Keys:" + deDupKeys)
+    deDupKeys.size() should be (3)
+    jedis.select(courseAggregatorConfig.nodeStore)
   }
 
   "ActivityAgg " should " throw exception when the cache not available for root collection" in {
     jedis.select(courseAggregatorConfig.nodeStore)
-    jedis.flushDB()
+    jedis.flushAll()
     when(mockKafkaUtil.kafkaMapSource(courseAggregatorConfig.kafkaInputTopic)).thenReturn(new CompleteContentConsumptionMapSource)
     when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaAuditEventTopic)).thenReturn(new auditEventSink)
     when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaFailedEventTopic)).thenReturn(new failedEventSink)
