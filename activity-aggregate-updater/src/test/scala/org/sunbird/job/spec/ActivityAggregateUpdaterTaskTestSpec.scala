@@ -2,23 +2,67 @@ package org.sunbird.job.spec
 
 import java.util
 
+import com.datastax.driver.core.Row
 import com.google.gson.Gson
+import com.typesafe.config.{Config, ConfigFactory}
+import org.apache.flink.api.common.typeinfo.TypeInformation
+import org.apache.flink.api.java.typeutils.TypeExtractor
+import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
 import org.apache.flink.streaming.api.functions.source.SourceFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext
+import org.apache.flink.test.util.MiniClusterWithClientResource
 import org.cassandraunit.CQLDataLoader
 import org.cassandraunit.dataset.cql.FileCQLDataSet
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
+import org.mockito.Mockito
 import org.mockito.Mockito._
 import org.sunbird.job.cache.RedisConnect
+import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.fixture.EventFixture
-import org.sunbird.job.task.ActivityAggregateUpdaterStreamTask
-import org.sunbird.job.util.CassandraUtil
-import org.sunbird.spec.BaseMetricsReporter
+import org.sunbird.job.task.{ActivityAggregateUpdaterConfig, ActivityAggregateUpdaterStreamTask}
+import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil}
+import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
+import redis.clients.jedis.Jedis
+import redis.embedded.RedisServer
 
+import scala.collection.mutable
+import scala.collection.JavaConverters._
 
-class ActivityAggregateUpdaterTaskTestSpec extends BaseActivityAggregateTestSpec {
+class ActivityAggregateUpdaterTaskTestSpec extends BaseTestSpec {
+
+  implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
+
+  val flinkCluster = new MiniClusterWithClientResource(new MiniClusterResourceConfiguration.Builder()
+    .setConfiguration(testConfiguration())
+    .setNumberSlotsPerTaskManager(1)
+    .setNumberTaskManagers(1)
+    .build)
+
+  var redisServer: RedisServer = _
+  redisServer = new RedisServer(6340)
+  redisServer.start()
+  var jedis: Jedis = _
+  val mockKafkaUtil: FlinkKafkaConnector = mock[FlinkKafkaConnector](Mockito.withSettings().serializable())
+  val gson = new Gson()
+  val config: Config = ConfigFactory.load("test.conf")
+  val courseAggregatorConfig: ActivityAggregateUpdaterConfig = new ActivityAggregateUpdaterConfig(config)
+  val mockHttpUtil: HttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
+
+  var cassandraUtil: CassandraUtil = _
+
+  val requestBody = s"""{
+                       |    "request": {
+                       |        "filters": {
+                       |            "objectType": "Collection",
+                       |            "identifier": "course001",
+                       |            "status": ["Live", "Unlisted", "Retired"]
+                       |        },
+                       |        "fields": ["status"]
+                       |    }
+                       |}""".stripMargin
 
   override protected def beforeAll(): Unit = {
+    println("Executing beforeAll.......")
     super.beforeAll()
     val redisConnect = new RedisConnect(courseAggregatorConfig)
     jedis = redisConnect.getConnection(courseAggregatorConfig.nodeStore)
@@ -39,6 +83,7 @@ class ActivityAggregateUpdaterTaskTestSpec extends BaseActivityAggregateTestSpec
   }
 
   override protected def afterAll(): Unit = {
+    println("Executing afterAll.......")
     super.afterAll()
     try {
       EmbeddedCassandraServerHelper.cleanEmbeddedCassandra()
@@ -55,7 +100,7 @@ class ActivityAggregateUpdaterTaskTestSpec extends BaseActivityAggregateTestSpec
     when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaAuditEventTopic)).thenReturn(new auditEventSink)
     when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaFailedEventTopic)).thenReturn(new failedEventSink)
     when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaCertIssueTopic)).thenReturn(new certificateIssuedEventsSink)
-    new ActivityAggregateUpdaterStreamTask(courseAggregatorConfig, mockKafkaUtil, mockHttpUtil).process()
+    new ActivityAggregateUpdaterStreamTask(courseAggregatorConfig, mockKafkaUtil, new HttpUtil).process()
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.totalEventCount}").getValue() should be(3)
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.batchEnrolmentUpdateEventCount}").getValue() should be(3)
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.dbReadCount}").getValue() should be(3)
@@ -71,6 +116,67 @@ class ActivityAggregateUpdaterTaskTestSpec extends BaseActivityAggregateTestSpec
     auditEventSink.values.forEach(event => {
       println("AUDIT_TELEMETRY_EVENT: " + event)
     })
+  }
+
+  "ActivityAgg " should " throw exception when the cache not available for root collection" in {
+    jedis.select(courseAggregatorConfig.nodeStore)
+    jedis.flushDB()
+    when(mockKafkaUtil.kafkaMapSource(courseAggregatorConfig.kafkaInputTopic)).thenReturn(new CompleteContentConsumptionMapSource)
+    when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaAuditEventTopic)).thenReturn(new auditEventSink)
+    when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaFailedEventTopic)).thenReturn(new failedEventSink)
+    when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaCertIssueTopic)).thenReturn(new certificateIssuedEventsSink)
+    when(mockHttpUtil.post(courseAggregatorConfig.searchAPIURL, requestBody)).thenReturn(new HTTPResponse(200, """{"id":"api.v1.search","ver":"1.0","ts":"2020-12-16T12:37:40.283Z","params":{"resmsgid":"7c4cf0b0-3f9b-11eb-9b0c-abcfbdf41bc3","msgid":"7c4b1bf0-3f9b-11eb-9b0c-abcfbdf41bc3","status":"successful","err":null,"errmsg":null},"responseCode":"OK","result":{"count":1,"content":[{"identifier":"course001","objectType":"Content","status":"Live"}]}}"""))
+
+    val activityAggTask = new ActivityAggregateUpdaterStreamTask(courseAggregatorConfig, mockKafkaUtil, mockHttpUtil)
+    the [Exception] thrownBy {
+      activityAggTask.process()
+    } should have message "Job execution failed."
+
+    // De-dup should not save the keys for which the processing failed.
+    // This will help in processing the same data after restart.
+    jedis.select(courseAggregatorConfig.deDupStore)
+    jedis.keys("*").size() should be (0)
+    jedis.select(courseAggregatorConfig.nodeStore)
+
+    failedEventSink.values.forEach(event => {
+      println("FAILED_EVENT_DATA: " + event)
+    })
+//    failedEventSink.values.size() should be (2)
+  }
+
+  def testCassandraUtil(cassandraUtil: CassandraUtil): Unit = {
+    cassandraUtil.reconnect()
+  }
+
+  def updateRedis(jedis: Jedis, testData: Map[String, AnyRef]) {
+    testData.get("cacheData").map(data => {
+      data.asInstanceOf[List[Map[String, AnyRef]]].map(cacheData => {
+        cacheData.map(x => {
+          x._2.asInstanceOf[List[String]].foreach(d => {
+            jedis.sadd(x._1, d)
+          })
+        })
+      })
+    })
+  }
+
+  def readFromCassandra(event: String): util.List[Row] = {
+    val event1_primaryCols = getPrimaryCols(gson.fromJson(event, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]].asScala.asJava)
+    val query = s"select * from sunbird_courses.user_activity_agg where context_id='cb:${event1_primaryCols.get("batchid").get}' and user_id='${event1_primaryCols.get("userid").get}' ALLOW FILTERING;"
+    cassandraUtil.find(query)
+  }
+
+  def readFromContentConsumptionTable(event: String): util.List[Row] = {
+    val event1_primaryCols = getPrimaryCols(gson.fromJson(event, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]].asScala.asJava)
+    val query = s"select * from sunbird_courses.user_content_consumption where userid='${event1_primaryCols.get("userid").get}' and batchid='${event1_primaryCols.get("batchid").get}' and courseid='${event1_primaryCols.get("courseid").get}' ALLOW FILTERING;"
+    cassandraUtil.find(query)
+  }
+
+
+  def getPrimaryCols(event: util.Map[String, AnyRef]): mutable.Map[String, String] = {
+    val eventData = event.get("edata").asInstanceOf[util.Map[String, AnyRef]]
+    val primaryFields = List("userid", "courseid", "batchid")
+    eventData.asScala.map(v => (v._1.toLowerCase, v._2)).filter(x => primaryFields.contains(x._1)).asInstanceOf[mutable.Map[String, String]]
   }
 }
 
@@ -90,5 +196,3 @@ private class CompleteContentConsumptionMapSource extends SourceFunction[util.Ma
   }
 
 }
-
-
