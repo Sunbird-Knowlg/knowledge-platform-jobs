@@ -1,10 +1,16 @@
 package org.sunbird.job.domain.reader
 
+import org.sunbird.job.util.JSONUtil
+
 abstract class JobRequest(val map: java.util.Map[String, Any]) {
 
-  def getMap: java.util.Map[String, Any] = map
+  def getMap(): java.util.Map[String, Any] = map
+
+  def getJson(): String = JSONUtil.serialize(getMap())
 
   def mid(): String = read[String](keyPath = EventsPath.MID_PATH).orNull
+
+  def kafkaKey(): String = mid()
 
   def read[T](keyPath: String): Option[T] = try {
     val parentMap = lastParentMap(map, keyPath)

@@ -24,7 +24,7 @@
 		<module>relation-cache-updater</module>
 		<module>activity-aggregate-updater</module>
         <module>post-publish-processor</module>
-        <module>collection-complete-post-processor</module>
+<!--        <module>collection-complete-post-processor</module>-->
     </modules>
 
 	<properties>
