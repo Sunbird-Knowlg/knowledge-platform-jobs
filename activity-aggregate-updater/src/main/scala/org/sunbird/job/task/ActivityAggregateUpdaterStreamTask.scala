@@ -13,10 +13,10 @@ import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.domain.CollectionProgress
 import org.sunbird.job.functions.{ActivityAggregatesFunction, CollectionProgressCompleteFunction, CollectionProgressUpdateFunction, ContentConsumptionDeDupFunction}
-import org.sunbird.job.util.FlinkUtil
+import org.sunbird.job.util.{FlinkUtil, HttpUtil}
 
 
-class ActivityAggregateUpdaterStreamTask(config: ActivityAggregateUpdaterConfig, kafkaConnector: FlinkKafkaConnector) {
+class ActivityAggregateUpdaterStreamTask(config: ActivityAggregateUpdaterConfig, kafkaConnector: FlinkKafkaConnector, httpUtil: HttpUtil) {
   def process(): Unit = {
     implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
     implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
@@ -32,7 +32,7 @@ class ActivityAggregateUpdaterStreamTask(config: ActivityAggregateUpdaterConfig,
         .getSideOutput(config.uniqueConsumptionOutput)
         .keyBy(new ActivityAggregatorKeySelector(config))
         .countWindow(config.thresholdBatchReadSize)
-        .process(new ActivityAggregatesFunction(config))
+        .process(new ActivityAggregatesFunction(config, httpUtil))
         .name(config.activityAggregateUpdaterFn)
         .uid(config.activityAggregateUpdaterFn)
         .setParallelism(config.activityAggregateUpdaterParallelism)
@@ -69,9 +69,11 @@ object ActivityAggregateUpdaterStreamTask {
     }.getOrElse(ConfigFactory.load("activity-aggregate-updater.conf").withFallback(ConfigFactory.systemEnvironment()))
     val courseAggregator = new ActivityAggregateUpdaterConfig(config)
     val kafkaUtil = new FlinkKafkaConnector(courseAggregator)
-    val task = new ActivityAggregateUpdaterStreamTask(courseAggregator, kafkaUtil)
+    val httpUtil = new HttpUtil
+    val task = new ActivityAggregateUpdaterStreamTask(courseAggregator, kafkaUtil, httpUtil)
     task.process()
   }
+
 }
 // $COVERAGE-ON$
 

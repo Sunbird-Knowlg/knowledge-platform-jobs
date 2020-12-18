@@ -5,6 +5,9 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
+import org.sunbird.job.cache.RedisConnect
+import org.sunbird.job.common.DeDupHelper
+import org.sunbird.job.dedup.DeDupEngine
 import org.sunbird.job.domain._
 import org.sunbird.job.task.ActivityAggregateUpdaterConfig
 import org.sunbird.job.util.CassandraUtil
@@ -16,14 +19,18 @@ class CollectionProgressUpdateFunction(config: ActivityAggregateUpdaterConfig)(i
   extends BaseProcessFunction[List[CollectionProgress], String](config) {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[CollectionProgressUpdateFunction])
+  var deDupEngine: DeDupEngine = _
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
     cassandraUtil = new CassandraUtil(config.dbHost, config.dbPort)
+    deDupEngine = new DeDupEngine(config, new RedisConnect(config, Option(config.deDupRedisHost), Option(config.deDupRedisPort)), config.deDupStore, config.deDupExpirySec)
+    deDupEngine.init()
   }
 
   override def close(): Unit = {
     cassandraUtil.close()
+    deDupEngine.close()
     super.close()
   }
 
@@ -34,6 +41,11 @@ class CollectionProgressUpdateFunction(config: ActivityAggregateUpdaterConfig)(i
     } else events
     val enrolmentQueries = pendingEnrolments.map(collectionProgress => getEnrolmentUpdateQuery(collectionProgress))
     updateDB(config.thresholdBatchWriteSize, enrolmentQueries)(metrics)
+    // Create and update the checksum to DeDup store for the input events.
+    if (config.dedupEnabled) {
+      events.map(cp => cp.inputContents.map(c => DeDupHelper.getMessageId(cp.courseId, cp.batchId, cp.userId, c, 2)))
+        .flatten.foreach(checksum => deDupEngine.storeChecksum(checksum))
+    }
   }
 
   override def metricsList(): List[String] = {

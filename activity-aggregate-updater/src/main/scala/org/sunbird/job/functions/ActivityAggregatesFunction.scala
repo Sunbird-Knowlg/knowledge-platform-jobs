@@ -1,11 +1,14 @@
 package org.sunbird.job.functions
 
 import java.lang.reflect.Type
+import java.util.concurrent.TimeUnit
 
 import com.datastax.driver.core.Row
 import com.datastax.driver.core.querybuilder.{QueryBuilder, Select, Update}
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import com.twitter.storehaus.cache.TTLCache
+import com.twitter.util.Duration
 import org.apache.commons.collections.CollectionUtils
 import org.apache.commons.lang3.StringUtils
 import org.apache.flink.api.common.typeinfo.TypeInformation
@@ -14,24 +17,26 @@ import org.apache.flink.streaming.api.scala.function.ProcessWindowFunction
 import org.apache.flink.streaming.api.windowing.windows.GlobalWindow
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cache.{DataCache, RedisConnect}
+import org.sunbird.job.common.DeDupHelper
 import org.sunbird.job.domain.{UserContentConsumption, _}
-import org.sunbird.job.task.ActivityAggregateUpdaterConfig
-import org.sunbird.job.util.CassandraUtil
+import org.sunbird.job.task.{ActivityAggregateUpdaterConfig, ActivityAggregateUpdaterStreamTask}
+import org.sunbird.job.util.{CassandraUtil, HttpUtil}
 import org.sunbird.job.{Metrics, WindowBaseProcessFunction}
 
 import scala.collection.JavaConverters._
 
-class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig, @transient var cassandraUtil: CassandraUtil = null)
+class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig, httpUtil: HttpUtil, @transient var cassandraUtil: CassandraUtil = null)
                                 (implicit val stringTypeInfo: TypeInformation[String])
   extends WindowBaseProcessFunction[Map[String, AnyRef], String, Int](config) {
 
   val mapType: Type = new TypeToken[Map[String, AnyRef]]() {}.getType
   private[this] val logger = LoggerFactory.getLogger(classOf[ActivityAggregatesFunction])
   private var cache: DataCache = _
+  private var collectionStatusCache: TTLCache[String, String] = _
   lazy private val gson = new Gson()
 
   override def metricsList(): List[String] = {
-    List(config.failedEventCount, config.dbUpdateCount, config.dbReadCount, config.cacheHitCount, config.cacheMissCount, config.processedEnrolmentCount)
+    List(config.failedEventCount, config.dbUpdateCount, config.dbReadCount, config.cacheHitCount, config.cacheMissCount, config.processedEnrolmentCount, config.retiredCCEventsCount)
   }
 
   override def open(parameters: Configuration): Unit = {
@@ -39,6 +44,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig, @transi
     cassandraUtil = new CassandraUtil(config.dbHost, config.dbPort)
     cache = new DataCache(config, new RedisConnect(config), config.nodeStore, List())
     cache.init()
+    collectionStatusCache = TTLCache[String, String](Duration.apply(config.statusCacheExpirySec, TimeUnit.SECONDS))
   }
 
   override def close(): Unit = {
@@ -83,7 +89,8 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig, @transi
     val courseAggregations = finalUserConsumptionList.flatMap(userConsumption => {
 
       // Course Level Agg using the merged data of ContentConsumption per user, course and batch.
-      val courseAggs = List(courseActivityAgg(userConsumption, context)(metrics))
+      val optCourseAgg = courseActivityAgg(userConsumption, context)(metrics)
+      val courseAggs = if (optCourseAgg.nonEmpty) List(optCourseAgg.get) else List()
 
       // Identify the children of the course (only collections) for which aggregates computation required.
       // Computation of aggregates using leafNodes (of the specific collection) and user completed contents.
@@ -107,7 +114,6 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig, @transi
     val collectionProgressCompleteList = collectionProgressList.filter(progress => progress.completed)
     context.output(config.collectionCompleteOutputTag, collectionProgressCompleteList)
 
-
     // Content AUDIT Event generation and pushing to output tag.
     finalUserConsumptionList.flatMap(userConsumption => contentAuditEvents(userConsumption)).foreach(event => context.output(config.auditEventOutputTag, gson.toJson(event)))
 
@@ -116,26 +122,38 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig, @transi
   /**
    * Course Level Agg using the merged data of ContentConsumption per user, course and batch.
    */
-  def courseActivityAgg(userConsumption: UserContentConsumption, context: ProcessWindowFunction[Map[String, AnyRef], String, Int, GlobalWindow]#Context)(implicit metrics: Metrics): UserEnrolmentAgg = {
+  def courseActivityAgg(userConsumption: UserContentConsumption, context: ProcessWindowFunction[Map[String, AnyRef], String, Int, GlobalWindow]#Context)(implicit metrics: Metrics): Option[UserEnrolmentAgg] = {
     val courseId = userConsumption.courseId
     val userId = userConsumption.userId
     val contextId = "cb:" + userConsumption.batchId
     val key = s"$courseId:$courseId:${config.leafNodes}"
     val leafNodes = readFromCache(key, metrics).distinct
     if (leafNodes.isEmpty) {
-      metrics.incCounter(config.failedEventCount)
       logger.error(s"leaf nodes are not available for: $key")
       context.output(config.failedEventOutputTag, gson.toJson(userConsumption))
-      //      throw new Exception(s"leaf nodes are not available: $key")
-    }
-    val completedCount = leafNodes.intersect(userConsumption.contents.filter(cc => cc._2.status == 2).map(cc => cc._2.contentId).toList.distinct).size
-    val contentStatus = userConsumption.contents.map(cc => (cc._2.contentId, cc._2.status)).toMap
-    val collectionProgress = if (completedCount >= leafNodes.size) {
-      Option(CollectionProgress(userId, userConsumption.batchId, courseId, completedCount, new java.util.Date(), contentStatus, true))
+      val status = getCollectionStatus(courseId)
+      if (StringUtils.equals("Retired", status)) {
+        metrics.incCounter(config.retiredCCEventsCount)
+        println(s"contents consumed from a retired collection: $courseId")
+        logger.warn(s"contents consumed from a retired collection: $courseId")
+        None
+      } else {
+        metrics.incCounter(config.failedEventCount)
+        val message = s"leaf nodes are not available for a published collection: $courseId"
+        logger.error(message)
+        throw new Exception(message)
+      }
     } else {
-      Option(CollectionProgress(userId, userConsumption.batchId, courseId, completedCount, null, contentStatus))
+      val completedCount = leafNodes.intersect(userConsumption.contents.filter(cc => cc._2.status == 2).map(cc => cc._2.contentId).toList.distinct).size
+      val contentStatus = userConsumption.contents.map(cc => (cc._2.contentId, cc._2.status)).toMap
+      val inputContents = userConsumption.contents.filter(cc => cc._2.fromInput).keys.toList
+      val collectionProgress = if (completedCount >= leafNodes.size) {
+        Option(CollectionProgress(userId, userConsumption.batchId, courseId, completedCount, new java.util.Date(), contentStatus, inputContents, true))
+      } else {
+        Option(CollectionProgress(userId, userConsumption.batchId, courseId, completedCount, null, contentStatus, inputContents))
+      }
+      Option(UserEnrolmentAgg(UserActivityAgg("Course", userId, courseId, contextId, Map("completedCount" -> completedCount), Map("completedCount" -> System.currentTimeMillis())), collectionProgress))
     }
-    UserEnrolmentAgg(UserActivityAgg("Course", userId, courseId, contextId, Map("completedCount" -> completedCount), Map("completedCount" -> System.currentTimeMillis())), collectionProgress)
   }
 
   /**
@@ -198,7 +216,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig, @transi
           val completion = sumFunc(List(inputCC, dbCC), (x: ContentStatus) => { x.completedCount }) // Completed Count is sum of DB and Input ContentStatus.
           val eventsFor: List[String] = getEventActions(dbCC, inputCC)
           // Merged ContentStatus.
-          (contentId, ContentStatus(contentId, finalStatus, completion, views, eventsFor))
+          (contentId, ContentStatus(contentId, finalStatus, completion, views, inputCC.fromInput, eventsFor))
         }
       }
 
@@ -357,7 +375,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig, @transi
             val status = contentStatus.getOrElse(config.status, 1).asInstanceOf[Number].intValue()
             val viewCount = contentStatus.getOrElse(config.viewcount, 0).asInstanceOf[Number].intValue()
             val completedCount = contentStatus.getOrElse(config.completedcount, 0).asInstanceOf[Number].intValue()
-            (contentId, ContentStatus(contentId, status, completedCount, viewCount))
+            (contentId, ContentStatus(contentId, status, completedCount, viewCount, false))
           }).toMap
 
         val userId = identifierMap(config.userId)
@@ -391,6 +409,42 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig, @transi
         )
       })
     }).toList
+  }
+
+  def getDBStatus(collectionId: String): String = {
+    val requestBody = s"""{
+                       |    "request": {
+                       |        "filters": {
+                       |            "objectType": "Collection",
+                       |            "identifier": "$collectionId",
+                       |            "status": ["Live", "Unlisted", "Retired"]
+                       |        },
+                       |        "fields": ["status"]
+                       |    }
+                       |}""".stripMargin
+
+    val response = httpUtil.post(config.searchAPIURL, requestBody)
+    if (response.status == 200) {
+      val responseBody = gson.fromJson(response.body, classOf[java.util.Map[String, AnyRef]])
+      val result = responseBody.getOrDefault("result", new java.util.HashMap[String, AnyRef]()).asInstanceOf[java.util.Map[String, AnyRef]]
+      val count = result.getOrDefault("count", 0.asInstanceOf[Number]).asInstanceOf[Number].intValue()
+      if (count > 0) {
+        val list = result.getOrDefault("content", new java.util.ArrayList[java.util.Map[String, AnyRef]]()).asInstanceOf[java.util.List[java.util.Map[String, AnyRef]]]
+        list.asScala.head.get("status").asInstanceOf[String]
+      } else throw new Exception(s"There are no published or retired collection with id: $collectionId")
+    } else {
+      logger.error("search-service error: " + response.body)
+      throw new Exception("search-service not returning error:" + response.status)
+    }
+  }
+
+  def getCollectionStatus(collectionId: String): String = {
+    val cacheStatus = collectionStatusCache.getNonExpired(collectionId).getOrElse("")
+    if (StringUtils.isEmpty(cacheStatus)) {
+      val dbStatus = getDBStatus(collectionId)
+      collectionStatusCache.putClocked(collectionId, dbStatus)
+      dbStatus
+    } else cacheStatus
   }
 }
 
