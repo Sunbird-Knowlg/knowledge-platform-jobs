@@ -21,4 +21,3 @@ workflows:
   build_and_test:
     jobs:
       - knowledge-platform-jobs-build
-#testing quality gate
