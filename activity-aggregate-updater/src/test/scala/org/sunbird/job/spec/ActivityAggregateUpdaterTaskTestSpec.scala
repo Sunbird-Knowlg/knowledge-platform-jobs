@@ -92,12 +92,16 @@ class ActivityAggregateUpdaterTaskTestSpec extends BaseTestSpec {
     }
     flinkCluster.after()
   }
-  
-  "ActivityAgg " should " compute and update enrolment as completed when all the content consumption data processed" in {
+
+  def initialize() {
     when(mockKafkaUtil.kafkaMapSource(courseAggregatorConfig.kafkaInputTopic)).thenReturn(new CompleteContentConsumptionMapSource)
-    when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaAuditEventTopic)).thenReturn(new auditEventSink)
-    when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaFailedEventTopic)).thenReturn(new failedEventSink)
-    when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaCertIssueTopic)).thenReturn(new certificateIssuedEventsSink)
+    when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaAuditEventTopic)).thenReturn(new AuditEventSink)
+    when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaFailedEventTopic)).thenReturn(new FailedEventSink)
+    when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaCertIssueTopic)).thenReturn(new CertificateIssuedEventsSink)
+  }
+
+  "Activity Aggregator " should " compute and update enrolment as completed when all the content consumption data processed" in {
+    initialize()
     new ActivityAggregateUpdaterStreamTask(courseAggregatorConfig, mockKafkaUtil, new HttpUtil).process()
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.totalEventCount}").getValue() should be(3)
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.batchEnrolmentUpdateEventCount}").getValue() should be(3)
@@ -110,8 +114,8 @@ class ActivityAggregateUpdaterTaskTestSpec extends BaseTestSpec {
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.skipEventsCount}").getValue() should be(0)
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.cacheMissCount}").getValue() should be(0)
 
-    auditEventSink.values.size() should be(4)
-    auditEventSink.values.forEach(event => {
+    AuditEventSink.values.size() should be(4)
+    AuditEventSink.values.forEach(event => {
       println("AUDIT_TELEMETRY_EVENT: " + event)
     })
     jedis.select(courseAggregatorConfig.deDupStore)
@@ -121,14 +125,11 @@ class ActivityAggregateUpdaterTaskTestSpec extends BaseTestSpec {
     jedis.select(courseAggregatorConfig.nodeStore)
   }
 
-  "ActivityAgg " should " throw exception when the cache not available for root collection" in {
+  "Activity Aggregator " should " throw exception when the cache not available for root collection" in {
     jedis.select(courseAggregatorConfig.nodeStore)
     jedis.flushAll()
-    when(mockKafkaUtil.kafkaMapSource(courseAggregatorConfig.kafkaInputTopic)).thenReturn(new CompleteContentConsumptionMapSource)
-    when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaAuditEventTopic)).thenReturn(new auditEventSink)
-    when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaFailedEventTopic)).thenReturn(new failedEventSink)
-    when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaCertIssueTopic)).thenReturn(new certificateIssuedEventsSink)
-    when(mockHttpUtil.post(courseAggregatorConfig.searchAPIURL, requestBody)).thenReturn(new HTTPResponse(200, """{"id":"api.v1.search","ver":"1.0","ts":"2020-12-16T12:37:40.283Z","params":{"resmsgid":"7c4cf0b0-3f9b-11eb-9b0c-abcfbdf41bc3","msgid":"7c4b1bf0-3f9b-11eb-9b0c-abcfbdf41bc3","status":"successful","err":null,"errmsg":null},"responseCode":"OK","result":{"count":1,"content":[{"identifier":"course001","objectType":"Content","status":"Live"}]}}"""))
+    when(mockHttpUtil.post(courseAggregatorConfig.searchAPIURL, requestBody)).thenReturn(HTTPResponse(200, """{"id":"api.v1.search","ver":"1.0","ts":"2020-12-16T12:37:40.283Z","params":{"resmsgid":"7c4cf0b0-3f9b-11eb-9b0c-abcfbdf41bc3","msgid":"7c4b1bf0-3f9b-11eb-9b0c-abcfbdf41bc3","status":"successful","err":null,"errmsg":null},"responseCode":"OK","result":{"count":1,"content":[{"identifier":"course001","objectType":"Content","status":"Live"}]}}"""))
+    initialize()
 
     val activityAggTask = new ActivityAggregateUpdaterStreamTask(courseAggregatorConfig, mockKafkaUtil, mockHttpUtil)
     the [Exception] thrownBy {
@@ -141,10 +142,28 @@ class ActivityAggregateUpdaterTaskTestSpec extends BaseTestSpec {
     jedis.keys("*").size() should be (0)
     jedis.select(courseAggregatorConfig.nodeStore)
 
-    failedEventSink.values.forEach(event => {
+    FailedEventSink.values.forEach(event => {
       println("FAILED_EVENT_DATA: " + event)
     })
-//    failedEventSink.values.size() should be (2)
+    //    failedEventSink.values.size() should be (2)
+  }
+
+  ignore should " skip the retired collection consumption events" in {
+    jedis.select(courseAggregatorConfig.nodeStore)
+    jedis.flushAll()
+    reset(mockHttpUtil)
+    when(mockHttpUtil.post(courseAggregatorConfig.searchAPIURL, requestBody)).thenReturn(HTTPResponse(200, """{"id":"api.v1.search","ver":"1.0","ts":"2020-12-16T12:37:40.283Z","params":{"resmsgid":"7c4cf0b0-3f9b-11eb-9b0c-abcfbdf41bc3","msgid":"7c4b1bf0-3f9b-11eb-9b0c-abcfbdf41bc3","status":"successful","err":null,"errmsg":null},"responseCode":"OK","result":{"count":1,"content":[{"identifier":"course001","objectType":"Content","status":"Retired"}]}}"""))
+    initialize()
+
+    val activityAggTask = new ActivityAggregateUpdaterStreamTask(courseAggregatorConfig, mockKafkaUtil, mockHttpUtil)
+    activityAggTask.process()
+
+    jedis.select(courseAggregatorConfig.deDupStore)
+    jedis.keys("*").size() should be (0)
+    jedis.select(courseAggregatorConfig.nodeStore)
+
+    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.retiredCCEventsCount}").getValue() should be(3)
+
   }
 
   def testCassandraUtil(cassandraUtil: CassandraUtil): Unit = {

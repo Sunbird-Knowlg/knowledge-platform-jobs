@@ -36,7 +36,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig, httpUti
   lazy private val gson = new Gson()
 
   override def metricsList(): List[String] = {
-    List(config.failedEventCount, config.dbUpdateCount, config.dbReadCount, config.cacheHitCount, config.cacheMissCount, config.processedEnrolmentCount)
+    List(config.failedEventCount, config.dbUpdateCount, config.dbReadCount, config.cacheHitCount, config.cacheMissCount, config.processedEnrolmentCount, config.retiredCCEventsCount)
   }
 
   override def open(parameters: Configuration): Unit = {
@@ -133,6 +133,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig, httpUti
       context.output(config.failedEventOutputTag, gson.toJson(userConsumption))
       val status = getCollectionStatus(courseId)
       if (StringUtils.equals("Retired", status)) {
+        metrics.incCounter(config.retiredCCEventsCount)
         println(s"contents consumed from a retired collection: $courseId")
         logger.warn(s"contents consumed from a retired collection: $courseId")
         None

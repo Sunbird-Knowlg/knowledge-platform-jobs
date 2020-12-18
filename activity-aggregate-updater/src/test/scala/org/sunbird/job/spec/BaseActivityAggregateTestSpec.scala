@@ -5,29 +5,29 @@ import java.util
 import org.apache.flink.streaming.api.functions.sink.SinkFunction
 
 
-class auditEventSink extends SinkFunction[String] {
+class AuditEventSink extends SinkFunction[String] {
 
   override def invoke(value: String): Unit = {
     synchronized {
-      auditEventSink.values.add(value)
+      AuditEventSink.values.add(value)
     }
   }
 }
 
-object auditEventSink {
+object AuditEventSink {
   val values: util.List[String] = new util.ArrayList()
 }
 
-class failedEventSink extends SinkFunction[String] {
+class FailedEventSink extends SinkFunction[String] {
 
   override def invoke(value: String): Unit = {
     synchronized {
-      failedEventSink.values.add(value)
+      FailedEventSink.values.add(value)
     }
   }
 }
 
-object failedEventSink {
+object FailedEventSink {
   val values: util.List[String] = new util.ArrayList()
 }
 
@@ -45,15 +45,15 @@ object SuccessEventSink {
 }
 
 
-class certificateIssuedEventsSink extends SinkFunction[String] {
+class CertificateIssuedEventsSink extends SinkFunction[String] {
 
   override def invoke(value: String): Unit = {
     synchronized {
-      certificateIssuedEvents.values.add(value)
+      CertificateIssuedEvents.values.add(value)
     }
   }
 }
 
-object certificateIssuedEvents {
+object CertificateIssuedEvents {
   val values: util.List[String] = new util.ArrayList()
 }

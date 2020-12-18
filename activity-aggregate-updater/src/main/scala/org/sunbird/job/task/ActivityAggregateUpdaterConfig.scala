@@ -41,6 +41,7 @@ class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJo
   val processedEnrolmentCount = "processed-enrolment-count"
   val enrolmentCompleteCount = "enrolment-complete-count"
   val certIssueEventsCount = "cert-issue-events-count"
+  val retiredCCEventsCount = "retired-consumption-events-count"
 
   // Cassandra Configurations
   val dbUserContentConsumptionTable: String = config.getString("lms-cassandra.consumption.table")
