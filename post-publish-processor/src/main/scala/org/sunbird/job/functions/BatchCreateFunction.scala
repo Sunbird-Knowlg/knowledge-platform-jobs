@@ -53,6 +53,7 @@ class BatchCreateFunction(config: PostPublishProcessorConfig)
       logger.info("Batch create success: " + httpResponse.body)
     } else {
       logger.error("Batch create failed: " + httpResponse.status + " :: " + httpResponse.body)
+      throw new Exception("Batch creation failed for " + eData.get("identifier"))
     }
   }
 
