@@ -32,6 +32,8 @@ class PostPublishProcessorConfig(override val config: Config) extends BaseJobCon
   val successEventCount = "success-events-count"
   val failedEventCount = "failed-events-count"
   val skippedEventCount = "skipped-event-count"
+  val shallowCopyPublishEventCount = "shallow-copy-publish-events-count"
+  val batchCreationCount = "batch-creation-count"
 
   // Cassandra Configurations
   val dbHost: String = config.getString("lms-cassandra.host")
@@ -53,6 +55,10 @@ class PostPublishProcessorConfig(override val config: Config) extends BaseJobCon
 
   val searchBaseUrl = config.getString("content.search.basePath")
   val lmsBaseUrl = config.getString("lms.basePath")
+
+  // API URLs
+  val batchCreateAPIPath = lmsBaseUrl + "/private/v1/course/batch/create"
+  val searchAPIPath = searchBaseUrl + "/v3/search"
 
 
 }

@@ -5,13 +5,37 @@ import org.apache.commons.collections.{CollectionUtils, MapUtils}
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.task.PostPublishProcessorConfig
-import org.sunbird.job.util.{CassandraUtil, JSONUtil}
+import org.sunbird.job.util.{CassandraUtil, HttpUtil, JSONUtil}
 
 import scala.collection.JavaConverters._
 
 trait BatchCreation {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[BatchCreation])
+
+  def createBatch(eData: java.util.Map[String, AnyRef], startDate: String)(implicit config: PostPublishProcessorConfig, httpUtil: HttpUtil) = {
+    val request = new java.util.HashMap[String, AnyRef]() {{
+      put("request", new java.util.HashMap[String, AnyRef]() {{
+        put("courseId", eData.get("identifier"))
+        put("name", eData.get("name"))
+        if (eData.containsKey("createdBy"))
+          put("createdBy", eData.get("createdBy"))
+        if (eData.containsKey("createdFor"))
+          put("createdFor", eData.get("createdFor"))
+        put("enrollmentType", "open")
+        put("startDate", startDate)
+      }})
+    }}
+    val httpRequest = JSONUtil.serialize(request)
+    val httpResponse = httpUtil.post(config.batchCreateAPIPath, httpRequest)
+    if (httpResponse.status == 200) {
+      logger.info("Batch create success: " + httpResponse.body)
+    } else {
+      logger.error("Batch create failed: " + httpResponse.status + " :: " + httpResponse.body)
+      throw new Exception("Batch creation failed for " + eData.get("identifier"))
+    }
+  }
+
 
   def batchRequired(metadata: java.util.Map[String, AnyRef], identifier: String)(implicit config: PostPublishProcessorConfig, cassandraUtil: CassandraUtil): Boolean = {
     val trackable = isTrackable(metadata, identifier)

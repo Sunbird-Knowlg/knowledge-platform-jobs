@@ -11,7 +11,7 @@ trait ShallowCopyPublishing{
 
   def getShallowCopiedContents(identifier: String)(implicit config: PostPublishProcessorConfig, httpUtil: HttpUtil): List[PublishMetadata] = {
     val httpRequest = s"""{"request":{"filters":{"status":["Draft","Review","Live","Unlisted","Failed"],"origin":"${identifier}"},"fields":["identifier","mimeType","contentType","versionKey","channel","status","pkgVersion","lastPublishedBy","origin","originData"]}}"""
-    val httpResponse = httpUtil.post(config.searchBaseUrl + "/v3/search", httpRequest)
+    val httpResponse = httpUtil.post(config.searchAPIPath, httpRequest)
     if (httpResponse.status == 200) {
 
       val response = JSONUtil.deserialize[java.util.Map[String, AnyRef]](httpResponse.body)
