@@ -50,7 +50,7 @@ class PostPublishEventRouter(config: PostPublishProcessorConfig)
       val shallowCopied = getShallowCopiedContents(identifier)
       logger.info("Shallow copied by this content - " + identifier + " are: " + shallowCopied.size)
       if (shallowCopied.size > 0) {
-        val shallowCopyInput = new util.HashMap[String, AnyRef](event.eData) {{ put("shallowCopied", shallowCopied)}}
+        val shallowCopyInput = new util.HashMap[String, AnyRef](event.eData.asJava) {{ put("shallowCopied", shallowCopied)}}
         context.output(config.shallowContentPublishOutTag, shallowCopyInput)
       }
 
@@ -72,7 +72,7 @@ class PostPublishEventRouter(config: PostPublishProcessorConfig)
 
       // Check DIAL Code exist or not and trigger create and link.
       if (!linkedDIALCodes(metadata, identifier)) {
-        val linkMap = new util.HashMap[String, AnyRef](event.eData)
+        val linkMap = new util.HashMap[String, AnyRef](event.eData.asJava)
         linkMap.put("channel", metadata.get("channel"))
         context.output(config.linkDIALCodeOutTag, linkMap)
       }
