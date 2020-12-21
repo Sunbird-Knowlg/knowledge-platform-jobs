@@ -32,6 +32,8 @@ abstract class JobRequest(val map: java.util.Map[String, Any]) {
     })
   }
 
+  override def toString: String = "JobRequest {map=" + map + "}"
+
   private def lastParentMap(map: java.util.Map[String, Any], keyPath: String): ParentType = {
     try {
       var parent = map

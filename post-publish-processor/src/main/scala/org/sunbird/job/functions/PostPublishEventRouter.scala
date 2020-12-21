@@ -2,7 +2,6 @@ package org.sunbird.job.functions
 
 import java.lang.reflect.Type
 import java.util
-
 import com.datastax.driver.core.querybuilder.QueryBuilder
 import com.google.gson.reflect.TypeToken
 import org.apache.commons.collections.{CollectionUtils, MapUtils}
@@ -12,11 +11,11 @@ import org.apache.flink.configuration.Configuration
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
+import org.sunbird.job.postpublish.domain.Event
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 import org.sunbird.job.task.PostPublishProcessorConfig
 import org.sunbird.job.util.{CassandraUtil, Neo4JUtil}
-
-import org.sunbird.job.task.{PostPublishProcessorStreamTask => PPPStreamTask }
+import org.sunbird.job.task.{PostPublishProcessorStreamTask => PPPStreamTask}
 
 import scala.collection.JavaConverters._
 
@@ -26,7 +25,7 @@ class PostPublishEventRouter(config: PostPublishProcessorConfig)
                             (implicit val stringTypeInfo: TypeInformation[String],
                              @transient var cassandraUtil: CassandraUtil = null,
                              @transient var neo4JUtil: Neo4JUtil = null)
-  extends BaseProcessFunction[java.util.Map[String, AnyRef], String](config) {
+  extends BaseProcessFunction[Event, String](config) {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[PostPublishEventRouter])
   val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
@@ -43,17 +42,15 @@ class PostPublishEventRouter(config: PostPublishProcessorConfig)
     super.close()
   }
 
-  override def processElement(event: java.util.Map[String, AnyRef], context: ProcessFunction[java.util.Map[String, AnyRef], String]#Context, metrics: Metrics): Unit = {
-    val eData = event.get("edata").asInstanceOf[java.util.Map[String, AnyRef]]
-    val action = eData.getOrDefault("action", "").asInstanceOf[String]
-    val mimeType = eData.getOrDefault("mimeType", "").asInstanceOf[String]
-    val identifier = eData.getOrDefault("identifier", "").asInstanceOf[String]
-    if (validEvent(mimeType, action)) {
+  override def processElement(event: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
+    logger.info("Processed event using JobRequest-SerDe: " + event)
+    if (event.validEvent()) {
+      val identifier = event.collectionId
       // Check shallow copied contents and publish.
       val shallowCopied = getShallowCopiedContents(identifier)
       logger.info("Shallow copied by this content - " + identifier + " are: " + shallowCopied.size)
       if (shallowCopied.size > 0) {
-        val shallowCopyInput = new util.HashMap[String, AnyRef](eData) {{ put("shallowCopied", shallowCopied)}}
+        val shallowCopyInput = new util.HashMap[String, AnyRef](event.eData) {{ put("shallowCopied", shallowCopied)}}
         context.output(config.shallowContentPublishOutTag, shallowCopyInput)
       }
 
@@ -75,8 +72,9 @@ class PostPublishEventRouter(config: PostPublishProcessorConfig)
 
       // Check DIAL Code exist or not and trigger create and link.
       if (!linkedDIALCodes(metadata, identifier)) {
-        eData.put("channel", metadata.get("channel"))
-        context.output(config.linkDIALCodeOutTag, eData)
+        val linkMap = new util.HashMap[String, AnyRef](event.eData)
+        linkMap.put("channel", metadata.get("channel"))
+        context.output(config.linkDIALCodeOutTag, linkMap)
       }
     } else {
       metrics.incCounter(config.skippedEventCount)
