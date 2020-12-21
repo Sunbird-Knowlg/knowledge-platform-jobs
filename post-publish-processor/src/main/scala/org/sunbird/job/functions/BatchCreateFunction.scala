@@ -3,20 +3,17 @@ package org.sunbird.job.functions
 import java.lang.reflect.Type
 import java.time.format.DateTimeFormatter
 import java.time.{ZoneId, ZonedDateTime}
-import java.util
 
 import com.google.gson.reflect.TypeToken
-import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.{BaseProcessFunction, Metrics}
-import org.sunbird.job.task.{PostPublishProcessorConfig, PostPublishProcessorStreamTask}
-import org.sunbird.job.util.{CassandraUtil, HttpUtil}
+import org.sunbird.job.task.PostPublishProcessorConfig
+import org.sunbird.job.util.HttpUtil
 
-class BatchCreateFunction(config: PostPublishProcessorConfig)
-                         (implicit val stringTypeInfo: TypeInformation[String])
+class BatchCreateFunction(config: PostPublishProcessorConfig, httpUtil: HttpUtil)
   extends BaseProcessFunction[java.util.Map[String, AnyRef], String](config) {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[BatchCreateFunction])
@@ -47,8 +44,7 @@ class BatchCreateFunction(config: PostPublishProcessorConfig)
       }})
     }}
     val httpRequest = mapper.writeValueAsString(request)
-    println("HTTP Request: " + httpRequest)
-    val httpResponse = PostPublishProcessorStreamTask.httpUtil.post(config.lmsBaseUrl + "/private/v1/course/batch/create", httpRequest)
+    val httpResponse = httpUtil.post(config.lmsBaseUrl + "/private/v1/course/batch/create", httpRequest)
     if (httpResponse.status == 200) {
       logger.info("Batch create success: " + httpResponse.body)
     } else {
