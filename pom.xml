@@ -24,13 +24,10 @@
 		<module>relation-cache-updater</module>
 		<module>activity-aggregate-updater</module>
         <module>post-publish-processor</module>
-		<module>certificate-generator</module>
-		<module>cert-processor</module>
-		<module>post-certificate-processor</module>
-        <module>certificate-pre-processor</module>
 		<module>jobs-common</module>
 		<module>collection-certificate-generator</module>
-	</modules>
+<!--        <module>collection-complete-post-processor</module>-->
+    </modules>
 
 	<properties>
 		<!-- maven specific properties -->

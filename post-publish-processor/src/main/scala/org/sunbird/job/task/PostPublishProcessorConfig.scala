@@ -1,17 +1,18 @@
 package org.sunbird.job.task
 
 import java.util
-
 import com.typesafe.config.Config
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.streaming.api.scala.OutputTag
 import org.sunbird.job.BaseJobConfig
+import org.sunbird.job.functions.PublishMetadata
 
 class PostPublishProcessorConfig(override val config: Config) extends BaseJobConfig(config, "post-publish-processor")  {
 
   implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
   implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
+  implicit val publishMetaTypeInfo: TypeInformation[PublishMetadata] = TypeExtractor.getForClass(classOf[PublishMetadata])
 
   // Job Configuration
   val jobEnv: String = config.getString("job.env")
@@ -31,6 +32,8 @@ class PostPublishProcessorConfig(override val config: Config) extends BaseJobCon
   val successEventCount = "success-events-count"
   val failedEventCount = "failed-events-count"
   val skippedEventCount = "skipped-event-count"
+  val shallowCopyPublishEventCount = "shallow-copy-publish-events-count"
+  val batchCreationCount = "batch-creation-count"
 
   // Cassandra Configurations
   val dbHost: String = config.getString("lms-cassandra.host")
@@ -46,12 +49,16 @@ class PostPublishProcessorConfig(override val config: Config) extends BaseJobCon
   // Tags
   val batchCreateOutTag: OutputTag[java.util.Map[String, AnyRef]] = OutputTag[java.util.Map[String, AnyRef]]("batch-create")
   val linkDIALCodeOutTag: OutputTag[java.util.Map[String, AnyRef]] = OutputTag[java.util.Map[String, AnyRef]]("dialcode-link")
-  val shallowContentPublishOutTag: OutputTag[java.util.Map[String, AnyRef]] = OutputTag[java.util.Map[String, AnyRef]]("shallow-copied-content-publish")
+  val shallowContentPublishOutTag: OutputTag[PublishMetadata] = OutputTag[PublishMetadata]("shallow-copied-content-publish")
   val publishEventOutTag: OutputTag[String] = OutputTag[String]("content-publish-request")
 
 
   val searchBaseUrl = config.getString("content.search.basePath")
   val lmsBaseUrl = config.getString("lms.basePath")
+
+  // API URLs
+  val batchCreateAPIPath = lmsBaseUrl + "/private/v1/course/batch/create"
+  val searchAPIPath = searchBaseUrl + "/v3/search"
 
 
 }

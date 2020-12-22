@@ -8,7 +8,6 @@ import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
-import org.apache.flink.streaming.api.functions.sink.SinkFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext
 import org.apache.flink.test.util.MiniClusterWithClientResource
@@ -21,13 +20,13 @@ import org.sunbird.job.cache.RedisConnect
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.fixture.EventFixture
 import org.sunbird.job.task.{ActivityAggregateUpdaterConfig, ActivityAggregateUpdaterStreamTask}
-import org.sunbird.job.util.CassandraUtil
+import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 import redis.clients.jedis.Jedis
 import redis.embedded.RedisServer
 
-import scala.collection.JavaConverters._
 import scala.collection.mutable
+import scala.collection.JavaConverters._
 
 class ActivityAggregateUpdaterTaskTestSpec extends BaseTestSpec {
 
@@ -47,9 +46,20 @@ class ActivityAggregateUpdaterTaskTestSpec extends BaseTestSpec {
   val gson = new Gson()
   val config: Config = ConfigFactory.load("test.conf")
   val courseAggregatorConfig: ActivityAggregateUpdaterConfig = new ActivityAggregateUpdaterConfig(config)
-
+  val mockHttpUtil: HttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
 
   var cassandraUtil: CassandraUtil = _
+
+  val requestBody = s"""{
+                       |    "request": {
+                       |        "filters": {
+                       |            "objectType": "Collection",
+                       |            "identifier": "course001",
+                       |            "status": ["Live", "Unlisted", "Retired"]
+                       |        },
+                       |        "fields": ["status"]
+                       |    }
+                       |}""".stripMargin
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
@@ -58,7 +68,6 @@ class ActivityAggregateUpdaterTaskTestSpec extends BaseTestSpec {
     EmbeddedCassandraServerHelper.startEmbeddedCassandra(80000L)
     cassandraUtil = new CassandraUtil(courseAggregatorConfig.dbHost, courseAggregatorConfig.dbPort)
     val session = cassandraUtil.session
-
 
     val dataLoader = new CQLDataLoader(session)
     dataLoader.load(new FileCQLDataSet(getClass.getResource("/test.cql").getPath, true, true))
@@ -83,14 +92,17 @@ class ActivityAggregateUpdaterTaskTestSpec extends BaseTestSpec {
     }
     flinkCluster.after()
   }
-  
-  "Aggregator " should "compute and update enrolment as completed when all the content consumption data processed" in {
+
+  def initialize() {
     when(mockKafkaUtil.kafkaMapSource(courseAggregatorConfig.kafkaInputTopic)).thenReturn(new CompleteContentConsumptionMapSource)
-    when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaAuditEventTopic)).thenReturn(new auditEventSink)
-    when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaFailedEventTopic)).thenReturn(new failedEventSink)
-    when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaCertIssueTopic)).thenReturn(new certificateIssuedEventsSink)
-    new ActivityAggregateUpdaterStreamTask(courseAggregatorConfig, mockKafkaUtil).process()
-//    println("Metrics: " + BaseMetricsReporter.gaugeMetrics.map(a => (a._1, a._2.getValue())).toMap)
+    when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaAuditEventTopic)).thenReturn(new AuditEventSink)
+    when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaFailedEventTopic)).thenReturn(new FailedEventSink)
+    when(mockKafkaUtil.kafkaStringSink(courseAggregatorConfig.kafkaCertIssueTopic)).thenReturn(new CertificateIssuedEventsSink)
+  }
+
+  "Activity Aggregator " should " compute and update enrolment as completed when all the content consumption data processed" in {
+    initialize()
+    new ActivityAggregateUpdaterStreamTask(courseAggregatorConfig, mockKafkaUtil, new HttpUtil).process()
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.totalEventCount}").getValue() should be(3)
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.batchEnrolmentUpdateEventCount}").getValue() should be(3)
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.dbReadCount}").getValue() should be(3)
@@ -102,14 +114,57 @@ class ActivityAggregateUpdaterTaskTestSpec extends BaseTestSpec {
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.skipEventsCount}").getValue() should be(0)
     BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.cacheMissCount}").getValue() should be(0)
 
-
-    auditEventSink.values.size() should be(4)
-    auditEventSink.values.forEach(event => {
+    AuditEventSink.values.size() should be(4)
+    AuditEventSink.values.forEach(event => {
       println("AUDIT_TELEMETRY_EVENT: " + event)
     })
+    jedis.select(courseAggregatorConfig.deDupStore)
+    val deDupKeys = jedis.keys("*")
+    println("DeDup Keys:" + deDupKeys)
+    deDupKeys.size() should be (3)
+    jedis.select(courseAggregatorConfig.nodeStore)
   }
 
+  "Activity Aggregator " should " throw exception when the cache not available for root collection" in {
+    jedis.select(courseAggregatorConfig.nodeStore)
+    jedis.flushAll()
+    when(mockHttpUtil.post(courseAggregatorConfig.searchAPIURL, requestBody)).thenReturn(HTTPResponse(200, """{"id":"api.v1.search","ver":"1.0","ts":"2020-12-16T12:37:40.283Z","params":{"resmsgid":"7c4cf0b0-3f9b-11eb-9b0c-abcfbdf41bc3","msgid":"7c4b1bf0-3f9b-11eb-9b0c-abcfbdf41bc3","status":"successful","err":null,"errmsg":null},"responseCode":"OK","result":{"count":1,"content":[{"identifier":"course001","objectType":"Content","status":"Live"}]}}"""))
+    initialize()
 
+    val activityAggTask = new ActivityAggregateUpdaterStreamTask(courseAggregatorConfig, mockKafkaUtil, mockHttpUtil)
+    the [Exception] thrownBy {
+      activityAggTask.process()
+    } should have message "Job execution failed."
+
+    // De-dup should not save the keys for which the processing failed.
+    // This will help in processing the same data after restart.
+    jedis.select(courseAggregatorConfig.deDupStore)
+    jedis.keys("*").size() should be (0)
+    jedis.select(courseAggregatorConfig.nodeStore)
+
+    FailedEventSink.values.forEach(event => {
+      println("FAILED_EVENT_DATA: " + event)
+    })
+    //    failedEventSink.values.size() should be (2)
+  }
+
+  ignore should " skip the retired collection consumption events" in {
+    jedis.select(courseAggregatorConfig.nodeStore)
+    jedis.flushAll()
+    reset(mockHttpUtil)
+    when(mockHttpUtil.post(courseAggregatorConfig.searchAPIURL, requestBody)).thenReturn(HTTPResponse(200, """{"id":"api.v1.search","ver":"1.0","ts":"2020-12-16T12:37:40.283Z","params":{"resmsgid":"7c4cf0b0-3f9b-11eb-9b0c-abcfbdf41bc3","msgid":"7c4b1bf0-3f9b-11eb-9b0c-abcfbdf41bc3","status":"successful","err":null,"errmsg":null},"responseCode":"OK","result":{"count":1,"content":[{"identifier":"course001","objectType":"Content","status":"Retired"}]}}"""))
+    initialize()
+
+    val activityAggTask = new ActivityAggregateUpdaterStreamTask(courseAggregatorConfig, mockKafkaUtil, mockHttpUtil)
+    activityAggTask.process()
+
+    jedis.select(courseAggregatorConfig.deDupStore)
+    jedis.keys("*").size() should be (0)
+    jedis.select(courseAggregatorConfig.nodeStore)
+
+    BaseMetricsReporter.gaugeMetrics(s"${courseAggregatorConfig.jobName}.${courseAggregatorConfig.retiredCCEventsCount}").getValue() should be(3)
+
+  }
 
   def testCassandraUtil(cassandraUtil: CassandraUtil): Unit = {
     cassandraUtil.reconnect()
@@ -147,27 +202,7 @@ class ActivityAggregateUpdaterTaskTestSpec extends BaseTestSpec {
   }
 }
 
-
-class CourseAggregatorMapSource extends SourceFunction[util.Map[String, AnyRef]] {
-
-  override def run(ctx: SourceContext[util.Map[String, AnyRef]]) {
-    ctx.collect(jsonToMap(EventFixture.EVENT_1))
-    ctx.collect(jsonToMap(EventFixture.EVENT_2))
-    ctx.collect(jsonToMap(EventFixture.EVENT_3))
-    ctx.collect(jsonToMap(EventFixture.EVENT_4))
-    ctx.collect(jsonToMap(EventFixture.EVENT_5))
-  }
-
-  override def cancel() = {}
-
-  def jsonToMap(json: String): util.Map[String, AnyRef] = {
-    val gson = new Gson()
-    gson.fromJson(json, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]]
-  }
-
-}
-
-class CompleteContentConsumptionMapSource extends SourceFunction[util.Map[String, AnyRef]] {
+private class CompleteContentConsumptionMapSource extends SourceFunction[util.Map[String, AnyRef]] {
 
   override def run(ctx: SourceContext[util.Map[String, AnyRef]]) {
     ctx.collect(jsonToMap(EventFixture.CC_EVENT1))
@@ -182,57 +217,4 @@ class CompleteContentConsumptionMapSource extends SourceFunction[util.Map[String
     gson.fromJson(json, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]]
   }
 
-}
-
-class auditEventSink extends SinkFunction[String] {
-
-  override def invoke(value: String): Unit = {
-    synchronized {
-      auditEventSink.values.add(value)
-    }
-  }
-}
-
-object auditEventSink {
-  val values: util.List[String] = new util.ArrayList()
-}
-
-class failedEventSink extends SinkFunction[String] {
-
-  override def invoke(value: String): Unit = {
-    synchronized {
-      failedEventSink.values.add(value)
-    }
-  }
-}
-
-object failedEventSink {
-  val values: util.List[String] = new util.ArrayList()
-}
-
-class SuccessEvent extends SinkFunction[String] {
-
-  override def invoke(value: String): Unit = {
-    synchronized {
-      SuccessEventSink.values.add(value)
-    }
-  }
-}
-
-object SuccessEventSink {
-  val values: util.List[String] = new util.ArrayList()
-}
-
-
-class certificateIssuedEventsSink extends SinkFunction[String] {
-
-  override def invoke(value: String): Unit = {
-    synchronized {
-      certificateIssuedEvents.values.add(value)
-    }
-  }
-}
-
-object certificateIssuedEvents {
-  val values: util.List[String] = new util.ArrayList()
 }
