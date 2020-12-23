@@ -2,9 +2,9 @@ package org.sunbird.incredible.processor.views
 
 import java.io.UnsupportedEncodingException
 import java.net.{URI, URISyntaxException, URLEncoder}
-import java.text.{DateFormat, SimpleDateFormat}
+import java.text.{DateFormat, ParseException, SimpleDateFormat}
 import java.util.{Date, Locale}
-import com.google.protobuf.TextFormat.ParseException
+
 import org.apache.commons.lang.StringUtils
 import org.apache.commons.lang3.ObjectUtils
 import org.slf4j.{Logger, LoggerFactory}
@@ -20,7 +20,7 @@ class VarResolver(certificateExtension: CertificateExtension) {
 
   def getRecipientId: String = certificateExtension.recipient.identity
 
-  def getCourseName: String = if (ObjectUtils.anyNotNull(certificateExtension.evidence) && StringUtils.isNotBlank(certificateExtension.evidence.name)) certificateExtension.evidence.name
+  def getCourseName: String = if (ObjectUtils.anyNotNull(certificateExtension.evidence) && StringUtils.isNotBlank(certificateExtension.evidence.get.name)) certificateExtension.evidence.get.name
   else ""
 
   def getQrCodeImage: String = try {
@@ -38,10 +38,8 @@ class VarResolver(certificateExtension: CertificateExtension) {
       "yyyy-MM-dd'T'HH:mm:ss'Z'")
     var dateInFormat: String = null
     try {
-      val parsedIssuedDate: Date =
-        simpleDateFormat.parse(certificateExtension.issuedOn)
+      val parsedIssuedDate: Date = simpleDateFormat.parse(certificateExtension.issuedOn)
       val format: DateFormat = new SimpleDateFormat("dd MMMM yyy", Locale.getDefault)
-      format.format(parsedIssuedDate)
       dateInFormat = format.format(parsedIssuedDate)
     } catch {
       case e: ParseException =>

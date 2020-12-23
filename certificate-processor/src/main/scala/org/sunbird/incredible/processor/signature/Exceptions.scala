@@ -4,7 +4,7 @@ package org.sunbird.incredible.processor.signature
 case class CustomException(msg: String) extends Exception(msg) {}
 
 @SerialVersionUID(-6315798195661762882L)
-class SignatureException extends Exception {
+object SignatureException extends Exception {
 
   @SerialVersionUID(6174717850058203376L)
   class CreationException(msg: String)

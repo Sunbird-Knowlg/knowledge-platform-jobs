@@ -8,7 +8,7 @@ import org.apache.commons.text.StringSubstitutor
 import org.slf4j.{Logger, LoggerFactory}
 import org.sunbird.incredible.pojos.ob.CertificateExtension
 
-import scala.io.Source
+import scala.io.{BufferedSource, Source}
 import scala.util.matching.Regex
 
 object EncoderMap {
@@ -17,7 +17,7 @@ object EncoderMap {
 
 
 object SvgGenerator {
-  private val logger: Logger = LoggerFactory.getLogger(classOf[SvgGenerator.type])
+  private val logger: Logger = LoggerFactory.getLogger(getClass.getName)
   private var svgTemplatesCache: Cache[String, String] = LRUCache[String, String](15)
 
   @throws[IOException]
@@ -40,8 +40,9 @@ object SvgGenerator {
 
   private def replaceTemplateVars(svgContent: String, certificateExtension: CertificateExtension, encodeQrCode: String): String = {
     val varResolver = new VarResolver(certificateExtension)
-    var certData: java.util.Map[String, String] = varResolver.getCertMetaData
-    certData += ("qrCodeImage" -> "data:image/png;base64," + encodeQrCode)
+    val certData: java.util.Map[String, String] = varResolver.getCertMetaData
+    certData.put("qrCodeImage", "data:image/png;base64," + encodeQrCode)
+    println(certData)
     val sub = new StringSubstitutor(certData)
     val resolvedString = sub.replace(svgContent)
     logger.info("replacing temp vars completed")
@@ -61,8 +62,13 @@ object SvgGenerator {
 
   @throws[IOException]
   private def download(svgTemplate: String): String = {
-    val svgData = Source.fromURL(svgTemplate)
-    svgData.mkString
+    var svgData: BufferedSource = null
+    try {
+      svgData = Source.fromURL(svgTemplate)
+      svgData.mkString
+    } finally {
+      svgData.close
+    }
   }
 
 }

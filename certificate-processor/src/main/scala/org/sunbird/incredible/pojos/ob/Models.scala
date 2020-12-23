@@ -131,7 +131,7 @@ case class BadgeClass(@JsonProperty("@context") context: String, related: Option
   * @param `type`    Type of the criteria, defaults to "Criteria"
   * @param narrative A narrative of what is needed to earn the badge
   */
-case class Criteria(@JsonProperty("@context") context: String, related: Array[String], version: String, endorsement: Endorsement, id: String, `type`: Array[String] = Array("Criteria"), narrative: String)
+case class Criteria(@JsonProperty("@context") context: Option[String] = None, related: Option[Array[String]] = None, endorsement: Option[Endorsement] = None, id: Option[String] = None, `type`: Array[String] = Array("Criteria"), narrative: String)
 
 case class CryptographicKey(@JsonProperty("@context") context: String, related: Array[String], version: String, endorsement: Endorsement, `type`: Array[String] = Array("CryptographicKey"), id: String, owner: String, publicKeyPem: String)
 
@@ -203,8 +203,8 @@ case class Signature(`type`: String = "LinkedDataSignature2015", creator: String
   */
 case class CertificateExtension(@JsonProperty("@context") context: String, related: Option[Array[String]] = None, version: Option[String] = None, endorsement: Option[Endorsement] = None,
                                 id: String, issuedOn: String, recipient: CompositeIdentityObject, badge: BadgeClass, image: Option[String] = None
-                                , evidence: TrainingEvidence, expires: String, verification: Option[VerificationObject] = None, narrative: Option[String] = None
-                                , revoked: Boolean = false, revocationReason: Option[String] = None, `type`: Array[String] = Array("Assertion", "Extension", "extensions:CertificateExtension"), value: Option[Float] = None, awardedThrough: Option[String] = None, signatory: Array[SignatoryExtension], printUri: Option[String] = None, validFrom: String, signature: Option[Signature] = None)
+                                , var evidence: Option[TrainingEvidence] = None, expires: String, verification: Option[VerificationObject] = None, narrative: Option[String] = None
+                                , revoked: Boolean = false, revocationReason: Option[String] = None, `type`: Array[String] = Array("Assertion", "Extension", "extensions:CertificateExtension"), value: Option[Float] = None, awardedThrough: Option[String] = None, signatory: Array[SignatoryExtension], printUri: Option[String] = None, validFrom: String, var signature: Option[Signature] = None)
 
 /**
   *
@@ -213,7 +213,7 @@ case class CertificateExtension(@JsonProperty("@context") context: String, relat
   * @param publicKey
   * @param name
   */
-case class SignatoryExtension(@JsonProperty("@context") context: String, related: Array[String], version: String, endorsement: Endorsement, identity: String, `type`: Array[String] = Array("Extension", "extensions:SignatoryExtension"), hashed: String, salt: String, designation: String, image: String, publicKey: CryptographicKey, name: String)
+case class SignatoryExtension(@JsonProperty("@context") context: String, related: Option[Array[String]] = None, version: Option[String] = None, endorsement: Option[Endorsement] = None, identity: String, `type`: Array[String] = Array("Extension", "extensions:SignatoryExtension"), hashed: Option[String] = None, salt: Option[String] = None, designation: String, image: String, publicKey: Option[CryptographicKey] = None, name: String)
 
 
 case class TrainingEvidence(@JsonProperty("@context") context: String, related: Option[Array[String]] = None,

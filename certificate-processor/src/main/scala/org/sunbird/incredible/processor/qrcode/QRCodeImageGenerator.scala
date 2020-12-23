@@ -161,8 +161,8 @@ class QRCodeImageGenerator {
     defaultBitMatrix
   }
 
-  private def getHintsMap(errorCorrectionLevel: String, qrMargin: Int): java.util.Map[EncodeHintType, AnyRef] = {
-    val hintsMap: java.util.Map[EncodeHintType, AnyRef] = new util.HashMap[EncodeHintType, AnyRef]()
+  private def getHintsMap(errorCorrectionLevel: String, qrMargin: Int): java.util.Map[EncodeHintType, Any] = {
+    val hintsMap: java.util.Map[EncodeHintType, Any] = new util.HashMap[EncodeHintType, Any]()
     errorCorrectionLevel match {
       case "H" =>
         hintsMap.put(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.H)
@@ -197,7 +197,7 @@ class QRCodeImageGenerator {
       case e: Exception =>
         logger.debug("Exception occurred during font creation " + e)
     }
-    val attributes = new java.util.HashMap[TextAttribute, AnyRef]
+    val attributes: java.util.Map[TextAttribute, Any] = new java.util.HashMap[TextAttribute, Any]
     attributes.put(TextAttribute.TRACKING, tracking)
     attributes.put(TextAttribute.WEIGHT, TextAttribute.WEIGHT_BOLD)
     attributes.put(TextAttribute.SIZE, fontSize)

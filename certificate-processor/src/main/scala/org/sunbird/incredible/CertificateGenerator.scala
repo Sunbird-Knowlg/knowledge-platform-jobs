@@ -17,9 +17,9 @@ class CertificateGenerator(private var properties: Map[String, String],
 
   var certificateExtension: CertificateExtension = _
 
-  @throws[SignatureException#UnreachableException]
+  @throws[SignatureException.UnreachableException]
   @throws[InvalidDateFormatException]
-  @throws[SignatureException#CreationException]
+  @throws[SignatureException.CreationException]
   @throws[IOException]
   def getCertificateExtension(certModel: CertModel): CertificateExtension = {
     certificateExtension = new CertificateFactory(properties).createCertificate(certModel)
@@ -28,7 +28,7 @@ class CertificateGenerator(private var properties: Map[String, String],
 
 
   def getUUID(certificateExtension: CertificateExtension): String = {
-    var idStr: String = _
+    var idStr: String = null
     try {
       val uri = new URI(certificateExtension.id)
       val path = uri.getPath
@@ -49,7 +49,7 @@ class CertificateGenerator(private var properties: Map[String, String],
     }
   }
 
-  def generateQrCode(): Map[String, Any] = {
+  def generateQrCode(): Map[String, AnyRef] = {
     checkDirectoryExists()
     val uuid: String = getUUID(certificateExtension)
     val accessCodeGenerator: AccessCodeGenerator = new AccessCodeGenerator(properties.get(JsonKeys.ACCESS_CODE_LENGTH).map(_.toDouble).get)
@@ -57,7 +57,7 @@ class CertificateGenerator(private var properties: Map[String, String],
     val qrCodeGenerationModel = QRCodeGenerationModel(text = accessCode, fileName = directory + uuid, data = properties.get(JsonKeys.BASE_PATH) + "/" + uuid)
     val qrCodeImageGenerator = new QRCodeImageGenerator()
     val qrCodeFile = qrCodeImageGenerator.createQRImages(qrCodeGenerationModel)
-    val qrMap = Map(JsonKeys.QR_CODE_FILE -> qrCodeFile, JsonKeys.ACCESS_CODE -> accessCode)
+    val qrMap: Map[String, AnyRef] = Map(JsonKeys.QR_CODE_FILE -> qrCodeFile, JsonKeys.ACCESS_CODE -> accessCode)
     logger.info("Qrcode {} is created for the certificate", qrCodeFile.getName)
     qrMap
   }

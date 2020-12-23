@@ -6,7 +6,7 @@ import org.apache.commons.lang3.StringUtils
 import org.slf4j.{Logger, LoggerFactory}
 
 object UrlManager {
-  private val logger = LoggerFactory.getLogger(classOf[UrlManager.type])
+  private val logger: Logger = LoggerFactory.getLogger(getClass.getName)
 
   def getSharableUrl(url: String, containerName: String): String = {
     var uri: String = null

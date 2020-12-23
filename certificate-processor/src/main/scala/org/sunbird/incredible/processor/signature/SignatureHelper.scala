@@ -38,10 +38,10 @@ class SignatureHelper(encServiceUrl: String) {
     } catch {
       case e: ClientProtocolException =>
         logger.error("ClientProtocolException when signing: {}", e.getMessage)
-        throw new SignatureException#UnreachableException(e.getMessage)
+        throw new SignatureException.UnreachableException(e.getMessage)
       case e: IOException =>
         logger.error("RestClientException when signing: {}", e.getMessage)
-        throw new SignatureException#CreationException(e.getMessage)
+        throw new SignatureException.CreationException(e.getMessage)
     }
   }
 
@@ -56,10 +56,10 @@ class SignatureHelper(encServiceUrl: String) {
     } catch {
       case ex: ClientProtocolException =>
         logger.error("ClientProtocolException when verifying: {}", ex.getMessage)
-        throw new SignatureException#UnreachableException(ex.getMessage)
+        throw new SignatureException.UnreachableException(ex.getMessage)
       case e: Exception =>
         logger.error("Exception occurred  while verifying signature:{} ", e.getMessage)
-        throw new SignatureException#VerificationException("")
+        throw new SignatureException.VerificationException("")
     }
     result
   }

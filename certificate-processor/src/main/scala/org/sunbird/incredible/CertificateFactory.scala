@@ -29,36 +29,25 @@ class CertificateFactory(properties: Map[String, String]) {
       description = certModel.certificateDescription,
       name = if (StringUtils.isNotEmpty(certModel.courseName)) certModel.courseName else certModel.certificateName,
       image = certModel.certificateLogo, issuer = issuer, criteria = certModel.criteria)
-    var trainingEvidence: TrainingEvidence = _
 
+    val certificateExtension: CertificateExtension = CertificateExtension(properties(JsonKeys.CONTEXT), id = uuid, recipient = compositeIdentity
+      , badge = badgeClass, issuedOn = certModel.issuedDate, expires = certModel.expiry, validFrom = certModel.validFrom, signatory = certModel.signatoryList)
+    if (StringUtils.isNotEmpty(certModel.courseName)) {
+      val trainingEvidence: TrainingEvidence = TrainingEvidence(properties(JsonKeys.CONTEXT), id = properties(JsonKeys.EVIDENCE_URL), name = certModel.courseName)
+      certificateExtension.evidence = Option.apply(trainingEvidence)
+    }
 
-    if (StringUtils.isNotEmpty(certModel.courseName))
-      trainingEvidence = TrainingEvidence(properties(JsonKeys.CONTEXT), id = properties(JsonKeys.EVIDENCE_URL), name = certModel.courseName)
-
-
-    var certificateExtension: CertificateExtension = CertificateExtension(properties(JsonKeys.CONTEXT), id = uuid, recipient = compositeIdentity
-      , badge = badgeClass, issuedOn = certModel.issuedDate, expires = certModel.expiry, validFrom = certModel.validFrom, signatory = certModel.signatoryList, evidence = trainingEvidence)
-
-
-    var signedVerification: SignedVerification = _
-    if (StringUtils.isEmpty(properties(JsonKeys.KEY_ID))) {
+    var signedVerification: SignedVerification = null
+    if (StringUtils.isEmpty(properties.get(JsonKeys.KEY_ID).getOrElse(""))) {
       signedVerification = SignedVerification(`type` = Array(JsonKeys.HOSTED))
       logger.info("CertificateExtension:createCertificate: if keyID is empty then verification type is HOSTED")
     } else {
       signedVerification = SignedVerification(creator = Option.apply(properties(JsonKeys.PUBLIC_KEY_URL)))
       logger.info("CertificateExtension:createCertificate: if keyID is not empty then verification type is SignedBadge")
-      /** certificate  signature value **/
       val signatureValue = getSignatureValue(certificateExtension)
-
-      /**
-        * to assign signature value
-        */
       val signature: Signature = Signature(created = Instant.now.toString, creator = properties(JsonKeys.SIGN_CREATOR), signatureValue = signatureValue)
-      certificateExtension.signature(Option.apply(signature))
-
+      certificateExtension.signature = Option.apply(signature)
     }
-
-    val cachedSvgTemplates: Cache[String, String] = LRUCache[String, String](3)
     certificateExtension
   }
 
@@ -69,7 +58,6 @@ class CertificateFactory(properties: Map[String, String]) {
     * @return
     */
   @throws[IOException]
-  @throws[SignatureException]
   private def getSignatureValue(certificateExtension: CertificateExtension): String = {
     val signatureHelper = new SignatureHelper(properties(JsonKeys.ENC_SERVICE_URL))
     var signMap: Map[String, AnyRef] = null
