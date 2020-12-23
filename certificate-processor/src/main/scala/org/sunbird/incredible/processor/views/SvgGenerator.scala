@@ -1,6 +1,7 @@
 package org.sunbird.incredible.processor.views
 
 import java.io.IOException
+import java.util.regex.Matcher
 
 import com.twitter.storehaus.cache.{Cache, LRUCache}
 import org.apache.commons.lang.StringUtils
@@ -30,7 +31,7 @@ object SvgGenerator {
       cachedTemplate = cachedTemplate.replaceAll("\n", "").replaceAll("\t", "")
       svgTemplatesCache = svgTemplatesCache.put(svgTemplateUrl, cachedTemplate)._2
     } else {
-      svgTemplatesCache = svgTemplatesCache.hit("1")
+      svgTemplatesCache = svgTemplatesCache.hit(svgTemplateUrl)
     }
     val svgData = replaceTemplateVars(cachedTemplate, certificateExtension, encodedQrCode)
     logger.info("svg template string creation completed")
@@ -50,10 +51,10 @@ object SvgGenerator {
   }
 
   private def encodeData(data: String): String = {
-    val stringBuffer = new StringBuffer
+    val stringBuffer: StringBuffer = new StringBuffer
     val regex: Regex = "[<>#%\"]".r
     val pattern: java.util.regex.Pattern = regex.pattern
-    val matcher = pattern.matcher(data)
+    val matcher: Matcher = pattern.matcher(data)
     while (matcher.find)
       matcher.appendReplacement(stringBuffer, EncoderMap.encoder(matcher.group))
     matcher.appendTail(stringBuffer)
@@ -65,10 +66,10 @@ object SvgGenerator {
     var svgData: BufferedSource = null
     try {
       svgData = Source.fromURL(svgTemplate)
-      svgData.mkString
     } finally {
       svgData.close
     }
+    svgData.mkString
   }
 
 }
