@@ -15,14 +15,12 @@ class CertificateGenerator(private var properties: Map[String, String],
                            private var directory: String) {
   private val logger: Logger = LoggerFactory.getLogger(classOf[CertificateGenerator])
 
-  var certificateExtension: CertificateExtension = _
-
   @throws[SignatureException.UnreachableException]
   @throws[InvalidDateFormatException]
   @throws[SignatureException.CreationException]
   @throws[IOException]
   def getCertificateExtension(certModel: CertModel): CertificateExtension = {
-    certificateExtension = new CertificateFactory(properties).createCertificate(certModel)
+    val certificateExtension = new CertificateFactory(properties).createCertificate(certModel)
     certificateExtension
   }
 
@@ -49,7 +47,7 @@ class CertificateGenerator(private var properties: Map[String, String],
     }
   }
 
-  def generateQrCode(): Map[String, AnyRef] = {
+  def generateQrCode(certificateExtension: CertificateExtension): Map[String, AnyRef] = {
     checkDirectoryExists()
     val uuid: String = getUUID(certificateExtension)
     val accessCodeGenerator: AccessCodeGenerator = new AccessCodeGenerator(properties.get(JsonKeys.ACCESS_CODE_LENGTH).map(_.toDouble).get)

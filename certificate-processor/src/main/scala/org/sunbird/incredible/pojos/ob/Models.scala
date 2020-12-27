@@ -140,7 +140,7 @@ case class CryptographicKey(@JsonProperty("@context") context: String, related: 
   * @param name      Name of the awarding body, assessor or training body.
   * @param publicKey URLs to type CryptographicKeys
   */
-case class Issuer(@JsonProperty("@context") context: String, related: Option[Array[String]] = None, version: Option[String] = None, endorsement: Option[Endorsement] = None, id: String, `type`: Array[String] = Array("Issuer"), name: String, email: Option[String] = None, url: String, publicKey: Option[Array[String]] = None)
+case class Issuer(@JsonProperty("@context") context: String, related: Option[Array[String]] = None, version: Option[String] = None, endorsement: Option[Endorsement] = None, id: Option[String] = None, `type`: Array[String] = Array("Issuer"), name: String, email: Option[String] = None, url: String, publicKey: Option[Array[String]] = None)
 
 /**
   *

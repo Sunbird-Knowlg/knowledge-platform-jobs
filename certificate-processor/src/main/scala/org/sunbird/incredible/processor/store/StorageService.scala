@@ -18,11 +18,11 @@ class StorageService(storageParams: Map[String, String]) {
   @throws[Exception]
   def getService: BaseStorageService = {
     if (null == storageService) {
-      if (StringUtils.equalsIgnoreCase(storageType, "azure")) {
+      if (StringUtils.equalsIgnoreCase(storageType, JsonKeys.AZURE)) {
         val storageKey = storageParams("azure_storage_key")
         val storageSecret = storageParams("azure_storage_secret")
         storageService = StorageServiceFactory.getStorageService(StorageConfig(storageType, storageKey, storageSecret))
-      } else if (StringUtils.equalsIgnoreCase(storageType, "aws")) {
+      } else if (StringUtils.equalsIgnoreCase(storageType, JsonKeys.AWS)) {
         val storageKey = storageParams("aws_storage_key")
         val storageSecret = storageParams("aws_storage_secret")
         storageService = StorageServiceFactory.getStorageService(StorageConfig(storageType, storageKey, storageSecret))
@@ -33,7 +33,7 @@ class StorageService(storageParams: Map[String, String]) {
 
   def getContainerName: String = {
     if (StringUtils.equalsIgnoreCase(storageType, JsonKeys.AZURE))
-      storageParams("azure_storage_container")
+      storageParams(JsonKeys.CONTAINER_NAME)
     else if (StringUtils.equalsIgnoreCase(storageType, JsonKeys.AWS))
       storageParams("aws_storage_container")
     else

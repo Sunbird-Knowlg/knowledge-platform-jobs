@@ -28,7 +28,8 @@
 		<module>cert-processor</module>
 		<module>post-certificate-processor</module>
         <module>certificate-pre-processor</module>
-    </modules>
+        <module>certificate-processor</module>
+	</modules>
 
 	<properties>
 		<!-- maven specific properties -->
