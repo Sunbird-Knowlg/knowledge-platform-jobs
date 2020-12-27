@@ -1,6 +1,6 @@
 package org.sunbird.incredible.processor.views
 
-import java.io.IOException
+import java.io.{FileNotFoundException, IOException}
 import java.util.regex.Matcher
 
 import com.twitter.storehaus.cache.{Cache, LRUCache}
@@ -31,6 +31,7 @@ object SvgGenerator {
       cachedTemplate = cachedTemplate.replaceAll("\n", "").replaceAll("\t", "")
       svgTemplatesCache = svgTemplatesCache.put(svgTemplateUrl, cachedTemplate)._2
     } else {
+      logger.info("{} svg is cached, cache hit", svgTemplateUrl)
       svgTemplatesCache = svgTemplatesCache.hit(svgTemplateUrl)
     }
     val svgData = replaceTemplateVars(cachedTemplate, certificateExtension, encodedQrCode)
@@ -61,15 +62,17 @@ object SvgGenerator {
     stringBuffer.toString
   }
 
-  @throws[IOException]
+  @throws[FileNotFoundException]
   private def download(svgTemplate: String): String = {
     var svgData: BufferedSource = null
     try {
       svgData = Source.fromURL(svgTemplate)
-    } finally {
-      svgData.close
+      svgData.mkString
     }
-    svgData.mkString
+    finally {
+      if (svgData != null)
+        svgData.close
+    }
   }
 
 }
