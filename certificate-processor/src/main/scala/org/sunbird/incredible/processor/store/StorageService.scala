@@ -26,7 +26,7 @@ class StorageService(storageParams: Map[String, String]) {
         val storageKey = storageParams("aws_storage_key")
         val storageSecret = storageParams("aws_storage_secret")
         storageService = StorageServiceFactory.getStorageService(StorageConfig(storageType, storageKey, storageSecret))
-      } else throw ServerException("ERR_INVALID_CLOUD_STORAGE", "Error while initialising cloud storage")
+      } else throw new ServerException("ERR_INVALID_CLOUD_STORAGE", "Error while initialising cloud storage")
     }
     storageService
   }
@@ -37,7 +37,7 @@ class StorageService(storageParams: Map[String, String]) {
     else if (StringUtils.equalsIgnoreCase(storageType, JsonKeys.AWS))
       storageParams("aws_storage_container")
     else
-      throw ServerException("ERR_INVALID_CLOUD_STORAGE", "Container name not configured.")
+      throw new ServerException("ERR_INVALID_CLOUD_STORAGE", "Container name not configured.")
   }
 
   def uploadFile(path: String, file: File, isDirectory: Boolean, retryCount: Int): String = {

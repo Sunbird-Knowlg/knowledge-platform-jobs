@@ -24,7 +24,7 @@ class IssuedDateValidator extends IEvaluator {
   def convertToDate(input: String): Date = {
     var date: Date = null
     if (StringUtils.isEmpty(input)) {
-      throw InvalidDateFormatException("issued date cannot be null")
+      throw new InvalidDateFormatException("issued date cannot be null")
     }
     loop.breakable {
       dateFormats.foreach(format => {
@@ -40,8 +40,7 @@ class IssuedDateValidator extends IEvaluator {
       })
     }
     if (date == null) {
-      throw InvalidDateFormatException(
-        "issued date is not in valid format")
+      throw new InvalidDateFormatException("issued date is not in valid format")
     } else {
       date
     }

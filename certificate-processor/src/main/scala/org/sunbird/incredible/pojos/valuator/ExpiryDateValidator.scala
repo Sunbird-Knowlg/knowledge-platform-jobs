@@ -20,8 +20,7 @@ class ExpiryDateValidator(var issuedDate: String) extends IEvaluator {
       expiryDate
     } else {
       try if (issuedDate == null) {
-        throw InvalidDateFormatException(
-          "Issued date is null, please provide valid issued date ")
+        throw new InvalidDateFormatException("Issued date is null, please provide valid issued date ")
       } else {
 
         /**
