@@ -2,9 +2,9 @@ package org.sunbird.job.util
 
 import kong.unirest.Unirest
 
-case class HTTPResponse(status: Int, body: String)
+case class HTTPResponse(status: Int, body: String) extends Serializable
 
-class HttpUtil extends java.io.Serializable {
+class HttpUtil extends Serializable {
 
   def get(url: String): HTTPResponse = {
     val response = Unirest.get(url).header("Content-Type", "application/json").asString()
