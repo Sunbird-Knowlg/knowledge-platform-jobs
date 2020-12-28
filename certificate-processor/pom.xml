@@ -19,7 +19,7 @@
         </dependency>
         <dependency>
             <groupId>org.sunbird</groupId>
-            <artifactId>cloud-store-sdk_2.12</artifactId>
+            <artifactId>cloud-store-sdk_${scala.version}</artifactId>
             <version>1.2.5</version>
             <exclusions>
                 <exclusion>
@@ -40,7 +40,7 @@
         </dependency>
         <dependency>
             <groupId>org.scalatest</groupId>
-            <artifactId>scalatest_2.12</artifactId>
+            <artifactId>scalatest_${scala.version}</artifactId>
             <version>3.0.6</version>
             <scope>test</scope>
         </dependency>
@@ -70,11 +70,6 @@
             <artifactId>jackson-databind</artifactId>
             <version>2.9.9</version>
             <scope>compile</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.twitter</groupId>
-            <artifactId>storehaus-cache_${scala.version}</artifactId>
-            <version>0.15.0</version>
         </dependency>
     </dependencies>
 

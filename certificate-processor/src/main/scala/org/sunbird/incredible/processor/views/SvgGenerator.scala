@@ -21,7 +21,7 @@ object SvgGenerator {
   private val logger: Logger = LoggerFactory.getLogger(getClass.getName)
   private var svgTemplatesCache: Cache[String, String] = LRUCache[String, String](15)
 
-  @throws[IOException]
+  @throws[FileNotFoundException]
   def generate(certificateExtension: CertificateExtension, encodedQrCode: String, svgTemplateUrl: String): String = {
     var cachedTemplate = svgTemplatesCache.get(svgTemplateUrl).getOrElse("")
     if (StringUtils.isEmpty(cachedTemplate)) {
@@ -44,7 +44,6 @@ object SvgGenerator {
     val varResolver = new VarResolver(certificateExtension)
     val certData: java.util.Map[String, String] = varResolver.getCertMetaData
     certData.put("qrCodeImage", "data:image/png;base64," + encodeQrCode)
-    println(certData)
     val sub = new StringSubstitutor(certData)
     val resolvedString = sub.replace(svgContent)
     logger.info("replacing temp vars completed")
@@ -64,15 +63,10 @@ object SvgGenerator {
 
   @throws[FileNotFoundException]
   private def download(svgTemplate: String): String = {
-    var svgData: BufferedSource = null
-    try {
-      svgData = Source.fromURL(svgTemplate)
-      svgData.mkString
-    }
-    finally {
-      if (svgData != null)
-        svgData.close
-    }
+    val svgFileSource: BufferedSource = Source.fromURL(svgTemplate)
+    val svgString = svgFileSource.mkString
+    svgFileSource.close()
+    svgString
   }
 
 }
