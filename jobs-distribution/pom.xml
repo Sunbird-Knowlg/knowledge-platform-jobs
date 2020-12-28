@@ -38,24 +38,7 @@
             <version>1.0.0</version>
             <type>jar</type>
         </dependency>
-        <dependency>
-            <groupId>org.sunbird</groupId>
-            <artifactId>certificate-pre-processor</artifactId>
-            <version>1.0.0</version>
-            <type>jar</type>
-        </dependency>
-        <dependency>
-            <groupId>org.sunbird</groupId>
-            <artifactId>certificate-generator</artifactId>
-            <version>1.0.0</version>
-            <type>jar</type>
-        </dependency>
-        <dependency>
-            <groupId>org.sunbird</groupId>
-            <artifactId>post-certificate-processor</artifactId>
-            <version>1.0.0</version>
-            <type>jar</type>
-        </dependency>
+        
     </dependencies>
 
     <build>

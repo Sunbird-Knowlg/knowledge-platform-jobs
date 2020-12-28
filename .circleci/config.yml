@@ -7,11 +7,11 @@ jobs:
       - checkout:
           path: ~/kp
       - restore_cache:
-          key: dependency-cache-{{ checksum "pom.xml" }}
-      - save_cache:
-          key: dependency-cache-{{ checksum "pom.xml" }}
-          paths: ~/.m2
+          key: kp-jobs-dependency-cache-{{ checksum "pom.xml" }}
       - run: mvn clean scoverage:report
+      - save_cache:
+          key: kp-jobs-dependency-cache-{{ checksum "pom.xml" }}
+          paths: ~/.m2
       - run:
           name: sonar
           command: |
@@ -21,4 +21,3 @@ workflows:
   build_and_test:
     jobs:
       - knowledge-platform-jobs-build
-#testing quality gate
