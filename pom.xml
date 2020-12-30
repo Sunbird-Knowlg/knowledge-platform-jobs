@@ -26,7 +26,7 @@
         <module>post-publish-processor</module>
 		<module>jobs-common</module>
 		<module>collection-certificate-generator</module>
-<!--        <module>collection-complete-post-processor</module>-->
+        <module>collection-complete-post-processor</module>
     </modules>
 
 	<properties>
