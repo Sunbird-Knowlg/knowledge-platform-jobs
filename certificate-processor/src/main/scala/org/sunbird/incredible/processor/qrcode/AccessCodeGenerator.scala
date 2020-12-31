@@ -6,7 +6,7 @@ import org.apache.commons.lang3.StringUtils
 
 import scala.util.matching.Regex
 
-class AccessCodeGenerator(length: Double = 6.0) {
+class AccessCodeGenerator {
   private val stripChars: String = "0"
   private val largePrimeNumber = BigDecimal(1679979167)
   private val regex: Regex = "[A-Z][0-9][A-Z][0-9][A-Z][0-9]".r
@@ -15,7 +15,7 @@ class AccessCodeGenerator(length: Double = 6.0) {
   private val ALPHABET = Array[String]("1", "2", "3", "4", "5", "6", "7", "8", "9", "A", "B", "C", "D", "E", "F", "G", "H", "J", "K", "L", "M", "N", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z")
 
 
-  def generate(): String = {
+  def generate(length: Double = 6.0): String = {
     val count: Double = 1
     val totalChars: Int = ALPHABET.length
     var exponent: BigDecimal = BigDecimal.valueOf(totalChars)

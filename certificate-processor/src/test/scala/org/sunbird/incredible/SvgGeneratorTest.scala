@@ -16,8 +16,8 @@ class SvgGeneratorTest extends BaseTestSpec {
     val signatory: SignatoryExtension = SignatoryExtension(context = "", identity = "CEO", name = "signatory name", designation = "CEO", image = "https://cdn.pixabay.com/photo/2014/11/09/08/06/signature-523237__340.jpg")
     val certModel: CertModel = CertModel(courseName = "java", recipientName = "Test", certificateName = "100PercentCompletionCertificate", issuedDate = "2019-08-21",
       issuer = issuerIn, signatoryList = Array(signatory), identifier = "8e57723e-4541-11eb-b378-0242ac130002", criteria = Criteria(narrative = "Course Completion"))
-    val certificateGenerator = new CertificateGenerator(populatesPropertiesMap(map), "conf/")
-    val certificateExtension = certificateGenerator.getCertificateExtension(certModel)
+    val certificateGenerator = new CertificateGenerator
+    val certificateExtension = certificateGenerator.getCertificateExtension(populatesPropertiesMap(map),certModel)
     val printUri = SvgGenerator.generate(certificateExtension, "encodedQr", "https://sunbirdstagingpublic.blob.core.windows.net/sunbird-content-staging/content/template_svg_03_staging/artifact/cbse.svg")
     printUri should not be null
     printUri should startWith("data:image/svg+xml,")
@@ -29,8 +29,8 @@ class SvgGeneratorTest extends BaseTestSpec {
     val signatory: SignatoryExtension = SignatoryExtension(context = "", identity = "CEO", name = "signatory name", designation = "CEO", image = "https://cdn.pixabay.com/photo/2014/11/09/08/06/signature-523237__340.jpg")
     val certModel: CertModel = CertModel(courseName = "java", recipientName = "Test", certificateName = "100PercentCompletionCertificate", issuedDate = "2019-08-21",
       issuer = issuerIn, signatoryList = Array(signatory), identifier = "8e57723e-4541-11eb-b378-0242ac130002", criteria = Criteria(narrative = "Course Completion"))
-    val certificateGenerator = new CertificateGenerator(populatesPropertiesMap(map), "conf/")
-    val certificateExtension = certificateGenerator.getCertificateExtension(certModel)
+    val certificateGenerator = new CertificateGenerator
+    val certificateExtension = certificateGenerator.getCertificateExtension(populatesPropertiesMap(map),certModel)
     intercept[FileNotFoundException] {
       val printUri = SvgGenerator.generate(certificateExtension, "encodedQr", "https://sunbirdstagingpublic.blob.core.windows.net/sunbird-content-staging/content/template_svg_03_staging/artifact/cbse.sv")
     }

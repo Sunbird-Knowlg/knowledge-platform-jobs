@@ -21,8 +21,8 @@ class CertificateGeneratorTest extends BaseTestSpec {
     val signatory: SignatoryExtension = SignatoryExtension(context = "", identity = "CEO", name = "signatory name", designation = "CEO", image = "https://cdn.pixabay.com/photo/2014/11/09/08/06/signature-523237__340.jpg")
     val certModel: CertModel = CertModel(courseName = "java", recipientName = "Test", certificateName = "100PercentCompletionCertificate", issuedDate = "2019-08-21",
       issuer = issuerIn, signatoryList = Array(signatory), identifier = "8e57723e-4541-11eb-b378-0242ac130002", criteria = Criteria(narrative = "Course Completion"))
-    val certificateGenerator = new CertificateGenerator(populatesPropertiesMap(map), "conf/")
-    val certificateExtension = certificateGenerator.getCertificateExtension(certModel)
+    val certificateGenerator = new CertificateGenerator
+    val certificateExtension = certificateGenerator.getCertificateExtension(populatesPropertiesMap(map),certModel)
     certificateExtension.evidence.get.name shouldBe "java"
     certificateExtension.recipient.name shouldBe "Test"
   }
@@ -41,8 +41,8 @@ class CertificateGeneratorTest extends BaseTestSpec {
     val signatory: SignatoryExtension = SignatoryExtension(context = "", identity = "CEO", name = "signatory name", designation = "CEO", image = "https://cdn.pixabay.com/photo/2014/11/09/08/06/signature-523237__340.jpg")
     val certModel: CertModel = CertModel(courseName = "java", recipientName = "Test", certificateName = "100PercentCompletionCertificate", issuedDate = "2019-08-21",
       issuer = issuerIn, signatoryList = Array(signatory), identifier = "8e57723e-4541-11eb-b378-0242ac130002", criteria = Criteria(narrative = "Course Completion"))
-    val certificateGenerator = new CertificateGenerator(populatesPropertiesMap(map), "conf/")
-    val certificateExtension = certificateGenerator.getCertificateExtension(certModel)
+    val certificateGenerator = new CertificateGenerator
+    val certificateExtension = certificateGenerator.getCertificateExtension(populatesPropertiesMap(map),certModel)
     certificateExtension.evidence.get.name shouldBe "java"
     certificateExtension.signature.get should not be null
     certificateExtension.signature.get.signatureValue should equal("Yul8hVc3+ShzEQU/u1og7f8b0xVf2N4WyMdFgELdz74dpfMWBhZ8snsvit3JKMptyA4JKSywqUoNeAMcEmtgurqAaS7oMwMulPJnvAsx2xDCOxq/UVPZGi63zPsItP2dTahLsEJQjPyQOEoEW5KW3oefRJO066Fr/L/Y5XNg2goDhvYHoHdAkpfr/IFsQqG0hWPzKglKOwd0R+LIuv13MIywBjYg9qY6cWs9BtTSMwXyayBhm6YkLgdb0LiBD/")
