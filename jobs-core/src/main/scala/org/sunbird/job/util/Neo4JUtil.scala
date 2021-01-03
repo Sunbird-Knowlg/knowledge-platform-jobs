@@ -4,7 +4,7 @@ import org.neo4j.driver.v1.{Config, GraphDatabase}
 import org.slf4j.LoggerFactory
 
 
-class Neo4JUtil(routePath: String, graphId: String) {
+class Neo4JUtil(routePath: String, graphId: String) extends Serializable {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[Neo4JUtil])
 
