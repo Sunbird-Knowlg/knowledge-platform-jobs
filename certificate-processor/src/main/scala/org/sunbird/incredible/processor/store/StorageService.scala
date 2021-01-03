@@ -40,7 +40,7 @@ class StorageService(storageParams: StorageParams) {
       throw new ServerException("ERR_INVALID_CLOUD_STORAGE", "Container name not configured.")
   }
 
-  def uploadFile(path: String, file: File, isDirectory: Boolean, retryCount: Int): String = {
+  def uploadFile(path: String, file: File): String = {
     val objectKey = path + file.getName
     val containerName = getContainerName
     val url = getService.upload(containerName, file.getAbsolutePath, objectKey, Option.apply(false), Option.apply(1), Option.apply(5), Option.empty)
