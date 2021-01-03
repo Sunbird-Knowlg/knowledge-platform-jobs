@@ -8,12 +8,12 @@ import org.sunbird.incredible.pojos.exceptions.InvalidDateFormatException
 
 import scala.util.control.Breaks
 
-class IssuedDateValidator extends IEvaluator {
+class IssuedDateValuator extends IEvaluator {
   private val dateFormats = List(new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'"), new SimpleDateFormat("yyyy-MM-dd"))
   private val loop = new Breaks
 
   @throws[InvalidDateFormatException]
-  override def evaluates(inputVal: AnyRef): String = {
+  override def evaluates(inputVal: String): String = {
     val simpleDateFormat: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
     val cal: Calendar = Calendar.getInstance
     val date: Date = convertToDate(inputVal.asInstanceOf[String])

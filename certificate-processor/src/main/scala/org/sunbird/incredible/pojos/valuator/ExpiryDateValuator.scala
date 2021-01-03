@@ -6,12 +6,9 @@ import java.util.{Calendar, Date}
 
 import org.sunbird.incredible.pojos.exceptions.InvalidDateFormatException
 
-class ExpiryDateValidator(var issuedDate: String) extends IEvaluator {
+class ExpiryDateValuator(var issuedDate: String) extends IEvaluator {
 
-  override def evaluates(inputVal: AnyRef): String =
-    getExpiryDate(inputVal.asInstanceOf[String])
-
-  def getExpiryDate(expiryDate: String): String = {
+  override def evaluates(expiryDate: String): String = {
     /**
       * regex of the date format yyyy-MM-dd'T'HH:mm:ss'Z'
       */

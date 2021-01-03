@@ -4,5 +4,5 @@ import org.sunbird.incredible.pojos.exceptions.InvalidDateFormatException
 
 trait IEvaluator {
   @throws[InvalidDateFormatException]
-  def evaluates(inputVal: AnyRef): String
+  def evaluates(inputVal: String): String
 }
