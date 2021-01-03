@@ -12,7 +12,7 @@ import org.sunbird.incredible.pojos.ob.{BadgeClass, CertificateExtension, Compos
 import org.sunbird.incredible.processor.CertModel
 import org.sunbird.incredible.processor.signature.SignatureHelper
 
-class CertificateFactory(properties: Map[String, String]) {
+class CertificateFactory(properties: CertificateProperties) {
 
   private val logger: Logger = LoggerFactory.getLogger(classOf[CertificateFactory])
   lazy private val mapper: ObjectMapper = new ObjectMapper()
@@ -35,7 +35,7 @@ class CertificateFactory(properties: Map[String, String]) {
       publicKey = certModel.issuer.publicKey)
 
     val badgeClass: BadgeClass = BadgeClass(certificateConfig.contextUrl,
-      id = certificateConfig.badgeUrl,
+      id = basePath.concat(if (StringUtils.isNotBlank(properties.tag)) "/".concat(properties.tag).concat(JsonKeys.BADGE_URL) else JsonKeys.BADGE_URL),
       description = certModel.certificateDescription.orNull,
       name = if (StringUtils.isNotEmpty(certModel.courseName)) certModel.courseName else certModel.certificateName,
       image = certModel.certificateLogo.orNull,
@@ -57,14 +57,14 @@ class CertificateFactory(properties: Map[String, String]) {
     }
 
     var signedVerification: SignedVerification = null
-    if (StringUtils.isEmpty(properties.getOrElse(JsonKeys.KEY_ID, ""))) {
+    if (StringUtils.isEmpty(properties.keyId)) {
       signedVerification = SignedVerification(`type` = Array(JsonKeys.HOSTED))
       logger.info("CertificateExtension:createCertificate: if keyID is empty then verification type is HOSTED")
     } else {
-      signedVerification = SignedVerification(creator = Option.apply(properties(JsonKeys.PUBLIC_KEY_URL)))
+      signedVerification = SignedVerification(creator = Option.apply(basePath.concat("/").concat(JsonKeys.KEYS).concat("/").concat(properties.keyId).concat(JsonKeys.PUBLIC_KEY_URL)))
       logger.info("CertificateExtension:createCertificate: if keyID is not empty then verification type is SignedBadge")
       val signatureValue = getSignatureValue(certificateExtension, certificateConfig.encryptionServiceUrl)
-      val signature: Signature = Signature(created = Instant.now.toString, creator = properties(JsonKeys.SIGN_CREATOR), signatureValue = signatureValue)
+      val signature: Signature = Signature(created = Instant.now.toString, creator = basePath.concat("/").concat(properties.keyId).concat(JsonKeys.PUBLIC_KEY_URL), signatureValue = signatureValue)
       certificateExtension.signature = Option.apply(signature)
     }
     certificateExtension
@@ -83,7 +83,7 @@ class CertificateFactory(properties: Map[String, String]) {
     val request = mapper.writeValueAsString(certificateExtension)
     val jsonNode = mapper.readTree(request)
     logger.info("CertificateFactory:getSignatureValue:Json node of certificate".concat(jsonNode.toString))
-    signMap = SignatureHelper.generateSignature(jsonNode, properties(JsonKeys.KEY_ID))(encServiceUrl)
+    signMap = SignatureHelper.generateSignature(jsonNode, properties.keyId)(encServiceUrl)
     signMap.get(JsonKeys.SIGNATURE_VALUE).asInstanceOf[String]
   }
 
@@ -93,7 +93,7 @@ class CertificateFactory(properties: Map[String, String]) {
   private def getDomainUrl(basePath: String): String = {
     val stringBuilder: StringBuilder = new StringBuilder
     stringBuilder.append(basePath)
-    if (StringUtils.isNotEmpty(properties(JsonKeys.TAG))) stringBuilder.append("/" + properties.get(JsonKeys.TAG))
+    if (StringUtils.isNotEmpty(properties.tag)) stringBuilder.append("/" + properties.tag)
     stringBuilder.toString
   }
 

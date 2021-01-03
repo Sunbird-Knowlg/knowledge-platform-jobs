@@ -31,7 +31,7 @@ object SignatureHelper {
     logger.info("generateSignature:enc service url formed:".concat(signApiURl))
     try {
       logger.info("generateSignature:SignRequest for enc-service call:".concat(mapper.writeValueAsString(signReq)))
-      val response = httpUtil.post(signApiURl, mapper.writeValueAsString(signReq))
+      val response: HTTPResponse = httpUtil.post(signApiURl, mapper.writeValueAsString(signReq))
       mapper.readValue(response.body, new TypeReference[java.util.Map[String, AnyRef]]() {})
     } catch {
       case e: ClientProtocolException =>

@@ -7,24 +7,24 @@ import org.sunbird.cloud.storage.BaseStorageService
 import org.sunbird.cloud.storage.factory.StorageConfig
 import org.sunbird.cloud.storage.factory.StorageServiceFactory
 import org.sunbird.incredible.pojos.exceptions.ServerException
-import org.sunbird.incredible.{JsonKeys, UrlManager}
+import org.sunbird.incredible.{JsonKeys, StorageParams, UrlManager}
 
 
-class StorageService(storageParams: Map[String, String]) {
+class StorageService(storageParams: StorageParams) {
 
   var storageService: BaseStorageService = _
-  val storageType: String = storageParams.getOrElse(JsonKeys.CLOUD_STORAGE_TYPE, "")
+  val storageType: String = storageParams.cloudStorageType
 
   @throws[Exception]
   def getService: BaseStorageService = {
     if (null == storageService) {
       if (StringUtils.equalsIgnoreCase(storageType, JsonKeys.AZURE)) {
-        val storageKey = storageParams("azure_storage_key")
-        val storageSecret = storageParams("azure_storage_secret")
+        val storageKey = storageParams.azureStorageKey
+        val storageSecret = storageParams.azureStorageSecret
         storageService = StorageServiceFactory.getStorageService(StorageConfig(storageType, storageKey, storageSecret))
       } else if (StringUtils.equalsIgnoreCase(storageType, JsonKeys.AWS)) {
-        val storageKey = storageParams("aws_storage_key")
-        val storageSecret = storageParams("aws_storage_secret")
+        val storageKey = storageParams.awsStorageKey.get
+        val storageSecret = storageParams.awsStorageSecret.get
         storageService = StorageServiceFactory.getStorageService(StorageConfig(storageType, storageKey, storageSecret))
       } else throw new ServerException("ERR_INVALID_CLOUD_STORAGE", "Error while initialising cloud storage")
     }
@@ -33,9 +33,9 @@ class StorageService(storageParams: Map[String, String]) {
 
   def getContainerName: String = {
     if (StringUtils.equalsIgnoreCase(storageType, JsonKeys.AZURE))
-      storageParams(JsonKeys.CONTAINER_NAME)
+      storageParams.azureContainerName
     else if (StringUtils.equalsIgnoreCase(storageType, JsonKeys.AWS))
-      storageParams("aws_storage_container")
+      storageParams.awsContainerName.get
     else
       throw new ServerException("ERR_INVALID_CLOUD_STORAGE", "Container name not configured.")
   }

@@ -20,7 +20,7 @@ class CertificateGenerator(implicit certificateConfig: CertificateConfig) {
   @throws[InvalidDateFormatException]
   @throws[SignatureException.CreationException]
   @throws[IOException]
-  def getCertificateExtension(properties: Map[String, String], certModel: CertModel): CertificateExtension = {
+  def getCertificateExtension(properties: CertificateProperties, certModel: CertModel): CertificateExtension = {
     val certificateExtension = new CertificateFactory(properties).createCertificate(certModel)
     certificateExtension
   }
