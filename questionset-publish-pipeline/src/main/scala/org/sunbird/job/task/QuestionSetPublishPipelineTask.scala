@@ -41,7 +41,7 @@ object QuestionSetPublishPipelineTask {
 		val configFilePath = Option(ParameterTool.fromArgs(args).get("config.file.path"))
 		val config = configFilePath.map {
 			path => ConfigFactory.parseFile(new File(path)).resolve()
-		}.getOrElse(ConfigFactory.load("questionset-publisher.conf").withFallback(ConfigFactory.systemEnvironment()))
+		}.getOrElse(ConfigFactory.load("questionset-publish-pipeline.conf").withFallback(ConfigFactory.systemEnvironment()))
 		val publishConfig = new QuestionSetPublishPipelineConfig(config)
 		val kafkaUtil = new FlinkKafkaConnector(publishConfig)
 		val httpUtil = new HttpUtil
