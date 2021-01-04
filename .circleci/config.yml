@@ -6,8 +6,8 @@ jobs:
     steps:
       - checkout:
           path: ~/kp
-      - restore_cache:
-          key: kp-jobs-dependency-cache-{{ checksum "pom.xml" }}
+#      - restore_cache:
+#          key: kp-jobs-dependency-cache-{{ checksum "pom.xml" }}
       - run: mvn clean scoverage:report
       - save_cache:
           key: kp-jobs-dependency-cache-{{ checksum "pom.xml" }}
