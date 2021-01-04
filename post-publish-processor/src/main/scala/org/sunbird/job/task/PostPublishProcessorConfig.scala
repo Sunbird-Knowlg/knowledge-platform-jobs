@@ -53,8 +53,8 @@ class PostPublishProcessorConfig(override val config: Config) extends BaseJobCon
   val publishEventOutTag: OutputTag[String] = OutputTag[String]("content-publish-request")
 
 
-  val searchBaseUrl = config.getString("content.search.basePath")
-  val lmsBaseUrl = config.getString("lms.basePath")
+  val searchBaseUrl = config.getString("service.search.basePath")
+  val lmsBaseUrl = config.getString("service.lms.basePath")
 
   // API URLs
   val batchCreateAPIPath = lmsBaseUrl + "/private/v1/course/batch/create"
