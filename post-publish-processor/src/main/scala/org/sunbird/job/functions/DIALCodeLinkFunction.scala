@@ -35,20 +35,19 @@ class DIALCodeLinkFunction (config: PostPublishProcessorConfig, httpUtil: HttpUt
   override def processElement(event: java.util.Map[String, AnyRef], context: ProcessFunction[java.util.Map[String, AnyRef], String]#Context, metrics: Metrics): Unit = {
     println("DIAL Code Link eData updated: " + event)
     val identifier = event.get("identifier").asInstanceOf[String]
-    val reserved = event.getOrDefault("reservedDialcodes", reservedDialCodes(identifier))
+    val reserved = event.getOrDefault("reservedDialcodes", reserveDialCodes(identifier))
       .asInstanceOf[java.util.Map[String, Int]]
     val dialCode = reserved.asScala.keys.head
-    updateDIALToObject(identifier, dialCode)
+//    updateDIALToObject(identifier, dialCode)
   }
 
   override def metricsList(): List[String] = {
     List()
   }
 
-  def reservedDialCodes(identifier: String): java.util.Map[String, Int] = {
-    // TODO
-    logger.info("Called reservedDialCodes for " + identifier)
-    Map[String, Int]("Q7A5P7" -> 0).asJava
+  def reserveDialCodes(identifier: String): java.util.Map[String, Int] = {
+    // TODO: Call reserve DIAL codes API.
+    Map[String, Int]().asJava
   }
 
   def updateDIALToObject(identifier: String, dialCode: String) = {
