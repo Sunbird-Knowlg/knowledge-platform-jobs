@@ -12,14 +12,14 @@ import org.sunbird.incredible.pojos.ob.{BadgeClass, CertificateExtension, Compos
 import org.sunbird.incredible.processor.CertModel
 import org.sunbird.incredible.processor.signature.SignatureHelper
 
-class CertificateFactory(properties: CertificateProperties) {
+object CertificateFactory {
 
-  private val logger: Logger = LoggerFactory.getLogger(classOf[CertificateFactory])
+  private val logger: Logger = LoggerFactory.getLogger(getClass.getName)
   lazy private val mapper: ObjectMapper = new ObjectMapper()
   mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL)
 
   def createCertificate(certModel: CertModel)(implicit certificateConfig: CertificateConfig): CertificateExtension = {
-    val basePath = getDomainUrl(certificateConfig.basePath)
+    val basePath = getDomainUrl(certificateConfig.basePath, certModel.tag)
     val uuid: String = basePath + "/" + UUID.randomUUID.toString
 
     val compositeIdentity: CompositeIdentityObject = CompositeIdentityObject(context = certificateConfig.contextUrl,
@@ -35,7 +35,7 @@ class CertificateFactory(properties: CertificateProperties) {
       publicKey = certModel.issuer.publicKey)
 
     val badgeClass: BadgeClass = BadgeClass(certificateConfig.contextUrl,
-      id = basePath.concat(if (StringUtils.isNotBlank(properties.tag)) "/".concat(properties.tag).concat(JsonKeys.BADGE_URL) else JsonKeys.BADGE_URL),
+      id = basePath.concat(if (StringUtils.isNotBlank(certModel.tag)) "/".concat(certModel.tag).concat(JsonKeys.BADGE_URL) else JsonKeys.BADGE_URL),
       description = certModel.certificateDescription.orNull,
       name = if (StringUtils.isNotEmpty(certModel.courseName)) certModel.courseName else certModel.certificateName,
       image = certModel.certificateLogo.orNull,
@@ -57,14 +57,14 @@ class CertificateFactory(properties: CertificateProperties) {
     }
 
     var signedVerification: SignedVerification = null
-    if (StringUtils.isEmpty(properties.keyId)) {
+    if (StringUtils.isEmpty(certModel.keyId)) {
       signedVerification = SignedVerification(`type` = Array(JsonKeys.HOSTED))
       logger.info("CertificateExtension:createCertificate: if keyID is empty then verification type is HOSTED")
     } else {
-      signedVerification = SignedVerification(creator = Option.apply(basePath.concat("/").concat(JsonKeys.KEYS).concat("/").concat(properties.keyId).concat(JsonKeys.PUBLIC_KEY_URL)))
+      signedVerification = SignedVerification(creator = Option.apply(basePath.concat("/").concat(JsonKeys.KEYS).concat("/").concat(certModel.keyId).concat(JsonKeys.PUBLIC_KEY_URL)))
       logger.info("CertificateExtension:createCertificate: if keyID is not empty then verification type is SignedBadge")
-      val signatureValue = getSignatureValue(certificateExtension, certificateConfig.encryptionServiceUrl)
-      val signature: Signature = Signature(created = Instant.now.toString, creator = basePath.concat("/").concat(properties.keyId).concat(JsonKeys.PUBLIC_KEY_URL), signatureValue = signatureValue)
+      val signatureValue = getSignatureValue(certificateExtension, certificateConfig.encryptionServiceUrl, certModel.keyId)
+      val signature: Signature = Signature(created = Instant.now.toString, creator = basePath.concat("/").concat(certModel.keyId).concat(JsonKeys.PUBLIC_KEY_URL), signatureValue = signatureValue)
       certificateExtension.signature = Option.apply(signature)
     }
     certificateExtension
@@ -77,24 +77,22 @@ class CertificateFactory(properties: CertificateProperties) {
     * @return
     */
   @throws[IOException]
-  private def getSignatureValue(certificateExtension: CertificateExtension, encServiceUrl: String): String = {
+  private def getSignatureValue(certificateExtension: CertificateExtension, encServiceUrl: String, keyId: String): String = {
     var signMap: java.util.Map[String, AnyRef] = null
     mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL)
     val request = mapper.writeValueAsString(certificateExtension)
     val jsonNode = mapper.readTree(request)
     logger.info("CertificateFactory:getSignatureValue:Json node of certificate".concat(jsonNode.toString))
-    signMap = SignatureHelper.generateSignature(jsonNode, properties.keyId)(encServiceUrl)
+    signMap = SignatureHelper.generateSignature(jsonNode, keyId)(encServiceUrl)
     signMap.get(JsonKeys.SIGNATURE_VALUE).asInstanceOf[String]
   }
 
   /**
     * appends slug , org id, batch id to the domain url
     */
-  private def getDomainUrl(basePath: String): String = {
-    val stringBuilder: StringBuilder = new StringBuilder
-    stringBuilder.append(basePath)
-    if (StringUtils.isNotEmpty(properties.tag)) stringBuilder.append("/" + properties.tag)
-    stringBuilder.toString
+  private def getDomainUrl(basePath: String, tag: String): String = {
+    val subString = if (StringUtils.isNotEmpty(tag)) "/".concat(tag) else ""
+    s"""$basePath$subString"""
   }
 
 }

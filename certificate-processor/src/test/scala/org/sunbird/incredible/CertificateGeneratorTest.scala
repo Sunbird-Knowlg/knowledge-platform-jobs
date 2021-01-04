@@ -20,9 +20,9 @@ class CertificateGeneratorTest extends BaseTestSpec {
     val issuerIn: Issuer = Issuer(context = "https://staging.sunbirded.org/certs/v1/context.json", name = "issuer name", url = "url")
     val signatory: SignatoryExtension = SignatoryExtension(context = "", identity = "CEO", name = "signatory name", designation = "CEO", image = "https://cdn.pixabay.com/photo/2014/11/09/08/06/signature-523237__340.jpg")
     val certModel: CertModel = CertModel(courseName = "java", recipientName = "Test", certificateName = "100PercentCompletionCertificate", issuedDate = "2019-08-21",
-      issuer = issuerIn, signatoryList = Array(signatory), identifier = "8e57723e-4541-11eb-b378-0242ac130002", criteria = Criteria(narrative = "Course Completion"))
+      issuer = issuerIn, signatoryList = Array(signatory), identifier = "8e57723e-4541-11eb-b378-0242ac130002", criteria = Criteria(narrative = "Course Completion"), tag = "0131685518070087685")
     val certificateGenerator = new CertificateGenerator
-    val certificateExtension = certificateGenerator.getCertificateExtension(getCertProperties(""), certModel)
+    val certificateExtension = certificateGenerator.getCertificateExtension(certModel)
     certificateExtension.evidence.get.name shouldBe "java"
     certificateExtension.recipient.name shouldBe "Test"
   }
@@ -34,9 +34,9 @@ class CertificateGeneratorTest extends BaseTestSpec {
     val issuerIn: Issuer = Issuer(context = "https://staging.sunbirded.org/certs/v1/context.json", name = "issuer name", url = "url")
     val signatory: SignatoryExtension = SignatoryExtension(context = "", identity = "CEO", name = "signatory name", designation = "CEO", image = "https://cdn.pixabay.com/photo/2014/11/09/08/06/signature-523237__340.jpg")
     val certModel: CertModel = CertModel(courseName = "java", recipientName = "Test", certificateName = "100PercentCompletionCertificate", issuedDate = "2019-08-21",
-      issuer = issuerIn, signatoryList = Array(signatory), identifier = "8e57723e-4541-11eb-b378-0242ac130002", criteria = Criteria(narrative = "Course Completion"))
+      issuer = issuerIn, signatoryList = Array(signatory), identifier = "8e57723e-4541-11eb-b378-0242ac130002", criteria = Criteria(narrative = "Course Completion"), keyId = "256", tag = "0131685518070087685")
     val certificateGenerator = new CertificateGenerator
-    val certificateExtension = certificateGenerator.getCertificateExtension(getCertProperties("256"), certModel)
+    val certificateExtension = certificateGenerator.getCertificateExtension(certModel)
     println(certificateExtension)
     certificateExtension.evidence.get.name shouldBe "java"
     certificateExtension.signature.get should not be null
