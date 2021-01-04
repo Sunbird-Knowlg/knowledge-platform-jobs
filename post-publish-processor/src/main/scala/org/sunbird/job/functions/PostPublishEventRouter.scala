@@ -21,7 +21,8 @@ import scala.collection.JavaConverters._
 
 case class PublishMetadata(identifier: String, contentType: String, mimeType: String, pkgVersion: Int)
 
-class PostPublishEventRouter(config: PostPublishProcessorConfig, httpUtil: HttpUtil, neo4JUtil: Neo4JUtil,
+class PostPublishEventRouter(config: PostPublishProcessorConfig, httpUtil: HttpUtil,
+                             @transient var neo4JUtil: Neo4JUtil = null,
                              @transient var cassandraUtil: CassandraUtil = null)
   extends BaseProcessFunction[Event, String](config) with ShallowCopyPublishing with BatchCreation {
 
@@ -31,6 +32,7 @@ class PostPublishEventRouter(config: PostPublishProcessorConfig, httpUtil: HttpU
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
     cassandraUtil = new CassandraUtil(config.dbHost, config.dbPort)
+    neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName)
   }
 
   override def close(): Unit = {

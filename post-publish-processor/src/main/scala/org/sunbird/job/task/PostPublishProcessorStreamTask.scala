@@ -12,7 +12,7 @@ import org.sunbird.job.functions.{BatchCreateFunction, DIALCodeLinkFunction, Pos
 import org.sunbird.job.postpublish.domain.Event
 import org.sunbird.job.util.{FlinkUtil, HttpUtil, Neo4JUtil}
 
-class PostPublishProcessorStreamTask(config: PostPublishProcessorConfig, kafkaConnector: FlinkKafkaConnector, httpUtil: HttpUtil, neo4JUtil: Neo4JUtil) {
+class PostPublishProcessorStreamTask(config: PostPublishProcessorConfig, kafkaConnector: FlinkKafkaConnector, httpUtil: HttpUtil) {
 
   def process(): Unit = {
     implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
@@ -26,13 +26,13 @@ class PostPublishProcessorStreamTask(config: PostPublishProcessorConfig, kafkaCo
     val processStreamTask = env.addSource(source).name(config.inputConsumerName)
       .uid(config.inputConsumerName).setParallelism(config.kafkaConsumerParallelism)
       .rebalance
-      .process(new PostPublishEventRouter(config, httpUtil, neo4JUtil))
+      .process(new PostPublishEventRouter(config, httpUtil))
       .name("post-publish-event-router").uid("post-publish-event-router")
       .setParallelism(config.eventRouterParallelism)
 
     processStreamTask.getSideOutput(config.batchCreateOutTag).process(new BatchCreateFunction(config, httpUtil))
       .name("batch-create-process").uid("batch-create-process").setParallelism(1)
-    processStreamTask.getSideOutput(config.linkDIALCodeOutTag).process(new DIALCodeLinkFunction(config, httpUtil, neo4JUtil))
+    processStreamTask.getSideOutput(config.linkDIALCodeOutTag).process(new DIALCodeLinkFunction(config, httpUtil))
       .name("dialcode-link-process").uid("dialcode-link-process").setParallelism(1)
     val shallowCopyPublishStream = processStreamTask.getSideOutput(config.shallowContentPublishOutTag)
       .process(new ShallowCopyPublishFunction(config))
@@ -57,8 +57,7 @@ object PostPublishProcessorStreamTask {
     val pppConfig = new PostPublishProcessorConfig(config)
     val kafkaUtil = new FlinkKafkaConnector(pppConfig)
     val httpUtil = new HttpUtil
-    val neo4JUtil = new Neo4JUtil(pppConfig.graphRoutePath, pppConfig.graphName)
-    val task = new PostPublishProcessorStreamTask(pppConfig, kafkaUtil, httpUtil, neo4JUtil)
+    val task = new PostPublishProcessorStreamTask(pppConfig, kafkaUtil, httpUtil)
     task.process()
   }
 }

@@ -12,7 +12,8 @@ import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
 
 import scala.collection.JavaConverters._
 
-class DIALCodeLinkFunction (config: PostPublishProcessorConfig, httpUtil: HttpUtil, neo4JUtil: Neo4JUtil,
+class DIALCodeLinkFunction (config: PostPublishProcessorConfig, httpUtil: HttpUtil,
+                            @transient var neo4JUtil: Neo4JUtil = null,
                             @transient var cassandraUtil: CassandraUtil = null)
                            (implicit val stringTypeInfo: TypeInformation[String])
   extends BaseProcessFunction[java.util.Map[String, AnyRef], String](config) {
@@ -25,6 +26,7 @@ class DIALCodeLinkFunction (config: PostPublishProcessorConfig, httpUtil: HttpUt
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
     cassandraUtil = new CassandraUtil(config.dbHost, config.dbPort)
+    neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName)
   }
 
   override def close(): Unit = {
