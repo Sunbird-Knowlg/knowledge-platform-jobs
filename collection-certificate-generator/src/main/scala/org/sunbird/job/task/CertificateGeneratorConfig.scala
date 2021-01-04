@@ -6,6 +6,7 @@ import com.typesafe.config.Config
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.streaming.api.scala.OutputTag
+import org.sunbird.incredible.JsonKeys
 import org.sunbird.job.BaseJobConfig
 
 class CertificateGeneratorConfig(override val config: Config) extends BaseJobConfig(config, "collection-certificate-generator") {
@@ -26,11 +27,28 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
 
 
+
+
+  // Cassandra Configurations
+  val dbEnrollmentTable: String = config.getString("lms-cassandra.enrollment.table")
+  val dbKeyspace: String = config.getString("lms-cassandra.keyspace")
+  val dbHost: String = config.getString("lms-cassandra.host")
+  val dbPort: Int = config.getInt("lms-cassandra.port")
+
+  val learnerServiceBaseUrl: String = config.getString("learner-service.basePath")
+  val dbCourseBatchTable: String = config.getString("lms-cassandra.course_batch.table")
+  val notificationEndPoint: String = "/v2/notification"
+  val userFeedCreateEndPoint:String = "/private/user/feed/v1/create"
+
   // Metric List
   val totalEventsCount = "total-events-count"
   val successEventCount = "success-events-count"
   val failedEventCount = "failed-events-count"
   val skippedEventCount = "skipped-event-count"
+  val dbReadCount = "db-read-count"
+  val dbUpdateCount = "db-update-user-enrollment-count"
+  val notifiedUserCount = "notified-user-count"
+  val skipNotifyUserCount = "skipped-notify-user-count"
 
   // Consumers
   val certificateGeneratorConsumer = "certificate"
@@ -52,12 +70,12 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   val RECIPIENT_NAME: String = "recipientName"
   val ISSUER: String = "issuer"
   val BADGE_URL: String = "/Badge.json"
-  val ISSUER_URL: String = "/Issuer.json"
-  val EVIDENCE_URL: String = "/Evidence.json"
-  val CONTEXT: String = "/v1/context.json"
+  val ISSUER_URL: String = basePath.concat("/Issuer.json")
+  val EVIDENCE_URL: String = basePath.concat("/Evidence.json")
+  val CONTEXT: String = basePath.concat( "/v1/context.json")
   val PUBLIC_KEY_URL: String = "_publicKey.json"
   val VERIFICATION_TYPE: String = "SignedBadge"
-  val SIGNATORY_EXTENSION: String = "v1/extensions/SignatoryExtension"
+  val SIGNATORY_EXTENSION: String = basePath.concat("v1/extensions/SignatoryExtension/context.json")
   val ACCESS_CODE_LENGTH: String = "6"
   val EDATA: String = "edata"
   val RELATED: String = "related"
@@ -67,8 +85,44 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   val TEMPLATE_ID: String = "templateId"
   val USER_ID: String = "userId"
 
-  // Tags
 
+  val courseId = "courseId"
+  val batchId = "batchId"
+  val userId = "userId"
+  val notifyTemplate = "notifyTemplate"
+  val firstName = "firstName"
+  val trainingName = "TrainingName"
+  val heldDate = "heldDate"
+  val recipientUserIds = "recipientUserIds"
+  val identifier = "identifier"
+  val body = "body"
+  val notificationSmsBody = "Congratulations! Download your course certificate from your profile page. If you have a problem downloading it on the mobile, update your DIKSHA app"
+  val request = "request"
+  val filters = "filters"
+  val fields = "fields"
+  val issued_certificates = "issued_certificates"
+  val eData = "edata"
+  val name = "name"
+  val token = "token"
+  val lastIssuedOn = "lastIssuedOn"
+  val certificate = "certificate"
+  val action = "action"
+  val courseName = "courseName"
+  val templateId = "templateId"
+  val cert_templates = "cert_templates"
+  val courseBatch = "CourseBatch"
+  val l1 = "l1"
+  val id = "id"
+  val data = "data"
+  val category = "category"
+  val certificates = "certificates"
+  val priority = "priority"
+  val userFeedMsg = "You have earned a certificate! Download it from your profile page."
+  val priorityValue = 1
+
+  // Tags
+  val auditEventOutputTagName = "audit-events"
+  val auditEventOutputTag: OutputTag[String] = OutputTag[String](auditEventOutputTagName)
   val failedEventOutputTagName = "failed-events"
   val failedEventOutputTag: OutputTag[String] = OutputTag[String](failedEventOutputTagName)
   val notifierOutputTag: OutputTag[java.util.Map[String, AnyRef]] = OutputTag[java.util.Map[String, AnyRef]]("notifier")

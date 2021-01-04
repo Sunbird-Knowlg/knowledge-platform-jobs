@@ -9,25 +9,25 @@ import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
+import org.sunbird.job.domain.Event
 import org.sunbird.job.functions.CertificateGeneratorFunction
 import org.sunbird.job.util.{FlinkUtil, HttpUtil}
 import org.sunbird.notifier.NotifierFunction
 import org.sunbird.user.feeds.CreateUserFeedFunction
 
-class CertificateGeneratorStreamTask(config: CertificateGeneratorConfig, kafkaConnector: FlinkKafkaConnector) {
+class CertificateGeneratorStreamTask(config: CertificateGeneratorConfig, kafkaConnector: FlinkKafkaConnector, httpUtil: HttpUtil) {
 
   def process(): Unit = {
     implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
-    implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor
-      .getForClass(classOf[util.Map[String, AnyRef]])
+    implicit val eventTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
+    implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
-    val source = kafkaConnector.kafkaMapSource(config.kafkaInputTopic)
-
+    val source = kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)
 
     val processStreamTask = env.addSource(source).name(config.certificateGeneratorConsumer)
       .uid(config.certificateGeneratorConsumer).setParallelism(config.kafkaConsumerParallelism)
       .rebalance
-      .process(new CertificateGeneratorFunction(config))
+      .process(new CertificateGeneratorFunction(config, httpUtil))
       .name("collection-certificate-generator").uid("collection-certificate-generator")
       .setParallelism(config.parallelism)
 
@@ -49,7 +49,6 @@ class CertificateGeneratorStreamTask(config: CertificateGeneratorConfig, kafkaCo
 
 // $COVERAGE-OFF$ Disabling scoverage as the below code can only be invoked within flink cluster
 object CertificateGeneratorStreamTask {
-  var httpUtil = new HttpUtil
 
   def main(args: Array[String]): Unit = {
     val configFilePath = Option(ParameterTool.fromArgs(args).get("config.file.path"))
@@ -58,7 +57,8 @@ object CertificateGeneratorStreamTask {
     }.getOrElse(ConfigFactory.load("collection-certificate-generator.conf").withFallback(ConfigFactory.systemEnvironment()))
     val ccgConfig = new CertificateGeneratorConfig(config)
     val kafkaUtil = new FlinkKafkaConnector(ccgConfig)
-    val task = new CertificateGeneratorStreamTask(ccgConfig, kafkaUtil)
+    val httpUtil = new HttpUtil
+    val task = new CertificateGeneratorStreamTask(ccgConfig, kafkaUtil, httpUtil)
     task.process()
   }
 }

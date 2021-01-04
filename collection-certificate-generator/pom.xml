@@ -79,6 +79,17 @@
 			<version>3.3.3</version>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>org.sunbird</groupId>
+			<artifactId>certificate-processor</artifactId>
+			<version>1.0</version>
+		</dependency>
+		<dependency>
+			<groupId>org.cassandraunit</groupId>
+			<artifactId>cassandra-unit</artifactId>
+			<version>3.11.2.0</version>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 
 
