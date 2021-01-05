@@ -17,7 +17,7 @@ class ObjectValidatorTestSpec extends FlatSpec with BeforeAndAfterAll with Match
 
   "Object Validator " should " validate the object and return messages" in {
     val objValidator = new TestObjectValidator()
-    val obj = ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123.img", "pkgVersion" -> 2.0))
+    val obj = ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123.img", "pkgVersion" -> 2.0.asInstanceOf[AnyRef]))
     val messages = objValidator.validate(obj, "do_123")
     messages should have length(1)
     messages should contain ("There is no mimeType defined for : do_123")

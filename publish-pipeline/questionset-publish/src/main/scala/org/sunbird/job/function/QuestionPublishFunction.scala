@@ -1,7 +1,6 @@
 package org.sunbird.job.function
 
 import java.lang.reflect.Type
-
 import com.google.gson.reflect.TypeToken
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
@@ -12,6 +11,7 @@ import org.sunbird.job.publish.domain.PublishMetadata
 import org.sunbird.job.publish.helpers.QuestionPublisher
 import org.sunbird.job.task.QuestionSetPublishConfig
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
+import org.sunbird.publish.core.ObjectData
 
 class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUtil,
                               @transient var neo4JUtil: Neo4JUtil = null,
@@ -37,9 +37,23 @@ class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUt
 		List(config.questionPublishEventCount)
 	}
 
-	override def processElement(publishData: PublishMetadata, context: ProcessFunction[PublishMetadata, String]#Context, metrics: Metrics): Unit = {
-		println("QuestionPublishFunction ::: processElement ::: publishData ::: "+publishData)
+	override def processElement(data: PublishMetadata, context: ProcessFunction[PublishMetadata, String]#Context, metrics: Metrics): Unit = {
+		val obj = getObject(data.identifier, data.pkgVersion)(neo4JUtil, cassandraUtil)
+    val messages = validate(obj, obj.identifier)
+    // prePublishUpdate
+    if (messages.isEmpty) {
+      val enrichedObj = enrichObject(obj)
+      saveAndPublish(enrichedObj)
+    } else {
+
+      // TODO: fail the publishing.
+    }
 	}
+
+
+  def saveAndPublish(obj: ObjectData): Unit = {
+
+  }
 
 
 }

@@ -36,9 +36,7 @@ class PublishEventRouter(config: QuestionSetPublishConfig, httpUtil: HttpUtil,
 	}
 
 	override def processElement(event: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
-		logger.info("PublishEventRouter :: Processing event using JobRequest-SerDe: " + event)
 		if (event.validEvent()) {
-
 			event.objectType match {
 				case "Question" => {
 					logger.info("PublishEventRouter :: Sending Question For Publish Having Identifier: " + event.objectId)
