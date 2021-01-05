@@ -18,7 +18,7 @@ class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUt
                               @transient var neo4JUtil: Neo4JUtil = null,
                               @transient var cassandraUtil: CassandraUtil = null)
                              (implicit val stringTypeInfo: TypeInformation[String])
-  extends BaseProcessFunction[PublishMetadata, String](config) with QuestionPublisher with ObjectUpdater {
+  extends BaseProcessFunction[PublishMetadata, String](config) with QuestionPublisher {
 
 	private[this] val logger = LoggerFactory.getLogger(classOf[QuestionPublishFunction])
 	val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
@@ -39,13 +39,16 @@ class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUt
 	}
 
 	override def processElement(data: PublishMetadata, context: ProcessFunction[PublishMetadata, String]#Context, metrics: Metrics): Unit = {
+    logger.info("Question publishing started for : " + data.identifier)
 		val obj = getObject(data.identifier, data.pkgVersion)(neo4JUtil, cassandraUtil)
     val messages = validate(obj, obj.identifier)
     if (messages.isEmpty) {
       val enrichedObj = enrichObject(obj)
       saveOnSuccess(enrichedObj, dummyFunc)(neo4JUtil)
+      logger.info("Question publishing completed successfully for : " + data.identifier)
     } else {
       saveOnFailure(obj, messages)(neo4JUtil)
+      logger.info("Question publishing failed for : " + data.identifier)
     }
 	}
 
