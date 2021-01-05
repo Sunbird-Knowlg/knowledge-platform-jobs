@@ -22,8 +22,8 @@ import scala.collection.JavaConverters._
 case class PublishMetadata(identifier: String, contentType: String, mimeType: String, pkgVersion: Int)
 
 class PostPublishEventRouter(config: PostPublishProcessorConfig, httpUtil: HttpUtil,
-                             @transient var cassandraUtil: CassandraUtil = null,
-                             @transient var neo4JUtil: Neo4JUtil = null)
+                             @transient var neo4JUtil: Neo4JUtil = null,
+                             @transient var cassandraUtil: CassandraUtil = null)
   extends BaseProcessFunction[Event, String](config) with ShallowCopyPublishing with BatchCreation {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[PostPublishEventRouter])
