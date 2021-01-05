@@ -3,6 +3,8 @@ package org.sunbird.job.util
 import org.neo4j.driver.v1.{Config, GraphDatabase}
 import org.slf4j.LoggerFactory
 
+import java.util
+
 
 class Neo4JUtil(routePath: String, graphId: String) {
 
@@ -33,7 +35,9 @@ class Neo4JUtil(routePath: String, graphId: String) {
     val session = driver.session()
     val query = s"""MATCH (n:${graphId}{IL_UNIQUE_ID:"${identifier}"}) return n;"""
     val statementResult = session.run(query)
-    statementResult.single().get("n").asMap()
+    if (statementResult.hasNext)
+      statementResult.single().get("n").asMap()
+    else null
   }
 
   def executeQuery(query: String) = {

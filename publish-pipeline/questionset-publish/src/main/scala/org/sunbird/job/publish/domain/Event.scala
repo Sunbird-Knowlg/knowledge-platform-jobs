@@ -25,8 +25,8 @@ class Event(eventMap: java.util.Map[String, Any]) extends JobRequest(eventMap) {
 
   // TODO: revert the code to read as Double after event correction.
 	def pkgVersion: Double = {
-    val strPkgVer = readOrDefault[String]("edata.metadata.pkgVersion", "0.0")
-    lang.Double.parseDouble(strPkgVer)
+    val pkgVersion = readOrDefault[Int]("edata.metadata.pkgVersion", 0)
+    pkgVersion.toDouble
   }
 
 	def validEvent(): Boolean = {

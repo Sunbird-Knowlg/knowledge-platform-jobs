@@ -12,18 +12,22 @@ trait ObjectReader {
 
   def getObject(identifier: String, pkgVersion: Double)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil): ObjectData = {
     logger.info("Reading editable object data for: " + identifier + " with pkgVersion: " + pkgVersion)
-    val nodeId = if (pkgVersion > 0) identifier + ".img" else identifier
-    val metadata = getMetadata(nodeId, pkgVersion)
-    val extData = getExtData(nodeId)
-    val hierarchy = getHierarchy(nodeId)
-    ObjectData(identifier, metadata, extData, hierarchy)
+    val metadata = getMetadata(identifier, pkgVersion)
+    val extData = getExtData(identifier)
+    val hierarchy = getHierarchy(identifier)
+    new ObjectData(identifier, metadata, extData, hierarchy)
   }
 
   private def getMetadata(identifier: String, pkgVersion: Double)(implicit neo4JUtil: Neo4JUtil): Map[String, AnyRef] = {
-    neo4JUtil.getNodeProperties(identifier).asScala.toMap
+    val nodeId = getEditableObjId(identifier, pkgVersion)
+    Option(neo4JUtil.getNodeProperties(nodeId)).getOrElse(neo4JUtil.getNodeProperties(identifier)).asScala.toMap
   }
 
   def getExtData(identifier: String)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]]
 
   def getHierarchy(identifier: String)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]]
+
+  def getEditableObjId(identifier: String, pkgVersion: Double): String = {
+    if (pkgVersion > 0) identifier + ".img" else identifier
+  }
 }
