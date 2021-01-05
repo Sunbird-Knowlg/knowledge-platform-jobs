@@ -36,7 +36,7 @@ trait ObjectUpdater {
   private def auditPropsUpdateQuery(): String = {
     val sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
     val updatedOn = sdf.format(new Date())
-    s""", n.lastUpdatedOn="$updatedOn""""
+    s""", n.lastUpdatedOn="$updatedOn", n.lastStatusChangedOn="$updatedOn""""
   }
 
 }
