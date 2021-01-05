@@ -25,7 +25,7 @@ class ObjectReaderTestSpec extends FlatSpec with BeforeAndAfterAll with Matchers
   "Object Reader " should " read the metadata " in {
     when(mockNeo4JUtil.getNodeProperties("do_123")).thenReturn(Map[String, AnyRef]("name" -> "Content Name").asJava)
     val objectReader = new TestObjectReader()
-    val obj = objectReader.getObject("do_123")
+    val obj = objectReader.getObject("do_123", 0)
     val metadata = obj.metadata.asJava
     metadata.isEmpty should be(false)
     obj.extData should be(None)
