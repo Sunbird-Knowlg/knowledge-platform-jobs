@@ -5,6 +5,7 @@ import java.util
 import com.typesafe.config.Config
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
+import org.apache.flink.streaming.api.scala.OutputTag
 import org.sunbird.job.publish.domain.PublishMetadata
 import org.sunbird.job.BaseJobConfig
 
@@ -31,14 +32,22 @@ class QuestionSetPublishConfig(override val config: Config) extends BaseJobConfi
 	val successEventCount = "success-events-count"
 	val failedEventCount = "failed-events-count"
 	val skippedEventCount = "skipped-event-count"
+	val questionPublishEventCount = "question-publish-count"
+	val questionSetPublishEventCount = "questionset-publish-count"
 
 	// Cassandra Configurations
 	val cassandraHost: String = config.getString("kp-cassandra.host")
 	val cassandraPort: Int = config.getInt("kp-cassandra.port")
+	val questionKeyspaceName = config.getString("question.keyspace")
+	val questionTableName = config.getString("question.table")
 	val questionSetKeyspaceName = config.getString("questionset.hierarchy_keyspace")
 	val questionSetTableName = config.getString("questionset.table")
 
 	// Neo4J Configurations
 	val graphRoutePath = config.getString("neo4j.routePath")
 	val graphName = config.getString("neo4j.graph")
+
+	// Out Tags
+	val questionPublishOutTag: OutputTag[PublishMetadata] = OutputTag[PublishMetadata]("question-publish")
+	val questionSetPublishOutTag: OutputTag[PublishMetadata] = OutputTag[PublishMetadata]("questionset-publish")
 }
