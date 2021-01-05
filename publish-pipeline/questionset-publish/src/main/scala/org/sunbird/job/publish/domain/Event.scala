@@ -1,9 +1,9 @@
 package org.sunbird.job.publish.domain
 
-import java.util
-
+import java.{lang, util}
 import org.apache.commons.lang3.StringUtils
 import org.sunbird.job.domain.reader.JobRequest
+
 import scala.collection.JavaConverters._
 
 class Event(eventMap: java.util.Map[String, Any]) extends JobRequest(eventMap) {
@@ -23,7 +23,11 @@ class Event(eventMap: java.util.Map[String, Any]) extends JobRequest(eventMap) {
 
 	def objectType: String = readOrDefault[String]("edata.metadata.objectType", "")
 
-	def pkgVersion: Double = readOrDefault[Double]("edata.metadata.pkgVersion", 0.0)
+  // TODO: revert the code to read as Double after event correction.
+	def pkgVersion: Double = {
+    val strPkgVer = readOrDefault[String]("edata.metadata.pkgVersion", "0.0")
+    lang.Double.parseDouble(strPkgVer)
+  }
 
 	def validEvent(): Boolean = {
 		(StringUtils.equals("publish", action) && StringUtils.isNotBlank(objectId)) && (objectTypes.contains(objectType) && mimeTypes.contains(mimeType))

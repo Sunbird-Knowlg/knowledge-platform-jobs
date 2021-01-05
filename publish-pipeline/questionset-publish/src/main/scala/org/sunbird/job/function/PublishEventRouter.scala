@@ -11,10 +11,7 @@ import org.sunbird.job.publish.domain.{Event, PublishMetadata}
 import org.sunbird.job.task.QuestionSetPublishConfig
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
 
-class PublishEventRouter(config: QuestionSetPublishConfig, httpUtil: HttpUtil,
-                         @transient var cassandraUtil: CassandraUtil = null,
-                         @transient var neo4JUtil: Neo4JUtil = null)
-  extends BaseProcessFunction[Event, String](config) {
+class PublishEventRouter(config: QuestionSetPublishConfig) extends BaseProcessFunction[Event, String](config) {
 
 
 	private[this] val logger = LoggerFactory.getLogger(classOf[PublishEventRouter])
@@ -22,12 +19,9 @@ class PublishEventRouter(config: QuestionSetPublishConfig, httpUtil: HttpUtil,
 
 	override def open(parameters: Configuration): Unit = {
 		super.open(parameters)
-		cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort)
-		neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName)
 	}
 
 	override def close(): Unit = {
-		cassandraUtil.close()
 		super.close()
 	}
 
