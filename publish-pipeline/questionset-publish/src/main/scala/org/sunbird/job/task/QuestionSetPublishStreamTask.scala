@@ -26,7 +26,7 @@ class QuestionSetPublishStreamTask(config: QuestionSetPublishConfig, kafkaConnec
 		val processStreamTask = env.addSource(source).name(config.inputConsumerName)
 		  .uid(config.inputConsumerName).setParallelism(config.kafkaConsumerParallelism)
 		  .rebalance
-		  .process(new PublishEventRouter(config, httpUtil))
+		  .process(new PublishEventRouter(config))
 		  .name("publish-event-router").uid("publish-event-router")
 		  .setParallelism(config.eventRouterParallelism)
 

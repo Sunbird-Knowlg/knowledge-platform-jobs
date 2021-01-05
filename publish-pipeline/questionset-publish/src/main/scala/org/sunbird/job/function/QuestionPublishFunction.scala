@@ -12,6 +12,7 @@ import org.sunbird.job.publish.helpers.QuestionPublisher
 import org.sunbird.job.task.QuestionSetPublishConfig
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
 import org.sunbird.publish.core.ObjectData
+import org.sunbird.publish.helpers.ObjectUpdater
 
 class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUtil,
                               @transient var neo4JUtil: Neo4JUtil = null,
@@ -38,22 +39,20 @@ class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUt
 	}
 
 	override def processElement(data: PublishMetadata, context: ProcessFunction[PublishMetadata, String]#Context, metrics: Metrics): Unit = {
+    logger.info("Question publishing started for : " + data.identifier)
 		val obj = getObject(data.identifier, data.pkgVersion)(neo4JUtil, cassandraUtil)
     val messages = validate(obj, obj.identifier)
-    // prePublishUpdate
     if (messages.isEmpty) {
       val enrichedObj = enrichObject(obj)
-      saveAndPublish(enrichedObj)
+      saveOnSuccess(enrichedObj, dummyFunc)(neo4JUtil)
+      logger.info("Question publishing completed successfully for : " + data.identifier)
     } else {
-
-      // TODO: fail the publishing.
+      saveOnFailure(obj, messages)(neo4JUtil)
+      logger.info("Question publishing failed for : " + data.identifier)
     }
 	}
 
 
-  def saveAndPublish(obj: ObjectData): Unit = {
-
-  }
-
+  def dummyFunc = (obj: ObjectData) => {}
 
 }

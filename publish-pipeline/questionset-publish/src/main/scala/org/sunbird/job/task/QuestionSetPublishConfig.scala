@@ -36,11 +36,11 @@ class QuestionSetPublishConfig(override val config: Config) extends BaseJobConfi
 	val questionSetPublishEventCount = "questionset-publish-count"
 
 	// Cassandra Configurations
-	val cassandraHost: String = config.getString("kp-cassandra.host")
-	val cassandraPort: Int = config.getInt("kp-cassandra.port")
+	val cassandraHost: String = config.getString("lms-cassandra.host")
+	val cassandraPort: Int = config.getInt("lms-cassandra.port")
 	val questionKeyspaceName = config.getString("question.keyspace")
 	val questionTableName = config.getString("question.table")
-	val questionSetKeyspaceName = config.getString("questionset.hierarchy_keyspace")
+	val questionSetKeyspaceName = config.getString("questionset.keyspace")
 	val questionSetTableName = config.getString("questionset.table")
 
 	// Neo4J Configurations
