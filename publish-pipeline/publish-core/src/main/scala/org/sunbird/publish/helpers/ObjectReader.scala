@@ -7,10 +7,10 @@ import scala.collection.JavaConverters._
 
 trait ObjectReader {
 
-  def getObject(identifier: String, objectType: String)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil): ObjectData = {
+  def getObject(identifier: String)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil): ObjectData = {
     val metadata = getMetadata(identifier)
-    val extData = getExtData(identifier, objectType)
-    val hierarchy = getHierarchy(identifier, objectType)
+    val extData = getExtData(identifier)
+    val hierarchy = getHierarchy(identifier)
     ObjectData(metadata, extData, hierarchy)
   }
 
@@ -18,7 +18,7 @@ trait ObjectReader {
     neo4JUtil.getNodeProperties(identifier).asScala.toMap
   }
 
-  def getExtData(identifier: String, objectType: String)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]]
+  def getExtData(identifier: String)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]]
 
-  def getHierarchy(identifier: String, objectType: String)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]]
+  def getHierarchy(identifier: String)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]]
 }
