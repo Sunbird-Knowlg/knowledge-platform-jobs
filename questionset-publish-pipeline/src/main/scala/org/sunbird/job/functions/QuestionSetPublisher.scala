@@ -11,11 +11,12 @@ import org.sunbird.job.publish.domain.Event
 import org.sunbird.job.publish.helpers.QuestionSetPublish
 import org.sunbird.job.task.QuestionSetPublishPipelineConfig
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
+import org.sunbird.publish.helpers.{ObjectReader, ObjectValidator}
 
 class QuestionSetPublisher(config: QuestionSetPublishPipelineConfig, httpUtil: HttpUtil,
                            @transient var cassandraUtil: CassandraUtil = null,
                            @transient var neo4JUtil: Neo4JUtil = null)
-  extends BaseProcessFunction[Event, String](config) with QuestionSetPublish {
+  extends BaseProcessFunction[Event, String](config) with ObjectReader with ObjectValidator with QuestionSetPublish {
 
 	private[this] val logger = LoggerFactory.getLogger(classOf[QuestionSetPublisher])
 	val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
@@ -39,12 +40,12 @@ class QuestionSetPublisher(config: QuestionSetPublishPipelineConfig, httpUtil: H
 		logger.info("QuestionSetPublisher :: Processed event using JobRequest-SerDe: " + event)
 		if (event.validEvent()) {
 			val identifier = event.objectId
-			val metadata = neo4JUtil.getNodeProperties(identifier)
+			val data = getObject(event.objectId, event.objectType)(neo4JUtil, cassandraUtil)
 			logger.info("QuestionSetPublisher :: Node Identifier ::: " + identifier)
-			logger.info("QuestionSetPublisher :: Node Metadata ::: " + metadata)
+			logger.info("QuestionSetPublisher :: Node Metadata ::: " + data.metadata)
+			println("config test consumer name :: "+config.inputConsumerName)
 			println("Node Identifier ::: " + identifier)
-			println("Node Metadata ::: " + metadata)
-			println("Is valid metadata ??? " + validateObject(metadata))
+			println("Node Metadata ::: " + data.metadata)
 			// Validate Node Object
 		} else {
 			metrics.incCounter(config.skippedEventCount)

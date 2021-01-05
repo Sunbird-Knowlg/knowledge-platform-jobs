@@ -21,7 +21,7 @@ class Event(eventMap: java.util.Map[String, Any]) extends JobRequest(eventMap) {
 	def objectType: String = readOrDefault[String]("edata.metadata.objectType", "")
 
 	def validEvent(): Boolean = {
-		StringUtils.equals("publish", action) && (StringUtils.equals("QuestionSet", objectType) && StringUtils.equals("application/vnd.sunbird.questionset", mimeType))
+		(StringUtils.equals("publish", action) && StringUtils.isNotBlank(objectId)) && (StringUtils.equals("QuestionSet", objectType) && StringUtils.equals("application/vnd.sunbird.questionset", mimeType))
 	}
 
 }

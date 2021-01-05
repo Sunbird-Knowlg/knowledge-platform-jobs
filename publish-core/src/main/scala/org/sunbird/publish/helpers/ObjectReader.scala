@@ -18,7 +18,7 @@ trait ObjectReader {
     neo4JUtil.getNodeProperties(identifier).asScala.toMap
   }
 
-  def getExtData(identifier: String, objectType: String)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]]
+  def getExtData(identifier: String, objectType: String)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = ???
 
-  def getHierarchy(identifier: String, objectType: String)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]]
+  def getHierarchy(identifier: String, objectType: String)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = ???
 }

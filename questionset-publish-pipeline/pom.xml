@@ -26,7 +26,7 @@
         </dependency>
         <dependency>
             <groupId>org.sunbird</groupId>
-            <artifactId>jobs-core</artifactId>
+            <artifactId>publish-core</artifactId>
             <version>1.0.0</version>
         </dependency>
         <dependency>

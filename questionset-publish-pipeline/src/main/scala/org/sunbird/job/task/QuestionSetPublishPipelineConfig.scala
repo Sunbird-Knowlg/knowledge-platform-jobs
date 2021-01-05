@@ -5,10 +5,10 @@ import java.util
 import com.typesafe.config.Config
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
-import org.sunbird.job.BaseJobConfig
 import org.sunbird.job.publish.domain.PublishMetadata
+import org.sunbird.publish.config.PublishConfig
 
-class QuestionSetPublishPipelineConfig(override val config: Config) extends BaseJobConfig(config, "questionset-publish-pipeline") {
+class QuestionSetPublishPipelineConfig(override val config: Config) extends PublishConfig(config, "questionset-publish-pipeline"){
 
 	implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
 	implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
