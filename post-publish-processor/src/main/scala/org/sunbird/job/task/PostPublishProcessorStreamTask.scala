@@ -10,7 +10,7 @@ import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.functions.{BatchCreateFunction, DIALCodeLinkFunction, PostPublishEventRouter, PublishMetadata, ShallowCopyPublishFunction}
 import org.sunbird.job.postpublish.domain.Event
-import org.sunbird.job.util.{FlinkUtil, HttpUtil}
+import org.sunbird.job.util.{FlinkUtil, HttpUtil, Neo4JUtil}
 
 class PostPublishProcessorStreamTask(config: PostPublishProcessorConfig, kafkaConnector: FlinkKafkaConnector, httpUtil: HttpUtil) {
 
@@ -32,7 +32,7 @@ class PostPublishProcessorStreamTask(config: PostPublishProcessorConfig, kafkaCo
 
     processStreamTask.getSideOutput(config.batchCreateOutTag).process(new BatchCreateFunction(config, httpUtil))
       .name("batch-create-process").uid("batch-create-process").setParallelism(1)
-    processStreamTask.getSideOutput(config.linkDIALCodeOutTag).process(new DIALCodeLinkFunction(config))
+    processStreamTask.getSideOutput(config.linkDIALCodeOutTag).process(new DIALCodeLinkFunction(config, httpUtil))
       .name("dialcode-link-process").uid("dialcode-link-process").setParallelism(1)
     val shallowCopyPublishStream = processStreamTask.getSideOutput(config.shallowContentPublishOutTag)
       .process(new ShallowCopyPublishFunction(config))
