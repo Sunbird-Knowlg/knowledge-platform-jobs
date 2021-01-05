@@ -18,6 +18,12 @@
       <artifactId>jobs-core</artifactId>
       <version>1.0.0</version>
     </dependency>
+    <dependency>
+      <groupId>org.scalatest</groupId>
+      <artifactId>scalatest_${scala.version}</artifactId>
+      <version>3.0.6</version>
+      <scope>test</scope>
+    </dependency>
   </dependencies>
 
   <build>
