@@ -10,7 +10,7 @@ import org.sunbird.incredible.pojos.exceptions.ServerException
 import org.sunbird.incredible.{JsonKeys, StorageParams, UrlManager}
 
 
-class StorageService(storageParams: StorageParams) {
+class StorageService(storageParams: StorageParams) extends Serializable {
 
   var storageService: BaseStorageService = _
   val storageType: String = storageParams.cloudStorageType
