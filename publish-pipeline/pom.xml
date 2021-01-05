@@ -15,6 +15,7 @@
 
     <modules>
         <module>publish-core</module>
+        <module>questionset-publish</module>
     </modules>
 
     <properties>
