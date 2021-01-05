@@ -9,7 +9,7 @@ import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.function.QuestionSetPublisher
+import org.sunbird.job.function.{PublishEventRouter, QuestionPublishFunction, QuestionSetPublishFunction}
 import org.sunbird.job.publish.domain.{Event, PublishMetadata}
 import org.sunbird.job.util.{FlinkUtil, HttpUtil}
 
@@ -23,13 +23,18 @@ class QuestionSetPublishStreamTask(config: QuestionSetPublishConfig, kafkaConnec
 		implicit val publishMetaTypeInfo: TypeInformation[PublishMetadata] = TypeExtractor.getForClass(classOf[PublishMetadata])
 
 		val source = kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)
-
-		env.addSource(source).name(config.inputConsumerName)
+		val processStreamTask = env.addSource(source).name(config.inputConsumerName)
 		  .uid(config.inputConsumerName).setParallelism(config.kafkaConsumerParallelism)
 		  .rebalance
-		  .process(new QuestionSetPublisher(config, httpUtil))
-		  .name("questionset-publisher").uid("questionset-publisher")
+		  .process(new PublishEventRouter(config, httpUtil))
+		  .name("publish-event-router").uid("publish-event-router")
 		  .setParallelism(config.eventRouterParallelism)
+
+		processStreamTask.getSideOutput(config.questionPublishOutTag).process(new QuestionPublishFunction(config, httpUtil))
+		  .name("question-publish-process").uid("question-publish-process").setParallelism(1)
+
+		processStreamTask.getSideOutput(config.questionSetPublishOutTag).process(new QuestionSetPublishFunction(config, httpUtil))
+		  .name("questionset-publish-process").uid("questionset-publish-process").setParallelism(1)
 		env.execute(config.jobName)
 	}
 }
