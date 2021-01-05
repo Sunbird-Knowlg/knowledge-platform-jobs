@@ -2,16 +2,18 @@ package org.sunbird.publish.helpers
 
 import org.sunbird.publish.core.ObjectData
 
+import scala.collection.mutable.ListBuffer
+
 trait ObjectValidator {
 
-  def validateObject(obj: ObjectData, identifier: String, customFn: (ObjectData, String) => Unit): Unit = {
-    validateObject(obj, identifier)
-    customFn(obj, identifier)
+  def validate(obj: ObjectData, identifier: String, customFn: (ObjectData, String) => List[String]): Unit = {
+    validate(obj, identifier) ++ customFn(obj, identifier)
   }
 
-  def validateObject(obj: ObjectData, identifier: String): Unit = {
-    if (obj.metadata.isEmpty) throw new Exception("There is no metadata available for : " + identifier)
-    if (obj.metadata.get("mimeType").isEmpty) throw new Exception("There is no mimeType defined for : " + identifier)
-    
+  def validate(obj: ObjectData, identifier: String): List[String] = {
+    val messages = ListBuffer[String]()
+    if (obj.metadata.isEmpty) messages += s"""There is no metadata available for : $identifier"""
+    if (obj.metadata.get("mimeType").isEmpty) messages += s"""There is no mimeType defined for : $identifier"""
+    messages.toList
   }
 }
