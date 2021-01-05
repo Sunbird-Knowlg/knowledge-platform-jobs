@@ -23,9 +23,9 @@ class ObjectReaderTestSpec extends FlatSpec with BeforeAndAfterAll with Matchers
   implicit val mockCassandraUtil: CassandraUtil = mock[CassandraUtil](Mockito.withSettings().serializable())
 
   "Object Reader " should " read the metadata " in {
-    when(mockNeo4JUtil.getNodeProperties("do_123")).thenReturn(Map[String, AnyRef]("name" -> "Content Name").asJava)
+    when(mockNeo4JUtil.getNodeProperties("do_123")).thenReturn(Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123.img", "pkgVersion" -> 2.0).asJava)
     val objectReader = new TestObjectReader()
-    val obj = objectReader.getObject("do_123", 0)
+    val obj = objectReader.getObject("do_123", 2)
     val metadata = obj.metadata.asJava
     metadata.isEmpty should be(false)
     obj.extData should be(None)
