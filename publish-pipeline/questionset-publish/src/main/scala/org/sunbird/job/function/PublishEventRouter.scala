@@ -32,11 +32,11 @@ class PublishEventRouter(config: QuestionSetPublishConfig) extends BaseProcessFu
 	override def processElement(event: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
 		if (event.validEvent()) {
 			event.objectType match {
-				case "Question" => {
+				case "Question" | "QuestionImage" => {
 					logger.info("PublishEventRouter :: Sending Question For Publish Having Identifier: " + event.objectId)
 					context.output(config.questionPublishOutTag, PublishMetadata(event.objectId, event.objectType, event.mimeType,event.pkgVersion))
 				}
-				case "QuestionSet" => {
+				case "QuestionSet" | "QuestionSetImage" => {
 					logger.info("PublishEventRouter :: Sending QuestionSet For Publish Having Identifier: " + event.objectId)
 					context.output(config.questionSetPublishOutTag, PublishMetadata(event.objectId, event.objectType, event.mimeType,event.pkgVersion))
 				}
@@ -45,9 +45,9 @@ class PublishEventRouter(config: QuestionSetPublishConfig) extends BaseProcessFu
 					logger.info("Invalid Object Type Received For Publish.| Identifier : " + event.objectId + " , objectType : " + event.objectType)
 				}
 			}
-		} else {
+		} else
+      logger.warn("Event skipped for identifier: " + event.objectId + " objectType: " + event.objectType)
 			metrics.incCounter(config.skippedEventCount)
-		}
 		metrics.incCounter(config.totalEventsCount)
 	}
 }
