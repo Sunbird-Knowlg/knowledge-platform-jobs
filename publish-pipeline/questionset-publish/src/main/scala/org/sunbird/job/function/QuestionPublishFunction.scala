@@ -12,7 +12,6 @@ import org.sunbird.job.publish.helpers.QuestionPublisher
 import org.sunbird.job.task.QuestionSetPublishConfig
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
 import org.sunbird.publish.core.ObjectData
-import org.sunbird.publish.helpers.ObjectUpdater
 
 class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUtil,
                               @transient var neo4JUtil: Neo4JUtil = null,
@@ -39,20 +38,20 @@ class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUt
 	}
 
 	override def processElement(data: PublishMetadata, context: ProcessFunction[PublishMetadata, String]#Context, metrics: Metrics): Unit = {
-    logger.info("Question publishing started for : " + data.identifier)
+		logger.info("Question publishing started for : " + data.identifier)
 		val obj = getObject(data.identifier, data.pkgVersion)(neo4JUtil, cassandraUtil)
-    val messages = validate(obj, obj.identifier)
-    if (messages.isEmpty) {
-      val enrichedObj = enrichObject(obj)
-      saveOnSuccess(enrichedObj, dummyFunc)(neo4JUtil)
-      logger.info("Question publishing completed successfully for : " + data.identifier)
-    } else {
-      saveOnFailure(obj, messages)(neo4JUtil)
-      logger.info("Question publishing failed for : " + data.identifier)
-    }
+		val messages = validate(obj, obj.identifier)
+		if (messages.isEmpty) {
+			val enrichedObj = enrichObject(obj)(neo4JUtil)
+			saveOnSuccess(enrichedObj, dummyFunc)(neo4JUtil)
+			logger.info("Question publishing completed successfully for : " + data.identifier)
+		} else {
+			saveOnFailure(obj, messages)(neo4JUtil)
+			logger.info("Question publishing failed for : " + data.identifier)
+		}
 	}
 
 
-  def dummyFunc = (obj: ObjectData) => {}
+	def dummyFunc = (obj: ObjectData) => {}
 
 }

@@ -9,7 +9,6 @@ import org.slf4j.LoggerFactory
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 import org.sunbird.job.publish.domain.{Event, PublishMetadata}
 import org.sunbird.job.task.QuestionSetPublishConfig
-import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
 
 class PublishEventRouter(config: QuestionSetPublishConfig) extends BaseProcessFunction[Event, String](config) {
 
