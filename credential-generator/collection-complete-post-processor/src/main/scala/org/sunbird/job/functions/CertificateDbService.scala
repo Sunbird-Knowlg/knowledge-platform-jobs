@@ -20,8 +20,7 @@ object CertificateDbService {
                        (implicit metrics: Metrics, @transient cassandraUtil: CassandraUtil,
                         config: CollectionCompletePostProcessorConfig): util.Map[String, AnyRef] = {
     println("readCertTemplates called : ")
-    val selectQuery = QueryBuilder.select().all().from(config.dbKeyspace, config.dbBatchTable)
-    selectQuery.where.and(QueryBuilder.eq(config.courseBatchPrimaryKey.head, edata.get(config.courseId).asInstanceOf[String])).
+    val selectQuery = QueryBuilder.select().all().from(config.dbKeyspace, config.dbBatchTable).where(QueryBuilder.eq(config.courseBatchPrimaryKey.head, edata.get(config.courseId).asInstanceOf[String])).
       and(QueryBuilder.eq(config.courseBatchPrimaryKey(1), edata.get(config.batchId).asInstanceOf[String]))
     println("readCertTemplates query : " + selectQuery.toString)
     val rows = cassandraUtil.find(selectQuery.toString)
@@ -36,11 +35,10 @@ object CertificateDbService {
                        (implicit metrics: Metrics, @transient cassandraUtil: CassandraUtil,
                         config: CollectionCompletePostProcessorConfig): List[String] = {
     println("readUserIdsFromDb called : " + enrollmentCriteria)
-    val selectQuery = QueryBuilder.select().all().from(config.dbKeyspace, config.dbUserTable)
-    selectQuery.where.and(QueryBuilder.in(config.userEnrolmentsPrimaryKey.head, edata.get(config.userIds).asInstanceOf[util.List[String]])).
+    val selectQuery = QueryBuilder.select().all().from(config.dbKeyspace, config.dbUserTable).where.and(QueryBuilder.in(config.userEnrolmentsPrimaryKey.head, edata.get(config.userIds).asInstanceOf[util.List[String]])).
       and(QueryBuilder.eq(config.userEnrolmentsPrimaryKey(1), edata.get(config.courseId).asInstanceOf[String])).
       and(QueryBuilder.eq(config.userEnrolmentsPrimaryKey(2), edata.get(config.batchId).asInstanceOf[String]))
-    enrollmentCriteria.asScala.map(criteria => selectQuery.where.and(QueryBuilder.eq(criteria._1, criteria._2)))
+    enrollmentCriteria.asScala.map(criteria => selectQuery.and(QueryBuilder.eq(criteria._1, criteria._2)))
     selectQuery.allowFiltering()
     println("readUserIdsFromDb : Enroll User read query : " + selectQuery.toString)
     val rows = cassandraUtil.find(selectQuery.toString)
@@ -69,8 +67,7 @@ object CertificateDbService {
   def readUserCertificate(edata: util.Map[String, AnyRef])
                          (implicit metrics: Metrics, @transient cassandraUtil: CassandraUtil, config: CollectionCompletePostProcessorConfig): util.Map[String, AnyRef] = {
     println("readUserCertificate called edata : " + edata)
-    val selectQuery = QueryBuilder.select().all().from(config.dbKeyspace, config.dbUserTable)
-    selectQuery.where.and(QueryBuilder.eq(config.userEnrolmentsPrimaryKey.head, edata.get(config.userId).asInstanceOf[String])).
+    val selectQuery = QueryBuilder.select().all().from(config.dbKeyspace, config.dbUserTable).where.and(QueryBuilder.eq(config.userEnrolmentsPrimaryKey.head, edata.get(config.userId).asInstanceOf[String])).
       and(QueryBuilder.eq(config.userEnrolmentsPrimaryKey(1), edata.get(config.courseId).asInstanceOf[String])).
       and(QueryBuilder.eq(config.userEnrolmentsPrimaryKey(2), edata.get(config.batchId).asInstanceOf[String]))
     println("readUserCertificate query : " + selectQuery.toString)
