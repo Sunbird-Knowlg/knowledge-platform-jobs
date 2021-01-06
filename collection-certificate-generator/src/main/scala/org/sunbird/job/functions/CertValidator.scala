@@ -2,7 +2,6 @@ package org.sunbird.job.functions
 
 import org.apache.commons.lang3.StringUtils
 import java.net.{MalformedURLException, URI, URL}
-import java.util.Arrays
 import java.util.regex.Pattern
 import java.net.URISyntaxException
 import java.text.MessageFormat
@@ -117,13 +116,19 @@ class CertValidator {
     if (dataList.isEmpty) {
       throw ValidationException(ErrorCodes.MANDATORY_PARAMETER_MISSING, MessageFormat.format(ErrorMessages.MANDATORY_PARAMETER_MISSING, parentKey))
     }
-    dataList.foreach(data => checkChildrenMapMandatoryParams(data, keys, parentKey))
+    println("datalist " + dataList.head)
+    println("data " + dataList.isInstanceOf[List[Map[String, AnyRef]]])
+
+    dataList.map(data => {
+      println("data " + data)
+      checkChildrenMapMandatoryParams(data, keys, parentKey)
+    })
   }
 
   @throws[ValidationException]
   private def checkChildrenMapMandatoryParams(data: Map[String, AnyRef], keys: List[String], parentKey: String): Unit = {
     keys.foreach(key => {
-      if (StringUtils.isBlank(data.get(key).asInstanceOf[String]))
+      if (StringUtils.isBlank(data.getOrElse(key, "").toString))
         throw ValidationException(ErrorCodes.MANDATORY_PARAMETER_MISSING, MessageFormat.format(ErrorMessages.MANDATORY_PARAMETER_MISSING, parentKey + "." + key))
     })
 

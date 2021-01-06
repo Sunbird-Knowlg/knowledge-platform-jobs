@@ -6,8 +6,9 @@ import com.typesafe.config.Config
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.streaming.api.scala.OutputTag
-import org.sunbird.incredible.JsonKeys
 import org.sunbird.job.BaseJobConfig
+import org.sunbird.notifier.NotificationMetaData
+import org.sunbird.user.feeds.UserFeedMetaData
 
 class CertificateGeneratorConfig(override val config: Config) extends BaseJobConfig(config, "collection-certificate-generator") {
 
@@ -15,6 +16,8 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
 
   implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
   implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
+  implicit val notificationMetaTypeInfo: TypeInformation[NotificationMetaData] = TypeExtractor.getForClass(classOf[NotificationMetaData])
+  implicit val userFeeMetaTypeInfo: TypeInformation[UserFeedMetaData] = TypeExtractor.getForClass(classOf[UserFeedMetaData])
 
   // Kafka Topics Configuration
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
@@ -23,7 +26,6 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
 
   // Producers
   val certificateGeneratorFailedEventProducer = "certificate-generate-failed-sink"
-
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
 
 
@@ -125,7 +127,7 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   val auditEventOutputTag: OutputTag[String] = OutputTag[String](auditEventOutputTagName)
   val failedEventOutputTagName = "failed-events"
   val failedEventOutputTag: OutputTag[String] = OutputTag[String](failedEventOutputTagName)
-  val notifierOutputTag: OutputTag[java.util.Map[String, AnyRef]] = OutputTag[java.util.Map[String, AnyRef]]("notifier")
-  val userFeedOutputTag: OutputTag[java.util.Map[String, AnyRef]] = OutputTag[java.util.Map[String, AnyRef]]("user-feed")
+  val notifierOutputTag: OutputTag[NotificationMetaData] = OutputTag[NotificationMetaData]("notifier")
+  val userFeedOutputTag: OutputTag[UserFeedMetaData] = OutputTag[UserFeedMetaData]("user-feed")
 
 }

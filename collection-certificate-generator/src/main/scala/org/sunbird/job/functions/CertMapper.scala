@@ -2,7 +2,6 @@ package org.sunbird.job.functions
 
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import java.util.stream.Collectors
 
 import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.commons.lang3.StringUtils
@@ -36,7 +35,9 @@ class CertMapper(certConfig: CertificateConfig) {
         certificateDescription = Option.apply(certReq.certificateDescription),
         certificateName = certReq.name,
         signatoryList = signatoryArr.toArray,
-        criteria = getCriteria(certReq.criteria)
+        criteria = getCriteria(certReq.criteria),
+        keyId = certReq.keys.get(JsonKeys.ID).asInstanceOf[String],
+        tag = certReq.tag
       )
       certModel
     }).toList
