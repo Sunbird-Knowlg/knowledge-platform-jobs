@@ -10,7 +10,7 @@ class Event(eventMap: java.util.Map[String, Any]) extends JobRequest(eventMap) {
 
 	private val jobName = "questionset-publish"
 
-	private val objectTypes = List("Question", "QuestionSet")
+	private val objectTypes = List("Question", "QuestionImage", "QuestionSet", "QuestionSetImage")
 	private val mimeTypes = List("application/vnd.sunbird.question", "application/vnd.sunbird.questionset")
 
 	def eData: Map[String, AnyRef] = readOrDefault("edata", new util.HashMap[String, AnyRef]()).asScala.toMap
@@ -22,8 +22,7 @@ class Event(eventMap: java.util.Map[String, Any]) extends JobRequest(eventMap) {
 	def objectId: String = readOrDefault[String]("edata.metadata.identifier", "")
 
 	def objectType: String = readOrDefault[String]("edata.metadata.objectType", "")
-
-  // TODO: revert the code to read as Double after event correction.
+  
 	def pkgVersion: Double = {
     val pkgVersion = readOrDefault[Int]("edata.metadata.pkgVersion", 0)
     pkgVersion.toDouble
