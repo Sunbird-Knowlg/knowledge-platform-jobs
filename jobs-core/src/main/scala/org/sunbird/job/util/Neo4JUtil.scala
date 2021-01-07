@@ -2,8 +2,8 @@ package org.sunbird.job.util
 
 import org.neo4j.driver.v1.{Config, GraphDatabase}
 import org.slf4j.LoggerFactory
+import scala.collection.JavaConverters._
 
-import java.util
 
 
 class Neo4JUtil(routePath: String, graphId: String) {
@@ -38,6 +38,18 @@ class Neo4JUtil(routePath: String, graphId: String) {
     if (statementResult.hasNext)
       statementResult.single().get("n").asMap()
     else null
+  }
+
+  def getNodesName(identifiers: List[String]): Map[String, String] = {
+    val query = s"""MATCH(n:domain) WHERE n.IL_UNIQUE_ID IN ${JSONUtil.serialize(identifiers.asJava)} RETURN n.IL_UNIQUE_ID AS id, n.name AS name;"""
+    logger.info("Neo4jUril :: getNodesName :: Query : " + query)
+    val statementResult = executeQuery(query)
+    if (null != statementResult) {
+      statementResult.list().asScala.toList.flatMap(record => Map(record.get("id").asString() -> record.get("name").asString())).toMap
+    } else {
+      logger.info("Neo4j Nodes Not Found For " + identifiers.asJava)
+      Map()
+    }
   }
 
   def executeQuery(query: String) = {

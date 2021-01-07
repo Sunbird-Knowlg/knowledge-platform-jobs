@@ -1,9 +1,9 @@
 package org.sunbird.job.publish.helpers
 
 import org.sunbird.job.util.CassandraUtil
-import org.sunbird.publish.helpers.{ObjectReader, ObjectValidator}
+import org.sunbird.publish.helpers.{ObjectEnrichment, ObjectReader, ObjectUpdater, ObjectValidator}
 
-trait QuestionSetPublisher extends ObjectReader with ObjectValidator {
+trait QuestionSetPublisher extends ObjectReader with ObjectValidator with ObjectUpdater with ObjectEnrichment {
 
 	override def getExtData(identifier: String)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = None
 
