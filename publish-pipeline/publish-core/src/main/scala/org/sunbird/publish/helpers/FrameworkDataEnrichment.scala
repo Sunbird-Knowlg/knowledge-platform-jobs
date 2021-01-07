@@ -4,7 +4,7 @@ import java.util
 
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
-import org.sunbird.job.util.{JSONUtil, Neo4JUtil}
+import org.sunbird.job.util.Neo4JUtil
 import org.sunbird.publish.core.ObjectData
 
 import scala.collection.JavaConverters._
@@ -38,25 +38,13 @@ trait FrameworkDataEnrichment {
 			logger.info("No framework categories are present for identifier : " + identifier)
 			Map()
 		} else {
-			val nameMap: Map[String, String] = getObjectName(fwMetaIds)
+			val nameMap: Map[String, String] = neo4JUtil.getNodesName(fwMetaIds)
 			if (nameMap.isEmpty) Map() else {
 				fwMetaFields.flatMap(meta => {
 					val metaNames: List[String] = getList(metadata.getOrElse(meta, List())).map(id => nameMap.getOrElse(id, ""))
 					Map(meta -> metaNames)
 				}).toMap
 			}
-		}
-	}
-
-	private def getObjectName(identifiers: List[String])(implicit neo4JUtil: Neo4JUtil): Map[String, String] = {
-		val query = s"""MATCH(n:domain) WHERE n.IL_UNIQUE_ID IN ${JSONUtil.serialize(identifiers.asJava)} RETURN n.IL_UNIQUE_ID AS id, n.name AS name;"""
-		logger.info("FrameworkDataEnrichment :: getObjectName :: Query : " + query)
-		val statementResult = neo4JUtil.executeQuery(query)
-		if (null != statementResult) {
-			statementResult.list().asScala.toList.flatMap(record => Map(record.get("id").asString() -> record.get("name").asString())).toMap
-		} else {
-			logger.info("Neo4j Nodes Not Found For " + identifiers.asJava)
-			Map()
 		}
 	}
 
