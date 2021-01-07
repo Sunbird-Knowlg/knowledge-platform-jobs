@@ -18,6 +18,9 @@ trait ObjectValidator {
     val messages = ListBuffer[String]()
     if (obj.metadata.isEmpty) messages += s"""There is no metadata available for : $identifier"""
     if (obj.metadata.get("mimeType").isEmpty) messages += s"""There is no mimeType defined for : $identifier"""
+    if (obj.metadata.get("primaryCategory").isEmpty) messages += s"""There is no primaryCategory defined for : $identifier"""
+    if (obj.metadata.get("name").isEmpty) messages += s"""There is no name defined for : $identifier"""
+    if (obj.metadata.get("code").isEmpty) messages += s"""There is no code defined for : $identifier"""
     messages.toList
   }
 }
