@@ -34,6 +34,10 @@ class QuestionSetPublishConfig(override val config: Config) extends BaseJobConfi
 	val skippedEventCount = "skipped-event-count"
 	val questionPublishEventCount = "question-publish-count"
 	val questionSetPublishEventCount = "questionset-publish-count"
+	val dbUpdateCount = "db-update-count"
+	val dbReadCount = "db-read-count"
+	val cacheHitCount = "cache-hit-count"
+	val cacheMissCount = "cache-miss-count"
 
 	// Cassandra Configurations
 	val cassandraHost: String = config.getString("lms-cassandra.host")

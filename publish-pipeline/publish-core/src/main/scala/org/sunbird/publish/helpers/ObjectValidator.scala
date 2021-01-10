@@ -9,7 +9,7 @@ trait ObjectValidator {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[ObjectValidator])
 
-  def validate(obj: ObjectData, identifier: String, customFn: (ObjectData, String) => List[String]): Unit = {
+  def validate(obj: ObjectData, identifier: String, customFn: (ObjectData, String) => List[String]): List[String] = {
     validate(obj, identifier) ++ customFn(obj, identifier)
   }
 
