@@ -40,7 +40,7 @@ trait ObjectUpdater {
   }
 
   def metaDataQuery(obj: ObjectData): String = {
-    val metadata = obj.metadata - ("IL_UNIQUE_ID", "identifier", "IL_FUNC_OBJECT_TYPE", "IL_SYS_NODE_TYPE", "pkgVersion", "lastStatusChangedOn", "lastUpdatedOn")
+    val metadata = obj.metadata - ("IL_UNIQUE_ID", "identifier", "IL_FUNC_OBJECT_TYPE", "IL_SYS_NODE_TYPE", "pkgVersion", "lastStatusChangedOn", "lastUpdatedOn", "status", "objectType")
     metadata.map(prop => {
       val key = prop._1
       val value = prop._2

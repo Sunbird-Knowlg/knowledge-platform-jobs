@@ -1,6 +1,7 @@
 package org.sunbird.job.function
 
 import java.lang.reflect.Type
+
 import com.google.gson.reflect.TypeToken
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
@@ -11,7 +12,7 @@ import org.sunbird.job.publish.domain.PublishMetadata
 import org.sunbird.job.publish.helpers.QuestionPublisher
 import org.sunbird.job.task.QuestionSetPublishConfig
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
-import org.sunbird.publish.core.ObjectData
+import org.sunbird.publish.core.ExtDataConfig
 
 class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUtil,
                               @transient var neo4JUtil: Neo4JUtil = null,
@@ -21,6 +22,7 @@ class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUt
 
 	private[this] val logger = LoggerFactory.getLogger(classOf[QuestionPublishFunction])
 	val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
+	private val readerConfig = ExtDataConfig(config.questionKeyspaceName, config.questionTableName)
 
 	override def open(parameters: Configuration): Unit = {
 		super.open(parameters)
@@ -39,8 +41,8 @@ class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUt
 
 	override def processElement(data: PublishMetadata, context: ProcessFunction[PublishMetadata, String]#Context, metrics: Metrics): Unit = {
 		logger.info("Question publishing started for : " + data.identifier)
-		val obj = getObject(data.identifier, data.pkgVersion)(neo4JUtil, cassandraUtil)
-		val messages = validate(obj, obj.identifier)
+		val obj = getObject(data.identifier, data.pkgVersion, readerConfig)(neo4JUtil, cassandraUtil)
+		val messages:List[String] = validate(obj, obj.identifier, validateQuestion)
 		if (messages.isEmpty) {
 			val enrichedObj = enrichObject(obj)(neo4JUtil)
 			saveOnSuccess(enrichedObj, dummyFunc)(neo4JUtil)
@@ -50,8 +52,5 @@ class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUt
 			logger.info("Question publishing failed for : " + data.identifier)
 		}
 	}
-
-
-	def dummyFunc = (obj: ObjectData) => {}
 
 }

@@ -12,6 +12,7 @@ import org.sunbird.job.publish.domain.PublishMetadata
 import org.sunbird.job.publish.helpers.QuestionSetPublisher
 import org.sunbird.job.task.QuestionSetPublishConfig
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
+import org.sunbird.publish.core.ExtDataConfig
 
 class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUtil,
                                  @transient var neo4JUtil: Neo4JUtil = null,
@@ -21,6 +22,7 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 
 	private[this] val logger = LoggerFactory.getLogger(classOf[QuestionSetPublishFunction])
 	val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
+	private val readerConfig = ExtDataConfig(config.questionSetKeyspaceName, config.questionSetTableName)
 
 	override def open(parameters: Configuration): Unit = {
 		super.open(parameters)
@@ -37,8 +39,20 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 		List(config.questionSetPublishEventCount)
 	}
 
-	override def processElement(publishData: PublishMetadata, context: ProcessFunction[PublishMetadata, String]#Context, metrics: Metrics): Unit = {
-		println("QuestionSetPublishFunction ::: processElement ::: publishData ::: "+publishData)
+	override def processElement(data: PublishMetadata, context: ProcessFunction[PublishMetadata, String]#Context, metrics: Metrics): Unit = {
+		logger.info("QuestionSet publishing started for : " + data.identifier)
+		val obj = getObject(data.identifier, data.pkgVersion, readerConfig)(neo4JUtil, cassandraUtil)
+		val messages:List[String] = validate(obj, obj.identifier, validateQuestionSet)
+		if (messages.isEmpty) {
+			//TODO: enrichObject should take a function as parameter for enriching questionset hierarchy as it requires internal question publish
+			val enrichedObj = enrichObject(obj)(neo4JUtil)
+			//TODO: Implement the dummyFunc function to save hierarchy into cassandra.
+			saveOnSuccess(enrichedObj, dummyFunc)(neo4JUtil)
+			logger.info("QuestionSet publishing completed successfully for : " + data.identifier)
+		} else {
+			saveOnFailure(obj, messages)(neo4JUtil)
+			logger.info("QuestionSet publishing failed for : " + data.identifier)
+		}
 	}
 
 }

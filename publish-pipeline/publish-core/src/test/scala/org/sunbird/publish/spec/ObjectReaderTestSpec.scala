@@ -6,6 +6,7 @@ import org.sunbird.job.util.{CassandraUtil, Neo4JUtil}
 import org.sunbird.publish.helpers.ObjectReader
 import org.mockito.Mockito
 import org.mockito.Mockito._
+import org.sunbird.publish.core.ExtDataConfig
 
 import scala.collection.JavaConverters._
 
@@ -25,7 +26,8 @@ class ObjectReaderTestSpec extends FlatSpec with BeforeAndAfterAll with Matchers
   "Object Reader " should " read the metadata " in {
     when(mockNeo4JUtil.getNodeProperties("do_123.img")).thenReturn(Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123.img", "IL_UNIQUE_ID" -> "do_123.img", "pkgVersion" -> 2.0.asInstanceOf[AnyRef]).asJava)
     val objectReader = new TestObjectReader()
-    val obj = objectReader.getObject("do_123", 2)
+    val readerConfig = ExtDataConfig("test", "test")
+    val obj = objectReader.getObject("do_123", 2, readerConfig)
     val metadata = obj.metadata.asJava
     metadata.isEmpty should be(false)
     obj.extData should be(None)
@@ -35,7 +37,7 @@ class ObjectReaderTestSpec extends FlatSpec with BeforeAndAfterAll with Matchers
 
 class TestObjectReader extends ObjectReader {
 
-  override def getExtData(identifier: String)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = None
+  override def getExtData(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = None
 
-  override def getHierarchy(identifier: String)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = None
+  override def getHierarchy(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = None
 }

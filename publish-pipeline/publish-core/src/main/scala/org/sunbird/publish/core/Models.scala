@@ -7,3 +7,5 @@ class ObjectData(val identifier: String, val metadata: Map[String, AnyRef], val 
   val pkgVersion = metadata.getOrElse("pkgVersion", 0.0.asInstanceOf[Number]).asInstanceOf[Number].intValue()
 
 }
+
+case class ExtDataConfig(keyspace: String, table: String)
