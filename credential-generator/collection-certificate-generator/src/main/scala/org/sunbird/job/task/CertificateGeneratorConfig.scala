@@ -27,7 +27,7 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
 
   // Producers
   val certificateGeneratorFailedEventProducer = "certificate-generate-failed-sink"
-  val certificateGeneratorAuditProducer = "post-certificate-process-audit-events-sink"
+  val certificateGeneratorAuditProducer = "collection-certificate-generator-audit-events-sink"
 
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
 

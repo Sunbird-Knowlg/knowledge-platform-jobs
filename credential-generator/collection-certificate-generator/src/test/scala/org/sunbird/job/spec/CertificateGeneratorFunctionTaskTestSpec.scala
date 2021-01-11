@@ -4,6 +4,7 @@ import java.io.File
 import java.lang.reflect.Type
 import java.util
 
+
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.typesafe.config.{Config, ConfigFactory}
@@ -112,9 +113,9 @@ class CertificateGeneratorEventSource extends SourceFunction[Event] {
     val gson = new Gson()
     val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
     val eventMap1: util.Map[String, AnyRef] = gson.fromJson(EventFixture.EVENT_1, mapType).asInstanceOf[util.Map[String, AnyRef]]
-    val eventMap2 = gson.fromJson(EventFixture.EVENT_2, new util.LinkedHashMap[String, Any]().getClass).asInstanceOf[util.Map[String, Any]].asScala
+    val eventMap2: util.Map[String, AnyRef] = gson.fromJson(EventFixture.EVENT_2, mapType).asInstanceOf[util.Map[String, AnyRef]]
     ctx.collect(new Event(eventMap1.asInstanceOf[util.Map[String, Any]]))
-    ctx.collect(new Event(eventMap2.asJava))
+    ctx.collect(new Event(eventMap2.asInstanceOf[util.Map[String, Any]]))
   }
 
   override def cancel() = {}
