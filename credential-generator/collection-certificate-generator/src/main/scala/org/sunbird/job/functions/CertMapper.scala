@@ -16,18 +16,17 @@ import scala.collection.JavaConverters._
 
 class CertMapper(certConfig: CertificateConfig) {
 
-  lazy private val mapper: ObjectMapper = new ObjectMapper()
-
   def mapReqToCertModel(certReq: Event): List[CertModel] = {
     val dataList: List[Map[String, AnyRef]] = certReq.data
     val signatoryArr = getSignatoryArray(certReq.signatoryList)
     val issuedDate = new IssuedDateValuator().evaluates(if (StringUtils.isBlank(certReq.issuedDate)) getCurrentDate else certReq.issuedDate)
+    val expiryDate: String = if (StringUtils.isNotBlank(certReq.expiryDate)) new ExpiryDateValuator(issuedDate).evaluates(certReq.expiryDate) else ""
     val certList: List[CertModel] = dataList.toStream.map((data: Map[String, AnyRef]) => {
-      val certModel: CertModel = CertModel(recipientName = data.get(JsonKeys.RECIPIENT_NAME).asInstanceOf[String],
-        recipientEmail = Option.apply(data.get(JsonKeys.RECIPIENT_EMAIl).asInstanceOf[String]),
-        recipientPhone = Option.apply(data.get(JsonKeys.RECIPIENT_PHONE).asInstanceOf[String]),
-        identifier = data.get(JsonKeys.RECIPIENT_ID).asInstanceOf[String],
-        validFrom = Option.apply(data.get(JsonKeys.VALID_FROM).asInstanceOf[String]),
+      val certModel: CertModel = CertModel(recipientName = data.getOrElse(JsonKeys.RECIPIENT_NAME, "").asInstanceOf[String],
+        recipientEmail = Option.apply(data.getOrElse(JsonKeys.RECIPIENT_EMAIl, "").asInstanceOf[String]),
+        recipientPhone = Option.apply(data.getOrElse(JsonKeys.RECIPIENT_PHONE, "").asInstanceOf[String]),
+        identifier = data.getOrElse(JsonKeys.RECIPIENT_ID, "").asInstanceOf[String],
+        validFrom = Option.apply(data.getOrElse(JsonKeys.VALID_FROM, null).asInstanceOf[String]),
         issuer = getIssuer(certReq),
         courseName = certReq.courseName,
         issuedDate = issuedDate,
@@ -36,8 +35,9 @@ class CertMapper(certConfig: CertificateConfig) {
         certificateName = certReq.name,
         signatoryList = signatoryArr.toArray,
         criteria = getCriteria(certReq.criteria),
-        keyId = certReq.keys.get(JsonKeys.ID).asInstanceOf[String],
-        tag = certReq.tag
+        keyId = certReq.keys.getOrElse(JsonKeys.ID, ""),
+        tag = certReq.tag,
+        expiry = Option.apply(expiryDate)
       )
       certModel
     }).toList
@@ -50,14 +50,14 @@ class CertMapper(certConfig: CertificateConfig) {
     dtf.format(LocalDateTime.now)
   }
 
-  private def getCriteria(criteriaData: Map[String, AnyRef]): Criteria = mapper.convertValue(criteriaData, classOf[Criteria])
+  private def getCriteria(criteriaData: Map[String, String]): Criteria = Criteria(narrative = criteriaData.getOrElse(JsonKeys.NARRATIVE, ""))
 
 
   private def getIssuer(req: Event): Issuer = {
     val issuerData: Map[String, AnyRef] = req.issuer
-    val publicKeys: List[String] = getPublicKeys(issuerData.get(JsonKeys.PUBLIC_KEY).asInstanceOf[List[String]], req.keys)
-    val issuer: Issuer = Issuer(context = certConfig.contextUrl, name = issuerData.get(JsonKeys.NAME).asInstanceOf[String], url =
-      issuerData.get(JsonKeys.URL).asInstanceOf[String], publicKey = Option.apply(publicKeys.toArray))
+    val publicKeys: List[String] = getPublicKeys(issuerData.getOrElse(JsonKeys.PUBLIC_KEY, new java.util.ArrayList[String]()).asInstanceOf[java.util.ArrayList[String]].asScala.toList, req.keys)
+    val issuer: Issuer = Issuer(context = certConfig.contextUrl, name = issuerData.getOrElse(JsonKeys.NAME, "").asInstanceOf[String], url =
+      issuerData.getOrElse(JsonKeys.URL, "").asInstanceOf[String], publicKey = Option.apply(publicKeys.toArray))
     issuer
   }
 
@@ -68,8 +68,11 @@ class CertMapper(certConfig: CertificateConfig) {
 
 
   private def getSignatory(signatory: Map[String, AnyRef]): SignatoryExtension = {
-    SignatoryExtension(context = certConfig.signatoryExtension, identity = signatory.get(JsonKeys.ID).asInstanceOf[String]
-      , designation = signatory.get(JsonKeys.DESIGNATION).asInstanceOf[String], image = signatory.get(JsonKeys.SIGNATORY_IMAGE).asInstanceOf[String], name = "")
+    SignatoryExtension(context = certConfig.signatoryExtension, identity =
+      signatory.getOrElse(JsonKeys.ID, "").asInstanceOf[String],
+      designation = signatory.getOrElse(JsonKeys.DESIGNATION, "").asInstanceOf[String],
+      image = signatory.getOrElse(JsonKeys.SIGNATORY_IMAGE, "").asInstanceOf[String],
+      name = signatory.getOrElse(JsonKeys.NAME, "").asInstanceOf[String])
   }
 
   private def getPublicKeys(issuerPublicKeys: List[String], keys: Map[String, AnyRef]): List[String] = {

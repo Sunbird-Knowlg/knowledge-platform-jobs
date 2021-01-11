@@ -5,10 +5,13 @@ import java.net.{MalformedURLException, URI, URL}
 import java.util.regex.Pattern
 import java.net.URISyntaxException
 import java.text.MessageFormat
+import java.util
 
 import org.sunbird.incredible.JsonKeys
 import org.sunbird.job.Exceptions.{ErrorCodes, ErrorMessages, ValidationException}
 import org.sunbird.job.domain.Event
+
+import scala.collection.JavaConverters._
 
 /**
   * This class contains method to validate certificate api request
@@ -42,25 +45,25 @@ class CertValidator {
   }
 
   private def validateCertSignatoryList(signatoryList: List[Map[String, AnyRef]]): Unit = {
-    checkMandatoryParamsPresent(signatoryList, JsonKeys.CERTIFICATE + "." + JsonKeys.SIGNATORY_LIST, List(JsonKeys.NAME, JsonKeys.ID, JsonKeys.DESIGNATION,
+    checkMandatoryParamsPresent(signatoryList, JsonKeys.EDATA + "." + JsonKeys.SIGNATORY_LIST, List(JsonKeys.NAME, JsonKeys.ID, JsonKeys.DESIGNATION,
       JsonKeys.SIGNATORY_IMAGE))
   }
 
   private def validateCertIssuer(issuer: Map[String, AnyRef]): Unit = {
-    checkMandatoryParamsPresent(issuer, JsonKeys.CERTIFICATE + "." + JsonKeys.ISSUER, List(JsonKeys.NAME, JsonKeys.URL))
-    publicKeys = issuer.get(JsonKeys.PUBLIC_KEY).asInstanceOf[List[String]]
+    checkMandatoryParamsPresent(issuer, JsonKeys.EDATA + "." + JsonKeys.ISSUER, List(JsonKeys.NAME, JsonKeys.URL))
+    publicKeys = issuer.getOrElse(JsonKeys.PUBLIC_KEY, new util.ArrayList[String]()).asInstanceOf[util.ArrayList[String]].asScala.toList
   }
 
   private def validateCriteria(criteria: Map[String, AnyRef]): Unit = {
-    checkMandatoryParamsPresent(criteria, JsonKeys.CERTIFICATE + "." + JsonKeys.CRITERIA, List(JsonKeys.NARRATIVE))
+    checkMandatoryParamsPresent(criteria, JsonKeys.EDATA + "." + JsonKeys.CRITERIA, List(JsonKeys.NARRATIVE))
   }
 
   private def validateCertData(data: List[Map[String, AnyRef]]): Unit = {
-    checkMandatoryParamsPresent(data, JsonKeys.CERTIFICATE + "." + JsonKeys.DATA, List(JsonKeys.RECIPIENT_NAME))
+    checkMandatoryParamsPresent(data, JsonKeys.EDATA + "." + JsonKeys.DATA, List(JsonKeys.RECIPIENT_NAME))
   }
 
   private def validateKeys(keys: Map[String, AnyRef]): Unit = {
-    checkMandatoryParamsPresent(keys, JsonKeys.CERTIFICATE + "." + JsonKeys.KEYS, List(JsonKeys.ID))
+    checkMandatoryParamsPresent(keys, JsonKeys.EDATA + "." + JsonKeys.KEYS, List(JsonKeys.ID))
     if (publicKeys.nonEmpty) {
       validateIssuerPublicKeys(keys)
     }
@@ -80,10 +83,10 @@ class CertValidator {
       } else {
         keyIds :+ publicKey
       })
-    if (!keyIds.contains(keys.get(JsonKeys.ID))) {
+    if (!keyIds.contains(keys.getOrElse(JsonKeys.ID, ""))) {
       throw ValidationException(
         ErrorCodes.INVALID_PARAM_VALUE,
-        MessageFormat.format(ErrorMessages.INVALID_PARAM_VALUE, publicKeys, JsonKeys.CERTIFICATE + "." + JsonKeys.ISSUER + "." + JsonKeys.PUBLIC_KEY) +
+        MessageFormat.format(ErrorMessages.INVALID_PARAM_VALUE, publicKeys, JsonKeys.EDATA + "." + JsonKeys.ISSUER + "." + JsonKeys.PUBLIC_KEY) +
           " ,public key attribute must contain keys.id value")
     }
   }
@@ -116,13 +119,7 @@ class CertValidator {
     if (dataList.isEmpty) {
       throw ValidationException(ErrorCodes.MANDATORY_PARAMETER_MISSING, MessageFormat.format(ErrorMessages.MANDATORY_PARAMETER_MISSING, parentKey))
     }
-    println("datalist " + dataList.head)
-    println("data " + dataList.isInstanceOf[List[Map[String, AnyRef]]])
-
-    dataList.map(data => {
-      println("data " + data)
-      checkChildrenMapMandatoryParams(data, keys, parentKey)
-    })
+    dataList.foreach(data => checkChildrenMapMandatoryParams(data, keys, parentKey))
   }
 
   @throws[ValidationException]

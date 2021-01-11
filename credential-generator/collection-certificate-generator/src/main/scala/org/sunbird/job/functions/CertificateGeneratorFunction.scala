@@ -15,12 +15,10 @@ import org.apache.commons.io.FileUtils
 import org.apache.commons.lang.StringUtils
 import org.apache.commons.lang.exception.ExceptionUtils
 import org.apache.flink.configuration.Configuration
-import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.annotation.JsonInclude
-import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.incredible.pojos.ob.CertificateExtension
-import org.sunbird.incredible.{CertificateConfig, CertificateGenerator, JsonKeys, QrCodeModel, StorageParams}
+import org.sunbird.incredible.{CertificateConfig, CertificateGenerator, JsonKeys, JsonUtils}
 import org.sunbird.incredible.processor.CertModel
 import org.sunbird.incredible.processor.store.StorageService
 import org.sunbird.incredible.processor.views.SvgGenerator
@@ -34,21 +32,17 @@ import org.sunbird.user.feeds.UserFeedMetaData
 
 import scala.collection.JavaConverters._
 
-class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil: HttpUtil, @transient var cassandraUtil: CassandraUtil = null)
+class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil: HttpUtil, storageService: StorageService, @transient var cassandraUtil: CassandraUtil = null)
   extends BaseProcessFunction[Event, String](config) {
 
 
   private[this] val logger = LoggerFactory.getLogger(classOf[CertificateGeneratorFunction])
   val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
   val directory: String = "certificates/"
-  lazy private val mapper: ObjectMapper = new ObjectMapper()
-  mapper.setSerializationInclusion(JsonInclude.Include.NON_NULL)
   lazy private val gson = new Gson()
   val formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
   implicit val certificateConfig: CertificateConfig = CertificateConfig(basePath = config.basePath, encryptionServiceUrl = config.encServiceUrl, contextUrl = config.CONTEXT, issuerUrl = config.ISSUER_URL,
     evidenceUrl = config.EVIDENCE_URL, signatoryExtension = config.SIGNATORY_EXTENSION)
-  val storageParams: StorageParams = StorageParams(config.storageType, config.azureStorageKey, config.azureStorageSecret, config.containerName)
-  val storageService: StorageService = new StorageService(storageParams)
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
@@ -88,12 +82,12 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
     if (errorString.length > 21) {
       stackTrace = errorString.slice(errorString.length - 21, errorString.length - 1)
     }
-    //    event.put("failInfo", FailedEvent(errorCode, error.getMessage + " : : " + stackTrace))
-    context.output(config.failedEventOutputTag, gson.toJson(event))
+    val eData = event.eData + "failInfo" -> FailedEvent(errorCode, error.getMessage + " : : " + stackTrace)
+    context.output(config.failedEventOutputTag, gson.toJson(eData))
   }
 
   override def metricsList(): List[String] = {
-    List(config.successEventCount, config.failedEventCount, config.skippedEventCount, config.totalEventsCount, config.dbUpdateCount, config.dbReadCount, config.totalEventsCount, config.skipNotifyUserCount, config.notifiedUserCount)
+    List(config.successEventCount, config.failedEventCount, config.skippedEventCount, config.totalEventsCount, config.dbUpdateCount, config.enrollmentDbReadCount, config.totalEventsCount, config.skipNotifyUserCount, config.notifiedUserCount)
   }
 
 
@@ -109,7 +103,8 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
         uuid = certificateGenerator.getUUID(certificateExtension)
         val qrMap = certificateGenerator.generateQrCode(uuid, directory, certificateConfig.basePath)
         val encodedQrCode: String = encodeQrCode(qrMap.qrFile)
-        certificateExtension.printUri = Option.apply(SvgGenerator.generate(certificateExtension, encodedQrCode, event.svgTemplate))
+        val printUri = SvgGenerator.generate(certificateExtension, encodedQrCode, event.svgTemplate)
+        certificateExtension.printUri = Option(printUri)
         val jsonUrl = uploadJson(certificateExtension, directory.concat(uuid).concat(".json"), event.tag)
         //adding certificate to registry
         val addReq = new java.util.HashMap[String, AnyRef]() {
@@ -134,10 +129,10 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
         //cert-registry end
 
         val related = event.related
-        val userEnrollmentData = UserEnrollmentData(related.get(config.BATCH_ID).asInstanceOf[String], certModel.identifier,
-          related.get(config.COURSE_ID).asInstanceOf[String], event.courseName, event.templateId,
+        val userEnrollmentData = UserEnrollmentData(related.getOrElse(config.BATCH_ID, "").asInstanceOf[String], certModel.identifier,
+          related.getOrElse(config.COURSE_ID, "").asInstanceOf[String], event.courseName, event.templateId,
           Certificate(uuid, event.name, qrMap.accessCode, formatter.format(new Date())))
-        updateUserEnrollmentTable(userEnrollmentData, context)
+        updateUserEnrollmentTable(event, userEnrollmentData, context)
         metrics.incCounter(config.successEventCount)
       } finally {
         cleanUp(uuid, directory)
@@ -147,7 +142,8 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
 
   @throws[ServerException]
   def addCertToRegistry(certReq: Event, request: java.util.HashMap[String, AnyRef], context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
-    val httpRequest = mapper.writeValueAsString(request)
+    logger.info("adding certificate to the registry")
+    val httpRequest = JsonUtils.serialize(request)
     val httpResponse = httpUtil.post(config.certRegistryBaseUrl + "/certs/v2/registry/add", httpRequest)
     if (httpResponse.status == 200) {
       logger.info("certificate added successfully to the registry " + httpResponse.body)
@@ -168,7 +164,7 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
   private def uploadJson(certificateExtension: CertificateExtension, fileName: String, cloudPath: String): String = {
     logger.info("uploadJson: uploading json file started {}", fileName)
     val file = new File(fileName)
-    mapper.writeValue(file, certificateExtension)
+    JsonUtils.writeToJsonFile(file, certificateExtension)
     storageService.uploadFile(cloudPath, file)
   }
 
@@ -188,7 +184,8 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
   }
 
 
-  def updateUserEnrollmentTable(certMetaData: UserEnrollmentData, context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
+  def updateUserEnrollmentTable(event: Event, certMetaData: UserEnrollmentData, context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
+    logger.info("updating user enrollment table")
     val primaryFields = Map(config.userId.toLowerCase() -> certMetaData.userId, config.batchId.toLowerCase -> certMetaData.batchId, config.courseId.toLowerCase -> certMetaData.courseId)
     val records = getIssuedCertificatesFromUserEnrollmentTable(primaryFields)
     if (records.nonEmpty)
@@ -219,11 +216,10 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
           logger.info("pushAuditEvent: certificate audit event success")
           context.output(config.notifierOutputTag, NotificationMetaData(certMetaData.userId, certMetaData.courseName, issuedOn, certMetaData.courseId, certMetaData.batchId, certMetaData.templateId))
           context.output(config.userFeedOutputTag, UserFeedMetaData(certMetaData.userId, certMetaData.courseName, issuedOn))
-          metrics.incCounter(config.successEventCount)
         } else {
           metrics.incCounter(config.failedEventCount)
-          //          event.put("failInfo", FailedEvent("ERR_DB_UPDATION_FAILED", "db update failed"))
-          //          context.output(config.failedEventOutputTag, gson.toJson(event))
+          val edata = event.eData + "failInfo" -> FailedEvent("ERR_DB_UPDATION_FAILED", "db update failed")
+          context.output(config.failedEventOutputTag, gson.toJson(edata))
           logger.info("Database update has failed {}", query)
         }
 
@@ -254,7 +250,7 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
           selectWhere.and(QueryBuilder.eq(col._1, col._2))
       }
     })
-    metrics.incCounter(config.dbReadCount)
+    metrics.incCounter(config.enrollmentDbReadCount)
     cassandraUtil.find(selectWhere.toString).asScala.toList
   }
 
