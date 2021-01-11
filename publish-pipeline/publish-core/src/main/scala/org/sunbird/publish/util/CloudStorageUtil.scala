@@ -12,13 +12,20 @@ import scala.concurrent.ExecutionContext
 class CloudStorageUtil(config: PublishConfig) {
 
 	var storageService: BaseStorageService = null
+	val cloudStorageType = config.getString("cloud_storage_type", "azure")
+	val azureStorageKey = config.getString("azure_storage_key", "")
+	val azureStorageSecret = config.getString("azure_storage_secret", "")
+	val azureStorageContainer = config.getString("azure_storage_container", "")
+	val awsStorageKey = config.getString("aws_storage_key", "")
+	val awsStorageSecret = config.getString("aws_storage_secret", "")
+	val awsStorageContainer = config.getString("aws_storage_container", "")
 
 	@throws[Exception]
 	def getService(): BaseStorageService = {
 		if (null == storageService) {
-			config.cloudStorageType match {
-				case "azure" => storageService = StorageServiceFactory.getStorageService(StorageConfig(config.cloudStorageType, config.azureStorageKey, config.azureStorageSecret))
-				case "aws" => storageService = StorageServiceFactory.getStorageService(StorageConfig(config.cloudStorageType, config.awsStorageKey, config.awsStorageSecret))
+			cloudStorageType match {
+				case "azure" => storageService = StorageServiceFactory.getStorageService(StorageConfig(cloudStorageType, azureStorageKey, azureStorageSecret))
+				case "aws" => storageService = StorageServiceFactory.getStorageService(StorageConfig(awsStorageKey, awsStorageSecret, awsStorageContainer))
 				case _ => throw new Exception("Error while initialising cloud storage")
 			}
 		}
@@ -26,9 +33,9 @@ class CloudStorageUtil(config: PublishConfig) {
 	}
 
 	def getContainerName(): String = {
-		config.cloudStorageType match {
-			case "azure" => config.azureStorageContainer
-			case "aws" => config.awsStorageContainer
+		cloudStorageType match {
+			case "azure" => azureStorageContainer
+			case "aws" => awsStorageContainer
 			case _ => throw new Exception("Container name not configured.")
 		}
 	}
