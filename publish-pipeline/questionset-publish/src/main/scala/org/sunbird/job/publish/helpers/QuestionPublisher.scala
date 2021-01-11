@@ -22,7 +22,7 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
 	def validateQuestion(obj: ObjectData, identifier: String): List[String] = {
 		logger.info("Validating Question External Data For : "+obj.identifier)
 		//TODO: Remove Below logger statement
-		logger.info("Question External Data For : "+obj.extData.get)
+		logger.info("Question External Data : "+obj.extData.get)
 		val messages = ListBuffer[String]()
 		if (obj.extData.get.getOrElse("body", "").asInstanceOf[String].isEmpty) messages += s"""There is no body available for : $identifier"""
 		if (obj.extData.get.getOrElse("editorState", "").asInstanceOf[String].isEmpty) messages += s"""There is no editorState available for : $identifier"""

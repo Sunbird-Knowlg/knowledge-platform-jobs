@@ -81,9 +81,10 @@ object Slug {
 		val ret = new StringBuilder(text.length)
 		if (text.length == 0) "" else {
 			// Zip with Index returns a tuple (character, index)
+			ret.append(text.charAt(0))
 			text.toCharArray.zipWithIndex
 			  .foreach(zippedChar => {
-				  if (zippedChar._1 != text.charAt(zippedChar._2 - 1))
+				  if (zippedChar._2 != 0 && zippedChar._1 != text.charAt(zippedChar._2 - 1))
 					  ret.append(zippedChar._1)
 			  })
 			ret.toString()
