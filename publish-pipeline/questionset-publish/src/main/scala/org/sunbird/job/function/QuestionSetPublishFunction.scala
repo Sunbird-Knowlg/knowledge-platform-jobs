@@ -2,7 +2,6 @@ package org.sunbird.job.function
 
 import java.lang.reflect.Type
 
-import com.datastax.driver.core.querybuilder.{QueryBuilder, Select}
 import com.google.gson.reflect.TypeToken
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
@@ -12,9 +11,7 @@ import org.sunbird.job.{BaseProcessFunction, Metrics}
 import org.sunbird.job.publish.domain.PublishMetadata
 import org.sunbird.job.publish.helpers.QuestionSetPublisher
 import org.sunbird.job.task.QuestionSetPublishConfig
-import org.sunbird.job.util.{CassandraUtil, HttpUtil, JSONUtil, Neo4JUtil}
-
-import scala.collection.JavaConverters._
+import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
 
 class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUtil,
                                  @transient var neo4JUtil: Neo4JUtil = null,
@@ -45,8 +42,7 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 		val obj = getObject(data.identifier, data.pkgVersion)(neo4JUtil, cassandraUtil)
 		val messages:List[String] = validate(obj, obj.identifier, validateQuestionSet)
 		if (messages.isEmpty) {
-			//TODO: enrichObject should take a function as parameter for enriching questionset hierarchy
-			// as it requires internal question publish
+			//TODO: enrichObject should take a function as parameter for enriching questionset hierarchy as it requires internal question publish
 			val enrichedObj = enrichObject(obj)(neo4JUtil)
 			//TODO: Implement the dummyFunc function to save hierarchy into cassandra.
 			saveOnSuccess(enrichedObj, dummyFunc)(neo4JUtil)
@@ -57,20 +53,4 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 		}
 	}
 
-	override def getHierarchy(identifier: String)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = {
-		val row = getQuestionSetHierarchy(identifier)
-		if (null != row) {
-			val data = JSONUtil.deserialize[java.util.Map[String, AnyRef]](row.getString("hierarchy"))
-			Option(data.asScala.toMap)
-		} else Option(Map())
-	}
-
-	def getQuestionSetHierarchy(identifier: String)(implicit cassandraUtil: CassandraUtil) = {
-		val selectWhere: Select.Where = QueryBuilder.select().all()
-		  .from(config.questionSetKeyspaceName, config.questionSetTableName).
-		  where()
-		selectWhere.and(QueryBuilder.eq("identifier", identifier))
-		//metrics.incCounter(config.dbReadCount)
-		cassandraUtil.findOne(selectWhere.toString)
-	}
 }
