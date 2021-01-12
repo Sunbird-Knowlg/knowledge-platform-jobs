@@ -7,7 +7,7 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
-import org.sunbird.job.util.HttpUtil
+import org.sunbird.job.util.{HTTPResponse, HttpUtil}
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 case class UserFeedMetaData(userId: String, courseName: String, issuedOn: Date)
@@ -32,8 +32,9 @@ class CreateUserFeedFunction(config: UserFeedConfig, httpUtil: HttpUtil)(implici
     val req = s"""{"request":{"data":{"TrainingName":"${metaData.courseName}","message":"${config.userFeedMsg}","heldDate":"${dateFormatter.format(metaData.issuedOn)}"},"category":"${config.certificates}","priority":${config.priorityValue} ,"userId":"${metaData.userId}"}}"""
     val url = config.learnerServiceBaseUrl + config.userFeedCreateEndPoint
     try {
-      val response = httpUtil.post(url, req)
+      val response: HTTPResponse = httpUtil.post(url, req)
       if (response.status == 200) {
+        metrics.incCounter(config.userFeedCount)
         logger.info("user feed response status {} :: {}", response.status, response.body)
       }
       else
@@ -45,6 +46,6 @@ class CreateUserFeedFunction(config: UserFeedConfig, httpUtil: HttpUtil)(implici
   }
 
   override def metricsList(): List[String] = {
-    List()
+    List(config.userFeedCount)
   }
 }
