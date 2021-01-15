@@ -255,6 +255,7 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
           selectWhere.and(QueryBuilder.eq(col._1, col._2))
       }
     })
+    logger.info("select query {}", selectWhere.toString)
     metrics.incCounter(config.enrollmentDbReadCount)
     cassandraUtil.find(selectWhere.toString).asScala.toList
   }
