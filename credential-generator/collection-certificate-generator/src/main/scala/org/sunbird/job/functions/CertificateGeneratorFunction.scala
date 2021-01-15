@@ -185,10 +185,10 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
 
 
   def updateUserEnrollmentTable(event: Event, certMetaData: UserEnrollmentData, context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
-    logger.info("updating user enrollment table")
+    logger.info("updating user enrollment table {}", certMetaData)
     val primaryFields = Map(config.userId.toLowerCase() -> certMetaData.userId, config.batchId.toLowerCase -> certMetaData.batchId, config.courseId.toLowerCase -> certMetaData.courseId)
     val records = getIssuedCertificatesFromUserEnrollmentTable(primaryFields)
-    if (records.nonEmpty)
+    if (records.nonEmpty) {
       records.foreach((row: Row) => {
         val issuedOn = row.getTimestamp("completedOn")
         var certificatesList = row.getList(config.issued_certificates, TypeTokens.mapOf(classOf[String], classOf[String]))
@@ -206,7 +206,9 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
           }
         })
         val query = getUpdateIssuedCertQuery(updatedCerts, certMetaData.userId, certMetaData.courseId, certMetaData.batchId, config)
+        logger.info("update query {}", query.toString)
         val result = cassandraUtil.update(query)
+        logger.info("update result {}", result)
         if (result) {
           logger.info("issued certificates in user-enrollment table  updated successfully")
           metrics.incCounter(config.dbUpdateCount)
@@ -224,6 +226,8 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
         }
 
       })
+    }
+
   }
 
 
@@ -239,6 +243,7 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
 
 
   private def getIssuedCertificatesFromUserEnrollmentTable(columns: Map[String, AnyRef])(implicit metrics: Metrics) = {
+    logger.info("primary columns {}", columns)
     val selectWhere = QueryBuilder.select().all()
       .from(config.dbKeyspace, config.dbEnrollmentTable).
       where()
