@@ -6,24 +6,23 @@ import java.util.UUID
 import org.apache.commons.lang3.StringUtils
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
-import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
+import org.sunbird.collectioncomplete.domain.Event
 import org.sunbird.job.cache.{DataCache, RedisConnect}
-import org.sunbird.job.domain.{CertTemplate, CertificateGenerateEvent, EventObject}
-import org.sunbird.job.{BaseProcessFunction, Metrics}
+import org.sunbird.job.domain.CertTemplate
 import org.sunbird.job.task.CollectionCompletePostProcessorConfig
-import org.sunbird.job.util.CassandraUtil
+import org.sunbird.job.util.{CassandraUtil, JSONUtil}
+import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import scala.collection.JavaConverters
 
-class CertificatePreProcessor(config: CollectionCompletePostProcessorConfig)
-                             (implicit val stringTypeInfo: TypeInformation[String],
+class CollectionCompletePostProcessor(config: CollectionCompletePostProcessorConfig)
+                                     (implicit val stringTypeInfo: TypeInformation[String],
                               @transient var cassandraUtil: CassandraUtil = null)
-  extends BaseProcessFunction[java.util.Map[String, AnyRef], String](config) {
+  extends BaseProcessFunction[Event, String](config) {
 
-  lazy private val mapper: ObjectMapper = new ObjectMapper()
-  private[this] val logger = LoggerFactory.getLogger(classOf[CertificatePreProcessor])
+  private[this] val logger = LoggerFactory.getLogger(classOf[CollectionCompletePostProcessor])
   private var collectionCache: DataCache = _
 
   override def metricsList(): List[String] = {
@@ -44,12 +43,11 @@ class CertificatePreProcessor(config: CollectionCompletePostProcessorConfig)
     super.close()
   }
 
-  override def processElement(event: util.Map[String, AnyRef], context: ProcessFunction[util.Map[String, AnyRef], String]#Context, metrics: Metrics) {
-    val edata: util.Map[String, AnyRef] = event.get(config.eData).asInstanceOf[util.Map[String, AnyRef]]
-    println("edata : " + edata)
-    if (EventValidator.isValidEvent(edata, config)) {
+  override def processElement(event: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics) = {
+    if (StringUtils.equalsIgnoreCase(event.action, config.issueCertificate) &&
+      StringUtils.isNotBlank(event.courseId) && StringUtils.isNotBlank(event.batchId) && !event.userIds.isEmpty) {
       // prepare generate event request and send to next topic
-      prepareEventData(edata, collectionCache, context)(metrics, config)
+      prepareEventData(event, collectionCache, context)(metrics, config)
     } else {
       logger.error("Validation failed for certificate event : batchId,courseId and/or userIds are empty")
       metrics.incCounter(config.skippedEventCount)
@@ -57,27 +55,28 @@ class CertificatePreProcessor(config: CollectionCompletePostProcessorConfig)
     metrics.incCounter(config.totalEventsCount)
   }
 
-  private def prepareEventData(edata: util.Map[String, AnyRef], collectionCache: DataCache,
-                               context: ProcessFunction[util.Map[String, AnyRef], String]#Context)
+  private def prepareEventData(event: Event, collectionCache: DataCache,
+                               context: ProcessFunction[Event, String]#Context)
                               (implicit metrics: Metrics, config: CollectionCompletePostProcessorConfig) {
     try {
-      val certTemplates = fetchCertTemplates(edata)(metrics)
-      certTemplates.keySet().forEach(templateId => {
+      val certTemplates = fetchCertTemplates(event)(metrics)
+      certTemplates.map(template => {
         //validate criteria
-        val certTemplate = certTemplates.get(templateId).asInstanceOf[util.Map[String, AnyRef]]
-        val usersToIssue = CertificateUserUtil.getUserIdsBasedOnCriteria(certTemplate, edata)
-        val templateUrl = certTemplate.getOrDefault(config.url, "").asInstanceOf[String]
+        val certTemplate = certTemplates.get(template._1).asInstanceOf[Map[String, AnyRef]]
+        val usersToIssue = CertificateUserUtil.getUserIdsBasedOnCriteria(certTemplate, event)
+        val templateUrl = certTemplate.getOrElse(config.url, "").asInstanceOf[String]
         if(StringUtils.isBlank(templateUrl) || !StringUtils.endsWith(templateUrl, ".svg")) {
-          logger.info("Invalid template: Certificate generate event is skipped: " + edata)
+          logger.info("Invalid template: Certificate generate event is skipped: " + event.eData)
           metrics.incCounter(config.skippedEventCount)
         } else {
           //iterate over users and send to generate event method
           val template = IssueCertificateUtil.prepareTemplate(certTemplate)(config)
           println("prepareTemplate output: " + template)
           usersToIssue.foreach(user => {
-            val certEvent = generateCertificateEvent(user, template, edata, collectionCache)
-            println("final event send to next topic : " + mapper.writeValueAsString(certEvent))
-            context.output(config.generateCertificateOutputTag, mapper.writeValueAsString(certEvent))
+            val certEvent = generateCertificateEvent(user, template, event.eData, collectionCache)
+            val eventStr = JSONUtil.serialize(certEvent)
+            println("final event send to next topic : " + eventStr)
+            context.output(config.generateCertificateOutputTag, eventStr)
             logger.info("Certificate generate event successfully sent to next topic")
             metrics.incCounter(config.successEventCount)
           })
@@ -85,18 +84,21 @@ class CertificatePreProcessor(config: CollectionCompletePostProcessorConfig)
       })
     } catch {
       case ex: Exception => {
-        context.output(config.failedEventOutputTag, mapper.writeValueAsString(edata))
+        context.output(config.failedEventOutputTag, JSONUtil.serialize(event.eData))
         logger.info("Certificate generate event failed sent to next topic : " + ex.getMessage + " " + ex )
         metrics.incCounter(config.failedEventCount)
       }
     }
   }
 
-  private def fetchCertTemplates(edata: util.Map[String, AnyRef])(implicit metrics: Metrics): util.Map[String, AnyRef] = {
-    val certTemplates = CertificateDbService.readCertTemplates(edata)(metrics, cassandraUtil, config)
-    println("cert fetch success : " + certTemplates.toString)
-    EventValidator.validateTemplate(certTemplates, edata, config)(metrics)
-    certTemplates
+  private def fetchCertTemplates(event: Event)(implicit metrics: Metrics): Map[String, Map[String, String]] = {
+    val certTemplates = CertificateDbService.readCertTemplates(event.batchId, event.courseId)(metrics, cassandraUtil, config)
+    if (certTemplates.isEmpty) {
+      metrics.incCounter(config.skippedEventCount)
+      logger.error(
+        "Certificate template is not available for batchId : " + event.batchId + " and courseId : " + event.courseId)
+    }
+      certTemplates
   }
 
   private def generateCertificateEvent(userId: String, template: CertTemplate, edata: util.Map[String, AnyRef], collectionCache: DataCache)
@@ -131,4 +133,5 @@ class CertificatePreProcessor(config: CollectionCompletePostProcessorConfig)
     JavaConverters.mapAsJavaMap(cc.getClass.getDeclaredFields.foldLeft (Map.empty[String, AnyRef]) { (a, f) => f.setAccessible(true)
       a + (f.getName -> f.get(cc)) })
   }
+
 }

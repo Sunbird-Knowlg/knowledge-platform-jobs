@@ -3,8 +3,11 @@ package org.sunbird.job.functions
 import java.text.SimpleDateFormat
 import java.util
 
+import com.datastax.driver.core.TypeTokens
 import com.datastax.driver.core.querybuilder.QueryBuilder
+import com.google.common.reflect.TypeToken
 import org.apache.commons.collections.CollectionUtils
+import org.sunbird.collectioncomplete.domain.Event
 import org.sunbird.job.Metrics
 import org.sunbird.job.task.CollectionCompletePostProcessorConfig
 import org.sunbird.job.util.CassandraUtil
@@ -15,51 +18,54 @@ import scala.collection.JavaConverters._
 object CertificateDbService {
 
   val simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd");
+  
 
-  def readCertTemplates(edata: util.Map[String, AnyRef])
+  def readCertTemplates(batchId: String, courseId: String)
                        (implicit metrics: Metrics, @transient cassandraUtil: CassandraUtil,
-                        config: CollectionCompletePostProcessorConfig): util.Map[String, AnyRef] = {
+                        config: CollectionCompletePostProcessorConfig): Map[String, Map[String, String]] = {
     println("readCertTemplates called : ")
-    val selectQuery = QueryBuilder.select().all().from(config.dbKeyspace, config.dbBatchTable).where(QueryBuilder.eq(config.courseBatchPrimaryKey.head, edata.get(config.courseId).asInstanceOf[String])).
-      and(QueryBuilder.eq(config.courseBatchPrimaryKey(1), edata.get(config.batchId).asInstanceOf[String]))
+    val selectQuery = QueryBuilder.select().all().from(config.dbKeyspace, config.dbBatchTable).where(QueryBuilder.eq(config.courseBatchPrimaryKey.head, courseId)).
+      and(QueryBuilder.eq(config.courseBatchPrimaryKey(1), batchId))
     println("readCertTemplates query : " + selectQuery.toString)
-    val rows = cassandraUtil.find(selectQuery.toString)
-    metrics.incCounter(config.dbReadCount)
-    if (CollectionUtils.isNotEmpty(rows))
-      rows.asScala.head.getObject(config.certTemplates).asInstanceOf[util.Map[String, AnyRef]]
-    else
+    val row = cassandraUtil.findOne(selectQuery.toString)
+    if (null != row) {
+      val certTemplates = row.getMap(config.certTemplates, TypeToken.of(classOf[String]),
+        TypeTokens.mapOf(classOf[String], classOf[String]))
+      certTemplates.asScala.map(temp => (temp._1, temp._2.asScala.toMap)).toMap
+    }
+    else 
       throw new Exception("Certificate template is not available : " + selectQuery.toString)
   }
 
-  def readUserIdsFromDb(enrollmentCriteria: util.Map[String, AnyRef], edata: util.Map[String, AnyRef], templateName: String)
+  def readUserIdsFromDb(enrollmentCriteria: util.Map[String, AnyRef], event: Event, templateName: String)
                        (implicit metrics: Metrics, @transient cassandraUtil: CassandraUtil,
                         config: CollectionCompletePostProcessorConfig): List[String] = {
     println("readUserIdsFromDb called : " + enrollmentCriteria)
-    val selectQuery = QueryBuilder.select().all().from(config.dbKeyspace, config.dbUserTable).where.and(QueryBuilder.in(config.userEnrolmentsPrimaryKey.head, edata.get(config.userIds).asInstanceOf[util.List[String]])).
-      and(QueryBuilder.eq(config.userEnrolmentsPrimaryKey(1), edata.get(config.courseId).asInstanceOf[String])).
-      and(QueryBuilder.eq(config.userEnrolmentsPrimaryKey(2), edata.get(config.batchId).asInstanceOf[String]))
+    val selectQuery = QueryBuilder.select().all().from(config.dbKeyspace, config.dbUserTable).where.and(QueryBuilder.in(config.userEnrolmentsPrimaryKey.head, event.userIds)).
+      and(QueryBuilder.eq(config.userEnrolmentsPrimaryKey(1), event.courseId)).
+      and(QueryBuilder.eq(config.userEnrolmentsPrimaryKey(2), event.batchId))
     enrollmentCriteria.asScala.map(criteria => selectQuery.and(QueryBuilder.eq(criteria._1, criteria._2)))
     selectQuery.allowFiltering()
     println("readUserIdsFromDb : Enroll User read query : " + selectQuery.toString)
     val rows = cassandraUtil.find(selectQuery.toString)
     metrics.incCounter(config.dbReadCount)
     if (CollectionUtils.isNotEmpty(rows))
-      IssueCertificateUtil.getActiveUserIds(rows, edata, templateName)
+      IssueCertificateUtil.getActiveUserIds(rows, event, templateName)
     else
       throw new Exception("User read failed : " + selectQuery.toString)
   }
 
-  def fetchAssessedUsersFromDB(edata: util.Map[String, AnyRef], assessmentCriteria: util.Map[String, AnyRef])
+  def fetchAssessedUsersFromDB(event: Event, assessmentCriteria: util.Map[String, AnyRef])
                               (implicit metrics: Metrics, @transient cassandraUtil: CassandraUtil,
                                config: CollectionCompletePostProcessorConfig): List[String] = {
     val query = "SELECT user_id, max(total_score) as score, total_max_score FROM " + config.dbKeyspace +
-      "." + config.dbAssessmentAggregator + " where course_id='" + edata.get(config.courseId).asInstanceOf[String] + "' AND batch_id='" +
-      edata.get(config.batchId).asInstanceOf[String] + "' " + "GROUP BY course_id,batch_id,user_id,content_id ORDER BY batch_id,user_id,content_id;"
+      "." + config.dbAssessmentAggregator + " where course_id=? AND batch_id=? AND user_id in ? " +
+      "GROUP BY user_id,course_id,batch_id,content_id"
     println("fetchAssessedUsersFromDB called query : " + query)
-    val rows = cassandraUtil.find(query)
+    val rows = cassandraUtil.executePreparedStatement(query, event.courseId, event.batchId, event.userIds)
     metrics.incCounter(config.dbReadCount)
     if (CollectionUtils.isNotEmpty(rows))
-      IssueCertificateUtil.getAssessedUserIds(rows, assessmentCriteria, edata)
+      IssueCertificateUtil.getAssessedUserIds(rows, assessmentCriteria, event)
     else
       throw new Exception("Assess User read failed : " + query)
   }
