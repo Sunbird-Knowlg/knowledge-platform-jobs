@@ -265,8 +265,7 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
     CertificateAuditEvent(
       actor = Actor(id = data.userId),
       context = EventContext(cdata = Array(Map("type" -> config.courseBatch, config.id -> data.batchId).asJava)),
-      `object` = EventObject(id = data.certificate.id, `type` = "Certificate", rollup = Map(config.l1 -> data.courseId).asJava),)
-    )
+      `object` = EventObject(id = data.certificate.id, `type` = "Certificate", rollup = Map(config.l1 -> data.courseId).asJava))
   }
 
 
