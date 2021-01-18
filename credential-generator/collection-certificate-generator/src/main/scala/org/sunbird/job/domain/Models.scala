@@ -5,6 +5,7 @@ import java.util.UUID
 
 import scala.collection.JavaConverters._
 
+class Models extends Serializable {}
 
 case class Actor(id: String, `type`: String = "User")
 
@@ -16,7 +17,7 @@ case class EventContext(channel: String = "in.ekstep",
                         cdata: Array[util.Map[String, String]])
 
 
-case class EventData(props: Array[String], `type`: String, iteration: Int = 1)
+case class EventData(props: Array[String] = Array("certificates"), `type`: String = "certificate-issued-svg", iteration: Int = 1)
 
 case class EventObject(id: String, `type`: String, rollup: util.Map[String, String])
 

@@ -264,7 +264,7 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
   private def generateAuditEvent(data: UserEnrollmentData): CertificateAuditEvent = {
     CertificateAuditEvent(
       actor = Actor(id = data.userId),
-      edata = EventData(props = Array("certificates"), `type` = "certificate-issued-svg"),
+      edata = EventData(props = Array("certificates")),
       context = EventContext(cdata = Array(Map("type" -> config.courseBatch, config.id -> data.batchId).asJava)),
       `object` = EventObject(id = data.certificate.id, `type` = "Certificate", rollup = Map(config.l1 -> data.courseId).asJava))
   }
