@@ -17,7 +17,7 @@ case class EventContext(channel: String = "in.ekstep",
                         cdata: Array[util.Map[String, String]])
 
 
-case class EventData(props: Array[String] = Array("certificates"), `type`: String = "certificate-issued-svg", iteration: Int = 1)
+case class EventData(props: Array[String], `type`: String, iteration: Int)
 
 case class EventObject(id: String, `type`: String, rollup: util.Map[String, String])
 
