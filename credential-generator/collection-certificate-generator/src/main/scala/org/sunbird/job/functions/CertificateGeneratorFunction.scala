@@ -23,7 +23,7 @@ import org.sunbird.incredible.processor.CertModel
 import org.sunbird.incredible.processor.store.StorageService
 import org.sunbird.incredible.processor.views.SvgGenerator
 import org.sunbird.job.Exceptions.{ErrorCodes, ServerException, ValidationException}
-import org.sunbird.job.domain.{Actor, Certificate, CertificateAuditEvent, Event, EventContext, EventData, EventObject, FailedEvent, UserEnrollmentData}
+import org.sunbird.job.domain.{Actor, Certificate, CertificateAuditEvent, Event, EventContext, EData, EventObject, FailedEvent, UserEnrollmentData}
 import org.sunbird.job.task.CertificateGeneratorConfig
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 import org.sunbird.job.util.{CassandraUtil, HttpUtil}
@@ -265,8 +265,7 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
     CertificateAuditEvent(
       actor = Actor(id = data.userId),
       context = EventContext(cdata = Array(Map("type" -> config.courseBatch, config.id -> data.batchId).asJava)),
-      `object` = EventObject(id = data.certificate.id, `type` = "Certificate", rollup = Map(config.l1 -> data.courseId).asJava),
-      edata = EventData(props = Array("certificates"), `type` = "certificate-issued-svg", iteration = 1)
+      `object` = EventObject(id = data.certificate.id, `type` = "Certificate", rollup = Map(config.l1 -> data.courseId).asJava),)
     )
   }
 

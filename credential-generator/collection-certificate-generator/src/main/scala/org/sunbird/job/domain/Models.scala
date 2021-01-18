@@ -17,7 +17,7 @@ case class EventContext(channel: String = "in.ekstep",
                         cdata: Array[util.Map[String, String]])
 
 
-case class EventData(props: Array[String], `type`: String, iteration: Int)
+case class EData(props: Array[String], `type`: String, iteration: Int)
 
 case class EventObject(id: String, `type`: String, rollup: util.Map[String, String])
 
@@ -30,8 +30,7 @@ case class CertificateAuditEvent(eid: String = "AUDIT",
                                    cdata = Array[util.Map[String, String]]()
                                  ),
                                  `object`: EventObject,
-                                 edata: EventData)
-
+                                 edata: EData = EData(props = Array("certificates"), `type` = "certificate-issued-svg", iteration = 1))
 
 case class Certificate(id: String,
                        name: String,
