@@ -12,17 +12,20 @@ import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow
 import org.sunbird.job.connector.FlinkKafkaConnector
+import org.sunbird.job.domain.Event
 import org.sunbird.job.functions.{VideoStreamGenerator, VideoStreamUrlUpdator}
-import org.sunbird.job.util.FlinkUtil
+import org.sunbird.job.util.{FlinkUtil, HttpUtil}
 
 
-class VideoStreamGeneratorStreamTask(config: VideoStreamGeneratorConfig, kafkaConnector: FlinkKafkaConnector) {
+class VideoStreamGeneratorStreamTask(config: VideoStreamGeneratorConfig, kafkaConnector: FlinkKafkaConnector, httpUtil: HttpUtil) {
   def process(): Unit = {
     implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
+    implicit val eventTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
     implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
+    implicit val httpUtilImplicit: HttpUtil = httpUtil
 
-    env.addSource(kafkaConnector.kafkaMapSource(config.kafkaInputTopic)).name(config.videoStreamConsumer)
+    env.addSource(kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)).name(config.videoStreamConsumer)
       .uid(config.videoStreamConsumer).setParallelism(config.kafkaConsumerParallelism)
       .rebalance
       .process(new VideoStreamGenerator(config))
@@ -47,7 +50,8 @@ object VideoStreamGeneratorStreamTask {
     }.getOrElse(ConfigFactory.load("video-stream-generator.conf").withFallback(ConfigFactory.systemEnvironment()))
     val videoStreamConfig = new VideoStreamGeneratorConfig(config)
     val kafkaUtil = new FlinkKafkaConnector(videoStreamConfig)
-    val task = new VideoStreamGeneratorStreamTask(videoStreamConfig, kafkaUtil)
+    val httpUtil = new HttpUtil
+    val task = new VideoStreamGeneratorStreamTask(videoStreamConfig, kafkaUtil, httpUtil)
     task.process()
   }
 }

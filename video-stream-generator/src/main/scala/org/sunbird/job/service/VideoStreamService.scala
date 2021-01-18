@@ -4,21 +4,17 @@ import java.util.UUID
 
 import com.datastax.driver.core.querybuilder.{QueryBuilder, Select}
 import org.joda.time.DateTime
-import org.json4s.jackson.JsonMethods.parse
-import org.json4s.jackson.Json
-import org.json4s.DefaultFormats
 import org.slf4j.LoggerFactory
 import org.sunbird.job.Metrics
 import org.sunbird.job.functions.VideoStreamGenerator
 import org.sunbird.job.service.impl.MediaServiceFactory
 import org.sunbird.job.task.VideoStreamGeneratorConfig
-import org.sunbird.job.util.{CassandraUtil, HttpRestUtil, JobRequest, MediaRequest, MediaResponse, StreamingStage}
+import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpRestUtil, HttpUtil, JSONUtil, JobRequest, MediaRequest, MediaResponse, StreamingStage}
 
 import scala.collection.JavaConverters._
 import scala.collection.immutable.HashMap
 
-class VideoStreamService(implicit config: VideoStreamGeneratorConfig) {
-  implicit val formats: DefaultFormats.type = DefaultFormats
+class VideoStreamService(implicit config: VideoStreamGeneratorConfig, implicit val httpUtil: HttpUtil) {
   private[this] lazy val logger = LoggerFactory.getLogger(classOf[VideoStreamGenerator])
   private lazy val mediaService = MediaServiceFactory.getMediaService()
   private lazy val dbKeyspace:String = config.dbKeyspace
@@ -33,7 +29,7 @@ class VideoStreamService(implicit config: VideoStreamGeneratorConfig) {
     val stageName = "STREAMING_JOB_SUBMISSION";
     val jobSubmitted = DateTime.now()
     val requestId = UUID.randomUUID().toString
-    val jobRequest = JobRequest(clientKey, requestId, None, SUBMITTED, Json(DefaultFormats).write(eData), 0, Option(jobSubmitted),
+    val jobRequest = JobRequest(clientKey, requestId, None, SUBMITTED, JSONUtil.serialize(eData), 0, Option(jobSubmitted),
                                 Option(eData.getOrElse("artifactUrl", "").asInstanceOf[String]), None, None, None, None, None,
                                 None, None, None, None, None, None, None, Option(stageName), Option(SUBMITTED), Option(VIDEO_STREAMING))
 
@@ -60,7 +56,7 @@ class VideoStreamService(implicit config: VideoStreamGeneratorConfig) {
 
         if(jobStatus.equalsIgnoreCase("FINISHED")) {
           val streamingUrl = mediaService.getStreamingPaths(jobRequest.job_id.get).result.getOrElse("streamUrl","").asInstanceOf[String]
-          val requestData = parse(jobRequest.request_data).values.asInstanceOf[Map[String, AnyRef]]
+          val requestData = JSONUtil.deserialize[Map[String, AnyRef]](jobRequest.request_data)
           val contentId = requestData.getOrElse("content_id", "").asInstanceOf[String]
           val channel = requestData.getOrElse("channel", "").asInstanceOf[String]
 
@@ -93,7 +89,7 @@ class VideoStreamService(implicit config: VideoStreamGeneratorConfig) {
 
   def submitStreamJob(jobRequest: JobRequest): Unit = {
 
-    val requestData = parse(jobRequest.request_data).values.asInstanceOf[Map[String, AnyRef]]
+    val requestData = JSONUtil.deserialize[Map[String, AnyRef]](jobRequest.request_data)
     val mediaRequest = MediaRequest(UUID.randomUUID().toString, null, requestData)
     val response:MediaResponse = mediaService.submitJob(mediaRequest)
     val stageName = "STREAMING_JOB_SUBMISSION";
@@ -116,14 +112,14 @@ class VideoStreamService(implicit config: VideoStreamGeneratorConfig) {
     if(!streamingUrl.isEmpty && !contentId.isEmpty) {
       val requestBody = "{\"request\": {\"content\": {\"streamingUrl\":\""+ streamingUrl +"\"}}}"
       val url = config.lpURL + config.contentV3Update + contentId
-      val headers = HashMap[String, String]("X-Channel-Id" -> channel)
-      val response:MediaResponse = HttpRestUtil.put(url, headers, requestBody)
+      val headers = Map[String, String]("X-Channel-Id" -> channel)
+      val response:HTTPResponse = httpUtil.put(url, requestBody, headers)
 
-      if(response.responseCode.contentEquals("OK")){
+      if(response.status == 200){
         true;
-      } else{
-        logger.error("Error while updating previewUrl for content : " + contentId , Option(response))
-        false
+      } else {
+        logger.error("Error while updating previewUrl for content : " + contentId , Option(response.body))
+        throw new Exception("Error while updating previewUrl for content : " + contentId)
       }
     }else{
       false

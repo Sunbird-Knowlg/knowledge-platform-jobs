@@ -5,7 +5,7 @@ import java.io.File
 import org.apache.commons.lang3.StringUtils
 import org.sunbird.job.exception.MediaServiceException
 import org.sunbird.job.task.VideoStreamGeneratorConfig
-import org.sunbird.job.util.{AzureRequestBody, HttpRestUtil, MediaResponse}
+import org.sunbird.job.util.{AzureRequestBody, HTTPResponse, HttpRestUtil, HttpUtil, JSONUtil, MediaResponse}
 
 import scala.collection.immutable.HashMap
 
@@ -14,7 +14,7 @@ abstract class AzureMediaService extends IMediaService {
 
   private var API_ACCESS_TOKEN: String = ""
 
-  private def getToken()(implicit config: VideoStreamGeneratorConfig): String = {
+  private def getToken()(implicit config: VideoStreamGeneratorConfig, httpUtil: HttpUtil): String = {
     val tenant = config.getSystemConfig("azure.tenant")
     val clientKey = config.getSystemConfig("azure.token.client_key")
     val clientSecret = config.getSystemConfig("azure.token.client_secret")
@@ -32,40 +32,69 @@ abstract class AzureMediaService extends IMediaService {
       "Keep-Alive" -> "true"
     )
 
-    val response = HttpRestUtil.post(loginUrl, header, data)
-    response.result.getOrElse("access_token", "").toString
+    val response:HTTPResponse = httpUtil.post(loginUrl, JSONUtil.serialize(data), header)
+    if(response.status == 200){
+      JSONUtil.deserialize[Map[String, String]](response.body).getOrElse("access_token", "")
+    } else {
+      throw new Exception("Error while getting the azure access token")
+    }
   }
 
-  protected def getJobDetails(jobId: String)(implicit config: VideoStreamGeneratorConfig): MediaResponse = {
+  protected def getJobDetails(jobId: String)(implicit config: VideoStreamGeneratorConfig, httpUtil: HttpUtil): MediaResponse = {
     val url = getApiUrl("job").replace("jobIdentifier", jobId)
-    HttpRestUtil.get(url, getDefaultHeader(), null)
+    val response:HTTPResponse = httpUtil.get(url, getDefaultHeader())
+    if(response.status == 200){
+      JSONUtil.deserialize[MediaResponse](response.body)
+    } else {
+      throw new Exception("Error while getting the azure access token")
+    }
   }
 
-  protected def createAsset(assetId: String, jobId: String)(implicit config: VideoStreamGeneratorConfig): MediaResponse = {
+  protected def createAsset(assetId: String, jobId: String)(implicit config: VideoStreamGeneratorConfig, httpUtil: HttpUtil): MediaResponse = {
     val url = getApiUrl("asset").replace("assetId", assetId)
     val requestBody = AzureRequestBody.create_asset.replace("assetId", assetId)
       .replace("assetDescription", "Output Asset for " + jobId)
-    HttpRestUtil.put(url, getDefaultHeader(), requestBody)
+    val response:HTTPResponse = httpUtil.put(url, requestBody, getDefaultHeader())
+    if(response.status == 200){
+      JSONUtil.deserialize[MediaResponse](response.body)
+    } else {
+      throw new Exception("Error while creating asset::(assetId->"+assetId+", jobId->"+jobId+")")
+    }
   }
 
-  protected def createStreamingLocator(streamingLocatorName: String, assetName: String)(implicit config: VideoStreamGeneratorConfig): MediaResponse = {
+  protected def createStreamingLocator(streamingLocatorName: String, assetName: String)(implicit config: VideoStreamGeneratorConfig, httpUtil: HttpUtil): MediaResponse = {
     val url = getApiUrl("stream_locator").replace("streamingLocatorName", streamingLocatorName)
     val streamingPolicyName = config.getConfig("azure.stream.policy_name")
     val reqBody = AzureRequestBody.create_stream_locator.replace("assetId", assetName).replace("policyName", streamingPolicyName)
-    HttpRestUtil.put(url, getDefaultHeader(), reqBody)
+    val response:HTTPResponse = httpUtil.put(url, reqBody, getDefaultHeader())
+    if(response.status == 200){
+      JSONUtil.deserialize[MediaResponse](response.body)
+    } else {
+      throw new Exception("Error while createStreamingLocator::(streamingLocatorName->"+streamingLocatorName+", assetName->"+assetName+")")
+    }
   }
 
-  protected def getStreamingLocator(streamingLocatorName: String)(implicit config: VideoStreamGeneratorConfig): MediaResponse = {
+  protected def getStreamingLocator(streamingLocatorName: String)(implicit config: VideoStreamGeneratorConfig, httpUtil: HttpUtil): MediaResponse = {
     val url = getApiUrl("stream_locator").replace("streamingLocatorName", streamingLocatorName)
-    HttpRestUtil.get(url, getDefaultHeader(), null)
+    val response: HTTPResponse = httpUtil.get(url, getDefaultHeader())
+    if (response.status == 200) {
+      JSONUtil.deserialize[MediaResponse](response.body)
+    } else {
+      throw new Exception("Error while getStreamingLocator::(streamingLocatorName->" + streamingLocatorName + ")")
+    }
   }
 
-  protected def getStreamUrls(streamingLocatorName: String)(implicit config: VideoStreamGeneratorConfig): MediaResponse = {
+  protected def getStreamUrls(streamingLocatorName: String)(implicit config: VideoStreamGeneratorConfig, httpUtil: HttpUtil): MediaResponse = {
     val url = getApiUrl("list_paths").replace("streamingLocatorName", streamingLocatorName)
-    HttpRestUtil.post(url, getDefaultHeader(), "{}")
+    val response: HTTPResponse = httpUtil.get(url, getDefaultHeader())
+    if (response.status == 200) {
+      JSONUtil.deserialize[MediaResponse](response.body)
+    } else {
+      throw new Exception("Error while getStreamUrls::(streamingLocatorName->" + streamingLocatorName + ")")
+    }
   }
 
-  protected def getApiUrl(apiName: String)(implicit config: VideoStreamGeneratorConfig): String = {
+  protected def getApiUrl(apiName: String)(implicit config: VideoStreamGeneratorConfig, httpUtil: HttpUtil): String = {
     val subscriptionId: String = config.getSystemConfig("azure.subscription_id")
     val resourceGroupName: String = config.getSystemConfig("azure.resource_group_name")
     val accountName: String = config.getSystemConfig("azure.account_name")
@@ -89,7 +118,7 @@ abstract class AzureMediaService extends IMediaService {
     }
   }
 
-  protected def getDefaultHeader()(implicit config: VideoStreamGeneratorConfig): Map[String, String] = {
+  protected def getDefaultHeader()(implicit config: VideoStreamGeneratorConfig, httpUtil: HttpUtil): Map[String, String] = {
     val accessToken = if (StringUtils.isNotBlank(API_ACCESS_TOKEN)) API_ACCESS_TOKEN else getToken()
     val authToken = "Bearer " + accessToken
     HashMap[String, String](
@@ -99,7 +128,7 @@ abstract class AzureMediaService extends IMediaService {
     )
   }
 
-  protected def prepareStreamingUrl(streamLocatorName: String, jobId: String)(implicit config: VideoStreamGeneratorConfig): Map[String, AnyRef] = {
+  protected def prepareStreamingUrl(streamLocatorName: String, jobId: String)(implicit config: VideoStreamGeneratorConfig, httpUtil: HttpUtil): Map[String, AnyRef] = {
     val streamType = config.getConfig("azure.stream.protocol")
     val streamHost = config.getConfig("azure.stream.base_url")
     var url = ""

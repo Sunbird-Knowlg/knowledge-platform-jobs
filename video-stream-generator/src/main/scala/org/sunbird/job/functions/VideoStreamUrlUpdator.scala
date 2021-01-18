@@ -4,16 +4,17 @@ import java.util
 
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
-import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.apache.flink.streaming.api.scala.function.ProcessWindowFunction
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow
 import org.slf4j.LoggerFactory
-import org.sunbird.job.{BaseProcessFunction, Metrics, TimeWindowBaseProcessFunction}
+import org.sunbird.job.{Metrics, TimeWindowBaseProcessFunction}
 import org.sunbird.job.service.VideoStreamService
 import org.sunbird.job.task.VideoStreamGeneratorConfig
+import org.sunbird.job.util.HttpUtil
 
 class VideoStreamUrlUpdator(config: VideoStreamGeneratorConfig)
-                          (implicit val stringTypeInfo: TypeInformation[String])
+                          (implicit val stringTypeInfo: TypeInformation[String],
+                           implicit val httpUtil: HttpUtil)
   extends TimeWindowBaseProcessFunction[String, String, String](config) {
 
   implicit lazy val videoStreamConfig: VideoStreamGeneratorConfig = config

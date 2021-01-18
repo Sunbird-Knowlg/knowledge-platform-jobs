@@ -1,16 +1,16 @@
 package org.sunbird.job.service
 
 import org.sunbird.job.task.VideoStreamGeneratorConfig
-import org.sunbird.job.util.{MediaRequest, MediaResponse}
+import org.sunbird.job.util.{HttpUtil, MediaRequest, MediaResponse}
 
 
 trait IMediaService {
 
-  def submitJob(request: MediaRequest)(implicit config: VideoStreamGeneratorConfig): MediaResponse
+  def submitJob(request: MediaRequest)(implicit config: VideoStreamGeneratorConfig, httpUtil: HttpUtil): MediaResponse
 
-  def getJob(jobId: String)(implicit config: VideoStreamGeneratorConfig): MediaResponse
+  def getJob(jobId: String)(implicit config: VideoStreamGeneratorConfig, httpUtil: HttpUtil): MediaResponse
 
-  def getStreamingPaths(jobId: String)(implicit config: VideoStreamGeneratorConfig): MediaResponse
+  def getStreamingPaths(jobId: String)(implicit config: VideoStreamGeneratorConfig, httpUtil: HttpUtil): MediaResponse
 
   def listJobs(listJobsRequest: MediaRequest): MediaResponse
 

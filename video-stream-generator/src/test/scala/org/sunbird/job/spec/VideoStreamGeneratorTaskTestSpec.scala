@@ -21,7 +21,7 @@ import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.fixture.EventFixture
 import org.sunbird.job.service.IMediaService
 import org.sunbird.job.task.{VideoStreamGeneratorConfig, VideoStreamGeneratorStreamTask}
-import org.sunbird.job.util.CassandraUtil
+import org.sunbird.job.util.{CassandraUtil, HttpUtil}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 
 import scala.collection.JavaConverters._
@@ -42,6 +42,7 @@ class VideoStreamGeneratorTaskTestSpec extends BaseTestSpec {
   val jobConfig: VideoStreamGeneratorConfig = new VideoStreamGeneratorConfig(config)
   val server = new MockAzureWebServer(jobConfig)
   var cassandraUtil: CassandraUtil = _
+  val httpUtil = new HttpUtil
 
   override protected def beforeAll(): Unit = {
     EmbeddedCassandraServerHelper.startEmbeddedCassandra(80000L)
@@ -74,7 +75,7 @@ class VideoStreamGeneratorTaskTestSpec extends BaseTestSpec {
     server.submitRestUtilData
     when(mockKafkaUtil.kafkaMapSource(jobConfig.kafkaInputTopic)).thenReturn(new VideoStreamGeneratorMapSource)
 
-    new VideoStreamGeneratorStreamTask(jobConfig, mockKafkaUtil).process()
+    new VideoStreamGeneratorStreamTask(jobConfig, mockKafkaUtil, httpUtil).process()
     val event1Progress = readFromCassandra(EventFixture.EVENT_1)
     event1Progress.size() should be(1)
     event1Progress.forEach(col => {
@@ -91,7 +92,7 @@ class VideoStreamGeneratorTaskTestSpec extends BaseTestSpec {
     dataLoader.load(new FileCQLDataSet(getClass.getResource("/job_request.cql").getPath, true, true));
     testCassandraUtil(cassandraUtil)
 
-    new VideoStreamGeneratorStreamTask(jobConfig, mockKafkaUtil).process()
+    new VideoStreamGeneratorStreamTask(jobConfig, mockKafkaUtil, httpUtil).process()
   }
 
   def testCassandraUtil(cassandraUtil: CassandraUtil): Unit = {

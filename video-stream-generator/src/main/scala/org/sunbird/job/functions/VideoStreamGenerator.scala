@@ -11,16 +11,19 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
+import org.sunbird.job.domain.Event
 import org.sunbird.job.service.VideoStreamService
 import org.sunbird.job.task.VideoStreamGeneratorConfig
+import org.sunbird.job.util.HttpUtil
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import scala.collection.JavaConverters._
 
 class VideoStreamGenerator(config: VideoStreamGeneratorConfig)
                           (implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]],
-                           implicit val stringTypeInfo: TypeInformation[String])
-                          extends BaseProcessFunction[util.Map[String, AnyRef], String](config) {
+                           implicit val stringTypeInfo: TypeInformation[String],
+                           implicit val httpUtil: HttpUtil)
+                          extends BaseProcessFunction[Event, String](config) {
 
     implicit lazy val videoStreamConfig: VideoStreamGeneratorConfig = config
     private[this] lazy val logger = LoggerFactory.getLogger(classOf[VideoStreamGenerator])
@@ -40,29 +43,27 @@ class VideoStreamGenerator(config: VideoStreamGeneratorConfig)
         super.close()
     }
 
-    override def processElement(event: util.Map[String, AnyRef],
-                         context: ProcessFunction[util.Map[String, AnyRef], String]#Context,
-                         metrics: Metrics): Unit = {
-        logger.info("Event eid:: "+ event.get("eid"))
-        val eData = event.get("edata").asInstanceOf[util.Map[String, AnyRef]].asScala.toMap
-        if(isValidEvent(eData)) {
+    override def processElement(event: Event,
+                                context: ProcessFunction[Event, String]#Context,
+                                metrics: Metrics): Unit = {
+        logger.info("Event eid:: "+ event.eid)
+
+        if(isValidEvent(event)) {
             logger.info("Event eid:: valid event")
-            videoStreamService.submitJobRequest(eData)
+            videoStreamService.submitJobRequest(event.eData)
             context.output(config.videoStreamJobOutput, "processed")
         }
     }
 
-    private def isValidEvent(eData: Map[String, AnyRef]): Boolean = {
-        val artifactUrl = eData.getOrElse("artifactUrl", "").asInstanceOf[String]
-        val mimeType = eData.getOrElse("mimeType", "").asInstanceOf[String]
-        val identifier = eData.getOrElse("identifier", "").asInstanceOf[String]
+    private def isValidEvent(event: Event): Boolean = {
+        val mimeType = event.mimeType
 
-        StringUtils.isNotBlank(artifactUrl) &&
+        StringUtils.isNotBlank(event.artifactUrl) &&
           StringUtils.isNotBlank(mimeType) &&
           (
             StringUtils.equalsIgnoreCase(mimeType, "video/mp4") ||
               StringUtils.equalsIgnoreCase(mimeType, "video/webm")
             ) &&
-          StringUtils.isNotBlank(identifier)
+          StringUtils.isNotBlank(event.identifier)
     }
 }

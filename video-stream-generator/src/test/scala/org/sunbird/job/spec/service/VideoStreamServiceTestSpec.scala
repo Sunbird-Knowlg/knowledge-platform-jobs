@@ -11,12 +11,12 @@ import org.cassandraunit.dataset.cql.FileCQLDataSet
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
 import org.joda.time.DateTimeUtils
 import org.sunbird.job.fixture.EventFixture
-import org.sunbird.job.service.{VideoStreamService}
+import org.sunbird.job.service.VideoStreamService
 import org.sunbird.job.task.VideoStreamGeneratorConfig
 import org.sunbird.spec.BaseTestSpec
 import org.json4s.jackson.JsonMethods.parse
 import org.sunbird.job.spec.MockAzureWebServer
-import org.sunbird.job.util.{CassandraUtil}
+import org.sunbird.job.util.{CassandraUtil, HttpUtil}
 
 import scala.collection.JavaConverters._
 
@@ -26,6 +26,7 @@ class VideoStreamServiceTestSpec extends BaseTestSpec {
   val config: Config = ConfigFactory.load("test.conf")
   implicit lazy val jobConfig: VideoStreamGeneratorConfig = new VideoStreamGeneratorConfig(config)
   val server = new MockAzureWebServer(jobConfig)
+  implicit val httpUtilImplicit: HttpUtil = new HttpUtil
 
   override protected def beforeAll(): Unit = {
     DateTimeUtils.setCurrentMillisFixed(1605816926271L);
