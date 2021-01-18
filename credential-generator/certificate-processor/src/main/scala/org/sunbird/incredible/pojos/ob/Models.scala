@@ -13,7 +13,7 @@ class Models extends Serializable {}
   * @param version     The version identifier for the present edition of the entity.
   * @param endorsement A claim made about this entity.
   */
-case class OBBase(@JsonProperty("@context") context: String, related: Array[String], version: String, endorsement: Endorsement)  extends Serializable {}
+case class OBBase(@JsonProperty("@context") context: String, related: Array[String], version: String, endorsement: Endorsement)
 
 
 /**
@@ -27,7 +27,7 @@ case class OBBase(@JsonProperty("@context") context: String, related: Array[Stri
   * @param issuedOn Timestamp of when the endorsement was published.
   * @param context
   */
-case class Endorsement(@JsonProperty("@context") context: String, related: Array[String], version: String, id: String, `type`: Array[String] = Array("Endorsement"), claim: String, issuer: Profile, issuedOn: String, verification: VerificationObject)  extends Serializable {}
+case class Endorsement(@JsonProperty("@context") context: String, related: Array[String], version: String, id: String, `type`: Array[String] = Array("Endorsement"), claim: String, issuer: Profile, issuedOn: String, verification: VerificationObject)
 
 
 /**
@@ -43,7 +43,7 @@ case class Endorsement(@JsonProperty("@context") context: String, related: Array
   * @param telephone      A phone number - Part of OpenBadges, not mentioned in inCredible
   */
 case class Profile(@JsonProperty("@context") context: String, related: Array[String], version: String, endorsement: Endorsement, id: String, `type`: Array[String], name: String, email: String, url: String, description: String,
-                   publicKey: Array[String], revocationList: Array[String], telephone: String, verification: VerificationObject)  extends Serializable {}
+                   publicKey: Array[String], revocationList: Array[String], telephone: String, verification: VerificationObject)
 
 
 /**
@@ -64,7 +64,7 @@ case class Profile(@JsonProperty("@context") context: String, related: Array[Str
 case class Assertion(@JsonProperty("@context") context: String, related: Array[String], version: String, endorsement: Endorsement,
                      id: String, `type`: Array[String], issuedOn: String, recipient: CompositeIdentityObject, badge: BadgeClass, image: String
                      , evidence: Evidence, expires: String, verification: VerificationObject, narrative: String
-                     , revoked: Boolean = false, revocationReason: Option[String])  extends Serializable {}
+                     , revoked: Boolean = false, revocationReason: Option[String])
 
 
 /**
@@ -73,7 +73,7 @@ case class Assertion(@JsonProperty("@context") context: String, related: Array[S
   * @param hashed   Whether or not the identity value is hashed.
   * @param salt     If the recipient is hashed, this should contain the string used to salt the hash.
   */
-case class IdentityObject(@JsonProperty("@context") context: String, related: Array[String], version: String, endorsement: Endorsement, identity: String, `type`: Array[String], hashed: String, salt: String)  extends Serializable {}
+case class IdentityObject(@JsonProperty("@context") context: String, related: Array[String], version: String, endorsement: Endorsement, identity: String, `type`: Array[String], hashed: String, salt: String)
 
 /**
   *
@@ -84,7 +84,7 @@ case class IdentityObject(@JsonProperty("@context") context: String, related: Ar
   * @param targetFramework   Name of the framework the alignment target
   * @param targetCode        If applicable, a locally unique string identifier that identifies the alignment target within its framework and/or targetUrl
   */
-case class AlignmentObject(@JsonProperty("@context") context: String, related: Array[String], version: String, endorsement: Endorsement, targetName: String, targetURL: String, targetDescription: String, targetFramework: String, targetCode: String)  extends Serializable {}
+case class AlignmentObject(@JsonProperty("@context") context: String, related: Array[String], version: String, endorsement: Endorsement, targetName: String, targetURL: String, targetDescription: String, targetFramework: String, targetCode: String)
 
 /**
   *
@@ -112,7 +112,7 @@ case class VerificationObject(@JsonProperty("@context") context: String, related
   */
 case class SignedVerification(@JsonProperty("@context") context: Option[String] = None, related: Option[Array[String]] = None, version: Option[String] = None, endorsement: Option[Endorsement] = None, `type`: Array[String] = Array("SignedBadge"), verificationProperty: Option[String] = None, startsWith: Option[String] = None, allowedOrigins: Option[List[String]] = None, creator: Option[String] = None)
 
-case class HostedVerification(@JsonProperty("@context") context: String, related: Array[String], version: String, endorsement: Endorsement, `type`: Array[String] = Array("HostedBadge"), verificationProperty: String, startsWith: String, allowedOrigins: List[String])  extends Serializable {}
+case class HostedVerification(@JsonProperty("@context") context: String, related: Array[String], version: String, endorsement: Endorsement, `type`: Array[String] = Array("HostedBadge"), verificationProperty: String, startsWith: String, allowedOrigins: List[String])
 
 /**
   *
@@ -123,7 +123,7 @@ case class HostedVerification(@JsonProperty("@context") context: String, related
   * @param image       HTTP URL to the image of this credential
   * @param criteria    HTTP URL to the issuer of this credential - Profile
   */
-case class BadgeClass(@JsonProperty("@context") context: String, related: Option[Array[String]] = None, endorsement: Option[Endorsement] = None, id: String, `type`: Array[String] = Array("BadgeClass"), name: String, description: String, version: Option[String] = None, image: String, criteria: Criteria, issuer: Issuer, alignmentObject: Option[AlignmentObject] = None)  extends Serializable {}
+case class BadgeClass(@JsonProperty("@context") context: String, related: Option[Array[String]] = None, endorsement: Option[Endorsement] = None, id: String, `type`: Array[String] = Array("BadgeClass"), name: String, description: String, version: Option[String] = None, image: String, criteria: Criteria, issuer: Issuer, alignmentObject: Option[AlignmentObject] = None)
 
 /**
   *
@@ -131,16 +131,16 @@ case class BadgeClass(@JsonProperty("@context") context: String, related: Option
   * @param `type`    Type of the criteria, defaults to "Criteria"
   * @param narrative A narrative of what is needed to earn the badge
   */
-case class Criteria(@JsonProperty("@context") context: Option[String] = None, related: Option[Array[String]] = None, endorsement: Option[Endorsement] = None, id: Option[String] = None, `type`: Array[String] = Array("Criteria"), narrative: String)  extends Serializable {}
+case class Criteria(@JsonProperty("@context") context: Option[String] = None, related: Option[Array[String]] = None, endorsement: Option[Endorsement] = None, id: Option[String] = None, `type`: Array[String] = Array("Criteria"), narrative: String)
 
-case class CryptographicKey(@JsonProperty("@context") context: String, related: Array[String], version: String, endorsement: Endorsement, `type`: Array[String] = Array("CryptographicKey"), id: String, owner: String, publicKeyPem: String)  extends Serializable {}
+case class CryptographicKey(@JsonProperty("@context") context: String, related: Array[String], version: String, endorsement: Endorsement, `type`: Array[String] = Array("CryptographicKey"), id: String, owner: String, publicKeyPem: String)
 
 /**
   *
   * @param name      Name of the awarding body, assessor or training body.
   * @param publicKey URLs to type CryptographicKeys
   */
-case class Issuer(@JsonProperty("@context") context: String, related: Option[Array[String]] = None, version: Option[String] = None, endorsement: Option[Endorsement] = None, id: Option[String] = None, `type`: Array[String] = Array("Issuer"), name: String, email: Option[String] = None, url: String, publicKey: Option[Array[String]] = None)  extends Serializable {}
+case class Issuer(@JsonProperty("@context") context: String, related: Option[Array[String]] = None, version: Option[String] = None, endorsement: Option[Endorsement] = None, id: Option[String] = None, `type`: Array[String] = Array("Issuer"), name: String, email: Option[String] = None, url: String, publicKey: Option[Array[String]] = None)
 
 /**
   *
@@ -151,7 +151,7 @@ case class Issuer(@JsonProperty("@context") context: String, related: Option[Arr
   * @param genre       Describes the type of evidence, such as Certificate, Painting, Artefact, Medal, Video, Image.
   * @param audience    Description of the intended audience for a piece of evidence
   */
-class Evidence(@JsonProperty("@context") context: String, related: Option[Array[String]] = None, version: Option[String] = None, endorsement: Option[Endorsement] = None, id: String, `type`: Array[String], narrative: Option[String] = None, name: String, description: Option[String] = None, genre: Option[String] = None, audience: Option[String] = None)  extends Serializable {}
+class Evidence(@JsonProperty("@context") context: String, related: Option[Array[String]] = None, version: Option[String] = None, endorsement: Option[Endorsement] = None, id: String, `type`: Array[String], narrative: Option[String] = None, name: String, description: Option[String] = None, genre: Option[String] = None, audience: Option[String] = None)
 
 /**
   * @param narrative
@@ -168,9 +168,9 @@ class Evidence(@JsonProperty("@context") context: String, related: Option[Array[
 case class AssessedEvidence(@JsonProperty("@context") context: String, related: Array[String], version: String, endorsement: Endorsement,
                             id: String, `type`: Array[String] = Array("Evidence", "Extension", "extensions:AssessedEvidence"), narrative: String,
                             name: String, description: String, genre: String, audience: String, subject: String, assessment: Assessment, assessedBy: String,
-                            assessedOn: String, signature: Signature)  extends Serializable {}
+                            assessedOn: String, signature: Signature)
 
-case class Assessment(@JsonProperty("@context") context: String, related: Array[String], version: String, endorsement: Endorsement, `type`: Array[String] = Array("Extension", "extensions:Assessment"), value: Float)  extends Serializable {}
+case class Assessment(@JsonProperty("@context") context: String, related: Array[String], version: String, endorsement: Endorsement, `type`: Array[String] = Array("Extension", "extensions:Assessment"), value: Float)
 
 /**
   *
@@ -188,7 +188,7 @@ case class Assessment(@JsonProperty("@context") context: String, related: Array[
 case class CompositeIdentityObject(@JsonProperty("@context") context: String, related: Option[Array[String]] = None, version: Option[String] = None, endorsement: Option[Endorsement] = None, identity: String, `type`: Array[String] = Array("Extension", "IdentityObject", "extensions:CompositeIdentityObject"), hashed: Boolean, salt: Option[String] = None,
                                    components: Option[List[CompositeIdentityObject]] = None,
                                    name: String,
-                                   photo: Option[String] = None, dob: Option[String] = None, gender: Option[Gender] = None, tag: Option[String] = None, urn: Option[String] = None, url: Option[String] = None)  extends Serializable {}
+                                   photo: Option[String] = None, dob: Option[String] = None, gender: Option[Gender] = None, tag: Option[String] = None, urn: Option[String] = None, url: Option[String] = None)
 
 /**
   *
@@ -206,7 +206,7 @@ case class CertificateExtension(@JsonProperty("@context") context: String, relat
                                 , var evidence: Option[TrainingEvidence] = None, expires: String, verification: Option[VerificationObject] = None, narrative: Option[String] = None
                                 , revoked: Boolean = false, revocationReason: Option[String] = None, `type`: Array[String] = Array("Assertion", "Extension", "extensions:CertificateExtension"),
                                 value: Option[Float] = None, awardedThrough: Option[String] = None, signatory: Array[SignatoryExtension],
-                                var printUri: Option[String] = None, validFrom: String, var signature: Option[Signature] = None)  extends Serializable {}
+                                var printUri: Option[String] = None, validFrom: String, var signature: Option[Signature] = None)
 
 /**
   *
@@ -215,7 +215,7 @@ case class CertificateExtension(@JsonProperty("@context") context: String, relat
   * @param publicKey
   * @param name
   */
-case class SignatoryExtension(@JsonProperty("@context") context: String, related: Option[Array[String]] = None, version: Option[String] = None, endorsement: Option[Endorsement] = None, identity: String, `type`: Array[String] = Array("Extension", "extensions:SignatoryExtension"), hashed: Option[String] = None, salt: Option[String] = None, designation: String, image: String, publicKey: Option[CryptographicKey] = None, name: String)  extends Serializable {}
+case class SignatoryExtension(@JsonProperty("@context") context: String, related: Option[Array[String]] = None, version: Option[String] = None, endorsement: Option[Endorsement] = None, identity: String, `type`: Array[String] = Array("Extension", "extensions:SignatoryExtension"), hashed: Option[String] = None, salt: Option[String] = None, designation: String, image: String, publicKey: Option[CryptographicKey] = None, name: String)
 
 
 case class TrainingEvidence(@JsonProperty("@context") context: String, related: Option[Array[String]] = None,
@@ -223,10 +223,10 @@ case class TrainingEvidence(@JsonProperty("@context") context: String, related: 
                             `type`: Array[String] = Array("Evidence", "Extension", "extensions:TrainingEvidence"),
                             narrative: Option[String] = None, name: String, description: Option[String] = None,
                             genre: Option[String] = None, audience: Option[String] = None, subject: Option[String] = None
-                            , trainedBy: Option[String] = None, duration: Option[Duration] = None, session: Option[String] = None)  extends Serializable {}
+                            , trainedBy: Option[String] = None, duration: Option[Duration] = None, session: Option[String] = None)
 
 case class Duration(startDate: String, endDate: String)
 
-case class MarksAssessment(minValue: Float, maxValue: Float, passValue: Float, @JsonProperty("@context") context: String, related: Array[String], version: String, endorsement: Endorsement, `type`: Array[String] = Array("Extension", "extensions:MarksAssessment"), value: Float)  extends Serializable {}
+case class MarksAssessment(minValue: Float, maxValue: Float, passValue: Float, @JsonProperty("@context") context: String, related: Array[String], version: String, endorsement: Endorsement, `type`: Array[String] = Array("Extension", "extensions:MarksAssessment"), value: Float)
 
-case class RankAssessment(maxValue: Float, @JsonProperty("@context") context: String, related: Array[String], version: String, endorsement: Endorsement, `type`: Array[String] = Array("Extension", "extensions:RankAssessment"), value: Float)  extends Serializable {}
+case class RankAssessment(maxValue: Float, @JsonProperty("@context") context: String, related: Array[String], version: String, endorsement: Endorsement, `type`: Array[String] = Array("Extension", "extensions:RankAssessment"), value: Float)
