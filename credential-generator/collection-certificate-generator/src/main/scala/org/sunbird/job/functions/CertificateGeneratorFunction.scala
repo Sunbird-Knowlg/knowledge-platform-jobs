@@ -105,7 +105,7 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
         val encodedQrCode: String = encodeQrCode(qrMap.qrFile)
         val printUri = SvgGenerator.generate(certificateExtension, encodedQrCode, event.svgTemplate)
         certificateExtension.printUri = Option(printUri)
-        val jsonUrl = uploadJson(certificateExtension, directory.concat(uuid).concat(".json"), event.tag)
+        val jsonUrl = uploadJson(certificateExtension, directory.concat(uuid).concat(".json"), event.tag.concat("/"))
         //adding certificate to registry
         val addReq = new java.util.HashMap[String, AnyRef]() {
           {
