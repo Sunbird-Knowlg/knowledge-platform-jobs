@@ -86,7 +86,7 @@ class CertificateGeneratorFunctionTaskTestSpec extends BaseTestSpec {
   }
 
 
-  "CertificateGenerator " should "generate certificate and add to the registry" in {
+  ignore should "generate certificate and add to the registry" in {
     when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaFailedEventTopic)).thenReturn(new failedEventSink)
     when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new CertificateGeneratorEventSource)
     new CertificateGeneratorStreamTask(jobConfig, notifierConfig, userFeedConfig, mockKafkaUtil, mockHttpUtil).process()

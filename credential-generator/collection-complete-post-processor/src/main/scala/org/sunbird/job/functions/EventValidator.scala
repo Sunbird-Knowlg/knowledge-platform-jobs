@@ -15,23 +15,8 @@ object EventValidator {
 
   lazy private val mapper: ObjectMapper = new ObjectMapper()
 
-  def isValidEvent(event: Event, config: CollectionCompletePostProcessorConfig): Boolean = {
-    StringUtils.equalsIgnoreCase(event.action, config.issueCertificate) &&
-      StringUtils.isNotBlank(event.courseId) && StringUtils.isNotBlank(event.batchId) && !event.userIds.isEmpty
-  }
-
-  def validateTemplate(certTemplates: util.Map[String, AnyRef], edata: util.Map[String, AnyRef],
-                       config: CollectionCompletePostProcessorConfig)(implicit metrics: Metrics) {
-    println("validateTemplate called : " + certTemplates)
-    if (MapUtils.isEmpty(certTemplates)) {
-      metrics.incCounter(config.skippedEventCount)
-      throw new Exception("Certificate template is not available for batchId : " + edata.get(config.batchId) + " and courseId : " + edata.get(config.courseId))
-    }
-  }
-
   def validateCriteria(template: Map[String, AnyRef], config: CollectionCompletePostProcessorConfig)
                       (implicit metrics: Metrics): util.Map[String, AnyRef] = {
-    println("validateCriteria called : " + template.get(config.criteria).asInstanceOf[String])
     val criteriaString = template.getOrElse(config.criteria, "").asInstanceOf[String]
     if (StringUtils.isEmpty(criteriaString)) {
       metrics.incCounter(config.skippedEventCount)

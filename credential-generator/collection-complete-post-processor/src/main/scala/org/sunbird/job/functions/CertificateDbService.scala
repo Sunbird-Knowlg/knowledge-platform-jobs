@@ -29,6 +29,7 @@ object CertificateDbService {
     println("readCertTemplates query : " + selectQuery.toString)
     val row = cassandraUtil.findOne(selectQuery.toString)
     if (null != row) {
+      metrics.incCounter(config.dbReadCount)
       val certTemplates = row.getMap(config.certTemplates, TypeToken.of(classOf[String]),
         TypeTokens.mapOf(classOf[String], classOf[String]))
       certTemplates.asScala.map(temp => (temp._1, temp._2.asScala.toMap)).toMap
@@ -44,15 +45,15 @@ object CertificateDbService {
     val selectQuery = QueryBuilder.select().all().from(config.dbKeyspace, config.dbUserTable).where.and(QueryBuilder.in(config.userEnrolmentsPrimaryKey.head, event.userIds)).
       and(QueryBuilder.eq(config.userEnrolmentsPrimaryKey(1), event.courseId)).
       and(QueryBuilder.eq(config.userEnrolmentsPrimaryKey(2), event.batchId))
-    enrollmentCriteria.asScala.map(criteria => selectQuery.and(QueryBuilder.eq(criteria._1, criteria._2)))
-    selectQuery.allowFiltering()
-    println("readUserIdsFromDb : Enroll User read query : " + selectQuery.toString)
+    println("readUserIdsFromDb : Enroll User read query : " + selectQuery.getQueryString())
     val rows = cassandraUtil.find(selectQuery.toString)
     metrics.incCounter(config.dbReadCount)
-    if (CollectionUtils.isNotEmpty(rows))
-      IssueCertificateUtil.getActiveUserIds(rows, event, templateName)
+    if (CollectionUtils.isNotEmpty(rows)) {
+      val filteredRows = rows.asScala.toList.filter(row => 2 == row.getInt("status"))
+      IssueCertificateUtil.getActiveUserIds(filteredRows, event, templateName)
+    }
     else
-      throw new Exception("User read failed : " + selectQuery.toString)
+      throw new Exception("User read failed : " + selectQuery.getQueryString())
   }
 
   def fetchAssessedUsersFromDB(event: Event, assessmentCriteria: util.Map[String, AnyRef])

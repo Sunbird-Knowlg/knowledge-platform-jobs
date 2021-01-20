@@ -46,8 +46,15 @@ class CassandraUtil(host: String, port: Int) {
     rs.wasApplied
   }
 
-  def executePreparedStatement(query: String, params: AnyRef*): util.List[Row] = {
-    val rs: ResultSet = session.execute(session.prepare(query).bind(params))
+  /**
+   * As cassandra bind statement accepts only java.lang.Object...
+   * params is defined as below
+   * @param query
+   * @param params
+   * @return
+   */
+  def executePreparedStatement(query: String, params: Object*): util.List[Row] = {
+    val rs: ResultSet = session.execute(session.prepare(query).bind(params : _*))
     rs.all()
   }
   

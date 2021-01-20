@@ -19,10 +19,10 @@ object IssueCertificateUtil {
   private[this] val logger = LoggerFactory.getLogger(IssueCertificateUtil.getClass)
   lazy private val mapper: ObjectMapper = new ObjectMapper()
 
-  def getActiveUserIds(rows: util.List[Row], event: Event, templateName: String)
+  def getActiveUserIds(rows: List[Row], event: Event, templateName: String)
                       (implicit config: CollectionCompletePostProcessorConfig): List[String] = {
     println("getActiveUserIds called : ")
-    val userIds = rows.asScala.filter(row => {
+    val userIds = rows.filter(row => {
       val issuedCertificates: util.List[util.Map[String, String]] = row.getList(config.issued_certificates, TypeTokens.mapOf(classOf[String], classOf[String]))
       val isCertIssued = !issuedCertificates.isEmpty && issuedCertificates.asScala.exists(a => a.get(config.name) == templateName)
       println("getActiveUserIds : isCertIssued : " + isCertIssued)

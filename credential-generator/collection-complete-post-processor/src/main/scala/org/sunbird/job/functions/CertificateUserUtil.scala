@@ -40,7 +40,7 @@ object CertificateUserUtil {
                                            config: CollectionCompletePostProcessorConfig): List[String] = {
     println("getUserFromEnrolmentCriteria called : " + enrollmentCriteria)
     if (MapUtils.isNotEmpty(enrollmentCriteria) && !event.userIds.isEmpty) {
-      val templateName = template.get(config.name).asInstanceOf[String]
+      val templateName = template.getOrElse(config.name, "").asInstanceOf[String]
       val userIds = CertificateDbService.readUserIdsFromDb(enrollmentCriteria, event, templateName)(metrics, cassandraUtil, config)
       println("getUserFromEnrolmentCriteria active userids : " + userIds.toString)
       userIds
@@ -55,7 +55,7 @@ object CertificateUserUtil {
       val assessedUserIds = CertificateDbService.fetchAssessedUsersFromDB(event, assessmentCriteria)(metrics, cassandraUtil, config)
       // ask in old we are checking userid we should ??
       if (assessedUserIds.nonEmpty) {
-        val userIds = event.userIds.intersect(assessedUserIds)
+        val userIds = event.userIds.asScala.toList.intersect(assessedUserIds)
         userIds
       } else {
         logger.info("No users satisfy assessment criteria for batchID: " + event.batchId + " and courseID: " + event.courseId)
