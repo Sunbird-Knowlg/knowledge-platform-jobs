@@ -7,7 +7,6 @@ import com.fasterxml.jackson.annotation.JsonInclude.Include
 import com.fasterxml.jackson.core.JsonGenerator.Feature
 import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper, SerializationFeature}
 import com.fasterxml.jackson.core.`type`.TypeReference
-import com.fasterxml.jackson.module.scala.DefaultScalaModule
 
 object JSONUtil {
 
@@ -16,7 +15,6 @@ object JSONUtil {
   mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
   mapper.configure(Feature.WRITE_BIGDECIMAL_AS_PLAIN, true)
   mapper.setSerializationInclusion(Include.NON_NULL)
-  mapper.registerModule(DefaultScalaModule)
 
   @throws(classOf[Exception])
   def serialize(obj: AnyRef): String = {
@@ -31,12 +29,7 @@ object JSONUtil {
     mapper.readValue(json, typeReference[T])
   }
 
-  @throws(classOf[Exception])
-  def writeToJsonFile(file: File, obj: AnyRef) = {
-    mapper.writeValue(file, obj)
-  }
-
-
+  
   private[this] def typeReference[T: Manifest] = new TypeReference[T] {
     override def getType = typeFromManifest(manifest[T])
   }
