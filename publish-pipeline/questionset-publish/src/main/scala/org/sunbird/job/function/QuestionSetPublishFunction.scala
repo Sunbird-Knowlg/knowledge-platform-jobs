@@ -13,8 +13,9 @@ import org.sunbird.job.publish.helpers.QuestionSetPublisher
 import org.sunbird.job.task.QuestionSetPublishConfig
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
 import org.sunbird.publish.core.ExtDataConfig
+import org.sunbird.publish.util.CloudStorageUtil
 
-class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUtil,
+class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUtil,cloudStorageUtil: CloudStorageUtil,
                                  @transient var neo4JUtil: Neo4JUtil = null,
                                  @transient var cassandraUtil: CassandraUtil = null)
                                 (implicit val stringTypeInfo: TypeInformation[String])

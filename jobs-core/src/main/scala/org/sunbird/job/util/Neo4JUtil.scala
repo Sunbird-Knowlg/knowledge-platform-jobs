@@ -57,5 +57,10 @@ class Neo4JUtil(routePath: String, graphId: String) {
     session.run(query)
   }
 
+  //Return a map of id and node
+  def getNodesProps(identifiers: List[String]): Map[String, AnyRef] = {
+    Map()
+  }
+
 
 }
