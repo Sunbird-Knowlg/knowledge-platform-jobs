@@ -1,6 +1,5 @@
 package org.sunbird.job.util
 
-import java.io.File
 import java.lang.reflect.{ParameterizedType, Type}
 
 import com.fasterxml.jackson.annotation.JsonInclude.Include
@@ -29,7 +28,6 @@ object JSONUtil {
     mapper.readValue(json, typeReference[T])
   }
 
-  
   private[this] def typeReference[T: Manifest] = new TypeReference[T] {
     override def getType = typeFromManifest(manifest[T])
   }
