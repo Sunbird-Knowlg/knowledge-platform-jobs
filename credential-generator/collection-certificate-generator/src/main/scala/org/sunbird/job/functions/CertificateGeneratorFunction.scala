@@ -18,15 +18,15 @@ import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.incredible.pojos.ob.CertificateExtension
-import org.sunbird.incredible.{CertificateConfig, CertificateGenerator, JsonKeys, JsonUtils}
+import org.sunbird.incredible.{CertificateConfig, CertificateGenerator, JsonKeys}
 import org.sunbird.incredible.processor.CertModel
 import org.sunbird.incredible.processor.store.StorageService
 import org.sunbird.incredible.processor.views.SvgGenerator
 import org.sunbird.job.Exceptions.{ErrorCodes, ServerException, ValidationException}
-import org.sunbird.job.domain.{Actor, Certificate, CertificateAuditEvent, Event, EventContext, EData, EventObject, FailedEvent, UserEnrollmentData}
+import org.sunbird.job.domain.{Actor, Certificate, CertificateAuditEvent, Event, EventContext, EventObject, FailedEvent, UserEnrollmentData}
 import org.sunbird.job.task.CertificateGeneratorConfig
 import org.sunbird.job.{BaseProcessFunction, Metrics}
-import org.sunbird.job.util.{CassandraUtil, HttpUtil}
+import org.sunbird.job.util.{CassandraUtil, HttpUtil, JSONUtil}
 import org.sunbird.notifier.NotificationMetaData
 import org.sunbird.user.feeds.UserFeedMetaData
 
@@ -143,7 +143,7 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
   @throws[ServerException]
   def addCertToRegistry(certReq: Event, request: java.util.HashMap[String, AnyRef], context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
     logger.info("adding certificate to the registry")
-    val httpRequest = JsonUtils.serialize(request)
+    val httpRequest = JSONUtil.serialize(request)
     val httpResponse = httpUtil.post(config.certRegistryBaseUrl + "/certs/v2/registry/add", httpRequest)
     if (httpResponse.status == 200) {
       logger.info("certificate added successfully to the registry " + httpResponse.body)
@@ -164,7 +164,7 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
   private def uploadJson(certificateExtension: CertificateExtension, fileName: String, cloudPath: String): String = {
     logger.info("uploadJson: uploading json file started {}", fileName)
     val file = new File(fileName)
-    JsonUtils.writeToJsonFile(file, certificateExtension)
+    JSONUtil.writeToJsonFile(file, certificateExtension)
     storageService.uploadFile(cloudPath, file)
   }
 
