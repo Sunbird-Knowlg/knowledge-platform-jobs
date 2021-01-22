@@ -51,4 +51,12 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
 	}
 
 	def dummyFunc = (obj: ObjectData) => {}
+
+	override def getExtDatas(identifiers: List[String], readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = {
+		None
+	}
+
+	override def getHierarchies(identifiers: List[String], readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = {
+		None
+	}
 }

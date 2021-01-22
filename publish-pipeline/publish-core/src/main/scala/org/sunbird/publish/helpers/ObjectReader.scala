@@ -30,4 +30,24 @@ trait ObjectReader {
   def getEditableObjId(identifier: String, pkgVersion: Double): String = {
     if (pkgVersion > 0) identifier + ".img" else identifier
   }
+
+    def getObjects(identifiers: List[String], readerConfig: ExtDataConfig)
+                  (implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil): List[ObjectData] = {
+        val metadataList = getMetadatas(identifiers)
+        val extData = getExtDatas(identifiers, readerConfig)
+        val hierarchy = getHierarchies(identifiers, readerConfig)
+        identifiers.map(identifier => new ObjectData(identifier,
+            metadataList.getOrElse(identifier, Map()).asInstanceOf[Map[String, AnyRef]],
+            extData.getOrElse(Map()).get(identifier).asInstanceOf[Option[Map[String, AnyRef]]],
+            hierarchy.getOrElse(Map()).get(identifier).asInstanceOf[Option[Map[String, AnyRef]]]))
+    }
+
+    private def getMetadatas(identifiers: List[String])(implicit neo4JUtil: Neo4JUtil): Map[String, AnyRef] = {
+        Option(neo4JUtil.getNodesProps(identifiers)).getOrElse(Map())
+    }
+
+    def getExtDatas(identifiers: List[String], readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]]
+
+    def getHierarchies(identifiers: List[String], readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]]
+
 }
