@@ -9,9 +9,9 @@ import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.util.HttpUtil
 import org.sunbird.publish.core.{ObjectData, Slug}
+import org.sunbird.publish.handler.{QuestionHandlerFactory, QuestionTypeHandler}
 import org.sunbird.publish.util.CloudStorageUtil
 
-import scala.collection.JavaConverters._
 import scala.collection.mutable
 
 
@@ -21,20 +21,19 @@ trait QuestionPdfGenerator extends ObjectTemplateGenerator {
 
 
     //    Need to pass config instead of template name, print service url, itemset generate boolean etc
-    def getPdfFileUrl(objList: List[ObjectData], obj: ObjectData, templateName: String)(implicit httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil): Option[String] = {
-        val fileContent: Option[String] = getPreviewFileUrl(objList, obj, templateName)
-        println(s"File $fileContent")
-        val pdfFileUrl = convertFileToPdfUrl(fileContent)
+    def getPdfFileUrl(objList: List[ObjectData], obj: ObjectData, templateName: String)(implicit httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil): (Option[String], Option[String] ) = {
+        val previewUrl: Option[String] = getPreviewFileUrl(objList, obj, templateName)
+        val pdfFileUrl = convertFileToPdfUrl(previewUrl)
         pdfFileUrl match {
-            case Some(url: String) => uploadFileString(url, obj)
-            case _ => None
+            case Some(url: String) => (uploadFileString(url, obj), previewUrl)
+            case _ => (None, previewUrl)
         }
     }
 
     //    //Need to pass config instead of template name
     def getPreviewFileUrl(objList: List[ObjectData], obj: ObjectData, templateName: String)(implicit cloudStorageUtil: CloudStorageUtil): Option[String] = {
-        val fileContent: String = getFileString(objList, obj.metadata.get("name").asInstanceOf[String], templateName).getOrElse("")
-        val fileName: String = File.pathSeparator + "tmp" + File.pathSeparator + obj.dbId + "_" + getHtmlFileSuffix()
+        val fileContent: String = getFileString(objList, obj.metadata.getOrElse("name", "").asInstanceOf[String], templateName).getOrElse("")
+        val fileName: String = s"/tmp/${obj.dbId}_${getHtmlFileSuffix()}"
         val file: Option[File] = writeFile(fileName, fileContent)
         uploadFile(file, obj)
     }
@@ -75,7 +74,7 @@ trait QuestionPdfGenerator extends ObjectTemplateGenerator {
     def getHtmlString(questions: List[ObjectData], title: String, templateName: String): Option[String] = {
         val questionsDataMap = populateQuestionsData(questions)
         val sortedQuestionsData = mutable.ListMap(questionsDataMap.toSeq
-            .sortBy(_._2.asInstanceOf[Map[String, AnyRef]].get("index").asInstanceOf[Int]): _*)
+            .sortBy(_._2.asInstanceOf[Map[String, AnyRef]].getOrElse("index", 0).asInstanceOf[Int]): _*)
         generateHtmlString(sortedQuestionsData, title, templateName) match {
             case "" => None
             case x: String => Some(x)
@@ -85,15 +84,14 @@ trait QuestionPdfGenerator extends ObjectTemplateGenerator {
     //Will require index (Need to be got from question set)
     private def populateQuestionsData(questions: List[ObjectData]): Map[String, AnyRef] = {
         questions.map(question => question.dbId -> {
-            val editorState = gson.fromJson(question.extData.getOrElse(Map()).getOrElse("editorState", "").asInstanceOf[String],
-                classOf[java.util.Map[String, AnyRef]]).asScala
-            Map("question" -> question.extData.getOrElse("body", "").asInstanceOf[String],
-                "answer" -> editorState.getOrElse("answer", editorState.get("options").asInstanceOf[List[Map[String, AnyRef]]]
-                    .find(option => option.get("answer").asInstanceOf[Boolean])
-                    .getOrElse(Map()).get("value")
-                    .getOrElse("body", "")),
-                "index" -> question.metadata.get("index"),
-                "type" -> question.metadata.get("qType"))
+            val handlerOption = QuestionHandlerFactory.apply(question.metadata.get("primaryCategory").asInstanceOf[Option[String]])
+            handlerOption match {
+                case Some(handler: QuestionTypeHandler) =>
+                    Map("question" -> handler.getQuestion(question.extData),
+                        "answer" -> handler.getAnswers(question.extData),
+                        "index" -> question.metadata.getOrElse("index", 0.asInstanceOf[AnyRef]))
+                case _ => Map()
+            }
         }).toMap
     }
 
@@ -128,28 +126,25 @@ trait QuestionPdfGenerator extends ObjectTemplateGenerator {
 
     private def convertHtmlToPDF(htmlFileUrl: String, httpUtil: HttpUtil): Option[String] = {
         //Get  value from config
-        val ITEM_SET_GENERATE_PDF = true
-        if (ITEM_SET_GENERATE_PDF) {
-            val response = httpUtil.post(s"http://11.2.2.4:5001/v1/print/preview/generate?fileUrl=$htmlFileUrl", "")
-            if (response.status == 200) {
-                val responseBody = gson.fromJson(response.body, classOf[java.util.Map[String, AnyRef]])
-                val result = responseBody.getOrDefault("result", new java.util.HashMap[String, AnyRef]()).asInstanceOf[java.util.Map[String, AnyRef]]
-                val pdfUrl = result.getOrDefault("pdfUrl", "").asInstanceOf[String]
-                if (pdfUrl.isEmpty) None else Some(pdfUrl)
-            } else if (response.status == 400) {
-                logger.error("Client Error during Generate Question Set previewUrl: " + response.status)
-                None
-            } else {
-                logger.error("Server Error during Generate Question Set previewUrl: " + response.status)
-                None
-            }
-        } else Some(htmlFileUrl)
+        val response = httpUtil.post(s"http://11.2.2.4:5001/v1/print/preview/generate?fileUrl=$htmlFileUrl", "")
+        if (response.status == 200) {
+            val responseBody = gson.fromJson(response.body, classOf[java.util.Map[String, AnyRef]])
+            val result = responseBody.getOrDefault("result", new java.util.HashMap[String, AnyRef]()).asInstanceOf[java.util.Map[String, AnyRef]]
+            val pdfUrl = result.getOrDefault("pdfUrl", "").asInstanceOf[String]
+            if (pdfUrl.isEmpty) None else Some(pdfUrl)
+        } else if (response.status == 400) {
+            logger.error("Client Error during Generate Question Set previewUrl: " + response.status)
+            None
+        } else {
+            logger.error("Server Error during Generate Question Set previewUrl: " + response.status)
+            None
+        }
     }
 
     private def uploadFile(fileOption: Option[File], obj: ObjectData)(implicit cloudStorageUtil: CloudStorageUtil): Option[String] = {
         fileOption match {
             case Some(file: File) => {
-                val folder = "itemset" + "/" + obj.dbId
+                val folder = "questionset" + "/" + obj.dbId
                 val urlArray: Array[String] = cloudStorageUtil.uploadFile(folder, file, Some(true))
                 Some(urlArray(1))
             }
@@ -159,9 +154,9 @@ trait QuestionPdfGenerator extends ObjectTemplateGenerator {
 
     private def uploadFileString(fileUrl: String, obj: ObjectData)(implicit cloudStorageUtil: CloudStorageUtil): Option[String] = {
         //Todo: Rename Status?
-        copyURLToFile(obj.dbId, fileUrl, "itemset") match {
+        copyURLToFile(obj.dbId, fileUrl, "questionset") match {
             case Some(file: File) => {
-                val folder = s"content${File.separator}${Slug.makeSlug(obj.dbId, true)}${File.separator}"
+                val folder = s"content/${Slug.makeSlug(obj.dbId, true)}/"
                 val urlArray: Array[String] = cloudStorageUtil.uploadFile(folder, file, Some(true))
                 Some(urlArray(1))
             }
@@ -171,7 +166,7 @@ trait QuestionPdfGenerator extends ObjectTemplateGenerator {
     }
 
     def copyURLToFile(objectId: String, fileUrl: String, suffix: String): Option[File] = try {
-        val fileName = getBasePath(objectId) + File.separator + suffix
+        val fileName = getBasePath(objectId) + "/" + suffix
         val file = new File(fileName)
         FileUtils.copyURLToFile(new URL(fileUrl), file)
         Some(file)
@@ -182,7 +177,7 @@ trait QuestionPdfGenerator extends ObjectTemplateGenerator {
 
     def getBasePath(objectId: String): String = {
         if (!StringUtils.isBlank(objectId))
-            s"/tmp${File.separator}${System.currentTimeMillis}_temp${File.separator}$objectId"
+            s"/tmp/${System.currentTimeMillis}_temp/$objectId"
         else ""
     }
 

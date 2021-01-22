@@ -18,7 +18,16 @@
         <encoding>UTF-8</encoding>
         <scoverage.plugin.version>1.4.0</scoverage.plugin.version>
     </properties>
-
+    <repositories>
+        <repository>
+            <id>cloud-store-sdk_2.12</id>
+            <name>cloud-store-sdk_2.12</name>
+            <url>https://oss.sonatype.org/content/repositories/orgsunbird-1083</url>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
     <dependencies>
         <dependency>
             <groupId>org.sunbird</groupId>
@@ -27,8 +36,8 @@
         </dependency>
         <dependency>
             <groupId>org.sunbird</groupId>
-            <artifactId>cloud-store-sdk</artifactId>
-            <version>1.2.8</version>
+            <artifactId>cloud-store-sdk_2.12</artifactId>
+            <version>1.2.9</version>
         </dependency>
         <dependency>
             <groupId>com.moparisthebest</groupId>
