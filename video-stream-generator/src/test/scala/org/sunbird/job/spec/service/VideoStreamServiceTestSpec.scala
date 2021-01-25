@@ -1,6 +1,5 @@
 package org.sunbird.job.spec.service
 
-import java.io.IOException
 import java.util
 
 import com.datastax.driver.core.Row
@@ -16,7 +15,8 @@ import org.sunbird.job.task.VideoStreamGeneratorConfig
 import org.sunbird.spec.BaseTestSpec
 import org.json4s.jackson.JsonMethods.parse
 import org.sunbird.job.spec.MockAzureWebServer
-import org.sunbird.job.util.{CassandraUtil, HttpUtil}
+import org.sunbird.job.util.{CassandraUtil, HttpUtil, JSONUtil}
+import org.sunbird.job.domain.Event
 
 import scala.collection.JavaConverters._
 
@@ -30,7 +30,7 @@ class VideoStreamServiceTestSpec extends BaseTestSpec {
 
   override protected def beforeAll(): Unit = {
     DateTimeUtils.setCurrentMillisFixed(1605816926271L);
-    EmbeddedCassandraServerHelper.startEmbeddedCassandra(80000L)
+//    EmbeddedCassandraServerHelper.startEmbeddedCassandra(80000L)
     cassandraUtil = new CassandraUtil(jobConfig.dbHost, jobConfig.dbPort)
     val session = cassandraUtil.session
     val dataLoader = new CQLDataLoader(session);
@@ -52,9 +52,11 @@ class VideoStreamServiceTestSpec extends BaseTestSpec {
   }
 
   "VideoStreamService" should "submit job request" in {
-    val eventMap1 = parse(EventFixture.EVENT_1).values.asInstanceOf[Map[String, AnyRef]]
+    val eventMap1 = gson.fromJson(EventFixture.EVENT_1, new util.LinkedHashMap[String, Any]().getClass).asInstanceOf[util.Map[String, Any]].asScala ++ Map("partition" -> 0.asInstanceOf[Any])
+//    val eventMap1 = new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_1))
+
     val videoStreamService = new VideoStreamService();
-    videoStreamService.submitJobRequest(eventMap1)
+    videoStreamService.submitJobRequest(new Event(eventMap1.asJava).eData)
 
     val event1Progress = readFromCassandra(EventFixture.EVENT_1)
     event1Progress.size() should be(1)

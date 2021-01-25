@@ -48,22 +48,10 @@ class VideoStreamGenerator(config: VideoStreamGeneratorConfig)
                                 metrics: Metrics): Unit = {
         logger.info("Event eid:: "+ event.eid)
 
-        if(isValidEvent(event)) {
+        if(event.isValid) {
             logger.info("Event eid:: valid event")
             videoStreamService.submitJobRequest(event.eData)
             context.output(config.videoStreamJobOutput, "processed")
         }
-    }
-
-    private def isValidEvent(event: Event): Boolean = {
-        val mimeType = event.mimeType
-
-        StringUtils.isNotBlank(event.artifactUrl) &&
-          StringUtils.isNotBlank(mimeType) &&
-          (
-            StringUtils.equalsIgnoreCase(mimeType, "video/mp4") ||
-              StringUtils.equalsIgnoreCase(mimeType, "video/webm")
-            ) &&
-          StringUtils.isNotBlank(event.identifier)
     }
 }

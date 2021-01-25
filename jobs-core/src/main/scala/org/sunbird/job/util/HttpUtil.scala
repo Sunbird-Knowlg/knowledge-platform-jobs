@@ -2,6 +2,7 @@ package org.sunbird.job.util
 
 import kong.unirest.Unirest
 import scala.collection.JavaConverters._
+import java.util
 
 case class HTTPResponse(status: Int, body: String) extends Serializable
 
@@ -14,6 +15,11 @@ class HttpUtil extends Serializable {
 
   def post(url: String, requestBody: String, headers: Map[String, String] = Map[String, String]("Content-Type"->"application/json")): HTTPResponse = {
     val response = Unirest.post(url).headers(headers.asJava).body(requestBody).asString()
+    HTTPResponse(response.getStatus, response.getBody)
+  }
+
+  def post_map(url: String, requestBody: Map[String, AnyRef], headers: Map[String, String] = Map[String, String]("Content-Type"->"application/json")): HTTPResponse = {
+    val response = Unirest.post(url).headers(headers.asJava).fields(requestBody.asJava).asString()
     HTTPResponse(response.getStatus, response.getBody)
   }
 

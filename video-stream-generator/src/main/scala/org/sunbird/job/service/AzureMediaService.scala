@@ -5,7 +5,7 @@ import java.io.File
 import org.apache.commons.lang3.StringUtils
 import org.sunbird.job.exception.MediaServiceException
 import org.sunbird.job.task.VideoStreamGeneratorConfig
-import org.sunbird.job.util.{AzureRequestBody, HTTPResponse, HttpRestUtil, HttpUtil, JSONUtil, MediaResponse}
+import org.sunbird.job.util.{AzureRequestBody, HTTPResponse, HttpUtil, JSONUtil, MediaResponse, Response}
 
 import scala.collection.immutable.HashMap
 
@@ -20,21 +20,21 @@ abstract class AzureMediaService extends IMediaService {
     val clientSecret = config.getSystemConfig("azure.token.client_secret")
     val loginUrl = config.getConfig("azure.login.endpoint") + "/" + tenant + "/oauth2/token"
 
-    val data = HashMap[String, String](
+    val data = Map[String, String](
       "grant_type" -> "client_credentials",
       "client_id" -> clientKey,
       "client_secret" -> clientSecret,
       "resource" -> "https://management.core.windows.net/"
     )
 
-    val header = HashMap[String, String](
+    val header = Map[String, String](
       "Content-Type" -> "application/x-www-form-urlencoded",
       "Keep-Alive" -> "true"
     )
 
-    val response:HTTPResponse = httpUtil.post(loginUrl, JSONUtil.serialize(data), header)
-    if(response.status == 200){
-      JSONUtil.deserialize[Map[String, String]](response.body).getOrElse("access_token", "")
+    val response:MediaResponse = Response.getResponse(httpUtil.post_map(loginUrl, data, header))
+    if(response.responseCode == "OK"){
+      response.result.get("access_token").get.asInstanceOf[String]
     } else {
       throw new Exception("Error while getting the azure access token")
     }
@@ -42,9 +42,9 @@ abstract class AzureMediaService extends IMediaService {
 
   protected def getJobDetails(jobId: String)(implicit config: VideoStreamGeneratorConfig, httpUtil: HttpUtil): MediaResponse = {
     val url = getApiUrl("job").replace("jobIdentifier", jobId)
-    val response:HTTPResponse = httpUtil.get(url, getDefaultHeader())
-    if(response.status == 200){
-      JSONUtil.deserialize[MediaResponse](response.body)
+    val response:MediaResponse = Response.getResponse(httpUtil.get(url, getDefaultHeader()))
+    if(response.responseCode == "OK"){
+      response
     } else {
       throw new Exception("Error while getting the azure access token")
     }
@@ -54,9 +54,9 @@ abstract class AzureMediaService extends IMediaService {
     val url = getApiUrl("asset").replace("assetId", assetId)
     val requestBody = AzureRequestBody.create_asset.replace("assetId", assetId)
       .replace("assetDescription", "Output Asset for " + jobId)
-    val response:HTTPResponse = httpUtil.put(url, requestBody, getDefaultHeader())
-    if(response.status == 200){
-      JSONUtil.deserialize[MediaResponse](response.body)
+    val response:MediaResponse = Response.getResponse(httpUtil.put(url, requestBody, getDefaultHeader()))
+    if(response.responseCode == "OK"){
+      response
     } else {
       throw new Exception("Error while creating asset::(assetId->"+assetId+", jobId->"+jobId+")")
     }
@@ -66,19 +66,14 @@ abstract class AzureMediaService extends IMediaService {
     val url = getApiUrl("stream_locator").replace("streamingLocatorName", streamingLocatorName)
     val streamingPolicyName = config.getConfig("azure.stream.policy_name")
     val reqBody = AzureRequestBody.create_stream_locator.replace("assetId", assetName).replace("policyName", streamingPolicyName)
-    val response:HTTPResponse = httpUtil.put(url, reqBody, getDefaultHeader())
-    if(response.status == 200){
-      JSONUtil.deserialize[MediaResponse](response.body)
-    } else {
-      throw new Exception("Error while createStreamingLocator::(streamingLocatorName->"+streamingLocatorName+", assetName->"+assetName+")")
-    }
+    Response.getResponse(httpUtil.put(url, reqBody, getDefaultHeader()))
   }
 
   protected def getStreamingLocator(streamingLocatorName: String)(implicit config: VideoStreamGeneratorConfig, httpUtil: HttpUtil): MediaResponse = {
     val url = getApiUrl("stream_locator").replace("streamingLocatorName", streamingLocatorName)
-    val response: HTTPResponse = httpUtil.get(url, getDefaultHeader())
-    if (response.status == 200) {
-      JSONUtil.deserialize[MediaResponse](response.body)
+    val response:MediaResponse = Response.getResponse(httpUtil.get(url, getDefaultHeader()))
+    if(response.responseCode == "OK"){
+      response
     } else {
       throw new Exception("Error while getStreamingLocator::(streamingLocatorName->" + streamingLocatorName + ")")
     }
@@ -86,9 +81,9 @@ abstract class AzureMediaService extends IMediaService {
 
   protected def getStreamUrls(streamingLocatorName: String)(implicit config: VideoStreamGeneratorConfig, httpUtil: HttpUtil): MediaResponse = {
     val url = getApiUrl("list_paths").replace("streamingLocatorName", streamingLocatorName)
-    val response: HTTPResponse = httpUtil.get(url, getDefaultHeader())
-    if (response.status == 200) {
-      JSONUtil.deserialize[MediaResponse](response.body)
+    val response:MediaResponse = Response.getResponse(httpUtil.post(url, "{}", getDefaultHeader()))
+    if(response.responseCode == "OK"){
+      response
     } else {
       throw new Exception("Error while getStreamUrls::(streamingLocatorName->" + streamingLocatorName + ")")
     }

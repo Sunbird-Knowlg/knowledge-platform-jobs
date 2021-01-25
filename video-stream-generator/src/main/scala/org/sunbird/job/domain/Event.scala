@@ -21,9 +21,14 @@ class Event(eventMap: java.util.Map[String, Any]) extends JobRequest(eventMap) {
 
   def eData: Map[String, AnyRef] = readOrDefault("edata", new util.HashMap[String, AnyRef]()).asScala.toMap
 
-  def validEvent(): Boolean = {
-    StringUtils.equals("post-publish-process", action) &&
-      StringUtils.equals("application/vnd.ekstep.content-collection", mimeType)
+  def isValid: Boolean = {
+    StringUtils.isNotBlank(artifactUrl) &&
+      StringUtils.isNotBlank(mimeType) &&
+      (
+        StringUtils.equalsIgnoreCase(mimeType, "video/mp4") ||
+          StringUtils.equalsIgnoreCase(mimeType, "video/webm")
+        ) &&
+      StringUtils.isNotBlank(identifier)
   }
 
 }
