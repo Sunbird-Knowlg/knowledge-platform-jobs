@@ -6,7 +6,6 @@ import java.text.{DateFormat, ParseException, SimpleDateFormat}
 import java.util.{Date, Locale}
 
 import org.apache.commons.lang.StringUtils
-import org.apache.commons.lang3.ObjectUtils
 import org.slf4j.{Logger, LoggerFactory}
 import org.sunbird.incredible.JsonKeys
 import org.sunbird.incredible.pojos.ob.CertificateExtension
@@ -20,7 +19,7 @@ class VarResolver(certificateExtension: CertificateExtension) {
 
   def getRecipientId: String = certificateExtension.recipient.identity
 
-  def getCourseName: String = if (ObjectUtils.anyNotNull(certificateExtension.evidence) && StringUtils.isNotBlank(certificateExtension.evidence.get.name)) certificateExtension.evidence.get.name
+  def getCourseName: String = if (certificateExtension.evidence.nonEmpty && StringUtils.isNotBlank(certificateExtension.evidence.get.name)) certificateExtension.evidence.get.name
   else ""
 
   def getQrCodeImage: String = try {

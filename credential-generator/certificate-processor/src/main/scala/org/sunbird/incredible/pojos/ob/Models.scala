@@ -98,7 +98,7 @@ case class AlignmentObject(@JsonProperty("@context") context: String, related: A
   *                             * Refer to https://tools.ietf.org/html/rfc3986#section-3.2.2
   *                             * Example: ["example.org", "another.example.org"]
   */
-case class VerificationObject(@JsonProperty("@context") context: String, related: Array[String], version: String, endorsement: Endorsement, `type`: Array[String], verificationProperty: String, startsWith: String, allowedOrigins: List[String])
+case class VerificationObject(@JsonProperty("@context") context: String, related: Array[String], version: String, endorsement: Endorsement, `type`: Array[String], verificationProperty: String, startsWith: String, allowedOrigins: List[String]) extends Serializable {}
 
 /**
   *
@@ -204,7 +204,9 @@ case class Signature(`type`: String = "LinkedDataSignature2015", creator: String
 case class CertificateExtension(@JsonProperty("@context") context: String, related: Option[Array[String]] = None, version: Option[String] = None, endorsement: Option[Endorsement] = None,
                                 id: String, issuedOn: String, recipient: CompositeIdentityObject, badge: BadgeClass, image: Option[String] = None
                                 , var evidence: Option[TrainingEvidence] = None, expires: String, verification: Option[VerificationObject] = None, narrative: Option[String] = None
-                                , revoked: Boolean = false, revocationReason: Option[String] = None, `type`: Array[String] = Array("Assertion", "Extension", "extensions:CertificateExtension"), value: Option[Float] = None, awardedThrough: Option[String] = None, signatory: Array[SignatoryExtension], var printUri: Option[String] = None, validFrom: String, var signature: Option[Signature] = None)
+                                , revoked: Boolean = false, revocationReason: Option[String] = None, `type`: Array[String] = Array("Assertion", "Extension", "extensions:CertificateExtension"),
+                                value: Option[Float] = None, awardedThrough: Option[String] = None, signatory: Array[SignatoryExtension],
+                                var printUri: Option[String] = None, validFrom: String, var signature: Option[Signature] = None)
 
 /**
   *

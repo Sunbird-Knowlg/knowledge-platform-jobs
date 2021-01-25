@@ -18,5 +18,6 @@ class UserFeedConfig(override val config: Config) extends BaseJobConfig(config, 
   val userFeedMsg: String = "You have earned a certificate! Download it from your profile page."
   val priorityValue = 1
 
+  val userFeedCount = "user-feed-count"
 
 }

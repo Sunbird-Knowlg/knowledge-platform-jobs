@@ -119,4 +119,5 @@ object JsonKeys {
   val QRCODE_IMAGE: String = "qrCodeImage"
   val EXPIRY_DATE: String = "expiryDate"
   val ISSUER_NAME: String = "issuerName"
+  val EDATA = "edata"
 }
