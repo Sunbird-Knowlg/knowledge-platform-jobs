@@ -9,14 +9,16 @@ class NotifierConfig(override val config: Config) extends BaseJobConfig(config, 
   private val serialVersionUID = 2905979434303791379L
 
   val learnerServiceBaseUrl: String = config.getString("learner-service.basePath")
-  val dbCourseBatchTable: String = config.getString("lms-cassandra.course_batch.table")
   val notificationEndPoint: String = "/v2/notification"
   val userFeedCreateEndPoint:String = "/private/user/feed/v1/create"
+
+
+  val dbCourseBatchTable: String = config.getString("lms-cassandra.course_batch.table")
   val dbKeyspace: String = config.getString("lms-cassandra.keyspace")
   val dbHost: String = config.getString("lms-cassandra.host")
   val dbPort: Int = config.getInt("lms-cassandra.port")
 
-  val dbReadCount = "db-read-count"
+  val courseBatchdbReadCount = "db-course-batch-read-count"
   val notifiedUserCount = "notified-user-count"
   val skipNotifyUserCount = "skipped-notify-user-count"
 

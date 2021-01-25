@@ -21,7 +21,7 @@ import scala.collection.JavaConverters._
 
 case class NotificationMetaData(userId: String, courseName: String, issuedOn: Date, courseId: String, batchId: String, templateId: String)
 
-class NotifierFunction(config: NotifierConfig, httpUtil: HttpUtil, @transient cassandraUtil: CassandraUtil = null)(implicit val stringTypeInfo: TypeInformation[String])
+class NotifierFunction(config: NotifierConfig, httpUtil: HttpUtil, @transient var cassandraUtil: CassandraUtil = null)(implicit val stringTypeInfo: TypeInformation[String])
   extends BaseProcessFunction[NotificationMetaData, String](config) {
 
   private val dateFormatter = new SimpleDateFormat("yyyy-MM-dd")
@@ -32,15 +32,13 @@ class NotifierFunction(config: NotifierConfig, httpUtil: HttpUtil, @transient ca
 
   lazy private val mapper: ObjectMapper = new ObjectMapper()
 
-  override def metricsList(): List[String] = {
-    List()
-  }
-
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
+    cassandraUtil = new CassandraUtil(config.dbHost, config.dbPort)
   }
 
   override def close(): Unit = {
+    cassandraUtil.close()
     super.close()
   }
 
@@ -140,7 +138,7 @@ class NotifierFunction(config: NotifierConfig, httpUtil: HttpUtil, @transient ca
           selectWhere.and(QueryBuilder.eq(col._1, col._2))
       }
     })
-    metrics.incCounter(config.dbReadCount)
+    metrics.incCounter(config.courseBatchdbReadCount)
     cassandraUtil.findOne(selectWhere.toString)
   }
 
@@ -149,7 +147,7 @@ class NotifierFunction(config: NotifierConfig, httpUtil: HttpUtil, @transient ca
     logger.info("getting user info for id {}", userId)
     var content: util.Map[String, AnyRef] = null
     try {
-      val userSearchRequest = prepareUserSearchRequest(userId)
+      val userSearchRequest = s"""{"request":{"filters":{"identifier":"${userId}"},"fields":["firstName","lastName","userName","rootOrgName","rootOrgId","maskedPhone"]}}"""
       val httpResponse = httpUtil.post(config.learnerServiceBaseUrl + "/private/user/v1/search", userSearchRequest)
       if (httpResponse.status == 200) {
         logger.info("user search response status {} :: {} ", httpResponse.status, httpResponse.body)
@@ -165,21 +163,10 @@ class NotifierFunction(config: NotifierConfig, httpUtil: HttpUtil, @transient ca
     content
   }
 
-  @throws[Exception]
-  private def prepareUserSearchRequest(userId: String): String = {
-    val request = new java.util.HashMap[String, AnyRef]() {
-      {
-        put(config.request, new java.util.HashMap[String, AnyRef]() {
-          put(config.filters, new java.util.HashMap[String, AnyRef]() {
-            {
-              put(config.identifier, userId)
-            }
-          })
-          put(config.fields, util.Arrays.asList("firstName", "lastName", "userName", "rootOrgName", "rootOrgId", "maskedPhone"))
-        })
 
-      }
-    }
-    mapper.writeValueAsString(request)
+  override def metricsList(): List[String] = {
+    List(config.courseBatchdbReadCount, config.skipNotifyUserCount, config.notifiedUserCount)
   }
+
+
 }

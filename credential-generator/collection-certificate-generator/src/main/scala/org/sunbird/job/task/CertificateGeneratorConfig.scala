@@ -22,10 +22,13 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   // Kafka Topics Configuration
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
   val kafkaFailedEventTopic: String = config.getString("kafka.output.failed.topic")
+  val kafkaAuditEventTopic: String = config.getString("kafka.output.audit.topic")
 
 
   // Producers
   val certificateGeneratorFailedEventProducer = "certificate-generate-failed-sink"
+  val certificateGeneratorAuditProducer = "collection-certificate-generator-audit-events-sink"
+
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
 
 
@@ -37,17 +40,12 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   val dbHost: String = config.getString("lms-cassandra.host")
   val dbPort: Int = config.getInt("lms-cassandra.port")
 
-  val learnerServiceBaseUrl: String = config.getString("learner-service.basePath")
-  val dbCourseBatchTable: String = config.getString("lms-cassandra.course_batch.table")
-  val notificationEndPoint: String = "/v2/notification"
-  val userFeedCreateEndPoint:String = "/private/user/feed/v1/create"
-
   // Metric List
   val totalEventsCount = "total-events-count"
   val successEventCount = "success-events-count"
   val failedEventCount = "failed-events-count"
   val skippedEventCount = "skipped-event-count"
-  val dbReadCount = "db-read-count"
+  val enrollmentDbReadCount = "enrollment-db-read-count"
   val dbUpdateCount = "db-update-user-enrollment-count"
   val notifiedUserCount = "notified-user-count"
   val skipNotifyUserCount = "skipped-notify-user-count"
@@ -118,9 +116,7 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   val data = "data"
   val category = "category"
   val certificates = "certificates"
-  val priority = "priority"
-  val userFeedMsg = "You have earned a certificate! Download it from your profile page."
-  val priorityValue = 1
+
 
   // Tags
   val auditEventOutputTagName = "audit-events"
