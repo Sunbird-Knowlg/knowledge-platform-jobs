@@ -86,6 +86,7 @@ class CertificateGeneratorFunctionTaskTestSpec extends BaseTestSpec {
     flinkCluster.after()
   }
 
+
   /**
     * this test works on intellij , but using mvn scoverge:report is not working
     */

@@ -16,6 +16,8 @@ class CassandraUtil(host: String, port: Int) {
       .build()
   }
   var session = cluster.connect()
+  
+  def getSession() = session
 
   def findOne(query: String): Row = {
     try {
@@ -44,6 +46,18 @@ class CassandraUtil(host: String, port: Int) {
     rs.wasApplied
   }
 
+  /**
+   * As cassandra bind statement accepts only java.lang.Object...
+   * params is defined as below
+   * @param query
+   * @param params
+   * @return
+   */
+  def executePreparedStatement(query: String, params: Object*): util.List[Row] = {
+    val rs: ResultSet = session.execute(session.prepare(query).bind(params : _*))
+    rs.all()
+  }
+  
   def getUDTType(keyspace: String, typeName: String): UserType = session.getCluster.getMetadata.getKeyspace(keyspace).getUserType(typeName)
 
   def reconnect(): Unit = {

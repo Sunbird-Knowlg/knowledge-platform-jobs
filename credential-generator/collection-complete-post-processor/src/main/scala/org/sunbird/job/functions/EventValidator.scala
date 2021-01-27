@@ -5,6 +5,7 @@ import java.util
 import org.apache.commons.collections.{CollectionUtils, MapUtils}
 import org.apache.commons.lang3.StringUtils
 import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper
+import org.sunbird.collectioncomplete.domain.Event
 import org.sunbird.job.Metrics
 import org.sunbird.job.task.CollectionCompletePostProcessorConfig
 
@@ -14,30 +15,9 @@ object EventValidator {
 
   lazy private val mapper: ObjectMapper = new ObjectMapper()
 
-  def isValidEvent(edata: util.Map[String, AnyRef], config: CollectionCompletePostProcessorConfig): Boolean = {
-    val action = edata.getOrDefault(config.action, "").asInstanceOf[String]
-    val courseId = edata.getOrDefault(config.courseId, "").asInstanceOf[String]
-    val batchId = edata.getOrDefault(config.batchId, "").asInstanceOf[String]
-    val userIds = edata.getOrDefault(config.userIds, new util.ArrayList[String]() {}).asInstanceOf[util.ArrayList[String]]
-    println(StringUtils.equalsIgnoreCase(action, config.issueCertificate) + " " + StringUtils.isNotBlank(courseId)
-      + " " + StringUtils.isNotBlank(batchId) + " " + CollectionUtils.isNotEmpty(userIds))
-    StringUtils.equalsIgnoreCase(action, config.issueCertificate) &&
-      StringUtils.isNotBlank(courseId) && StringUtils.isNotBlank(batchId) && CollectionUtils.isNotEmpty(userIds)
-  }
-
-  def validateTemplate(certTemplates: util.Map[String, AnyRef], edata: util.Map[String, AnyRef],
-                       config: CollectionCompletePostProcessorConfig)(implicit metrics: Metrics) {
-    println("validateTemplate called : " + certTemplates)
-    if (MapUtils.isEmpty(certTemplates)) {
-      metrics.incCounter(config.skippedEventCount)
-      throw new Exception("Certificate template is not available for batchId : " + edata.get(config.batchId) + " and courseId : " + edata.get(config.courseId))
-    }
-  }
-
-  def validateCriteria(template: util.Map[String, AnyRef], config: CollectionCompletePostProcessorConfig)
+  def validateCriteria(template: Map[String, AnyRef], config: CollectionCompletePostProcessorConfig)
                       (implicit metrics: Metrics): util.Map[String, AnyRef] = {
-    println("validateCriteria called : " + template.get(config.criteria).asInstanceOf[String])
-    val criteriaString = template.getOrDefault(config.criteria, "").asInstanceOf[String]
+    val criteriaString = template.getOrElse(config.criteria, "").asInstanceOf[String]
     if (StringUtils.isEmpty(criteriaString)) {
       metrics.incCounter(config.skippedEventCount)
       throw new Exception("Certificate template has empty criteria: " + template.toString)
@@ -52,7 +32,7 @@ object EventValidator {
 
   def isValidAssessUser(actualScore: Double, criteria: Map[String, AnyRef]): Boolean = {
     val operation = criteria.head._1
-    val score = criteria.asJava.get(operation).asInstanceOf[Int].toDouble
+    val score = criteria.getOrElse(operation, 0.asInstanceOf[AnyRef]).asInstanceOf[Int].toDouble
     operation match {
       case "EQ" => actualScore == score
       case "eq" => actualScore == score
