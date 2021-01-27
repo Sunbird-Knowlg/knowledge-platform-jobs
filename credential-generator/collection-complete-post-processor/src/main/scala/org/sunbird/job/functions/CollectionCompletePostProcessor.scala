@@ -84,6 +84,7 @@ class CollectionCompletePostProcessor(config: CollectionCompletePostProcessorCon
       })
     } catch {
       case ex: Exception => {
+        ex.printStackTrace()
         context.output(config.failedEventOutputTag, JSONUtil.serialize(event.eData))
         logger.info("Certificate generate event failed sent to next topic : " + ex.getMessage + " " + ex )
         metrics.incCounter(config.failedEventCount)
