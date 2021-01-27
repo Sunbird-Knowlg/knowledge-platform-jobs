@@ -52,11 +52,11 @@ class VideoStreamServiceTestSpec extends BaseTestSpec {
   }
 
   "VideoStreamService" should "submit job request" in {
-    val eventMap1 = gson.fromJson(EventFixture.EVENT_1, new util.LinkedHashMap[String, Any]().getClass).asInstanceOf[util.Map[String, Any]].asScala ++ Map("partition" -> 0.asInstanceOf[Any])
-//    val eventMap1 = new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_1))
+//    val eventMap1 = JSONUtil.deserialize() ++ Map("partition" -> 0.asInstanceOf[Any])
+    val eventMap1 = new Event((JSONUtil.deserialize[Map[String, Any]](EventFixture.EVENT_1) ++ Map("partition" -> 0.asInstanceOf[Any])).asJava)
 
     val videoStreamService = new VideoStreamService();
-    videoStreamService.submitJobRequest(new Event(eventMap1.asJava).eData)
+    videoStreamService.submitJobRequest(eventMap1.eData)
 
     val event1Progress = readFromCassandra(EventFixture.EVENT_1)
     event1Progress.size() should be(1)

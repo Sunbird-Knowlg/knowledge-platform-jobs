@@ -12,7 +12,6 @@ import org.sunbird.job.task.VideoStreamGeneratorConfig
 import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, JSONUtil, JobRequest, MediaRequest, MediaResponse, StreamingStage}
 
 import scala.collection.JavaConverters._
-import scala.collection.immutable.HashMap
 
 class VideoStreamService(implicit config: VideoStreamGeneratorConfig, implicit val httpUtil: HttpUtil) {
   private[this] lazy val logger = LoggerFactory.getLogger(classOf[VideoStreamGenerator])
@@ -23,7 +22,6 @@ class VideoStreamService(implicit config: VideoStreamGeneratorConfig, implicit v
   private lazy val clientKey:String = "SYSTEM_LP"
   private lazy val SUBMITTED:String = "SUBMITTED"
   private lazy val VIDEO_STREAMING:String = "VIDEO_STREAMING"
-
 
   def submitJobRequest(eData: Map[String, AnyRef]): Unit = {
     val stageName = "STREAMING_JOB_SUBMISSION";
