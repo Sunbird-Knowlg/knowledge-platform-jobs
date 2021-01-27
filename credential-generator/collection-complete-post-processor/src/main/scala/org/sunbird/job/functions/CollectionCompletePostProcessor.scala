@@ -62,7 +62,7 @@ class CollectionCompletePostProcessor(config: CollectionCompletePostProcessorCon
       val certTemplates = fetchCertTemplates(event)(metrics)
       certTemplates.map(template => {
         //validate criteria
-        val certTemplate = certTemplates.get(template._1).asInstanceOf[Map[String, AnyRef]]
+        val certTemplate = template._2.asInstanceOf[Map[String, AnyRef]]
         val usersToIssue = CertificateUserUtil.getUserIdsBasedOnCriteria(certTemplate, event)
         val templateUrl = certTemplate.getOrElse(config.url, "").asInstanceOf[String]
         if(StringUtils.isBlank(templateUrl) || !StringUtils.endsWith(templateUrl, ".svg")) {
@@ -95,8 +95,7 @@ class CollectionCompletePostProcessor(config: CollectionCompletePostProcessorCon
     val certTemplates = CertificateDbService.readCertTemplates(event.batchId, event.courseId)(metrics, cassandraUtil, config)
     if (certTemplates.isEmpty) {
       metrics.incCounter(config.skippedEventCount)
-      logger.error(
-        "Certificate template is not available for batchId : " + event.batchId + " and courseId : " + event.courseId)
+      throw new Exception("Certificate template is not available for batchId : " + event.batchId + " and courseId : " + event.courseId)
     }
       certTemplates
   }
