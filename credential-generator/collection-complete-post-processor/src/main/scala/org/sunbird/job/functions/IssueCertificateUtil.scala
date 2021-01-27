@@ -70,8 +70,8 @@ object IssueCertificateUtil {
 
   private def getAssessmentOperation(assessmentCriteria: util.Map[String, AnyRef])
                                     (implicit config: CollectionCompletePostProcessorConfig): Map[String, AnyRef] = {
-    if (assessmentCriteria.get(config.score).isInstanceOf[util.HashMap[String, Double]]) {
-      assessmentCriteria.get(config.score).asInstanceOf[Map[String, AnyRef]]
+    if (assessmentCriteria.get(config.score).isInstanceOf[util.Map[String, Double]]) {
+      JavaConverters.mapAsScalaMap(assessmentCriteria.get(config.score).asInstanceOf[util.Map[String, AnyRef]]).asInstanceOf[Map[String, AnyRef]]
     } else {
       Map("EQ" -> assessmentCriteria.get(config.score))
     }
