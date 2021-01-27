@@ -7,11 +7,9 @@ import org.sunbird.cloud.storage.factory.{StorageConfig, StorageServiceFactory}
 import org.sunbird.publish.config.PublishConfig
 import org.sunbird.publish.core.Slug
 
-import scala.concurrent.ExecutionContext
-
 class CloudStorageUtil(config: PublishConfig) {
 
-	var storageService: BaseStorageService = null
+	var storageService: BaseStorageService = _
 	val cloudStorageType = config.getString("cloud_storage_type", "azure")
 	val azureStorageKey = config.getString("azure_storage_key", "")
 	val azureStorageSecret = config.getString("azure_storage_secret", "")
@@ -22,10 +20,16 @@ class CloudStorageUtil(config: PublishConfig) {
 
 	@throws[Exception]
 	def getService(): BaseStorageService = {
+
 		if (null == storageService) {
+			println("cloudStorageType :::: "+cloudStorageType)
+			println("azureStorageKey :::: "+azureStorageKey)
+			println("azureStorageSecret :::: "+azureStorageSecret)
+			println("azureStorageContainer :::: "+azureStorageContainer)
+			storageService = StorageServiceFactory.getStorageService(StorageConfig(cloudStorageType, azureStorageKey, azureStorageSecret))
 			cloudStorageType match {
 				case "azure" => storageService = StorageServiceFactory.getStorageService(StorageConfig(cloudStorageType, azureStorageKey, azureStorageSecret))
-				case "aws" => storageService = StorageServiceFactory.getStorageService(StorageConfig(awsStorageKey, awsStorageSecret, awsStorageContainer))
+				case "aws" => storageService = StorageServiceFactory.getStorageService(StorageConfig(cloudStorageType, awsStorageKey, awsStorageSecret))
 				case _ => throw new Exception("Error while initialising cloud storage")
 			}
 		}
@@ -52,12 +56,6 @@ class CloudStorageUtil(config: PublishConfig) {
 		val objectKey = folderName + File.separator
 		val url = getService.upload(getContainerName(), slugFile.getAbsolutePath, objectKey, Option.apply(true), Option.apply(1), Option.apply(5), Option.empty)
 		Array[String](objectKey, url)
-	}
-
-	def uploadDirectoryAsync(folderName: String, directory: File, slug: Option[Boolean] = Option(true))(implicit ec: ExecutionContext) = {
-		val slugFile = if (slug.getOrElse(true)) Slug.createSlugFile(directory) else directory
-		val objectKey = folderName + File.separator
-		getService.uploadFolder(getContainerName, slugFile.getAbsolutePath, objectKey, Option.apply(false), None, None, 1)
 	}
 
 	def getObjectSize(key: String): Double = {

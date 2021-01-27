@@ -12,8 +12,6 @@ import org.sunbird.publish.core.{ObjectData, Slug}
 import org.sunbird.publish.handler.{QuestionHandlerFactory, QuestionTypeHandler}
 import org.sunbird.publish.util.CloudStorageUtil
 
-import scala.collection.mutable
-
 
 trait QuestionPdfGenerator extends ObjectTemplateGenerator {
     private[this] val logger = LoggerFactory.getLogger(classOf[QuestionPdfGenerator])
@@ -35,6 +33,7 @@ trait QuestionPdfGenerator extends ObjectTemplateGenerator {
         val fileContent: String = getFileString(objList, obj.metadata.getOrElse("name", "").asInstanceOf[String], templateName).getOrElse("")
         val fileName: String = s"/tmp/${obj.dbId}_${getHtmlFileSuffix()}"
         val file: Option[File] = writeFile(fileName, fileContent)
+        println("html file path ::: "+file.get.getAbsolutePath)
         uploadFile(file, obj)
     }
 
@@ -73,9 +72,8 @@ trait QuestionPdfGenerator extends ObjectTemplateGenerator {
 
     def getHtmlString(questions: List[ObjectData], title: String, templateName: String): Option[String] = {
         val questionsDataMap = populateQuestionsData(questions)
-        val sortedQuestionsData = mutable.ListMap(questionsDataMap.toSeq
-            .sortBy(_._2.asInstanceOf[Map[String, AnyRef]].getOrElse("index", 0).asInstanceOf[Int]): _*)
-        generateHtmlString(sortedQuestionsData, title, templateName) match {
+        //val sortedQuestionsData = mutable.ListMap(questionsDataMap.toSeq.sortBy(_._2.asInstanceOf[Map[String, AnyRef]].getOrElse("index", 0).asInstanceOf[Int]): _*)
+        generateHtmlString(questionsDataMap, title, templateName) match {
             case "" => None
             case x: String => Some(x)
         }
@@ -95,15 +93,16 @@ trait QuestionPdfGenerator extends ObjectTemplateGenerator {
         }).toMap
     }
 
-    private def generateHtmlString(questionsMap: mutable.ListMap[String, AnyRef], title: String, templateName: String): String = {
+    private def generateHtmlString(questionsMap: Map[String, AnyRef], title: String, templateName: String): String = {
+        println("title :::: "+title)
         if (questionsMap.isEmpty) return ""
         val questionString: String = questionsMap.map(entry =>
             s"""
                |<div class='question-section'>
                |<div class='question-count'>
-               |${entry._2.asInstanceOf[Map[String, AnyRef]].get("index")}.&nbsp
+               |${entry._2.asInstanceOf[Map[String, AnyRef]].getOrElse("index", 0.asInstanceOf[AnyRef])}.&nbsp
                |</div>
-               |${entry._2.asInstanceOf[Map[String, AnyRef]].get("question")}
+               |${entry._2.asInstanceOf[Map[String, AnyRef]].getOrElse("question", "")}
                |</div>
             """.stripMargin
         ).reduce(_ + _)
@@ -111,16 +110,16 @@ trait QuestionPdfGenerator extends ObjectTemplateGenerator {
             s"""
                |<div class='question-section'>
                |<div class='question-count'>
-               |${entry._2.asInstanceOf[Map[String, AnyRef]].get("index")}.&nbsp
+               |${entry._2.asInstanceOf[Map[String, AnyRef]].getOrElse("index",0.asInstanceOf[AnyRef])}.&nbsp
                |</div>
-               |${entry._2.asInstanceOf[Map[String, AnyRef]].get("question")}
+               |${entry._2.asInstanceOf[Map[String, AnyRef]].getOrElse("question", "")}
                |</div>
                |<div class='answer'>
-               |${entry._2.asInstanceOf[Map[String, AnyRef]].get("answer")}
+               |${entry._2.asInstanceOf[Map[String, AnyRef]].getOrElse("answer", "").asInstanceOf[List[String]].mkString(", ")}
                |</div>
             """.stripMargin
         ).reduce(_ + _)
-        val velocityContext: Map[String, AnyRef] = Map("questions" -> questionString, "answers" -> answerString)
+        val velocityContext: Map[String, AnyRef] = Map("questions" -> questionString, "answers" -> answerString, "title" -> title)
         handleHtmlTemplate(templateName, velocityContext)
     }
 
@@ -131,6 +130,7 @@ trait QuestionPdfGenerator extends ObjectTemplateGenerator {
             val responseBody = gson.fromJson(response.body, classOf[java.util.Map[String, AnyRef]])
             val result = responseBody.getOrDefault("result", new java.util.HashMap[String, AnyRef]()).asInstanceOf[java.util.Map[String, AnyRef]]
             val pdfUrl = result.getOrDefault("pdfUrl", "").asInstanceOf[String]
+            println("pdf file path : "+pdfUrl)
             if (pdfUrl.isEmpty) None else Some(pdfUrl)
         } else if (response.status == 400) {
             logger.error("Client Error during Generate Question Set previewUrl: " + response.status)

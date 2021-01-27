@@ -18,9 +18,9 @@ trait ObjectUpdater {
     val status = if (StringUtils.equals("Private", publishType)) "Unlisted" else "Live"
     val editId = obj.dbId
     val identifier = obj.identifier
-    val newPkgVersion = obj.pkgVersion + 1
+    //val newPkgVersion = obj.pkgVersion + 1
     val metadataUpdateQuery = metaDataQuery(obj)
-    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$identifier"}) SET n.status="$status", n.pkgVersion=$newPkgVersion, $metadataUpdateQuery, $auditPropsUpdateQuery;"""
+    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$identifier"}) SET n.status="$status", n.pkgVersion=$obj.pkgVersion, $metadataUpdateQuery, $auditPropsUpdateQuery;"""
     logger.info("Query: " + query)
     if (!StringUtils.equalsIgnoreCase(editId, identifier)) {
       val imgNodeDelQuery = s"""MATCH (n:domain{IL_UNIQUE_ID:"$editId"}) DETACH DELETE n;"""

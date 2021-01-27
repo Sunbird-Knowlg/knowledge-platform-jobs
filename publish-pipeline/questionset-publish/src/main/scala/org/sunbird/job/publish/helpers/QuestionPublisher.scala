@@ -5,7 +5,7 @@ import java.util
 import com.datastax.driver.core.querybuilder.{QueryBuilder, Select}
 import org.apache.commons.lang3
 import org.slf4j.LoggerFactory
-import org.sunbird.job.util.CassandraUtil
+import org.sunbird.job.util.{CassandraUtil, Neo4JUtil}
 import org.sunbird.publish.core.{ExtDataConfig, ObjectData}
 import org.sunbird.publish.helpers.{ObjectEnrichment, ObjectReader, ObjectUpdater, ObjectValidator}
 
@@ -18,6 +18,8 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
 	val extProps = List("body", "editorState", "answer", "solutions", "instructions", "hints", "media","responseDeclaration", "interactions")
 
 	override def getHierarchy(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = None
+
+	override def enrichObjectMetadata(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): Option[ObjectData] = None
 
 	def validateQuestion(obj: ObjectData, identifier: String): List[String] = {
 		logger.info("Validating Question External Data For : "+obj.identifier)
@@ -39,6 +41,7 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
 
 	override def getExtData(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = {
 		val row = getQuestionData(identifier, readerConfig)(cassandraUtil)
+		//TODO: covert below code in scala. entrire props should be in scala.
 		if(null!=row) Option(extProps.map(prop => prop -> row.getString(prop)).toMap) else Option(Map[String, AnyRef]())
 	}
 
