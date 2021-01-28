@@ -2,36 +2,53 @@ package org.sunbird.publish.util
 
 import java.io.File
 
+import org.apache.commons.lang3.StringUtils
 import org.sunbird.cloud.storage.BaseStorageService
 import org.sunbird.cloud.storage.factory.{StorageConfig, StorageServiceFactory}
 import org.sunbird.publish.config.PublishConfig
 import org.sunbird.publish.core.Slug
 
-class CloudStorageUtil(config: PublishConfig) {
+class CloudStorageUtil(config: PublishConfig) extends Serializable {
 
-	var storageService: BaseStorageService = _
+	var storageService: BaseStorageService = null
 	val cloudStorageType = config.getString("cloud_storage_type", "azure")
-	val azureStorageKey = config.getString("azure_storage_key", "")
-	val azureStorageSecret = config.getString("azure_storage_secret", "")
 	val azureStorageContainer = config.getString("azure_storage_container", "")
-	val awsStorageKey = config.getString("aws_storage_key", "")
-	val awsStorageSecret = config.getString("aws_storage_secret", "")
 	val awsStorageContainer = config.getString("aws_storage_container", "")
 
-	@throws[Exception]
-	def getService(): BaseStorageService = {
+	//@throws[Exception]
+	/*def getService(): BaseStorageService = {
 
 		if (null == storageService) {
 			println("cloudStorageType :::: "+cloudStorageType)
 			println("azureStorageKey :::: "+azureStorageKey)
 			println("azureStorageSecret :::: "+azureStorageSecret)
 			println("azureStorageContainer :::: "+azureStorageContainer)
-			storageService = StorageServiceFactory.getStorageService(StorageConfig(cloudStorageType, azureStorageKey, azureStorageSecret))
+
 			cloudStorageType match {
 				case "azure" => storageService = StorageServiceFactory.getStorageService(StorageConfig(cloudStorageType, azureStorageKey, azureStorageSecret))
 				case "aws" => storageService = StorageServiceFactory.getStorageService(StorageConfig(cloudStorageType, awsStorageKey, awsStorageSecret))
 				case _ => throw new Exception("Error while initialising cloud storage")
 			}
+		}
+		storageService
+	}*/
+
+	@throws[Exception]
+	def getService: BaseStorageService = {
+		if (null == storageService) {
+			if (StringUtils.equalsIgnoreCase(cloudStorageType, "azure")) {
+				val azureStorageKey = config.getString("azure_storage_key", "")
+				val azureStorageSecret = config.getString("azure_storage_secret", "")
+				//val storageKey = storageParams.azureStorageKey
+				//val storageSecret = storageParams.azureStorageSecret
+				storageService = StorageServiceFactory.getStorageService(StorageConfig(cloudStorageType, azureStorageKey, azureStorageSecret))
+			} else if (StringUtils.equalsIgnoreCase(cloudStorageType, "aws")) {
+				val awsStorageKey = config.getString("aws_storage_key", "")
+				val awsStorageSecret = config.getString("aws_storage_secret", "")
+				//val storageKey = storageParams.awsStorageKey.get
+				//val storageSecret = storageParams.awsStorageSecret.get
+				storageService = StorageServiceFactory.getStorageService(StorageConfig(cloudStorageType, awsStorageKey, awsStorageSecret))
+			} else throw new Exception("Error while initialising cloud storage")
 		}
 		storageService
 	}
@@ -72,7 +89,7 @@ class CloudStorageUtil(config: PublishConfig) {
 	}
 
 	def getSignedURL(key: String, ttl: Option[Int], permission: Option[String]): String = {
-		getService().getSignedURL(getContainerName, key, ttl, permission)
+		getService.getSignedURL(getContainerName, key, ttl, permission)
 	}
 
 }
