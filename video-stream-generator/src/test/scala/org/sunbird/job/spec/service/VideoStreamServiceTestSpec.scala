@@ -45,7 +45,6 @@ class VideoStreamServiceTestSpec extends BaseTestSpec {
       case ex: Exception => {
       }
     }
-    server.close()
     super.afterAll()
   }
 
@@ -55,7 +54,6 @@ class VideoStreamServiceTestSpec extends BaseTestSpec {
   }
 
   ignore should "submit job request" in {
-//    val eventMap1 = JSONUtil.deserialize() ++ Map("partition" -> 0.asInstanceOf[Any])
     val eventMap1 = new Event((JSONUtil.deserialize[Map[String, Any]](EventFixture.EVENT_1) ++ Map("partition" -> 0.asInstanceOf[Any])).asJava)
 
     val videoStreamService = new VideoStreamService();
@@ -67,10 +65,6 @@ class VideoStreamServiceTestSpec extends BaseTestSpec {
     event1Progress.forEach(col => {
       col.getObject("status") should be("PROCESSING")
     })
-
-  }
-
-  "VideoStreamService" should "Process job request" in {
 
   }
 
