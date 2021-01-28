@@ -19,7 +19,7 @@ trait FrameworkDataEnrichment {
 	def enrichFrameworkData(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil): ObjectData = {
 		val enMetadata = enrichFwData(obj.identifier, obj.metadata)
 		logger.info("Enriched Framework Metadata for " + obj.identifier + " are : " + enMetadata)
-		val finalMeta = obj.metadata ++ enMetadata
+		val finalMeta = if(enMetadata.nonEmpty) obj.metadata ++ enMetadata else obj.metadata
 		new ObjectData(obj.identifier, finalMeta, obj.extData, obj.hierarchy)
 	}
 

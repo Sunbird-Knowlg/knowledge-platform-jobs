@@ -18,16 +18,16 @@
         <encoding>UTF-8</encoding>
         <scoverage.plugin.version>1.4.0</scoverage.plugin.version>
     </properties>
-    <repositories>
+    <!--<repositories>
         <repository>
             <id>cloud-store-sdk_2.12</id>
             <name>cloud-store-sdk_2.12</name>
-            <url>https://oss.sonatype.org/content/repositories/orgsunbird-1083</url>
+            <url>https://oss.sonatype.org/content/repositories/orgsunbird-1084</url>
             <snapshots>
-                <enabled>false</enabled>
+                <enabled>true</enabled>
             </snapshots>
         </repository>
-    </repositories>
+    </repositories>-->
     <dependencies>
         <dependency>
             <groupId>org.sunbird</groupId>
@@ -37,19 +37,12 @@
         <dependency>
             <groupId>org.sunbird</groupId>
             <artifactId>cloud-store-sdk_2.12</artifactId>
-            <version>1.2.9</version>
+            <version>1.2.5</version>
         </dependency>
         <dependency>
             <groupId>com.moparisthebest</groupId>
             <artifactId>junidecode</artifactId>
             <version>0.1.1</version>
-        </dependency>
-        <dependency>
-            <groupId>org.sunbird</groupId>
-            <artifactId>jobs-core</artifactId>
-            <version>1.0.0</version>
-            <type>test-jar</type>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.scalatest</groupId>
@@ -73,6 +66,12 @@
             <groupId>org.apache.velocity</groupId>
             <artifactId>velocity-engine-core</artifactId>
             <version>2.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.imgscalr</groupId>
+            <artifactId>imgscalr-lib</artifactId>
+            <version>4.2</version>
+            <type>jar</type>
         </dependency>
     </dependencies>
 

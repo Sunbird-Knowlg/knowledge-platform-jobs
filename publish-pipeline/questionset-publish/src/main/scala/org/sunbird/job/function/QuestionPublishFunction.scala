@@ -44,7 +44,7 @@ class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUt
 		val obj = getObject(data.identifier, data.pkgVersion, readerConfig)(neo4JUtil, cassandraUtil)
 		val messages:List[String] = validate(obj, obj.identifier, validateQuestion)
 		if (messages.isEmpty) {
-			val enrichedObj = enrichObject(obj)(neo4JUtil)
+			val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig)
 			saveOnSuccess(enrichedObj, dummyFunc)(neo4JUtil)
 			logger.info("Question publishing completed successfully for : " + data.identifier)
 		} else {
