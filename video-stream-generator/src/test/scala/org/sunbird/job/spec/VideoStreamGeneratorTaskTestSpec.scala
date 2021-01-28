@@ -45,7 +45,7 @@ class VideoStreamGeneratorTaskTestSpec extends BaseTestSpec {
   val jobConfig: VideoStreamGeneratorConfig = new VideoStreamGeneratorConfig(config)
   var cassandraUtil: CassandraUtil = _
   val httpUtil = new HttpUtil
-  implicit val mockHttpUtil:HttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
+  val mockHttpUtil:HttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
   var currentMilliSecond = 1605816926271L
 
   val accessTokenResp = """{"token_type":"Bearer","expires_in":"3599","ext_expires_in":"3599","expires_on":"1605789466","not_before":"1605785566","resource":"https://management.core.windows.net/","access_token":"testToken"}"""
