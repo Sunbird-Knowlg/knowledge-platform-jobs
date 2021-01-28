@@ -22,7 +22,7 @@ class VideoStreamUrlUpdator(config: VideoStreamGeneratorConfig)
   private var videoStreamService: VideoStreamService = _
 
   override def metricsList(): List[String] = {
-    List(config.successEventCount, config.failedEventCount, config.batchEnrolmentUpdateEventCount, config.dbUpdateCount, config.dbReadCount, config.cacheHitCount, config.skipEventsCount, config.cacheMissCount)
+    List(config.totalEventsCount, config.successEventCount, config.failedEventCount, config.skippedEventCount)
   }
 
   override def open(parameters: Configuration): Unit = {
@@ -39,6 +39,6 @@ class VideoStreamUrlUpdator(config: VideoStreamGeneratorConfig)
                        context: ProcessWindowFunction[String, String, String, TimeWindow]#Context,
                        events: Iterable[String],
                        metrics: Metrics): Unit = {
-    videoStreamService.processJobRequest()
+    videoStreamService.processJobRequest(metrics)
   }
 }

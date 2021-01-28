@@ -35,12 +35,12 @@ class VideoStreamService(implicit config: VideoStreamGeneratorConfig, implicit v
     submitStreamJob(jobRequest)
   }
 
-  def processJobRequest(): Unit = {
-    updateProcessingRequest()
+  def processJobRequest(metrics: Metrics): Unit = {
+    updateProcessingRequest(metrics)
     resubmitFailedJob()
   }
 
-  def updateProcessingRequest(): Unit = {
+  def updateProcessingRequest(metrics: Metrics): Unit = {
     val processingJobRequests = readFromDB(Map("status" -> "PROCESSING"))
     val stageName = "STREAMING_JOB_COMPLETE"
 
@@ -76,6 +76,7 @@ class VideoStreamService(implicit config: VideoStreamGeneratorConfig, implicit v
         StreamingStage(jobRequest.request_id, jobRequest.client_key, null, stageName, "FAILED", "FAILED", iteration + 1, jobRequest.err_message.getOrElse(""));
       }
     }.filter(x =>  x != null).map{ streamStage:StreamingStage =>
+      metrics.incCounter(if(streamStage.status == "FINISHED") config.successEventCount else config.failedEventCount)
       updateJobRequestStage(streamStage)
     }
   }

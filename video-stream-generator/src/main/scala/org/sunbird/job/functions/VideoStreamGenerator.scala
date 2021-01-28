@@ -30,7 +30,7 @@ class VideoStreamGenerator(config: VideoStreamGeneratorConfig)
     private var videoStreamService:VideoStreamService = _
 
     override def metricsList(): List[String] = {
-        List(config.successEventCount, config.failedEventCount, config.batchEnrolmentUpdateEventCount, config.dbUpdateCount, config.dbReadCount, config.cacheHitCount, config.skipEventsCount, config.cacheMissCount)
+        List(config.totalEventsCount, config.successEventCount, config.failedEventCount, config.skippedEventCount)
     }
 
     override def open(parameters: Configuration): Unit = {
@@ -46,12 +46,11 @@ class VideoStreamGenerator(config: VideoStreamGeneratorConfig)
     override def processElement(event: Event,
                                 context: ProcessFunction[Event, String]#Context,
                                 metrics: Metrics): Unit = {
-        logger.info("Event eid:: "+ event.eid)
-
+        metrics.incCounter(config.totalEventsCount)
         if(event.isValid) {
-            logger.info("Event eid:: valid event")
+            logger.info(s"Event eid::${event.eid}:: valid event")
             videoStreamService.submitJobRequest(event.eData)
             context.output(config.videoStreamJobOutput, "processed")
-        }
+        } else metrics.incCounter(config.skippedEventCount)
     }
 }

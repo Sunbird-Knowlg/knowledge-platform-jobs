@@ -24,16 +24,9 @@ class VideoStreamGeneratorConfig(override val config: Config) extends BaseJobCon
 
   // Metric List
   val totalEventsCount = "total-events-count"
-  val skippedEventCount = "skipped-event-count"
-  val cacheWrite = "cache-write-count"
   val successEventCount = "success-events-count"
   val failedEventCount = "failed-events-count"
-  val dbUpdateCount = "db-update-count"
-  val dbReadCount = "db-read-count"
-  val cacheHitCount = "cache-hit-count"
-  val cacheMissCount = "cache-miss-count"
-  val batchEnrolmentUpdateEventCount = "batch-enrolment-update-count"
-  val skipEventsCount = "skipped-events-count"
+  val skippedEventCount = "skipped-events-count"
 
   // Consumers
   val videoStreamConsumer = "video-stream-generator-consumer"

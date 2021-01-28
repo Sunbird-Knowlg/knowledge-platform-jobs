@@ -63,6 +63,7 @@ class VideoStreamGeneratorTaskTestSpec extends BaseTestSpec {
     val dataLoader = new CQLDataLoader(session);
     dataLoader.load(new FileCQLDataSet(getClass.getResource("/test.cql").getPath, true, true));
     testCassandraUtil(cassandraUtil)
+    BaseMetricsReporter.gaugeMetrics.clear()
     flinkCluster.before()
     super.beforeAll()
   }
@@ -99,6 +100,10 @@ class VideoStreamGeneratorTaskTestSpec extends BaseTestSpec {
 
     new VideoStreamGeneratorStreamTask(jobConfig, mockKafkaUtil, mockHttpUtil).process()
     val event1Progress = readFromCassandra(EventFixture.EVENT_1)
+
+//    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(2)
+//    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skippedEventCount}").getValue() should be(1)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.successEventCount}").getValue() should be(1)
     event1Progress.size() should be(1)
 
     event1Progress.forEach(col => {
@@ -125,32 +130,12 @@ class VideoStreamGeneratorMapSource extends SourceFunction[Event] {
   override def run(ctx: SourceContext[Event]) {
     val gson = new Gson()
     val event = gson.fromJson(EventFixture.EVENT_1, new util.LinkedHashMap[String, Any]().getClass).asInstanceOf[util.Map[String, Any]].asScala ++ Map("partition" -> 0.asInstanceOf[Any])
+    val event2 = gson.fromJson(EventFixture.EVENT_2, new util.LinkedHashMap[String, Any]().getClass).asInstanceOf[util.Map[String, Any]].asScala ++ Map("partition" -> 0.asInstanceOf[Any])
     ctx.collect(new Event(event.asJava))
-//    val eventMap1 = parse(EventFixture.EVENT_1).values.asInstanceOf[Map[String, AnyRef]] ++ Map("partition" -> 0.asInstanceOf[AnyRef])
-//    ctx.collect(eventMap1)
+    ctx.collect(new Event(event2.asJava))
+
   }
 
   override def cancel() = {}
 
 }
-
-class VideoStreamGeneratorEmptyMapSource extends SourceFunction[util.Map[String, AnyRef]] {
-
-  override def run(ctx: SourceContext[util.Map[String, AnyRef]]) {
-    ctx.collect(jsonToMap(EventFixture.EVENT_2))
-//    val eventMap1 = parse("""{}""").values.asInstanceOf[Map[String, AnyRef]] ++ Map("partition" -> 0.asInstanceOf[AnyRef])
-//    val eventMap1 = parse(EventFixture.EVENT_2).values.asInstanceOf[Map[String, AnyRef]] ++ Map("partition" -> 0.asInstanceOf[AnyRef])
-//    ctx.collect(eventMap1.asJava)
-  }
-
-  override def cancel() = {}
-
-  def jsonToMap(json: String): util.Map[String, AnyRef] = {
-    val gson = new Gson()
-    gson.fromJson(json, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]]
-  }
-
-}
-
-
-
