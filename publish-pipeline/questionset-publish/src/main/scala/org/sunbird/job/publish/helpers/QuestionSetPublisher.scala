@@ -3,6 +3,7 @@ package org.sunbird.job.publish.helpers
 import com.datastax.driver.core.querybuilder.{QueryBuilder, Select}
 import org.apache.commons.lang3
 import org.apache.commons.lang3.StringUtils
+import org.slf4j.LoggerFactory
 import org.sunbird.job.util.{CassandraUtil, Neo4JUtil, ScalaJsonUtil}
 import org.sunbird.publish.core.{ExtDataConfig, ObjectData}
 import org.sunbird.publish.helpers.{EcarGenerator, ObjectEnrichment, ObjectReader, ObjectUpdater, ObjectValidator, QuestionPdfGenerator}
@@ -11,6 +12,8 @@ import scala.collection.mutable.ListBuffer
 import scala.collection.JavaConverters._
 
 trait QuestionSetPublisher extends ObjectReader with ObjectValidator with ObjectUpdater with ObjectEnrichment with EcarGenerator with QuestionPdfGenerator {
+
+	private[this] val logger = LoggerFactory.getLogger(classOf[QuestionSetPublisher])
 	val extProps = List("body", "editorState", "answer", "solutions", "instructions", "hints", "media", "responseDeclaration", "interactions", "identifier")
 
 	override def getExtData(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = None
@@ -18,7 +21,10 @@ trait QuestionSetPublisher extends ObjectReader with ObjectValidator with Object
 	def validateQuestionSet(obj: ObjectData, identifier: String): List[String] = {
 		val messages = ListBuffer[String]()
 		if (obj.hierarchy.getOrElse(Map()).isEmpty) messages += s"""There is no hierarchy available for : $identifier"""
-		//TODO: validate questionset specific metadata
+		if (StringUtils.equalsIgnoreCase(obj.metadata.getOrElse("mimeType", "").asInstanceOf[String], "application/vnd.sunbird.questionset"))
+			messages += s"""mimeType is invalid for : $identifier"""
+		if (obj.metadata.getOrElse("visibility", "").asInstanceOf[String].isEmpty) messages += s"""There is no visibility available for : $identifier"""
+		//TODO: Add any more check, if required.
 		messages.toList
 	}
 
@@ -43,13 +49,12 @@ trait QuestionSetPublisher extends ObjectReader with ObjectValidator with Object
 	}
 
 	def getQuestionsExtData(identifiers: List[String], readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil) = {
-		println("getQuestionsExtData :::: identifiers ::: " + identifiers)
-		println("getQuestionsExtData :::: readerConfig ::: keyspace::: " + readerConfig.keyspace + " ,  table ::: " + readerConfig.table)
+		logger.info("QuestionSetPublisher ::: getQuestionsExtData ::: reader config ::: keyspace: " + readerConfig.keyspace + " ,  table : " + readerConfig.table)
 		val select = QueryBuilder.select()
 		extProps.foreach(prop => if (lang3.StringUtils.equals("body", prop) | lang3.StringUtils.equals("answer", prop)) select.fcall("blobAsText", QueryBuilder.column(prop)).as(prop) else select.column(prop).as(prop))
 		val selectWhere: Select.Where = select.from(readerConfig.keyspace, readerConfig.table).where()
 		selectWhere.and(QueryBuilder.in("identifier", identifiers.asJava))
-		println("select query ::: " + selectWhere.toString)
+		logger.info("QuestionSetPublisher ::: getQuestionsExtData ::: cassandra query ::: " + selectWhere.toString)
 		cassandraUtil.find(selectWhere.toString)
 	}
 
@@ -62,51 +67,47 @@ trait QuestionSetPublisher extends ObjectReader with ObjectValidator with Object
 		cassandraUtil.findOne(selectWhere.toString)
 	}
 
-	def dummyFunc = (obj: ObjectData) => {}
+	override def saveExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil) = {
+		val identifier = obj.identifier.replace(".img", "")
+		val hierarchy = obj.hierarchy.getOrElse(Map())
+		val query = QueryBuilder.update(readerConfig.keyspace, readerConfig.table)
+		  .`with`(QueryBuilder.set("hierarchy", ScalaJsonUtil.serialize(hierarchy).toString))
+		  .where(QueryBuilder.eq("identifier", identifier))
+		logger.info(s"Update Hierarchy Query For $identifier : ${query.toString}")
+		val result = cassandraUtil.upsert(query.toString)
+		if (result) {
+			logger.info(s"Hierarchy Updated Successfully For $identifier")
+		} else {
+			val msg = s"Hierarchy Update Failed For $identifier"
+			logger.error(msg)
+			throw new Exception(msg)
+		}
+	}
 
 	def getQuestions(qsObj: ObjectData, readerConfig: ExtDataConfig)
 	                (implicit cassandraUtil: CassandraUtil): List[ObjectData] = {
-		//val hierarchy = getHierarchy(questionSet.dbId, readerConfig).getOrElse(Map())
 		val childrenMaps: Map[String, AnyRef] = populateChildrenMapRecursively(qsObj.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]], Map())
-		println("childrenMaps ::::: " + childrenMaps)
+		logger.info("QuestionSetPublisher ::: getQuestions ::: child questions  ::::: " + childrenMaps)
 		val extMap = getExtDatas(childrenMaps.keys.toList, readerConfig)
-		println("expMap :::: " + extMap.get)
-
+		logger.info("QuestionSetPublisher ::: getQuestions ::: child questions external data ::::: " + extMap.get)
 		extMap.getOrElse(Map()).map(entry => {
-			println("entry._1 :::: " + entry._1)
-			println("childrenMaps.getOrElse(entry._1, Map()).asInstanceOf[Map[String, AnyRef]] :::: " + childrenMaps.getOrElse(entry._1, Map()).asInstanceOf[Map[String, AnyRef]])
-			println("entry._2.asInstanceOf[Map[String, AnyRef]]) :::: " + entry._2.asInstanceOf[Map[String, AnyRef]])
-			println()
 			val metadata = childrenMaps.getOrElse(entry._1, Map()).asInstanceOf[Map[String, AnyRef]] ++ Map("IL_UNIQUE_ID" -> entry._1)
-			val obj = new ObjectData(entry._1, metadata,
-				Option(entry._2.asInstanceOf[Map[String, AnyRef]]))
-			println("obj.metadata ::: " + obj.metadata)
-			println("obj ext data ::: " + obj.extData.get)
+			val obj = new ObjectData(entry._1, metadata, Option(entry._2.asInstanceOf[Map[String, AnyRef]]))
 			obj
 		}).toList
 	}
 
-	/**
-	 *
-	 * @param children
-	 * @param childrenMap
-	 * @return a map of id and metadata map
-	 */
+
 	def populateChildrenMapRecursively(children: List[Map[String, AnyRef]], childrenMap: Map[String, AnyRef]): Map[String, AnyRef] = {
-		println("call inside populateChildrenMapRecursively :::: children :::" + children)
 		val result = children.flatMap(child => {
-			println("child ::: " + child)
 			val updatedChildrenMap: Map[String, AnyRef] =
 				if (child.getOrElse("objectType", "").asInstanceOf[String].equalsIgnoreCase("Question")) {
 					Map(child.getOrElse("identifier", "").asInstanceOf[String] -> child) ++ childrenMap
 				} else childrenMap
-			println("updated children Map ::: " + updatedChildrenMap)
 			val nextChild: List[Map[String, AnyRef]] = child.getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
 			val map = populateChildrenMapRecursively(nextChild, updatedChildrenMap)
-			println("map ::: " + map)
 			map ++ updatedChildrenMap
 		}).toMap
-		println("result ::: " + result)
 		result
 	}
 
@@ -119,7 +120,7 @@ trait QuestionSetPublisher extends ObjectReader with ObjectValidator with Object
 		children.flatMap(child => {
 			val innerChildren = getInnerChildren(child)
 			val updatedChild: Map[String, AnyRef] = if (innerChildren.nonEmpty) child ++ Map("children" -> innerChildren) else child
-			val finalChild = updatedChild.filter(p => !List("index", "depth").contains(p._1.asInstanceOf[String]))
+			val finalChild = updatedChild.filter(p => !excludeBundleMeta.contains(p._1.asInstanceOf[String]))
 			val updatedChildren: List[Map[String, AnyRef]] = finalChild :: childrenList
 			val result = getFlatStructure(child.getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]], updatedChildren)
 			finalChild :: result
@@ -145,7 +146,6 @@ trait QuestionSetPublisher extends ObjectReader with ObjectValidator with Object
 	}
 
 	def enrichMetadata(element: Map[String, AnyRef])(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): Map[String, AnyRef] = {
-		println("element: *" + element.getOrElse("objectType", "").asInstanceOf[String] + "*")
 		if (StringUtils.equalsIgnoreCase(element.getOrElse("objectType", "").asInstanceOf[String], "QuestionSet")
 		  && StringUtils.equalsIgnoreCase(element.getOrElse("visibility", "").asInstanceOf[String], "Parent")) {
 			val children: List[Map[String, AnyRef]] = element.getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]

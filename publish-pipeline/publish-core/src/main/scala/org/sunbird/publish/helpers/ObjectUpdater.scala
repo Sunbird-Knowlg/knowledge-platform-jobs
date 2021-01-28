@@ -2,9 +2,8 @@ package org.sunbird.publish.helpers
 
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
-import org.sunbird.job.util.{JSONUtil, Neo4JUtil}
-import org.sunbird.publish.core.ObjectData
-
+import org.sunbird.job.util.{CassandraUtil, JSONUtil, Neo4JUtil}
+import org.sunbird.publish.core.{ExtDataConfig, ObjectData}
 import java.text.SimpleDateFormat
 import java.util.Date
 
@@ -13,7 +12,7 @@ trait ObjectUpdater {
   private[this] val logger = LoggerFactory.getLogger(classOf[ObjectUpdater])
 
   @throws[Exception]
-  def saveOnSuccess(obj: ObjectData, extSaveFn: (ObjectData) => Unit)(implicit neo4JUtil: Neo4JUtil): Unit = {
+  def saveOnSuccess(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): Unit = {
     val publishType = obj.metadata.getOrElse("publish_type", "Public").asInstanceOf[String]
     val status = if (StringUtils.equals("Private", publishType)) "Unlisted" else "Live"
     val editId = obj.dbId
@@ -27,8 +26,10 @@ trait ObjectUpdater {
       neo4JUtil.executeQuery(imgNodeDelQuery)
     }
     neo4JUtil.executeQuery(query)
-    extSaveFn(obj)
+    saveExternalData(obj, readerConfig)
   }
+
+  def saveExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil)
 
   @throws[Exception]
   def saveOnFailure(obj: ObjectData, messages: List[String])(implicit neo4JUtil: Neo4JUtil): Unit = {

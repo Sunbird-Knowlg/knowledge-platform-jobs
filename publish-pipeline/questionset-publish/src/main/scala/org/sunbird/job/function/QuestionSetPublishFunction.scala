@@ -55,41 +55,49 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 	override def processElement(data: PublishMetadata, context: ProcessFunction[PublishMetadata, String]#Context, metrics: Metrics): Unit = {
 		logger.info("QuestionSet publishing started for : " + data.identifier)
 		val obj = getObject(data.identifier, data.pkgVersion, readerConfig)(neo4JUtil, cassandraUtil)
-		logger.info("processElement ::: obj hierarchy ::: "+ScalaJsonUtil.serialize(obj.hierarchy.getOrElse(Map())))
-		val messages:List[String] = validate(obj, obj.identifier, validateQuestionSet)
+		logger.info("processElement ::: obj metadata before publish ::: " + ScalaJsonUtil.serialize(obj.metadata))
+		logger.info("processElement ::: obj hierarchy before publish ::: " + ScalaJsonUtil.serialize(obj.hierarchy.getOrElse(Map())))
+		val messages: List[String] = validate(obj, obj.identifier, validateQuestionSet)
 		if (messages.isEmpty) {
 			// Get all the questions from hierarchy
 			val qList: List[ObjectData] = getQuestions(obj, qReaderConfig)(cassandraUtil)
-			println("qList ::: "+qList)
+			logger.info("processElement ::: child questions list from hierarchy :::  " + qList)
 			// Filter out questions having visibility parent (which need to be published)
 			val childQuestions: List[ObjectData] = qList.filter(q => isValidChildQuestion(q))
 			//TODO: Remove below statement
-			childQuestions.foreach(ch=> println("child questions visibility parent identifier : "+ch.identifier))
+			childQuestions.foreach(ch => logger.info("child questions visibility parent identifier : " + ch.identifier))
 			// Publish Child Questions
-			QuestionPublishUtil.publishQuestions(obj.identifier, childQuestions)(neo4JUtil, cassandraUtil, qReaderConfig)
+			QuestionPublishUtil.publishQuestions(obj.identifier, childQuestions)(neo4JUtil, cassandraUtil, qReaderConfig, cloudStorageUtil)
 			// Enrich Object as well as hierarchy
-			val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig)
-			logger.info("object enrichment done...")
-			logger.info(" obj metadata post enrichment :: "+ScalaJsonUtil.serialize(enrichedObj.metadata))
-			logger.info(" obj hierarchy post enrichment :: "+ScalaJsonUtil.serialize(enrichedObj.hierarchy.get))
+			val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil)
+			logger.info(s"processElement ::: object enrichment done for ${obj.identifier}")
+			logger.info("processElement :::  obj metadata post enrichment :: " + ScalaJsonUtil.serialize(enrichedObj.metadata))
+			logger.info("processElement :::  obj hierarchy post enrichment :: " + ScalaJsonUtil.serialize(enrichedObj.hierarchy.get))
 			// Generate ECAR
-			val ecarRes: Map[String, String]  = generateEcar(enrichedObj, pkgTypes)(ec, cloudStorageUtil)
-			println("ecar response ::: "+ecarRes)
-
+			val objWithEcar = generateECAR(enrichedObj, pkgTypes)(ec, cloudStorageUtil)
 			// Generate PDF URL
-			val (pdfUrl, previewUrl) = getPdfFileUrl(qList, enrichedObj, "questionSetTemplate.vm")(httpUtil, cloudStorageUtil)
-			val finalPdfUrl = pdfUrl.getOrElse("")
-			val finalPreviewUrl = previewUrl.getOrElse("")
-			println("finalPdfUrl ::: "+finalPdfUrl)
-			println("finalPreviewUrl ::: "+finalPreviewUrl)
-			//TODO: update the root metadata with ecar urls. (downloadUrl & variants, pdfUrl, previewUrl)
-			//TODO: Implement the dummyFunc function to save hierarchy into cassandra.
-			saveOnSuccess(enrichedObj, dummyFunc)(neo4JUtil)
+			val updatedObj = generatePreviewUrl(objWithEcar, qList)(httpUtil, cloudStorageUtil)
+			saveOnSuccess(updatedObj)(neo4JUtil, cassandraUtil, readerConfig)
 			logger.info("QuestionSet publishing completed successfully for : " + data.identifier)
 		} else {
 			saveOnFailure(obj, messages)(neo4JUtil)
 			logger.info("QuestionSet publishing failed for : " + data.identifier)
 		}
+	}
+
+
+	def generateECAR(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil): ObjectData = {
+		val ecarMap: Map[String, String] = generateEcar(data, pkgTypes)
+		logger.info("QuestionSetPublishFunction ::: generateECAR ::: ecar map ::: " + ecarMap)
+		val meta: Map[String, AnyRef] = Map("downloadUrl" -> ecarMap.getOrElse("SPINE", ""), "variants" -> ecarMap.map { case (key, value) => key.toLowerCase -> value })
+		new ObjectData(data.identifier, data.metadata ++ meta, data.extData, data.hierarchy)
+	}
+
+	def generatePreviewUrl(data: ObjectData, qList: List[ObjectData])(implicit httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil): ObjectData = {
+		val (pdfUrl, previewUrl) = getPdfFileUrl(qList, data, "questionSetTemplate.vm")(httpUtil, cloudStorageUtil)
+		logger.info("generatePreviewUrl ::: finalPdfUrl ::: " + pdfUrl.getOrElse(""))
+		logger.info("generatePreviewUrl ::: finalPreviewUrl ::: " + previewUrl.getOrElse(""))
+		new ObjectData(data.identifier, data.metadata ++ Map("previewUrl" -> previewUrl.getOrElse(""), "pdfUrl" -> pdfUrl.getOrElse("")), data.extData, data.hierarchy)
 	}
 
 	def isValidChildQuestion(obj: ObjectData): Boolean = {

@@ -14,20 +14,19 @@ import org.sunbird.job.util.ScalaJsonUtil
 import org.sunbird.publish.core.{ObjectData, Slug}
 
 import scala.concurrent.{Await, ExecutionContext, Future}
-import scala.collection.JavaConverters._
 import scala.concurrent.duration.Duration
 
 trait ObjectBundle {
 
 	private[this] val logger = LoggerFactory.getLogger(classOf[ObjectBundle])
 	private val onlineMimeTypes = List("video/youtube", "video/x-youtube", "text/x-url")
-	private val excludeBundleMeta = List("screenshots", "posterImage")
 	private val bundleLocation: String = "/tmp"
 	private val defaultManifestVersion = "1.2"
 	private val cloudBundleFolder = "ecar_files"
 	private val manifestFileName = "manifest.json"
 	private val hierarchyFileName = "hierarchy.json"
 	private val hierarchyVersion = "1.0"
+	val excludeBundleMeta = List("screenshots", "posterImage", "index", "depth")
 
 	def getBundleFileName(identifier: String, metadata: Map[String, AnyRef], pkgType: String) = {
 		Slug.makeSlug(metadata.getOrElse("name", "").asInstanceOf[String], true) + "_" + System.currentTimeMillis() + "_" + identifier + "_" + metadata.getOrElse("pkgVersion", "") + (if (StringUtils.equals("FULL", pkgType)) ".ecar" else "_" + pkgType + ".ecar")
@@ -53,18 +52,15 @@ trait ObjectBundle {
 		val objType = obj.metadata.getOrElse("IL_FUNC_OBJECT_TYPE", "").asInstanceOf[String]
 		// create manifest data
 		val (updatedObjList, dUrls) = getManifestData(obj.identifier, pkgType, objList)
-		println("ObjectBundle ::: getObjectBundle ::: updatedObjList :::: " + updatedObjList)
+		logger.info("ObjectBundle ::: getObjectBundle ::: updatedObjList :::: " + updatedObjList)
 		val downloadUrls: Map[AnyRef, List[String]] = dUrls.flatten.groupBy(_._1).map { case (k, v) => k -> v.map(_._2) }
-		println("ObjectBundle ::: getObjectBundle ::: downloadUrls :::: " + downloadUrls)
-		//TODO: Implement getContentBundle java method. new name should be download files
+		logger.info("ObjectBundle ::: getObjectBundle ::: downloadUrls :::: " + downloadUrls)
 		val downloadedMedias: List[File] = Await.result(downloadFiles(obj.identifier, downloadUrls, bundlePath), Duration.apply("60 seconds"))
-		if(downloadUrls.nonEmpty && downloadedMedias.isEmpty)
+		if (downloadUrls.nonEmpty && downloadedMedias.isEmpty)
 			throw new Exception("Error Occurred While Downloading Bundle Media Files For : " + obj.identifier)
-		//val downloadedMedias: List[File] = List()
 		val manifestFile: File = getManifestFile(obj.identifier, objType, bundlePath, updatedObjList)
 		val hierarchyFile: File = getHierarchyFile(obj, bundlePath).getOrElse(new File(bundlePath))
 		val fList = if (obj.hierarchy.getOrElse(Map()).nonEmpty) List(manifestFile, hierarchyFile) else List(manifestFile)
-		//val downloadedFiles: List[File] = if (downloadedMedias.nonEmpty) downloadedMedias ::: fList else throw new Exception("Error Occurred While Downloading Bundle Media Files For : " + obj.identifier)
 		createBundle(obj.identifier, bundleFileName, bundlePath, pkgType, downloadedMedias ::: fList)
 	}
 
@@ -117,7 +113,7 @@ trait ObjectBundle {
 		val outputStream = new FileOutputStream(saveFilePath)
 		IOUtils.copy(inputStream, outputStream)
 		val file = new File(saveFilePath)
-		println(System.currentTimeMillis() + " ::: Downloaded file: " + file.getAbsolutePath)
+		logger.info(System.currentTimeMillis() + " ::: Downloaded file: " + file.getAbsolutePath)
 		Slug.createSlugFile(file)
 	}
 
@@ -203,13 +199,11 @@ trait ObjectBundle {
 		filePath
 	}
 
-
-	//TODO: This method is working fine. implement commented logic
 	@throws[Exception]
 	def getManifestFile(identifier: String, objType: String, bundlePath: String, objList: List[Map[String, AnyRef]]): File = {
 		try {
 			val file: File = new File(bundlePath + File.separator + manifestFileName)
-			val header: String = s"""{"id": "ekstep.${objType.toLowerCase()}.archive", "ver": "$defaultManifestVersion" ,"ts":"$getTimeStamp", "params":{"resmsgid": "$getUUID"}, "archive":{ "count": ${objList.size}, "ttl":24, "items": """
+			val header: String = s"""{"id": "sunbird.${objType.toLowerCase()}.archive", "ver": "$defaultManifestVersion" ,"ts":"$getTimeStamp", "params":{"resmsgid": "$getUUID"}, "archive":{ "count": ${objList.size}, "ttl":24, "items": """
 			val jsonProps = List("variants", "originData")
 			//TODO: complete below commented code
 			//convertStringToMapInMetadata(contents, ContentWorkflowPipelineParams.variants.name());
@@ -254,7 +248,7 @@ trait ObjectBundle {
 	}
 
 	def getHierarchyHeader(objType: String): String = {
-		s"""{"id": "ekstep.$objType.hierarchy", "ver": "$hierarchyVersion" ,"ts":"$getTimeStamp", "params":{"resmsgid": "$getUUID"}, "$objType": """
+		s"""{"id": "sunbird.$objType.hierarchy", "ver": "$hierarchyVersion" ,"ts":"$getTimeStamp", "params":{"resmsgid": "$getUUID"}, "$objType": """
 	}
 
 	def getTimeStamp(): String = {
