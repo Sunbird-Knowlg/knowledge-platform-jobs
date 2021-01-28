@@ -44,7 +44,7 @@ class VideoStreamGeneratorTaskTestSpec extends BaseTestSpec {
   val config: Config = ConfigFactory.load("test.conf")
   val jobConfig: VideoStreamGeneratorConfig = new VideoStreamGeneratorConfig(config)
   var cassandraUtil: CassandraUtil = _
-  val httpUtil = new HttpUtil
+  implicit val httpUtil = new HttpUtil
   val mockHttpUtil:HttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
   var currentMilliSecond = 1605816926271L
 
