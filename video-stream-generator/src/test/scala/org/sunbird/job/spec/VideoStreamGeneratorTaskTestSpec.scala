@@ -43,7 +43,6 @@ class VideoStreamGeneratorTaskTestSpec extends BaseTestSpec {
   val mediaService = mock[IMediaService](Mockito.withSettings().serializable())
   val config: Config = ConfigFactory.load("test.conf")
   val jobConfig: VideoStreamGeneratorConfig = new VideoStreamGeneratorConfig(config)
-//  val server = new MockAzureWebServer(jobConfig)
   var cassandraUtil: CassandraUtil = _
   val httpUtil = new HttpUtil
   implicit val mockHttpUtil:HttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())

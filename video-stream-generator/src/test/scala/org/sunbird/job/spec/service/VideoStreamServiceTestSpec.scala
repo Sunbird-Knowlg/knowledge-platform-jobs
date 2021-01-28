@@ -14,7 +14,6 @@ import org.sunbird.job.service.VideoStreamService
 import org.sunbird.job.task.VideoStreamGeneratorConfig
 import org.sunbird.spec.BaseTestSpec
 import org.json4s.jackson.JsonMethods.parse
-import org.sunbird.job.spec.MockAzureWebServer
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, JSONUtil}
 import org.sunbird.job.domain.Event
 
@@ -25,7 +24,6 @@ class VideoStreamServiceTestSpec extends BaseTestSpec {
   var cassandraUtil: CassandraUtil = _
   val config: Config = ConfigFactory.load("test.conf")
   implicit lazy val jobConfig: VideoStreamGeneratorConfig = new VideoStreamGeneratorConfig(config)
-  val server = new MockAzureWebServer(jobConfig)
   implicit val httpUtilImplicit: HttpUtil = new HttpUtil
 
   override protected def beforeAll(): Unit = {
@@ -37,7 +35,6 @@ class VideoStreamServiceTestSpec extends BaseTestSpec {
     dataLoader.load(new FileCQLDataSet(getClass.getResource("/test.cql").getPath, true, true));
     testCassandraUtil(cassandraUtil)
     super.beforeAll()
-//    server.setupRestUtilData()
   }
 
   override protected def afterAll(): Unit = {
