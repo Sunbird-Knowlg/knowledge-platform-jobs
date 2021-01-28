@@ -22,7 +22,7 @@ class VideoStreamUrlUpdator(config: VideoStreamGeneratorConfig)
   private var videoStreamService: VideoStreamService = _
 
   override def metricsList(): List[String] = {
-    List(config.totalEventsCount, config.successEventCount, config.failedEventCount, config.skippedEventCount)
+    List(config.successEventCount, config.failedEventCount)
   }
 
   override def open(parameters: Configuration): Unit = {

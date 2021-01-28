@@ -44,8 +44,7 @@ class VideoStreamGeneratorTaskTestSpec extends BaseTestSpec {
   val config: Config = ConfigFactory.load("test.conf")
   val jobConfig: VideoStreamGeneratorConfig = new VideoStreamGeneratorConfig(config)
   var cassandraUtil: CassandraUtil = _
-  implicit val httpUtil = new HttpUtil
-  val mockHttpUtil:HttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
+  implicit val mockHttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
   var currentMilliSecond = 1605816926271L
 
   val accessTokenResp = """{"token_type":"Bearer","expires_in":"3599","ext_expires_in":"3599","expires_on":"1605789466","not_before":"1605785566","resource":"https://management.core.windows.net/","access_token":"testToken"}"""
@@ -100,8 +99,8 @@ class VideoStreamGeneratorTaskTestSpec extends BaseTestSpec {
     new VideoStreamGeneratorStreamTask(jobConfig, mockKafkaUtil, mockHttpUtil).process()
     val event1Progress = readFromCassandra(EventFixture.EVENT_1)
 
-//    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(2)
-//    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skippedEventCount}").getValue() should be(1)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(2)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skippedEventCount}").getValue() should be(1)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.successEventCount}").getValue() should be(1)
     event1Progress.size() should be(1)
 
