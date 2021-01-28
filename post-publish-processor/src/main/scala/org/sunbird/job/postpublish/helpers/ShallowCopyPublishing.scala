@@ -14,22 +14,22 @@ trait ShallowCopyPublishing{
     val httpResponse = httpUtil.post(config.searchAPIPath, httpRequest)
     if (httpResponse.status == 200) {
 
-      val response = JSONUtil.deserialize[java.util.Map[String, AnyRef]](httpResponse.body)
-      val result = response.getOrDefault("result", new java.util.HashMap[String, AnyRef]()).asInstanceOf[java.util.Map[String, AnyRef]]
-      val contents = result.getOrDefault("content", new java.util.ArrayList[java.util.Map[String, AnyRef]]()).asInstanceOf[java.util.List[java.util.Map[String, AnyRef]]]
-      contents.asScala.filter(c => c.containsKey("originData"))
-        .filter(c => {
-          val originDataStr = c.getOrDefault("originData", "{}").asInstanceOf[String]
-          val originData = JSONUtil.deserialize[java.util.Map[String, AnyRef]](originDataStr)
-          val copyType = originData.getOrDefault("copyType", "deep").asInstanceOf[String]
+      val response = JSONUtil.deserialize[Map[String, AnyRef]](httpResponse.body)
+      val result = response.getOrElse("result", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
+      val contents = result.getOrElse("content", List[Map[String,AnyRef]]()).asInstanceOf[List[Map[String,AnyRef]]]
+     contents.filter(c => c.contains("originData"))
+        .filter(content => {
+          val originDataStr = content.getOrElse("originData", "{}").asInstanceOf[String]
+          val originData = JSONUtil.deserialize[Map[String, AnyRef]](originDataStr)
+          val copyType = originData.getOrElse("copyType", "deep").asInstanceOf[String]
           (StringUtils.equalsIgnoreCase(copyType, "shallow"))
-        }).map(c => {
-        val copiedId = c.get("identifier").asInstanceOf[String]
-        val copiedMimeType = c.get("mimeType").asInstanceOf[String]
-        val copiedPKGVersion = c.getOrDefault("pkgVersion", 0.asInstanceOf[AnyRef]).asInstanceOf[Number]
-        val copiedContentType = c.get("contentType").asInstanceOf[String]
+        }).map(content => {
+        val copiedId = content("identifier").asInstanceOf[String]
+        val copiedMimeType = content("mimeType").asInstanceOf[String]
+        val copiedPKGVersion = content.getOrElse("pkgVersion", 0.asInstanceOf[AnyRef]).asInstanceOf[Number]
+        val copiedContentType = content("contentType").asInstanceOf[String]
         PublishMetadata(copiedId, copiedContentType, copiedMimeType, copiedPKGVersion.intValue())
-      }).toList
+      })
     } else {
       throw new Exception("Content search failed for shallow copy check:" + identifier)
     }
