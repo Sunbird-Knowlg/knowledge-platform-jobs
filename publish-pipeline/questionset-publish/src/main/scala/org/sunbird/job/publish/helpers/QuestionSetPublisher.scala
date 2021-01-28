@@ -3,7 +3,6 @@ package org.sunbird.job.publish.helpers
 import com.datastax.driver.core.querybuilder.{QueryBuilder, Select}
 import org.apache.commons.lang3
 import org.apache.commons.lang3.StringUtils
-import org.sunbird.job.task.TestH.{getHierarchy, getObject, readerConfig}
 import org.sunbird.job.util.{CassandraUtil, Neo4JUtil, ScalaJsonUtil}
 import org.sunbird.publish.core.{ExtDataConfig, ObjectData}
 import org.sunbird.publish.helpers.{EcarGenerator, ObjectEnrichment, ObjectReader, ObjectUpdater, ObjectValidator, QuestionPdfGenerator}
