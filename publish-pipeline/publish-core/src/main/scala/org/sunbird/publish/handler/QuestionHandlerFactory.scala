@@ -19,7 +19,7 @@ object QuestionHandlerFactory {
             val responseDeclaration = gson.fromJson(extData.getOrElse(Map()).getOrElse("responseDeclaration", "").asInstanceOf[String],
                 classOf[java.util.Map[String, AnyRef]]).asScala
             val valueOption: Option[Any] = responseDeclaration.getOrElse("response1", new util.HashMap()).asInstanceOf[java.util.Map[String, AnyRef]].asScala
-                .getOrElse("correct_response", new util.HashMap()).asInstanceOf[java.util.Map[String, AnyRef]].asScala
+                .getOrElse("correctResponse", new util.HashMap()).asInstanceOf[java.util.Map[String, AnyRef]].asScala
                 .get("value")
             val answersValues: List[Double] = valueOption match {
                 case Some(element: Double) => List[Double](element)

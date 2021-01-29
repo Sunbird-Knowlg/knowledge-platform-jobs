@@ -21,7 +21,7 @@ trait QuestionSetPublisher extends ObjectReader with ObjectValidator with Object
 	def validateQuestionSet(obj: ObjectData, identifier: String): List[String] = {
 		val messages = ListBuffer[String]()
 		if (obj.hierarchy.getOrElse(Map()).isEmpty) messages += s"""There is no hierarchy available for : $identifier"""
-		if (StringUtils.equalsIgnoreCase(obj.metadata.getOrElse("mimeType", "").asInstanceOf[String], "application/vnd.sunbird.questionset"))
+		if (!StringUtils.equalsIgnoreCase(obj.metadata.getOrElse("mimeType", "").asInstanceOf[String], "application/vnd.sunbird.questionset"))
 			messages += s"""mimeType is invalid for : $identifier"""
 		if (obj.metadata.getOrElse("visibility", "").asInstanceOf[String].isEmpty) messages += s"""There is no visibility available for : $identifier"""
 		//TODO: Add any more check, if required.
@@ -69,7 +69,8 @@ trait QuestionSetPublisher extends ObjectReader with ObjectValidator with Object
 
 	override def saveExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil) = {
 		val identifier = obj.identifier.replace(".img", "")
-		val hierarchy = obj.hierarchy.getOrElse(Map())
+		val children: List[Map[String, AnyRef]] = obj.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
+		val hierarchy: Map[String, AnyRef] = obj.metadata ++ Map("children" -> children)
 		val query = QueryBuilder.update(readerConfig.keyspace, readerConfig.table)
 		  .`with`(QueryBuilder.set("hierarchy", ScalaJsonUtil.serialize(hierarchy).toString))
 		  .where(QueryBuilder.eq("identifier", identifier))
@@ -157,6 +158,7 @@ trait QuestionSetPublisher extends ObjectReader with ObjectValidator with Object
 			childHierarchy ++ Map("index" -> element.getOrElse("index", 0).asInstanceOf[AnyRef], "depth" -> element.getOrElse("depth", 0).asInstanceOf[AnyRef], "parent" -> element.getOrElse("parent", ""))
 		} else if (StringUtils.equalsIgnoreCase(element.getOrElse("objectType", "").toString, "Question")) {
 			val newObject: ObjectData = getObject(element.getOrElse("identifier", "").toString, 0.asInstanceOf[Double], readerConfig)
+			logger.info("enrichMeta :::: question object meta ::: " + newObject.metadata)
 			newObject.metadata ++ Map("index" -> element.getOrElse("index", 0).asInstanceOf[AnyRef], "parent" -> element.getOrElse("parent", ""), "depth" -> element.getOrElse("depth", 0).asInstanceOf[AnyRef])
 		} else Map()
 	}

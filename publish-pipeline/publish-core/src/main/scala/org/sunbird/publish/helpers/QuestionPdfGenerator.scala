@@ -1,11 +1,8 @@
 package org.sunbird.publish.helpers
 
-import java.io.{BufferedWriter, File, FileWriter, IOException}
-import java.net.URL
+import java.io.{BufferedWriter, File, FileWriter}
 
 import com.google.gson.Gson
-import org.apache.commons.io.FileUtils
-import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.util.HttpUtil
 import org.sunbird.publish.core.{ObjectData, Slug}
@@ -122,7 +119,7 @@ trait QuestionPdfGenerator extends ObjectTemplateGenerator {
 
     //TODO: Remove hardcoded print-service url
     private def convertHtmlToPDF(htmlFileUrl: String, httpUtil: HttpUtil): Option[String] = {
-        val response = httpUtil.post(s"http://11.2.2.4:5001/v1/print/preview/generate?fileUrl=$htmlFileUrl", "")
+        val response = httpUtil.post(s"http://11.2.6.6/print/v1/print/preview/generate?fileUrl=$htmlFileUrl", "")
         if (response.status == 200) {
             val responseBody = gson.fromJson(response.body, classOf[java.util.Map[String, AnyRef]])
             val result = responseBody.getOrDefault("result", new java.util.HashMap[String, AnyRef]()).asInstanceOf[java.util.Map[String, AnyRef]]
@@ -151,9 +148,10 @@ trait QuestionPdfGenerator extends ObjectTemplateGenerator {
 
     private def uploadFileString(fileUrl: String, obj: ObjectData)(implicit cloudStorageUtil: CloudStorageUtil): Option[String] = {
         //Todo: Rename Status?
-        FileUtil.copyURLToFile(obj.identifier, fileUrl, "questionset") match {
+        val fileName = s"${obj.identifier}_pdf_${System.currentTimeMillis}.pdf"
+        FileUtil.copyURLToFile(obj.identifier, fileUrl, fileName) match {
             case Some(file: File) => {
-                val folder = "questionset" + File.separator+ Slug.makeSlug(obj.identifier, true) + File.separator
+                val folder = "questionset" + File.separator+ Slug.makeSlug(obj.identifier, true)
                 val urlArray: Array[String] = cloudStorageUtil.uploadFile(folder, file, Some(true))
                 Some(urlArray(1))
             }

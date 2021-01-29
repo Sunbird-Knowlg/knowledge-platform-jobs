@@ -2,9 +2,10 @@ package org.sunbird.publish.helpers
 
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
-import org.sunbird.job.util.{CassandraUtil, JSONUtil, Neo4JUtil}
+import org.sunbird.job.util.{CassandraUtil, JSONUtil, Neo4JUtil, ScalaJsonUtil}
 import org.sunbird.publish.core.{ExtDataConfig, ObjectData}
 import java.text.SimpleDateFormat
+import java.util
 import java.util.Date
 
 trait ObjectUpdater {
@@ -17,9 +18,10 @@ trait ObjectUpdater {
     val status = if (StringUtils.equals("Private", publishType)) "Unlisted" else "Live"
     val editId = obj.dbId
     val identifier = obj.identifier
-    //val newPkgVersion = obj.pkgVersion + 1
+    // TODO: Need to handle strnigified json separately. e.g: variants, originData
+    val variants = JSONUtil.serialize(JSONUtil.serialize(obj.metadata.getOrElse("variants", new util.HashMap())))
     val metadataUpdateQuery = metaDataQuery(obj)
-    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$identifier"}) SET n.status="$status", n.pkgVersion=$obj.pkgVersion, $metadataUpdateQuery, $auditPropsUpdateQuery;"""
+    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$identifier"}) SET n.status="$status",n.pkgVersion=${obj.pkgVersion},n.variants=$variants,$metadataUpdateQuery,$auditPropsUpdateQuery;"""
     logger.info("Query: " + query)
     if (!StringUtils.equalsIgnoreCase(editId, identifier)) {
       val imgNodeDelQuery = s"""MATCH (n:domain{IL_UNIQUE_ID:"$editId"}) DETACH DELETE n;"""
@@ -41,16 +43,17 @@ trait ObjectUpdater {
   }
 
   def metaDataQuery(obj: ObjectData): String = {
-    val metadata = obj.metadata - ("IL_UNIQUE_ID", "identifier", "IL_FUNC_OBJECT_TYPE", "IL_SYS_NODE_TYPE", "pkgVersion", "lastStatusChangedOn", "lastUpdatedOn", "status", "objectType")
+    val metadata = obj.metadata - ("IL_UNIQUE_ID", "identifier", "IL_FUNC_OBJECT_TYPE", "IL_SYS_NODE_TYPE", "pkgVersion", "lastStatusChangedOn", "lastUpdatedOn", "status", "objectType", "variants")
     metadata.map(prop => {
       val key = prop._1
       val value = prop._2
-      value match {
+      if (null == value) s"n.$key=$value"
+      else value match {
         case _: String =>
-          s""" n.$key="$value""""
+          s"""n.$key="$value""""
         case _ =>
           val strValue = JSONUtil.serialize(value)
-          s""" n.$key=$strValue"""
+          s"""n.$key=$strValue"""
       }
     }).mkString(",")
   }
@@ -59,7 +62,7 @@ trait ObjectUpdater {
   private def auditPropsUpdateQuery(): String = {
     val sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
     val updatedOn = sdf.format(new Date())
-    s""" n.lastUpdatedOn="$updatedOn", n.lastStatusChangedOn="$updatedOn""""
+    s"""n.lastUpdatedOn="$updatedOn",n.lastStatusChangedOn="$updatedOn""""
   }
 
 }
