@@ -58,7 +58,7 @@ trait QuestionPdfGenerator extends ObjectTemplateGenerator {
     def convertFileToPdfUrl(fileString: Option[String], baseUrl: String,
                             customConverter: (String, HttpUtil, String) => Option[String] = convertHtmlToPDF)(implicit httpUtil: HttpUtil): Option[String] = {
         fileString match {
-            case Some(content: String) => customConverter(content, httpUtil)
+            case Some(content: String) => customConverter(content, httpUtil, baseUrl)
             case _ =>
                 logger.error("Error occurred while converting file, File cannot be empty")
                 None

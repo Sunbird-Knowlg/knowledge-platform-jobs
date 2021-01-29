@@ -5,7 +5,7 @@ import java.io.File
 
 import javax.imageio.ImageIO
 import org.imgscalr.Scalr
-import org.apache.commons.io.{FileUtils, FilenameUtils}
+import org.apache.commons.io.FilenameUtils
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.publish.core.{ObjectData, Slug}
@@ -41,7 +41,7 @@ trait ThumbnailGenerator {
 					None
 			}
 		} finally {
-			FileUtils.deleteDirectory(new File(s"/tmp/${obj.identifier}"))
+			org.apache.commons.io.FileUtils.deleteDirectory(new File(s"/tmp/${obj.identifier}"))
 		}
 	}
 
