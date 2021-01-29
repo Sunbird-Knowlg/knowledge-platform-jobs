@@ -9,11 +9,12 @@ import org.sunbird.job.Metrics
 import org.sunbird.job.functions.VideoStreamGenerator
 import org.sunbird.job.service.impl.MediaServiceFactory
 import org.sunbird.job.task.VideoStreamGeneratorConfig
-import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, JSONUtil, JobRequest, MediaRequest, MediaResponse, StreamingStage}
+import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, JSONUtil}
+import org.sunbird.job.helpers.{JobRequest, MediaRequest, MediaResponse, StreamingStage}
 
 import scala.collection.JavaConverters._
 
-class VideoStreamService(implicit config: VideoStreamGeneratorConfig, implicit val httpUtil: HttpUtil) {
+class VideoStreamService(implicit config: VideoStreamGeneratorConfig, httpUtil: HttpUtil) {
   private[this] lazy val logger = LoggerFactory.getLogger(classOf[VideoStreamGenerator])
   private lazy val mediaService = MediaServiceFactory.getMediaService()
   private lazy val dbKeyspace:String = config.dbKeyspace
@@ -111,7 +112,7 @@ class VideoStreamService(implicit config: VideoStreamGeneratorConfig, implicit v
   }
 
   private def updatePreviewUrl(contentId: String, streamingUrl: String, channel: String): Boolean = {
-    if(!streamingUrl.isEmpty && !contentId.isEmpty) {
+    if(streamingUrl.nonEmpty && contentId.nonEmpty) {
       val requestBody = "{\"request\": {\"content\": {\"streamingUrl\":\""+ streamingUrl +"\"}}}"
       val url = config.lpURL + config.contentV3Update + contentId
       val headers = Map[String, String]("X-Channel-Id" -> channel)
@@ -140,10 +141,10 @@ class VideoStreamService(implicit config: VideoStreamGeneratorConfig, implicit v
         case value: List[Any] =>
           selectWhere.and(QueryBuilder.in(col._1, value.asJava))
         case value: Map[String, AnyRef] =>
-          if (value.get("type").get == "lte") {
-            selectWhere.and(QueryBuilder.lte(col._1, value.get("value").get))
+          if (value("type") == "lte") {
+            selectWhere.and(QueryBuilder.lte(col._1, value("value")))
           } else {
-            selectWhere.and(QueryBuilder.gte(col._1, value.get("value").get))
+            selectWhere.and(QueryBuilder.gte(col._1, value("value")))
           }
         case _ =>
           selectWhere.and(QueryBuilder.eq(col._1, col._2))

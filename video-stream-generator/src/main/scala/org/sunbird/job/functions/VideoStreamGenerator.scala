@@ -1,12 +1,7 @@
 package org.sunbird.job.functions
 
-//import java.util.UUID
+import java.util
 
-import java.{lang, util}
-
-import com.google.gson.Gson
-import org.apache.commons.lang3.StringUtils
-import org.json4s.jackson.JsonMethods.parse
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
@@ -17,12 +12,9 @@ import org.sunbird.job.task.VideoStreamGeneratorConfig
 import org.sunbird.job.util.HttpUtil
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
-import scala.collection.JavaConverters._
-
-class VideoStreamGenerator(config: VideoStreamGeneratorConfig)
-                          (implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]],
-                           implicit val stringTypeInfo: TypeInformation[String],
-                           implicit val httpUtil: HttpUtil)
+class VideoStreamGenerator(config: VideoStreamGeneratorConfig, httpUtil:HttpUtil)
+                          (implicit mapTypeInfo: TypeInformation[util.Map[String, AnyRef]],
+                           stringTypeInfo: TypeInformation[String])
                           extends BaseProcessFunction[Event, String](config) {
 
     implicit lazy val videoStreamConfig: VideoStreamGeneratorConfig = config
@@ -35,7 +27,7 @@ class VideoStreamGenerator(config: VideoStreamGeneratorConfig)
 
     override def open(parameters: Configuration): Unit = {
         super.open(parameters)
-        videoStreamService = new VideoStreamService();
+        videoStreamService = new VideoStreamService()(config, httpUtil);
     }
 
     override def close(): Unit = {

@@ -7,10 +7,8 @@ import com.typesafe.config.ConfigFactory
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
-import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.apache.flink.streaming.api.windowing.time.Time
-import org.apache.flink.streaming.api.windowing.windows.TimeWindow
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.domain.Event
 import org.sunbird.job.functions.{VideoStreamGenerator, VideoStreamUrlUpdator}
@@ -23,16 +21,15 @@ class VideoStreamGeneratorStreamTask(config: VideoStreamGeneratorConfig, kafkaCo
     implicit val eventTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
     implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
-    implicit val httpUtilImplicit: HttpUtil = httpUtil
 
     env.addSource(kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)).name(config.videoStreamConsumer)
       .uid(config.videoStreamConsumer).setParallelism(config.kafkaConsumerParallelism)
       .rebalance
-      .process(new VideoStreamGenerator(config))
+      .process(new VideoStreamGenerator(config, httpUtil))
       .getSideOutput(config.videoStreamJobOutput)
       .keyBy(x => x)
       .timeWindow(Time.seconds(config.windowTime))
-      .process(new VideoStreamUrlUpdator(config))
+      .process(new VideoStreamUrlUpdator(config, httpUtil))
       .uid(config.videoStreamUrlUpdatorConsumer)
       .setParallelism(config.kafkaConsumerParallelism)
 

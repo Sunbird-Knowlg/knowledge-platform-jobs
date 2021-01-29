@@ -1,7 +1,6 @@
 package org.sunbird.job.spec
 
 import java.util
-
 import com.datastax.driver.core.Row
 import com.google.gson.Gson
 import com.typesafe.config.{Config, ConfigFactory}
@@ -25,7 +24,6 @@ import org.sunbird.job.service.IMediaService
 import org.sunbird.job.task.{VideoStreamGeneratorConfig, VideoStreamGeneratorStreamTask}
 import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
-import org.joda.time.DateTimeUtils
 
 import scala.collection.JavaConverters._
 
@@ -40,11 +38,11 @@ class VideoStreamGeneratorTaskTestSpec extends BaseTestSpec {
     .build)
   val mockKafkaUtil: FlinkKafkaConnector = mock[FlinkKafkaConnector](Mockito.withSettings().serializable())
   val gson = new Gson()
-  val mediaService = mock[IMediaService](Mockito.withSettings().serializable())
+  val mediaService: IMediaService = mock[IMediaService](Mockito.withSettings().serializable())
   val config: Config = ConfigFactory.load("test.conf")
   val jobConfig: VideoStreamGeneratorConfig = new VideoStreamGeneratorConfig(config)
   var cassandraUtil: CassandraUtil = _
-  implicit val mockHttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
+  val mockHttpUtil: HttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
   var currentMilliSecond = 1605816926271L
 
   val accessTokenResp = """{"token_type":"Bearer","expires_in":"3599","ext_expires_in":"3599","expires_on":"1605789466","not_before":"1605785566","resource":"https://management.core.windows.net/","access_token":"testToken"}"""
@@ -78,12 +76,10 @@ class VideoStreamGeneratorTaskTestSpec extends BaseTestSpec {
   }
 
   override protected def afterEach():Unit = {
-//    server.close()
     super.afterEach()
   }
 
   "VideoStreamGenerator" should "submit a job" in {
-//    server.submitRestUtilData
     when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new VideoStreamGeneratorMapSource)
 
     when(mockHttpUtil.post_map(contains("/oauth2/token"), any[Map[String, AnyRef]](), any[Map[String, String]]())).thenReturn(HTTPResponse(200, accessTokenResp))

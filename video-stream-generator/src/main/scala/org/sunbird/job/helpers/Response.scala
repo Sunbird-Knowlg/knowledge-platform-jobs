@@ -1,9 +1,10 @@
-package org.sunbird.job.util
+package org.sunbird.job.helpers
 
 
 import java.util.UUID
 import scala.collection.immutable.HashMap
 import org.apache.commons.lang3.StringUtils
+import org.sunbird.job.util.{HTTPResponse, JSONUtil}
 
 
 object Response {

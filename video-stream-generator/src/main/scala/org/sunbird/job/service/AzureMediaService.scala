@@ -5,7 +5,8 @@ import java.io.File
 import org.apache.commons.lang3.StringUtils
 import org.sunbird.job.exception.MediaServiceException
 import org.sunbird.job.task.VideoStreamGeneratorConfig
-import org.sunbird.job.util.{AzureRequestBody, HTTPResponse, HttpUtil, JSONUtil, MediaResponse, Response}
+import org.sunbird.job.util.HttpUtil
+import org.sunbird.job.helpers.{AzureRequestBody, MediaResponse, Response}
 
 import scala.collection.immutable.HashMap
 
@@ -34,7 +35,7 @@ abstract class AzureMediaService extends IMediaService {
 
     val response:MediaResponse = Response.getResponse(httpUtil.post_map(loginUrl, data, header))
     if(response.responseCode == "OK"){
-      response.result.get("access_token").get.asInstanceOf[String]
+      response.result("access_token").asInstanceOf[String]
     } else {
       throw new Exception("Error while getting the azure access token")
     }
@@ -130,9 +131,9 @@ abstract class AzureMediaService extends IMediaService {
     val listPathResponse = getStreamUrls(streamLocatorName)
     if (listPathResponse.responseCode.equalsIgnoreCase("OK")) {
       val urlList: List[Map[String, AnyRef]] = listPathResponse.result.getOrElse("streamingPaths", List).asInstanceOf[List[Map[String, AnyRef]]]
-      urlList.map(streamMap => {
+      urlList.foreach(streamMap => {
         if (StringUtils.equalsIgnoreCase(streamMap.getOrElse("streamingProtocol", null).toString, streamType)) {
-          url = streamMap.get("paths").get.asInstanceOf[List[String]].head
+          url = streamMap("paths").asInstanceOf[List[String]].head
         }
       })
       val streamUrl = streamHost + url.replace("aapl", "aapl-v3")

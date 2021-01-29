@@ -1,7 +1,8 @@
 package org.sunbird.job.service
 
 import org.sunbird.job.task.VideoStreamGeneratorConfig
-import org.sunbird.job.util.{HttpUtil, MediaRequest, MediaResponse}
+import org.sunbird.job.util.HttpUtil
+import org.sunbird.job.helpers.{MediaRequest, MediaResponse}
 
 
 trait IMediaService {

@@ -12,9 +12,8 @@ import org.sunbird.job.service.VideoStreamService
 import org.sunbird.job.task.VideoStreamGeneratorConfig
 import org.sunbird.job.util.HttpUtil
 
-class VideoStreamUrlUpdator(config: VideoStreamGeneratorConfig)
-                          (implicit val stringTypeInfo: TypeInformation[String],
-                           implicit val httpUtil: HttpUtil)
+class VideoStreamUrlUpdator(config: VideoStreamGeneratorConfig, httpUtil:HttpUtil)
+                          (implicit stringTypeInfo: TypeInformation[String])
   extends TimeWindowBaseProcessFunction[String, String, String](config) {
 
   implicit lazy val videoStreamConfig: VideoStreamGeneratorConfig = config
@@ -27,7 +26,7 @@ class VideoStreamUrlUpdator(config: VideoStreamGeneratorConfig)
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
-    videoStreamService = new VideoStreamService();
+    videoStreamService = new VideoStreamService()(config, httpUtil);
   }
 
   override def close(): Unit = {

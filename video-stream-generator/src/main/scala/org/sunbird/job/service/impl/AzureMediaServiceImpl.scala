@@ -1,6 +1,7 @@
 package org.sunbird.job.service.impl
 
-import org.sunbird.job.util.{AzureRequestBody, AzureResult, HTTPResponse, HttpUtil, JSONUtil, MediaRequest, MediaResponse, Response}
+import org.sunbird.job.util.HttpUtil
+import org.sunbird.job.helpers.{AzureRequestBody, AzureResult, MediaRequest, MediaResponse, Response}
 import org.sunbird.job.service.AzureMediaService
 import org.sunbird.job.task.VideoStreamGeneratorConfig
 

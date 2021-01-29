@@ -2,7 +2,6 @@ package org.sunbird.job.util
 
 import kong.unirest.Unirest
 import scala.collection.JavaConverters._
-import java.util
 
 case class HTTPResponse(status: Int, body: String) extends Serializable
 

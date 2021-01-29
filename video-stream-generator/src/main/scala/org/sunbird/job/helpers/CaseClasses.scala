@@ -1,8 +1,7 @@
-package org.sunbird.job.util
+package org.sunbird.job.helpers
 
 import org.joda.time.DateTime
 import scala.collection.immutable.HashMap
-//import scala.collection.immutable.Map
 
 
 case class MediaRequest(id: String, params: Map[String, AnyRef] = new HashMap[String, AnyRef], request: Map[String, AnyRef] = new HashMap[String, AnyRef]);
