@@ -13,7 +13,6 @@ import org.sunbird.job.fixture.EventFixture
 import org.sunbird.job.service.VideoStreamService
 import org.sunbird.job.task.VideoStreamGeneratorConfig
 import org.sunbird.spec.BaseTestSpec
-import org.json4s.jackson.JsonMethods.parse
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, JSONUtil}
 import org.sunbird.job.domain.Event
 
@@ -73,8 +72,8 @@ class VideoStreamServiceTestSpec extends BaseTestSpec {
   }
 
   def readFromCassandra(event: String): util.List[Row] = {
-    val event1 = parse(event).values.asInstanceOf[Map[String, AnyRef]]
-    val contentId = event1.get("object").get.asInstanceOf[Map[String, AnyRef]].get("id").get
+    val event1 = JSONUtil.deserialize[Map[String, Any]](event)
+    val contentId = event1("object").asInstanceOf[Map[String, AnyRef]]("id")
     val query = s"select * from ${jobConfig.dbKeyspace}.${jobConfig.dbTable} where job_id='${contentId}_1605816926271' ALLOW FILTERING;"
     cassandraUtil.find(query)
   }

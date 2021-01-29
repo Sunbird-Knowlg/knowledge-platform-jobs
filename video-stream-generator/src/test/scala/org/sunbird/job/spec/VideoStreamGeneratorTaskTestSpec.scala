@@ -13,7 +13,7 @@ import org.apache.flink.test.util.MiniClusterWithClientResource
 import org.cassandraunit.CQLDataLoader
 import org.cassandraunit.dataset.cql.FileCQLDataSet
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
-import org.json4s.jackson.JsonMethods.parse
+import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, JSONUtil}
 import org.mockito.Mockito
 import org.mockito.Mockito._
 import org.mockito.ArgumentMatchers.{any, anyString, contains}
@@ -22,7 +22,6 @@ import org.sunbird.job.domain.Event
 import org.sunbird.job.fixture.EventFixture
 import org.sunbird.job.service.IMediaService
 import org.sunbird.job.task.{VideoStreamGeneratorConfig, VideoStreamGeneratorStreamTask}
-import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 
 import scala.collection.JavaConverters._
@@ -41,8 +40,8 @@ class VideoStreamGeneratorTaskTestSpec extends BaseTestSpec {
   val mediaService: IMediaService = mock[IMediaService](Mockito.withSettings().serializable())
   val config: Config = ConfigFactory.load("test.conf")
   val jobConfig: VideoStreamGeneratorConfig = new VideoStreamGeneratorConfig(config)
+  val mockHttpUtil:HttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
   var cassandraUtil: CassandraUtil = _
-  val mockHttpUtil: HttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
   var currentMilliSecond = 1605816926271L
 
   val accessTokenResp = """{"token_type":"Bearer","expires_in":"3599","ext_expires_in":"3599","expires_on":"1605789466","not_before":"1605785566","resource":"https://management.core.windows.net/","access_token":"testToken"}"""
@@ -111,8 +110,8 @@ class VideoStreamGeneratorTaskTestSpec extends BaseTestSpec {
   }
 
   def readFromCassandra(event: String): util.List[Row] = {
-    val event1 = parse(event).values.asInstanceOf[Map[String, AnyRef]]
-    val contentId = event1.get("object").get.asInstanceOf[Map[String, AnyRef]].get("id").get
+    val event1 = JSONUtil.deserialize[Map[String, Any]](event)
+    val contentId = event1("object").asInstanceOf[Map[String, AnyRef]]("id")
     val query = s"select * from ${jobConfig.dbKeyspace}.${jobConfig.dbTable} where job_id='${contentId}_$currentMilliSecond' ALLOW FILTERING;"
     cassandraUtil.find(query)
   }
@@ -130,6 +129,6 @@ class VideoStreamGeneratorMapSource extends SourceFunction[Event] {
 
   }
 
-  override def cancel() = {}
+  override def cancel(): Unit = {}
 
 }
