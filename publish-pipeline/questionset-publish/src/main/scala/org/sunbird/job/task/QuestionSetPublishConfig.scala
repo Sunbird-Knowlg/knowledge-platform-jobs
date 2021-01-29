@@ -55,4 +55,7 @@ class QuestionSetPublishConfig(override val config: Config) extends PublishConfi
 	// Out Tags
 	val questionPublishOutTag: OutputTag[PublishMetadata] = OutputTag[PublishMetadata]("question-publish")
 	val questionSetPublishOutTag: OutputTag[PublishMetadata] = OutputTag[PublishMetadata]("questionset-publish")
+
+	// Service Urls
+	val printServiceBaseUrl: String = config.getString("print_service.base_url")
 }

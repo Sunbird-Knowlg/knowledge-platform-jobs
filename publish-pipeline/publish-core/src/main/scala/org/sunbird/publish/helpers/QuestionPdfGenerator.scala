@@ -14,10 +14,10 @@ trait QuestionPdfGenerator extends ObjectTemplateGenerator {
     private[this] val logger = LoggerFactory.getLogger(classOf[QuestionPdfGenerator])
     lazy private val gson = new Gson()
 
-    def getPdfFileUrl(objList: List[ObjectData], obj: ObjectData, templateName: String)(implicit httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil): (Option[String], Option[String] ) = {
+    def getPdfFileUrl(objList: List[ObjectData], obj: ObjectData, templateName: String, baseUrl: String)(implicit httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil): (Option[String], Option[String] ) = {
         val previewUrl: Option[String] = getPreviewFileUrl(objList, obj, templateName)
         logger.info(s"QuestionPdfGenerator ::: preview url (Html File Url) for ${obj.identifier} is : ${previewUrl.getOrElse("")}")
-        val pdfFileUrl = convertFileToPdfUrl(previewUrl)
+        val pdfFileUrl = convertFileToPdfUrl(previewUrl, baseUrl)
         logger.info(s"QuestionPdfGenerator ::: pdf file local path for ${obj.identifier} is : ${pdfFileUrl.getOrElse("")}")
         pdfFileUrl match {
             case Some(url: String) => (uploadFileString(url, obj), previewUrl)
@@ -25,7 +25,6 @@ trait QuestionPdfGenerator extends ObjectTemplateGenerator {
         }
     }
 
-    //    //Need to pass config instead of template name
     def getPreviewFileUrl(objList: List[ObjectData], obj: ObjectData, templateName: String)(implicit cloudStorageUtil: CloudStorageUtil): Option[String] = {
         val fileContent: String = getFileString(objList, obj.metadata.getOrElse("name", "").asInstanceOf[String], templateName).getOrElse("")
         val fileName: String = s"/tmp/${obj.identifier}_${getHtmlFileSuffix()}"
@@ -56,8 +55,8 @@ trait QuestionPdfGenerator extends ObjectTemplateGenerator {
         }
     }
 
-    def convertFileToPdfUrl(fileString: Option[String],
-                            customConverter: (String, HttpUtil) => Option[String] = convertHtmlToPDF)(implicit httpUtil: HttpUtil): Option[String] = {
+    def convertFileToPdfUrl(fileString: Option[String], baseUrl: String,
+                            customConverter: (String, HttpUtil, String) => Option[String] = convertHtmlToPDF)(implicit httpUtil: HttpUtil): Option[String] = {
         fileString match {
             case Some(content: String) => customConverter(content, httpUtil)
             case _ =>
@@ -118,8 +117,8 @@ trait QuestionPdfGenerator extends ObjectTemplateGenerator {
     }
 
     //TODO: Remove hardcoded print-service url
-    private def convertHtmlToPDF(htmlFileUrl: String, httpUtil: HttpUtil): Option[String] = {
-        val response = httpUtil.post(s"http://11.2.6.6/print/v1/print/preview/generate?fileUrl=$htmlFileUrl", "")
+    private def convertHtmlToPDF(htmlFileUrl: String, httpUtil: HttpUtil, baseUrl: String): Option[String] = {
+        val response = httpUtil.post(s"$baseUrl/v1/print/preview/generate?fileUrl=$htmlFileUrl", "")
         if (response.status == 200) {
             val responseBody = gson.fromJson(response.body, classOf[java.util.Map[String, AnyRef]])
             val result = responseBody.getOrDefault("result", new java.util.HashMap[String, AnyRef]()).asInstanceOf[java.util.Map[String, AnyRef]]
