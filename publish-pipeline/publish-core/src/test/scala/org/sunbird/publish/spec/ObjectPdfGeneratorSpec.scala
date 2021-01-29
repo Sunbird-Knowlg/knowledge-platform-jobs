@@ -1,6 +1,5 @@
 package org.sunbird.publish.spec
 
-import java.io.File
 
 import com.typesafe.config.{Config, ConfigFactory}
 import org.mockito.{ArgumentMatchers, Mockito}
@@ -40,7 +39,7 @@ class ObjectPdfGeneratorSpec extends FlatSpec with BeforeAndAfterAll with Matche
     "Object PDF generator getPdfFileUrl" should "return a url of the pdf file after uploading it to cloud" in {
         when(mockHttpUtil.post(ArgumentMatchers.anyString(), ArgumentMatchers.anyString())).thenReturn(getHttpResponse())
         val pdfGenerator = new TestQuestionPdfGenerator()
-        val (pdfUrl, previewUrl) = pdfGenerator.getPdfFileUrl(getObjectList(), getObject(), "questionSetTemplate.vm")
+        val (pdfUrl, previewUrl) = pdfGenerator.getPdfFileUrl(getObjectList(), getObject(), "questionSetTemplate.vm", "http://11.2.6.6/print")
         pdfUrl.getOrElse("").isEmpty should be(false)
         previewUrl.getOrElse("").isEmpty should be(false)
 

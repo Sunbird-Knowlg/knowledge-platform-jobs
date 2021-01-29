@@ -15,38 +15,16 @@ class CloudStorageUtil(config: PublishConfig) extends Serializable {
 	val azureStorageContainer = config.getString("azure_storage_container", "")
 	val awsStorageContainer = config.getString("aws_storage_container", "")
 
-	//@throws[Exception]
-	/*def getService(): BaseStorageService = {
-
-		if (null == storageService) {
-			println("cloudStorageType :::: "+cloudStorageType)
-			println("azureStorageKey :::: "+azureStorageKey)
-			println("azureStorageSecret :::: "+azureStorageSecret)
-			println("azureStorageContainer :::: "+azureStorageContainer)
-
-			cloudStorageType match {
-				case "azure" => storageService = StorageServiceFactory.getStorageService(StorageConfig(cloudStorageType, azureStorageKey, azureStorageSecret))
-				case "aws" => storageService = StorageServiceFactory.getStorageService(StorageConfig(cloudStorageType, awsStorageKey, awsStorageSecret))
-				case _ => throw new Exception("Error while initialising cloud storage")
-			}
-		}
-		storageService
-	}*/
-
 	@throws[Exception]
 	def getService: BaseStorageService = {
 		if (null == storageService) {
 			if (StringUtils.equalsIgnoreCase(cloudStorageType, "azure")) {
 				val azureStorageKey = config.getString("azure_storage_key", "")
 				val azureStorageSecret = config.getString("azure_storage_secret", "")
-				//val storageKey = storageParams.azureStorageKey
-				//val storageSecret = storageParams.azureStorageSecret
 				storageService = StorageServiceFactory.getStorageService(StorageConfig(cloudStorageType, azureStorageKey, azureStorageSecret))
 			} else if (StringUtils.equalsIgnoreCase(cloudStorageType, "aws")) {
 				val awsStorageKey = config.getString("aws_storage_key", "")
 				val awsStorageSecret = config.getString("aws_storage_secret", "")
-				//val storageKey = storageParams.awsStorageKey.get
-				//val storageSecret = storageParams.awsStorageSecret.get
 				storageService = StorageServiceFactory.getStorageService(StorageConfig(cloudStorageType, awsStorageKey, awsStorageSecret))
 			} else throw new Exception("Error while initialising cloud storage")
 		}

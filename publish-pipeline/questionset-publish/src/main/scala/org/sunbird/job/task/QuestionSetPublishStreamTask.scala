@@ -12,7 +12,6 @@ import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.function.{PublishEventRouter, QuestionPublishFunction, QuestionSetPublishFunction}
 import org.sunbird.job.publish.domain.{Event, PublishMetadata}
 import org.sunbird.job.util.{FlinkUtil, HttpUtil}
-import org.sunbird.publish.util.CloudStorageUtil
 
 class QuestionSetPublishStreamTask(config: QuestionSetPublishConfig, kafkaConnector: FlinkKafkaConnector, httpUtil: HttpUtil) {
 
@@ -51,7 +50,6 @@ object QuestionSetPublishStreamTask {
 		val publishConfig = new QuestionSetPublishConfig(config)
 		val kafkaUtil = new FlinkKafkaConnector(publishConfig)
 		val httpUtil = new HttpUtil
-		//val cloudStoreUtil = new CloudStorageUtil(publishConfig)
 		val task = new QuestionSetPublishStreamTask(publishConfig, kafkaUtil, httpUtil)
 		task.process()
 	}

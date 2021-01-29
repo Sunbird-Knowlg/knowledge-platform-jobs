@@ -15,16 +15,20 @@ import scala.collection.JavaConverters._
 trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnrichment with ObjectUpdater {
 
 	private[this] val logger = LoggerFactory.getLogger(classOf[QuestionPublisher])
-	val extProps = List("body", "editorState", "answer", "solutions", "instructions", "hints", "media","responseDeclaration", "interactions")
+	val extProps = List("body", "editorState", "answer", "solutions", "instructions", "hints", "media", "responseDeclaration", "interactions")
 
 	override def getHierarchy(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = None
 
-	override def enrichObjectMetadata(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): Option[ObjectData] = None
+	override def enrichObjectMetadata(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): Option[ObjectData] = {
+		val pkgVersion = obj.metadata.getOrElse("pkgVersion", 0.0.asInstanceOf[Number]).asInstanceOf[Number].intValue() + 1
+		val updatedMeta = obj.metadata ++ Map("pkgVersion" -> pkgVersion.asInstanceOf[AnyRef])
+		Some(new ObjectData(obj.identifier, updatedMeta, obj.extData, obj.hierarchy))
+	}
 
 	def validateQuestion(obj: ObjectData, identifier: String): List[String] = {
-		logger.info("Validating Question External Data For : "+obj.identifier)
+		logger.info("Validating Question External Data For : " + obj.identifier)
 		//TODO: Remove Below logger statement
-		logger.info("Question External Data : "+obj.extData.get)
+		logger.info("Question External Data : " + obj.extData.get)
 		val messages = ListBuffer[String]()
 		if (obj.extData.get.getOrElse("body", "").asInstanceOf[String].isEmpty) messages += s"""There is no body available for : $identifier"""
 		if (obj.extData.get.getOrElse("editorState", "").asInstanceOf[String].isEmpty) messages += s"""There is no editorState available for : $identifier"""
@@ -42,18 +46,18 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
 	override def getExtData(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = {
 		val row = getQuestionData(identifier, readerConfig)(cassandraUtil)
 		//TODO: covert below code in scala. entrire props should be in scala.
-		if(null!=row) Option(extProps.map(prop => prop -> row.getString(prop)).toMap) else Option(Map[String, AnyRef]())
+		if (null != row) Option(extProps.map(prop => prop -> row.getString(prop)).toMap) else Option(Map[String, AnyRef]())
 	}
 
 	def getQuestionData(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil) = {
 		val select = QueryBuilder.select()
-		extProps.foreach(prop => if(lang3.StringUtils.equals("body", prop) | lang3.StringUtils.equals("answer", prop)) select.fcall("blobAsText", QueryBuilder.column(prop)).as(prop) else select.column(prop).as(prop))
+		extProps.foreach(prop => if (lang3.StringUtils.equals("body", prop) | lang3.StringUtils.equals("answer", prop)) select.fcall("blobAsText", QueryBuilder.column(prop)).as(prop) else select.column(prop).as(prop))
 		val selectWhere: Select.Where = select.from(readerConfig.keyspace, readerConfig.table).where()
 		selectWhere.and(QueryBuilder.eq("identifier", identifier))
 		cassandraUtil.findOne(selectWhere.toString)
 	}
 
-	def dummyFunc = (obj: ObjectData) => {}
+	def dummyFunc = (obj: ObjectData, readerConfig: ExtDataConfig) => {}
 
 	override def getExtDatas(identifiers: List[String], readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = {
 		None
@@ -62,4 +66,6 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
 	override def getHierarchies(identifiers: List[String], readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = {
 		None
 	}
+
+	override def saveExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil) = None
 }
