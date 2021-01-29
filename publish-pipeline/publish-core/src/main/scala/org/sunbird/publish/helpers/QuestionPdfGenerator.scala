@@ -7,7 +7,7 @@ import org.slf4j.LoggerFactory
 import org.sunbird.job.util.HttpUtil
 import org.sunbird.publish.core.{ObjectData, Slug}
 import org.sunbird.publish.handler.{QuestionHandlerFactory, QuestionTypeHandler}
-import org.sunbird.publish.util.{CloudStorageUtil, FileUtil}
+import org.sunbird.publish.util.{CloudStorageUtil, FileUtils}
 
 
 trait QuestionPdfGenerator extends ObjectTemplateGenerator {
@@ -148,7 +148,7 @@ trait QuestionPdfGenerator extends ObjectTemplateGenerator {
     private def uploadFileString(fileUrl: String, obj: ObjectData)(implicit cloudStorageUtil: CloudStorageUtil): Option[String] = {
         //Todo: Rename Status?
         val fileName = s"${obj.identifier}_pdf_${System.currentTimeMillis}.pdf"
-        FileUtil.copyURLToFile(obj.identifier, fileUrl, fileName) match {
+        FileUtils.copyURLToFile(obj.identifier, fileUrl, fileName) match {
             case Some(file: File) => {
                 val folder = "questionset" + File.separator+ Slug.makeSlug(obj.identifier, true)
                 val urlArray: Array[String] = cloudStorageUtil.uploadFile(folder, file, Some(true))

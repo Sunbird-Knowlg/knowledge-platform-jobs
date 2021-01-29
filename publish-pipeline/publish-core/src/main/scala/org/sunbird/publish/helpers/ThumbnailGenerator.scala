@@ -9,7 +9,7 @@ import org.apache.commons.io.{FileUtils, FilenameUtils}
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.publish.core.{ObjectData, Slug}
-import org.sunbird.publish.util.{CloudStorageUtil, FileUtil}
+import org.sunbird.publish.util.{CloudStorageUtil, FileUtils}
 
 trait ThumbnailGenerator {
 
@@ -22,7 +22,7 @@ trait ThumbnailGenerator {
 		if (StringUtils.isBlank(appIcon)) None
 		val suffix = FilenameUtils.getName(appIcon)
 		try {
-			FileUtil.copyURLToFile(obj.identifier, appIcon, suffix) match {
+			FileUtils.copyURLToFile(obj.identifier, appIcon, suffix) match {
 				case Some(file: File) => {
 					logger.info("downloaded file path ::: " + file.getAbsolutePath)
 					val outFile: Option[File] = generateOutFile(file)
