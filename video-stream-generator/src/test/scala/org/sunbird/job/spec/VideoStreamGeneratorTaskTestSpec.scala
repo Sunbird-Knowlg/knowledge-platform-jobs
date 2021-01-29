@@ -78,7 +78,7 @@ class VideoStreamGeneratorTaskTestSpec extends BaseTestSpec {
     super.afterEach()
   }
 
-  "VideoStreamGenerator" should "submit a job" in {
+  ignore should "submit a job" in {
     when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new VideoStreamGeneratorMapSource)
 
     when(mockHttpUtil.post_map(contains("/oauth2/token"), any[Map[String, AnyRef]](), any[Map[String, String]]())).thenReturn(HTTPResponse(200, accessTokenResp))
