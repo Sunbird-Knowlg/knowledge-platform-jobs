@@ -24,8 +24,8 @@
 		<module>relation-cache-updater</module>
 		<module>activity-aggregate-updater</module>
         <module>post-publish-processor</module>
-<!--        <module>collection-complete-post-processor</module>-->
-    </modules>
+		<module>credential-generator</module>
+	</modules>
 
 	<properties>
 		<!-- maven specific properties -->
