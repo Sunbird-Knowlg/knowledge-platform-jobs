@@ -49,7 +49,7 @@ object CertificateDbService {
     val rows = cassandraUtil.find(selectQuery.toString)
     metrics.incCounter(config.dbReadCount)
     if (CollectionUtils.isNotEmpty(rows)) {
-      val filteredRows = rows.asScala.toList.filter(row => enrollmentCriteria.getOrDefault("status", 2) == row.getInt("status"))
+      val filteredRows = rows.asScala.toList.filter(row => enrollmentCriteria.getOrDefault("status", 2.asInstanceOf[AnyRef]).asInstanceOf[Int] == row.getInt("status"))
       IssueCertificateUtil.getActiveUserIds(filteredRows, event, templateName)
     }
     else

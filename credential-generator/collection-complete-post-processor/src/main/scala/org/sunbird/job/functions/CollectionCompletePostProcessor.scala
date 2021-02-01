@@ -3,7 +3,6 @@ package org.sunbird.job.functions
 import java.util
 import java.util.UUID
 
-import com.sun.org.slf4j.internal.LoggerFactory
 import org.apache.commons.lang3.StringUtils
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
