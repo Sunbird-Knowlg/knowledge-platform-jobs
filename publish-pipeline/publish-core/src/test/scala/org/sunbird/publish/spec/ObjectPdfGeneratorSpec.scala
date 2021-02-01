@@ -55,7 +55,7 @@ class ObjectPdfGeneratorSpec extends FlatSpec with BeforeAndAfterAll with Matche
                       |          "maxScore": 1,
                       |          "cardinality": "single",
                       |          "type": "integer",
-                      |          "correct_response": {
+                      |          "correctResponse": {
                       |            "value": 1,
                       |            "outcomes": {
                       |              "score": 1
@@ -71,19 +71,19 @@ class ObjectPdfGeneratorSpec extends FlatSpec with BeforeAndAfterAll with Matche
                       |          "type": "choice",
                       |          "options": [
                       |            {
-                      |              "body": "<p>2 September 1929</p>",
+                      |              "label": "<p>2 September 1929</p>",
                       |              "value": 0
                       |            },
                       |            {
-                      |              "body": "<p>15 October 1931</p>",
+                      |              "label": "<p>15 October 1931</p>",
                       |              "value": 1
                       |            },
                       |            {
-                      |              "body": "<p>15 August 1923</p>",
+                      |              "label": "<p>15 August 1923</p>",
                       |              "value": 2
                       |            },
                       |            {
-                      |              "body": "<p>29 February 1936</p>",
+                      |              "label": "<p>29 February 1936</p>",
                       |              "value": 3
                       |            }
                       |          ]
@@ -104,7 +104,7 @@ class ObjectPdfGeneratorSpec extends FlatSpec with BeforeAndAfterAll with Matche
                       |      "response1": {
                       |        "cardinality": "multiple",
                       |        "type": "integer",
-                      |        "correct_response": {
+                      |        "correctResponse": {
                       |          "value": [
                       |            0,
                       |            1,
@@ -143,19 +143,19 @@ class ObjectPdfGeneratorSpec extends FlatSpec with BeforeAndAfterAll with Matche
                       |          "type": "choice",
                       |          "options": [
                       |            {
-                      |              "body": "<p>Failure to Success: Legendary Lives</p>",
+                      |              "label": "<p>Failure to Success: Legendary Lives</p>",
                       |              "value": 0
                       |            },
                       |            {
-                      |              "body": "<p>You Are Born to Blossom</p>",
+                      |              "label": "<p>You Are Born to Blossom</p>",
                       |              "value": 1
                       |            },
                       |            {
-                      |              "body": "<p>Ignited Minds</p>",
+                      |              "label": "<p>Ignited Minds</p>",
                       |              "value": 2
                       |            },
                       |            {
-                      |              "body": "<p>A House for Mr. Biswas‎ </p>",
+                      |              "label": "<p>A House for Mr. Biswas‎ </p>",
                       |              "value": 3
                       |            }
                       |          ]
@@ -195,6 +195,5 @@ class ObjectPdfGeneratorSpec extends FlatSpec with BeforeAndAfterAll with Matche
 }
 
 class TestQuestionPdfGenerator extends QuestionPdfGenerator {
-
 
 }
