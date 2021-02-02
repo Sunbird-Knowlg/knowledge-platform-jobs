@@ -49,7 +49,7 @@ class VideoStreamGeneratorConfig(override val config: Config) extends BaseJobCon
 
   // LP Configurations
   val lpURL: String = config.getString("lp.url")
-  val contentV3Update = "/content/v3/update/"
+  val contentV3Update = "/system/v3/content/update/"
 
   def getConfig(key: String): String = {
     if (config.hasPath(key))
