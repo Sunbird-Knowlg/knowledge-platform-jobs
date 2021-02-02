@@ -27,4 +27,9 @@ class HttpUtil extends Serializable {
     HTTPResponse(response.getStatus, response.getBody)
   }
 
+  def patch(url: String, requestBody: String, headers: Map[String, String] = Map[String, String]("Content-Type"->"application/json")): HTTPResponse = {
+    val response = Unirest.patch(url).headers(headers.asJava).body(requestBody).asString()
+    HTTPResponse(response.getStatus, response.getBody)
+  }
+
 }

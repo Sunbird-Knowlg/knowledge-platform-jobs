@@ -116,7 +116,7 @@ class VideoStreamService(implicit config: VideoStreamGeneratorConfig, httpUtil: 
       val requestBody = "{\"request\": {\"content\": {\"streamingUrl\":\""+ streamingUrl +"\"}}}"
       val url = config.lpURL + config.contentV3Update + contentId
       val headers = Map[String, String]("X-Channel-Id" -> channel)
-      val response:HTTPResponse = httpUtil.put(url, requestBody, headers)
+      val response:HTTPResponse = httpUtil.patch(url, requestBody, headers)
 
       if(response.status == 200){
         true;
