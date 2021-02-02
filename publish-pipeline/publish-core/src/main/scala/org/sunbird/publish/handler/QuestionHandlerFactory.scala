@@ -33,7 +33,7 @@ object QuestionHandlerFactory {
                 .getOrElse("options", new util.ArrayList[util.Map[String, AnyRef]]()).asInstanceOf[java.util.List[java.util.Map[String, AnyRef]]].asScala
                 .filter(element => answersValues.contains(element.asScala.getOrElse("value", -1).asInstanceOf[Double]))
                 .toList
-                .map(element => element.asScala.getOrElse("body", "").asInstanceOf[String])
+                .map(element => element.asScala.getOrElse("label", "").asInstanceOf[String])
             answers
         }
     }

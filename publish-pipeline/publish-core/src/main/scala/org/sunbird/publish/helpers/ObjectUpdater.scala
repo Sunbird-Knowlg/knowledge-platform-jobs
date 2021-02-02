@@ -2,7 +2,7 @@ package org.sunbird.publish.helpers
 
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
-import org.sunbird.job.util.{CassandraUtil, JSONUtil, Neo4JUtil, ScalaJsonUtil}
+import org.sunbird.job.util.{CassandraUtil, JSONUtil, Neo4JUtil}
 import org.sunbird.publish.core.{ExtDataConfig, ObjectData}
 import java.text.SimpleDateFormat
 import java.util
@@ -19,7 +19,8 @@ trait ObjectUpdater {
     val editId = obj.dbId
     val identifier = obj.identifier
     // TODO: Need to handle strnigified json separately. e.g: variants, originData
-    val variants = JSONUtil.serialize(JSONUtil.serialize(obj.metadata.getOrElse("variants", new util.HashMap())))
+    val variantsData: java.util.Map[String, String] = obj.metadata.getOrElse("variants", new util.HashMap()).asInstanceOf[java.util.Map[String, String]]
+    val variants = if(variantsData.isEmpty) null else JSONUtil.serialize(JSONUtil.serialize(variantsData))
     val metadataUpdateQuery = metaDataQuery(obj)
     val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$identifier"}) SET n.status="$status",n.pkgVersion=${obj.pkgVersion},n.variants=$variants,$metadataUpdateQuery,$auditPropsUpdateQuery;"""
     logger.info("Query: " + query)
