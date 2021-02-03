@@ -45,6 +45,14 @@ class ObjectPdfGeneratorSpec extends FlatSpec with BeforeAndAfterAll with Matche
 
     }
 
+    "Object PDF generator getPdfFileUrl" should "return a Empty pdfUrl if failed to convert to PDF " in {
+        when(mockHttpUtil.post(ArgumentMatchers.anyString(), ArgumentMatchers.anyString())).thenReturn(getFailedHttpResponse())
+        val pdfGenerator = new TestQuestionPdfGenerator()
+        val (pdfUrl, previewUrl) = pdfGenerator.getPdfFileUrl(getObjectList(), getObject(), "questionSetTemplate.vm", "http://11.2.6.6/print")
+        pdfUrl.getOrElse("").isEmpty should be(true)
+        previewUrl.getOrElse("").isEmpty should be(false)
+    }
+
     private def getObjectList(): List[ObjectData] = {
         val question_1 = new ObjectData("do_123", Map("primaryCategory" -> "Multiple Choice Question", "index" -> 1.asInstanceOf[AnyRef], "IL_UNIQUE_ID" -> "do_123"),
             Some(Map(
@@ -188,6 +196,15 @@ class ObjectPdfGeneratorSpec extends FlatSpec with BeforeAndAfterAll with Matche
               |{
               |"result" : {
               |     "pdfUrl" : "https://dockstorage.blob.core.windows.net/sunbird-content-dock/content/do_11304066349776076815/artifact/do_11304066349776076815_1591877926475.pdf"
+              |}
+              |}""".stripMargin)
+    }
+
+    private def getFailedHttpResponse(): HTTPResponse = {
+        HTTPResponse(400,
+            """
+              |{
+              |"result" : {
               |}
               |}""".stripMargin)
     }
