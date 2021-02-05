@@ -1,6 +1,6 @@
 package org.sunbird.job.util
 
-import org.neo4j.driver.v1.{Config, GraphDatabase}
+import org.neo4j.driver.v1.{Config, GraphDatabase, StatementResult}
 import org.slf4j.LoggerFactory
 
 
@@ -34,6 +34,16 @@ class Neo4JUtil(routePath: String, graphId: String) {
     val query = s"""MATCH (n:${graphId}{IL_UNIQUE_ID:"${identifier}"}) return n;"""
     val statementResult = session.run(query)
     statementResult.single().get("n").asMap()
+  }
+
+  def updateNodeProperty(identifier: String, key: String, value: String): Unit = {
+    val query = s"""MATCH (n:$graphId {IL_UNIQUE_ID:"$identifier"}) SET n.$key=["$value"];"""
+    logger.info("Query: " + query)
+    val session = driver.session()
+    val result = session.run(query)
+    if (result.hasNext)
+      logger.info("Successfully Updated node with identifier: $identifier")
+    else throw new Exception(s"Unable to update the node with identifier: $identifier")
   }
 
   def executeQuery(query: String) = {

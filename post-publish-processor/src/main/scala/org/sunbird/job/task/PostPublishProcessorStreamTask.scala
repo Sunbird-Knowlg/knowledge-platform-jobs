@@ -60,6 +60,7 @@ object PostPublishProcessorStreamTask {
     val task = new PostPublishProcessorStreamTask(pppConfig, kafkaUtil, httpUtil)
     task.process()
   }
+
 }
 
 // $COVERAGE-ON$

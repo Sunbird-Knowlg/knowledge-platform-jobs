@@ -28,6 +28,7 @@ class PostPublishEventRouter(config: PostPublishProcessorConfig, httpUtil: HttpU
 
   private[this] val logger = LoggerFactory.getLogger(classOf[PostPublishEventRouter])
   val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
+  val contentTypes = List("Course")
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
@@ -82,6 +83,7 @@ class PostPublishEventRouter(config: PostPublishProcessorConfig, httpUtil: HttpU
     List(config.successEventCount, config.failedEventCount, config.skippedEventCount, config.totalEventsCount)
   }
 
+  //TODO: Should we reserve or throw exception?
   def linkedDIALCodes(metadata: java.util.Map[String, AnyRef], identifier: String): Boolean = {
     if (MapUtils.isNotEmpty(metadata)) {
       val dialExist = metadata.containsKey("dialcodes")
@@ -90,6 +92,11 @@ class PostPublishEventRouter(config: PostPublishProcessorConfig, httpUtil: HttpU
     } else {
       throw new Exception("Metadata [reservedDIALExists] is not found for object: " + identifier)
     }
+  }
+
+  def validateDialCodeEvent(event: Event): Boolean = {
+    val edata = event.eData.asInstanceOf[java.util.Map[String, AnyRef]]
+    contentTypes.contains(edata.getOrDefault("contentType", "").asInstanceOf[String])
   }
 
 }
