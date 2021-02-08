@@ -45,17 +45,17 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
 	}
 
 	override def getExtData(identifier: String,pkgVersion: Double, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = {
-		val row: Row = getQuestionData(getEditableObjId(identifier, pkgVersion), readerConfig).getOrElse(getQuestionData(identifier, readerConfig))
+		val row: Row = Option(getQuestionData(getEditableObjId(identifier, pkgVersion), readerConfig)).getOrElse(getQuestionData(identifier, readerConfig))
 		//TODO: covert below code in scala. entire props should be in scala.
 		if (null != row) Option(extProps.map(prop => prop -> row.getString(prop)).toMap) else Option(Map[String, AnyRef]())
 	}
 
-	def getQuestionData(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Row] = {
+	def getQuestionData(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Row = {
 		logger.info("QuestionPublisher ::: getQuestionData ::: Reading Question External Data For : "+identifier)
 		val select = QueryBuilder.select()
 		extProps.foreach(prop => if (lang3.StringUtils.equals("body", prop) | lang3.StringUtils.equals("answer", prop)) select.fcall("blobAsText", QueryBuilder.column(prop)).as(prop) else select.column(prop).as(prop))
 		val selectWhere: Select.Where = select.from(readerConfig.keyspace, readerConfig.table).where().and(QueryBuilder.eq("identifier", identifier))
-		Option(cassandraUtil.findOne(selectWhere.toString))
+		cassandraUtil.findOne(selectWhere.toString)
 	}
 
 	def dummyFunc = (obj: ObjectData, readerConfig: ExtDataConfig) => {}
