@@ -5,6 +5,7 @@ import java.util
 import com.datastax.driver.core.Row
 import com.datastax.driver.core.querybuilder.{QueryBuilder, Select, Update}
 import org.apache.commons.lang3
+import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.util.{CassandraUtil, Neo4JUtil, ScalaJsonUtil}
 import org.sunbird.publish.core.{ExtDataConfig, ObjectData}
@@ -39,7 +40,7 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
 				if (obj.extData.get.getOrElse("responseDeclaration", "").asInstanceOf[String].isEmpty) messages += s"""There is no responseDeclaration available for : $identifier"""
 				if (obj.extData.get.getOrElse("interactions", "").asInstanceOf[String].isEmpty) messages += s"""There is no interactions available for : $identifier"""
 			}
-			case false => if (obj.extData.getOrElse("answer", "").toString.isEmpty) messages += s"""There is no answer available for : $identifier"""
+			case false => if (obj.extData.getOrElse("answer", "").asInstanceOf[String].isEmpty) messages += s"""There is no answer available for : $identifier"""
 		}
 		messages.toList
 	}
@@ -47,7 +48,7 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
 	override def getExtData(identifier: String,pkgVersion: Double, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = {
 		val row: Row = Option(getQuestionData(getEditableObjId(identifier, pkgVersion), readerConfig)).getOrElse(getQuestionData(identifier, readerConfig))
 		//TODO: covert below code in scala. entire props should be in scala.
-		if (null != row) Option(extProps.map(prop => prop -> row.getString(prop)).toMap) else Option(Map[String, AnyRef]())
+		if (null != row) Option(extProps.map(prop => prop -> row.getString(prop)).toMap.filter(p => StringUtils.isNotBlank(p._2.asInstanceOf[String]))) else Option(Map[String, AnyRef]())
 	}
 
 	def getQuestionData(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Row = {
