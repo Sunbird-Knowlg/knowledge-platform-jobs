@@ -2,10 +2,10 @@ package org.sunbird.job.publish.helpers
 
 import java.util
 
-import com.datastax.driver.core.querybuilder.{QueryBuilder, Select}
+import com.datastax.driver.core.querybuilder.{QueryBuilder, Select, Update}
 import org.apache.commons.lang3
 import org.slf4j.LoggerFactory
-import org.sunbird.job.util.{CassandraUtil, Neo4JUtil}
+import org.sunbird.job.util.{CassandraUtil, Neo4JUtil, ScalaJsonUtil}
 import org.sunbird.publish.core.{ExtDataConfig, ObjectData}
 import org.sunbird.publish.helpers.{ObjectEnrichment, ObjectReader, ObjectUpdater, ObjectValidator}
 
@@ -43,10 +43,13 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
 		messages.toList
 	}
 
-	override def getExtData(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = {
-		val row = getQuestionData(identifier, readerConfig)(cassandraUtil)
+	override def getExtData(identifier: String,pkgVersion: Double, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = {
+		val row = getQuestionData(getEditableObjId(identifier, pkgVersion), readerConfig)(cassandraUtil)
 		//TODO: covert below code in scala. entrire props should be in scala.
-		if (null != row) Option(extProps.map(prop => prop -> row.getString(prop)).toMap) else Option(Map[String, AnyRef]())
+		if (null != row) Option(extProps.map(prop => prop -> row.getString(prop)).toMap) else {
+			val row = getQuestionData(identifier, readerConfig)(cassandraUtil)
+			if (null != row) Option(extProps.map(prop => prop -> row.getString(prop)).toMap) else Option(Map[String, AnyRef]())
+		}
 	}
 
 	def getQuestionData(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil) = {
@@ -67,5 +70,37 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
 		None
 	}
 
-	override def saveExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil) = None
+	override def saveExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil) = {
+		val extData = obj.extData.getOrElse(Map())
+		val identifier = obj.identifier.replace(".img", "")
+		val query = QueryBuilder.update(readerConfig.keyspace, readerConfig.table)
+			.where(QueryBuilder.eq("identifier", identifier))
+			.`with`(QueryBuilder.set("body",  QueryBuilder.fcall("textAsBlob", extData.getOrElse("body", null))))
+			.and(QueryBuilder.set("answer", QueryBuilder.fcall("textAsBlob", extData.getOrElse("answer", null))))
+			.and(QueryBuilder.set("editorstate", extData.getOrElse("editorstate", null)))
+			.and(QueryBuilder.set("solutions", extData.getOrElse("solutions", null)))
+			.and(QueryBuilder.set("instructions", extData.getOrElse("instructions", null)))
+			.and(QueryBuilder.set("media", extData.getOrElse("media", null)))
+			.and(QueryBuilder.set("hints", extData.getOrElse("hints", null)))
+			.and(QueryBuilder.set("responsedeclaration", extData.getOrElse("responsedeclaration", null)))
+			.and(QueryBuilder.set("interactions", extData.getOrElse("interactions", null)))
+
+		logger.info(s"Updating Question in Cassandra For ${identifier} : ${query.toString}")
+		val result = cassandraUtil.upsert(query.toString)
+		if (result) {
+			logger.info(s"Question Updated Successfully For ${identifier}")
+		} else {
+			val msg = s"Question Update Failed For ${identifier}"
+			logger.error(msg)
+			throw new Exception(msg)
+		}
+	}
+
+	override def deleteExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Unit = {
+		val query = QueryBuilder.delete().from(readerConfig.keyspace, readerConfig.table)
+			.where(QueryBuilder.eq("identifier", obj.dbId))
+			.ifExists
+		cassandraUtil.session.execute(query.toString)
+	}
+
 }

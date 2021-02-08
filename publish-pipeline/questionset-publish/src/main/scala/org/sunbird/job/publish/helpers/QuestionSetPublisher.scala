@@ -16,7 +16,7 @@ trait QuestionSetPublisher extends ObjectReader with ObjectValidator with Object
 	private[this] val logger = LoggerFactory.getLogger(classOf[QuestionSetPublisher])
 	val extProps = List("body", "editorState", "answer", "solutions", "instructions", "hints", "media", "responseDeclaration", "interactions", "identifier")
 
-	override def getExtData(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = None
+	override def getExtData(identifier: String, pkgVersion: Double, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = None
 
 	def validateQuestionSet(obj: ObjectData, identifier: String): List[String] = {
 		val messages = ListBuffer[String]()
@@ -162,5 +162,7 @@ trait QuestionSetPublisher extends ObjectReader with ObjectValidator with Object
 			newObject.metadata ++ Map("index" -> element.getOrElse("index", 0).asInstanceOf[AnyRef], "parent" -> element.getOrElse("parent", ""), "depth" -> element.getOrElse("depth", 0).asInstanceOf[AnyRef])
 		} else Map()
 	}
+
+	override def deleteExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil) = None
 
 }
