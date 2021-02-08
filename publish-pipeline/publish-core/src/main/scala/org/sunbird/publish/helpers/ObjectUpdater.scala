@@ -2,7 +2,7 @@ package org.sunbird.publish.helpers
 
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
-import org.sunbird.job.util.{CassandraUtil, JSONUtil, Neo4JUtil}
+import org.sunbird.job.util.{CassandraUtil, JSONUtil, Neo4JUtil, ScalaJsonUtil}
 import org.sunbird.publish.core.{ExtDataConfig, ObjectData}
 import java.text.SimpleDateFormat
 import java.util
@@ -27,12 +27,15 @@ trait ObjectUpdater {
     if (!StringUtils.equalsIgnoreCase(editId, identifier)) {
       val imgNodeDelQuery = s"""MATCH (n:domain{IL_UNIQUE_ID:"$editId"}) DETACH DELETE n;"""
       neo4JUtil.executeQuery(imgNodeDelQuery)
+      deleteExternalData(obj, readerConfig);
     }
     neo4JUtil.executeQuery(query)
     saveExternalData(obj, readerConfig)
   }
 
   def saveExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil)
+
+  def deleteExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil)
 
   @throws[Exception]
   def saveOnFailure(obj: ObjectData, messages: List[String])(implicit neo4JUtil: Neo4JUtil): Unit = {
@@ -52,6 +55,8 @@ trait ObjectUpdater {
       else value match {
         case _: String =>
           s"""n.$key="$value""""
+        case _: List[String] =>
+          s"""n.$key=${ScalaJsonUtil.serialize(value)}"""
         case _ =>
           val strValue = JSONUtil.serialize(value)
           s"""n.$key=$strValue"""

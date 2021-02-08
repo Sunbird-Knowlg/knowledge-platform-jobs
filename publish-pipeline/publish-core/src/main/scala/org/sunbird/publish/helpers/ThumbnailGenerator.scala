@@ -29,7 +29,7 @@ trait ThumbnailGenerator {
 					outFile match {
 						case Some(file: File) => {
 							val urlArray: Array[String] = cloudStorageUtil.uploadFile(getUploadFolderName(obj.identifier, ARTIFACT_FOLDER), file, Some(true))
-							Some(new ObjectData(obj.identifier, obj.metadata ++ Map("appIcon" -> urlArray(1), "posterImage" -> appIcon)))
+							Some(new ObjectData(obj.identifier, obj.metadata ++ Map("appIcon" -> urlArray(1), "posterImage" -> appIcon), obj.extData, obj.hierarchy))
 						}
 						case _ => {
 							logger.error("Thubnail Could Not Be Generated For :" + obj.identifier)

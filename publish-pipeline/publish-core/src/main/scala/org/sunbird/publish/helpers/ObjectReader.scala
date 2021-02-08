@@ -13,7 +13,7 @@ trait ObjectReader {
   def getObject(identifier: String, pkgVersion: Double, readerConfig: ExtDataConfig)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil): ObjectData = {
     logger.info("Reading editable object data for: " + identifier + " with pkgVersion: " + pkgVersion)
     val metadata = getMetadata(identifier, pkgVersion)
-    val extData = getExtData(identifier, readerConfig)
+    val extData = getExtData(identifier, pkgVersion, readerConfig)
     val hierarchy = getHierarchy(identifier, readerConfig)
     new ObjectData(identifier, metadata, extData, hierarchy)
   }
@@ -23,7 +23,7 @@ trait ObjectReader {
     Option(neo4JUtil.getNodeProperties(nodeId)).getOrElse(neo4JUtil.getNodeProperties(identifier)).asScala.toMap
   }
 
-  def getExtData(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]]
+  def getExtData(identifier: String, pkgVersion: Double, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]]
 
   def getHierarchy(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]]
 

@@ -51,5 +51,7 @@ class ObjectUpdaterSpec extends FlatSpec with BeforeAndAfterAll with Matchers wi
 
 class TestObjectUpdater extends ObjectUpdater {
   override def saveExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Unit = None
+
+  override def deleteExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Unit = None
 }
 
