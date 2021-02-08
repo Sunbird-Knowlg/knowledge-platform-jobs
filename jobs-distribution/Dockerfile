@@ -1,4 +1,4 @@
-FROM anandp504/flink:1.10.1-scala_2.12
+FROM anandp504/flink:1.12.0-scala_2.12-java11
 COPY target/jobs-distribution-1.0.tar.gz /tmp
 USER flink
 RUN tar -xvf /tmp/jobs-distribution-1.0.tar.gz -C $FLINK_HOME/lib/

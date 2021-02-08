@@ -13,10 +13,12 @@ import org.sunbird.job.publish.helpers.QuestionPublisher
 import org.sunbird.job.task.QuestionSetPublishConfig
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
 import org.sunbird.publish.core.ExtDataConfig
+import org.sunbird.publish.util.CloudStorageUtil
 
 class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUtil,
                               @transient var neo4JUtil: Neo4JUtil = null,
-                              @transient var cassandraUtil: CassandraUtil = null)
+                              @transient var cassandraUtil: CassandraUtil = null,
+                              @transient var cloudStorageUtil: CloudStorageUtil = null)
                              (implicit val stringTypeInfo: TypeInformation[String])
   extends BaseProcessFunction[PublishMetadata, String](config) with QuestionPublisher {
 
@@ -28,6 +30,7 @@ class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUt
 		super.open(parameters)
 		cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort)
 		neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName)
+		cloudStorageUtil = new CloudStorageUtil(config)
 	}
 
 	override def close(): Unit = {
@@ -36,19 +39,23 @@ class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUt
 	}
 
 	override def metricsList(): List[String] = {
-		List(config.questionPublishEventCount)
+		List(config.totalEventsCount, config.questionPublishEventCount, config.successEventCount, config.failedEventCount)
 	}
 
 	override def processElement(data: PublishMetadata, context: ProcessFunction[PublishMetadata, String]#Context, metrics: Metrics): Unit = {
+		metrics.incCounter(config.totalEventsCount)
 		logger.info("Question publishing started for : " + data.identifier)
 		val obj = getObject(data.identifier, data.pkgVersion, readerConfig)(neo4JUtil, cassandraUtil)
 		val messages:List[String] = validate(obj, obj.identifier, validateQuestion)
 		if (messages.isEmpty) {
-			val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig)
-			saveOnSuccess(enrichedObj, dummyFunc)(neo4JUtil)
+			val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil)
+			saveOnSuccess(enrichedObj)(neo4JUtil, cassandraUtil, readerConfig)
+			metrics.incCounter(config.questionPublishEventCount)
+			metrics.incCounter(config.successEventCount)
 			logger.info("Question publishing completed successfully for : " + data.identifier)
 		} else {
 			saveOnFailure(obj, messages)(neo4JUtil)
+			metrics.incCounter(config.failedEventCount)
 			logger.info("Question publishing failed for : " + data.identifier)
 		}
 	}
