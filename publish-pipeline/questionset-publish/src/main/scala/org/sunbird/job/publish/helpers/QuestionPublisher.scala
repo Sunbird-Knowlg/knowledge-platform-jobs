@@ -2,6 +2,7 @@ package org.sunbird.job.publish.helpers
 
 import java.util
 
+import com.datastax.driver.core.Row
 import com.datastax.driver.core.querybuilder.{QueryBuilder, Select, Update}
 import org.apache.commons.lang3
 import org.slf4j.LoggerFactory
@@ -30,8 +31,8 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
 		//TODO: Remove Below logger statement
 		logger.info("Question External Data : " + obj.extData.get)
 		val messages = ListBuffer[String]()
-		if (obj.extData.get.getOrElse("body", "").asInstanceOf[String].isEmpty) messages += s"""There is no body available for : $identifier"""
-		if (obj.extData.get.getOrElse("editorState", "").asInstanceOf[String].isEmpty) messages += s"""There is no editorState available for : $identifier"""
+		if (obj.extData.getOrElse(Map()).getOrElse("body", "").asInstanceOf[String].isEmpty) messages += s"""There is no body available for : $identifier"""
+		if (obj.extData.getOrElse(Map()).getOrElse("editorState", "").asInstanceOf[String].isEmpty) messages += s"""There is no editorState available for : $identifier"""
 		val interactionTypes = obj.metadata.getOrElse("interactionTypes", new util.ArrayList[String]()).asInstanceOf[util.List[String]].asScala.toList
 		interactionTypes.nonEmpty match {
 			case true => {
@@ -44,20 +45,17 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
 	}
 
 	override def getExtData(identifier: String,pkgVersion: Double, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = {
-		val row = getQuestionData(getEditableObjId(identifier, pkgVersion), readerConfig)(cassandraUtil)
-		//TODO: covert below code in scala. entrire props should be in scala.
-		if (null != row) Option(extProps.map(prop => prop -> row.getString(prop)).toMap) else {
-			val row = getQuestionData(identifier, readerConfig)(cassandraUtil)
-			if (null != row) Option(extProps.map(prop => prop -> row.getString(prop)).toMap) else Option(Map[String, AnyRef]())
-		}
+		val row: Row = getQuestionData(getEditableObjId(identifier, pkgVersion), readerConfig).getOrElse(getQuestionData(identifier, readerConfig))
+		//TODO: covert below code in scala. entire props should be in scala.
+		if (null != row) Option(extProps.map(prop => prop -> row.getString(prop)).toMap) else Option(Map[String, AnyRef]())
 	}
 
-	def getQuestionData(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil) = {
+	def getQuestionData(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Row] = {
+		logger.info("QuestionPublisher ::: getQuestionData ::: Reading Question External Data For : "+identifier)
 		val select = QueryBuilder.select()
 		extProps.foreach(prop => if (lang3.StringUtils.equals("body", prop) | lang3.StringUtils.equals("answer", prop)) select.fcall("blobAsText", QueryBuilder.column(prop)).as(prop) else select.column(prop).as(prop))
-		val selectWhere: Select.Where = select.from(readerConfig.keyspace, readerConfig.table).where()
-		selectWhere.and(QueryBuilder.eq("identifier", identifier))
-		cassandraUtil.findOne(selectWhere.toString)
+		val selectWhere: Select.Where = select.from(readerConfig.keyspace, readerConfig.table).where().and(QueryBuilder.eq("identifier", identifier))
+		Option(cassandraUtil.findOne(selectWhere.toString))
 	}
 
 	def dummyFunc = (obj: ObjectData, readerConfig: ExtDataConfig) => {}
