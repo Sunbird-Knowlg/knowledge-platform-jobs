@@ -30,6 +30,7 @@ class PublishEventRouter(config: QuestionSetPublishConfig) extends BaseProcessFu
 
 	override def processElement(event: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
 		if (event.validEvent()) {
+			logger.info("PublishEventRouter :: Event: " + event)
 			event.objectType match {
 				case "Question" | "QuestionImage" => {
 					logger.info("PublishEventRouter :: Sending Question For Publish Having Identifier: " + event.objectId)
