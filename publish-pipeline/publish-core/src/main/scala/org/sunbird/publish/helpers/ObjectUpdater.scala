@@ -8,6 +8,8 @@ import java.text.SimpleDateFormat
 import java.util
 import java.util.Date
 
+import org.neo4j.driver.v1.StatementResult
+
 trait ObjectUpdater {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[ObjectUpdater])
@@ -29,7 +31,9 @@ trait ObjectUpdater {
       neo4JUtil.executeQuery(imgNodeDelQuery)
       deleteExternalData(obj, readerConfig);
     }
-    neo4JUtil.executeQuery(query)
+    val result: StatementResult = neo4JUtil.executeQuery(query)
+    if (null != result && result.hasNext)
+      logger.info(s"statement result : ${result.next().asMap()}")
     saveExternalData(obj, readerConfig)
   }
 
