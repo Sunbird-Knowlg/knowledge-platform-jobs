@@ -59,12 +59,15 @@ trait ObjectUpdater {
           s"""n.$key=${ScalaJsonUtil.serialize(value)}"""
         case _: util.Map[String, AnyRef] =>
           val strValue = JSONUtil.serialize(JSONUtil.serialize(value))
+          logger.info(s"**value for $key : $strValue")
           s"""n.$key=$strValue"""
         case _: Map[String, AnyRef] =>
           val strValue = JSONUtil.serialize(ScalaJsonUtil.serialize(value))
+          logger.info(s"##value for $key : $strValue")
           s"""n.$key=$strValue"""
         case _ =>
           val strValue = JSONUtil.serialize(value)
+          logger.info(s"~~value for $key : $strValue")
           s"""n.$key=$strValue"""
       }
     }).mkString(",")

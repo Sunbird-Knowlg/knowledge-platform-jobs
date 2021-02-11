@@ -14,7 +14,7 @@ trait ObjectReader {
     logger.info("Reading editable object data for: " + identifier + " with pkgVersion: " + pkgVersion)
     val metadata = getMetadata(identifier, pkgVersion)
     val extData = getExtData(identifier, pkgVersion, readerConfig)
-    val hierarchy = getHierarchy(identifier, readerConfig)
+    val hierarchy = getHierarchy(identifier, pkgVersion, readerConfig)
     new ObjectData(identifier, metadata, extData, hierarchy)
   }
 
@@ -25,7 +25,7 @@ trait ObjectReader {
 
   def getExtData(identifier: String, pkgVersion: Double, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]]
 
-  def getHierarchy(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]]
+  def getHierarchy(identifier: String, pkgVersion: Double, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]]
 
   def getEditableObjId(identifier: String, pkgVersion: Double): String = {
     if (pkgVersion > 0) identifier + ".img" else identifier

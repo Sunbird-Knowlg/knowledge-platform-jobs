@@ -99,6 +99,7 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 		children.foreach(q => {
 			val id = q.identifier.replace(".img", "")
 			val obj = getObject(id, 0, readerConfig)(neo4JUtil, cassandraUtil)
+			logger.info(s"question metadata for $id : ${obj.metadata}")
 			if (!List("Live", "Unlisted").contains(obj.metadata.getOrElse("status", "").asInstanceOf[String])) {
 				logger.info("Question publishing failed for : " + id)
 				messages += s"""Question publishing failed for : $id"""
