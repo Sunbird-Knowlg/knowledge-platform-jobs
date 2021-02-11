@@ -115,14 +115,14 @@ class VideoStreamService(implicit config: VideoStreamGeneratorConfig, httpUtil: 
     if(streamingUrl.nonEmpty && contentId.nonEmpty) {
       val requestBody = "{\"request\": {\"content\": {\"streamingUrl\":\""+ streamingUrl +"\"}}}"
       val url = config.lpURL + config.contentV3Update + contentId
-      val headers = Map[String, String]("X-Channel-Id" -> channel)
+      val headers = Map[String, String]("X-Channel-Id" -> channel, "Content-Type"->"application/json")
       val response:HTTPResponse = httpUtil.patch(url, requestBody, headers)
 
       if(response.status == 200){
         true;
       } else {
-        logger.error("Error while updating previewUrl for content : " + contentId , Option(response.body))
-        throw new Exception("Error while updating previewUrl for content : " + contentId)
+        logger.error("Error while updating previewUrl for content : " + contentId + "::"+response.body)
+        throw new Exception("Error while updating previewUrl for content : " + contentId + "::"+response.body)
       }
     }else{
       false
