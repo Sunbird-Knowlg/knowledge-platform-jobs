@@ -84,7 +84,7 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 				saveOnSuccess(updatedObj)(neo4JUtil, cassandraUtil, readerConfig)
 				logger.info("QuestionSet publishing completed successfully for : " + data.identifier)
 			} else {
-				saveOnFailure(obj, messages)(neo4JUtil)
+				saveOnFailure(obj, pubMsgs)(neo4JUtil)
 				logger.info("QuestionSet publishing failed for : " + data.identifier)
 			}
 		} else {
