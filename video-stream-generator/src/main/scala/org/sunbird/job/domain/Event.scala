@@ -19,7 +19,7 @@ class Event(eventMap: java.util.Map[String, Any]) extends JobRequest(eventMap) {
 
   def identifier: String = readOrDefault[String]("edata.identifier", "")
 
-  def eData: Map[String, AnyRef] = readOrDefault("edata", new util.HashMap[String, AnyRef]()).asScala.toMap
+  def eData: Map[String, AnyRef] = readOrDefault("edata", new util.HashMap[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
 
   def isValid: Boolean = {
     StringUtils.isNotBlank(artifactUrl) &&

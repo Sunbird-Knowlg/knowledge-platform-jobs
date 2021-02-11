@@ -22,11 +22,14 @@ class VideoStreamGeneratorStreamTask(config: VideoStreamGeneratorConfig, kafkaCo
     implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
 
-    env.addSource(kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)).name(config.videoStreamConsumer)
+    val source = kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)
+    val processStreamTask = env.addSource(source).name(config.videoStreamConsumer)
       .uid(config.videoStreamConsumer).setParallelism(config.kafkaConsumerParallelism)
       .rebalance
       .process(new VideoStreamGenerator(config, httpUtil))
-      .getSideOutput(config.videoStreamJobOutput)
+      .setParallelism(config.kafkaConsumerParallelism)
+
+    processStreamTask.getSideOutput(config.videoStreamJobOutput)
       .keyBy(x => x)
       .timeWindow(Time.seconds(config.windowTime))
       .process(new VideoStreamUrlUpdator(config, httpUtil))

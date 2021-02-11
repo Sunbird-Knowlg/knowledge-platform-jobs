@@ -2,7 +2,6 @@ package org.sunbird.job.spec
 
 import java.util
 import com.datastax.driver.core.Row
-import com.google.gson.Gson
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
@@ -36,7 +35,6 @@ class VideoStreamGeneratorTaskTestSpec extends BaseTestSpec {
     .setNumberTaskManagers(1)
     .build)
   val mockKafkaUtil: FlinkKafkaConnector = mock[FlinkKafkaConnector](Mockito.withSettings().serializable())
-  val gson = new Gson()
   val mediaService: IMediaService = mock[IMediaService](Mockito.withSettings().serializable())
   val config: Config = ConfigFactory.load("test.conf")
   val jobConfig: VideoStreamGeneratorConfig = new VideoStreamGeneratorConfig(config)
@@ -122,11 +120,8 @@ class VideoStreamGeneratorTaskTestSpec extends BaseTestSpec {
 class VideoStreamGeneratorMapSource extends SourceFunction[Event] {
 
   override def run(ctx: SourceContext[Event]) {
-    val gson = new Gson()
-    val event = gson.fromJson(EventFixture.EVENT_1, new util.LinkedHashMap[String, Any]().getClass).asInstanceOf[util.Map[String, Any]].asScala ++ Map("partition" -> 0.asInstanceOf[Any])
-    val event2 = gson.fromJson(EventFixture.EVENT_2, new util.LinkedHashMap[String, Any]().getClass).asInstanceOf[util.Map[String, Any]].asScala ++ Map("partition" -> 0.asInstanceOf[Any])
-    ctx.collect(new Event(event.asJava))
-    ctx.collect(new Event(event2.asJava))
+    ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_1)))
+    ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_2)))
 
   }
 

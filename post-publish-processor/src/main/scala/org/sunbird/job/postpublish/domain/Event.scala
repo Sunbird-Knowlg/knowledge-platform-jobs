@@ -15,7 +15,7 @@ class Event(eventMap: java.util.Map[String, Any]) extends JobRequest(eventMap) {
 
   def collectionId: String = readOrDefault[String]("edata.identifier", "")
 
-  def eData: Map[String, AnyRef] = readOrDefault("edata", new util.HashMap[String, AnyRef]()).asScala.toMap
+  def eData: Map[String, AnyRef] = readOrDefault("edata", new util.HashMap[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
 
   def validEvent(): Boolean = {
     StringUtils.equals("post-publish-process", action) &&

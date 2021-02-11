@@ -2,7 +2,6 @@ package org.sunbird.job.spec.service
 
 import java.util
 import com.datastax.driver.core.Row
-import com.google.gson.Gson
 import com.typesafe.config.{Config, ConfigFactory}
 import org.cassandraunit.CQLDataLoader
 import org.cassandraunit.dataset.cql.FileCQLDataSet
@@ -20,7 +19,6 @@ import org.sunbird.job.domain.Event
 import org.sunbird.job.Metrics
 
 class VideoStreamServiceTestSpec extends BaseTestSpec {
-  val gson = new Gson()
   var cassandraUtil: CassandraUtil = _
   val config: Config = ConfigFactory.load("test.conf")
   lazy val jobConfig: VideoStreamGeneratorConfig = new VideoStreamGeneratorConfig(config)
@@ -70,7 +68,7 @@ class VideoStreamServiceTestSpec extends BaseTestSpec {
     when(mockHttpUtil.patch(contains(jobConfig.contentV3Update), any(), any())).thenReturn(HTTPResponse(200, getJobJson))
     doNothing().when(mockMetrics).incCounter(any())
 
-    val eventMap1 = new Event(gson.fromJson(EventFixture.EVENT_1, new util.LinkedHashMap[String, Any]().getClass).asInstanceOf[util.Map[String, Any]])
+    val eventMap1 = new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_1))
 
     val videoStreamService = new VideoStreamService()(jobConfig, mockHttpUtil);
     videoStreamService.submitJobRequest(eventMap1.eData)
