@@ -49,7 +49,7 @@ class VideoStreamService(implicit config: VideoStreamGeneratorConfig, httpUtil: 
       val iteration = jobRequest.iteration
       if (jobRequest.job_id != None) {
         val mediaResponse:MediaResponse = mediaService.getJob(jobRequest.job_id.get)
-        logger.info("Get job details while saving.", Option(mediaResponse))
+        logger.info("Get job details while saving.::"+JSONUtil.serialize(mediaResponse.result))
         if(mediaResponse.responseCode.contentEquals("OK")) {
           val jobStatus = mediaResponse.result.getOrElse("job", Map()).asInstanceOf[Map[String, AnyRef]].getOrElse("status","").asInstanceOf[String];
 

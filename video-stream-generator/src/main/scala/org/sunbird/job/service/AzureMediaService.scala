@@ -1,11 +1,10 @@
 package org.sunbird.job.service
 
 import java.io.File
-
 import org.apache.commons.lang3.StringUtils
 import org.sunbird.job.exception.MediaServiceException
 import org.sunbird.job.task.VideoStreamGeneratorConfig
-import org.sunbird.job.util.HttpUtil
+import org.sunbird.job.util.{HttpUtil, JSONUtil}
 import org.sunbird.job.helpers.{AzureRequestBody, MediaResponse, Response}
 
 import scala.collection.immutable.HashMap
@@ -37,7 +36,7 @@ abstract class AzureMediaService extends IMediaService {
     if(response.responseCode == "OK"){
       response.result("access_token").asInstanceOf[String]
     } else {
-      throw new Exception("Error while getting the azure access token")
+      throw new Exception("Error while getting the azure access token::"+JSONUtil.serialize(response))
     }
   }
 
@@ -47,7 +46,7 @@ abstract class AzureMediaService extends IMediaService {
     if(response.responseCode == "OK"){
       response
     } else {
-      throw new Exception("Error while getting the azure access token")
+      throw new Exception("Error while getting the job detail::"+JSONUtil.serialize(response))
     }
   }
 
@@ -59,7 +58,7 @@ abstract class AzureMediaService extends IMediaService {
     if(response.responseCode == "OK"){
       response
     } else {
-      throw new Exception("Error while creating asset::(assetId->"+assetId+", jobId->"+jobId+")")
+      throw new Exception("Error while creating asset::(assetId->"+assetId+", jobId->"+jobId+")::"+JSONUtil.serialize(response))
     }
   }
 
@@ -76,7 +75,7 @@ abstract class AzureMediaService extends IMediaService {
     if(response.responseCode == "OK"){
       response
     } else {
-      throw new Exception("Error while getStreamingLocator::(streamingLocatorName->" + streamingLocatorName + ")")
+      throw new Exception("Error while getStreamingLocator::(streamingLocatorName->" + streamingLocatorName + ")::"+JSONUtil.serialize(response))
     }
   }
 
@@ -86,7 +85,7 @@ abstract class AzureMediaService extends IMediaService {
     if(response.responseCode == "OK"){
       response
     } else {
-      throw new Exception("Error while getStreamUrls::(streamingLocatorName->" + streamingLocatorName + ")")
+      throw new Exception("Error while getStreamUrls::(streamingLocatorName->" + streamingLocatorName + ")::"+JSONUtil.serialize(response))
     }
   }
 
