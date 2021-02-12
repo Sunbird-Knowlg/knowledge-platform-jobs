@@ -38,7 +38,12 @@
             <version>1.0.0</version>
             <type>jar</type>
         </dependency>
-        
+        <dependency>
+            <groupId>org.sunbird</groupId>
+            <artifactId>video-stream-generator</artifactId>
+            <version>1.0.0</version>
+            <type>jar</type>
+        </dependency>
     </dependencies>
 
     <build>

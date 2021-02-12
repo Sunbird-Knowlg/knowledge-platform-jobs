@@ -7,7 +7,7 @@ import org.apache.flink.api.scala.metrics.ScalaGauge
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.apache.flink.streaming.api.scala.function.ProcessWindowFunction
-import org.apache.flink.streaming.api.windowing.windows.GlobalWindow
+import org.apache.flink.streaming.api.windowing.windows.{GlobalWindow, TimeWindow}
 import org.apache.flink.util.Collector
 
 case class Metrics(metrics: ConcurrentHashMap[String, AtomicLong]) {
@@ -65,6 +65,28 @@ abstract class WindowBaseProcessFunction[I, O, K](config: BaseJobConfig) extends
 
   def process(key: K,
               context: ProcessWindowFunction[I, O, K, GlobalWindow]#Context,
+              elements: Iterable[I],
+              metrics: Metrics): Unit
+
+  override def process(key: K, context: Context, elements: Iterable[I], out: Collector[O]): Unit = {
+    process(key, context, elements, metrics)
+  }
+}
+
+abstract class TimeWindowBaseProcessFunction[I, O, K](config: BaseJobConfig) extends ProcessWindowFunction[I, O, K, TimeWindow] with JobMetrics {
+  private val metrics: Metrics = registerMetrics(metricsList())
+
+  override def open(parameters: Configuration): Unit = {
+    metricsList().map { metric =>
+      getRuntimeContext.getMetricGroup.addGroup(config.jobName)
+        .gauge[Long, ScalaGauge[Long]](metric, ScalaGauge[Long](() => metrics.getAndReset(metric)))
+    }
+  }
+
+  def metricsList(): List[String]
+
+  def process(key: K,
+              context: ProcessWindowFunction[I, O, K, TimeWindow]#Context,
               elements: Iterable[I],
               metrics: Metrics): Unit
 
