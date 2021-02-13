@@ -2,7 +2,8 @@ package org.sunbird.job.publish.helpers.spec
 
 import java.util
 
-import org.mockito.Mockito
+import org.mockito.Mockito.when
+import org.mockito.{ArgumentMatchers, Mockito}
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
 import org.sunbird.job.publish.helpers.QuestionPublisher
@@ -26,25 +27,25 @@ class QuestionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matcher
 
 	"enrichObjectMetadata" should "enrich the Question pkgVersion metadata" in {
 		val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef]))
-		val obj = new TestQuestionPublisher()
-		val result: ObjectData = obj.enrichObjectMetadata(data).getOrElse(data)
+		val result: ObjectData = new TestQuestionPublisher().enrichObjectMetadata(data).getOrElse(data)
 		result.metadata.getOrElse("pkgVersion", 0.0.asInstanceOf[Number]).asInstanceOf[Number] should be(1.0.asInstanceOf[Number])
 	}
 	"validateQuestion with invalid external data" should "return exception messages" in {
-		val metadata: Map[String, AnyRef] = Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef])
-		val extData: Map[String, AnyRef] = Map[String, AnyRef]("body" -> "body")
-		val data = new ObjectData("do_123", metadata, Some(extData))
-		val obj = new TestQuestionPublisher()
-		val result: List[String] = obj.validateQuestion(data, data.identifier)
+		val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef]), Some(Map[String, AnyRef]("body" -> "body")))
+		val result: List[String] = new TestQuestionPublisher().validateQuestion(data, data.identifier)
 		result.size should be(2)
 	}
 
 	"validateQuestion with external data having interaction" should "validate the Question external data" in {
-		val metadata: Map[String, AnyRef] = Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "interactionTypes" -> new util.ArrayList[String]() {add("choice")})
-		val extData: Map[String, AnyRef] = Map[String, AnyRef]("body" -> "body", "answer" -> "answer")
-		val data = new ObjectData("do_123", metadata, Some(extData))
+		val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "interactionTypes" -> new util.ArrayList[String]() {add("choice")}), Some(Map[String, AnyRef]("body" -> "body", "answer" -> "answer")))
 		val result: List[String] = new TestQuestionPublisher().validateQuestion(data, data.identifier)
 		result.size should be(3)
+	}
+
+	"saveExternalData " should "save external data to cassandra table" in {
+		val data = new ObjectData("do_123", Map[String, AnyRef](), Some(Map[String, AnyRef]("body" -> "body", "answer" -> "answer")))
+		when(mockCassandraUtil.upsert(ArgumentMatchers.anyString())).thenReturn(true)
+		new TestQuestionPublisher().saveExternalData(data, mockExtDataConfig)
 	}
 
 }
