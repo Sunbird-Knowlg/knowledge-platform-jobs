@@ -20,6 +20,7 @@ import org.sunbird.publish.util.CloudStorageUtil
 
 import scala.concurrent.ExecutionContext
 import scala.collection.JavaConverters._
+import scala.collection.mutable.ListBuffer
 
 class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUtil,
                                  @transient var neo4JUtil: Neo4JUtil = null,
@@ -69,21 +70,42 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 			childQuestions.foreach(ch => logger.info("child questions visibility parent identifier : " + ch.identifier))
 			// Publish Child Questions
 			QuestionPublishUtil.publishQuestions(obj.identifier, childQuestions)(neo4JUtil, cassandraUtil, qReaderConfig, cloudStorageUtil)
-			// Enrich Object as well as hierarchy
-			val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil)
-			logger.info(s"processElement ::: object enrichment done for ${obj.identifier}")
-			logger.info("processElement :::  obj metadata post enrichment :: " + ScalaJsonUtil.serialize(enrichedObj.metadata))
-			logger.info("processElement :::  obj hierarchy post enrichment :: " + ScalaJsonUtil.serialize(enrichedObj.hierarchy.get))
-			// Generate ECAR
-			val objWithEcar = generateECAR(enrichedObj, pkgTypes)(ec, cloudStorageUtil)
-			// Generate PDF URL
-			val updatedObj = generatePreviewUrl(objWithEcar, qList)(httpUtil, cloudStorageUtil)
-			saveOnSuccess(updatedObj)(neo4JUtil, cassandraUtil, readerConfig)
-			logger.info("QuestionSet publishing completed successfully for : " + data.identifier)
+			val pubMsgs: List[String] = isChildrenPublished(childQuestions)
+			if(pubMsgs.isEmpty) {
+				// Enrich Object as well as hierarchy
+				val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil)
+				logger.info(s"processElement ::: object enrichment done for ${obj.identifier}")
+				logger.info("processElement :::  obj metadata post enrichment :: " + ScalaJsonUtil.serialize(enrichedObj.metadata))
+				logger.info("processElement :::  obj hierarchy post enrichment :: " + ScalaJsonUtil.serialize(enrichedObj.hierarchy.get))
+				// Generate ECAR
+				val objWithEcar = generateECAR(enrichedObj, pkgTypes)(ec, cloudStorageUtil)
+				// Generate PDF URL
+				val updatedObj = generatePreviewUrl(objWithEcar, qList)(httpUtil, cloudStorageUtil)
+				saveOnSuccess(updatedObj)(neo4JUtil, cassandraUtil, readerConfig)
+				logger.info("QuestionSet publishing completed successfully for : " + data.identifier)
+			} else {
+				saveOnFailure(obj, pubMsgs)(neo4JUtil)
+				logger.info("QuestionSet publishing failed for : " + data.identifier)
+			}
 		} else {
 			saveOnFailure(obj, messages)(neo4JUtil)
 			logger.info("QuestionSet publishing failed for : " + data.identifier)
 		}
+	}
+
+	//TODO: Implement Multiple Data Read From Neo4j and Use it here.
+	def isChildrenPublished(children: List[ObjectData]): List[String] = {
+		val messages = ListBuffer[String]()
+		children.foreach(q => {
+			val id = q.identifier.replace(".img", "")
+			val obj = getObject(id, 0, readerConfig)(neo4JUtil, cassandraUtil)
+			logger.info(s"question metadata for $id : ${obj.metadata}")
+			if (!List("Live", "Unlisted").contains(obj.metadata.getOrElse("status", "").asInstanceOf[String])) {
+				logger.info("Question publishing failed for : " + id)
+				messages += s"""Question publishing failed for : $id"""
+			}
+		})
+		messages.toList
 	}
 
 

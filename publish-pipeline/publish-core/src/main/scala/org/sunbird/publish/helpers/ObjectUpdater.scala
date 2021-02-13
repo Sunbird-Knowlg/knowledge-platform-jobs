@@ -8,6 +8,8 @@ import java.text.SimpleDateFormat
 import java.util
 import java.util.Date
 
+import org.neo4j.driver.v1.StatementResult
+
 trait ObjectUpdater {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[ObjectUpdater])
@@ -19,17 +21,19 @@ trait ObjectUpdater {
     val editId = obj.dbId
     val identifier = obj.identifier
     // TODO: Need to handle strnigified json separately. e.g: variants, originData
-    val variantsData: java.util.Map[String, String] = obj.metadata.getOrElse("variants", new util.HashMap()).asInstanceOf[java.util.Map[String, String]]
-    val variants = if(variantsData.isEmpty) null else JSONUtil.serialize(JSONUtil.serialize(variantsData))
+    //val variantsData: java.util.Map[String, String] = obj.metadata.getOrElse("variants", new util.HashMap()).asInstanceOf[java.util.Map[String, String]]
+    //val variants = if(variantsData.isEmpty) null else JSONUtil.serialize(JSONUtil.serialize(variantsData))
     val metadataUpdateQuery = metaDataQuery(obj)
-    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$identifier"}) SET n.status="$status",n.pkgVersion=${obj.pkgVersion},n.variants=$variants,$metadataUpdateQuery,$auditPropsUpdateQuery;"""
+    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$identifier"}) SET n.status="$status",n.pkgVersion=${obj.pkgVersion},$metadataUpdateQuery,$auditPropsUpdateQuery;"""
     logger.info("Query: " + query)
     if (!StringUtils.equalsIgnoreCase(editId, identifier)) {
       val imgNodeDelQuery = s"""MATCH (n:domain{IL_UNIQUE_ID:"$editId"}) DETACH DELETE n;"""
       neo4JUtil.executeQuery(imgNodeDelQuery)
       deleteExternalData(obj, readerConfig);
     }
-    neo4JUtil.executeQuery(query)
+    val result: StatementResult = neo4JUtil.executeQuery(query)
+    if (null != result && result.hasNext)
+      logger.info(s"statement result : ${result.next().asMap()}")
     saveExternalData(obj, readerConfig)
   }
 
@@ -47,7 +51,7 @@ trait ObjectUpdater {
   }
 
   def metaDataQuery(obj: ObjectData): String = {
-    val metadata = obj.metadata - ("IL_UNIQUE_ID", "identifier", "IL_FUNC_OBJECT_TYPE", "IL_SYS_NODE_TYPE", "pkgVersion", "lastStatusChangedOn", "lastUpdatedOn", "status", "objectType", "variants")
+    val metadata = obj.metadata - ("IL_UNIQUE_ID", "identifier", "IL_FUNC_OBJECT_TYPE", "IL_SYS_NODE_TYPE", "pkgVersion", "lastStatusChangedOn", "lastUpdatedOn", "status", "objectType")
     metadata.map(prop => {
       val key = prop._1
       val value = prop._2
@@ -57,8 +61,17 @@ trait ObjectUpdater {
           s"""n.$key="$value""""
         case _: List[String] =>
           s"""n.$key=${ScalaJsonUtil.serialize(value)}"""
+        case _: util.Map[String, AnyRef] =>
+          val strValue = JSONUtil.serialize(JSONUtil.serialize(value))
+          logger.info(s"**value for $key : $strValue")
+          s"""n.$key=$strValue"""
+        case _: Map[String, AnyRef] =>
+          val strValue = JSONUtil.serialize(ScalaJsonUtil.serialize(value))
+          logger.info(s"##value for $key : $strValue")
+          s"""n.$key=$strValue"""
         case _ =>
           val strValue = JSONUtil.serialize(value)
+          logger.info(s"~~value for $key : $strValue")
           s"""n.$key=$strValue"""
       }
     }).mkString(",")
