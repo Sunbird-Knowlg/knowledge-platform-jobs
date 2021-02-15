@@ -32,7 +32,7 @@ class PostPublishProcessorStreamTask(config: PostPublishProcessorConfig, kafkaCo
 
     processStreamTask.getSideOutput(config.batchCreateOutTag).process(new BatchCreateFunction(config, httpUtil))
       .name("batch-create-process").uid("batch-create-process").setParallelism(1)
-    processStreamTask.getSideOutput(config.linkDIALCodeOutTag).process(new DIALCodeLinkFunction(config, httpUtil))
+    val linkDialCodeStream = processStreamTask.getSideOutput(config.linkDIALCodeOutTag).process(new DIALCodeLinkFunction(config, httpUtil))
       .name("dialcode-link-process").uid("dialcode-link-process").setParallelism(1)
     val shallowCopyPublishStream = processStreamTask.getSideOutput(config.shallowContentPublishOutTag)
       .process(new ShallowCopyPublishFunction(config))
@@ -41,7 +41,7 @@ class PostPublishProcessorStreamTask(config: PostPublishProcessorConfig, kafkaCo
 
     shallowCopyPublishStream.getSideOutput(config.publishEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.contentPublishTopic))
       .name("shallow-content-publish-producer").uid("shallow-content-publish-producer")
-
+    linkDialCodeStream.getSideOutput(config.generateQRImageOutTag).addSink(kafkaConnector.kafkaStringSink(config.QRImageGeneratorTopic))
     env.execute(config.jobName)
   }
 }

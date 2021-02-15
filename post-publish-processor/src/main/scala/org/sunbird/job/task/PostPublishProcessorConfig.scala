@@ -35,7 +35,7 @@ class PostPublishProcessorConfig(override val config: Config) extends PostPublis
   val shallowCopyPublishEventCount = "shallow-copy-publish-events-count"
   val batchCreationCount = "batch-creation-count"
   val dialLinkingCount = "dial-linking-count"
-
+  val qrImageGeneratorEventCount = "qr-image-event-count"
 
   // Cassandra Configurations
   val dbHost: String = config.getString("lms-cassandra.host")
@@ -55,7 +55,7 @@ class PostPublishProcessorConfig(override val config: Config) extends PostPublis
   val linkDIALCodeOutTag: OutputTag[java.util.Map[String, AnyRef]] = OutputTag[java.util.Map[String, AnyRef]]("dialcode-link")
   val shallowContentPublishOutTag: OutputTag[PublishMetadata] = OutputTag[PublishMetadata]("shallow-copied-content-publish")
   val publishEventOutTag: OutputTag[String] = OutputTag[String]("content-publish-request")
-
+  val generateQRImageOutTag: OutputTag[String] = OutputTag[String]("qr-image-generator-request")
 
   val searchBaseUrl = config.getString("service.search.basePath")
   val lmsBaseUrl = config.getString("service.lms.basePath")
@@ -64,5 +64,7 @@ class PostPublishProcessorConfig(override val config: Config) extends PostPublis
   val batchCreateAPIPath = lmsBaseUrl + "/private/v1/course/batch/create"
   val searchAPIPath = searchBaseUrl + "/v3/search"
 
-
+  // QR Image Generator
+  val QRImageGeneratorTopic: String = config.getString("kafka.qrimage.topic")
+  val contentTypes: List[String] = List[String]("Course")
 }

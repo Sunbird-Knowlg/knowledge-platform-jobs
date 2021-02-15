@@ -1,6 +1,6 @@
 package org.sunbird.job.util
 
-import org.neo4j.driver.v1.{Config, GraphDatabase, StatementResult}
+import org.neo4j.driver.v1.{Config, GraphDatabase}
 import org.slf4j.LoggerFactory
 
 
@@ -37,7 +37,7 @@ class Neo4JUtil(routePath: String, graphId: String) {
   }
 
   def updateNodeProperty(identifier: String, key: String, value: String): Unit = {
-    val query = s"""MATCH (n:$graphId {IL_UNIQUE_ID:"$identifier"}) SET n.$key=["$value"];"""
+    val query = s"""MATCH (n:$graphId {IL_UNIQUE_ID:"$identifier"}) SET n.$key=["$value"] return n;"""
     logger.info("Query: " + query)
     val session = driver.session()
     val result = session.run(query)

@@ -2,17 +2,13 @@ package org.sunbird.job.functions
 
 import java.lang.reflect.Type
 import java.util
-import com.datastax.driver.core.querybuilder.QueryBuilder
 import com.google.gson.reflect.TypeToken
-import org.apache.commons.collections.{CollectionUtils, MapUtils}
-import org.apache.commons.lang3.StringUtils
-import org.apache.flink.api.common.typeinfo.TypeInformation
+import org.apache.commons.collections.CollectionUtils
 import org.apache.flink.configuration.Configuration
-import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.postpublish.domain.Event
-import org.sunbird.job.postpublish.helpers.{BatchCreation, ShallowCopyPublishing}
+import org.sunbird.job.postpublish.helpers.{BatchCreation, DialHelper, ShallowCopyPublishing}
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 import org.sunbird.job.task.PostPublishProcessorConfig
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
@@ -24,7 +20,7 @@ case class PublishMetadata(identifier: String, contentType: String, mimeType: St
 class PostPublishEventRouter(config: PostPublishProcessorConfig, httpUtil: HttpUtil,
                              @transient var neo4JUtil: Neo4JUtil = null,
                              @transient var cassandraUtil: CassandraUtil = null)
-  extends BaseProcessFunction[Event, String](config) with ShallowCopyPublishing with BatchCreation {
+  extends BaseProcessFunction[Event, String](config) with ShallowCopyPublishing with BatchCreation with DialHelper {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[PostPublishEventRouter])
   val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
@@ -67,10 +63,12 @@ class PostPublishEventRouter(config: PostPublishProcessorConfig, httpUtil: HttpU
         context.output(config.batchCreateOutTag, batchData)
       }
 
-      // Check DIAL Code exist or not and trigger create and link.
-      if (!linkedDIALCodes(metadata, identifier)) {
+      // Trigger DIAL Code create and link.
+      if(validateContentType(metadata)(config)) {
         val linkMap = new util.HashMap[String, AnyRef](event.eData.asJava)
-        linkMap.put("channel", metadata.get("channel"))
+        linkMap.put("channel", metadata.getOrDefault("channel", ""))
+        linkMap.put("dialcodes", metadata.getOrDefault("dialcodes", new util.ArrayList[String] {}))
+        linkMap.put("reservedDialcodes", metadata.getOrDefault("reservedDialcodes", "{}"))
         context.output(config.linkDIALCodeOutTag, linkMap)
       }
     } else {
@@ -81,22 +79,6 @@ class PostPublishEventRouter(config: PostPublishProcessorConfig, httpUtil: HttpU
 
   override def metricsList(): List[String] = {
     List(config.successEventCount, config.failedEventCount, config.skippedEventCount, config.totalEventsCount)
-  }
-
-  //TODO: Should we reserve or throw exception?
-  def linkedDIALCodes(metadata: java.util.Map[String, AnyRef], identifier: String): Boolean = {
-    if (MapUtils.isNotEmpty(metadata)) {
-      val dialExist = metadata.containsKey("dialcodes")
-      logger.info("Reserved DIAL Codes exists for " + identifier + " : " + dialExist)
-      dialExist
-    } else {
-      throw new Exception("Metadata [reservedDIALExists] is not found for object: " + identifier)
-    }
-  }
-
-  def validateDialCodeEvent(event: Event): Boolean = {
-    val edata = event.eData.asInstanceOf[java.util.Map[String, AnyRef]]
-    contentTypes.contains(edata.getOrDefault("contentType", "").asInstanceOf[String])
   }
 
 }

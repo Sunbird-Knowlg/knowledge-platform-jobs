@@ -1,9 +1,11 @@
 package org.sunbird.job.spec
 
+import java.time.{ZoneId, ZonedDateTime}
+import java.time.format.DateTimeFormatter
 import java.util
+
 import com.google.gson.Gson
 import com.typesafe.config.{Config, ConfigFactory}
-import org.apache.commons.io.FileUtils
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
@@ -14,7 +16,7 @@ import org.apache.flink.test.util.MiniClusterWithClientResource
 import org.cassandraunit.CQLDataLoader
 import org.cassandraunit.dataset.cql.FileCQLDataSet
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
-import org.mockito.ArgumentMatchers.{anyString, endsWith}
+import org.mockito.ArgumentMatchers.anyString
 import org.sunbird.job.functions.PostPublishEventRouter
 import org.sunbird.job.task.{PostPublishProcessorConfig, PostPublishProcessorStreamTask}
 import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, Neo4JUtil}
@@ -45,9 +47,21 @@ class PostPublishProcessorTaskTestSpec extends BaseTestSpec {
   implicit val mockHttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
   val mockNeo4JUtil: Neo4JUtil = mock[Neo4JUtil](Mockito.withSettings().serializable())
   var cassandraUtil: CassandraUtil = _
-
-
-
+  // For Shallow Copy and Batch Creation
+  val startDate = ZonedDateTime.now(ZoneId.of("Asia/Kolkata")).format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
+  val searchRequestBody = s"""{"request":{"filters":{"status":["Draft","Review","Live","Unlisted","Failed"],"origin":"do_11300581751853056018"},"fields":["identifier","mimeType","contentType","versionKey","channel","status","pkgVersion","lastPublishedBy","origin","originData"]}}"""
+  val batchRequestBody = s"""{"request":{"createdFor":["ORG_001"],"createdBy":"874ed8a5-782e-4f6c-8f36-e0288455901e","name":"Origin Content","enrollmentType":"open","courseId":"do_11300581751853056018","startDate":"${startDate}"}}"""
+  // END
+  // For Dial Codes
+  val searchRequestForQRImageEvent1 = s"""{"request":{"filters":{"status":["Draft","Review","Live","Unlisted","Failed"],"origin":"do_113214556543234"},"fields":["identifier","mimeType","contentType","versionKey","channel","status","pkgVersion","lastPublishedBy","origin","originData"]}}"""
+  val searchRequestForQRImageEvent2 = s"""{"request":{"filters":{"status":["Draft","Review","Live","Unlisted","Failed"],"origin":"do_113214556543235"},"fields":["identifier","mimeType","contentType","versionKey","channel","status","pkgVersion","lastPublishedBy","origin","originData"]}}"""
+  val searchRequestForQRImageEvent3 = s"""{"request":{"filters":{"status":["Draft","Review","Live","Unlisted","Failed"],"origin":"do_113214556543236"},"fields":["identifier","mimeType","contentType","versionKey","channel","status","pkgVersion","lastPublishedBy","origin","originData"]}}"""
+  val searchRequestForQRImageEvent4 = s"""{"request":{"filters":{"status":["Draft","Review","Live","Unlisted","Failed"],"origin":"do_113214556543237"},"fields":["identifier","mimeType","contentType","versionKey","channel","status","pkgVersion","lastPublishedBy","origin","originData"]}}"""
+  val qrRequestUrl = "https://dev.sunbirded.org/action/content/v3/dialcode/reserve/do_113214556543237"
+  val qrRequestBody = s"""{"request":{"dialcodes":{"count":1,"qrCodeSpec":{"errorCorrectionLevel":"H"}}}}"""
+  val qrRequestHeaders: util.Map[String, String] = Map[String, String]("X-Channel-Id" -> "b00bc992ef25f1a9a8d63291e20efc8d",
+    "Content-Type" -> "application/json").asJava
+  // END
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
@@ -72,7 +86,7 @@ class PostPublishProcessorTaskTestSpec extends BaseTestSpec {
   }
 
   "Post Publish Processor" should "process and find shallow copied contents" in {
-    when(mockHttpUtil.post(endsWith("/v3/search"), anyString())).thenReturn(HTTPResponse(200, """{"id":"api.search-service.search","ver":"3.0","ts":"2020-08-31T22:09:07ZZ","params":{"resmsgid":"bc9a8ac0-f67d-47d5-b093-2077191bf93b","msgid":null,"err":null,"status":"successful","errmsg":null},"responseCode":"OK","result":{"count":5,"content":[{"identifier":"do_11301367667942195211854","origin":"do_11300581751853056018","channel":"b00bc992ef25f1a9a8d63291e20efc8d","originData":"{\"name\":\"Origin Content\",\"copyType\":\"deep\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"]}","mimeType":"application/vnd.ekstep.content-collection","contentType":"TextBook","objectType":"Content","status":"Draft","versionKey":"1588583579763"},{"identifier":"do_113005885057662976128","origin":"do_11300581751853056018","channel":"sunbird","originData":"{\"name\":\"Origin Content\",\"copyType\":\"shallow\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"],\"pkgVersion\":2.0}","mimeType":"application/vnd.ekstep.content-collection","lastPublishedBy":"Ekstep","contentType":"TextBook","objectType":"Content","status":"Live","versionKey":"1587632481597"},{"identifier":"do_113005885161611264130","origin":"do_11300581751853056018","channel":"sunbird","originData":"{\"name\":\"Origin Content\",\"copyType\":\"shallow\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"],\"pkgVersion\":2.0}","mimeType":"application/vnd.ekstep.content-collection","lastPublishedBy":"Ekstep","contentType":"TextBook","objectType":"Content","status":"Live","versionKey":"1587632475439"},{"identifier":"do_113005882957578240124","origin":"do_11300581751853056018","channel":"sunbird","originData":"{\"name\":\"Origin Content\",\"copyType\":\"shallow\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"],\"pkgVersion\":2.0}","mimeType":"application/vnd.ekstep.content-collection","lastPublishedBy":"Ekstep","contentType":"TextBook","objectType":"Content","status":"Live","versionKey":"1587632233649"},{"identifier":"do_113005820474007552111","origin":"do_11300581751853056018","channel":"sunbird","originData":"{\"name\":\"Origin Content\",\"copyType\":\"shallow\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"],\"pkgVersion\":2.0}","mimeType":"application/vnd.ekstep.content-collection","lastPublishedBy":"Ekstep","contentType":"TextBook","objectType":"Content","status":"Live","versionKey":"1587624624051"}]}}"""))
+    when(mockHttpUtil.post(jobConfig.searchAPIPath, searchRequestBody)).thenReturn(HTTPResponse(200, """{"id":"api.search-service.search","ver":"3.0","ts":"2020-08-31T22:09:07ZZ","params":{"resmsgid":"bc9a8ac0-f67d-47d5-b093-2077191bf93b","msgid":null,"err":null,"status":"successful","errmsg":null},"responseCode":"OK","result":{"count":5,"content":[{"identifier":"do_11301367667942195211854","origin":"do_11300581751853056018","channel":"b00bc992ef25f1a9a8d63291e20efc8d","originData":"{\"name\":\"Origin Content\",\"copyType\":\"deep\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"]}","mimeType":"application/vnd.ekstep.content-collection","contentType":"TextBook","objectType":"Content","status":"Draft","versionKey":"1588583579763"},{"identifier":"do_113005885057662976128","origin":"do_11300581751853056018","channel":"sunbird","originData":"{\"name\":\"Origin Content\",\"copyType\":\"shallow\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"],\"pkgVersion\":2.0}","mimeType":"application/vnd.ekstep.content-collection","lastPublishedBy":"Ekstep","contentType":"TextBook","objectType":"Content","status":"Live","versionKey":"1587632481597"},{"identifier":"do_113005885161611264130","origin":"do_11300581751853056018","channel":"sunbird","originData":"{\"name\":\"Origin Content\",\"copyType\":\"shallow\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"],\"pkgVersion\":2.0}","mimeType":"application/vnd.ekstep.content-collection","lastPublishedBy":"Ekstep","contentType":"TextBook","objectType":"Content","status":"Live","versionKey":"1587632475439"},{"identifier":"do_113005882957578240124","origin":"do_11300581751853056018","channel":"sunbird","originData":"{\"name\":\"Origin Content\",\"copyType\":\"shallow\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"],\"pkgVersion\":2.0}","mimeType":"application/vnd.ekstep.content-collection","lastPublishedBy":"Ekstep","contentType":"TextBook","objectType":"Content","status":"Live","versionKey":"1587632233649"},{"identifier":"do_113005820474007552111","origin":"do_11300581751853056018","channel":"sunbird","originData":"{\"name\":\"Origin Content\",\"copyType\":\"shallow\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"],\"pkgVersion\":2.0}","mimeType":"application/vnd.ekstep.content-collection","lastPublishedBy":"Ekstep","contentType":"TextBook","objectType":"Content","status":"Live","versionKey":"1587624624051"}]}}"""))
     val identifier = "do_11300581751853056018"
     val list = new PostPublishEventRouter(jobConfig, mockHttpUtil).getShallowCopiedContents(identifier)
     list.size should be (4)
@@ -80,12 +94,19 @@ class PostPublishProcessorTaskTestSpec extends BaseTestSpec {
   }
 
   ignore should "run all the scenarios for a given event" in {
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new PostPublishEventSource)
+    when(mockHttpUtil.post(jobConfig.searchAPIPath, searchRequestBody)).thenReturn(HTTPResponse(200, """{"id":"api.search-service.search","ver":"3.0","ts":"2020-08-31T22:09:07ZZ","params":{"resmsgid":"bc9a8ac0-f67d-47d5-b093-2077191bf93b","msgid":null,"err":null,"status":"successful","errmsg":null},"responseCode":"OK","result":{"count":5,"content":[{"identifier":"do_11301367667942195211854","origin":"do_11300581751853056018","channel":"b00bc992ef25f1a9a8d63291e20efc8d","originData":"{\"name\":\"Origin Content\",\"copyType\":\"deep\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"]}","mimeType":"application/vnd.ekstep.content-collection","contentType":"TextBook","objectType":"Content","status":"Draft","versionKey":"1588583579763"},{"identifier":"do_113005885057662976128","origin":"do_11300581751853056018","channel":"sunbird","originData":"{\"name\":\"Origin Content\",\"copyType\":\"shallow\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"],\"pkgVersion\":2.0}","mimeType":"application/vnd.ekstep.content-collection","lastPublishedBy":"Ekstep","contentType":"TextBook","objectType":"Content","status":"Live","versionKey":"1587632481597"},{"identifier":"do_113005885161611264130","origin":"do_11300581751853056018","channel":"sunbird","originData":"{\"name\":\"Origin Content\",\"copyType\":\"shallow\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"],\"pkgVersion\":2.0}","mimeType":"application/vnd.ekstep.content-collection","lastPublishedBy":"Ekstep","contentType":"TextBook","objectType":"Content","status":"Live","versionKey":"1587632475439"},{"identifier":"do_113005882957578240124","origin":"do_11300581751853056018","channel":"sunbird","originData":"{\"name\":\"Origin Content\",\"copyType\":\"shallow\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"],\"pkgVersion\":2.0}","mimeType":"application/vnd.ekstep.content-collection","lastPublishedBy":"Ekstep","contentType":"TextBook","objectType":"Content","status":"Live","versionKey":"1587632233649"},{"identifier":"do_113005820474007552111","origin":"do_11300581751853056018","channel":"sunbird","originData":"{\"name\":\"Origin Content\",\"copyType\":\"shallow\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"],\"pkgVersion\":2.0}","mimeType":"application/vnd.ekstep.content-collection","lastPublishedBy":"Ekstep","contentType":"TextBook","objectType":"Content","status":"Live","versionKey":"1587624624051"}]}}"""))
+    when(mockHttpUtil.post(jobConfig.batchCreateAPIPath, batchRequestBody)).thenReturn(HTTPResponse(200, """{}"""))
     when(mockKafkaUtil.kafkaStringSink(jobConfig.contentPublishTopic)).thenReturn(new PublishEventSink)
-    when(mockHttpUtil.post(endsWith("/v3/search"), anyString())).thenReturn(HTTPResponse(200, """{"id":"api.search-service.search","ver":"3.0","ts":"2020-08-31T22:09:07ZZ","params":{"resmsgid":"bc9a8ac0-f67d-47d5-b093-2077191bf93b","msgid":null,"err":null,"status":"successful","errmsg":null},"responseCode":"OK","result":{"count":5,"content":[{"identifier":"do_11301367667942195211854","origin":"do_11300581751853056018","channel":"b00bc992ef25f1a9a8d63291e20efc8d","originData":"{\"name\":\"Origin Content\",\"copyType\":\"deep\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"]}","mimeType":"application/vnd.ekstep.content-collection","contentType":"TextBook","objectType":"Content","status":"Draft","versionKey":"1588583579763"},{"identifier":"do_113005885057662976128","origin":"do_11300581751853056018","channel":"sunbird","originData":"{\"name\":\"Origin Content\",\"copyType\":\"shallow\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"],\"pkgVersion\":2.0}","mimeType":"application/vnd.ekstep.content-collection","lastPublishedBy":"Ekstep","contentType":"TextBook","objectType":"Content","status":"Live","versionKey":"1587632481597"},{"identifier":"do_113005885161611264130","origin":"do_11300581751853056018","channel":"sunbird","originData":"{\"name\":\"Origin Content\",\"copyType\":\"shallow\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"],\"pkgVersion\":2.0}","mimeType":"application/vnd.ekstep.content-collection","lastPublishedBy":"Ekstep","contentType":"TextBook","objectType":"Content","status":"Live","versionKey":"1587632475439"},{"identifier":"do_113005882957578240124","origin":"do_11300581751853056018","channel":"sunbird","originData":"{\"name\":\"Origin Content\",\"copyType\":\"shallow\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"],\"pkgVersion\":2.0}","mimeType":"application/vnd.ekstep.content-collection","lastPublishedBy":"Ekstep","contentType":"TextBook","objectType":"Content","status":"Live","versionKey":"1587632233649"},{"identifier":"do_113005820474007552111","origin":"do_11300581751853056018","channel":"sunbird","originData":"{\"name\":\"Origin Content\",\"copyType\":\"shallow\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"],\"pkgVersion\":2.0}","mimeType":"application/vnd.ekstep.content-collection","lastPublishedBy":"Ekstep","contentType":"TextBook","objectType":"Content","status":"Live","versionKey":"1587624624051"}]}}"""))
-    when(mockHttpUtil.post(endsWith("/private/v1/course/batch/create"), anyString())).thenReturn(HTTPResponse(200, """{}"""))
-    val trackable = """{"enabled":"Yes","autoBatch":"Yes"}"""
-    when(mockNeo4JUtil.getNodeProperties("do_11300581751853056018")).thenReturn(Map("name" -> "Origin Content", "createdBy" -> "874ed8a5-782e-4f6c-8f36-e0288455901e", "createdFor" -> util.Arrays.asList("ORG_001"), "channel" -> "b00bc992ef25f1a9a8d63291e20efc8d", "trackable" -> trackable).asJava)
+
+    when(mockHttpUtil.post(qrRequestUrl, qrRequestBody, qrRequestHeaders)).thenReturn(HTTPResponse(200, """{"result": {"reservedDialcodes": {"Q2I5I9" : 0}}}"""))
+    when(mockHttpUtil.post(jobConfig.searchAPIPath, searchRequestForQRImageEvent1)).thenReturn(HTTPResponse(200,"""{"responseCode": "OK","result": {"count": 5,"content": []}}"""))
+    when(mockHttpUtil.post(jobConfig.searchAPIPath, searchRequestForQRImageEvent2)).thenReturn(HTTPResponse(200,"""{"responseCode": "OK","result": {"count": 5,"content": []}}"""))
+    when(mockHttpUtil.post(jobConfig.searchAPIPath, searchRequestForQRImageEvent3)).thenReturn(HTTPResponse(200,"""{"responseCode": "OK","result": {"count": 5,"content": []}}"""))
+    when(mockHttpUtil.post(jobConfig.searchAPIPath, searchRequestForQRImageEvent4)).thenReturn(HTTPResponse(200,"""{"responseCode": "OK","result": {"count": 5,"content": []}}"""))
+    when(mockKafkaUtil.kafkaStringSink(jobConfig.QRImageGeneratorTopic)).thenReturn(new QRImageEventSink)
+
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new PostPublishEventSource)
+
     val mockResult = mock[StatementResult](Mockito.withSettings().serializable())
     when(mockNeo4JUtil.executeQuery(anyString())).thenReturn(mockResult)
     val streamTask = new PostPublishProcessorStreamTask(jobConfig, mockKafkaUtil, mockHttpUtil)
@@ -95,14 +116,29 @@ class PostPublishProcessorTaskTestSpec extends BaseTestSpec {
     PublishEventSink.values.forEach(event => {
       println("PUBLISH_EVENT: " + event)
     })
+
+    QRImageEventSink.values.size() should be(3)
+    QRImageEventSink.values.forEach(event => {
+      println("QR_IMAGE_EVENT: " + event)
+    })
   }
 }
 
 class PostPublishEventSource extends SourceFunction[Event] {
   override def run(ctx: SourceContext[Event]): Unit = {
     val gson = new Gson()
+    // Event for Batch Creation and ShallowCopy
     val eventMap1 = gson.fromJson(EventFixture.EVENT_1, new util.LinkedHashMap[String, Any]().getClass).asInstanceOf[util.Map[String, Any]].asScala ++ Map("partition" -> 0.asInstanceOf[Any])
     ctx.collect(new Event(eventMap1.asJava))
+    // Event for Dial Codes
+    val qrEventMap1 = gson.fromJson(EventFixture.QREVENT_1, new util.LinkedHashMap[String, Any]().getClass).asInstanceOf[util.Map[String, Any]].asScala ++ Map("partition" -> 0.asInstanceOf[Any])
+    ctx.collect(new Event(qrEventMap1.asJava))
+    val qrEventMap2 = gson.fromJson(EventFixture.QREVENT_2, new util.LinkedHashMap[String, Any]().getClass).asInstanceOf[util.Map[String, Any]].asScala ++ Map("partition" -> 0.asInstanceOf[Any])
+    ctx.collect(new Event(qrEventMap2.asJava))
+    val qrEventMap3 = gson.fromJson(EventFixture.QREVENT_3, new util.LinkedHashMap[String, Any]().getClass).asInstanceOf[util.Map[String, Any]].asScala ++ Map("partition" -> 0.asInstanceOf[Any])
+    ctx.collect(new Event(qrEventMap3.asJava))
+    val qrEventMap4 = gson.fromJson(EventFixture.QREVENT_4, new util.LinkedHashMap[String, Any]().getClass).asInstanceOf[util.Map[String, Any]].asScala ++ Map("partition" -> 0.asInstanceOf[Any])
+    ctx.collect(new Event(qrEventMap4.asJava))
   }
 
   override def cancel() = {}
@@ -118,5 +154,18 @@ class PublishEventSink extends SinkFunction[String] {
 }
 
 object PublishEventSink {
+  val values: util.List[String] = new util.ArrayList()
+}
+
+class QRImageEventSink extends SinkFunction[String] {
+
+  override def invoke(value: String): Unit = {
+    synchronized {
+      QRImageEventSink.values.add(value)
+    }
+  }
+}
+
+object QRImageEventSink {
   val values: util.List[String] = new util.ArrayList()
 }

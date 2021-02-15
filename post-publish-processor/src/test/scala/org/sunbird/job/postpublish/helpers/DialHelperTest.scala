@@ -11,7 +11,7 @@ import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, Neo4JUtil}
 
 import scala.collection.JavaConverters._
 
-class DialUtilityTest extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
+class DialHelperTest extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
 
     override protected def beforeAll(): Unit = {
         super.beforeAll()
@@ -31,21 +31,6 @@ class DialUtilityTest extends FlatSpec with BeforeAndAfterAll with Matchers with
         val dialcodes: util.Map[String, Integer] = dialUtility.fetchExistingReservedDialcodes(getEvent())
         dialcodes.isEmpty should be(false)
         dialcodes.getOrDefault("Q1I5I3", -1) shouldEqual (0)
-    }
-
-    "fetchExistingReservedDialcodes with no id" should "should throw exception" in {
-        val dialUtility = new TestDialUtility()
-        intercept[Exception] {
-            dialUtility.fetchExistingDialcodes(getInvalidEvent())
-        }
-    }
-
-    "fetchExistingReservedDialcodes with non existent id" should "should throw exception" in {
-        val dialUtility = new TestDialUtility()
-        when(neo4jUtil.getNodeProperties(ArgumentMatchers.anyString())).thenReturn(getNeo4jData())
-        intercept[Exception] {
-            dialUtility.fetchExistingDialcodes(getInvalidEvent())
-        }
     }
 
     "reserveDialCodes" should "reserve dialcodes and return a map of the same " in {
@@ -72,8 +57,7 @@ class DialUtilityTest extends FlatSpec with BeforeAndAfterAll with Matchers with
 
     "fetchExistingDialcodes" should "return map of dialcodes that is reserved" in {
         val dialUtility = new TestDialUtility()
-        when(neo4jUtil.getNodeProperties(ArgumentMatchers.anyString())).thenReturn(getNeo4jData())
-        val dialcodes: util.List[String] = dialUtility.fetchExistingDialcodes(getEvent())
+        val dialcodes: util.List[String] = dialUtility.fetchExistingDialcodes(getNeo4jData())
         dialcodes.isEmpty should be(false)
         dialcodes.contains("Q1I5I3") should be (true)
     }
@@ -87,7 +71,7 @@ class DialUtilityTest extends FlatSpec with BeforeAndAfterAll with Matchers with
     }
 
     def getNeo4jData(): util.Map[String, AnyRef] = {
-        Map[String, AnyRef]("reservedDialcodes" -> "{\"Q1I5I3\":0}", "identifier" -> "do_234", "dialcodes" -> "[\"Q1I5I3\"]").asJava
+        Map[String, AnyRef]("reservedDialcodes" -> "{\"Q1I5I3\":0}", "identifier" -> "do_234", "dialcodes" -> (List[String]("Q1I5I3")).asJava).asJava
     }
 
     def getEmptyNeo4jData(): util.Map[String, AnyRef] = Map[String, AnyRef]().asJava
@@ -122,6 +106,6 @@ class DialUtilityTest extends FlatSpec with BeforeAndAfterAll with Matchers with
 }
 
 
-class TestDialUtility extends DialUtility {
+class TestDialUtility extends DialHelper {
 
 }
