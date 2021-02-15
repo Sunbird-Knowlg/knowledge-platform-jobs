@@ -53,6 +53,27 @@ class ObjectPdfGeneratorSpec extends FlatSpec with BeforeAndAfterAll with Matche
         previewUrl.getOrElse("").isEmpty should be(false)
     }
 
+    "Object PDF generator writeFile" should "return None if filename is null" in {
+        val file = new TestQuestionPdfGenerator().writeFile(null, null)
+        file should be (None)
+    }
+
+    "Object PDF generator convertFileToPdfUrl" should "return None if fileString is null" in {
+        val url = new TestQuestionPdfGenerator().convertFileToPdfUrl(null, null)
+        url should be (None)
+    }
+
+    "Object PDF generator getHtmlString" should "return None if questions list is empty" in {
+        val htmlString = new TestQuestionPdfGenerator().getHtmlString(List(), "", "")
+        htmlString should be (None)
+    }
+
+    "Object PDF generator convertFileToPdfUrl" should "return None if pdf generator api return error" in {
+        when(mockHttpUtil.post(ArgumentMatchers.anyString(), ArgumentMatchers.anyString())).thenReturn(getFailedHttpResponseWith500())
+        val htmlString = new TestQuestionPdfGenerator().convertFileToPdfUrl(Some("fileString"), "")
+        htmlString should be (None)
+    }
+
     private def getObjectList(): List[ObjectData] = {
         val question_1 = new ObjectData("do_123", Map("primaryCategory" -> "Multiple Choice Question", "index" -> 1.asInstanceOf[AnyRef], "IL_UNIQUE_ID" -> "do_123"),
             Some(Map(
@@ -202,6 +223,15 @@ class ObjectPdfGeneratorSpec extends FlatSpec with BeforeAndAfterAll with Matche
 
     private def getFailedHttpResponse(): HTTPResponse = {
         HTTPResponse(400,
+            """
+              |{
+              |"result" : {
+              |}
+              |}""".stripMargin)
+    }
+
+    private def getFailedHttpResponseWith500(): HTTPResponse = {
+        HTTPResponse(500,
             """
               |{
               |"result" : {
