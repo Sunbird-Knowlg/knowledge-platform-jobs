@@ -57,11 +57,11 @@ class CollectionCompletePostProcessorConfig(override val config: Config) extends
   val collectionCacheStore: Int = 0
 
   // BaseUrl
-  val lmsBaseUrl = config.getString("lms.basePath")
-  val searchBaseUrl = config.getString("content.search.basePath")
-  val contentBaseUrl = config.getString("content.basePath")
-  val certBasePath = config.getString("cert.basePath")
-  val learnerBasePath = config.getString("learner-service.basePath")
+  val lmsBaseUrl = config.getString("service.lms.basePath")
+  val searchBaseUrl = config.getString("service.search.basePath")
+  val contentBaseUrl = config.getString("service.content.basePath")
+  val certBasePath = config.getString("service.certificate.basePath")
+  val learnerBasePath = config.getString("service.learner.basePath")
 
   // ApiUrl
   val contentV3Read = "/content/v3/read/"
