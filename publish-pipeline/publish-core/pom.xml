@@ -5,113 +5,55 @@
     <modelVersion>4.0.0</modelVersion>
     <parent>
         <groupId>org.sunbird</groupId>
-        <artifactId>knowledge-platform-jobs</artifactId>
+        <artifactId>publish-pipeline</artifactId>
         <version>1.0</version>
     </parent>
 
-    <artifactId>jobs-core</artifactId>
+    <artifactId>publish-core</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
-    <name>jobs-core</name>
+    <name>publish-core</name>
+
     <properties>
         <encoding>UTF-8</encoding>
         <scoverage.plugin.version>1.4.0</scoverage.plugin.version>
     </properties>
+    <repositories>
+        <repository>
+            <id>cloud-store-sdk_2.12</id>
+            <name>cloud-store-sdk_2.12</name>
+            <url>https://oss.sonatype.org/content/repositories/orgsunbird-1085</url>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
     <dependencies>
         <dependency>
-            <groupId>org.scala-lang</groupId>
-            <artifactId>scala-library</artifactId>
-            <version>${scala.maj.version}</version>
+            <groupId>org.sunbird</groupId>
+            <artifactId>jobs-core</artifactId>
+            <version>1.0.0</version>
         </dependency>
         <dependency>
-            <groupId>org.apache.flink</groupId>
-            <artifactId>flink-streaming-scala_${scala.version}</artifactId>
-            <version>${flink.version}</version>
+            <groupId>org.sunbird</groupId>
+            <artifactId>cloud-store-sdk_2.12</artifactId>
+            <version>1.2.9</version>
         </dependency>
         <dependency>
-            <groupId>org.apache.flink</groupId>
-            <artifactId>flink-connector-kafka_${scala.version}</artifactId>
-            <version>${flink.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.kafka</groupId>
-            <artifactId>kafka-clients</artifactId>
-            <version>2.4.1</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.httpcomponents</groupId>
-            <artifactId>httpclient</artifactId>
-            <version>4.5.1</version>
-        </dependency>
-        <dependency>
-            <groupId>com.google.code.gson</groupId>
-            <artifactId>gson</artifactId>
-            <version>2.4</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-            <version>2.10.0</version>
-        </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.module</groupId>
-            <artifactId>jackson-module-scala_2.12</artifactId>
-            <version>2.10.0</version>
-        </dependency>
-        <dependency>
-            <groupId>redis.clients</groupId>
-            <artifactId>jedis</artifactId>
-            <version>2.9.0</version>
-        </dependency>
-        <dependency>
-            <groupId>com.datastax.cassandra</groupId>
-            <artifactId>cassandra-driver-core</artifactId>
-            <version>3.7.0</version>
-        </dependency>
-        <dependency>
-            <groupId>com.konghq</groupId>
-            <artifactId>unirest-java</artifactId>
-            <version>3.10.00</version>
-        </dependency>
-        <dependency>
-            <groupId>org.neo4j.driver</groupId>
-            <artifactId>neo4j-java-driver</artifactId>
-            <version>1.7.5</version>
+            <groupId>com.moparisthebest</groupId>
+            <artifactId>junidecode</artifactId>
+            <version>0.1.1</version>
         </dependency>
         <dependency>
             <groupId>org.scalatest</groupId>
-            <artifactId>scalatest_${scala.version}</artifactId>
+            <artifactId>scalatest_2.12</artifactId>
             <version>3.0.6</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>4.13.1</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>net.manub</groupId>
-            <artifactId>scalatest-embedded-kafka_${scala.version}</artifactId>
-            <version>2.0.0</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.kafka</groupId>
-            <artifactId>kafka_${scala.version}</artifactId>
-            <version>2.4.1</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.flink</groupId>
-            <artifactId>flink-test-utils_${scala.version}</artifactId>
-            <version>${flink.version}</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.opentable.components</groupId>
-            <artifactId>otj-pg-embedded</artifactId>
-            <version>0.13.3</version>
+            <version>4.12</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -121,23 +63,15 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>com.fiftyonred</groupId>
-            <artifactId>mock-jedis</artifactId>
-            <version>0.4.0</version>
+            <groupId>org.apache.velocity</groupId>
+            <artifactId>velocity-engine-core</artifactId>
+            <version>2.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.imgscalr</groupId>
+            <artifactId>imgscalr-lib</artifactId>
+            <version>4.2</version>
             <type>jar</type>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>it.ozimov</groupId>
-            <artifactId>embedded-redis</artifactId>
-            <version>0.7.1</version>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.cassandraunit</groupId>
-            <artifactId>cassandra-unit</artifactId>
-            <version>3.11.2.0</version>
-            <scope>test</scope>
         </dependency>
     </dependencies>
 
@@ -146,15 +80,6 @@
         <testSourceDirectory>src/test/scala</testSourceDirectory>
 
         <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.8.1</version>
-                <configuration>
-                    <release>11</release>
-                </configuration>
-            </plugin>
-
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>2.20</version>
@@ -170,7 +95,7 @@
                 <configuration>
                     <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
                     <junitxml>.</junitxml>
-                    <filereports>kp-core-testsuite.txt</filereports>
+                    <filereports>kp-publish-core-testsuite.txt</filereports>
                 </configuration>
                 <executions>
                     <execution>

@@ -2,6 +2,8 @@ package org.sunbird.job.util
 
 import org.neo4j.driver.v1.{Config, GraphDatabase}
 import org.slf4j.LoggerFactory
+import scala.collection.JavaConverters._
+
 
 
 class Neo4JUtil(routePath: String, graphId: String) {
@@ -33,7 +35,21 @@ class Neo4JUtil(routePath: String, graphId: String) {
     val session = driver.session()
     val query = s"""MATCH (n:${graphId}{IL_UNIQUE_ID:"${identifier}"}) return n;"""
     val statementResult = session.run(query)
-    statementResult.single().get("n").asMap()
+    if (statementResult.hasNext)
+      statementResult.single().get("n").asMap()
+    else null
+  }
+
+  def getNodesName(identifiers: List[String]): Map[String, String] = {
+    val query = s"""MATCH(n:domain) WHERE n.IL_UNIQUE_ID IN ${JSONUtil.serialize(identifiers.asJava)} RETURN n.IL_UNIQUE_ID AS id, n.name AS name;"""
+    logger.info("Neo4jUril :: getNodesName :: Query : " + query)
+    val statementResult = executeQuery(query)
+    if (null != statementResult) {
+      statementResult.list().asScala.toList.flatMap(record => Map(record.get("id").asString() -> record.get("name").asString())).toMap
+    } else {
+      logger.info("Neo4j Nodes Not Found For " + identifiers.asJava)
+      Map()
+    }
   }
 
   def updateNodeProperty(identifier: String, key: String, value: String): Unit = {
@@ -49,6 +65,11 @@ class Neo4JUtil(routePath: String, graphId: String) {
   def executeQuery(query: String) = {
     val session = driver.session()
     session.run(query)
+  }
+
+  //Return a map of id and node
+  def getNodesProps(identifiers: List[String]): Map[String, AnyRef] = {
+    Map()
   }
 
 
