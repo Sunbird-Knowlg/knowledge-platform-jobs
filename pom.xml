@@ -41,7 +41,7 @@
 	<repositories>
 		<repository>
 			<id>my-local-repo</id>
-			<url>file://${user.home}/.m2/repository</url>
+		<url>file://${user.home}/.m2/repository</url>
 		</repository>
 		<repository>
 			<id>apache-releases</id>

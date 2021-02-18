@@ -52,6 +52,16 @@ class Neo4JUtil(routePath: String, graphId: String) {
     }
   }
 
+  def updateNodeProperty(identifier: String, key: String, value: String): Unit = {
+    val query = s"""MATCH (n:$graphId {IL_UNIQUE_ID:"$identifier"}) SET n.$key=["$value"] return n;"""
+    logger.info("Query: " + query)
+    val session = driver.session()
+    val result = session.run(query)
+    if (result.hasNext)
+      logger.info("Successfully Updated node with identifier: $identifier")
+    else throw new Exception(s"Unable to update the node with identifier: $identifier")
+  }
+
   def executeQuery(query: String) = {
     val session = driver.session()
     session.run(query)

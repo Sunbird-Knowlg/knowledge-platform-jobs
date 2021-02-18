@@ -5,10 +5,10 @@ import com.typesafe.config.Config
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.streaming.api.scala.OutputTag
-import org.sunbird.job.BaseJobConfig
+import org.sunbird.job.postpublish.config.PostPublishConfig
 import org.sunbird.job.functions.PublishMetadata
 
-class PostPublishProcessorConfig(override val config: Config) extends BaseJobConfig(config, "post-publish-processor")  {
+class PostPublishProcessorConfig(override val config: Config) extends PostPublishConfig(config, "post-publish-processor")  {
 
   implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
   implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
@@ -34,12 +34,16 @@ class PostPublishProcessorConfig(override val config: Config) extends BaseJobCon
   val skippedEventCount = "skipped-event-count"
   val shallowCopyPublishEventCount = "shallow-copy-publish-events-count"
   val batchCreationCount = "batch-creation-count"
+  val dialLinkingCount = "dial-linking-count"
+  val qrImageGeneratorEventCount = "qr-image-event-count"
 
   // Cassandra Configurations
   val dbHost: String = config.getString("lms-cassandra.host")
   val dbPort: Int = config.getInt("lms-cassandra.port")
   val lmsKeyspaceName = config.getString("lms-cassandra.keyspace")
   val batchTableName = config.getString("lms-cassandra.batchTable")
+  val dialcodeKeyspaceName = config.getString("dialcode-cassandra.keyspace")
+  val dialcodeTableName = config.getString("dialcode-cassandra.batchTable")
 
   // Neo4J Configurations
   val graphRoutePath = config.getString("neo4j.routePath")
@@ -51,7 +55,7 @@ class PostPublishProcessorConfig(override val config: Config) extends BaseJobCon
   val linkDIALCodeOutTag: OutputTag[java.util.Map[String, AnyRef]] = OutputTag[java.util.Map[String, AnyRef]]("dialcode-link")
   val shallowContentPublishOutTag: OutputTag[PublishMetadata] = OutputTag[PublishMetadata]("shallow-copied-content-publish")
   val publishEventOutTag: OutputTag[String] = OutputTag[String]("content-publish-request")
-
+  val generateQRImageOutTag: OutputTag[String] = OutputTag[String]("qr-image-generator-request")
 
   val searchBaseUrl = config.getString("service.search.basePath")
   val lmsBaseUrl = config.getString("service.lms.basePath")
@@ -60,5 +64,7 @@ class PostPublishProcessorConfig(override val config: Config) extends BaseJobCon
   val batchCreateAPIPath = lmsBaseUrl + "/private/v1/course/batch/create"
   val searchAPIPath = searchBaseUrl + "/v3/search"
 
-
+  // QR Image Generator
+  val QRImageGeneratorTopic: String = config.getString("kafka.qrimage.topic")
+  val contentTypes: List[String] = List[String]("Course")
 }

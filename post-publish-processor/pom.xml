@@ -16,6 +16,17 @@
     <description>
         Post Publish Processor Flink Job
     </description>
+
+    <repositories>
+        <repository>
+            <id>cloud-store-sdk_2.12</id>
+            <name>cloud-store-sdk_2.12</name>
+            <url>https://oss.sonatype.org/content/repositories/orgsunbird-1083</url>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
     
     <properties>
 		<encoding>UTF-8</encoding>
@@ -83,6 +94,16 @@
             <artifactId>cassandra-unit</artifactId>
             <version>3.11.2.0</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.sunbird</groupId>
+            <artifactId>cloud-store-sdk_2.12</artifactId>
+            <version>1.2.9</version>
+        </dependency>
+        <dependency>
+            <groupId>com.moparisthebest</groupId>
+            <artifactId>junidecode</artifactId>
+            <version>0.1.1</version>
         </dependency>
     </dependencies>
 
