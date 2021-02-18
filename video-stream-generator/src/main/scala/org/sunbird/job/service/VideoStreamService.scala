@@ -6,7 +6,6 @@ import com.datastax.driver.core.querybuilder.{QueryBuilder, Select}
 import org.joda.time.DateTime
 import org.slf4j.LoggerFactory
 import org.sunbird.job.Metrics
-import org.sunbird.job.functions.VideoStreamGenerator
 import org.sunbird.job.service.impl.MediaServiceFactory
 import org.sunbird.job.task.VideoStreamGeneratorConfig
 import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, JSONUtil}
@@ -15,7 +14,7 @@ import org.sunbird.job.helpers.{JobRequest, MediaRequest, MediaResponse, Streami
 import scala.collection.JavaConverters._
 
 class VideoStreamService(implicit config: VideoStreamGeneratorConfig, httpUtil: HttpUtil) {
-  private[this] lazy val logger = LoggerFactory.getLogger(classOf[VideoStreamGenerator])
+  private[this] lazy val logger = LoggerFactory.getLogger(classOf[VideoStreamService])
   private lazy val mediaService = MediaServiceFactory.getMediaService()
   private lazy val dbKeyspace:String = config.dbKeyspace
   private lazy val dbTable:String = config.dbTable
@@ -150,7 +149,7 @@ class VideoStreamService(implicit config: VideoStreamGeneratorConfig, httpUtil: 
       }
     })
 
-//    selectWhere.orderBy(QueryBuilder.asc("dt_job_submitted"))
+    selectWhere.and(QueryBuilder.eq("job_name", VIDEO_STREAMING))
 
     val result = cassandraUtil.find(selectWhere.toString).asScala.toList.map { jr =>
       JobRequest(jr.getString("client_key"), jr.getString("request_id"), Option(jr.getString("job_id")), jr.getString("status"), jr.getString("request_data"), jr.getInt("iteration"), stage=Option(jr.getString("stage")), stage_status=Option(jr.getString("stage_status")),job_name=Option(jr.getString("job_name")))

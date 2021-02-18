@@ -2,12 +2,12 @@ package org.sunbird.job.task
 
 import java.io.File
 import java.util
-
 import com.typesafe.config.ConfigFactory
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
+import org.apache.flink.streaming.api.windowing.assigners.TumblingProcessingTimeWindows
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.domain.Event
@@ -26,12 +26,13 @@ class VideoStreamGeneratorStreamTask(config: VideoStreamGeneratorConfig, kafkaCo
     val processStreamTask = env.addSource(source).name(config.videoStreamConsumer)
       .uid(config.videoStreamConsumer).setParallelism(config.kafkaConsumerParallelism)
       .rebalance
+      .keyBy(_.eid)
       .process(new VideoStreamGenerator(config, httpUtil))
       .setParallelism(config.kafkaConsumerParallelism)
 
     processStreamTask.getSideOutput(config.videoStreamJobOutput)
       .keyBy(x => x)
-      .timeWindow(Time.seconds(config.windowTime))
+      .window(TumblingProcessingTimeWindows.of(Time.seconds(config.windowTime)))
       .process(new VideoStreamUrlUpdator(config, httpUtil))
       .uid(config.videoStreamUrlUpdatorConsumer)
       .setParallelism(config.kafkaConsumerParallelism)
