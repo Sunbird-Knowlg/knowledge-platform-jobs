@@ -1,11 +1,11 @@
-CREATE KEYSPACE dev_hierarchy_store with replication = {'class':'SimpleStrategy','replication_factor':1};
+CREATE KEYSPACE IF NOT EXISTS dev_hierarchy_store with replication = {'class':'SimpleStrategy','replication_factor':1};
 CREATE TABLE IF NOT EXISTS dev_hierarchy_store.questionset_hierarchy (
   identifier text,
   hierarchy text,
   PRIMARY KEY (identifier)
 );
 
-CREATE KEYSPACE dev_question_store with replication = {'class':'SimpleStrategy','replication_factor':1};
+CREATE KEYSPACE IF NOT EXISTS dev_question_store with replication = {'class':'SimpleStrategy','replication_factor':1};
 CREATE TABLE IF NOT EXISTS dev_question_store.question_data (
   identifier text,
   body blob,
@@ -42,3 +42,8 @@ textAsBlob('1'),
 '{"response1": {"maxScore": 1, "cardinality": "single", "type": "integer", "correctResponse": { "value": "1", "outcomes": {"SCORE": 1}}}}',
 '{"response1": {"type": "choice","options": [{"label": "<p>Red&nbsp;</p><figure class=\"image\"><img src=\"https://dockstorage.blob.core.windows.net/sunbird-content-dock/content/do_11318931140144332811620/artifact/i.png\" alt=\"do_11318931140144332811620\" data-asset-variable=\"do_11318931140144332811620\"></figure>","value": 0}]}}'
 );
+
+
+INSERT INTO dev_hierarchy_store.questionset_hierarchy(identifier, hierarchy) VALUES ('do_123', '{ "name": "QS1", "identifier": "do_123", "children": [{"identifier": "do_124", "objectType": "QuestionSet", "visibility": "Parent"}]}');
+INSERT INTO dev_hierarchy_store.questionset_hierarchy(identifier, hierarchy) VALUES ('do_321', '{ "name": "QS1", "identifier": "do_123", "children": [{"identifier": "do_124", "objectType": "QuestionSet", "visibility": "Parent"}]}');
+INSERT INTO dev_hierarchy_store.questionset_hierarchy(identifier, hierarchy) VALUES ('do_123.img', '{ "name": "QS1", "identifier": "do_123", "children": [{"identifier": "do_124", "objectType": "QuestionSet", "visibility": "Parent"}, {"identifier": "do_125", "objectType": "QuestionSet", "visibility": "Parent"}]}');
