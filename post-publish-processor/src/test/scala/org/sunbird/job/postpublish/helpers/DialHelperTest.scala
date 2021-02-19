@@ -2,11 +2,13 @@ package org.sunbird.job.postpublish.helpers
 
 import java.util
 
+import com.typesafe.config.{Config, ConfigFactory}
 import org.mockito.{ArgumentMatchers, Mockito}
 import org.mockito.Mockito.when
 import org.mockito.Mockito.doNothing
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
+import org.sunbird.job.task.PostPublishProcessorConfig
 import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, Neo4JUtil}
 
 import scala.collection.JavaConverters._
@@ -24,6 +26,8 @@ class DialHelperTest extends FlatSpec with BeforeAndAfterAll with Matchers with 
     implicit val cassandraUtil: CassandraUtil = mock[CassandraUtil](Mockito.withSettings().serializable())
     implicit val neo4jUtil: Neo4JUtil = mock[Neo4JUtil](Mockito.withSettings().serializable())
     implicit val httpUtil: HttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
+    val config: Config = ConfigFactory.load("test.conf")
+    implicit val jobConfig: PostPublishProcessorConfig = new PostPublishProcessorConfig(config)
 
     "fetchExistingReservedDialcodes" should "return map of dialcodes that is reserved" in {
         val dialUtility = new TestDialUtility()
@@ -36,7 +40,7 @@ class DialHelperTest extends FlatSpec with BeforeAndAfterAll with Matchers with 
     "reserveDialCodes" should "reserve dialcodes and return a map of the same " in {
         val dialUtility = new TestDialUtility()
         when(httpUtil.post(ArgumentMatchers.anyString(), ArgumentMatchers.anyString(), ArgumentMatchers.anyMap())).thenReturn(getReserveDialcodeResponse())
-        val reserved = dialUtility.reserveDialCodes(getEvent())
+        val reserved = dialUtility.reserveDialCodes(getEvent(), jobConfig)
         reserved.isEmpty should be(false)
         reserved.getOrDefault("V9E4D9", -1) shouldEqual (0)
     }
@@ -45,7 +49,7 @@ class DialHelperTest extends FlatSpec with BeforeAndAfterAll with Matchers with 
         val dialUtility = new TestDialUtility()
         when(httpUtil.post(ArgumentMatchers.anyString(), ArgumentMatchers.anyString(), ArgumentMatchers.anyMap())).thenReturn(HTTPResponse(400, ""))
         intercept[Exception] {
-            dialUtility.reserveDialCodes(getEvent())
+            dialUtility.reserveDialCodes(getEvent(), jobConfig)
         }
     }
 

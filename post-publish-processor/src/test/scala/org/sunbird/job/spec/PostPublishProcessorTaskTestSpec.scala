@@ -57,7 +57,7 @@ class PostPublishProcessorTaskTestSpec extends BaseTestSpec {
   val searchRequestForQRImageEvent2 = s"""{"request":{"filters":{"status":["Draft","Review","Live","Unlisted","Failed"],"origin":"do_113214556543235"},"fields":["identifier","mimeType","contentType","versionKey","channel","status","pkgVersion","lastPublishedBy","origin","originData"]}}"""
   val searchRequestForQRImageEvent3 = s"""{"request":{"filters":{"status":["Draft","Review","Live","Unlisted","Failed"],"origin":"do_113214556543236"},"fields":["identifier","mimeType","contentType","versionKey","channel","status","pkgVersion","lastPublishedBy","origin","originData"]}}"""
   val searchRequestForQRImageEvent4 = s"""{"request":{"filters":{"status":["Draft","Review","Live","Unlisted","Failed"],"origin":"do_113214556543237"},"fields":["identifier","mimeType","contentType","versionKey","channel","status","pkgVersion","lastPublishedBy","origin","originData"]}}"""
-  val qrRequestUrl = "https://dev.sunbirded.org/action/content/v3/dialcode/reserve/do_113214556543237"
+  val qrRequestUrl = "https://localhost/action/content/v3/dialcode/reserve/do_113214556543237"
   val qrRequestBody = s"""{"request":{"dialcodes":{"count":1,"qrCodeSpec":{"errorCorrectionLevel":"H"}}}}"""
   val qrRequestHeaders: util.Map[String, String] = Map[String, String]("X-Channel-Id" -> "b00bc992ef25f1a9a8d63291e20efc8d",
     "Content-Type" -> "application/json").asJava
