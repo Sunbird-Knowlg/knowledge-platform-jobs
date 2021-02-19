@@ -1,11 +1,13 @@
 package org.sunbird.job.functions
 
+import java.util
+
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.models.ExtDataConfig
-import org.sunbird.job.postpublish.helpers.{DialHelper, QRHelper}
+import org.sunbird.job.postpublish.helpers.{DialHelper}
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 import org.sunbird.job.task.PostPublishProcessorConfig
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
@@ -17,7 +19,7 @@ class DIALCodeLinkFunction(config: PostPublishProcessorConfig, httpUtil: HttpUti
                            @transient var cassandraUtil: CassandraUtil = null)
                           (implicit val stringTypeInfo: TypeInformation[String])
     extends BaseProcessFunction[java.util.Map[String, AnyRef], String](config)
-        with DialHelper with QRHelper {
+        with DialHelper{
 
     private[this] val logger = LoggerFactory.getLogger(classOf[DIALCodeLinkFunction])
 
@@ -37,9 +39,10 @@ class DIALCodeLinkFunction(config: PostPublishProcessorConfig, httpUtil: HttpUti
         metrics.incCounter(config.dialLinkingCount)
         val identifier = edata.get("identifier").asInstanceOf[String]
         val dialcodes = fetchExistingDialcodes(edata)
+        logger.info(s"Dialcodes fetched: ${dialcodes}") // temp
         if (dialcodes.isEmpty) {
             logger.info(s"No Dial Code found. Checking for Reserved Dialcodes.")
-            var reservedDialCode = fetchExistingReservedDialcodes(edata)
+            var reservedDialCode: util.Map[String, Integer] = fetchExistingReservedDialcodes(edata)
             if (reservedDialCode.isEmpty) {
                 logger.info(s"No Reserved Dial Code found. Sending request for Reserving Dialcode.")
                 reservedDialCode = reserveDialCodes(edata, config)(httpUtil)
@@ -47,16 +50,16 @@ class DIALCodeLinkFunction(config: PostPublishProcessorConfig, httpUtil: HttpUti
             reservedDialCode.asScala.keys.headOption match {
                 case Some(dialcode: String) => {
                     updateDIALToObject(identifier, dialcode)(neo4JUtil)
-                    createQRGeneratorEvent(edata, dialcode, context)(metrics)
+                    createQRGeneratorEvent(edata, dialcode, context, config)(metrics, ExtDataConfig(config.dialcodeKeyspaceName, config.dialcodeTableName), cassandraUtil)
                 }
-                case _ => logger.info(s"Couldn't reserve any dialcodes for object with identifier:$identifier")
+                case _ => logger.info(s"Couldn't reserve any dialcodes for object with identifier:${identifier}")
             }
         } else {
             if (validateQR(dialcodes.get(0))(ExtDataConfig(config.dialcodeKeyspaceName, config.dialcodeTableName), cassandraUtil)) {
                 logger.info(s"Event Skipped. Target Object [ $identifier ] already has DIAL Code and its QR Image.| DIAL Codes : $dialcodes")
                 metrics.incCounter(config.skippedEventCount)
             } else {
-                createQRGeneratorEvent(edata, dialcodes.get(0), context)(metrics)
+                createQRGeneratorEvent(edata, dialcodes.get(0), context, config)(metrics, ExtDataConfig(config.dialcodeKeyspaceName, config.dialcodeTableName), cassandraUtil)
             }
         }
     }
@@ -72,7 +75,7 @@ class DIALCodeLinkFunction(config: PostPublishProcessorConfig, httpUtil: HttpUti
      * @param context
      * @param metrics
      */
-    def createQRGeneratorEvent(edata: java.util.Map[String, AnyRef], dialcode: String, context: ProcessFunction[java.util.Map[String, AnyRef], String]#Context)(implicit metrics: Metrics): Unit = {
+    /*def createQRGeneratorEvent(edata: java.util.Map[String, AnyRef], dialcode: String, context: ProcessFunction[java.util.Map[String, AnyRef], String]#Context)(implicit metrics: Metrics): Unit = {
         logger.info("Generating event for QR Image Generation.")
         val ets = System.currentTimeMillis
         val identifier = edata.get("identifier").asInstanceOf[String]
@@ -81,5 +84,5 @@ class DIALCodeLinkFunction(config: PostPublishProcessorConfig, httpUtil: HttpUti
         logger.info(s"QR Image Generator Event Object : ${event}")
         context.output(config.generateQRImageOutTag, event)
         metrics.incCounter(config.qrImageGeneratorEventCount)
-    }
+    }*/
 }
