@@ -2,6 +2,7 @@ package org.sunbird.publish.spec
 
 
 import com.typesafe.config.{Config, ConfigFactory}
+import org.mockito.ArgumentMatchers.any
 import org.mockito.{ArgumentMatchers, Mockito}
 import org.mockito.Mockito.when
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
@@ -37,7 +38,7 @@ class ObjectPdfGeneratorSpec extends FlatSpec with BeforeAndAfterAll with Matche
     }
 
     "Object PDF generator getPdfFileUrl" should "return a url of the pdf file after uploading it to cloud" in {
-        when(mockHttpUtil.post(ArgumentMatchers.anyString(), ArgumentMatchers.anyString())).thenReturn(getHttpResponse())
+        when(mockHttpUtil.post(ArgumentMatchers.anyString(), ArgumentMatchers.anyString(), any())).thenReturn(getHttpResponse())
         val pdfGenerator = new TestQuestionPdfGenerator()
         val (pdfUrl, previewUrl) = pdfGenerator.getPdfFileUrl(getObjectList(), getObject(), "questionSetTemplate.vm", "http://11.2.6.6/print")
         pdfUrl.getOrElse("").isEmpty should be(false)
@@ -46,7 +47,7 @@ class ObjectPdfGeneratorSpec extends FlatSpec with BeforeAndAfterAll with Matche
     }
 
     "Object PDF generator getPdfFileUrl" should "return a Empty pdfUrl if failed to convert to PDF " in {
-        when(mockHttpUtil.post(ArgumentMatchers.anyString(), ArgumentMatchers.anyString())).thenReturn(getFailedHttpResponse())
+        when(mockHttpUtil.post(ArgumentMatchers.anyString(), ArgumentMatchers.anyString(), any())).thenReturn(getFailedHttpResponse())
         val pdfGenerator = new TestQuestionPdfGenerator()
         val (pdfUrl, previewUrl) = pdfGenerator.getPdfFileUrl(getObjectList(), getObject(), "questionSetTemplate.vm", "http://11.2.6.6/print")
         pdfUrl.getOrElse("").isEmpty should be(true)
