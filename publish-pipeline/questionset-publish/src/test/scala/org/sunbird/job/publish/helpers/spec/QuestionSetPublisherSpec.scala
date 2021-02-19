@@ -49,7 +49,6 @@ class QuestionSetPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matc
 
   "saveExternalData" should "save external data like hierarchy" in {
     val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef]))
-//    when(mockCassandraUtil.upsert(ArgumentMatchers.anyString())).thenReturn(true)
     new TestQuestionSetPublisher().saveExternalData(data, readerConfig)
   }
 

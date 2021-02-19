@@ -62,7 +62,6 @@ class QuestionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matcher
 
 	"saveExternalData " should "save external data to cassandra table" in {
 		val data = new ObjectData("do_123", Map[String, AnyRef](), Some(Map[String, AnyRef]("body" -> "body", "answer" -> "answer")))
-//		when(mockCassandraUtil.upsert(ArgumentMatchers.anyString())).thenReturn(true)
 		new TestQuestionPublisher().saveExternalData(data, readerConfig)
 	}
 
