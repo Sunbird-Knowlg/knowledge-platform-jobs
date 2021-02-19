@@ -42,7 +42,7 @@ class DIALCodeLinkFunction(config: PostPublishProcessorConfig, httpUtil: HttpUti
             var reservedDialCode = fetchExistingReservedDialcodes(edata)
             if (reservedDialCode.isEmpty) {
                 logger.info(s"No Reserved Dial Code found. Sending request for Reserving Dialcode.")
-                reservedDialCode = reserveDialCodes(edata)(httpUtil)
+                reservedDialCode = reserveDialCodes(edata, config)(httpUtil)
             }
             reservedDialCode.asScala.keys.headOption match {
                 case Some(dialcode: String) => {
@@ -77,7 +77,7 @@ class DIALCodeLinkFunction(config: PostPublishProcessorConfig, httpUtil: HttpUti
         val ets = System.currentTimeMillis
         val identifier = edata.get("identifier").asInstanceOf[String]
         val channelId = edata.getOrDefault("channel", "").asInstanceOf[String]
-        val event = s"""{"eid":"BE_QR_IMAGE_GENERATOR", "objectId": "${identifier}", "dialcodes": [{"data": "https://dev.sunbirded.org/dial/${dialcode}", "text": "${dialcode}", "id": "0_${dialcode}"}], "storage": {"container": "dial", "path": "${channelId}/", "fileName": "${identifier}_${ets}"}, "config": {"errorCorrectionLevel": "H", "pixelsPerBlock": 2, "qrCodeMargin": 3, "textFontName": "Verdana", "textFontSize": 11, "textCharacterSpacing": 0.1, "imageFormat": "png", "colourModel": "Grayscale", "imageBorderSize": 1}}""".stripMargin
+        val event = s"""{"eid":"BE_QR_IMAGE_GENERATOR", "objectId": "${identifier}", "dialcodes": [{"data": "${config.dialBaseUrl}${dialcode}", "text": "${dialcode}", "id": "0_${dialcode}"}], "storage": {"container": "dial", "path": "${channelId}/", "fileName": "${identifier}_${ets}"}, "config": {"errorCorrectionLevel": "H", "pixelsPerBlock": 2, "qrCodeMargin": 3, "textFontName": "Verdana", "textFontSize": 11, "textCharacterSpacing": 0.1, "imageFormat": "png", "colourModel": "Grayscale", "imageBorderSize": 1}}""".stripMargin
         logger.info(s"QR Image Generator Event Object : ${event}")
         context.output(config.generateQRImageOutTag, event)
         metrics.incCounter(config.qrImageGeneratorEventCount)

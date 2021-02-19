@@ -16,7 +16,7 @@ trait QRHelper {
     }
 
     def getQRImageRecord(dialcode: String)(implicit extConfig: ExtDataConfig, cassandraUtil: CassandraUtil): Option[String] = {
-        if (dialcode.isBlank) throw new Exception("Invalid dialcode to read")
+        if (dialcode.isEmpty) throw new Exception("Invalid dialcode to read")
         val fileName = s"0_$dialcode"
         val query = s"select url from ${extConfig.keyspace}.${extConfig.table} where filename = '$fileName';"
         try {

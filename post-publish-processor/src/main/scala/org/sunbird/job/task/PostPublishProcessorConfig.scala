@@ -59,10 +59,13 @@ class PostPublishProcessorConfig(override val config: Config) extends PostPublis
 
   val searchBaseUrl = config.getString("service.search.basePath")
   val lmsBaseUrl = config.getString("service.lms.basePath")
+  val learningBaseUrl = config.getString("service.kp.learning_service.base_url")
+  val dialBaseUrl = config.getString("service.dial.base.url")
 
   // API URLs
   val batchCreateAPIPath = lmsBaseUrl + "/private/v1/course/batch/create"
   val searchAPIPath = searchBaseUrl + "/v3/search"
+  val reserveDialCodeAPIPath = learningBaseUrl + "/action/content/v3/dialcode/reserve/"
 
   // QR Image Generator
   val QRImageGeneratorTopic: String = config.getString("kafka.qrimage.topic")
