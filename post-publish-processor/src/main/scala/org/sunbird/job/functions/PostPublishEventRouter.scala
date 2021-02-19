@@ -42,35 +42,15 @@ class PostPublishEventRouter(config: PostPublishProcessorConfig, httpUtil: HttpU
     if (event.validEvent()) {
       val identifier = event.collectionId
 
-      //Check shallow copied contents and publish.
-      val shallowCopied = getShallowCopiedContents(identifier)(config, httpUtil)
-      logger.info("Shallow copied by this content - " + identifier + " are: " + shallowCopied.size)
-      if (shallowCopied.size > 0) {
-        shallowCopied.foreach(metadata => context.output(config.shallowContentPublishOutTag, metadata))
-      }
+      // Process Shallow Copy Content
+      processShallowCopiedContent(identifier, context)
 
-      val metadata = neo4JUtil.getNodeProperties(identifier)
-      // Validate and trigger batch creation.
-      if (batchRequired(metadata, identifier)(config, cassandraUtil)) {
-        val createdFor = metadata.get("createdFor").asInstanceOf[java.util.List[String]]
-        val batchData = new util.HashMap[String, AnyRef]() {{
-          put("identifier", identifier)
-          put("name", metadata.get("name"))
-          put("createdBy", metadata.get("createdBy"))
-          if (CollectionUtils.isNotEmpty(createdFor))
-            put("createdFor", new util.ArrayList[String](createdFor))
-        }}
-        context.output(config.batchCreateOutTag, batchData)
-      }
+      // Process Batch Creation
+      processBatchCreation(identifier, context)
 
-      // Trigger DIAL Code create and link.
-      if(validateContentType(metadata)(config)) {
-        val linkMap = new util.HashMap[String, AnyRef](event.eData.asJava)
-        linkMap.put("channel", metadata.getOrDefault("channel", ""))
-        linkMap.put("dialcodes", metadata.getOrDefault("dialcodes", new util.ArrayList[String] {}))
-        linkMap.put("reservedDialcodes", metadata.getOrDefault("reservedDialcodes", "{}"))
-        context.output(config.linkDIALCodeOutTag, linkMap)
-      }
+      // Process Dialcode link
+      processDialcodeLink(identifier, context, event)
+
     } else {
       metrics.incCounter(config.skippedEventCount)
     }
@@ -79,6 +59,47 @@ class PostPublishEventRouter(config: PostPublishProcessorConfig, httpUtil: HttpU
 
   override def metricsList(): List[String] = {
     List(config.successEventCount, config.failedEventCount, config.skippedEventCount, config.totalEventsCount)
+  }
+
+  private def processShallowCopiedContent(identifier: String, context: ProcessFunction[Event, String]#Context): Unit ={
+    logger.info("Process Shallow Copy for content: " + identifier)
+    val shallowCopied = getShallowCopiedContents(identifier)(config, httpUtil)
+    logger.info("Shallow copied by this content - " + identifier + " are: " + shallowCopied.size)
+    if (shallowCopied.size > 0) {
+      shallowCopied.foreach(metadata => context.output(config.shallowContentPublishOutTag, metadata))
+    }
+  }
+
+  private def processBatchCreation(identifier: String, context: ProcessFunction[Event, String]#Context): Unit ={
+    logger.info("Process Batch Creation for content: " + identifier)
+    val metadata = neo4JUtil.getNodeProperties(identifier)
+
+    // Validate and trigger batch creation.
+    if (batchRequired(metadata, identifier)(config, cassandraUtil)) {
+      val createdFor = metadata.get("createdFor").asInstanceOf[java.util.List[String]]
+      val batchData = new util.HashMap[String, AnyRef]() {{
+        put("identifier", identifier)
+        put("name", metadata.get("name"))
+        put("createdBy", metadata.get("createdBy"))
+        if (CollectionUtils.isNotEmpty(createdFor))
+          put("createdFor", new util.ArrayList[String](createdFor))
+      }}
+      context.output(config.batchCreateOutTag, batchData)
+    }
+
+  }
+
+  private def processDialcodeLink(identifier: String, context: ProcessFunction[Event, String]#Context, event: Event): Unit ={
+    logger.info("Process Dialcode Link for content: " + identifier)
+    val metadata = neo4JUtil.getNodeProperties(identifier)
+
+    if(validateContentType(metadata)(config)) {
+      val linkMap = new util.HashMap[String, AnyRef](event.eData.asJava)
+      linkMap.put("channel", metadata.getOrDefault("channel", ""))
+      linkMap.put("dialcodes", metadata.getOrDefault("dialcodes", new util.ArrayList[String] {}))
+      linkMap.put("reservedDialcodes", metadata.getOrDefault("reservedDialcodes", "{}"))
+      context.output(config.linkDIALCodeOutTag, linkMap)
+    }
   }
 
 }
