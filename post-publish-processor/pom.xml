@@ -16,7 +16,6 @@
     <description>
         Post Publish Processor Flink Job
     </description>
-
     <properties>
 		<encoding>UTF-8</encoding>
 		<scoverage.plugin.version>1.4.0</scoverage.plugin.version>
