@@ -16,6 +16,17 @@
     <description>
         Post Publish Processor Flink Job
     </description>
+
+    <repositories>
+        <repository>
+            <id>cloud-store-sdk_2.12</id>
+            <name>cloud-store-sdk_2.12</name>
+            <url>https://oss.sonatype.org/content/repositories/orgsunbird-1083</url>
+            <snapshots>
+                <enabled>false</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
     
     <properties>
 		<encoding>UTF-8</encoding>
