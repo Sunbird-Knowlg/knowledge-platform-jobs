@@ -19,6 +19,7 @@ class VideoStreamGeneratorConfig(override val config: Config) extends BaseJobCon
   // Kafka Topics Configuration
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
+  override val parallelism: Int = config.getInt("task.parallelism")
 
   val windowTime = config.getInt("task.window.time")
 
@@ -29,8 +30,10 @@ class VideoStreamGeneratorConfig(override val config: Config) extends BaseJobCon
   val skippedEventCount = "skipped-events-count"
 
   // Consumers
+
   val videoStreamConsumer = "video-stream-generator-consumer"
-  val videoStreamUrlUpdatorConsumer = "video-stream-url-updator-consumer"
+  val videoStreamGeneratorFunction = "video-stream-generator-function"
+  val videoStreamUrlUpdatorFunction = "video-stream-url-updator-function"
 
   // Tags
   val videoStreamJobStatusTagName = "video-stream-job-status"

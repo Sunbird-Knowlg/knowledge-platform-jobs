@@ -28,14 +28,17 @@ class VideoStreamGeneratorStreamTask(config: VideoStreamGeneratorConfig, kafkaCo
       .rebalance
       .keyBy(_.eid)
       .process(new VideoStreamGenerator(config, httpUtil))
-      .setParallelism(config.kafkaConsumerParallelism)
+      .name(config.videoStreamGeneratorFunction)
+      .uid(config.videoStreamGeneratorFunction)
+      .setParallelism(config.parallelism)
 
     processStreamTask.getSideOutput(config.videoStreamJobOutput)
       .keyBy(x => x)
       .window(TumblingProcessingTimeWindows.of(Time.seconds(config.windowTime)))
       .process(new VideoStreamUrlUpdator(config, httpUtil))
-      .uid(config.videoStreamUrlUpdatorConsumer)
-      .setParallelism(config.kafkaConsumerParallelism)
+      .name(config.videoStreamUrlUpdatorFunction)
+      .uid(config.videoStreamUrlUpdatorFunction)
+      .setParallelism(config.parallelism)
 
     env.execute(config.jobName)
   }
