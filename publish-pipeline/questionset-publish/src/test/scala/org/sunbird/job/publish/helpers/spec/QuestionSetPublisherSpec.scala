@@ -15,8 +15,6 @@ import org.sunbird.publish.core.{ExtDataConfig, ObjectData}
 class QuestionSetPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
 
   implicit val mockNeo4JUtil: Neo4JUtil = mock[Neo4JUtil](Mockito.withSettings().serializable())
-//  implicit val mockCassandraUtil: CassandraUtil = mock[CassandraUtil](Mockito.withSettings().serializable())
-//  implicit val mockExtDataConfig: ExtDataConfig = mock[ExtDataConfig](Mockito.withSettings().serializable())
   implicit var cassandraUtil: CassandraUtil = _
   val config: Config = ConfigFactory.load("test.conf").withFallback(ConfigFactory.systemEnvironment())
   implicit val jobConfig: QuestionSetPublishConfig = new QuestionSetPublishConfig(config)
