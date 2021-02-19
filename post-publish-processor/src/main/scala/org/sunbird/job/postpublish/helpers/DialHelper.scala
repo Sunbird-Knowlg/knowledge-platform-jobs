@@ -22,7 +22,7 @@ trait DialHelper {
         JSONUtil.deserialize[util.Map[String, Integer]](reservedDialcodes)
     }
 
-    def reserveDialCodes(edata: java.util.Map[String, AnyRef])(implicit httpUtil: HttpUtil): java.util.Map[String, Integer] = {
+    def reserveDialCodes(edata: java.util.Map[String, AnyRef], config: PostPublishProcessorConfig)(implicit httpUtil: HttpUtil): java.util.Map[String, Integer] = {
         val identifier = edata.get("identifier").asInstanceOf[String]
         val request = Map("request" -> Map("dialcodes" -> Map("count" -> 1.asInstanceOf[AnyRef],
             "qrCodeSpec" -> Map("errorCorrectionLevel" -> "H").asJava).asJava).asJava).asJava
@@ -30,7 +30,7 @@ trait DialHelper {
             "Content-Type" -> "application/json").asJava
         logger.info(s"Reserved Dialcode Api request body : ${request}")
         val httpRequest = JSONUtil.serialize(request)
-        val response = httpUtil.post(s"https://dev.sunbirded.org/action/content/v3/dialcode/reserve/$identifier", httpRequest, headers)
+        val response = httpUtil.post(config.reserveDialCodeAPIPath+identifier, httpRequest, headers)
         if (response.status == 200) {
             val responseBody = gson.fromJson(response.body, classOf[java.util.Map[String, AnyRef]])
             logger.info(s"Reserved Dialcode Api resopnse body : ${responseBody}")
