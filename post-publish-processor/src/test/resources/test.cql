@@ -1,6 +1,6 @@
-CREATE KEYSPACE sunbird_courses with replication = {'class':'SimpleStrategy','replication_factor':1};
+CREATE KEYSPACE IF NOT EXISTS sunbird_courses with replication = {'class':'SimpleStrategy','replication_factor':1};
 
-CREATE TABLE sunbird_courses.course_batch (
+CREATE TABLE IF NOT EXISTS sunbird_courses.course_batch (
     courseid text,
     batchid text,
     cert_templates map<text, frozen<map<text, text>>>,
@@ -19,9 +19,9 @@ CREATE TABLE sunbird_courses.course_batch (
     PRIMARY KEY (courseid, batchid)
 );
 
-CREATE KEYSPACE dialcodes with replication = {'class':'SimpleStrategy','replication_factor':1};
+CREATE KEYSPACE IF NOT EXISTS dialcodes with replication = {'class':'SimpleStrategy','replication_factor':1};
 
-CREATE TABLE dialcodes.dialcode_images (
+CREATE TABLE IF NOT EXISTS dialcodes.dialcode_images (
     filename text PRIMARY KEY,
     channel text,
     config map<text, text>,
