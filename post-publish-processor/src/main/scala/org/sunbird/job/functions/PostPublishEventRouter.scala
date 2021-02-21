@@ -93,7 +93,7 @@ class PostPublishEventRouter(config: PostPublishProcessorConfig, httpUtil: HttpU
     logger.info("Process Dialcode Link for content: " + identifier)
     val metadata = neo4JUtil.getNodeProperties(identifier)
 
-    if(validateContentType(metadata)(config)) {
+    if(validatePrimaryCategory(metadata)(config)) {
       val linkMap = new util.HashMap[String, AnyRef](event.eData.asJava)
       linkMap.put("channel", metadata.getOrDefault("channel", ""))
       linkMap.put("dialcodes", metadata.getOrDefault("dialcodes", new util.ArrayList[String] {}))
