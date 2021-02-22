@@ -46,10 +46,6 @@ class VideoStreamGeneratorConfig(override val config: Config) extends BaseJobCon
   val dbPort: Int = config.getInt("lms-cassandra.port")
   val hierarchyPrimaryKey: List[String] = List("identifier")
 
-  // Redis Configurations
-  val relationCacheStore: Int = config.getInt("redis.database.relationCache.id")
-  val collectionCacheStore: Int = config.getInt("redis.database.collectionCache.id")
-
   // LP Configurations
   val lpURL: String = config.getString("lp.url")
   val contentV3Update = "/system/v3/content/update/"
