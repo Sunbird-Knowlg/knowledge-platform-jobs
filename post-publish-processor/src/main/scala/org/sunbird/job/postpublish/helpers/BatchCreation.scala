@@ -77,6 +77,7 @@ trait BatchCreation {
   }
 
   def getBatchDetails(identifier: String)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, config: PostPublishProcessorConfig): util.Map[String, AnyRef] ={
+    logger.info("Process Batch Creation for content: " + identifier)
     val metadata = neo4JUtil.getNodeProperties(identifier)
 
     // Validate and trigger batch creation.

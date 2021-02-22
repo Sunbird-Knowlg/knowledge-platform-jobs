@@ -116,6 +116,7 @@ trait DialHelper {
     }
 
     def getDialCodeDetails(identifier: String, event: Event)(implicit neo4JUtil: Neo4JUtil, config: PostPublishProcessorConfig): util.Map[String, AnyRef] ={
+        logger.info("Process Dialcode Link for content: " + identifier)
         val metadata = neo4JUtil.getNodeProperties(identifier)
 
         if(validatePrimaryCategory(metadata)(config)) {

@@ -35,6 +35,7 @@ class DIALCodeLinkFunction(config: PostPublishProcessorConfig, httpUtil: HttpUti
     }
 
     override def processElement(edata: java.util.Map[String, AnyRef], context: ProcessFunction[java.util.Map[String, AnyRef], String]#Context, metrics: Metrics): Unit = {
+        if(edata.isEmpty) return
         logger.info(s"Link DIAL Code operation triggered with object : ${edata}")
         metrics.incCounter(config.dialLinkingCount)
         val dialcode: String = getDialcode(edata)
