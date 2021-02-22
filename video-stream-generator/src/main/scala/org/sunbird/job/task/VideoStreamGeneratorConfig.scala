@@ -31,9 +31,9 @@ class VideoStreamGeneratorConfig(override val config: Config) extends BaseJobCon
 
   // Consumers
 
-  val videoStreamConsumer = "video-stream-generator-consumer"
-  val videoStreamGeneratorFunction = "video-stream-generator-function"
-  val videoStreamUrlUpdatorFunction = "video-stream-url-updator-function"
+  val videoStreamConsumer = "video-streaming-consumer"
+  val videoStreamGeneratorFunction = "submit-streaming-job"
+  val videoStreamUrlUpdaterFunction = "check-streaming-jobs"
 
   // Tags
   val videoStreamJobStatusTagName = "video-stream-job-status"

@@ -36,8 +36,8 @@ class VideoStreamGeneratorStreamTask(config: VideoStreamGeneratorConfig, kafkaCo
       .keyBy(x => x)
       .window(TumblingProcessingTimeWindows.of(Time.seconds(config.windowTime)))
       .process(new VideoStreamUrlUpdator(config, httpUtil))
-      .name(config.videoStreamUrlUpdatorFunction)
-      .uid(config.videoStreamUrlUpdatorFunction)
+      .name(config.videoStreamUrlUpdaterFunction)
+      .uid(config.videoStreamUrlUpdaterFunction)
       .setParallelism(config.parallelism)
 
     env.execute(config.jobName)

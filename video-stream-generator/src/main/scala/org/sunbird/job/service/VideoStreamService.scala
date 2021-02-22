@@ -48,7 +48,7 @@ class VideoStreamService(implicit config: VideoStreamGeneratorConfig, httpUtil: 
       val iteration = jobRequest.iteration
       if (jobRequest.job_id != None) {
         val mediaResponse:MediaResponse = mediaService.getJob(jobRequest.job_id.get)
-        logger.info("Get job details while saving.::"+JSONUtil.serialize(mediaResponse.result))
+        logger.info("Get job details while saving: " + JSONUtil.serialize(mediaResponse.result))
         if(mediaResponse.responseCode.contentEquals("OK")) {
           val jobStatus = mediaResponse.result.getOrElse("job", Map()).asInstanceOf[Map[String, AnyRef]].getOrElse("status","").asInstanceOf[String];
 
@@ -118,12 +118,12 @@ class VideoStreamService(implicit config: VideoStreamGeneratorConfig, httpUtil: 
       val response:HTTPResponse = httpUtil.patch(url, requestBody, headers)
 
       if(response.status == 200){
-        true;
+        true
       } else {
-        logger.error("Error while updating previewUrl for content : " + contentId + "::"+response.body)
-        throw new Exception("Error while updating previewUrl for content : " + contentId + "::"+response.body)
+        logger.error("Error while updating previewUrl for content : " + contentId + " :: "+response.body)
+        throw new Exception("Error while updating previewUrl for content : " + contentId + " :: "+response.body)
       }
-    }else{
+    } else {
       false
     }
   }
@@ -167,18 +167,6 @@ class VideoStreamService(implicit config: VideoStreamGeneratorConfig, httpUtil: 
       .value("iteration", jobRequest.iteration)
       .value("dt_job_submitted", setDateColumn(jobRequest.dt_job_submitted).get)
       .value("location", jobRequest.location.get)
-//      .value("dt_file_created", setDateColumn(jobRequest.dt_file_created).get)
-//      .value("dt_first_event", setDateColumn(jobRequest.dt_first_event).get)
-//      .value("dt_last_event", setDateColumn(jobRequest.dt_last_event).get)
-//      .value("dt_expiration", setDateColumn(jobRequest.dt_expiration).get)
-//      .value("dt_job_processing", setDateColumn(jobRequest.dt_job_processing).get)
-//      .value("dt_job_completed", setDateColumn(jobRequest.dt_job_completed).get)
-//      .value("input_events", jobRequest.input_events.getOrElse(0))
-//      .value("output_events", jobRequest.output_events.getOrElse(0))
-//      .value("file_size", jobRequest.file_size.getOrElse(0L))
-//      .value("latency", jobRequest.latency.getOrElse(0))
-//      .value("execution_time", jobRequest.execution_time.getOrElse(0L))
-//      .value("err_message", jobRequest.err_message.getOrElse(""))
       .value("stage", jobRequest.stage.get)
       .value("stage_status", jobRequest.stage_status.get)
       .value("job_name", jobRequest.job_name.get)
