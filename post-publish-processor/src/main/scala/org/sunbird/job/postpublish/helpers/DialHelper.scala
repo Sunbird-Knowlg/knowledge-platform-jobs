@@ -57,9 +57,9 @@ trait DialHelper {
         edata.getOrDefault("dialcodes", new util.ArrayList()).asInstanceOf[util.List[String]]
     }
 
-     def validateContentType(edata: java.util.Map[String, AnyRef])(implicit config: PostPublishProcessorConfig) = {
-        val contentType = edata.get("contentType").asInstanceOf[String]
-        config.contentTypes.contains(contentType)
+     def validatePrimaryCategory(edata: java.util.Map[String, AnyRef])(implicit config: PostPublishProcessorConfig) = {
+        val primaryCategory = edata.get("primaryCategory").asInstanceOf[String]
+        config.primaryCategories.contains(primaryCategory)
     }
 
     def validateQR(dialcode: String)(implicit extConfig: ExtDataConfig, cassandraUtil: CassandraUtil): Boolean = {
@@ -82,16 +82,18 @@ trait DialHelper {
         }
     }
 
-    def updatDialcodeRecord(dialcode: String, channel: String, ets: Long)(implicit extConfig: ExtDataConfig, cassandraUtil: CassandraUtil): Unit = {
+    def updatDialcodeRecord(dialcode: String, channel: String, ets: Long)(implicit extConfig: ExtDataConfig, cassandraUtil: CassandraUtil): Boolean = {
         if (dialcode.isEmpty) throw new Exception("Invalid dialcode to update")
         val query: String = s"insert into ${extConfig.keyspace}.${extConfig.table} (filename,channel,created_on,dialcode,status) values ('0_${dialcode}', '${channel}', ${ets}, '${dialcode}', 0);"
         try {
-            if(!cassandraUtil.upsert(query)){
+            if(cassandraUtil.upsert(query)){
+                true
+            }else{
                 logger.error("There was an issue while inserting the dialcode details into table")
                 throw new Exception("There was an issue while inserting the dialcode details into table")
             }
         } catch {
-            case e: Exception => logger.error("There was an issue while inserting the dialcode details into table")
+            case e: Exception => logger.error("There was an issue while inserting the dialcode details into table. Error Message: " + e.getMessage)
                 throw new Exception("There was an issue while inserting the dialcode details into table")
         }
 
@@ -103,11 +105,12 @@ trait DialHelper {
         val identifier = edata.get("identifier").asInstanceOf[String]
         val channelId = edata.getOrDefault("channel", "").asInstanceOf[String]
 
-        updatDialcodeRecord(dialcode, channelId, ets)
+        if(updatDialcodeRecord(dialcode, channelId, ets)){
+            val event = s"""{"eid":"BE_QR_IMAGE_GENERATOR", "objectId": "${identifier}", "dialcodes": [{"data": "${config.dialBaseUrl}${dialcode}", "text": "${dialcode}", "id": "0_${dialcode}"}], "storage": {"container": "dial", "path": "${channelId}/", "fileName": "${identifier}_${ets}"}, "config": {"errorCorrectionLevel": "H", "pixelsPerBlock": 2, "qrCodeMargin": 3, "textFontName": "Verdana", "textFontSize": 11, "textCharacterSpacing": 0.1, "imageFormat": "png", "colourModel": "Grayscale", "imageBorderSize": 1}}""".stripMargin
+            logger.info(s"QR Image Generator Event Object : ${event}")
+            context.output(config.generateQRImageOutTag, event)
+            metrics.incCounter(config.qrImageGeneratorEventCount)
+        }
 
-        val event = s"""{"eid":"BE_QR_IMAGE_GENERATOR", "objectId": "${identifier}", "dialcodes": [{"data": "${config.dialBaseUrl}${dialcode}", "text": "${dialcode}", "id": "0_${dialcode}"}], "storage": {"container": "dial", "path": "${channelId}/", "fileName": "${identifier}_${ets}"}, "config": {"errorCorrectionLevel": "H", "pixelsPerBlock": 2, "qrCodeMargin": 3, "textFontName": "Verdana", "textFontSize": 11, "textCharacterSpacing": 0.1, "imageFormat": "png", "colourModel": "Grayscale", "imageBorderSize": 1}}""".stripMargin
-        logger.info(s"QR Image Generator Event Object : ${event}")
-        context.output(config.generateQRImageOutTag, event)
-        metrics.incCounter(config.qrImageGeneratorEventCount)
     }
 }

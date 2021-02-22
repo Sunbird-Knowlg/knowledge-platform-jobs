@@ -69,5 +69,5 @@ class PostPublishProcessorConfig(override val config: Config) extends PostPublis
 
   // QR Image Generator
   val QRImageGeneratorTopic: String = config.getString("kafka.qrimage.topic")
-  val contentTypes: List[String] = List[String]("Course")
+  val primaryCategories: util.List[String] = if(config.hasPath("dialcode.linkable.primaryCategory")) config.getStringList("dialcode.linkable.primaryCategory") else util.Arrays.asList("Course")//List[String]("Course")
 }
