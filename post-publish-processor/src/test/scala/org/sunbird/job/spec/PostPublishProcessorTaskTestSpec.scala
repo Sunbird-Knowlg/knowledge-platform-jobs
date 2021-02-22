@@ -62,6 +62,7 @@ class PostPublishProcessorTaskTestSpec extends BaseTestSpec {
   val qrRequestHeaders: util.Map[String, String] = Map[String, String]("X-Channel-Id" -> "b00bc992ef25f1a9a8d63291e20efc8d",
     "Content-Type" -> "application/json").asJava
   // END
+  val gson = new Gson()
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
@@ -91,6 +92,86 @@ class PostPublishProcessorTaskTestSpec extends BaseTestSpec {
     val list = new PostPublishEventRouter(jobConfig, mockHttpUtil).getShallowCopiedContents(identifier)
     list.size should be (4)
     list.map(c => c.identifier) should contain allOf("do_113005885057662976128", "do_113005885161611264130", "do_113005882957578240124", "do_113005820474007552111")
+  }
+
+  "Post Publish Processor" should "process and return the metadata for batch " in {
+    val metaData = new java.util.HashMap[String, AnyRef]() {{
+      put("IL_UNIQUE_ID", "do_11300581751853056018")
+      put("identifier", "do_11300581751853056018")
+      put("name", "Origin Content")
+      put("createdBy", "874ed8a5-782e-4f6c-8f36-e0288455901e")
+      put("channel", "b00bc992ef25f1a9a8d63291e20efc8d")
+      put("trackable", "{\"enabled\":\"Yes\",\"autoBatch\":\"Yes\"}")
+      put("createdFor", util.Arrays.asList("ORG_001"))
+    }}
+
+    when(mockNeo4JUtil.getNodeProperties(anyString())).thenReturn(metaData)
+    val identifier = "do_11300581751853056018"
+    val batchMetadata = new PostPublishEventRouter(jobConfig, mockHttpUtil, mockNeo4JUtil, cassandraUtil).getBatchDetails(identifier)
+    batchMetadata.size() should be (4)
+    batchMetadata.get("identifier") should be ("do_11300581751853056018")
+  }
+
+  "Post Publish Processor" should "process and return the empty metadata for batch" in {
+    val metaData = new java.util.HashMap[String, AnyRef]() {{
+      put("IL_UNIQUE_ID", "do_11300581751853056018")
+      put("identifier", "do_11300581751853056018")
+      put("name", "Origin Content")
+      put("createdBy", "874ed8a5-782e-4f6c-8f36-e0288455901e")
+      put("channel", "b00bc992ef25f1a9a8d63291e20efc8d")
+      put("trackable", "{\"enabled\":\"false\",\"autoBatch\":\"false\"}")
+      put("createdFor", util.Arrays.asList("ORG_001"))
+    }}
+
+    when(mockNeo4JUtil.getNodeProperties(anyString())).thenReturn(metaData)
+    val identifier = "do_11300581751853056018"
+    val batchMetadata = new PostPublishEventRouter(jobConfig, mockHttpUtil, mockNeo4JUtil, cassandraUtil).getBatchDetails(identifier)
+    batchMetadata.isEmpty() should be (true)
+  }
+
+  "Post Publish Processor" should "process and return the metadata for dialcode generation" in {
+    val metadata = new java.util.HashMap[String, AnyRef]() {{
+      put("IL_UNIQUE_ID", "do_113214556543234")
+      put("identifier", "do_113214556543234")
+      put("name", "Origin Content")
+      put("createdBy", "874ed8a5-782e-4f6c-8f36-e0288455901e")
+      put("channel", "b00bc992ef25f1a9a8d63291e20efc8d")
+      put("trackable", "{\"enabled\":\"No\",\"autoBatch\":\"No\"}")
+      put("createdFor", util.Arrays.asList("ORG_001"))
+      put("reservedDialcodes", "{\"Q1I5I3\": 0}")
+      put("dialcodes", util.Arrays.asList("Q1I5I3"))
+      put("primaryCategory", "Course")
+    }}
+
+    val identifier = "do_113214556543234"
+    when(mockNeo4JUtil.getNodeProperties(anyString())).thenReturn(metadata)
+    val qrEventMap1 = gson.fromJson(EventFixture.QREVENT_1, new util.LinkedHashMap[String, Any]().getClass).asInstanceOf[util.Map[String, Any]].asScala ++ Map("partition" -> 0.asInstanceOf[Any])
+    val event = new Event(qrEventMap1.asJava)
+    val dialcodeMetadata = new PostPublishEventRouter(jobConfig, mockHttpUtil, mockNeo4JUtil, cassandraUtil).getDialCodeDetails(identifier, event)
+    dialcodeMetadata.isEmpty() should be (false)
+    dialcodeMetadata.get("dialcodes").asInstanceOf[util.List[String]] should contain ("Q1I5I3")
+  }
+
+  "Post Publish Processor" should "process and return the empty metadata for dialcode generation" in {
+    val metadata = new java.util.HashMap[String, AnyRef]() {{
+      put("IL_UNIQUE_ID", "do_113214556543234")
+      put("identifier", "do_113214556543234")
+      put("name", "Origin Content")
+      put("createdBy", "874ed8a5-782e-4f6c-8f36-e0288455901e")
+      put("channel", "b00bc992ef25f1a9a8d63291e20efc8d")
+      put("trackable", "{\"enabled\":\"No\",\"autoBatch\":\"No\"}")
+      put("createdFor", util.Arrays.asList("ORG_001"))
+      put("reservedDialcodes", "{\"Q1I5I3\": 0}")
+      put("dialcodes", util.Arrays.asList("Q1I5I3"))
+      put("primaryCategory", "Textbook")
+    }}
+
+    val identifier = "do_113214556543234"
+    when(mockNeo4JUtil.getNodeProperties(anyString())).thenReturn(metadata)
+    val qrEventMap1 = gson.fromJson(EventFixture.QREVENT_1, new util.LinkedHashMap[String, Any]().getClass).asInstanceOf[util.Map[String, Any]].asScala ++ Map("partition" -> 0.asInstanceOf[Any])
+    val event = new Event(qrEventMap1.asJava)
+    val dialcodeMetadata = new PostPublishEventRouter(jobConfig, mockHttpUtil, mockNeo4JUtil, cassandraUtil).getDialCodeDetails(identifier, event)
+    dialcodeMetadata.isEmpty() should be (true)
   }
 
   ignore should "run all the scenarios for a given event" in {

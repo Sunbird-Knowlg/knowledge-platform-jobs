@@ -68,21 +68,4 @@ class DIALCodeLinkFunction(config: PostPublishProcessorConfig, httpUtil: HttpUti
         List(config.dialLinkingCount, config.qrImageGeneratorEventCount, config.skippedEventCount)
     }
 
-    /**
-     * Generation of QR Image Generation event for the Content.
-     * @param edata
-     * @param dialcode
-     * @param context
-     * @param metrics
-     */
-    /*def createQRGeneratorEvent(edata: java.util.Map[String, AnyRef], dialcode: String, context: ProcessFunction[java.util.Map[String, AnyRef], String]#Context)(implicit metrics: Metrics): Unit = {
-        logger.info("Generating event for QR Image Generation.")
-        val ets = System.currentTimeMillis
-        val identifier = edata.get("identifier").asInstanceOf[String]
-        val channelId = edata.getOrDefault("channel", "").asInstanceOf[String]
-        val event = s"""{"eid":"BE_QR_IMAGE_GENERATOR", "objectId": "${identifier}", "dialcodes": [{"data": "${config.dialBaseUrl}${dialcode}", "text": "${dialcode}", "id": "0_${dialcode}"}], "storage": {"container": "dial", "path": "${channelId}/", "fileName": "${identifier}_${ets}"}, "config": {"errorCorrectionLevel": "H", "pixelsPerBlock": 2, "qrCodeMargin": 3, "textFontName": "Verdana", "textFontSize": 11, "textCharacterSpacing": 0.1, "imageFormat": "png", "colourModel": "Grayscale", "imageBorderSize": 1}}""".stripMargin
-        logger.info(s"QR Image Generator Event Object : ${event}")
-        context.output(config.generateQRImageOutTag, event)
-        metrics.incCounter(config.qrImageGeneratorEventCount)
-    }*/
 }
