@@ -67,5 +67,4 @@ class DIALCodeLinkFunction(config: PostPublishProcessorConfig, httpUtil: HttpUti
     override def metricsList(): List[String] = {
         List(config.dialLinkingCount, config.qrImageGeneratorEventCount, config.skippedEventCount)
     }
-
 }
