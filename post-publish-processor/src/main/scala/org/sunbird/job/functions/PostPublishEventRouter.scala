@@ -72,50 +72,16 @@ class PostPublishEventRouter(config: PostPublishProcessorConfig, httpUtil: HttpU
 
   private def processBatchCreation(identifier: String, context: ProcessFunction[Event, String]#Context): Unit ={
     logger.info("Process Batch Creation for content: " + identifier)
-    val batchMetadata = getBatchDetails(identifier)
+    val batchMetadata = getBatchDetails(identifier)(neo4JUtil, cassandraUtil, config)
     if(!batchMetadata.isEmpty)
       context.output(config.batchCreateOutTag, batchMetadata)
   }
 
-  def getBatchDetails(identifier: String): util.Map[String, AnyRef] ={
-    val metadata = neo4JUtil.getNodeProperties(identifier)
-
-    // Validate and trigger batch creation.
-    if (batchRequired(metadata, identifier)(config, cassandraUtil)) {
-    val createdFor = metadata.get("createdFor").asInstanceOf[java.util.List[String]]
-    new util.HashMap[String, AnyRef]() {{
-    put("identifier", identifier)
-    put("name", metadata.get("name"))
-    put("createdBy", metadata.get("createdBy"))
-    if (CollectionUtils.isNotEmpty(createdFor))
-    put("createdFor", new util.ArrayList[String](createdFor))
-  }}
-    }
-    else {
-      new util.HashMap[String, AnyRef]()
-    }
-  }
-
   private def processDialcodeLink(identifier: String, context: ProcessFunction[Event, String]#Context, event: Event): Unit ={
     logger.info("Process Dialcode Link for content: " + identifier)
-
-    val dialcodeMetadata = getDialCodeDetails(identifier, event)
+    val dialcodeMetadata = getDialCodeDetails(identifier, event)(neo4JUtil, config)
     if(!dialcodeMetadata.isEmpty)
       context.output(config.linkDIALCodeOutTag, dialcodeMetadata)
-  }
-
-  def getDialCodeDetails(identifier: String, event: Event): util.Map[String, AnyRef] ={
-    val metadata = neo4JUtil.getNodeProperties(identifier)
-
-    if(validatePrimaryCategory(metadata)(config)) {
-      new util.HashMap[String, AnyRef](event.eData.asJava) {{
-      put("channel", metadata.getOrDefault("channel", ""))
-      put("dialcodes", metadata.getOrDefault("dialcodes", new util.ArrayList[String] {}))
-      put("reservedDialcodes", metadata.getOrDefault("reservedDialcodes", "{}"))
-      }}
-    } else {
-      new util.HashMap[String, AnyRef]()
-    }
   }
 
 }

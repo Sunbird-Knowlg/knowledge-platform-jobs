@@ -37,6 +37,13 @@ class DIALCodeLinkFunction(config: PostPublishProcessorConfig, httpUtil: HttpUti
     override def processElement(edata: java.util.Map[String, AnyRef], context: ProcessFunction[java.util.Map[String, AnyRef], String]#Context, metrics: Metrics): Unit = {
         logger.info(s"Link DIAL Code operation triggered with object : ${edata}")
         metrics.incCounter(config.dialLinkingCount)
+        val dialcode: String = getDialcode(edata)
+        if (!dialcode.isEmpty)
+            createQRGeneratorEvent(edata, dialcode, context, config)(metrics, ExtDataConfig(config.dialcodeKeyspaceName, config.dialcodeTableName), cassandraUtil)
+    }
+
+    def getDialcode(edata: java.util.Map[String, AnyRef]): String = {
+
         val identifier = edata.get("identifier").asInstanceOf[String]
         val dialcodes = fetchExistingDialcodes(edata)
         logger.info(s"Dialcodes fetched: ${dialcodes}") // temp
@@ -50,18 +57,15 @@ class DIALCodeLinkFunction(config: PostPublishProcessorConfig, httpUtil: HttpUti
             reservedDialCode.asScala.keys.headOption match {
                 case Some(dialcode: String) => {
                     updateDIALToObject(identifier, dialcode)(neo4JUtil)
-                    createQRGeneratorEvent(edata, dialcode, context, config)(metrics, ExtDataConfig(config.dialcodeKeyspaceName, config.dialcodeTableName), cassandraUtil)
+                    dialcode
                 }
-                case _ => logger.info(s"Couldn't reserve any dialcodes for object with identifier:${identifier}")
+                case _ => {
+                    logger.info(s"Couldn't reserve any dialcodes for object with identifier:${identifier}")
+                    ""
+                }
             }
-        } else {
-            if (validateQR(dialcodes.get(0))(ExtDataConfig(config.dialcodeKeyspaceName, config.dialcodeTableName), cassandraUtil)) {
-                logger.info(s"Event Skipped. Target Object [ $identifier ] already has DIAL Code and its QR Image.| DIAL Codes : $dialcodes")
-                metrics.incCounter(config.skippedEventCount)
-            } else {
-                createQRGeneratorEvent(edata, dialcodes.get(0), context, config)(metrics, ExtDataConfig(config.dialcodeKeyspaceName, config.dialcodeTableName), cassandraUtil)
-            }
-        }
+        } else
+            if (validateQR(dialcodes.get(0))(ExtDataConfig(config.dialcodeKeyspaceName, config.dialcodeTableName), cassandraUtil)) "" else  dialcodes.get(0)
     }
 
     override def metricsList(): List[String] = {

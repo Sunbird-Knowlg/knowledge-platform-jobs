@@ -7,6 +7,7 @@ import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.Metrics
 import org.sunbird.job.models.ExtDataConfig
+import org.sunbird.job.postpublish.domain.Event
 import org.sunbird.job.task.PostPublishProcessorConfig
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, JSONUtil, Neo4JUtil}
 
@@ -112,5 +113,19 @@ trait DialHelper {
             metrics.incCounter(config.qrImageGeneratorEventCount)
         }
 
+    }
+
+    def getDialCodeDetails(identifier: String, event: Event)(implicit neo4JUtil: Neo4JUtil, config: PostPublishProcessorConfig): util.Map[String, AnyRef] ={
+        val metadata = neo4JUtil.getNodeProperties(identifier)
+
+        if(validatePrimaryCategory(metadata)(config)) {
+            new util.HashMap[String, AnyRef](event.eData.asJava) {{
+                put("channel", metadata.getOrDefault("channel", ""))
+                put("dialcodes", metadata.getOrDefault("dialcodes", new util.ArrayList[String] {}))
+                put("reservedDialcodes", metadata.getOrDefault("reservedDialcodes", "{}"))
+            }}
+        } else {
+            new util.HashMap[String, AnyRef]()
+        }
     }
 }
