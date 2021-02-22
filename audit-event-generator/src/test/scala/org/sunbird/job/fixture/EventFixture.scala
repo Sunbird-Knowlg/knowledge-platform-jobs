@@ -1,0 +1,10 @@
+package org.sunbird.job.fixture
+
+object EventFixture {
+
+  val EVENT_1: String =
+    """
+      |{"ets":1613994829647,"channel":"test-gd","transactionData":{"properties":{"ownershipType":{"ov":null,"nv":["createdBy"]},"code":{"ov":null,"nv":"gd_test_g"},"credentials":{"ov":null,"nv":"{\"enabled\":\"No\"}"},"channel":{"ov":null,"nv":"test-gd"},"language":{"ov":null,"nv":["English"]},"mimeType":{"ov":null,"nv":"application/pdf"},"idealScreenSize":{"ov":null,"nv":"normal"},"createdOn":{"ov":null,"nv":"2021-02-22T17:23:11.655+0530"},"primaryCategory":{"ov":null,"nv":"Learning Resource"},"contentDisposition":{"ov":null,"nv":"inline"},"lastUpdatedOn":{"ov":null,"nv":"2021-02-22T17:23:11.655+0530"},"contentEncoding":{"ov":null,"nv":"identity"},"dialcodeRequired":{"ov":null,"nv":"No"},"contentType":{"ov":null,"nv":"Resource"},"trackable":{"ov":null,"nv":"{\"enabled\":\"No\",\"autoBatch\":\"No\"}"},"lastStatusChangedOn":{"ov":null,"nv":"2021-02-22T17:23:11.655+0530"},"audience":{"ov":null,"nv":["Student"]},"IL_SYS_NODE_TYPE":{"ov":null,"nv":"DATA_NODE"},"os":{"ov":null,"nv":["All"]},"visibility":{"ov":null,"nv":"Default"},"mediaType":{"ov":null,"nv":"content"},"osId":{"ov":null,"nv":"org.ekstep.quiz.app"},"version":{"ov":null,"nv":2},"versionKey":{"ov":null,"nv":"1613994791655"},"idealScreenDensity":{"ov":null,"nv":"hdpi"},"license":{"ov":null,"nv":"CC BY 4.0"},"framework":{"ov":null,"nv":"NCF"},"compatibilityLevel":{"ov":null,"nv":1},"IL_FUNC_OBJECT_TYPE":{"ov":null,"nv":"Content"},"name":{"ov":null,"nv":"Test Content"},"IL_UNIQUE_ID":{"ov":null,"nv":"do_11322184532561100811"},"status":{"ov":null,"nv":"Draft"}}},"mid":"6a04cd4d-e8b3-4a89-91ec-2660ac61a6f8","label":"Test Content","nodeType":"DATA_NODE","userId":"ANONYMOUS","createdOn":"2021-02-22T11:53:49.647+0000","objectType":"Content","nodeUniqueId":"do_11322184532561100811","requestId":null,"operationType":"CREATE","nodeGraphId":508990,"graphId":"domain"}
+      |""".stripMargin
+
+}
