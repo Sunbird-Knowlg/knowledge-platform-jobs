@@ -1,11 +1,13 @@
 package org.sunbird.job.postpublish.helpers
 
+import java.util
+
 import com.datastax.driver.core.querybuilder.QueryBuilder
 import org.apache.commons.collections.{CollectionUtils, MapUtils}
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.task.PostPublishProcessorConfig
-import org.sunbird.job.util.{CassandraUtil, HttpUtil, JSONUtil}
+import org.sunbird.job.util.{CassandraUtil, HttpUtil, JSONUtil, Neo4JUtil}
 
 import scala.collection.JavaConverters._
 
@@ -72,6 +74,26 @@ trait BatchCreation {
         logger.info("Collection has a active batch: " + activeBatches.head.toString)
       activeBatches.nonEmpty
     } else false
+  }
+
+  def getBatchDetails(identifier: String)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, config: PostPublishProcessorConfig): util.Map[String, AnyRef] ={
+    logger.info("Process Batch Creation for content: " + identifier)
+    val metadata = neo4JUtil.getNodeProperties(identifier)
+
+    // Validate and trigger batch creation.
+    if (batchRequired(metadata, identifier)(config, cassandraUtil)) {
+      val createdFor = metadata.get("createdFor").asInstanceOf[java.util.List[String]]
+      new util.HashMap[String, AnyRef]() {{
+        put("identifier", identifier)
+        put("name", metadata.get("name"))
+        put("createdBy", metadata.get("createdBy"))
+        if (CollectionUtils.isNotEmpty(createdFor))
+          put("createdFor", new util.ArrayList[String](createdFor))
+      }}
+    }
+    else {
+      new util.HashMap[String, AnyRef]()
+    }
   }
 
 }
