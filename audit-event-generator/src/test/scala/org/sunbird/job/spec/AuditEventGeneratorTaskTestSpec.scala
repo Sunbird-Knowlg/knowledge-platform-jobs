@@ -48,7 +48,6 @@ class AuditEventGeneratorMapSource extends SourceFunction[Event] {
 
   override def run(ctx: SourceContext[Event]) {
     ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_1)))
-    ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_2)))
 
   }
 
