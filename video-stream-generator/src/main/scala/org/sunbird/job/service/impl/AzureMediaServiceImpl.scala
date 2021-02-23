@@ -31,7 +31,7 @@ object AzureMediaServiceImpl extends AzureMediaService {
 
   override def getJob(jobId: String)(implicit config: VideoStreamGeneratorConfig, httpUtil: HttpUtil): MediaResponse = {
     val response = getJobDetails(jobId)
-    if (response.responseCode == "OK") Response.getSuccessResponse(AzureResult.getSubmitJobResult(response)) else response
+    if (response.responseCode == "OK") Response.getSuccessResponse(AzureResult.getJobResult(response)) else response
   }
 
   override def getStreamingPaths(jobId: String)(implicit config: VideoStreamGeneratorConfig, httpUtil: HttpUtil): MediaResponse = {

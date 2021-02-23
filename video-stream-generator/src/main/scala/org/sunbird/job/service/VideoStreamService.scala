@@ -44,13 +44,14 @@ class VideoStreamService(implicit config: VideoStreamGeneratorConfig, httpUtil: 
     val processingJobRequests = readFromDB(Map("status" -> "PROCESSING"))
     val stageName = "STREAMING_JOB_COMPLETE"
 
-    processingJobRequests.map{ jobRequest =>
+    processingJobRequests.map { jobRequest =>
       val iteration = jobRequest.iteration
       if (jobRequest.job_id != None) {
         val mediaResponse:MediaResponse = mediaService.getJob(jobRequest.job_id.get)
         logger.info("Get job details while saving: " + JSONUtil.serialize(mediaResponse.result))
         if(mediaResponse.responseCode.contentEquals("OK")) {
-          val jobStatus = mediaResponse.result.getOrElse("job", Map()).asInstanceOf[Map[String, AnyRef]].getOrElse("status","").asInstanceOf[String];
+          val job = mediaResponse.result.getOrElse("job", Map()).asInstanceOf[Map[String, AnyRef]]
+          val jobStatus = job.getOrElse("status","").asInstanceOf[String]
 
           if(jobStatus.equalsIgnoreCase("FINISHED")) {
             val streamingUrl = mediaService.getStreamingPaths(jobRequest.job_id.get).result.getOrElse("streamUrl","").asInstanceOf[String]
@@ -64,7 +65,8 @@ class VideoStreamService(implicit config: VideoStreamGeneratorConfig, httpUtil: 
               null
             }
           } else if(jobStatus.equalsIgnoreCase("ERROR")){
-            StreamingStage(jobRequest.request_id, jobRequest.client_key, jobRequest.job_id.get, stageName, jobStatus, "FAILED", iteration + 1);
+            val errMessage = job.getOrElse("error", Map()).asInstanceOf[Map[String, AnyRef]].getOrElse("errorMessage", "No error message").asInstanceOf[String]
+            StreamingStage(jobRequest.request_id, jobRequest.client_key, jobRequest.job_id.get, stageName, jobStatus, "FAILED", iteration + 1, errMessage)
           } else {
             null
           }

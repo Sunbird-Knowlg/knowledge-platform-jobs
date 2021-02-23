@@ -47,8 +47,10 @@ class VideoStreamGenerator(config: VideoStreamGeneratorConfig, httpUtil:HttpUtil
         metrics.incCounter(config.totalEventsCount)
         if (event.isValid) {
           videoStreamService.submitJobRequest(event.eData)
-          logger.info("Streaming job submitted for " + event.artifactUrl + " with identifier: " + event.identifier)
-          context.timerService().registerProcessingTimeTimer(context.timestamp() + windowTimeMilSec)
+          logger.info("Streaming job submitted for " + event.identifier + " with url: " + event.artifactUrl)
+          val nextTimerTimestamp = context.timestamp() + windowTimeMilSec
+          context.timerService().registerProcessingTimeTimer(nextTimerTimestamp)
+          logger.info("Timer registered to execute at " + nextTimerTimestamp)
         } else metrics.incCounter(config.skippedEventCount)
     }
 
@@ -57,7 +59,9 @@ class VideoStreamGenerator(config: VideoStreamGeneratorConfig, httpUtil:HttpUtil
         if (processing.nonEmpty) {
           logger.info("Requests in queue to validate update the status: " + processing.size)
           videoStreamService.processJobRequest(metrics)
-          ctx.timerService().registerProcessingTimeTimer(ctx.timestamp() + windowTimeMilSec)
+          val nextTimerTimestamp = ctx.timestamp() + windowTimeMilSec
+          ctx.timerService().registerProcessingTimeTimer(nextTimerTimestamp)
+          logger.info("Timer registered to execute at " + nextTimerTimestamp)
         } else {
           logger.info("There are no video streaming requests in queue to validate update the status.")
         }

@@ -33,7 +33,7 @@ object AzureResult extends Result {
         "error" -> {
           if (StringUtils.equalsIgnoreCase(output.getOrElse("state", "").toString.toUpperCase(),"ERROR")) {
             val errorMap: Map[String, AnyRef] = output.getOrElse("error", Map).asInstanceOf[Map[String, AnyRef]]
-            HashMap[String, String](
+            Map[String, String](
               "errorCode" -> errorMap.getOrElse("code", "").toString,
               "errorMessage" -> errorMap.getOrElse("details", List).asInstanceOf[List[Map[String, AnyRef]]].head.getOrElse("message", "").toString
             )
