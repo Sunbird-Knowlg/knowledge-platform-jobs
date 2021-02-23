@@ -46,12 +46,12 @@ class VideoStreamGenerator(config: VideoStreamGeneratorConfig, httpUtil:HttpUtil
                                 metrics: Metrics): Unit = {
         metrics.incCounter(config.totalEventsCount)
         if(event.isValid) {
-            logger.info(s"Event eid::${event.eid}:: valid event")
-            videoStreamService.submitJobRequest(event.eData)
-            context.output(config.videoStreamJobOutput, "submitted")
+          videoStreamService.submitJobRequest(event.eData)
+          logger.info("Streaming job submitted for " + event.artifactUrl + " with identifier: " + event.identifier)
+          context.output(config.videoStreamJobOutput, "submitted")
 
-            state.update(ProcessingTimer(state.value() != null && state.value().timerAdded))
-            if(!state.value().timerAdded) context.timerService().registerProcessingTimeTimer(context.timestamp() + windowTimeMilSec)
+          state.update(ProcessingTimer(state.value() != null && state.value().timerAdded))
+          if(!state.value().timerAdded) context.timerService().registerProcessingTimeTimer(context.timestamp() + windowTimeMilSec)
             state.update(ProcessingTimer(true))
 
         } else metrics.incCounter(config.skippedEventCount)
