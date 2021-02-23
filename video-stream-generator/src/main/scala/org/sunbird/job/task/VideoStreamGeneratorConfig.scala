@@ -21,7 +21,7 @@ class VideoStreamGeneratorConfig(override val config: Config) extends BaseJobCon
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
   override val parallelism: Int = config.getInt("task.parallelism")
 
-  val windowTime = config.getInt("task.window.time")
+  val timerDuration = config.getInt("task.timer.duration") // Timer duration in sec.
 
   // Metric List
   val totalEventsCount = "total-events-count"

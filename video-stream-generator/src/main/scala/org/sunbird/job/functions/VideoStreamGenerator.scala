@@ -13,8 +13,6 @@ import org.sunbird.job.task.VideoStreamGeneratorConfig
 import org.sunbird.job.util.HttpUtil
 import org.sunbird.job.{BaseProcessKeyedFunction, Metrics}
 
-case class ProcessingTimer(timerAdded: Boolean)
-
 class VideoStreamGenerator(config: VideoStreamGeneratorConfig, httpUtil:HttpUtil)
                           (implicit mapTypeInfo: TypeInformation[util.Map[String, AnyRef]],
                            stringTypeInfo: TypeInformation[String])
@@ -23,9 +21,7 @@ class VideoStreamGenerator(config: VideoStreamGeneratorConfig, httpUtil:HttpUtil
     implicit lazy val videoStreamConfig: VideoStreamGeneratorConfig = config
     private[this] lazy val logger = LoggerFactory.getLogger(classOf[VideoStreamGenerator])
     private var videoStreamService:VideoStreamService = _
-    lazy val windowTimeMilSec: Long = config.windowTime * 1000
-    lazy val state: ValueState[ProcessingTimer] = getRuntimeContext
-      .getState(new ValueStateDescriptor[ProcessingTimer]("state", classOf[ProcessingTimer]))
+    lazy val timerDurationInMS: Long = config.timerDuration * 1000
 
     override def metricsList(): List[String] = {
         List(config.totalEventsCount, config.skippedEventCount, config.successEventCount, config.failedEventCount)
@@ -48,7 +44,7 @@ class VideoStreamGenerator(config: VideoStreamGeneratorConfig, httpUtil:HttpUtil
         if (event.isValid) {
           videoStreamService.submitJobRequest(event.eData)
           logger.info("Streaming job submitted for " + event.identifier + " with url: " + event.artifactUrl)
-          val nextTimerTimestamp = context.timestamp() + windowTimeMilSec
+          val nextTimerTimestamp = context.timestamp() + timerDurationInMS
           context.timerService().registerProcessingTimeTimer(nextTimerTimestamp)
           logger.info("Timer registered to execute at " + nextTimerTimestamp)
         } else metrics.incCounter(config.skippedEventCount)
@@ -59,7 +55,7 @@ class VideoStreamGenerator(config: VideoStreamGeneratorConfig, httpUtil:HttpUtil
         if (processing.nonEmpty) {
           logger.info("Requests in queue to validate update the status: " + processing.size)
           videoStreamService.processJobRequest(metrics)
-          val nextTimerTimestamp = ctx.timestamp() + windowTimeMilSec
+          val nextTimerTimestamp = ctx.timestamp() + timerDurationInMS
           ctx.timerService().registerProcessingTimeTimer(nextTimerTimestamp)
           logger.info("Timer registered to execute at " + nextTimerTimestamp)
         } else {
