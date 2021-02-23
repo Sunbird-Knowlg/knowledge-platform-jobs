@@ -11,7 +11,7 @@ import org.apache.flink.streaming.api.windowing.assigners.TumblingProcessingTime
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.domain.Event
-import org.sunbird.job.functions.{VideoStreamGenerator, VideoStreamUrlUpdator}
+import org.sunbird.job.functions.VideoStreamGenerator
 import org.sunbird.job.util.{FlinkUtil, HttpUtil}
 
 
@@ -23,21 +23,13 @@ class VideoStreamGeneratorStreamTask(config: VideoStreamGeneratorConfig, kafkaCo
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
 
     val source = kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)
-    val processStreamTask = env.addSource(source).name(config.videoStreamConsumer)
+    env.addSource(source).name(config.videoStreamConsumer)
       .uid(config.videoStreamConsumer).setParallelism(config.kafkaConsumerParallelism)
       .rebalance
       .keyBy(_.eid)
       .process(new VideoStreamGenerator(config, httpUtil))
       .name(config.videoStreamGeneratorFunction)
       .uid(config.videoStreamGeneratorFunction)
-      .setParallelism(config.parallelism)
-
-    processStreamTask.getSideOutput(config.videoStreamJobOutput)
-      .keyBy(x => x)
-      .window(TumblingProcessingTimeWindows.of(Time.seconds(config.windowTime)))
-      .process(new VideoStreamUrlUpdator(config, httpUtil))
-      .name(config.videoStreamUrlUpdaterFunction)
-      .uid(config.videoStreamUrlUpdaterFunction)
       .setParallelism(config.parallelism)
 
     env.execute(config.jobName)

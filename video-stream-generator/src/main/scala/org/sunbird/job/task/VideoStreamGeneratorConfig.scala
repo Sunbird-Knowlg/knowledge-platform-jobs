@@ -32,12 +32,7 @@ class VideoStreamGeneratorConfig(override val config: Config) extends BaseJobCon
   // Consumers
 
   val videoStreamConsumer = "video-streaming-consumer"
-  val videoStreamGeneratorFunction = "submit-streaming-job"
-  val videoStreamUrlUpdaterFunction = "check-streaming-jobs"
-
-  // Tags
-  val videoStreamJobStatusTagName = "video-stream-job-status"
-  val videoStreamJobOutput: OutputTag[String] = OutputTag[String](videoStreamJobStatusTagName)
+  val videoStreamGeneratorFunction = "manage-streaming-jobs"
 
   // Cassandra Configurations
   val dbTable: String = config.getString("dp-cassandra.table")
