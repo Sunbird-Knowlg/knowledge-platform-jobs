@@ -88,6 +88,7 @@ trait DialHelper {
         val query: String = s"insert into ${extConfig.keyspace}.${extConfig.table} (filename,channel,created_on,dialcode,status) values ('0_${dialcode}', '${channel}', ${ets}, '${dialcode}', 0);"
         try {
             if(cassandraUtil.upsert(query)){
+                logger.info(s"Added Dialcode to the table.")
                 true
             }else{
                 logger.error("There was an issue while inserting the dialcode details into table")
@@ -120,12 +121,14 @@ trait DialHelper {
         val metadata = neo4JUtil.getNodeProperties(identifier)
 
         if(validatePrimaryCategory(metadata)(config)) {
+            logger.info(s"Primary Category match found. Starting the process for Dial Code Generation.")
             new util.HashMap[String, AnyRef](event.eData.asJava) {{
                 put("channel", metadata.getOrDefault("channel", ""))
                 put("dialcodes", metadata.getOrDefault("dialcodes", new util.ArrayList[String] {}))
                 put("reservedDialcodes", metadata.getOrDefault("reservedDialcodes", "{}"))
             }}
         } else {
+            logger.info(s"Primary Category does not match. Skipping the process for Dial Code Generation.")
             new util.HashMap[String, AnyRef]()
         }
     }
