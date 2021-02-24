@@ -22,8 +22,7 @@ class AuditEventGeneratorStreamTask(config: AuditEventGeneratorConfig, kafkaConn
     implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
 
-    val source = kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)
-    val processStreamTask = env.addSource(source).name(config.auditEventConsumer)
+    val processStreamTask = env.addSource(kafkaConnector.kafkaMapSource(config.kafkaInputTopic)).name(config.auditEventConsumer)
       .uid(config.auditEventConsumer).setParallelism(config.kafkaConsumerParallelism)
       .rebalance
       .process(new AuditEventGenerator(config))
@@ -31,7 +30,7 @@ class AuditEventGeneratorStreamTask(config: AuditEventGeneratorConfig, kafkaConn
       .uid(config.auditEventGeneratorFunction)
       .setParallelism(config.parallelism)
 
-    processStreamTask.addSink(kafkaConnector.kafkaJobRequestSink[Event](config.kafkaOutputTopic))
+    processStreamTask.getSideOutput(config.auditOutputTag).addSink(kafkaConnector.kafkaMapSink(config.kafkaOutputTopic))
       .name(config.auditEventProducer).uid(config.auditEventProducer)
 
     env.execute(config.jobName)

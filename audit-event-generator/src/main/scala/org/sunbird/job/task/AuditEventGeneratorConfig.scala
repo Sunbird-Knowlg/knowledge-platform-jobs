@@ -1,10 +1,10 @@
 package org.sunbird.job.task
 
 import java.util
-
 import com.typesafe.config.Config
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
+import org.apache.flink.streaming.api.scala.OutputTag
 import org.sunbird.job.BaseJobConfig
 
 class AuditEventGeneratorConfig(override val config: Config) extends BaseJobConfig(config, "audit-event-generator") {
@@ -20,7 +20,9 @@ class AuditEventGeneratorConfig(override val config: Config) extends BaseJobConf
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
   override val parallelism: Int = config.getInt("task.parallelism")
 
-  val windowTime = config.getInt("task.window.time")
+  val auditOutputTag: OutputTag[util.Map[String, AnyRef]] = OutputTag[util.Map[String, AnyRef]]("audit-event-tag")
+
+  val defaultChannel: String =config.getString("channel.default")
 
   // Metric List
   val totalEventsCount = "total-events-count"
@@ -32,6 +34,10 @@ class AuditEventGeneratorConfig(override val config: Config) extends BaseJobConf
   val auditEventConsumer = "audit-event-generator-consumer"
   val auditEventGeneratorFunction = "audit-event-generator-function"
   val auditEventProducer = "audit-event-generator-producer"
+
+  // Neo4J Configurations
+  val graphRoutePath = config.getString("neo4j.routePath")
+  val graphName = config.getString("neo4j.graph")
 
   // Redis Configurations
   val relationCacheStore: Int = config.getInt("redis.database.relationCache.id")

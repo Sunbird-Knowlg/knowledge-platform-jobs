@@ -8,15 +8,13 @@ import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
 import org.apache.flink.streaming.api.functions.source.SourceFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext
 import org.apache.flink.test.util.MiniClusterWithClientResource
-import org.sunbird.job.util.JSONUtil
+import org.sunbird.job.util.{JSONUtil, Neo4JUtil}
 import org.mockito.Mockito
+import org.mockito.Mockito.when
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.domain.Event
 import org.sunbird.job.fixture.EventFixture
 import org.sunbird.job.task.{AuditEventGeneratorConfig, AuditEventGeneratorStreamTask}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
-
-import scala.collection.JavaConverters._
 
 class AuditEventGeneratorTaskTestSpec extends BaseTestSpec {
 
@@ -42,13 +40,18 @@ class AuditEventGeneratorTaskTestSpec extends BaseTestSpec {
     flinkCluster.after()
     super.afterAll()
   }
+
+  "AuditEventGeneratorStreamTask" should "generate audit event" in {
+    when(mockKafkaUtil.kafkaMapSource(jobConfig.kafkaInputTopic)).thenReturn(new AuditEventGeneratorMapSource)
+
+    new AuditEventGeneratorStreamTask(jobConfig, mockKafkaUtil).process()
+  }
 }
 
-class AuditEventGeneratorMapSource extends SourceFunction[Event] {
+class AuditEventGeneratorMapSource extends SourceFunction[util.Map[String, AnyRef]] {
 
-  override def run(ctx: SourceContext[Event]) {
-    ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_1)))
-
+  override def run(ctx: SourceContext[util.Map[String, AnyRef]]) {
+    ctx.collect(JSONUtil.deserialize[util.Map[String, AnyRef]](EventFixture.EVENT_1))
   }
 
   override def cancel(): Unit = {}
