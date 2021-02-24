@@ -43,7 +43,7 @@ class PostPublishProcessorConfig(override val config: Config) extends PostPublis
   val lmsKeyspaceName = config.getString("lms-cassandra.keyspace")
   val batchTableName = config.getString("lms-cassandra.batchTable")
   val dialcodeKeyspaceName = config.getString("dialcode-cassandra.keyspace")
-  val dialcodeTableName = config.getString("dialcode-cassandra.batchTable")
+  val dialcodeTableName = config.getString("dialcode-cassandra.imageTable")
 
   // Neo4J Configurations
   val graphRoutePath = config.getString("neo4j.routePath")
@@ -59,8 +59,8 @@ class PostPublishProcessorConfig(override val config: Config) extends PostPublis
 
   val searchBaseUrl = config.getString("service.search.basePath")
   val lmsBaseUrl = config.getString("service.lms.basePath")
-  val learningBaseUrl = config.getString("service.kp.learning_service.base_url")
-  val dialBaseUrl = config.getString("service.dial.base.url")
+  val learningBaseUrl = config.getString("service.learning_service.basePath")
+  val dialBaseUrl = config.getString("service.dial.basePath")
 
   // API URLs
   val batchCreateAPIPath = lmsBaseUrl + "/private/v1/course/batch/create"
