@@ -4,7 +4,6 @@ import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.Metrics
-import org.sunbird.job.domain.Event
 import org.sunbird.job.task.AuditEventGeneratorConfig
 import org.sunbird.job.util.JSONUtil
 import org.ekstep.telemetry.TelemetryGenerator
@@ -46,15 +45,16 @@ class AuditEventGeneratorService(implicit config: AuditEventGeneratorConfig) {
     }
   }
 
-  def processEvent(message: util.Map[String, AnyRef], context: ProcessFunction[util.Map[String, AnyRef], util.Map[String, AnyRef]]#Context, metrics: Metrics): Unit = {
+  def processEvent(message: util.Map[String, AnyRef], context: ProcessFunction[util.Map[String, AnyRef], String]#Context, metrics: Metrics): Unit = {
     logger.info("AUDIT Event::" + JSONUtil.serialize(message))
     logger.info("Input Message Received for : [" + message.get("nodeUniqueId") + "], Txn Event createdOn:" + message.get("createdOn") + ", Operation Type:" + message.get("operationType"))
     try {
-      val auditMap = getAuditMessage(JSONUtil.deserialize[Map[String, AnyRef]](JSONUtil.serialize(message)))
-      val objectType = auditMap.get("object").asInstanceOf[Map[String, AnyRef]].getOrElse("type", "").asInstanceOf[String]
-      if (null != objectType && objectType != "") {
+      val auditEventStr = getAuditMessage(JSONUtil.deserialize[Map[String, AnyRef]](JSONUtil.serialize(message)))
+      val auditMap = JSONUtil.deserialize[Map[String, AnyRef]](auditEventStr)
+      val objectType = auditMap.getOrElse("object", null).asInstanceOf[Map[String, AnyRef]].getOrElse("type", null).asInstanceOf[String]
+      if (null != objectType) {
         logger.error("Failed to process message :: " + JSONUtil.serialize(auditMap))
-        context.output(config.auditOutputTag, auditMap)
+        context.output(config.auditOutputTag, auditEventStr)
         logger.info("Telemetry Audit Message Successfully Sent for : " + auditMap.get("object").asInstanceOf[Map[String, AnyRef]].getOrElse("id", "").asInstanceOf[String] + " :: mid ::" + auditMap.get("mid"))
         metrics.incCounter(config.successEventCount)
       }
@@ -64,7 +64,6 @@ class AuditEventGeneratorService(implicit config: AuditEventGeneratorConfig) {
       }
     } catch {
       case e: Exception =>
-
         logger.error("Failed to process message :: " + JSONUtil.serialize(message), e)
         metrics.incCounter(config.failedEventCount)
     }
@@ -75,8 +74,8 @@ class AuditEventGeneratorService(implicit config: AuditEventGeneratorConfig) {
   }
 
 
-  def getAuditMessage(message: Map[String, AnyRef]): util.Map[String, AnyRef] = {
-    var auditMap:util.Map[String, AnyRef] = null
+  def getAuditMessage(message: Map[String, AnyRef]): String = {
+    var auditMap:String = null
     var objectId = message.getOrElse("nodeUniqueId", null).asInstanceOf[String]
     var objectType = message.getOrElse("objectType", null).asInstanceOf[String]
     val env = if (null != objectType) objectType.toLowerCase.replace("image", "") else "system"
@@ -88,7 +87,7 @@ class AuditEventGeneratorService(implicit config: AuditEventGeneratorConfig) {
     getRelationDefinitionMaps(definitionNode, inRelations, outRelations)
 
     var channelId = config.defaultChannel
-    val channel = message.getOrElse("channel", "").asInstanceOf[String]
+    val channel = message.getOrElse("channel", null).asInstanceOf[String]
     if (null != channel) channelId = channel
 
     val transactionData = message("transactionData").asInstanceOf[Map[String, AnyRef]]
@@ -137,11 +136,11 @@ class AuditEventGeneratorService(implicit config: AuditEventGeneratorConfig) {
         prevStatus,
         JSONUtil.deserialize[util.List[util.Map[String, AnyRef]]](JSONUtil.serialize(cdata)))
       logger.info("Audit Message for Content Id [" + objectId + "] : " + auditMessage);
-      auditMap = JSONUtil.deserialize[util.Map[String, AnyRef]](auditMessage)
+      auditMap = auditMessage
     }
     else {
       logger.info("Skipping Audit log as props is null or empty")
-      auditMap = JSONUtil.deserialize[util.Map[String, AnyRef]](SKIP_AUDIT)
+      auditMap = SKIP_AUDIT
     }
     auditMap
   }

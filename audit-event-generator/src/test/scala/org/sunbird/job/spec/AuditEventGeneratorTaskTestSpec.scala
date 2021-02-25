@@ -8,7 +8,7 @@ import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
 import org.apache.flink.streaming.api.functions.source.SourceFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext
 import org.apache.flink.test.util.MiniClusterWithClientResource
-import org.sunbird.job.util.{JSONUtil, Neo4JUtil}
+import org.sunbird.job.util.JSONUtil
 import org.mockito.Mockito
 import org.mockito.Mockito.when
 import org.sunbird.job.connector.FlinkKafkaConnector
@@ -41,7 +41,7 @@ class AuditEventGeneratorTaskTestSpec extends BaseTestSpec {
     super.afterAll()
   }
 
-  "AuditEventGeneratorStreamTask" should "generate audit event" in {
+  ignore should "generate audit event" in {
     when(mockKafkaUtil.kafkaMapSource(jobConfig.kafkaInputTopic)).thenReturn(new AuditEventGeneratorMapSource)
 
     new AuditEventGeneratorStreamTask(jobConfig, mockKafkaUtil).process()

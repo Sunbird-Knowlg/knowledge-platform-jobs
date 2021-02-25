@@ -20,7 +20,7 @@ class AuditEventGeneratorConfig(override val config: Config) extends BaseJobConf
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
   override val parallelism: Int = config.getInt("task.parallelism")
 
-  val auditOutputTag: OutputTag[util.Map[String, AnyRef]] = OutputTag[util.Map[String, AnyRef]]("audit-event-tag")
+  val auditOutputTag: OutputTag[String] = OutputTag[String]("audit-event-tag")
 
   val defaultChannel: String =config.getString("channel.default")
 

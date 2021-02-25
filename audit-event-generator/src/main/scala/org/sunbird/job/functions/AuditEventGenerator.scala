@@ -13,7 +13,7 @@ import org.sunbird.job.{BaseProcessFunction, Metrics}
 class AuditEventGenerator(config: AuditEventGeneratorConfig)
                           (implicit mapTypeInfo: TypeInformation[util.Map[String, AnyRef]],
                            stringTypeInfo: TypeInformation[String])
-                          extends BaseProcessFunction[util.Map[String, AnyRef], util.Map[String, AnyRef]](config) {
+                          extends BaseProcessFunction[util.Map[String, AnyRef], String](config) {
 
     implicit lazy val auditEventConfig: AuditEventGeneratorConfig = config
     private[this] lazy val logger = LoggerFactory.getLogger(classOf[AuditEventGenerator])
@@ -34,7 +34,7 @@ class AuditEventGenerator(config: AuditEventGeneratorConfig)
     }
 
     override def processElement(event: util.Map[String, AnyRef],
-                                context: ProcessFunction[util.Map[String, AnyRef], util.Map[String, AnyRef]]#Context,
+                                context: ProcessFunction[util.Map[String, AnyRef], String]#Context,
                                 metrics: Metrics): Unit = {
         metrics.incCounter(config.totalEventsCount)
         if(!event.containsKey("edata")) {

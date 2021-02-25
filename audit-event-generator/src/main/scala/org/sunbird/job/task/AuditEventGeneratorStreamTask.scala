@@ -30,7 +30,7 @@ class AuditEventGeneratorStreamTask(config: AuditEventGeneratorConfig, kafkaConn
       .uid(config.auditEventGeneratorFunction)
       .setParallelism(config.parallelism)
 
-    processStreamTask.getSideOutput(config.auditOutputTag).addSink(kafkaConnector.kafkaMapSink(config.kafkaOutputTopic))
+    processStreamTask.getSideOutput(config.auditOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaOutputTopic))
       .name(config.auditEventProducer).uid(config.auditEventProducer)
 
     env.execute(config.jobName)
