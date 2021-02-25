@@ -1,10 +1,10 @@
 package org.sunbird.spec
 
 import org.apache.flink.configuration.Configuration
-import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
+import org.scalatest.{BeforeAndAfterAll, BeforeAndAfterEach, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
 
-class BaseTestSpec extends FlatSpec with Matchers with BeforeAndAfterAll with MockitoSugar {
+class BaseTestSpec extends FlatSpec with Matchers with BeforeAndAfterAll with MockitoSugar with BeforeAndAfterEach {
 
   def testConfiguration(): Configuration = {
     val config = new Configuration()
