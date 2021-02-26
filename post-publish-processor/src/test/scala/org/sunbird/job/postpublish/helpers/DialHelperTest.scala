@@ -60,7 +60,7 @@ class DialHelperTest extends FlatSpec with BeforeAndAfterAll with Matchers with 
 
     "reserveDialCodes" should "reserve dialcodes and return a map of the same " in {
         val dialUtility = new TestDialHelper()
-        when(httpUtil.post(ArgumentMatchers.anyString(), ArgumentMatchers.anyString(), ArgumentMatchers.anyMap())).thenReturn(getReserveDialcodeResponse())
+        when(httpUtil.post(ArgumentMatchers.anyString(), ArgumentMatchers.anyString(), ArgumentMatchers.any())).thenReturn(getReserveDialcodeResponse())
         val reserved = dialUtility.reserveDialCodes(getEvent(), jobConfig)
         reserved.isEmpty should be(false)
         reserved.getOrDefault("V9E4D9", -1) shouldEqual (0)
@@ -68,7 +68,7 @@ class DialHelperTest extends FlatSpec with BeforeAndAfterAll with Matchers with 
 
     "reserveDialCodes with error response" should "throw an exception " in {
         val dialUtility = new TestDialHelper()
-        when(httpUtil.post(ArgumentMatchers.anyString(), ArgumentMatchers.anyString(), ArgumentMatchers.anyMap())).thenReturn(HTTPResponse(400, ""))
+        when(httpUtil.post(ArgumentMatchers.anyString(), ArgumentMatchers.anyString(), ArgumentMatchers.any())).thenReturn(HTTPResponse(400, ""))
         intercept[Exception] {
             dialUtility.reserveDialCodes(getEvent(), jobConfig)
         }

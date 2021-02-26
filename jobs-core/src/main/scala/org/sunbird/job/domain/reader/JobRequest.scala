@@ -44,9 +44,9 @@ abstract class JobRequest(val map: java.util.Map[String, Any]) {
         while ( {
           i < lastIndex && parent != null
         }) {
-          var result: java.util.Map[String, Any] = null
-          if (parent.isInstanceOf[java.util.Map[_, _]]) result = new ParentMap(parent, keys(i)).readChild.orNull
-          parent = result
+          if (parent.isInstanceOf[java.util.Map[_, _]]) {
+            parent = JSONUtil.deserialize[java.util.Map[String, Any]](JSONUtil.serialize(new ParentMap(parent, keys(i)).readChild.orNull))
+          }
           i += 1
         }
       }

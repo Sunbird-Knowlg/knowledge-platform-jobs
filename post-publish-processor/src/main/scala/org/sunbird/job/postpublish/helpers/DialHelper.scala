@@ -29,8 +29,8 @@ trait DialHelper {
         val identifier = edata.get("identifier").asInstanceOf[String]
         val request = Map("request" -> Map("dialcodes" -> Map("count" -> 1.asInstanceOf[AnyRef],
             "qrCodeSpec" -> Map("errorCorrectionLevel" -> "H").asJava).asJava).asJava).asJava
-        val headers: util.Map[String, String] = Map[String, String]("X-Channel-Id" -> edata.getOrDefault("channel", "").asInstanceOf[String],
-            "Content-Type" -> "application/json").asJava
+        val headers = Map[String, String]("X-Channel-Id" -> edata.getOrDefault("channel", "").asInstanceOf[String],
+            "Content-Type" -> "application/json")
         val httpRequest = JSONUtil.serialize(request)
 
         logger.info(s"Reserved Dialcode Api request body : ${httpRequest}")
@@ -122,7 +122,11 @@ trait DialHelper {
 
         if(validatePrimaryCategory(metadata)(config)) {
             logger.info(s"Primary Category match found. Starting the process for Dial Code Generation.")
-            new util.HashMap[String, AnyRef](event.eData.asJava) {{
+//            val data = event.getMap().asScala.toMap.asInstanceOf[Map[String, AnyRef]]
+            new util.HashMap[String, AnyRef]() {{
+                put("identifier", metadata.getOrDefault("identifier", ""))
+                put("primaryCategory", metadata.getOrDefault("primaryCategory", ""))
+                put("contentType", metadata.getOrDefault("contentType", ""))
                 put("channel", metadata.getOrDefault("channel", ""))
                 put("dialcodes", metadata.getOrDefault("dialcodes", new util.ArrayList[String] {}))
                 put("reservedDialcodes", metadata.getOrDefault("reservedDialcodes", "{}"))
