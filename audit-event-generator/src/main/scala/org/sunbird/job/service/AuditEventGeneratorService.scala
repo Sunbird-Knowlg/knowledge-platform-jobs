@@ -53,9 +53,8 @@ class AuditEventGeneratorService(implicit config: AuditEventGeneratorConfig) {
       val auditMap = JSONUtil.deserialize[Map[String, AnyRef]](auditEventStr)
       val objectType = auditMap.getOrElse("object", null).asInstanceOf[Map[String, AnyRef]].getOrElse("type", null).asInstanceOf[String]
       if (null != objectType) {
-        logger.error("Failed to process message :: " + JSONUtil.serialize(auditMap))
         context.output(config.auditOutputTag, auditEventStr)
-        logger.info("Telemetry Audit Message Successfully Sent for : " + auditMap.get("object").asInstanceOf[Map[String, AnyRef]].getOrElse("id", "").asInstanceOf[String] + " :: mid ::" + auditMap.get("mid"))
+        logger.info("Telemetry Audit Message Successfully Sent for : " + auditMap.getOrElse("object", null).asInstanceOf[Map[String, AnyRef]].getOrElse("id", "").asInstanceOf[String] + " :: event ::" + auditEventStr)
         metrics.incCounter(config.successEventCount)
       }
       else {

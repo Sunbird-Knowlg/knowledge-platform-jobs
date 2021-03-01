@@ -79,6 +79,14 @@ class AuditEventGeneratorServiceTestSpec extends BaseTestSpec {
     duration should be(null)
   }
 
+  "AuditEventGeneratorService" should "skip audit for props is null" in {
+    val inputEvent:Map[String, AnyRef] = JSONUtil.deserialize[Map[String, AnyRef]](EventFixture.EVENT_5)
+
+    val eventStr = auditEventService.getAuditMessage(inputEvent)
+
+    eventStr should be("{\"object\": {\"type\":null}}")
+  }
+
   "AuditEventGeneratorService" should "compute duration" in {
     val ov = "2019-03-13T13:25:43.129+0530"
     val nv = "2019-03-13T13:38:24.358+0530"
