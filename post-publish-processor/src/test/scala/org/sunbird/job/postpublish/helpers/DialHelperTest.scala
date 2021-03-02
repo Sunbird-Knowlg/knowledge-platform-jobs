@@ -83,7 +83,7 @@ class DialHelperTest extends FlatSpec with BeforeAndAfterAll with Matchers with 
   "fetchExistingDialcodes" should "return map of dialcodes that is reserved" in {
     val dialcodes: util.List[String] = new TestDialHelper().fetchExistingDialcodes(getNeo4jData())
     dialcodes.isEmpty should be(false)
-    dialcodes.contains("Q1I5I3") should be(true)
+    dialcodes should contain("Q1I5I3")
   }
 
   "validatePrimaryCategory" should "validate the PrimaryCategory" in {
@@ -108,21 +108,21 @@ class DialHelperTest extends FlatSpec with BeforeAndAfterAll with Matchers with 
     new TestDialHelper().validateQR("Q1I5I2") should be(false)
   }
 
-  "updatDialcodeRecord" should "throw exception because of invalid channel" in {
+  "updateDialcodeRecord" should "throw exception because of invalid channel" in {
     assertThrows[Exception] {
-      new TestDialHelper().updatDialcodeRecord("", "channel1", System.currentTimeMillis())
+      new TestDialHelper().updateDialcodeRecord("", "channel1", System.currentTimeMillis())
     }
   }
 
-  "updatDialcodeRecord" should "throw exception because of passing invalid keyspace" in {
+  "updateDialcodeRecord" should "throw exception because of passing invalid keyspace" in {
     val extConfig = new ExtDataConfig("invalidKeyspace", jobConfig.dialcodeTableName)
     assertThrows[Exception] {
-      new TestDialHelper().updatDialcodeRecord("123", "channel1", 123)(extConfig, cassandraUtil)
+      new TestDialHelper().updateDialcodeRecord("123", "channel1", 123)(extConfig, cassandraUtil)
     }
   }
 
-  "updatDialcodeRecord" should "pass by inserting record into table" in {
-    (new TestDialHelper().updatDialcodeRecord("Q1I5I2", "channel1", System.currentTimeMillis())) should be(true)
+  "updateDialcodeRecord" should "pass by inserting record into table" in {
+    (new TestDialHelper().updateDialcodeRecord("Q1I5I2", "channel1", System.currentTimeMillis())) should be(true)
   }
 
   "createQRGeneratorEvent" should " throw Exception because of passing invalid keyspaces" in {

@@ -27,21 +27,18 @@ trait DialHelper {
 
   def reserveDialCodes(edata: java.util.Map[String, AnyRef], config: PostPublishProcessorConfig)(implicit httpUtil: HttpUtil): java.util.Map[String, Integer] = {
     val identifier = edata.get("identifier").asInstanceOf[String]
-    val request = Map("request" -> Map("dialcodes" -> Map("count" -> 1.asInstanceOf[AnyRef],
-      "qrCodeSpec" -> Map("errorCorrectionLevel" -> "H").asJava).asJava).asJava).asJava
+    val request = s"""{"request": { "dialcodes": {"count": 1, "qrCodeSpec": {"errorCorrectionLevel": "H"}}}}"""
     val headers = Map[String, String]("X-Channel-Id" -> edata.getOrDefault("channel", "").asInstanceOf[String],
       "Content-Type" -> "application/json")
-    val httpRequest = JSONUtil.serialize(request)
 
-    logger.info(s"Reserved Dialcode Api request body : ${httpRequest}")
+    logger.info(s"Reserved Dialcode Api request body : ${request}")
     logger.info(s"Reserved Dialcode Api header : ${headers}")
     logger.info(s"Reserved Dialcode Api url : " + config.reserveDialCodeAPIPath + identifier)
 
-    val response = httpUtil.post(config.reserveDialCodeAPIPath + "/" + identifier, httpRequest, headers)
-    logger.info(s"Reserved Dialcode Api response status : " + response.status)
+    val response = httpUtil.post(config.reserveDialCodeAPIPath + "/" + identifier, request, headers)
+    logger.info(s"Reserved Dialcode Api response status : ${response.status} and response body : ${response.body}")
     if (response.status == 200) {
       val responseBody = gson.fromJson(response.body, classOf[java.util.Map[String, AnyRef]])
-      logger.info(s"Reserved Dialcode Api resopnse body : ${responseBody}")
       val reservedDialcodes: util.Map[String, Integer] = responseBody.getOrDefault("result", new util.HashMap[String, AnyRef])
         .asInstanceOf[util.Map[String, AnyRef]].getOrDefault("reservedDialcodes", new util.HashMap[String, Integer]())
         .asInstanceOf[util.Map[String, Integer]]
@@ -83,22 +80,16 @@ trait DialHelper {
     }
   }
 
-  def updatDialcodeRecord(dialcode: String, channel: String, ets: Long)(implicit extConfig: ExtDataConfig, cassandraUtil: CassandraUtil): Boolean = {
+  def updateDialcodeRecord(dialcode: String, channel: String, ets: Long)(implicit extConfig: ExtDataConfig, cassandraUtil: CassandraUtil): Boolean = {
     if (dialcode.isEmpty) throw new Exception("Invalid dialcode to update")
     val query: String = s"insert into ${extConfig.keyspace}.${extConfig.table} (filename,channel,created_on,dialcode,status) values ('0_${dialcode}', '${channel}', ${ets}, '${dialcode}', 0);"
-    try {
-      if (cassandraUtil.upsert(query)) {
-        logger.info(s"Added Dialcode to the table.")
-        true
-      } else {
-        logger.error("There was an issue while inserting the dialcode details into table")
-        throw new Exception("There was an issue while inserting the dialcode details into table")
-      }
-    } catch {
-      case e: Exception => logger.error("There was an issue while inserting the dialcode details into table. Error Message: " + e.getMessage)
-        throw new Exception("There was an issue while inserting the dialcode details into table")
+    if (cassandraUtil.upsert(query)) {
+      logger.info(s"Added Dialcode to the table.")
+      true
+    } else {
+      logger.error("There was an issue while inserting the dialcode details into table")
+      throw new Exception("There was an issue while inserting the dialcode details into table")
     }
-
   }
 
   def createQRGeneratorEvent(edata: java.util.Map[String, AnyRef], dialcode: String, context: ProcessFunction[java.util.Map[String, AnyRef], String]#Context, config: PostPublishProcessorConfig)(implicit metrics: Metrics, extConfig: ExtDataConfig, cassandraUtil: CassandraUtil): Unit = {
@@ -107,7 +98,7 @@ trait DialHelper {
     val identifier = edata.get("identifier").asInstanceOf[String]
     val channelId = edata.getOrDefault("channel", "").asInstanceOf[String]
 
-    if (updatDialcodeRecord(dialcode, channelId, ets)) {
+    if (updateDialcodeRecord(dialcode, channelId, ets)) {
       val event = s"""{"eid":"BE_QR_IMAGE_GENERATOR", "objectId": "${identifier}", "dialcodes": [{"data": "${config.dialBaseUrl}${dialcode}", "text": "${dialcode}", "id": "0_${dialcode}"}], "storage": {"container": "dial", "path": "${channelId}/", "fileName": "${identifier}_${ets}"}, "config": {"errorCorrectionLevel": "H", "pixelsPerBlock": 2, "qrCodeMargin": 3, "textFontName": "Verdana", "textFontSize": 11, "textCharacterSpacing": 0.1, "imageFormat": "png", "colourModel": "Grayscale", "imageBorderSize": 1}}""".stripMargin
       logger.info(s"QR Image Generator Event Object : ${event}")
       context.output(config.generateQRImageOutTag, event)
@@ -122,17 +113,12 @@ trait DialHelper {
 
     if (validatePrimaryCategory(metadata)(config)) {
       logger.info(s"Primary Category match found. Starting the process for Dial Code Generation.")
-      //            val data = event.getMap().asScala.toMap.asInstanceOf[Map[String, AnyRef]]
-      new util.HashMap[String, AnyRef]() {
-        {
-          put("identifier", metadata.getOrDefault("identifier", ""))
-          put("primaryCategory", metadata.getOrDefault("primaryCategory", ""))
-          put("contentType", metadata.getOrDefault("contentType", ""))
-          put("channel", metadata.getOrDefault("channel", ""))
-          put("dialcodes", metadata.getOrDefault("dialcodes", new util.ArrayList[String] {}))
-          put("reservedDialcodes", metadata.getOrDefault("reservedDialcodes", "{}"))
-        }
-      }
+      Map[String, AnyRef]("identifier" -> metadata.get("identifier"),
+        "primaryCategory" -> metadata.getOrDefault("primaryCategory", ""),
+        "contentType" -> metadata.getOrDefault("contentType", ""),
+        "channel" -> metadata.getOrDefault("channel", ""),
+        "dialcodes" -> metadata.getOrDefault("dialcodes", new util.ArrayList[String] {}),
+        "reservedDialcodes" -> metadata.getOrDefault("reservedDialcodes", "{}")).asJava
     } else {
       logger.info(s"Primary Category does not match. Skipping the process for Dial Code Generation.")
       new util.HashMap[String, AnyRef]()
