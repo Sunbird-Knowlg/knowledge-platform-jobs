@@ -1,14 +1,15 @@
 package org.sunbird.job.task
 
 import java.util
+
 import com.typesafe.config.Config
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.streaming.api.scala.OutputTag
-import org.sunbird.job.postpublish.config.PostPublishConfig
+import org.sunbird.job.BaseJobConfig
 import org.sunbird.job.functions.PublishMetadata
 
-class PostPublishProcessorConfig(override val config: Config) extends PostPublishConfig(config, "post-publish-processor")  {
+class PostPublishProcessorConfig(override val config: Config) extends BaseJobConfig(config, "post-publish-processor") {
 
   implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
   implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
@@ -26,6 +27,9 @@ class PostPublishProcessorConfig(override val config: Config) extends PostPublis
 
   // Parallelism
   val eventRouterParallelism: Int = config.getInt("task.router.parallelism")
+  val shallowCopyParallelism: Int = config.getInt("task.shallow_copy.parallelism")
+  val linkDialCodeParallelism: Int = config.getInt("task.link_dialcode.parallelism")
+  val batchCreateParallelism: Int = config.getInt("task.batch_create.parallelism")
 
   // Metric List
   val totalEventsCount = "total-events-count"
@@ -69,5 +73,5 @@ class PostPublishProcessorConfig(override val config: Config) extends PostPublis
 
   // QR Image Generator
   val QRImageGeneratorTopic: String = config.getString("kafka.qrimage.topic")
-  val primaryCategories: util.List[String] = if(config.hasPath("dialcode.linkable.primaryCategory")) config.getStringList("dialcode.linkable.primaryCategory") else util.Arrays.asList("Course")//List[String]("Course")
+  val primaryCategories: util.List[String] = if (config.hasPath("dialcode.linkable.primaryCategory")) config.getStringList("dialcode.linkable.primaryCategory") else util.Arrays.asList("Course") //List[String]("Course")
 }

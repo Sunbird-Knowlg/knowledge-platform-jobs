@@ -17,7 +17,7 @@ import org.cassandraunit.CQLDataLoader
 import org.cassandraunit.dataset.cql.FileCQLDataSet
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
 import org.sunbird.job.functions.DIALCodeLinkFunction
-import org.mockito.ArgumentMatchers.{any, anyMap, anyString, endsWith}
+import org.mockito.ArgumentMatchers.{any, anyString, endsWith}
 import org.sunbird.job.functions.PostPublishEventRouter
 import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, Neo4JUtil}
 import org.sunbird.spec.BaseTestSpec
@@ -91,159 +91,175 @@ class PostPublishProcessorTaskTestSpec extends BaseTestSpec {
     when(mockHttpUtil.post(endsWith("/v3/search"), anyString(), any())).thenReturn(HTTPResponse(200, """{"id":"api.search-service.search","ver":"3.0","ts":"2020-08-31T22:09:07ZZ","params":{"resmsgid":"bc9a8ac0-f67d-47d5-b093-2077191bf93b","msgid":null,"err":null,"status":"successful","errmsg":null},"responseCode":"OK","result":{"count":5,"content":[{"identifier":"do_11301367667942195211854","origin":"do_11300581751853056018","channel":"b00bc992ef25f1a9a8d63291e20efc8d","originData":"{\"name\":\"Origin Content\",\"copyType\":\"deep\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"]}","mimeType":"application/vnd.ekstep.content-collection","contentType":"TextBook","objectType":"Content","status":"Draft","versionKey":"1588583579763"},{"identifier":"do_113005885057662976128","origin":"do_11300581751853056018","pkgVersion": 2,"channel":"sunbird","originData":"{\"name\":\"Origin Content\",\"copyType\":\"shallow\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"],\"pkgVersion\":2.0}","mimeType":"application/vnd.ekstep.content-collection","lastPublishedBy":"Ekstep","contentType":"TextBook","objectType":"Content","status":"Live","versionKey":"1587632481597"},{"identifier":"do_113005885161611264130","origin":"do_11300581751853056018","channel":"sunbird","originData":"{\"name\":\"Origin Content\",\"copyType\":\"shallow\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"],\"pkgVersion\":2.0}","mimeType":"application/vnd.ekstep.content-collection","lastPublishedBy":"Ekstep","contentType":"TextBook","objectType":"Content","status":"Live","versionKey":"1587632475439"},{"identifier":"do_113005882957578240124","origin":"do_11300581751853056018","channel":"sunbird","originData":"{\"name\":\"Origin Content\",\"copyType\":\"shallow\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"],\"pkgVersion\":2.0}","mimeType":"application/vnd.ekstep.content-collection","lastPublishedBy":"Ekstep","contentType":"TextBook","objectType":"Content","status":"Live","versionKey":"1587632233649"},{"identifier":"do_113005820474007552111","origin":"do_11300581751853056018","channel":"sunbird","originData":"{\"name\":\"Origin Content\",\"copyType\":\"shallow\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"],\"pkgVersion\":2.0}","mimeType":"application/vnd.ekstep.content-collection","lastPublishedBy":"Ekstep","contentType":"TextBook","objectType":"Content","status":"Live","versionKey":"1587624624051"}]}}"""))
     val identifier = "do_11300581751853056018"
     val list = new PostPublishEventRouter(jobConfig, mockHttpUtil).getShallowCopiedContents(identifier)
-    list.size should be (4)
+    list.size should be(4)
     list.map(c => c.identifier) should contain allOf("do_113005885057662976128", "do_113005885161611264130", "do_113005882957578240124", "do_113005820474007552111")
   }
 
   "Post Publish Processor" should "process and return the metadata for batch " in {
-    val metaData = new java.util.HashMap[String, AnyRef]() {{
-      put("IL_UNIQUE_ID", "do_11300581751853056018")
-      put("identifier", "do_11300581751853056018")
-      put("name", "Origin Content")
-      put("createdBy", "874ed8a5-782e-4f6c-8f36-e0288455901e")
-      put("channel", "b00bc992ef25f1a9a8d63291e20efc8d")
-      put("trackable", "{\"enabled\":\"Yes\",\"autoBatch\":\"Yes\"}")
-      put("createdFor", util.Arrays.asList("ORG_001"))
-    }}
+    val metaData = new java.util.HashMap[String, AnyRef]() {
+      {
+        put("IL_UNIQUE_ID", "do_11300581751853056018")
+        put("identifier", "do_11300581751853056018")
+        put("name", "Origin Content")
+        put("createdBy", "874ed8a5-782e-4f6c-8f36-e0288455901e")
+        put("channel", "b00bc992ef25f1a9a8d63291e20efc8d")
+        put("trackable", "{\"enabled\":\"Yes\",\"autoBatch\":\"Yes\"}")
+        put("createdFor", util.Arrays.asList("ORG_001"))
+      }
+    }
 
     when(mockNeo4JUtil.getNodeProperties(anyString())).thenReturn(metaData)
     val identifier = "do_11300581751853056018"
     val batchMetadata = new PostPublishEventRouter(jobConfig, mockHttpUtil, mockNeo4JUtil, cassandraUtil).getBatchDetails(identifier)(mockNeo4JUtil, cassandraUtil, jobConfig)
-    batchMetadata.size() should be (4)
-    batchMetadata.get("identifier") should be ("do_11300581751853056018")
+    batchMetadata.size() should be(4)
+    batchMetadata.get("identifier") should be("do_11300581751853056018")
   }
 
   "Post Publish Processor" should "process and return the empty metadata for batch" in {
-    val metaData = new java.util.HashMap[String, AnyRef]() {{
-      put("IL_UNIQUE_ID", "do_11300581751853056018")
-      put("identifier", "do_11300581751853056018")
-      put("name", "Origin Content")
-      put("createdBy", "874ed8a5-782e-4f6c-8f36-e0288455901e")
-      put("channel", "b00bc992ef25f1a9a8d63291e20efc8d")
-      put("trackable", "{\"enabled\":\"false\",\"autoBatch\":\"false\"}")
-      put("createdFor", util.Arrays.asList("ORG_001"))
-    }}
+    val metaData = new java.util.HashMap[String, AnyRef]() {
+      {
+        put("IL_UNIQUE_ID", "do_11300581751853056018")
+        put("identifier", "do_11300581751853056018")
+        put("name", "Origin Content")
+        put("createdBy", "874ed8a5-782e-4f6c-8f36-e0288455901e")
+        put("channel", "b00bc992ef25f1a9a8d63291e20efc8d")
+        put("trackable", "{\"enabled\":\"false\",\"autoBatch\":\"false\"}")
+        put("createdFor", util.Arrays.asList("ORG_001"))
+      }
+    }
 
     when(mockNeo4JUtil.getNodeProperties(anyString())).thenReturn(metaData)
     val identifier = "do_11300581751853056018"
     val batchMetadata = new PostPublishEventRouter(jobConfig, mockHttpUtil, mockNeo4JUtil, cassandraUtil).getBatchDetails(identifier)(mockNeo4JUtil, cassandraUtil, jobConfig)
-    batchMetadata.isEmpty() should be (true)
+    batchMetadata.isEmpty() should be(true)
   }
 
   "Post Publish Processor" should "process and return the metadata for dialcode generation" in {
-    val metadata = new java.util.HashMap[String, AnyRef]() {{
-      put("IL_UNIQUE_ID", "do_113214556543234")
-      put("identifier", "do_113214556543234")
-      put("name", "Origin Content")
-      put("createdBy", "874ed8a5-782e-4f6c-8f36-e0288455901e")
-      put("channel", "b00bc992ef25f1a9a8d63291e20efc8d")
-      put("trackable", "{\"enabled\":\"No\",\"autoBatch\":\"No\"}")
-      put("createdFor", util.Arrays.asList("ORG_001"))
-      put("reservedDialcodes", "{\"Q1I5I3\": 0}")
-      put("dialcodes", util.Arrays.asList("Q1I5I3"))
-      put("primaryCategory", "Course")
-    }}
+    val metadata = new java.util.HashMap[String, AnyRef]() {
+      {
+        put("IL_UNIQUE_ID", "do_113214556543234")
+        put("identifier", "do_113214556543234")
+        put("name", "Origin Content")
+        put("createdBy", "874ed8a5-782e-4f6c-8f36-e0288455901e")
+        put("channel", "b00bc992ef25f1a9a8d63291e20efc8d")
+        put("trackable", "{\"enabled\":\"No\",\"autoBatch\":\"No\"}")
+        put("createdFor", util.Arrays.asList("ORG_001"))
+        put("reservedDialcodes", "{\"Q1I5I3\": 0}")
+        put("dialcodes", util.Arrays.asList("Q1I5I3"))
+        put("primaryCategory", "Course")
+      }
+    }
 
     val identifier = "do_113214556543234"
     when(mockNeo4JUtil.getNodeProperties(anyString())).thenReturn(metadata)
     val qrEventMap1 = gson.fromJson(EventFixture.QREVENT_1, new util.LinkedHashMap[String, Any]().getClass).asInstanceOf[util.Map[String, Any]].asScala ++ Map("partition" -> 0.asInstanceOf[Any])
     val event = new Event(qrEventMap1.asJava)
     val dialcodeMetadata = new PostPublishEventRouter(jobConfig, mockHttpUtil, mockNeo4JUtil, cassandraUtil).getDialCodeDetails(identifier, event)(mockNeo4JUtil, jobConfig)
-    dialcodeMetadata.isEmpty() should be (false)
-    dialcodeMetadata.get("dialcodes").asInstanceOf[util.List[String]] should contain ("Q1I5I3")
+    dialcodeMetadata.isEmpty() should be(false)
+    dialcodeMetadata.get("dialcodes").asInstanceOf[util.List[String]] should contain("Q1I5I3")
   }
 
   "Post Publish Processor" should "process and return the empty metadata for dialcode generation" in {
-    val metadata = new java.util.HashMap[String, AnyRef]() {{
-      put("IL_UNIQUE_ID", "do_113214556543234")
-      put("identifier", "do_113214556543234")
-      put("name", "Origin Content")
-      put("createdBy", "874ed8a5-782e-4f6c-8f36-e0288455901e")
-      put("channel", "b00bc992ef25f1a9a8d63291e20efc8d")
-      put("trackable", "{\"enabled\":\"No\",\"autoBatch\":\"No\"}")
-      put("createdFor", util.Arrays.asList("ORG_001"))
-      put("reservedDialcodes", "{\"Q1I5I3\": 0}")
-      put("dialcodes", util.Arrays.asList("Q1I5I3"))
-      put("primaryCategory", "Textbook")
-    }}
+    val metadata = new java.util.HashMap[String, AnyRef]() {
+      {
+        put("IL_UNIQUE_ID", "do_113214556543234")
+        put("identifier", "do_113214556543234")
+        put("name", "Origin Content")
+        put("createdBy", "874ed8a5-782e-4f6c-8f36-e0288455901e")
+        put("channel", "b00bc992ef25f1a9a8d63291e20efc8d")
+        put("trackable", "{\"enabled\":\"No\",\"autoBatch\":\"No\"}")
+        put("createdFor", util.Arrays.asList("ORG_001"))
+        put("reservedDialcodes", "{\"Q1I5I3\": 0}")
+        put("dialcodes", util.Arrays.asList("Q1I5I3"))
+        put("primaryCategory", "Textbook")
+      }
+    }
 
     val identifier = "do_113214556543234"
     when(mockNeo4JUtil.getNodeProperties(anyString())).thenReturn(metadata)
     val qrEventMap1 = gson.fromJson(EventFixture.QREVENT_1, new util.LinkedHashMap[String, Any]().getClass).asInstanceOf[util.Map[String, Any]].asScala ++ Map("partition" -> 0.asInstanceOf[Any])
     val event = new Event(qrEventMap1.asJava)
     val dialcodeMetadata = new PostPublishEventRouter(jobConfig, mockHttpUtil, mockNeo4JUtil, cassandraUtil).getDialCodeDetails(identifier, event)(mockNeo4JUtil, jobConfig)
-    dialcodeMetadata.isEmpty() should be (true)
+    dialcodeMetadata.isEmpty() should be(true)
   }
 
 
   "Post Publish Processor" should "process request for dialcode generation return the nothing for QR Image " in {
-    val edata = new java.util.HashMap[String, AnyRef]() {{
-      put("IL_UNIQUE_ID", "do_113214556543234")
-      put("identifier", "do_113214556543234")
-      put("name", "Origin Content")
-      put("createdBy", "874ed8a5-782e-4f6c-8f36-e0288455901e")
-      put("channel", "b00bc992ef25f1a9a8d63291e20efc8d")
-      put("trackable", "{\"enabled\":\"No\",\"autoBatch\":\"No\"}")
-      put("createdFor", util.Arrays.asList("ORG_001"))
-      put("reservedDialcodes", "{\"Q1I5I3\": 0}")
-      put("dialcodes", util.Arrays.asList("Q1I5I3"))
-      put("primaryCategory", "Course")
-    }}
+    val edata = new java.util.HashMap[String, AnyRef]() {
+      {
+        put("IL_UNIQUE_ID", "do_113214556543234")
+        put("identifier", "do_113214556543234")
+        put("name", "Origin Content")
+        put("createdBy", "874ed8a5-782e-4f6c-8f36-e0288455901e")
+        put("channel", "b00bc992ef25f1a9a8d63291e20efc8d")
+        put("trackable", "{\"enabled\":\"No\",\"autoBatch\":\"No\"}")
+        put("createdFor", util.Arrays.asList("ORG_001"))
+        put("reservedDialcodes", "{\"Q1I5I3\": 0}")
+        put("dialcodes", util.Arrays.asList("Q1I5I3"))
+        put("primaryCategory", "Course")
+      }
+    }
     val dialcode = new DIALCodeLinkFunction(jobConfig, mockHttpUtil, mockNeo4JUtil, cassandraUtil).getDialcode(edata)
-    dialcode should be ("")
+    dialcode should be("")
   }
 
   "Post Publish Processor" should "process request for dialcode generation and return the dialcode for QR Image " in {
-    val edata = new java.util.HashMap[String, AnyRef]() {{
-      put("IL_UNIQUE_ID", "do_113214556543235")
-      put("identifier", "do_113214556543235")
-      put("name", "Origin Content")
-      put("createdBy", "874ed8a5-782e-4f6c-8f36-e0288455901e")
-      put("channel", "b00bc992ef25f1a9a8d63291e20efc8d")
-      put("trackable", "{\"enabled\":\"No\",\"autoBatch\":\"No\"}")
-      put("createdFor", util.Arrays.asList("ORG_001"))
-      put("reservedDialcodes", "{\"Q1I5I4\": 0}")
-      put("dialcodes", util.Arrays.asList("Q1I5I4"))
-      put("primaryCategory", "Course")
-    }}
+    val edata = new java.util.HashMap[String, AnyRef]() {
+      {
+        put("IL_UNIQUE_ID", "do_113214556543235")
+        put("identifier", "do_113214556543235")
+        put("name", "Origin Content")
+        put("createdBy", "874ed8a5-782e-4f6c-8f36-e0288455901e")
+        put("channel", "b00bc992ef25f1a9a8d63291e20efc8d")
+        put("trackable", "{\"enabled\":\"No\",\"autoBatch\":\"No\"}")
+        put("createdFor", util.Arrays.asList("ORG_001"))
+        put("reservedDialcodes", "{\"Q1I5I4\": 0}")
+        put("dialcodes", util.Arrays.asList("Q1I5I4"))
+        put("primaryCategory", "Course")
+      }
+    }
     val dialcode = new DIALCodeLinkFunction(jobConfig, mockHttpUtil, mockNeo4JUtil, cassandraUtil).getDialcode(edata)
-    dialcode should be ("Q1I5I4")
+    dialcode should be("Q1I5I4")
   }
 
   "Post Publish Processor" should " use the existing reserved dialcode and return that dialcode for QR Image " in {
-    val edata = new java.util.HashMap[String, AnyRef]() {{
-      put("IL_UNIQUE_ID", "do_113214556543236")
-      put("identifier", "do_113214556543236")
-      put("name", "Origin Content")
-      put("createdBy", "874ed8a5-782e-4f6c-8f36-e0288455901e")
-      put("channel", "b00bc992ef25f1a9a8d63291e20efc8d")
-      put("trackable", "{\"enabled\":\"No\",\"autoBatch\":\"No\"}")
-      put("createdFor", util.Arrays.asList("ORG_001"))
-      put("reservedDialcodes", "{\"Q1I5I5\": 0}")
-      put("primaryCategory", "Course")
-    }}
+    val edata = new java.util.HashMap[String, AnyRef]() {
+      {
+        put("IL_UNIQUE_ID", "do_113214556543236")
+        put("identifier", "do_113214556543236")
+        put("name", "Origin Content")
+        put("createdBy", "874ed8a5-782e-4f6c-8f36-e0288455901e")
+        put("channel", "b00bc992ef25f1a9a8d63291e20efc8d")
+        put("trackable", "{\"enabled\":\"No\",\"autoBatch\":\"No\"}")
+        put("createdFor", util.Arrays.asList("ORG_001"))
+        put("reservedDialcodes", "{\"Q1I5I5\": 0}")
+        put("primaryCategory", "Course")
+      }
+    }
     doNothing().when(mockNeo4JUtil).updateNodeProperty(anyString, anyString, anyString)
     val dialcode = new DIALCodeLinkFunction(jobConfig, mockHttpUtil, mockNeo4JUtil, cassandraUtil).getDialcode(edata)
-    dialcode should be ("Q1I5I5")
+    dialcode should be("Q1I5I5")
   }
 
 
   "Post Publish Processor" should " reserve a dialcode and return that dialcode for QR Image " in {
-    val edata = new java.util.HashMap[String, AnyRef]() {{
-      put("IL_UNIQUE_ID", "do_113214556543237")
-      put("identifier", "do_113214556543237")
-      put("name", "Origin Content")
-      put("createdBy", "874ed8a5-782e-4f6c-8f36-e0288455901e")
-      put("channel", "b00bc992ef25f1a9a8d63291e20efc8d")
-      put("trackable", "{\"enabled\":\"No\",\"autoBatch\":\"No\"}")
-      put("createdFor", util.Arrays.asList("ORG_001"))
-      put("primaryCategory", "Course")
-    }}
+    val edata = new java.util.HashMap[String, AnyRef]() {
+      {
+        put("IL_UNIQUE_ID", "do_113214556543237")
+        put("identifier", "do_113214556543237")
+        put("name", "Origin Content")
+        put("createdBy", "874ed8a5-782e-4f6c-8f36-e0288455901e")
+        put("channel", "b00bc992ef25f1a9a8d63291e20efc8d")
+        put("trackable", "{\"enabled\":\"No\",\"autoBatch\":\"No\"}")
+        put("createdFor", util.Arrays.asList("ORG_001"))
+        put("primaryCategory", "Course")
+      }
+    }
     doNothing().when(mockNeo4JUtil).updateNodeProperty(anyString, anyString, anyString)
     when(mockHttpUtil.post(anyString, anyString, any())).thenReturn(HTTPResponse(200, """{"result": {"reservedDialcodes": {"Q2I5I9" : 0}}}"""))
 
     val dialcode = new DIALCodeLinkFunction(jobConfig, mockHttpUtil, mockNeo4JUtil, cassandraUtil).getDialcode(edata)
-    dialcode should be ("Q2I5I9")
+    dialcode should be("Q2I5I9")
   }
 
   ignore should "run all the scenarios for a given event" in {
@@ -251,10 +267,10 @@ class PostPublishProcessorTaskTestSpec extends BaseTestSpec {
     when(mockHttpUtil.post(jobConfig.batchCreateAPIPath, batchRequestBody)).thenReturn(HTTPResponse(200, """{}"""))
     when(mockKafkaUtil.kafkaStringSink(jobConfig.contentPublishTopic)).thenReturn(new PublishEventSink)
     when(mockHttpUtil.post(qrRequestUrl, qrRequestBody, qrRequestHeaders)).thenReturn(HTTPResponse(200, """{"result": {"reservedDialcodes": {"Q2I5I9" : 0}}}"""))
-    when(mockHttpUtil.post(jobConfig.searchAPIPath, searchRequestForQRImageEvent1)).thenReturn(HTTPResponse(200,"""{"responseCode": "OK","result": {"count": 5,"content": []}}"""))
-    when(mockHttpUtil.post(jobConfig.searchAPIPath, searchRequestForQRImageEvent2)).thenReturn(HTTPResponse(200,"""{"responseCode": "OK","result": {"count": 5,"content": []}}"""))
-    when(mockHttpUtil.post(jobConfig.searchAPIPath, searchRequestForQRImageEvent3)).thenReturn(HTTPResponse(200,"""{"responseCode": "OK","result": {"count": 5,"content": []}}"""))
-    when(mockHttpUtil.post(jobConfig.searchAPIPath, searchRequestForQRImageEvent4)).thenReturn(HTTPResponse(200,"""{"responseCode": "OK","result": {"count": 5,"content": []}}"""))
+    when(mockHttpUtil.post(jobConfig.searchAPIPath, searchRequestForQRImageEvent1)).thenReturn(HTTPResponse(200, """{"responseCode": "OK","result": {"count": 5,"content": []}}"""))
+    when(mockHttpUtil.post(jobConfig.searchAPIPath, searchRequestForQRImageEvent2)).thenReturn(HTTPResponse(200, """{"responseCode": "OK","result": {"count": 5,"content": []}}"""))
+    when(mockHttpUtil.post(jobConfig.searchAPIPath, searchRequestForQRImageEvent3)).thenReturn(HTTPResponse(200, """{"responseCode": "OK","result": {"count": 5,"content": []}}"""))
+    when(mockHttpUtil.post(jobConfig.searchAPIPath, searchRequestForQRImageEvent4)).thenReturn(HTTPResponse(200, """{"responseCode": "OK","result": {"count": 5,"content": []}}"""))
     when(mockKafkaUtil.kafkaStringSink(jobConfig.QRImageGeneratorTopic)).thenReturn(new QRImageEventSink)
     when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new PostPublishEventSource)
     when(mockHttpUtil.post(endsWith("/v3/search"), anyString(), any())).thenReturn(HTTPResponse(200, """{"id":"api.search-service.search","ver":"3.0","ts":"2020-08-31T22:09:07ZZ","params":{"resmsgid":"bc9a8ac0-f67d-47d5-b093-2077191bf93b","msgid":null,"err":null,"status":"successful","errmsg":null},"responseCode":"OK","result":{"count":5,"content":[{"identifier":"do_11301367667942195211854","origin":"do_11300581751853056018","channel":"b00bc992ef25f1a9a8d63291e20efc8d","originData":"{\"name\":\"Origin Content\",\"copyType\":\"deep\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"]}","mimeType":"application/vnd.ekstep.content-collection","contentType":"TextBook","objectType":"Content","status":"Draft","versionKey":"1588583579763"},{"identifier":"do_113005885057662976128","origin":"do_11300581751853056018","channel":"sunbird","originData":"{\"name\":\"Origin Content\",\"copyType\":\"shallow\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"],\"pkgVersion\":2.0}","mimeType":"application/vnd.ekstep.content-collection","lastPublishedBy":"Ekstep","contentType":"TextBook","objectType":"Content","status":"Live","versionKey":"1587632481597"},{"identifier":"do_113005885161611264130","origin":"do_11300581751853056018","channel":"sunbird","originData":"{\"name\":\"Origin Content\",\"copyType\":\"shallow\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"],\"pkgVersion\":2.0}","mimeType":"application/vnd.ekstep.content-collection","lastPublishedBy":"Ekstep","contentType":"TextBook","objectType":"Content","status":"Live","versionKey":"1587632475439"},{"identifier":"do_113005882957578240124","origin":"do_11300581751853056018","channel":"sunbird","originData":"{\"name\":\"Origin Content\",\"copyType\":\"shallow\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"],\"pkgVersion\":2.0}","mimeType":"application/vnd.ekstep.content-collection","lastPublishedBy":"Ekstep","contentType":"TextBook","objectType":"Content","status":"Live","versionKey":"1587632233649"},{"identifier":"do_113005820474007552111","origin":"do_11300581751853056018","channel":"sunbird","originData":"{\"name\":\"Origin Content\",\"copyType\":\"shallow\",\"license\":\"CC BY 4.0\",\"organisation\":[\"Sunbird\"],\"pkgVersion\":2.0}","mimeType":"application/vnd.ekstep.content-collection","lastPublishedBy":"Ekstep","contentType":"TextBook","objectType":"Content","status":"Live","versionKey":"1587624624051"}]}}"""))

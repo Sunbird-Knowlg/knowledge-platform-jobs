@@ -42,10 +42,14 @@ class PostPublishEventRouter(config: PostPublishProcessorConfig, httpUtil: HttpU
       getShallowCopiedContents(identifier)(config, httpUtil).foreach(metadata => context.output(config.shallowContentPublishOutTag, metadata))
 
       // Process Batch Creation
-      context.output(config.batchCreateOutTag, getBatchDetails(identifier)(neo4JUtil, cassandraUtil, config))
+      val batchDetails = getBatchDetails(identifier)(neo4JUtil, cassandraUtil, config)
+      if (!batchDetails.isEmpty)
+        context.output(config.batchCreateOutTag, batchDetails)
 
       // Process Dialcode link
-      context.output(config.linkDIALCodeOutTag, getDialCodeDetails(identifier, event)(neo4JUtil, config))
+      val dialCodeDetails = getDialCodeDetails(identifier, event)(neo4JUtil, config)
+      if (!dialCodeDetails.isEmpty)
+        context.output(config.linkDIALCodeOutTag, dialCodeDetails)
 
     } else {
       metrics.incCounter(config.skippedEventCount)
