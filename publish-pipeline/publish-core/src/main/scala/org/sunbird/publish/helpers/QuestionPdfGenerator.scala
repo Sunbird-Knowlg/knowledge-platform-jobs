@@ -14,20 +14,20 @@ trait QuestionPdfGenerator extends ObjectTemplateGenerator {
     private[this] val logger = LoggerFactory.getLogger(classOf[QuestionPdfGenerator])
     lazy private val gson = new Gson()
 
-    def getPdfFileUrl(objList: List[ObjectData], obj: ObjectData, templateName: String, baseUrl: String)(implicit httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil): (Option[String], Option[String] ) = {
-        val previewUrl: Option[String] = getPreviewFileUrl(objList, obj, templateName)
+    def getPdfFileUrl(objList: List[ObjectData], obj: ObjectData, templateName: String, baseUrl: String, fileNameSuffix: String)(implicit httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil): (Option[String], Option[String] ) = {
+        val previewUrl: Option[String] = getPreviewFileUrl(objList, obj, templateName, fileNameSuffix)
         logger.info(s"QuestionPdfGenerator ::: preview url (Html File Url) for ${obj.identifier} is : ${previewUrl.getOrElse("")}")
         val pdfFileUrl = convertFileToPdfUrl(previewUrl, baseUrl)
         logger.info(s"QuestionPdfGenerator ::: pdf file local path for ${obj.identifier} is : ${pdfFileUrl.getOrElse("")}")
         pdfFileUrl match {
-            case Some(url: String) => (uploadFileString(url, obj), previewUrl)
+            case Some(url: String) => (uploadFileString(url, obj, fileNameSuffix), previewUrl)
             case _ => (None, previewUrl)
         }
     }
 
-    def getPreviewFileUrl(objList: List[ObjectData], obj: ObjectData, templateName: String)(implicit cloudStorageUtil: CloudStorageUtil): Option[String] = {
+    def getPreviewFileUrl(objList: List[ObjectData], obj: ObjectData, templateName: String, fileNameSuffix: String)(implicit cloudStorageUtil: CloudStorageUtil): Option[String] = {
         val fileContent: String = getFileString(objList, obj.metadata.getOrElse("name", "").asInstanceOf[String], templateName).getOrElse("")
-        val fileName: String = s"/tmp/${obj.identifier}_${getHtmlFileSuffix()}"
+        val fileName: String = s"/tmp/${obj.identifier}_${getHtmlFileSuffix(fileNameSuffix)}"
         val file: Option[File] = writeFile(fileName, fileContent)
         uploadFile(file, obj)
     }
@@ -38,7 +38,7 @@ trait QuestionPdfGenerator extends ObjectTemplateGenerator {
         customGenerator(objList, fileTitle, templateName)
     }
 
-    private def getHtmlFileSuffix(): String = "html_" + System.currentTimeMillis + ".html"
+    private def getHtmlFileSuffix(fileNameSuffix: String): String = "html_" + fileNameSuffix + ".html"
 
     def writeFile(filename: String, content: String): Option[File] = {
         try {
@@ -145,9 +145,9 @@ trait QuestionPdfGenerator extends ObjectTemplateGenerator {
         }
     }
 
-    private def uploadFileString(fileUrl: String, obj: ObjectData)(implicit cloudStorageUtil: CloudStorageUtil): Option[String] = {
+    private def uploadFileString(fileUrl: String, obj: ObjectData, fileNameSuffix: String)(implicit cloudStorageUtil: CloudStorageUtil): Option[String] = {
         //Todo: Rename Status?
-        val fileName = s"${obj.identifier}_pdf_${System.currentTimeMillis}.pdf"
+        val fileName = s"${obj.identifier}_pdf_${fileNameSuffix}.pdf"
         FileUtils.copyURLToFile(obj.identifier, fileUrl, fileName) match {
             case Some(file: File) => {
                 val folder = "questionset" + File.separator+ Slug.makeSlug(obj.identifier, true)

@@ -9,8 +9,8 @@ import org.slf4j.LoggerFactory
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 import org.sunbird.job.task.PostPublishProcessorConfig
 
-class ShallowCopyPublishFunction (config: PostPublishProcessorConfig)
-                                  (implicit val stringTypeInfo: TypeInformation[String])
+class ShallowCopyPublishFunction(config: PostPublishProcessorConfig)
+                                (implicit val stringTypeInfo: TypeInformation[String])
   extends BaseProcessFunction[PublishMetadata, String](config) {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[ShallowCopyPublishFunction])

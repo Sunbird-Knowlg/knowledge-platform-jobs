@@ -1,23 +1,24 @@
 package org.sunbird.job.postpublish.helpers
 
 import org.apache.commons.lang3.StringUtils
+import org.slf4j.LoggerFactory
 import org.sunbird.job.functions.PublishMetadata
 import org.sunbird.job.task.PostPublishProcessorConfig
 import org.sunbird.job.util.{HttpUtil, JSONUtil}
 
-import scala.collection.JavaConverters._
-
 trait ShallowCopyPublishing{
 
+  private[this] val logger = LoggerFactory.getLogger(classOf[ShallowCopyPublishing])
+
   def getShallowCopiedContents(identifier: String)(implicit config: PostPublishProcessorConfig, httpUtil: HttpUtil): List[PublishMetadata] = {
+    logger.info("Process Shallow Copy for content: " + identifier)
     val httpRequest = s"""{"request":{"filters":{"status":["Draft","Review","Live","Unlisted","Failed"],"origin":"${identifier}"},"fields":["identifier","mimeType","contentType","versionKey","channel","status","pkgVersion","lastPublishedBy","origin","originData"]}}"""
     val httpResponse = httpUtil.post(config.searchAPIPath, httpRequest)
     if (httpResponse.status == 200) {
-
       val response = JSONUtil.deserialize[Map[String, AnyRef]](httpResponse.body)
       val result = response.getOrElse("result", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
       val contents = result.getOrElse("content", List[Map[String,AnyRef]]()).asInstanceOf[List[Map[String,AnyRef]]]
-     contents.filter(c => c.contains("originData"))
+          contents.filter(c => c.contains("originData"))
         .filter(content => {
           val originDataStr = content.getOrElse("originData", "{}").asInstanceOf[String]
           val originData = JSONUtil.deserialize[Map[String, AnyRef]](originDataStr)

@@ -5,7 +5,6 @@ import org.slf4j.LoggerFactory
 import scala.collection.JavaConverters._
 
 
-
 class Neo4JUtil(routePath: String, graphId: String) {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[Neo4JUtil])
@@ -52,6 +51,16 @@ class Neo4JUtil(routePath: String, graphId: String) {
     }
   }
 
+  def updateNodeProperty(identifier: String, key: String, value: String): Unit = {
+    val query = s"""MATCH (n:$graphId {IL_UNIQUE_ID:"$identifier"}) SET n.$key=$value return n;"""
+    logger.info("Query: " + query)
+    val session = driver.session()
+    val result = session.run(query)
+    if (result.hasNext)
+      logger.info("Successfully Updated node with identifier: $identifier")
+    else throw new Exception(s"Unable to update the node with identifier: $identifier")
+  }
+
   def executeQuery(query: String) = {
     val session = driver.session()
     session.run(query)
@@ -61,6 +70,4 @@ class Neo4JUtil(routePath: String, graphId: String) {
   def getNodesProps(identifiers: List[String]): Map[String, AnyRef] = {
     Map()
   }
-
-
 }
