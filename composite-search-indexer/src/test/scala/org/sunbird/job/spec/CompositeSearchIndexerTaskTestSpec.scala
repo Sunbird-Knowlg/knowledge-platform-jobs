@@ -2,7 +2,7 @@ package org.sunbird.job.spec
 
 import java.util
 
-import com.google.gson.Gson
+import scala.collection.JavaConverters._
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
@@ -16,14 +16,13 @@ import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.fixture.EventFixture
 import org.sunbird.job.functions.{CompositeSearchIndexerFunction, DialCodeMetricIndexerFunction}
 import org.sunbird.job.task.CompositeSearchIndexerConfig
-import org.sunbird.job.util.ElasticSearchUtil
+import org.sunbird.job.util.{ElasticSearchUtil, ScalaJsonUtil}
 import org.sunbird.spec.BaseTestSpec
 
 class CompositeSearchIndexerTaskTestSpec extends BaseTestSpec {
 
   implicit val mapTypeInfo: TypeInformation[java.util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[java.util.Map[String, AnyRef]])
   implicit val strTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
-  val gson = new Gson()
 
   val flinkCluster = new MiniClusterWithClientResource(new MiniClusterResourceConfiguration.Builder()
     .setConfiguration(testConfiguration())
@@ -118,11 +117,11 @@ class CompositeSearchIndexerTaskTestSpec extends BaseTestSpec {
     val event = getCreateEventForCompositeIndexer(EventFixture.DATA_NODE_CREATE_WITH_RELATION, 509674)
     val dialcodeMetricFunc = new DialCodeMetricIndexerFunction(jobConfig)
     val uniqueId = event.readOrDefault("nodeUniqueId", "")
-    dialcodeMetricFunc.upsertDialcodeMetricDocument(uniqueId, event.getMap())(mockElasticutil)
+    dialcodeMetricFunc.upsertDialcodeMetricDocument(uniqueId, event.getMap().asScala.toMap)(mockElasticutil)
   }
 
   def getCreateEventForCompositeIndexer(event: String, nodeGraphId: Int): Event = {
-    val eventMap = gson.fromJson(event, new util.LinkedHashMap[String, Any]().getClass).asInstanceOf[util.Map[String, Any]]
+    val eventMap = ScalaJsonUtil.deserialize[util.Map[String, Any]](event)
     eventMap.put("nodeGraphId", nodeGraphId)
     new Event(eventMap)
   }

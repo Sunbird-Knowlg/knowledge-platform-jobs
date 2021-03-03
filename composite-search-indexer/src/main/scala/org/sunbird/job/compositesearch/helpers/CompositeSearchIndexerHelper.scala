@@ -1,18 +1,15 @@
 package org.sunbird.job.compositesearch.helpers
 
-import java.util
-
-import com.fasterxml.jackson.core.`type`.TypeReference
-import com.fasterxml.jackson.databind.ObjectMapper
+import scala.collection.JavaConverters._
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.models.CompositeIndexer
 import org.sunbird.job.util.{DefinitionUtil, ElasticSearchUtil, ScalaJsonUtil}
+import scala.collection.mutable
 
 trait CompositeSearchIndexerHelper {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[CompositeSearchIndexerHelper])
-  lazy private val mapper = new ObjectMapper
   lazy private val definitionUtil = new DefinitionUtil
 
   def createCompositeSearchIndex()(esUtil: ElasticSearchUtil): Unit = {
@@ -21,73 +18,68 @@ trait CompositeSearchIndexerHelper {
     esUtil.addIndex(settings, mappings)
   }
 
-  private def getIndexDocument(id: String)(esUtil: ElasticSearchUtil): util.Map[String, AnyRef] = {
+  private def getIndexDocument(id: String)(esUtil: ElasticSearchUtil): mutable.Map[String, AnyRef] = {
     val documentJson: String = esUtil.getDocumentAsStringById(id)
-    val indexDocument = if (documentJson != null && !documentJson.isEmpty) ScalaJsonUtil.deserialize[util.Map[String, AnyRef]](documentJson) else new util.HashMap[String, AnyRef]()
-    val indexDocument2 = if (documentJson != null && !documentJson.isEmpty) ScalaJsonUtil.deserialize[Map[String, AnyRef]](documentJson) else Map[String, AnyRef]()
+    val indexDocument = if (documentJson != null && !documentJson.isEmpty) ScalaJsonUtil.deserialize[mutable.Map[String, AnyRef]](documentJson) else mutable.Map[String, AnyRef]()
     indexDocument
   }
 
-  private def getIndexDocument(message: util.Map[String, Any], relationMap: Map[String, String], updateRequest: Boolean, externalProps: List[String], indexablePropslist: List[String], nestedFields: List[String])(esUtil: ElasticSearchUtil): util.Map[String, AnyRef] = {
-    val uniqueId = message.get("nodeUniqueId").asInstanceOf[String]
-    val indexDocument = if(updateRequest) getIndexDocument(uniqueId)(esUtil) else new util.HashMap[String, AnyRef]()
-    val transactionData = message.getOrDefault("transactionData", new util.HashMap[String, Any]()).asInstanceOf[util.Map[String, Any]]
+  private def getIndexDocument(message: Map[String, Any], relationMap: Map[String, String], updateRequest: Boolean, externalProps: List[String], indexablePropslist: List[String], nestedFields: List[String])(esUtil: ElasticSearchUtil): Map[String, AnyRef] = {
+    val uniqueId = message.getOrElse("nodeUniqueId", "").asInstanceOf[String]
+    val indexDocument = if (updateRequest) getIndexDocument(uniqueId)(esUtil) else mutable.Map[String, AnyRef]()
+    val transactionData = message.getOrElse("transactionData", Map[String, Any]()).asInstanceOf[Map[String, Any]]
+
     if (!transactionData.isEmpty) {
-      val addedProperties = transactionData.getOrDefault("properties", new util.HashMap[String, AnyRef]()).asInstanceOf[util.Map[String, AnyRef]]
-      if (!indexablePropslist.isEmpty) {
-        addedProperties.forEach((propKey, propValue) => {
-          if (indexablePropslist.contains(propKey)) {
-            addMetadataToDocument(propKey, propValue.asInstanceOf[util.Map[String, AnyRef]], indexDocument, nestedFields)
+      val addedProperties = transactionData.getOrElse("properties", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
+      addedProperties.foreach(property => {
+        if (!indexablePropslist.isEmpty) {
+          if (indexablePropslist.contains(property._1)) {
+            val propertyNewValue: AnyRef = property._2.asInstanceOf[Map[String, AnyRef]].getOrElse("nv", null)
+            if (propertyNewValue == null) indexDocument.remove(property._1) else indexDocument.put(property._1, addMetadataToDocument(property._1, propertyNewValue, nestedFields))
           }
-        })
-      } else {
-        addedProperties.forEach((propKey, propValue) => {
-          if (!externalProps.contains(propKey)) {
-            addMetadataToDocument(propKey, propValue.asInstanceOf[util.Map[String, AnyRef]], indexDocument, nestedFields)
+        } else {
+          if (!externalProps.contains(property._1)) {
+            val propertyNewValue: AnyRef = property._2.asInstanceOf[Map[String, AnyRef]].getOrElse("nv", null)
+            if (propertyNewValue == null) indexDocument.remove(property._1) else indexDocument.put(property._1, addMetadataToDocument(property._1, propertyNewValue, nestedFields))
           }
-        })
-      }
+        }
+      })
 
-      val addedRelations = transactionData.getOrDefault("addedRelations", new util.ArrayList[util.Map[String, AnyRef]]()).asInstanceOf[util.List[util.Map[String, AnyRef]]]
+      val addedRelations = transactionData.getOrElse("addedRelations", List[Map[String, AnyRef]]()).asInstanceOf[List[Map[String, AnyRef]]]
       if (!addedRelations.isEmpty) {
-        addedRelations.forEach(rel => {
-          val key = s"${rel.getOrDefault("dir", "").asInstanceOf[String]}_${rel.getOrDefault("type", "").asInstanceOf[String]}_${rel.getOrDefault("rel", "").asInstanceOf[String]}"
+
+        addedRelations.foreach(rel => {
+          val key = s"${rel.getOrElse("dir", "").asInstanceOf[String]}_${rel.getOrElse("type", "").asInstanceOf[String]}_${rel.getOrElse("rel", "").asInstanceOf[String]}"
           val title = relationMap.getOrElse(key, "")
           if (!title.isEmpty) {
-            val list = indexDocument.getOrDefault(title, new util.ArrayList[String]()).asInstanceOf[util.List[String]]
-            val id = rel.getOrDefault("id", "").asInstanceOf[String]
-            if (!list.contains(id)) {
-              list.add(id)
-              indexDocument.put(title, list)
-            }
+            val list = indexDocument.getOrElse(title, List[String]()).asInstanceOf[List[String]]
+            val id = rel.getOrElse("id", "").asInstanceOf[String]
+            if (!list.contains(id)) indexDocument.put(title, (id :: list).asInstanceOf[AnyRef])
           }
         })
       }
 
-      val removedRelations = transactionData.getOrDefault("removedRelations", new util.ArrayList[util.Map[String, AnyRef]]()).asInstanceOf[util.List[util.Map[String, AnyRef]]]
-      if (!removedRelations.isEmpty) {
-        removedRelations.forEach(rel => {
-          val key = s"${rel.getOrDefault("dir", "").asInstanceOf[String]}_${rel.getOrDefault("type", "").asInstanceOf[String]}_${rel.getOrDefault("rel", "").asInstanceOf[String]}"
-          val title = relationMap.getOrElse(key, "")
-          if (!title.isEmpty) {
-            val list = indexDocument.getOrDefault(title, new util.ArrayList[String]()).asInstanceOf[util.List[String]]
-            if (!list.isEmpty) {
-              val id = rel.getOrDefault("id", "").asInstanceOf[String]
-              if (list.contains(id)) {
-                list.remove(id)
-                indexDocument.put(title, list)
-              }
-            }
+      val removedRelations = transactionData.getOrElse("removedRelations", List[Map[String, AnyRef]]()).asInstanceOf[List[Map[String, AnyRef]]]
+      removedRelations.foreach(rel => {
+        val key = s"${rel.getOrElse("dir", "").asInstanceOf[String]}_${rel.getOrElse("type", "").asInstanceOf[String]}_${rel.getOrElse("rel", "").asInstanceOf[String]}"
+        val title = relationMap.getOrElse(key, "")
+        if (!title.isEmpty) {
+          val list = indexDocument.getOrElse(title, mutable.ListBuffer[String]()).asInstanceOf[mutable.ListBuffer[String]]
+          val id = rel.getOrElse("id", "").asInstanceOf[String]
+          if (list.contains(id)) {
+            list -= id
+            indexDocument.put(title, list.asInstanceOf[AnyRef])
           }
-        })
-      }
+        }
+      })
     }
-    indexDocument.put("graph_id", message.get("graphId").asInstanceOf[String])
-    indexDocument.put("node_id", message.get("nodeGraphId").asInstanceOf[Integer])
-    indexDocument.put("identifier", message.get("nodeUniqueId").asInstanceOf[String])
-    indexDocument.put("objectType", message.get("objectType").asInstanceOf[String])
-    indexDocument.put("nodeType", message.get("nodeType").asInstanceOf[String])
-    indexDocument
+
+    indexDocument.put("graph_id", message.getOrElse("graphId", "").asInstanceOf[String])
+    indexDocument.put("node_id", message.getOrElse("nodeGraphId", 0).asInstanceOf[Integer])
+    indexDocument.put("identifier", message.getOrElse("nodeUniqueId", "").asInstanceOf[String])
+    indexDocument.put("objectType", message.getOrElse("objectType", "").asInstanceOf[String])
+    indexDocument.put("nodeType", message.getOrElse("nodeType", "").asInstanceOf[String])
+    indexDocument.toMap
   }
 
   private def upsertDocument(uniqueId: String, jsonIndexDocument: String)(esUtil: ElasticSearchUtil): Unit = {
@@ -120,27 +112,28 @@ trait CompositeSearchIndexerHelper {
       val externalProps = retrieveExternalProperties(definition)
 
       val indexablePropslist = if (compositeObject.getRestrictMetadataObjectTypes().contains(compositeObject.objectType)) getIndexableProperties(definition) else List[String]()
-      upsertDocument(compositeObject.uniqueId, compositeObject.message, relationMap, externalProps, indexablePropslist, compositeObject.getNestedFields())(esUtil)
+      val compositeMap = compositeObject.message.asScala.toMap
+      upsertDocument(compositeObject.uniqueId, compositeMap, relationMap, externalProps, indexablePropslist, compositeObject.getNestedFields())(esUtil)
     } else {
       logger.info(s"Message Id: ${compositeObject.messageId}, Unique Id: ${compositeObject.uniqueId}, Object Type: ${compositeObject.objectType} is Not Indexable.")
     }
   }
 
-  private def upsertDocument(uniqueId: String, message: util.Map[String, Any], relationMap: Map[String, String], externalProps: List[String], indexablePropslist: List[String], nestedFields: List[String])(esUtil: ElasticSearchUtil): Unit = {
-    val operationType = message.getOrDefault("operationType", "").asInstanceOf[String]
+  private def upsertDocument(uniqueId: String, message: Map[String, Any], relationMap: Map[String, String], externalProps: List[String], indexablePropslist: List[String], nestedFields: List[String])(esUtil: ElasticSearchUtil): Unit = {
+    val operationType = message.getOrElse("operationType", "").asInstanceOf[String]
     operationType match {
       case "CREATE" =>
         val indexDocument = getIndexDocument(message, relationMap, false, externalProps, indexablePropslist, nestedFields)(esUtil)
-        val jsonIndexDocument = mapper.writeValueAsString(indexDocument)
+        val jsonIndexDocument = ScalaJsonUtil.serialize(indexDocument)
         upsertDocument(uniqueId, jsonIndexDocument)(esUtil)
       case "UPDATE" =>
         val indexDocument = getIndexDocument(message, relationMap, true, externalProps, indexablePropslist, nestedFields)(esUtil)
-        val jsonIndexDocument = mapper.writeValueAsString(indexDocument)
+        val jsonIndexDocument = ScalaJsonUtil.serialize(indexDocument)
         upsertDocument(uniqueId, jsonIndexDocument)(esUtil)
       case "DELETE" =>
-        val id = message.getOrDefault("nodeUniqueId", "").asInstanceOf[String]
+        val id = message.getOrElse("nodeUniqueId", "").asInstanceOf[String]
         val indexDocument = getIndexDocument(id)(esUtil)
-        val visibility = indexDocument.getOrDefault("visibility", "").asInstanceOf[String]
+        val visibility = indexDocument.getOrElse("visibility", "").asInstanceOf[String]
         if (StringUtils.equalsIgnoreCase("Parent", visibility)) logger.info(s"Not deleting the document (visibility: Parent) with ID: ${id}")
         else esUtil.deleteDocument(uniqueId)
       case _ =>
@@ -155,28 +148,15 @@ trait CompositeSearchIndexerHelper {
     }).keys.toList
   }
 
-  //
-  //  private def getNonIndexableProperties(definition: Map[String, AnyRef]): List[String] = {
-  //    val properties = definition.getOrElse("schema", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]].getOrElse("properties", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
-  //    properties.filter(property => {
-  //      property._2.asInstanceOf[Map[String, AnyRef]].getOrElse("type", "").asInstanceOf[String].equalsIgnoreCase("object")
-  //    }).keys.toList
-  //  }
-
   private def retrieveExternalProperties(definition: Map[String, AnyRef]): List[String] = {
     val external = definition.getOrElse("config", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]].getOrElse("external", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
     val extProps = external.getOrElse("properties", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
     extProps.keys.toList
   }
 
-  private def addMetadataToDocument(propertyName: String, propertyMap: util.Map[String, AnyRef], indexDocument: util.Map[String, AnyRef], nestedFields: List[String]): Unit = {
-    var propertyNewValue = propertyMap.getOrDefault("nv", null)
-    if (propertyNewValue == null) {
-      indexDocument.remove(propertyName)
-    } else {
-      if (nestedFields.contains(propertyName)) propertyNewValue = mapper.readValue(propertyNewValue.asInstanceOf[String], new TypeReference[AnyRef]() {})
-      indexDocument.put(propertyName, propertyNewValue)
-    }
+  private def addMetadataToDocument(propertyName: String, propertyValue: AnyRef, nestedFields: List[String]): AnyRef = {
+    val propertyNewValue = if (nestedFields.contains(propertyName)) ScalaJsonUtil.deserialize[AnyRef](propertyValue.asInstanceOf[String]) else propertyValue
+    propertyNewValue
   }
 
 }

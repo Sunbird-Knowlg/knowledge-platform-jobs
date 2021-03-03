@@ -8,10 +8,10 @@ import org.sunbird.job.{BaseProcessFunction, Metrics}
 import org.sunbird.job.compositesearch.domain.Event
 import org.sunbird.job.compositesearch.helpers.{DialCodeExternalIndexerHelper, FailedEventHelper}
 import org.sunbird.job.task.CompositeSearchIndexerConfig
-import org.sunbird.job.util.{ElasticSearchUtil, Neo4JUtil}
+import org.sunbird.job.util.ElasticSearchUtil
+import scala.collection.JavaConverters._
 
 class DialCodeExternalIndexerFunction(config: CompositeSearchIndexerConfig,
-                                      @transient var neo4JUtil: Neo4JUtil = null,
                                       @transient var elasticUtil: ElasticSearchUtil = null)
   extends BaseProcessFunction[Event, String](config)
     with DialCodeExternalIndexerHelper with FailedEventHelper {
@@ -36,7 +36,7 @@ class DialCodeExternalIndexerFunction(config: CompositeSearchIndexerConfig,
     metrics.incCounter(config.dialcodeExternalEventCount)
     try {
       val uniqueId = event.readOrDefault("nodeUniqueId", "")
-      upsertExternalDocument(uniqueId, event.getMap())(elasticUtil)
+      upsertExternalDocument(uniqueId, event.getMap().asScala.toMap)(elasticUtil)
       metrics.incCounter(config.successEventCount)
     } catch {
       case ex: Exception =>
