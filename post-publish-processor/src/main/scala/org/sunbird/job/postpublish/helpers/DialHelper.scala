@@ -112,7 +112,7 @@ trait DialHelper {
         "primaryCategory" -> metadata.getOrDefault("primaryCategory", ""),
         "contentType" -> metadata.getOrDefault("contentType", ""),
         "channel" -> metadata.getOrDefault("channel", ""),
-        "dialcodes" -> metadata.getOrDefault("dialcodes", new util.ArrayList[String] {}),
+        "dialcodes" -> metadata.getOrDefault("dialcodes", new util.ArrayList[String]()),
         "reservedDialcodes" -> metadata.getOrDefault("reservedDialcodes", "{}")).asJava
     } else {
       logger.info(s"Primary Category does not match. Skipping the process for Dial Code Generation.")
