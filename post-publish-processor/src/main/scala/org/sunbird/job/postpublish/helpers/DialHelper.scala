@@ -71,13 +71,8 @@ trait DialHelper {
     if (dialcode.isEmpty) throw new Exception("Invalid dialcode to read")
     val fileName = s"0_$dialcode"
     val query = s"select url from ${extConfig.keyspace}.${extConfig.table} where filename = '$fileName';"
-    try {
       val result = cassandraUtil.findOne(query)
       if (result == null) None else Some(result.getString("url"))
-    } catch {
-      case e: Exception => logger.error("There was an issue while fetching the qr image url from table")
-        throw new Exception("There was an issue while fetching the qr image url from table")
-    }
   }
 
   def updateDialcodeRecord(dialcode: String, channel: String, ets: Long)(implicit extConfig: ExtDataConfig, cassandraUtil: CassandraUtil): Boolean = {
