@@ -1,14 +1,15 @@
 package org.sunbird.job.task
 
 import java.util
+
 import com.typesafe.config.Config
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.streaming.api.scala.OutputTag
-import org.sunbird.job.postpublish.config.PostPublishConfig
+import org.sunbird.job.BaseJobConfig
 import org.sunbird.job.functions.PublishMetadata
 
-class PostPublishProcessorConfig(override val config: Config) extends PostPublishConfig(config, "post-publish-processor")  {
+class PostPublishProcessorConfig(override val config: Config) extends BaseJobConfig(config, "post-publish-processor") {
 
   implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
   implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
@@ -26,6 +27,9 @@ class PostPublishProcessorConfig(override val config: Config) extends PostPublis
 
   // Parallelism
   val eventRouterParallelism: Int = config.getInt("task.router.parallelism")
+  val shallowCopyParallelism: Int = config.getInt("task.shallow_copy.parallelism")
+  val linkDialCodeParallelism: Int = config.getInt("task.link_dialcode.parallelism")
+  val batchCreateParallelism: Int = config.getInt("task.batch_create.parallelism")
 
   // Metric List
   val totalEventsCount = "total-events-count"
@@ -43,7 +47,7 @@ class PostPublishProcessorConfig(override val config: Config) extends PostPublis
   val lmsKeyspaceName = config.getString("lms-cassandra.keyspace")
   val batchTableName = config.getString("lms-cassandra.batchTable")
   val dialcodeKeyspaceName = config.getString("dialcode-cassandra.keyspace")
-  val dialcodeTableName = config.getString("dialcode-cassandra.batchTable")
+  val dialcodeTableName = config.getString("dialcode-cassandra.imageTable")
 
   // Neo4J Configurations
   val graphRoutePath = config.getString("neo4j.routePath")
@@ -59,8 +63,8 @@ class PostPublishProcessorConfig(override val config: Config) extends PostPublis
 
   val searchBaseUrl = config.getString("service.search.basePath")
   val lmsBaseUrl = config.getString("service.lms.basePath")
-  val learningBaseUrl = config.getString("service.kp.learning_service.base_url")
-  val dialBaseUrl = config.getString("service.dial.base.url")
+  val learningBaseUrl = config.getString("service.learning_service.basePath")
+  val dialBaseUrl = config.getString("service.dial.basePath")
 
   // API URLs
   val batchCreateAPIPath = lmsBaseUrl + "/private/v1/course/batch/create"
@@ -69,5 +73,5 @@ class PostPublishProcessorConfig(override val config: Config) extends PostPublis
 
   // QR Image Generator
   val QRImageGeneratorTopic: String = config.getString("kafka.qrimage.topic")
-  val primaryCategories: util.List[String] = if(config.hasPath("dialcode.linkable.primaryCategory")) config.getStringList("dialcode.linkable.primaryCategory") else util.Arrays.asList("Course")//List[String]("Course")
+  val primaryCategories: util.List[String] = if (config.hasPath("dialcode.linkable.primaryCategory")) config.getStringList("dialcode.linkable.primaryCategory") else util.Arrays.asList("Course") //List[String]("Course")
 }

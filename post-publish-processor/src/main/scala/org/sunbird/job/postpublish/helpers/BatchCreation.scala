@@ -16,18 +16,22 @@ trait BatchCreation {
   private[this] val logger = LoggerFactory.getLogger(classOf[BatchCreation])
 
   def createBatch(eData: java.util.Map[String, AnyRef], startDate: String)(implicit config: PostPublishProcessorConfig, httpUtil: HttpUtil) = {
-    val request = new java.util.HashMap[String, AnyRef]() {{
-      put("request", new java.util.HashMap[String, AnyRef]() {{
-        put("courseId", eData.get("identifier"))
-        put("name", eData.get("name"))
-        if (eData.containsKey("createdBy"))
-          put("createdBy", eData.get("createdBy"))
-        if (eData.containsKey("createdFor"))
-          put("createdFor", eData.get("createdFor"))
-        put("enrollmentType", "open")
-        put("startDate", startDate)
-      }})
-    }}
+    val request = new java.util.HashMap[String, AnyRef]() {
+      {
+        put("request", new java.util.HashMap[String, AnyRef]() {
+          {
+            put("courseId", eData.get("identifier"))
+            put("name", eData.get("name"))
+            if (eData.containsKey("createdBy"))
+              put("createdBy", eData.get("createdBy"))
+            if (eData.containsKey("createdFor"))
+              put("createdFor", eData.get("createdFor"))
+            put("enrollmentType", "open")
+            put("startDate", startDate)
+          }
+        })
+      }
+    }
     val httpRequest = JSONUtil.serialize(request)
     val httpResponse = httpUtil.post(config.batchCreateAPIPath, httpRequest)
     if (httpResponse.status == 200) {
@@ -53,7 +57,7 @@ trait BatchCreation {
       val trackingEnabled = trackableObj.getOrDefault("enabled", "No").asInstanceOf[String]
       val autoBatchCreateEnabled = trackableObj.getOrDefault("autoBatch", "No").asInstanceOf[String]
       val trackable = (StringUtils.equalsIgnoreCase(trackingEnabled, "Yes") && StringUtils.equalsIgnoreCase(autoBatchCreateEnabled, "Yes"))
-      logger.info("Trackable for " +identifier + " : " + trackable)
+      logger.info("Trackable for " + identifier + " : " + trackable)
       trackable
     } else {
       throw new Exception("Metadata [isTrackable] is not found for object: " + identifier)
@@ -76,22 +80,23 @@ trait BatchCreation {
     } else false
   }
 
-  def getBatchDetails(identifier: String)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, config: PostPublishProcessorConfig): util.Map[String, AnyRef] ={
+  def getBatchDetails(identifier: String)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, config: PostPublishProcessorConfig): util.Map[String, AnyRef] = {
     logger.info("Process Batch Creation for content: " + identifier)
     val metadata = neo4JUtil.getNodeProperties(identifier)
 
     // Validate and trigger batch creation.
     if (batchRequired(metadata, identifier)(config, cassandraUtil)) {
       val createdFor = metadata.get("createdFor").asInstanceOf[java.util.List[String]]
-      new util.HashMap[String, AnyRef]() {{
-        put("identifier", identifier)
-        put("name", metadata.get("name"))
-        put("createdBy", metadata.get("createdBy"))
-        if (CollectionUtils.isNotEmpty(createdFor))
-          put("createdFor", new util.ArrayList[String](createdFor))
-      }}
-    }
-    else {
+      new util.HashMap[String, AnyRef]() {
+        {
+          put("identifier", identifier)
+          put("name", metadata.get("name"))
+          put("createdBy", metadata.get("createdBy"))
+          if (CollectionUtils.isNotEmpty(createdFor))
+            put("createdFor", new util.ArrayList[String](createdFor))
+        }
+      }
+    } else {
       new util.HashMap[String, AnyRef]()
     }
   }

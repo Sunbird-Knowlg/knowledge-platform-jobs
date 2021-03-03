@@ -10,7 +10,7 @@ import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.functions.{BatchCreateFunction, DIALCodeLinkFunction, PostPublishEventRouter, PublishMetadata, ShallowCopyPublishFunction}
 import org.sunbird.job.postpublish.domain.Event
-import org.sunbird.job.util.{FlinkUtil, HttpUtil, Neo4JUtil}
+import org.sunbird.job.util.{FlinkUtil, HttpUtil}
 
 class PostPublishProcessorStreamTask(config: PostPublishProcessorConfig, kafkaConnector: FlinkKafkaConnector, httpUtil: HttpUtil) {
 
@@ -31,19 +31,19 @@ class PostPublishProcessorStreamTask(config: PostPublishProcessorConfig, kafkaCo
       .setParallelism(config.eventRouterParallelism)
 
     processStreamTask.getSideOutput(config.batchCreateOutTag).process(new BatchCreateFunction(config, httpUtil))
-      .name("batch-create-process").uid("batch-create-process").setParallelism(1)
+      .name("batch-create-process").uid("batch-create-process").setParallelism(config.batchCreateParallelism)
 
     val shallowCopyPublishStream = processStreamTask.getSideOutput(config.shallowContentPublishOutTag)
       .process(new ShallowCopyPublishFunction(config))
       .name("shallow-content-publish").uid("shallow-content-publish")
-      .setParallelism(1)
+      .setParallelism(config.shallowCopyParallelism)
 
     shallowCopyPublishStream.getSideOutput(config.publishEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.contentPublishTopic))
       .name("shallow-content-publish-producer").uid("shallow-content-publish-producer")
 
     val linkDialCodeStream = processStreamTask.getSideOutput(config.linkDIALCodeOutTag)
       .process(new DIALCodeLinkFunction(config, httpUtil))
-      .name("dialcode-link-process").uid("dialcode-link-process").setParallelism(1)
+      .name("dialcode-link-process").uid("dialcode-link-process").setParallelism(config.linkDialCodeParallelism)
 
     linkDialCodeStream.getSideOutput(config.generateQRImageOutTag).addSink(kafkaConnector.kafkaStringSink(config.QRImageGeneratorTopic))
     env.execute(config.jobName)
