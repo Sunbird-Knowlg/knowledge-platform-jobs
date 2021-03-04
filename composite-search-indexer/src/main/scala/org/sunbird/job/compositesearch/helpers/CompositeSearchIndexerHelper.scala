@@ -5,6 +5,7 @@ import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.models.CompositeIndexer
 import org.sunbird.job.util.{DefinitionUtil, ElasticSearchUtil, ScalaJsonUtil}
+
 import scala.collection.mutable
 
 trait CompositeSearchIndexerHelper {
@@ -13,8 +14,8 @@ trait CompositeSearchIndexerHelper {
   lazy private val definitionUtil = new DefinitionUtil
 
   def createCompositeSearchIndex()(esUtil: ElasticSearchUtil): Unit = {
-    val settings = "{\"max_ngram_diff\":\"29\",\"mapping\":{\"total_fields\":{\"limit\":\"1500\"}},\"analysis\":{\"filter\":{\"mynGram\":{\"token_chars\":[\"letter\",\"digit\",\"whitespace\",\"punctuation\",\"symbol\"],\"min_gram\":\"1\",\"type\":\"nGram\",\"max_gram\":\"30\"}},\"analyzer\":{\"cs_index_analyzer\":{\"filter\":[\"lowercase\",\"mynGram\"],\"type\":\"custom\",\"tokenizer\":\"standard\"},\"keylower\":{\"filter\":\"lowercase\",\"tokenizer\":\"keyword\"},\"cs_search_analyzer\":{\"filter\":[\"standard\",\"lowercase\"],\"type\":\"custom\",\"tokenizer\":\"standard\"}}}}"
-    val mappings = "{\"dynamic_templates\":[{\"nested\":{\"match_mapping_type\":\"object\",\"mapping\":{\"type\":\"nested\",\"fields\":{\"type\":\"nested\"}}}},{\"longs\":{\"match_mapping_type\":\"long\",\"mapping\":{\"type\":\"long\",\"fields\":{\"raw\":{\"type\":\"long\"}}}}},{\"booleans\":{\"match_mapping_type\":\"boolean\",\"mapping\":{\"type\":\"boolean\",\"fields\":{\"raw\":{\"type\":\"boolean\"}}}}},{\"doubles\":{\"match_mapping_type\":\"double\",\"mapping\":{\"type\":\"double\",\"fields\":{\"raw\":{\"type\":\"double\"}}}}},{\"dates\":{\"match_mapping_type\":\"date\",\"mapping\":{\"type\":\"date\",\"fields\":{\"raw\":{\"type\":\"date\"}}}}},{\"strings\":{\"match_mapping_type\":\"string\",\"mapping\":{\"type\":\"text\",\"copy_to\":\"all_fields\",\"analyzer\":\"cs_index_analyzer\",\"search_analyzer\":\"cs_search_analyzer\",\"fields\":{\"raw\":{\"type\":\"text\",\"fielddata\":true,\"analyzer\":\"keylower\"}}}}}],\"properties\":{\"screenshots\":{\"type\":\"text\",\"index\":false},\"body\":{\"type\":\"text\",\"index\":false},\"appIcon\":{\"type\":\"text\",\"index\":false},\"all_fields\":{\"type\":\"text\",\"analyzer\":\"cs_index_analyzer\",\"search_analyzer\":\"cs_search_analyzer\",\"fields\":{\"raw\":{\"type\":\"text\",\"fielddata\":true,\"analyzer\":\"keylower\"}}}}}"
+    val settings = """{"max_ngram_diff":"29","mapping":{"total_fields":{"limit":"1500"}},"analysis":{"filter":{"mynGram":{"token_chars":["letter","digit","whitespace","punctuation","symbol"],"min_gram":"1","type":"nGram","max_gram":"30"}},"analyzer":{"cs_index_analyzer":{"filter":["lowercase","mynGram"],"type":"custom","tokenizer":"standard"},"keylower":{"filter":"lowercase","tokenizer":"keyword"},"cs_search_analyzer":{"filter":["standard","lowercase"],"type":"custom","tokenizer":"standard"}}}}"""
+    val mappings = """{"dynamic_templates":[{"nested":{"match_mapping_type":"object","mapping":{"type":"nested","fields":{"type":"nested"}}}},{"longs":{"match_mapping_type":"long","mapping":{"type":"long","fields":{"raw":{"type":"long"}}}}},{"booleans":{"match_mapping_type":"boolean","mapping":{"type":"boolean","fields":{"raw":{"type":"boolean"}}}}},{"doubles":{"match_mapping_type":"double","mapping":{"type":"double","fields":{"raw":{"type":"double"}}}}},{"dates":{"match_mapping_type":"date","mapping":{"type":"date","fields":{"raw":{"type":"date"}}}}},{"strings":{"match_mapping_type":"string","mapping":{"type":"text","copy_to":"all_fields","analyzer":"cs_index_analyzer","search_analyzer":"cs_search_analyzer","fields":{"raw":{"type":"text","fielddata":true,"analyzer":"keylower"}}}}}],"properties":{"screenshots":{"type":"text","index":false},"body":{"type":"text","index":false},"appIcon":{"type":"text","index":false},"all_fields":{"type":"text","analyzer":"cs_index_analyzer","search_analyzer":"cs_search_analyzer","fields":{"raw":{"type":"text","fielddata":true,"analyzer":"keylower"}}}}}"""
     esUtil.addIndex(settings, mappings)
   }
 
@@ -24,7 +25,7 @@ trait CompositeSearchIndexerHelper {
     indexDocument
   }
 
-  private def getIndexDocument(message: Map[String, Any], relationMap: Map[String, String], updateRequest: Boolean, externalProps: List[String], indexablePropslist: List[String], nestedFields: List[String])(esUtil: ElasticSearchUtil): Map[String, AnyRef] = {
+  def getIndexDocument(message: Map[String, Any], relationMap: Map[String, String], updateRequest: Boolean, externalProps: List[String], indexablePropslist: List[String], nestedFields: List[String])(esUtil: ElasticSearchUtil): Map[String, AnyRef] = {
     val uniqueId = message.getOrElse("nodeUniqueId", "").asInstanceOf[String]
     val indexDocument = if (updateRequest) getIndexDocument(uniqueId)(esUtil) else mutable.Map[String, AnyRef]()
     val transactionData = message.getOrElse("transactionData", Map[String, Any]()).asInstanceOf[Map[String, Any]]
@@ -64,11 +65,11 @@ trait CompositeSearchIndexerHelper {
         val key = s"${rel.getOrElse("dir", "").asInstanceOf[String]}_${rel.getOrElse("type", "").asInstanceOf[String]}_${rel.getOrElse("rel", "").asInstanceOf[String]}"
         val title = relationMap.getOrElse(key, "")
         if (!title.isEmpty) {
-          val list = indexDocument.getOrElse(title, mutable.ListBuffer[String]()).asInstanceOf[mutable.ListBuffer[String]]
+          val list = indexDocument.getOrElse(title, List[String]()).asInstanceOf[List[String]].to[mutable.ListBuffer]
           val id = rel.getOrElse("id", "").asInstanceOf[String]
           if (list.contains(id)) {
             list -= id
-            indexDocument.put(title, list.asInstanceOf[AnyRef])
+            indexDocument.put(title, list.toList.asInstanceOf[AnyRef])
           }
         }
       })
@@ -82,11 +83,11 @@ trait CompositeSearchIndexerHelper {
     indexDocument.toMap
   }
 
-  private def upsertDocument(uniqueId: String, jsonIndexDocument: String)(esUtil: ElasticSearchUtil): Unit = {
+  def upsertDocument(uniqueId: String, jsonIndexDocument: String)(esUtil: ElasticSearchUtil): Unit = {
     esUtil.addDocumentWithId(uniqueId, jsonIndexDocument)
   }
 
-  private def retrieveRelations(definitionNode: Map[String, AnyRef]): Map[String, String] = {
+  def retrieveRelations(definitionNode: Map[String, AnyRef]): Map[String, String] = {
     val relations = definitionNode.getOrElse("config", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]].getOrElse("relations", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
     relations.flatMap(r => {
       val relation = r._2.asInstanceOf[Map[String, AnyRef]]
@@ -106,17 +107,13 @@ trait CompositeSearchIndexerHelper {
       throw new Exception(s"ERR_DEFINITION_NOT_FOUND: defnition node for graphId: ${compositeObject.graphId} and objectType:  ${compositeObject.objectType} is null due to some issue")
     }
 
-    if (!compositeObject.getRestrictMetadataObjectTypes().contains(compositeObject.objectType)) {
-      logger.info(s"Message Id: ${compositeObject.messageId}, Unique Id: ${compositeObject.uniqueId} is indexing into compositesearch.")
-      val relationMap = retrieveRelations(definition)
-      val externalProps = retrieveExternalProperties(definition)
+    logger.info(s"Message Id: ${compositeObject.messageId}, Unique Id: ${compositeObject.uniqueId} is indexing into compositesearch.")
+    val relationMap = retrieveRelations(definition)
+    val externalProps = retrieveExternalProperties(definition)
 
-      val indexablePropslist = if (compositeObject.getRestrictMetadataObjectTypes().contains(compositeObject.objectType)) getIndexableProperties(definition) else List[String]()
-      val compositeMap = compositeObject.message.asScala.toMap
-      upsertDocument(compositeObject.uniqueId, compositeMap, relationMap, externalProps, indexablePropslist, compositeObject.getNestedFields())(esUtil)
-    } else {
-      logger.info(s"Message Id: ${compositeObject.messageId}, Unique Id: ${compositeObject.uniqueId}, Object Type: ${compositeObject.objectType} is Not Indexable.")
-    }
+    val indexablePropertieslist = if (compositeObject.getRestrictMetadataObjectTypes().contains(compositeObject.objectType)) getIndexableProperties(definition) else List[String]()
+    val compositeMap = compositeObject.message.asScala.toMap
+    upsertDocument(compositeObject.uniqueId, compositeMap, relationMap, externalProps, indexablePropertieslist, compositeObject.getNestedFields())(esUtil)
   }
 
   private def upsertDocument(uniqueId: String, message: Map[String, Any], relationMap: Map[String, String], externalProps: List[String], indexablePropslist: List[String], nestedFields: List[String])(esUtil: ElasticSearchUtil): Unit = {
@@ -141,14 +138,14 @@ trait CompositeSearchIndexerHelper {
     }
   }
 
-  private def getIndexableProperties(definition: Map[String, AnyRef]): List[String] = {
+  def getIndexableProperties(definition: Map[String, AnyRef]): List[String] = {
     val properties = definition.getOrElse("schema", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]].getOrElse("properties", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
     properties.filter(property => {
       property._2.asInstanceOf[Map[String, AnyRef]].getOrElse("indexed", false).asInstanceOf[Boolean]
     }).keys.toList
   }
 
-  private def retrieveExternalProperties(definition: Map[String, AnyRef]): List[String] = {
+  def retrieveExternalProperties(definition: Map[String, AnyRef]): List[String] = {
     val external = definition.getOrElse("config", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]].getOrElse("external", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
     val extProps = external.getOrElse("properties", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
     extProps.keys.toList

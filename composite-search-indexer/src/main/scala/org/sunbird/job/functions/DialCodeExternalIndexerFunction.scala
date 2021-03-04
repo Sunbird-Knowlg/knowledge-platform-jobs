@@ -22,7 +22,7 @@ class DialCodeExternalIndexerFunction(config: CompositeSearchIndexerConfig,
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
-    elasticUtil = new ElasticSearchUtil(config.dialcodeExternalIndex, config.dialcodeExternalIndexType, config.esConnectionInfo)
+    elasticUtil = new ElasticSearchUtil(config.esConnectionInfo, config.dialcodeExternalIndex, config.dialcodeExternalIndexType)
     createDialCodeIndex()(elasticUtil)
   }
 

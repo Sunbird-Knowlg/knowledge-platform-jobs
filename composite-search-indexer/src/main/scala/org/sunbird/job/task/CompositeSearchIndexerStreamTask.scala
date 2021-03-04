@@ -17,10 +17,7 @@ import org.sunbird.job.functions.{CompositeSearchEventRouter, CompositeSearchInd
 class CompositeSearchIndexerStreamTask(config: CompositeSearchIndexerConfig, kafkaConnector: FlinkKafkaConnector, httpUtil: HttpUtil) {
 
   def process(): Unit = {
-    // TODO
-    // Uncomment the below line and remove the line below it
-    //    implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
-    implicit val env: StreamExecutionEnvironment = StreamExecutionEnvironment.createLocalEnvironment()
+    implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
     implicit val eventTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
     implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])

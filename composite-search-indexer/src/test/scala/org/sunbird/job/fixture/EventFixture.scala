@@ -23,13 +23,24 @@ object EventFixture {
       |{"ets":1502102183388,"nodeUniqueId":"do_112276071067320320114","requestId":null,"transactionData":{"removedTags":[],"addedRelations":[{"rel":"hasSequenceMember","id":"do_1123032073439723521148","label":"Test unit 11","dir":"IN","type":"Content"}],"removedRelations":[],"addedTags":[],"properties":{}},"operationType":"CREATE","nodeGraphId":105631,"label":"collaborator test","graphId":"domain","nodeType":"DATA_NODE","userId":"ANONYMOUS","createdOn":"2017-08-07T10:36:23.388+0000","objectType":"Content"}
       |""".stripMargin
 
+  val DATA_NODE_UPDATE_WITH_RELATION: String =
+    """
+      |{"ets":1502102183388,"nodeUniqueId":"do_112276071067320320114","requestId":null,"transactionData":{"removedTags":[],"addedRelations":[],"removedRelations":[{"rel":"hasSequenceMember","id":"do_1123032073439723521148","label":"Test unit 11","dir":"IN","type":"Content"}],"addedTags":[],"properties":{}},"operationType":"UPDATE","nodeGraphId":105631,"label":"collaborator test","graphId":"domain","nodeType":"DATA_NODE","userId":"ANONYMOUS","createdOn":"2017-08-07T10:36:23.388+0000","objectType":"Content"}
+      |""".stripMargin
+
+  val DIALCODE_METRIC_CREATE: String =
+    """
+      |{"ets":1543561000015,"nodeUniqueId":"QR1234","transactionData":{"properties":{"average_scans_per_day":{"nv":2},"last_scan":{"nv":1541456052000},"total_dial_scans_local":{"nv":25},"first_scan":{"nv":1540469152000}}},"objectType":"","operationType":"CREATE","nodeType":"DIALCODE_METRICS","graphId":"domain","nodeGraphId":0}
+      |""".stripMargin
+
   val DIALCODE_METRIC_UPDATE: String =
     """
       |{"ets":1543561000015,"nodeUniqueId":"QR1234","transactionData":{"properties":{"average_scans_per_day":{"nv":2},"last_scan":{"nv":1541456052000},"total_dial_scans_global":{"nv":25},"total_dial_scans_local":{"nv":25},"first_scan":{"nv":1540469152000}}},"objectType":"","operationType":"UPDATE","nodeType":"DIALCODE_METRICS","graphId":"domain","nodeGraphId":0}
       |""".stripMargin
 
-  //  val DATA_NODE_DELETE: String =
-  //    """
-  //      |
-  //      |""".stripMargin
+  val DIALCODE_METRIC_DELETE: String =
+    """
+      |{"ets":1543561000015,"nodeUniqueId":"QR1234","transactionData":{"properties":{"average_scans_per_day":{"nv":null},"last_scan":{"nv":null},"total_dial_scans_local":{"nv":null},"first_scan":{"nv":null}}},"objectType":"","operationType":"DELETE","nodeType":"DIALCODE_METRICS","graphId":"domain","nodeGraphId":0}
+      |""".stripMargin
+
 }

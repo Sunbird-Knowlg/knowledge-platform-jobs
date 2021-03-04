@@ -10,8 +10,8 @@ trait DialCodeMetricIndexerHelper {
   private[this] val logger = LoggerFactory.getLogger(classOf[DialCodeMetricIndexerHelper])
 
   def createDialCodeIndex()(esUitl: ElasticSearchUtil): Unit = {
-    val settings: String = "{\"number_of_shards\":5}"
-    val mappings: String = "{\"dcm\":{\"dynamic\":false,\"properties\":{\"dial_code\":{\"type\":\"keyword\"},\"total_dial_scans_local\":{\"type\":\"double\"},\"total_dial_scans_global\":{\"type\":\"double\"},\"average_scans_per_day\":{\"type\":\"double\"},\"last_scan\":{\"type\":\"date\",\"format\":\"strict_date_optional_time||epoch_millis\"},\"first_scan\":{\"type\":\"date\",\"format\":\"strict_date_optional_time||epoch_millis\"}}}}"
+    val settings: String = """{"number_of_shards":5}"""
+    val mappings: String = """{"dcm":{"dynamic":false,"properties":{"dial_code":{"type":"keyword"},"total_dial_scans_local":{"type":"double"},"total_dial_scans_global":{"type":"double"},"average_scans_per_day":{"type":"double"},"last_scan":{"type":"date","format":"strict_date_optional_time||epoch_millis"},"first_scan":{"type":"date","format":"strict_date_optional_time||epoch_millis"}}}}"""
     esUitl.addIndex(settings, mappings)
   }
 
@@ -21,7 +21,7 @@ trait DialCodeMetricIndexerHelper {
     indexDocument
   }
 
-  private def getIndexDocument(message: Map[String, Any], updateRequest: Boolean)(esUtil: ElasticSearchUtil): Map[String, AnyRef] = {
+  def getIndexDocument(message: Map[String, Any], updateRequest: Boolean)(esUtil: ElasticSearchUtil): Map[String, AnyRef] = {
     val uniqueId: String = message.getOrElse("nodeUniqueId", "").asInstanceOf[String]
     val indexDocument = if (updateRequest) getIndexDocument(uniqueId)(esUtil) else mutable.Map[String, AnyRef]()
     val transactionData: Map[String, AnyRef] = message.getOrElse("transactionData", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]

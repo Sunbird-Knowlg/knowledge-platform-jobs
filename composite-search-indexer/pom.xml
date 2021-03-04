@@ -22,30 +22,16 @@
 	</properties>
 
     <dependencies>
-<!--        TODO-->
-<!--        add the scope provided -->
         <dependency>
             <groupId>org.apache.flink</groupId>
             <artifactId>flink-streaming-scala_${scala.version}</artifactId>
             <version>${flink.version}</version>
-<!--            <scope>provided</scope>-->
-        </dependency>
-        <!--        TODO-->
-        <!--        remove the below dependency -->
-        <dependency>
-            <groupId>org.apache.flink</groupId>
-            <artifactId>flink-clients_${scala.version}</artifactId>
-            <version>${flink.version}</version>
+            <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.sunbird</groupId>
             <artifactId>jobs-core</artifactId>
             <version>1.0.0</version>
-        </dependency>
-        <dependency>
-            <groupId>joda-time</groupId>
-            <artifactId>joda-time</artifactId>
-            <version>2.10.6</version>
         </dependency>
         <dependency>
             <groupId>org.sunbird</groupId>
