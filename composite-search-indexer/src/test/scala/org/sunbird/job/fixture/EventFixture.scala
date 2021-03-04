@@ -43,4 +43,19 @@ object EventFixture {
       |{"ets":1543561000015,"nodeUniqueId":"QR1234","transactionData":{"properties":{"average_scans_per_day":{"nv":null},"last_scan":{"nv":null},"total_dial_scans_local":{"nv":null},"first_scan":{"nv":null}}},"objectType":"","operationType":"DELETE","nodeType":"DIALCODE_METRICS","graphId":"domain","nodeGraphId":0}
       |""".stripMargin
 
+  val DIALCODE_EXTERNAL_CREATE: String =
+    """
+      |{"nodeUniqueId":"X8R3W4","ets":1613072768797,"requestId":null,"audit":false,"transactionData":{"properties":{"dialcode_index":{"ov":null,"nv":9071809.0},"identifier":{"ov":null,"nv":"X8R3W4"},"channel":{"ov":null,"nv":"channelTest"},"batchcode":{"ov":null,"nv":"testPub0001.20210212T011555"},"publisher":{"ov":null,"nv":"testPub0001"},"generated_on":{"ov":null,"nv":"2021-02-12T01:16:07.750+0530"},"status":{"ov":null,"nv":"Draft"}}},"channel":"in.ekstep","index":true,"operationType":"CREATE","nodeType":"EXTERNAL","userId":"ANONYMOUS","createdOn":"2021-02-12T01:16:08.797+0530","objectType":"DialCode"}
+      |""".stripMargin
+
+  val DIALCODE_EXTERNAL_UPDATE: String =
+    """
+      |{"nodeUniqueId":"X8R3W4","ets":1613072768797,"requestId":null,"audit":false,"transactionData":{"properties":{"dialcode_index":{"ov":null,"nv":9071809.0},"identifier":{"ov":null,"nv":"X8R3W4"},"channel":{"ov":null,"nv":"channelTest"},"batchcode":{"ov":null,"nv":"testPub0001.20210212T011555"},"publisher":{"ov":null,"nv":"testPub0001"},"generated_on":{"ov":null,"nv":"2021-02-12T01:16:07.750+0530"},"status":{"ov":null,"nv":"Draft"}}},"channel":"in.ekstep","index":true,"operationType":"UPDATE","nodeType":"EXTERNAL","userId":"ANONYMOUS","createdOn":"2021-02-12T01:16:08.797+0530","objectType":"DialCode"}
+      |""".stripMargin
+
+  val DIALCODE_EXTERNAL_DELETE: String =
+    """
+      |{"nodeUniqueId":"X8R3W4","ets":1613072768797,"requestId":null,"audit":false,"transactionData":{"properties":{"dialcode_index":{"nv":null},"identifier":{"nv":null},"channel":{"nv":null},"batchcode":{"nv":null},"publisher":{"nv":null},"generated_on":{"nv":null},"status":{"nv":null}}},"channel":"in.ekstep","index":true,"operationType":"DELETE","nodeType":"EXTERNAL","userId":"ANONYMOUS","createdOn":"2021-02-12T01:16:08.797+0530","objectType":"DialCode"}
+      |""".stripMargin
+
 }

@@ -28,8 +28,7 @@ class CompositeSearchEventRouter(config: CompositeSearchIndexerConfig)
   override def processElement(event: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
     logger.info("Processing event for CompositeSearch : " + event)
     metrics.incCounter(config.totalEventsCount)
-    val shouldIndex = BooleanUtils.toBoolean(if (null == event.index) "true" else event.index)
-    if (!BooleanUtils.isFalse(shouldIndex) && event.operationType != null) {
+    if (!BooleanUtils.isFalse(event.index) && event.operationType != null) {
       logger.info(s"Indexing event into ES")
       event.readOrDefault("nodeType", "") match {
         case "SET" | "DATA_NODE" => context.output(config.compositveSearchDataOutTag, event)

@@ -21,7 +21,7 @@ trait DialCodeExternalIndexerHelper {
     indexDocument
   }
 
-  private def getIndexDocument(message: Map[String, Any], updateRequest: Boolean)(esUtil: ElasticSearchUtil): Map[String, AnyRef] = {
+  def getIndexDocument(message: Map[String, Any], updateRequest: Boolean)(esUtil: ElasticSearchUtil): Map[String, AnyRef] = {
     val uniqueId: String = message.getOrElse("nodeUniqueId", "").asInstanceOf[String]
     val indexDocument = if (updateRequest) getIndexDocument(uniqueId)(esUtil) else mutable.Map[String, AnyRef]()
     val transactionData: Map[String, AnyRef] = message.getOrElse("transactionData", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]

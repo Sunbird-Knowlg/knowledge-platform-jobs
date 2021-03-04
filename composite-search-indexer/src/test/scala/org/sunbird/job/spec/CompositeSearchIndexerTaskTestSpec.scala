@@ -14,7 +14,7 @@ import org.mockito.Mockito.{doNothing, times, verify, when}
 import org.sunbird.job.compositesearch.domain.Event
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.fixture.EventFixture
-import org.sunbird.job.functions.{CompositeSearchIndexerFunction, DialCodeMetricIndexerFunction}
+import org.sunbird.job.functions.{CompositeSearchIndexerFunction, DialCodeExternalIndexerFunction, DialCodeMetricIndexerFunction}
 import org.sunbird.job.task.CompositeSearchIndexerConfig
 import org.sunbird.job.util.{DefinitionUtil, ElasticSearchUtil, ScalaJsonUtil}
 import org.sunbird.spec.BaseTestSpec
@@ -46,7 +46,7 @@ class CompositeSearchIndexerTaskTestSpec extends BaseTestSpec {
   }
 
   "getCompositeIndexerobject " should " return Composite Object for the event" in {
-    val event = getCreateEventForCompositeIndexer(EventFixture.DATA_NODE_CREATE, 509674)
+    val event = getEvent(EventFixture.DATA_NODE_CREATE, 509674)
     val compositeObject = new CompositeSearchIndexerFunction(jobConfig).getCompositeIndexerobject(event)
     compositeObject.objectType should be("Collection")
     compositeObject.getVersionAsString() should be("1.0")
@@ -89,7 +89,7 @@ class CompositeSearchIndexerTaskTestSpec extends BaseTestSpec {
   "getIndexDocument" should "return the indexable document for the provided object" in {
     val definition = new DefinitionUtil().getDefinition("Collection", "1.0", jobConfig.definitionBasePath)
     val compositeFunc = new CompositeSearchIndexerFunction(jobConfig)
-    val message = getCreateEventForCompositeIndexer(EventFixture.DATA_NODE_CREATE, 509674).getMap().asScala.toMap
+    val message = getEvent(EventFixture.DATA_NODE_CREATE, 509674).getMap().asScala.toMap
     val relations = compositeFunc.retrieveRelations(definition)
     val external = compositeFunc.retrieveExternalProperties(definition)
     val indexable = compositeFunc.getIndexableProperties(definition)
@@ -104,7 +104,7 @@ class CompositeSearchIndexerTaskTestSpec extends BaseTestSpec {
   "getIndexDocument" should "return the indexable document with the added relation for the provided object" in {
     val definition = new DefinitionUtil().getDefinition("Collection", "1.0", jobConfig.definitionBasePath)
     val compositeFunc = new CompositeSearchIndexerFunction(jobConfig)
-    val message = getCreateEventForCompositeIndexer(EventFixture.DATA_NODE_CREATE_WITH_RELATION, 509674).getMap().asScala.toMap
+    val message = getEvent(EventFixture.DATA_NODE_CREATE_WITH_RELATION, 509674).getMap().asScala.toMap
     val relations = compositeFunc.retrieveRelations(definition)
     val external = compositeFunc.retrieveExternalProperties(definition)
     val indexable = compositeFunc.getIndexableProperties(definition)
@@ -121,7 +121,7 @@ class CompositeSearchIndexerTaskTestSpec extends BaseTestSpec {
 
     val definition = new DefinitionUtil().getDefinition("Collection", "1.0", jobConfig.definitionBasePath)
     val compositeFunc = new CompositeSearchIndexerFunction(jobConfig)
-    val message = getCreateEventForCompositeIndexer(EventFixture.DATA_NODE_UPDATE_WITH_RELATION, 509674).getMap().asScala.toMap
+    val message = getEvent(EventFixture.DATA_NODE_UPDATE_WITH_RELATION, 509674).getMap().asScala.toMap
     val relations = compositeFunc.retrieveRelations(definition)
     val external = compositeFunc.retrieveExternalProperties(definition)
     val indexable = compositeFunc.getIndexableProperties(definition)
@@ -141,7 +141,7 @@ class CompositeSearchIndexerTaskTestSpec extends BaseTestSpec {
 
     val definition = new DefinitionUtil().getDefinition("Collection", "1.0", jobConfig.definitionBasePath)
     val compositeFunc = new CompositeSearchIndexerFunction(jobConfig)
-    val message = getCreateEventForCompositeIndexer(EventFixture.DATA_NODE_UPDATE, 509674).getMap().asScala.toMap
+    val message = getEvent(EventFixture.DATA_NODE_UPDATE, 509674).getMap().asScala.toMap
     val relations = compositeFunc.retrieveRelations(definition)
     val external = compositeFunc.retrieveExternalProperties(definition)
     val indexable = compositeFunc.getIndexableProperties(definition)
@@ -152,11 +152,32 @@ class CompositeSearchIndexerTaskTestSpec extends BaseTestSpec {
     indexDocument.getOrElse("description", "").asInstanceOf[String] should be("updated description")
   }
 
+  "getIndexDocument " should " give the document for indexing the dialcode metrics " in {
+    val documentJson = """{"last_scan":1541456052000,"dial_code":"QR1234","first_scan":1540469152000,"total_dial_scans_local":25,"objectType":"","average_scans_per_day":2}"""
+    when(mockElasticutil.getDocumentAsStringById(anyString())).thenReturn(documentJson)
+
+    val event = getEvent(EventFixture.DIALCODE_METRIC_UPDATE, 509674)
+    val dialcodeMetricFunc = new DialCodeMetricIndexerFunction(jobConfig)
+    val response = dialcodeMetricFunc.getIndexDocument(event.getMap().asScala.toMap, true)(mockElasticutil)
+    response.isEmpty should be(false)
+    response.getOrElse("total_dial_scans_global", 0).asInstanceOf[Integer] should be(25)
+  }
+
+  "getIndexDocument " should " give the document for indexing the dialcode external " in {
+    val event = getEvent(EventFixture.DIALCODE_EXTERNAL_CREATE, 509674)
+    val dialcodeExternalFunc = new DialCodeExternalIndexerFunction(jobConfig)
+    val response = dialcodeExternalFunc.getIndexDocument(event.getMap().asScala.toMap, false)(mockElasticutil)
+    response.isEmpty should be(false)
+    response.getOrElse("identifier", "").asInstanceOf[String] should be("X8R3W4")
+    response.getOrElse("objectType", "").asInstanceOf[String] should be ("DialCode")
+    response.getOrElse("batchcode", "").asInstanceOf[String] should be ("testPub0001.20210212T011555")
+  }
+
   "processESMessage " should " index the event for the appropriate fields" in {
     Mockito.reset(mockElasticutil)
     doNothing().when(mockElasticutil).addDocumentWithId(anyString(), anyString())
 
-    val event = getCreateEventForCompositeIndexer(EventFixture.DATA_NODE_CREATE, 509674)
+    val event = getEvent(EventFixture.DATA_NODE_CREATE, 509674)
     val compositeFunc = new CompositeSearchIndexerFunction(jobConfig)
     val compositeObject = compositeFunc.getCompositeIndexerobject(event)
     compositeFunc.processESMessage(compositeObject)(mockElasticutil)
@@ -171,7 +192,7 @@ class CompositeSearchIndexerTaskTestSpec extends BaseTestSpec {
     val documentJson = """{"ownershipType":["createdBy"],"code":"org.sunbird.zf7fcK","credentials":{"enabled":"No"},"subject":["Geography"],"channel":"channel-1","language":["English"],"mimeType":"application/vnd.ekstep.content-collection","idealScreenSize":"normal","createdOn":"2021-02-26T13:36:49.592+0000","objectType":"Collection","primaryCategory":"Digital Textbook","contentDisposition":"inline","additionalCategories":["Textbook"],"lastUpdatedOn":"2021-02-26T13:36:49.592+0000","contentEncoding":"gzip","dialcodeRequired":"No","contentType":"TextBook","trackable":{"enabled":"No","autoBatch":"No"},"identifier":"do_1132247274257203201191","subjectIds":["ncf_subject_geography"],"lastStatusChangedOn":"2021-02-26T13:36:49.592+0000","audience":["Student"],"IL_SYS_NODE_TYPE":"DATA_NODE","os":["All"],"visibility":"Default","consumerId":"7411b6bd-89f3-40ec-98d1-229dc64ce77d","mediaType":"content","osId":"org.ekstep.quiz.app","graph_id":"domain","nodeType":"DATA_NODE","version":2,"versionKey":"1614346609592","idealScreenDensity":"hdpi","license":"CC BY-SA 4.0","framework":"NCF","createdBy":"95e4942d-cbe8-477d-aebd-ad8e6de4bfc8","compatibilityLevel":1,"IL_FUNC_OBJECT_TYPE":"Collection","userConsent":"Yes","name":"Test","IL_UNIQUE_ID":"do_1132247274257203201191","status":"Draft","node_id":509674}"""
     when(mockElasticutil.getDocumentAsStringById(anyString())).thenReturn(documentJson)
 
-    val event = getCreateEventForCompositeIndexer(EventFixture.DATA_NODE_UPDATE, 509674)
+    val event = getEvent(EventFixture.DATA_NODE_UPDATE, 509674)
     val compositeFunc = new CompositeSearchIndexerFunction(jobConfig)
     val compositeObject = compositeFunc.getCompositeIndexerobject(event)
     compositeFunc.processESMessage(compositeObject)(mockElasticutil)
@@ -186,7 +207,7 @@ class CompositeSearchIndexerTaskTestSpec extends BaseTestSpec {
     val documentJson = """{"ownershipType":["createdBy"],"code":"org.sunbird.zf7fcK","credentials":{"enabled":"No"},"subject":["Geography"],"channel":"channel-1","language":["English"],"mimeType":"application/vnd.ekstep.content-collection","idealScreenSize":"normal","createdOn":"2021-02-26T13:36:49.592+0000","objectType":"Collection","primaryCategory":"Digital Textbook","contentDisposition":"inline","additionalCategories":["Textbook"],"lastUpdatedOn":"2021-02-26T13:36:49.592+0000","contentEncoding":"gzip","dialcodeRequired":"No","contentType":"TextBook","trackable":{"enabled":"No","autoBatch":"No"},"identifier":"do_1132247274257203201191","subjectIds":["ncf_subject_geography"],"lastStatusChangedOn":"2021-02-26T13:36:49.592+0000","audience":["Student"],"IL_SYS_NODE_TYPE":"DATA_NODE","os":["All"],"visibility":"Default","consumerId":"7411b6bd-89f3-40ec-98d1-229dc64ce77d","mediaType":"content","osId":"org.ekstep.quiz.app","graph_id":"domain","nodeType":"DATA_NODE","version":2,"versionKey":"1614346609592","idealScreenDensity":"hdpi","license":"CC BY-SA 4.0","framework":"NCF","createdBy":"95e4942d-cbe8-477d-aebd-ad8e6de4bfc8","compatibilityLevel":1,"IL_FUNC_OBJECT_TYPE":"Collection","userConsent":"Yes","name":"Test","IL_UNIQUE_ID":"do_1132247274257203201191","status":"Draft","node_id":509674}"""
     when(mockElasticutil.getDocumentAsStringById(anyString())).thenReturn(documentJson)
 
-    val event = getCreateEventForCompositeIndexer(EventFixture.DATA_NODE_DELETE, 509674)
+    val event = getEvent(EventFixture.DATA_NODE_DELETE, 509674)
     val compositeFunc = new CompositeSearchIndexerFunction(jobConfig)
     val compositeObject = compositeFunc.getCompositeIndexerobject(event)
     compositeFunc.processESMessage(compositeObject)(mockElasticutil)
@@ -200,7 +221,7 @@ class CompositeSearchIndexerTaskTestSpec extends BaseTestSpec {
     val documentJson = """{"ownershipType":["createdBy"],"code":"org.sunbird.zf7fcK","credentials":{"enabled":"No"},"subject":["Geography"],"channel":"channel-1","language":["English"],"mimeType":"application/vnd.ekstep.content-collection","idealScreenSize":"normal","createdOn":"2021-02-26T13:36:49.592+0000","objectType":"Collection","primaryCategory":"Digital Textbook","contentDisposition":"inline","additionalCategories":["Textbook"],"lastUpdatedOn":"2021-02-26T13:36:49.592+0000","contentEncoding":"gzip","dialcodeRequired":"No","contentType":"TextBook","trackable":{"enabled":"No","autoBatch":"No"},"identifier":"do_1132247274257203201191","subjectIds":["ncf_subject_geography"],"lastStatusChangedOn":"2021-02-26T13:36:49.592+0000","audience":["Student"],"IL_SYS_NODE_TYPE":"DATA_NODE","os":["All"],"visibility":"Parent","consumerId":"7411b6bd-89f3-40ec-98d1-229dc64ce77d","mediaType":"content","osId":"org.ekstep.quiz.app","graph_id":"domain","nodeType":"DATA_NODE","version":2,"versionKey":"1614346609592","idealScreenDensity":"hdpi","license":"CC BY-SA 4.0","framework":"NCF","createdBy":"95e4942d-cbe8-477d-aebd-ad8e6de4bfc8","compatibilityLevel":1,"IL_FUNC_OBJECT_TYPE":"Collection","userConsent":"Yes","name":"Test","IL_UNIQUE_ID":"do_1132247274257203201191","status":"Draft","node_id":509674}"""
     when(mockElasticutil.getDocumentAsStringById(anyString())).thenReturn(documentJson)
 
-    val event = getCreateEventForCompositeIndexer(EventFixture.DATA_NODE_DELETE, 509674)
+    val event = getEvent(EventFixture.DATA_NODE_DELETE, 509674)
     val compositeFunc = new CompositeSearchIndexerFunction(jobConfig)
     val compositeObject = compositeFunc.getCompositeIndexerobject(event)
     compositeFunc.processESMessage(compositeObject)(mockElasticutil)
@@ -213,7 +234,7 @@ class CompositeSearchIndexerTaskTestSpec extends BaseTestSpec {
     Mockito.reset(mockElasticutil)
     doNothing().when(mockElasticutil).addDocumentWithId(anyString(), anyString())
 
-    val event = getCreateEventForCompositeIndexer(EventFixture.DATA_NODE_CREATE_WITH_RELATION, 509674)
+    val event = getEvent(EventFixture.DATA_NODE_CREATE_WITH_RELATION, 509674)
     val compositeFunc = new CompositeSearchIndexerFunction(jobConfig)
     val compositeObject = compositeFunc.getCompositeIndexerobject(event)
     compositeFunc.processESMessage(compositeObject)(mockElasticutil)
@@ -226,7 +247,7 @@ class CompositeSearchIndexerTaskTestSpec extends BaseTestSpec {
     Mockito.reset(mockElasticutil)
     doNothing().when(mockElasticutil).addDocumentWithId(anyString(), anyString())
 
-    val event = getCreateEventForCompositeIndexer(EventFixture.DIALCODE_METRIC_CREATE, 509674)
+    val event = getEvent(EventFixture.DIALCODE_METRIC_CREATE, 509674)
     val dialcodeMetricFunc = new DialCodeMetricIndexerFunction(jobConfig)
     val uniqueId = event.readOrDefault("nodeUniqueId", "")
     dialcodeMetricFunc.upsertDialcodeMetricDocument(uniqueId, event.getMap().asScala.toMap)(mockElasticutil)
@@ -235,24 +256,13 @@ class CompositeSearchIndexerTaskTestSpec extends BaseTestSpec {
     verify(mockElasticutil, times(0)).getDocumentAsStringById(anyString())
   }
 
-  "getIndexDocument " should " give the document for indexing the dialcode metrics " in {
-    val documentJson = """{"last_scan":1541456052000,"dial_code":"QR1234","first_scan":1540469152000,"total_dial_scans_local":25,"objectType":"","average_scans_per_day":2}"""
-    when(mockElasticutil.getDocumentAsStringById(anyString())).thenReturn(documentJson)
-
-    val event = getCreateEventForCompositeIndexer(EventFixture.DIALCODE_METRIC_UPDATE, 509674)
-    val dialcodeMetricFunc = new DialCodeMetricIndexerFunction(jobConfig)
-    val response = dialcodeMetricFunc.getIndexDocument(event.getMap().asScala.toMap, true)(mockElasticutil)
-    response.isEmpty should be(false)
-    response.getOrElse("total_dial_scans_global", 0).asInstanceOf[Integer] should be(25)
-  }
-
   "upsertDialcodeMetricDocument " should " update the indexed the dialcode metrics " in {
     Mockito.reset(mockElasticutil)
     doNothing().when(mockElasticutil).addDocumentWithId(anyString(), anyString())
     val documentJson = """{"last_scan":1541456052000,"dial_code":"QR1234","first_scan":1540469152000,"total_dial_scans_local":25,"objectType":"","average_scans_per_day":2}"""
     when(mockElasticutil.getDocumentAsStringById(anyString())).thenReturn(documentJson)
 
-    val event = getCreateEventForCompositeIndexer(EventFixture.DIALCODE_METRIC_UPDATE, 509674)
+    val event = getEvent(EventFixture.DIALCODE_METRIC_UPDATE, 509674)
     val dialcodeMetricFunc = new DialCodeMetricIndexerFunction(jobConfig)
     val uniqueId = event.readOrDefault("nodeUniqueId", "")
     dialcodeMetricFunc.upsertDialcodeMetricDocument(uniqueId, event.getMap().asScala.toMap)(mockElasticutil)
@@ -263,7 +273,7 @@ class CompositeSearchIndexerTaskTestSpec extends BaseTestSpec {
 
   "upsertDialcodeMetricDocument " should " delete the indexed dialcode metric event " in {
     Mockito.reset(mockElasticutil)
-    val event = getCreateEventForCompositeIndexer(EventFixture.DIALCODE_METRIC_DELETE, 509674)
+    val event = getEvent(EventFixture.DIALCODE_METRIC_DELETE, 509674)
     val dialcodeMetricFunc = new DialCodeMetricIndexerFunction(jobConfig)
     val uniqueId = event.readOrDefault("nodeUniqueId", "")
     dialcodeMetricFunc.upsertDialcodeMetricDocument(uniqueId, event.getMap().asScala.toMap)(mockElasticutil)
@@ -272,7 +282,46 @@ class CompositeSearchIndexerTaskTestSpec extends BaseTestSpec {
     verify(mockElasticutil, times(1)).deleteDocument(anyString())
   }
 
-  def getCreateEventForCompositeIndexer(event: String, nodeGraphId: Int): Event = {
+  "upsertExternalDocument " should " index the dialcode external " in {
+    Mockito.reset(mockElasticutil)
+    doNothing().when(mockElasticutil).addDocumentWithId(anyString(), anyString())
+
+    val event = getEvent(EventFixture.DIALCODE_EXTERNAL_CREATE, 509674)
+    val dialcodeExternalFunc = new DialCodeExternalIndexerFunction(jobConfig)
+    val uniqueId = event.readOrDefault("nodeUniqueId", "")
+    dialcodeExternalFunc.upsertExternalDocument(uniqueId, event.getMap().asScala.toMap)(mockElasticutil)
+
+    verify(mockElasticutil, times(1)).addDocumentWithId(anyString(), anyString())
+    verify(mockElasticutil, times(0)).getDocumentAsStringById(anyString())
+  }
+
+  "upsertExternalDocument " should " update and index the dialcode external " in {
+    Mockito.reset(mockElasticutil)
+    doNothing().when(mockElasticutil).addDocumentWithId(anyString(), anyString())
+    val documentJson = """{"channel":"channelTest","generated_on":"2021-02-12T01:16:07.750+0530","identifier":"X8R3W4","dialcode_index":9071809.0,"batchcode":"testPub0001.20210212T011555","objectType":"DialCode","status":"Draft","publisher":"testPub0001"}"""
+    when(mockElasticutil.getDocumentAsStringById(anyString())).thenReturn(documentJson)
+
+    val event = getEvent(EventFixture.DIALCODE_EXTERNAL_UPDATE, 509674)
+    val dialcodeExternalFunc = new DialCodeExternalIndexerFunction(jobConfig)
+    val uniqueId = event.readOrDefault("nodeUniqueId", "")
+    dialcodeExternalFunc.upsertExternalDocument(uniqueId, event.getMap().asScala.toMap)(mockElasticutil)
+
+    verify(mockElasticutil, times(1)).addDocumentWithId(anyString(), anyString())
+    verify(mockElasticutil, times(1)).getDocumentAsStringById(anyString())
+  }
+
+  "upsertExternalDocument " should " delete the indexed dialcode external event " in {
+    Mockito.reset(mockElasticutil)
+    val event = getEvent(EventFixture.DIALCODE_EXTERNAL_DELETE, 509674)
+    val dialcodeExternalFunc = new DialCodeExternalIndexerFunction(jobConfig)
+    val uniqueId = event.readOrDefault("nodeUniqueId", "")
+    dialcodeExternalFunc.upsertExternalDocument(uniqueId, event.getMap().asScala.toMap)(mockElasticutil)
+
+    verify(mockElasticutil, times(0)).getDocumentAsStringById(anyString())
+    verify(mockElasticutil, times(1)).deleteDocument(anyString())
+  }
+
+  def getEvent(event: String, nodeGraphId: Int): Event = {
     val eventMap = ScalaJsonUtil.deserialize[util.Map[String, Any]](event)
     eventMap.put("nodeGraphId", nodeGraphId)
     new Event(eventMap)

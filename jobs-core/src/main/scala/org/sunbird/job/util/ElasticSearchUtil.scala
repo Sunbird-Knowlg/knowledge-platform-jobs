@@ -70,6 +70,8 @@ class ElasticSearchUtil(connectionInfo: String, indexName: String, indexType: St
 
   def addDocumentWithId(documentId: String, document: String): Unit = {
     try {
+      // TODO
+      // Replace mapper with JSONUtil once the JSONUtil is fixed
       val doc = mapper.readValue(document, new TypeReference[util.Map[String, AnyRef]]() {})
       val response = esClient.index(new IndexRequest(indexName, indexType, documentId).source(doc))
       logger.info(s"Added ${response.getId} to index ${response.getIndex}")
@@ -81,6 +83,8 @@ class ElasticSearchUtil(connectionInfo: String, indexName: String, indexType: St
 
   def updateDocument(document: String, documentId: String): Unit = {
     try {
+      // TODO
+      // Replace mapper with JSONUtil once the JSONUtil is fixed
       val doc = mapper.readValue(document, new TypeReference[util.Map[String, AnyRef]]() {})
       val indexRequest = new IndexRequest(indexName, indexType, documentId).source(doc)
       val request = new UpdateRequest().index(indexName).`type`(indexType).id(documentId).doc(doc).upsert(indexRequest)

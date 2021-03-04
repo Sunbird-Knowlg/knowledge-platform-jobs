@@ -61,6 +61,6 @@ class CompositeSearchIndexerConfig(override val config: Config) extends BaseJobC
 
   val restrictMetadataObjectTypes: util.List[String] = if (config.hasPath("restrict.metadata.objectTypes")) config.getStringList("restrict.metadata.objectTypes") else new util.ArrayList[String]
   val nestedFields: util.List[String] = if (config.hasPath("nested.fields")) config.getStringList("nested.fields") else new util.ArrayList[String]
-  val definitionBasePath: String = if (config.hasPath("schema.base_path")) config.getString("schema.base_path") else ""
+  val definitionBasePath: String = config.getString("schema.base_path")
 
 }
