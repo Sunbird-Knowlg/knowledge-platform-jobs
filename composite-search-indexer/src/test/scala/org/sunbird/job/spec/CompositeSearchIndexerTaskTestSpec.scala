@@ -45,7 +45,7 @@ class CompositeSearchIndexerTaskTestSpec extends BaseTestSpec {
     flinkCluster.after()
   }
 
-  "getCompositeIndexerobject " should " return Composite Object for the event" in {
+  "getCompositeIndexerobject" should " return Composite Object for the event" in {
     val event = getEvent(EventFixture.DATA_NODE_CREATE, 509674)
     val compositeObject = new CompositeSearchIndexerFunction(jobConfig).getCompositeIndexerobject(event)
     compositeObject.objectType should be("Collection")
@@ -320,6 +320,64 @@ class CompositeSearchIndexerTaskTestSpec extends BaseTestSpec {
     verify(mockElasticutil, times(0)).getDocumentAsStringById(anyString())
     verify(mockElasticutil, times(1)).deleteDocument(anyString())
   }
+
+  "createCompositeSearchIndex" should "create the elastic search index for compositesearch" in {
+    Mockito.reset(mockElasticutil)
+    when(mockElasticutil.addIndex(anyString(), anyString())).thenReturn(false)
+    val compositeFunc = new CompositeSearchIndexerFunction(jobConfig)
+    val check = compositeFunc.createCompositeSearchIndex()(mockElasticutil)
+    check should be(false)
+  }
+
+  "createDialCodeIndex" should "create the elastic search index for dialcode" in {
+    Mockito.reset(mockElasticutil)
+    when(mockElasticutil.addIndex(anyString(), anyString())).thenReturn(false)
+    val compositeFunc = new DialCodeExternalIndexerFunction(jobConfig)
+    val check = compositeFunc.createDialCodeIndex()(mockElasticutil)
+    check should be(false)
+  }
+
+  "createDialCodeIndex" should "create the elastic search index for dialcode metric" in {
+    Mockito.reset(mockElasticutil)
+    when(mockElasticutil.addIndex(anyString(), anyString())).thenReturn(false)
+    val compositeFunc = new DialCodeMetricIndexerFunction(jobConfig)
+    val check = compositeFunc.createDialCodeIndex()(mockElasticutil)
+    check should be(false)
+  }
+
+  "DialCodeMetricIndexerFunction" should "return the event with error message" in {
+    val compositeFunc = new DialCodeMetricIndexerFunction(jobConfig)
+    val event = getEvent(EventFixture.DATA_NODE_DELETE, 509674)
+    val exception = new Exception(s"Test Exception Handling")
+    val failedEventString = compositeFunc.getFailedEvent(event, exception)
+    failedEventString.isEmpty should be(false)
+    failedEventString.contains("failInfo") should be(true)
+    failedEventString.contains("jobName") should be(true)
+  }
+
+  "Event.index" should "return whether event is indexable " in {
+    var eventMap = new util.HashMap[String, Any]()
+    eventMap.put("index", "true")
+    var event = new Event(eventMap)
+    event.index should be(true)
+
+    eventMap.put("index", "false")
+    event = new Event(eventMap)
+    event.index should be(false)
+
+    eventMap.put("index", null)
+    event = new Event(eventMap)
+    event.index should be(true)
+
+    eventMap.put("index", true)
+    event = new Event(eventMap)
+    event.index should be(true)
+
+    eventMap.put("index", false)
+    event = new Event(eventMap)
+    event.index should be(false)
+  }
+
 
   def getEvent(event: String, nodeGraphId: Int): Event = {
     val eventMap = ScalaJsonUtil.deserialize[util.Map[String, Any]](event)

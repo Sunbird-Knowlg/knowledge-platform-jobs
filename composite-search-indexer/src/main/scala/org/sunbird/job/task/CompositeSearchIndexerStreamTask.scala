@@ -10,7 +10,6 @@ import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.util.{FlinkUtil, HttpUtil}
 import com.typesafe.config.ConfigFactory
 import org.apache.flink.api.java.utils.ParameterTool
-import org.apache.flink.api.scala.ExecutionEnvironment
 import org.sunbird.job.compositesearch.domain.Event
 import org.sunbird.job.functions.{CompositeSearchEventRouter, CompositeSearchIndexerFunction, DialCodeExternalIndexerFunction, DialCodeMetricIndexerFunction}
 
@@ -23,7 +22,6 @@ class CompositeSearchIndexerStreamTask(config: CompositeSearchIndexerConfig, kaf
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
 
     val source = kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)
-
     val processStreamTask = env.addSource(source).name(config.compositeSearchIndexerConsumer)
       .uid(config.compositeSearchIndexerConsumer).setParallelism(config.kafkaConsumerParallelism)
       .rebalance

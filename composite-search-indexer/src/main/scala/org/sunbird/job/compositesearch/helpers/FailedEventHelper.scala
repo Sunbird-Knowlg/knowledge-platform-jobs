@@ -10,7 +10,7 @@ trait FailedEventHelper {
 
   def getFailedEvent(event: Event, error: Throwable): String = {
     val errorString = getStackTrace(error).split("\\n\\t")
-    val stackTrace = if (errorString.length > 21) util.Arrays.asList(errorString).subList(errorString.length - 21, errorString.length - 1) else util.Arrays.asList(errorString)
+    val stackTrace = if (errorString.length > 21) errorString.toList.slice(errorString.length - 21, errorString.length -1) else errorString.toList
     val failedEventMap = Map("error" -> s"${error.getMessage} : : ${stackTrace}")
     val eventMap = event.getMap()
     eventMap.put("jobName", event.jobName)
