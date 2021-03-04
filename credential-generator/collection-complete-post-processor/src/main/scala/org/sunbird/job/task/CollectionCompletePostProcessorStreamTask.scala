@@ -29,7 +29,8 @@ class CollectionCompletePostProcessorStreamTask(config: CollectionCompletePostPr
         .name("collection-complete-post-processor").uid("collection-complete-post-processor")
         .setParallelism(config.parallelism)
 
-    progressStream.getSideOutput(config.generateCertificateOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaOutputTopic)).name(config.generateCertificateProducer).uid(config.generateCertificateProducer)
+    progressStream.getSideOutput(config.generateCertificateOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaOutputTopic))
+      .name(config.generateCertificateProducer).uid(config.generateCertificateProducer).setParallelism(config.generateCertificateParallelism)
     progressStream.getSideOutput(config.failedEventOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaFailedEventTopic)).name(config.generateCertificateFailedEventProducer).uid(config.generateCertificateFailedEventProducer)
     env.execute(config.jobName)
   }

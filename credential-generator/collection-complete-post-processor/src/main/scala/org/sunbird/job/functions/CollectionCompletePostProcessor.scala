@@ -63,19 +63,22 @@ class CollectionCompletePostProcessor(config: CollectionCompletePostProcessorCon
       certTemplates.map(template => {
         //validate criteria
         val certTemplate = template._2.asInstanceOf[Map[String, AnyRef]]
-        val usersToIssue = CertificateUserUtil.getUserIdsBasedOnCriteria(certTemplate, event)
+        val usersToIssue:List[String] = CertificateUserUtil.getUserIdsBasedOnCriteria(certTemplate, event)
         val templateUrl = certTemplate.getOrElse(config.url, "").asInstanceOf[String]
         if(StringUtils.isBlank(templateUrl) || !StringUtils.endsWith(templateUrl, ".svg")) {
           logger.info("Invalid template: Certificate generate event is skipped: " + event.eData)
           metrics.incCounter(config.skippedEventCount)
+        } else if(usersToIssue.isEmpty) {
+          logger.info("No Users satisfied criteria: Certificate generate event is skipped: " + event.eData)
+          metrics.incCounter(config.skippedEventCount)
         } else {
           //iterate over users and send to generate event method
           val template = IssueCertificateUtil.prepareTemplate(certTemplate)(config)
-          println("prepareTemplate output: " + template)
+          logger.info("prepareTemplate output: " + template)
           usersToIssue.foreach(user => {
             val certEvent = generateCertificateEvent(user, template, event.eData, collectionCache)
             val eventStr = JSONUtil.serialize(certEvent)
-            println("final event send to next topic : " + eventStr)
+            logger.info("final event send to next topic : " + eventStr)
             context.output(config.generateCertificateOutputTag, eventStr)
             logger.info("Certificate generate event successfully sent to next topic")
             metrics.incCounter(config.successEventCount)
@@ -84,9 +87,8 @@ class CollectionCompletePostProcessor(config: CollectionCompletePostProcessorCon
       })
     } catch {
       case ex: Exception => {
-        ex.printStackTrace()
         context.output(config.failedEventOutputTag, JSONUtil.serialize(event.eData))
-        logger.info("Certificate generate event failed sent to next topic : " + ex.getMessage + " " + ex )
+        logger.error("Certificate generate event failed sent to next topic : ", ex)
         metrics.incCounter(config.failedEventCount)
       }
     }
@@ -103,13 +105,13 @@ class CollectionCompletePostProcessor(config: CollectionCompletePostProcessorCon
 
   private def generateCertificateEvent(userId: String, template: CertTemplate, edata: util.Map[String, AnyRef], collectionCache: DataCache)
                                       (implicit metrics: Metrics): java.util.Map[String, AnyRef] = {
-    println("generateCertificatesEvent called userId : " + userId +":: "+ template)
+    logger.info("generateCertificatesEvent called userId : " + userId +":: "+ template)
     val generateRequest = IssueCertificateUtil.prepareGenerateRequest(edata, template, userId)(config)
-    println("prepareGenerateRequest output: " + convertToMap(generateRequest))
+    logger.info("prepareGenerateRequest output: " + convertToMap(generateRequest))
     val edataRequest = convertToMap(generateRequest)
     // generate certificate event edata
     val eventEdata = new CertificateEventGenerator(config)(metrics, cassandraUtil).prepareGenerateEventEdata(edataRequest, collectionCache)
-    println("generateCertificateEvent : eventEdata : " + eventEdata)
+    logger.info("generateCertificateEvent : eventEdata : " + eventEdata)
     generateCertificateFinalEvent(eventEdata)
   }
 

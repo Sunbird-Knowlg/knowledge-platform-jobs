@@ -21,11 +21,11 @@ object IssueCertificateUtil {
 
   def getActiveUserIds(rows: List[Row], event: Event, templateName: String)
                       (implicit config: CollectionCompletePostProcessorConfig): List[String] = {
-    println("getActiveUserIds called : ")
+    logger.info("getActiveUserIds called : ")
     val userIds = rows.filter(row => {
       val issuedCertificates: util.List[util.Map[String, String]] = row.getList(config.issued_certificates, TypeTokens.mapOf(classOf[String], classOf[String]))
       val isCertIssued = !issuedCertificates.isEmpty && issuedCertificates.asScala.exists(a => a.get(config.name) == templateName)
-      println("getActiveUserIds : isCertIssued : " + isCertIssued)
+      logger.info("getActiveUserIds : isCertIssued : " + isCertIssued)
       row.getBool(config.active) && (!isCertIssued || event.eData.containsKey(config.reIssue) && event.eData.get(config.reIssue).asInstanceOf[Boolean])
     }).map(row => row.getString("userid")).toList
     userIds
@@ -33,9 +33,9 @@ object IssueCertificateUtil {
 
   def getAssessedUserIds(rows: util.List[Row], assessmentCriteria: util.Map[String, AnyRef], event: Event)
                         (implicit config: CollectionCompletePostProcessorConfig): List[String] = {
-    println("getAssessedUserIds called : ")
+    logger.info("getAssessedUserIds called : ")
     val userScores: Map[String, Double] = getAssessedUser(rows)
-    println("getAssessedUserIds userScores : " + userScores)
+    logger.info("getAssessedUserIds userScores : " + userScores)
     // need to check getAssessmentOperation
     val criteria: Map[String, AnyRef] = getAssessmentOperation(assessmentCriteria)
     if (userScores.nonEmpty) {
@@ -50,21 +50,21 @@ object IssueCertificateUtil {
   private def getAssessedUser(rows: util.List[Row])
                              (implicit config: CollectionCompletePostProcessorConfig): Map[String, Double] = {
     var userScore = scala.collection.mutable.Map[String, Map[String, Double]]()
-    rows.asScala.map(row => {
+    rows.asScala.filter(row => null != row.getString("user_id") && !row.getString("user_id").isEmpty).map(row => {
       val userId = row.getString("user_id")
       if (userScore.contains(userId)) {
-        val scoreMap = userScore.get(userId).asInstanceOf[Map[String, Double]]
-        userScore += (userId -> Map(config.score -> (scoreMap.get(config.score).asInstanceOf[Double] + row.getDouble(config.score)),
-          (config.maxScore -> (scoreMap.get(config.maxScore).asInstanceOf[Double] + row.getDouble(config.total_max_score)))))
+        val scoreMap:Map[String, Double] = userScore.getOrElse(userId, Map[String, Double]()).asInstanceOf[Map[String, Double]]
+        userScore += (userId -> Map(config.score -> (scoreMap.getOrElse(config.score, 0d).asInstanceOf[Double] + row.getDouble(config.score)),
+          (config.maxScore -> (scoreMap.getOrElse(config.maxScore, 0d).asInstanceOf[Double] + row.getDouble(config.total_max_score)))))
       } else {
         userScore += (userId -> Map(config.score -> row.getDouble(config.score), config.maxScore -> row.getDouble(config.total_max_score)))
       }
     })
-    println("getAssessedUserIds userScore : " + userScore)
+    logger.info("getAssessedUserIds userScore : " + userScore)
     val assessedUserMap: Map[String, Double] = userScore.map(score => {
       Map(score._1 -> ((score._2.asJava.get(config.score) * 100) / score._2.asJava.get(config.maxScore)))
     }).flatten.toMap
-    println("getAssessedUserIds assessedUserMap : " + assessedUserMap)
+    logger.info("getAssessedUserIds assessedUserMap : " + assessedUserMap)
     assessedUserMap
   }
 
@@ -90,7 +90,7 @@ object IssueCertificateUtil {
   def prepareGenerateRequest(edata: util.Map[String, AnyRef], certTemplate: CertTemplate, userId: String)
                             (implicit config: CollectionCompletePostProcessorConfig): GenerateRequest = {
     val template = convertToMap(certTemplate)
-    println("template inside prepareGenerateRequest: " + template)
+    logger.info("template inside prepareGenerateRequest: " + template)
     GenerateRequest(edata.get(config.batchId).asInstanceOf[String],
       userId,
       edata.get(config.courseId).asInstanceOf[String],

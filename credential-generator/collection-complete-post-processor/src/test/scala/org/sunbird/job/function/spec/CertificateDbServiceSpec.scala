@@ -93,7 +93,7 @@ class CertificateDbServiceSpec extends BaseTestSpec {
     metrics.reset(jobConfig.dbReadCount)
     val event = new Event(Map[String, Any](jobConfig.eData -> Map[String, Any](jobConfig.batchId -> "0131000245281587206", jobConfig.courseId -> "do_11309999837886054415", jobConfig.userIds -> java.util.Arrays.asList("user001")).asJava).asJava)
     val assessmentCriteria = Map(jobConfig.score -> 100.asInstanceOf[AnyRef]).asJava
-    val list = CertificateDbService.fetchAssessedUsersFromDB(event, assessmentCriteria)(metrics, cassandraUtil, jobConfig)
+    val list = CertificateDbService.fetchAssessedUsersFromDB(event, assessmentCriteria, event.userIds.asScala.toList)(metrics, cassandraUtil, jobConfig)
     list should contain("user001")
     metrics.get(s"${jobConfig.dbReadCount}") should be(1)
   }
@@ -101,7 +101,7 @@ class CertificateDbServiceSpec extends BaseTestSpec {
   it should "throw exception for invalid batch for fetchAssessedUsersFromDB" in intercept[Exception] {
     val event = new Event(Map[String, Any](jobConfig.batchId -> "batch_0001", jobConfig.courseId -> "do_11309999837886054415").asJava)
     val assessmentCriteria = Map(jobConfig.score -> 3.asInstanceOf[AnyRef]).asJava
-    CertificateDbService.fetchAssessedUsersFromDB(event, assessmentCriteria)(metrics, cassandraUtil, jobConfig)
+    CertificateDbService.fetchAssessedUsersFromDB(event, assessmentCriteria, null)(metrics, cassandraUtil, jobConfig)
   }
 
   // check date format for issuedDate

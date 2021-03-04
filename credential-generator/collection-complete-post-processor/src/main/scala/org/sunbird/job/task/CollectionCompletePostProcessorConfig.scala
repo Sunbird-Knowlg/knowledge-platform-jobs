@@ -19,6 +19,7 @@ class CollectionCompletePostProcessorConfig(override val config: Config) extends
   val kafkaFailedEventTopic: String = config.getString("kafka.output.failed.topic")
 
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
+  val generateCertificateParallelism:Int = config.getInt("task.generateCertificateParallelism")
 
   // Metric List
   val totalEventsCount = "total-events-count"

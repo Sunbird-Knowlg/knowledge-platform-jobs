@@ -4,6 +4,7 @@ import java.util
 
 import org.apache.commons.collections.MapUtils
 import org.apache.commons.lang3.StringUtils
+import org.slf4j.LoggerFactory
 import org.sunbird.job.Metrics
 import org.sunbird.job.cache.DataCache
 import org.sunbird.job.domain.{CertificateData, CourseDetails, Data, OrgDetails, Related, UserDetails}
@@ -18,8 +19,10 @@ class CertificateEventGenerator(config: CollectionCompletePostProcessorConfig)
                                (implicit val metrics: Metrics,
                                 @transient var cassandraUtil: CassandraUtil = null) {
 
+  private[this] val logger = LoggerFactory.getLogger(classOf[CertificateEventGenerator])
+
   def prepareGenerateEventEdata(edata: util.Map[String, AnyRef], collectionCache: DataCache): util.Map[String, AnyRef] = {
-    println("prepareGenerateEventEdata called edata : " + edata)
+    logger.info("prepareGenerateEventEdata called edata : " + edata)
     val eventEdata = new util.HashMap[String, AnyRef]()
     eventEdata.putAll(edata)
     eventEdata.putAll(setIssuedCertificate(edata))
@@ -34,14 +37,14 @@ class CertificateEventGenerator(config: CollectionCompletePostProcessorConfig)
     eventEdata.remove(config.courseId)
     eventEdata.remove(config.batchId)
     eventEdata.put(config.criteria, new util.HashMap[String, AnyRef](){{ put(config.narrative, eventEdata.getOrDefault(config.name, "Course Completion Certificate")) }})
-    println("prepareGenerateEventEdata finished edata : " + eventEdata)
+    logger.info("prepareGenerateEventEdata finished edata : " + eventEdata)
     eventEdata
   }
 
   private def setIssuedCertificate(edata: util.Map[String, AnyRef])  = {
-    println("setIssuedCertificate called edata : " + edata.toString)
+    logger.info("setIssuedCertificate called edata : " + edata.toString)
     val issuedCertificatesResultMap = CertificateDbService.readUserCertificate(edata)(metrics, cassandraUtil, config)
-    println("issuedCertificatesResultMap :: " + issuedCertificatesResultMap)
+    logger.info("issuedCertificatesResultMap :: " + issuedCertificatesResultMap)
     val issuedCertificates = issuedCertificatesResultMap.get(config.issued_certificates).asInstanceOf[util.ArrayList[util.Map[String, AnyRef]]]
     val issuedDate = issuedCertificatesResultMap.get(config.issuedDate).asInstanceOf[String]
     val certTemplate = edata.get(config.template).asInstanceOf[util.Map[String, AnyRef]]
@@ -54,15 +57,15 @@ class CertificateEventGenerator(config: CollectionCompletePostProcessorConfig)
     if (certificates.nonEmpty) {
       eventEdata.put(config.oldId, certificates.head.getOrDefault(config.identifier, ""))
     }
-    println("executed till here: #################" )
+    logger.info("executed till here: #################" )
     eventEdata.putAll(convertToMap(CertificateData(issuedDate, config.certBasePath)))
     eventEdata
   }
 
   private def setUserData(edata: util.Map[String, AnyRef]) = {
-    println("setUserData called edata : " + edata.toString)
+    logger.info("setUserData called edata : " + edata.toString)
     val userResponse = CertificateApiService.getUserDetails(edata.get(config.userId).asInstanceOf[String])(config)
-    println("setUserData userResponse : " + userResponse.toString)
+    logger.info("setUserData userResponse : " + userResponse.toString)
     val firstName = if(StringUtils.isNotBlank(userResponse.get(config.firstName).asInstanceOf[String])) userResponse.get(config.firstName) else ""
     val lastName = if(StringUtils.isNotBlank(userResponse.get(config.lastName).asInstanceOf[String])) userResponse.get(config.lastName) else ""
     val userDetails = UserDetails(data = new util.ArrayList[java.util.Map[String, AnyRef]]() {
@@ -72,12 +75,12 @@ class CertificateEventGenerator(config: CollectionCompletePostProcessorConfig)
     },
       orgId = userResponse.get(config.rootOrgId).asInstanceOf[String]
     )
-    println("setUserData final userDetails : " + userDetails.toString)
+    logger.info("setUserData final userDetails : " + userDetails.toString)
     convertToMap(userDetails)
   }
 
   private def setEventOrgData(orgId: String) = {
-    println("setEventOrgData called edata : " + orgId)
+    logger.info("setEventOrgData called edata : " + orgId)
     val keys = CertificateApiService.readOrgKeys(orgId)(config)
     if(MapUtils.isNotEmpty(keys)) {
       convertToMap(OrgDetails(keys))
@@ -85,7 +88,7 @@ class CertificateEventGenerator(config: CollectionCompletePostProcessorConfig)
   }
 
   private def setCourseDetails(edata: util.Map[String, AnyRef], collectionCache: DataCache) = {
-    println("setCourseDetails called edata : " + edata)
+    logger.info("setCourseDetails called edata : " + edata)
     val content = CertificateApiService.readContent(edata.get(config.courseId).asInstanceOf[String], collectionCache)(config, metrics)
     val courseDetails = CourseDetails(courseName = content.get(config.name).asInstanceOf[String],
       tag = edata.get(config.batchId).asInstanceOf[String])
@@ -93,7 +96,7 @@ class CertificateEventGenerator(config: CollectionCompletePostProcessorConfig)
   }
 
   private def setEventRelatedData(edata: util.Map[String, AnyRef]) = {
-    println("setEventRelatedData called edata : " + edata)
+    logger.info("setEventRelatedData called edata : " + edata)
     val related = Related(courseId = edata.get(config.courseId).asInstanceOf[String],
       batchId = edata.get(config.batchId).asInstanceOf[String])
     new java.util.HashMap[String, AnyRef]() {{ put(config.related, convertToMap(related)) }}
