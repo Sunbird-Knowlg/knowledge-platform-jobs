@@ -11,7 +11,6 @@ import scala.collection.mutable
 trait CompositeSearchIndexerHelper {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[CompositeSearchIndexerHelper])
-  lazy private val definitionUtil = new DefinitionUtil
 
   def createCompositeSearchIndex()(esUtil: ElasticSearchUtil): Boolean = {
     val settings = """{"max_ngram_diff":"29","mapping":{"total_fields":{"limit":"1500"}},"analysis":{"filter":{"mynGram":{"token_chars":["letter","digit","whitespace","punctuation","symbol"],"min_gram":"1","type":"nGram","max_gram":"30"}},"analyzer":{"cs_index_analyzer":{"filter":["lowercase","mynGram"],"type":"custom","tokenizer":"standard"},"keylower":{"filter":"lowercase","tokenizer":"keyword"},"cs_search_analyzer":{"filter":["standard","lowercase"],"type":"custom","tokenizer":"standard"}}}}"""
@@ -101,7 +100,7 @@ trait CompositeSearchIndexerHelper {
   }
 
   def processESMessage(compositeObject: CompositeIndexer)(esUtil: ElasticSearchUtil): Unit = {
-    val definition = definitionUtil.getDefinition(compositeObject.objectType, compositeObject.getVersionAsString(), compositeObject.getDefinitionBasePath())
+    val definition = DefinitionUtil.get(compositeObject.objectType, compositeObject.getVersionAsString(), compositeObject.getDefinitionBasePath())
     if (definition.isEmpty) {
       logger.info("Failed to fetch definition node from cache")
       throw new Exception(s"ERR_DEFINITION_NOT_FOUND: defnition node for graphId: ${compositeObject.graphId} and objectType:  ${compositeObject.objectType} is null due to some issue")

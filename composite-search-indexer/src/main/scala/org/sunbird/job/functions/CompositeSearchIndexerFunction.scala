@@ -54,7 +54,7 @@ class CompositeSearchIndexerFunction(config: CompositeSearchIndexerConfig,
     val graphId = event.readOrDefault("graphId", "")
     val uniqueId = event.readOrDefault("nodeUniqueId", "")
     val messageId = event.readOrDefault("mid", "")
-    CompositeIndexer(graphId, objectType, uniqueId, messageId, 1.0, event.getMap(), config)
+    CompositeIndexer(graphId, objectType, uniqueId, messageId, event.getMap(), config)
   }
 
   override def metricsList(): List[String] = {
