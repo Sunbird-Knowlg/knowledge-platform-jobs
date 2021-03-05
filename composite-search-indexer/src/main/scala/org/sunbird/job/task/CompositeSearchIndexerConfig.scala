@@ -53,14 +53,14 @@ class CompositeSearchIndexerConfig(override val config: Config) extends BaseJobC
   val compositeSearchIndex: String = if (config.hasPath("compositesearch.index.name")) config.getString("compositesearch.index.name") else "compositesearch"
   val compositeSearchIndexType: String = "cs"
 
-  val dialcodeExternalIndex: String = "dialcode"
+  val dialcodeExternalIndex: String = if (config.hasPath("dialcode.index.name")) config.getString("dialcode.index.name") else "dialcode"
   val dialcodeExternalIndexType: String = "dc"
 
-  val dialcodeMetricIndex: String = "dialcodemetrics"
+    val dialcodeMetricIndex: String = if (config.hasPath("dailcodemetrics.index.name")) config.getString("dailcodemetrics.index.name") else "dialcodemetrics"
   val dialcodeMetricIndexType: String = "dcm"
 
   val restrictMetadataObjectTypes: util.List[String] = if (config.hasPath("restrict.metadata.objectTypes")) config.getStringList("restrict.metadata.objectTypes") else new util.ArrayList[String]
   val nestedFields: util.List[String] = if (config.hasPath("nested.fields")) config.getStringList("nested.fields") else new util.ArrayList[String]
-  val definitionBasePath: String = config.getString("schema.base_path")
+  val definitionBasePath: String = if(config.hasPath("schema.base_path")) config.getString("schema.base_path") else "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local"
 
 }
