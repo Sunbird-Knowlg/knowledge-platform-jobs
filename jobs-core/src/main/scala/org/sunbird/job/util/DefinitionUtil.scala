@@ -9,7 +9,7 @@ object DefinitionUtil {
 
   private[this] val logger = LoggerFactory.getLogger(DefinitionUtil.getClass)
   val ttlMS: Long = 600000
-  private val categoryDefinitionCache = Cache.ttl[String, Map[String, AnyRef]](Duration.fromMilliseconds(ttlMS))
+  private var categoryDefinitionCache = Cache.ttl[String, Map[String, AnyRef]](Duration.fromMilliseconds(ttlMS))
 
   def get(objectType: String, version: String, basePath: String): Map[String, AnyRef] = {
     val key = getKey(objectType, version)
@@ -27,7 +27,7 @@ object DefinitionUtil {
 
   private def put(objectType: String, version: String, definitionNode: Map[String, AnyRef]): Unit = {
     val key = getKey(objectType, version)
-    categoryDefinitionCache.putClocked(key, definitionNode)
+    categoryDefinitionCache = categoryDefinitionCache.putClocked(key -> definitionNode)._2
   }
 
   private def getKey(objectType: String, version: String): String = {
