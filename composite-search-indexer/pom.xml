@@ -176,7 +176,7 @@
                 <configuration>
                     <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
                     <junitxml>.</junitxml>
-                    <filereports>post-publish-processor-testsuite.txt</filereports>
+                    <filereports>composite-search-indexer-testsuite.txt</filereports>
                 </configuration>
                 <executions>
                     <execution>
