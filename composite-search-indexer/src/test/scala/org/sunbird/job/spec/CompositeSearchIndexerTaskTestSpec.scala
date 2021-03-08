@@ -32,7 +32,7 @@ class CompositeSearchIndexerTaskTestSpec extends BaseTestSpec {
   val mockKafkaUtil: FlinkKafkaConnector = mock[FlinkKafkaConnector](Mockito.withSettings().serializable())
   val config: Config = ConfigFactory.load("test.conf")
   val jobConfig = new CompositeSearchIndexerConfig(config)
-
+  val definitionUtil = new DefinitionUtil(600000)
   val mockElasticutil = mock[ElasticSearchUtil](Mockito.withSettings().serializable())
 
   override protected def beforeAll(): Unit = {
@@ -54,7 +54,7 @@ class CompositeSearchIndexerTaskTestSpec extends BaseTestSpec {
   }
 
   "getDefinition" should "return the definition for the object type" in {
-    val definition = DefinitionUtil.get("Collection", "1.0", jobConfig.definitionBasePath)
+    val definition = definitionUtil.get("Collection", "1.0", jobConfig.definitionBasePath)
     val schema = definition.getOrElse("schema", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
     val config = definition.getOrElse("config", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
     schema.isEmpty should be(false)
@@ -63,7 +63,7 @@ class CompositeSearchIndexerTaskTestSpec extends BaseTestSpec {
   }
 
   "retrieveRelations" should "return the relation map from the definiiton object" in {
-    val definition = DefinitionUtil.get("Collection", "1.0", jobConfig.definitionBasePath)
+    val definition = definitionUtil.get("Collection", "1.0", jobConfig.definitionBasePath)
     val compositeFunc = new CompositeSearchIndexerFunction(jobConfig)
     val relations = compositeFunc.retrieveRelations(definition)
     relations.isEmpty should be(false)
@@ -72,7 +72,7 @@ class CompositeSearchIndexerTaskTestSpec extends BaseTestSpec {
   }
 
   "retrieveExternalProperties" should "return the list of external properties from the definiiton object" in {
-    val definition = DefinitionUtil.get("Collection", "1.0", jobConfig.definitionBasePath)
+    val definition = definitionUtil.get("Collection", "1.0", jobConfig.definitionBasePath)
     val compositeFunc = new CompositeSearchIndexerFunction(jobConfig)
     val external = compositeFunc.retrieveExternalProperties(definition)
     external.isEmpty should be(false)
@@ -80,14 +80,14 @@ class CompositeSearchIndexerTaskTestSpec extends BaseTestSpec {
   }
 
   "getIndexableProperties" should "return the list of indexable properties from the definiiton object" in {
-    val definition = DefinitionUtil.get("Collection", "1.0", jobConfig.definitionBasePath)
+    val definition = definitionUtil.get("Collection", "1.0", jobConfig.definitionBasePath)
     val compositeFunc = new CompositeSearchIndexerFunction(jobConfig)
     val indexable = compositeFunc.getIndexableProperties(definition)
     indexable.isEmpty should be(true)
   }
 
   "getIndexDocument" should "return the indexable document for the provided object" in {
-    val definition = DefinitionUtil.get("Collection", "1.0", jobConfig.definitionBasePath)
+    val definition = definitionUtil.get("Collection", "1.0", jobConfig.definitionBasePath)
     val compositeFunc = new CompositeSearchIndexerFunction(jobConfig)
     val message = getEvent(EventFixture.DATA_NODE_CREATE, 509674).getMap().asScala.toMap
     val relations = compositeFunc.retrieveRelations(definition)
@@ -102,7 +102,7 @@ class CompositeSearchIndexerTaskTestSpec extends BaseTestSpec {
   }
 
   "getIndexDocument" should "return the indexable document with the added relation for the provided object" in {
-    val definition = DefinitionUtil.get("Collection", "1.0", jobConfig.definitionBasePath)
+    val definition = definitionUtil.get("Collection", "1.0", jobConfig.definitionBasePath)
     val compositeFunc = new CompositeSearchIndexerFunction(jobConfig)
     val message = getEvent(EventFixture.DATA_NODE_CREATE_WITH_RELATION, 509674).getMap().asScala.toMap
     val relations = compositeFunc.retrieveRelations(definition)
@@ -119,7 +119,7 @@ class CompositeSearchIndexerTaskTestSpec extends BaseTestSpec {
     val documentJson = """{"identifier":"do_112276071067320320114","graph_id":"domain","node_id":105631,"collections":["do_1123032073439723521148", "do_1123032073439723521149"],"objectType":"Content","nodeType":"DATA_NODE"}"""
     when(mockElasticutil.getDocumentAsStringById(anyString())).thenReturn(documentJson)
 
-    val definition = DefinitionUtil.get("Collection", "1.0", jobConfig.definitionBasePath)
+    val definition = definitionUtil.get("Collection", "1.0", jobConfig.definitionBasePath)
     val compositeFunc = new CompositeSearchIndexerFunction(jobConfig)
     val message = getEvent(EventFixture.DATA_NODE_UPDATE_WITH_RELATION, 509674).getMap().asScala.toMap
     val relations = compositeFunc.retrieveRelations(definition)
@@ -139,7 +139,7 @@ class CompositeSearchIndexerTaskTestSpec extends BaseTestSpec {
     val documentJson = """{"ownershipType":["createdBy"],"code":"org.sunbird.zf7fcK","credentials":{"enabled":"No"},"subject":["Geography"],"channel":"channel-1","language":["English"],"mimeType":"application/vnd.ekstep.content-collection","idealScreenSize":"normal","createdOn":"2021-02-26T13:36:49.592+0000","objectType":"Collection","primaryCategory":"Digital Textbook","contentDisposition":"inline","additionalCategories":["Textbook"],"lastUpdatedOn":"2021-02-26T13:36:49.592+0000","contentEncoding":"gzip","dialcodeRequired":"No","contentType":"TextBook","trackable":{"enabled":"No","autoBatch":"No"},"identifier":"do_1132247274257203201191","subjectIds":["ncf_subject_geography"],"lastStatusChangedOn":"2021-02-26T13:36:49.592+0000","audience":["Student"],"IL_SYS_NODE_TYPE":"DATA_NODE","os":["All"],"visibility":"Default","consumerId":"7411b6bd-89f3-40ec-98d1-229dc64ce77d","mediaType":"content","osId":"org.ekstep.quiz.app","graph_id":"domain","nodeType":"DATA_NODE","version":2,"versionKey":"1614346609592","idealScreenDensity":"hdpi","license":"CC BY-SA 4.0","framework":"NCF","createdBy":"95e4942d-cbe8-477d-aebd-ad8e6de4bfc8","compatibilityLevel":1,"IL_FUNC_OBJECT_TYPE":"Collection","userConsent":"Yes","name":"Test","IL_UNIQUE_ID":"do_1132247274257203201191","status":"Draft","node_id":509674}"""
     when(mockElasticutil.getDocumentAsStringById(anyString())).thenReturn(documentJson)
 
-    val definition = DefinitionUtil.get("Collection", "1.0", jobConfig.definitionBasePath)
+    val definition = definitionUtil.get("Collection", "1.0", jobConfig.definitionBasePath)
     val compositeFunc = new CompositeSearchIndexerFunction(jobConfig)
     val message = getEvent(EventFixture.DATA_NODE_UPDATE, 509674).getMap().asScala.toMap
     val relations = compositeFunc.retrieveRelations(definition)
@@ -180,7 +180,7 @@ class CompositeSearchIndexerTaskTestSpec extends BaseTestSpec {
     val event = getEvent(EventFixture.DATA_NODE_CREATE, 509674)
     val compositeFunc = new CompositeSearchIndexerFunction(jobConfig)
     val compositeObject = compositeFunc.getCompositeIndexerobject(event)
-    compositeFunc.processESMessage(compositeObject)(mockElasticutil)
+    compositeFunc.processESMessage(compositeObject)(mockElasticutil, definitionUtil)
 
     verify(mockElasticutil, times(1)).addDocumentWithId(anyString(), anyString())
     verify(mockElasticutil, times(0)).getDocumentAsStringById(anyString())
@@ -195,7 +195,7 @@ class CompositeSearchIndexerTaskTestSpec extends BaseTestSpec {
     val event = getEvent(EventFixture.DATA_NODE_UPDATE, 509674)
     val compositeFunc = new CompositeSearchIndexerFunction(jobConfig)
     val compositeObject = compositeFunc.getCompositeIndexerobject(event)
-    compositeFunc.processESMessage(compositeObject)(mockElasticutil)
+    compositeFunc.processESMessage(compositeObject)(mockElasticutil, definitionUtil)
 
     verify(mockElasticutil, times(1)).addDocumentWithId(anyString(), anyString())
     verify(mockElasticutil, times(1)).getDocumentAsStringById(anyString())
@@ -210,7 +210,7 @@ class CompositeSearchIndexerTaskTestSpec extends BaseTestSpec {
     val event = getEvent(EventFixture.DATA_NODE_DELETE, 509674)
     val compositeFunc = new CompositeSearchIndexerFunction(jobConfig)
     val compositeObject = compositeFunc.getCompositeIndexerobject(event)
-    compositeFunc.processESMessage(compositeObject)(mockElasticutil)
+    compositeFunc.processESMessage(compositeObject)(mockElasticutil, definitionUtil)
 
     verify(mockElasticutil, times(1)).getDocumentAsStringById(anyString())
     verify(mockElasticutil, times(1)).deleteDocument(anyString())
@@ -224,7 +224,7 @@ class CompositeSearchIndexerTaskTestSpec extends BaseTestSpec {
     val event = getEvent(EventFixture.DATA_NODE_DELETE, 509674)
     val compositeFunc = new CompositeSearchIndexerFunction(jobConfig)
     val compositeObject = compositeFunc.getCompositeIndexerobject(event)
-    compositeFunc.processESMessage(compositeObject)(mockElasticutil)
+    compositeFunc.processESMessage(compositeObject)(mockElasticutil, definitionUtil)
 
     verify(mockElasticutil, times(1)).getDocumentAsStringById(anyString())
     verify(mockElasticutil, times(0)).deleteDocument(anyString())
@@ -237,7 +237,7 @@ class CompositeSearchIndexerTaskTestSpec extends BaseTestSpec {
     val event = getEvent(EventFixture.DATA_NODE_CREATE_WITH_RELATION, 509674)
     val compositeFunc = new CompositeSearchIndexerFunction(jobConfig)
     val compositeObject = compositeFunc.getCompositeIndexerobject(event)
-    compositeFunc.processESMessage(compositeObject)(mockElasticutil)
+    compositeFunc.processESMessage(compositeObject)(mockElasticutil, definitionUtil)
 
     verify(mockElasticutil, times(1)).addDocumentWithId(anyString(), anyString())
     verify(mockElasticutil, times(0)).getDocumentAsStringById(anyString())

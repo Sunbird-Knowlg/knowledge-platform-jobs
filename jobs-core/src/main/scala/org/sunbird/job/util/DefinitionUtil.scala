@@ -5,10 +5,9 @@ import scala.io.Source
 import com.twitter.storehaus.cache.Cache
 import com.twitter.util.Duration
 
-object DefinitionUtil {
+class DefinitionUtil(ttlMS: Long) {
 
-  private[this] val logger = LoggerFactory.getLogger(DefinitionUtil.getClass)
-  val ttlMS: Long = 600000
+  private[this] val logger = LoggerFactory.getLogger(classOf[DefinitionUtil])
   private var categoryDefinitionCache = Cache.ttl[String, Map[String, AnyRef]](Duration.fromMilliseconds(ttlMS))
 
   def get(objectType: String, version: String, basePath: String): Map[String, AnyRef] = {

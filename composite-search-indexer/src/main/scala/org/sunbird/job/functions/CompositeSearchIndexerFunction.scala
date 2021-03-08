@@ -6,7 +6,7 @@ import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 import org.sunbird.job.task.CompositeSearchIndexerConfig
-import org.sunbird.job.util.ElasticSearchUtil
+import org.sunbird.job.util.{DefinitionUtil, ElasticSearchUtil}
 import org.sunbird.job.compositesearch.domain.Event
 import org.sunbird.job.compositesearch.helpers.{CompositeSearchIndexerHelper, FailedEventHelper}
 import org.sunbird.job.models.CompositeIndexer
@@ -17,9 +17,8 @@ class CompositeSearchIndexerFunction(config: CompositeSearchIndexerConfig,
   extends BaseProcessFunction[Event, String](config)
     with CompositeSearchIndexerHelper with FailedEventHelper {
 
-  val mapper: ObjectMapper = new ObjectMapper
-
   private[this] val logger = LoggerFactory.getLogger(classOf[CompositeSearchIndexerFunction])
+  lazy val definitionUtil: DefinitionUtil = new DefinitionUtil(config.definitionCacheExpiry)
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
@@ -37,7 +36,7 @@ class CompositeSearchIndexerFunction(config: CompositeSearchIndexerConfig,
     metrics.incCounter(config.compositeSearchEventCount)
     try {
       val compositeObject = getCompositeIndexerobject(event)
-      processESMessage(compositeObject)(elasticUtil)
+      processESMessage(compositeObject)(elasticUtil, definitionUtil)
       metrics.incCounter(config.successEventCount)
     } catch {
       case ex: Exception =>

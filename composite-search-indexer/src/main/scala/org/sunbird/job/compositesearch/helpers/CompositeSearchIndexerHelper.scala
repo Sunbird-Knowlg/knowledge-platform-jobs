@@ -99,8 +99,8 @@ trait CompositeSearchIndexerHelper {
     })
   }
 
-  def processESMessage(compositeObject: CompositeIndexer)(esUtil: ElasticSearchUtil): Unit = {
-    val definition = DefinitionUtil.get(compositeObject.objectType, compositeObject.getVersionAsString(), compositeObject.getDefinitionBasePath())
+  def processESMessage(compositeObject: CompositeIndexer)(esUtil: ElasticSearchUtil, definitionUtil: DefinitionUtil): Unit = {
+    val definition = definitionUtil.get(compositeObject.objectType, compositeObject.getVersionAsString(), compositeObject.getDefinitionBasePath())
     if (definition.isEmpty) {
       logger.info("Failed to fetch definition node from cache")
       throw new Exception(s"ERR_DEFINITION_NOT_FOUND: defnition node for graphId: ${compositeObject.graphId} and objectType:  ${compositeObject.objectType} is null due to some issue")
