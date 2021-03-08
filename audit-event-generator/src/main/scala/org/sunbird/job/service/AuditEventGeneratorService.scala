@@ -12,6 +12,7 @@ import org.ekstep.telemetry.TelemetryParams
 import java.util
 import scala.collection.mutable
 import java.text.SimpleDateFormat
+import scala.io.Source
 
 class AuditEventGeneratorService(implicit config: AuditEventGeneratorConfig) {
   private[this] lazy val logger = LoggerFactory.getLogger(classOf[AuditEventGeneratorService])
@@ -29,20 +30,6 @@ class AuditEventGeneratorService(implicit config: AuditEventGeneratorConfig) {
       TelemetryParams.ENV.name -> env
     )
     context
-  }
-
-  /**
-   * @param rDef
-   * @param relDefMap
-   * @param rel
-   */
-  private def getRelationDefinitionKey(rDef: Map[String, AnyRef], relDefMap: mutable.Map[String, String], rel: String): Unit = {
-    if (null != rDef.get("objectTypes") && !rDef.get("objectTypes").isEmpty) {
-      rDef.get("objectTypes").asInstanceOf[List[String]].map(objectType => {
-        val key = rDef.get("relationName") + objectType + rel
-        relDefMap ++= Map(key -> rDef.get("title").asInstanceOf[String])
-      })
-    }
   }
 
   def processEvent(message: util.Map[String, AnyRef], context: ProcessFunction[util.Map[String, AnyRef], String]#Context, metrics: Metrics): Unit = {
@@ -68,8 +55,23 @@ class AuditEventGeneratorService(implicit config: AuditEventGeneratorConfig) {
     }
   }
 
+  // DefinitionUTIL will come start
+  def getSchema(objectType: String, version: String): Map[String, AnyRef] = {
+    val path = s"${config.basePath}/${objectType.toLowerCase}/${version}/"
+    try {
+      JSONUtil.deserialize[Map[String, AnyRef]](Source.fromURL(path + "config.json").mkString)
+    } catch {
+      case e: Exception => {
+        Map[String, AnyRef]()
+      }
+    }
+
+  }
+
+  // DefinitionUTIL will come end
+
   def getDefinition(graphId: String, objectType: String): Map[String, AnyRef] = {
-    Map[String, AnyRef]()
+    getSchema(objectType, "1.0")
   }
 
 
@@ -200,20 +202,31 @@ class AuditEventGeneratorService(implicit config: AuditEventGeneratorConfig) {
   }
 
   /**
+   * @param rDef
+   * @param relDefMap
+   * @param rel
+   */
+  private def getRelationDefinitionKey(rDef: Map[String, AnyRef], relDefMap: mutable.Map[String, String], rel: String, title: String): Unit = {
+    if (null != rDef("objects") && rDef("objects").asInstanceOf[List[String]].nonEmpty) {
+      rDef("objects").asInstanceOf[List[String]].map(objectType => {
+        val key = rDef("type") + objectType + rel
+        relDefMap ++= Map(key -> title)
+      })
+    }
+  }
+
+  /**
    * @param definition
    * @param inRelations
    * @param outRelations
    */
   private def getRelationDefinitionMaps(definition: Map[String, AnyRef], inRelations: mutable.Map[String, String], outRelations: mutable.Map[String, String]): Unit = {
-    if (null != definition) {
-      if (null != definition.get("inRelations") && !definition.get("inRelations").isEmpty) {
-        for (rDef <- definition.get("inRelations")) {
-          getRelationDefinitionKey(rDef.asInstanceOf[Map[String, AnyRef]], inRelations, "in")
-        }
-      }
-      if (null != definition.get("outRelations") && !definition.get("outRelations").isEmpty) {
-        for (rDef <- definition.get("outRelations")) {
-          getRelationDefinitionKey(rDef.asInstanceOf[Map[String, AnyRef]], outRelations, "out")
+    if (null != definition && definition.getOrElse("relations", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]].nonEmpty) {
+      for ((title, relation) <- definition.getOrElse("relations", Map[String, AnyRef]()).asInstanceOf[Map[String, Map[String, AnyRef]]]) {
+        if (relation("direction").asInstanceOf[String] == "in") {
+          getRelationDefinitionKey(relation, inRelations, "in", title)
+        } else if(relation("direction").asInstanceOf[String] == "out") {
+          getRelationDefinitionKey(relation, outRelations, "out", title)
         }
       }
     }
