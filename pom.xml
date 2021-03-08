@@ -27,6 +27,7 @@
 		<module>video-stream-generator</module>
 <!--        <module>collection-complete-post-processor</module>-->
         <module>publish-pipeline</module>
+		<module>audit-event-generator</module>
     </modules>
 
 	<properties>
