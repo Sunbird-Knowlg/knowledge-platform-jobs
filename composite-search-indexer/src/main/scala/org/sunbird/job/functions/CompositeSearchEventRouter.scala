@@ -34,7 +34,10 @@ class CompositeSearchEventRouter(config: CompositeSearchIndexerConfig)
         case "SET" | "DATA_NODE" => context.output(config.compositveSearchDataOutTag, event)
         case "EXTERNAL" => context.output(config.dialCodeExternalOutTag, event)
         case "DIALCODE_METRICS" => context.output(config.dialCodeMetricOutTag, event)
-        case _ => logger.info(s"UNKNOWN EVENT NODETYPE.")
+        case _ => {
+          logger.info(s"UNKNOWN EVENT NODETYPE.")
+          metrics.incCounter(config.skippedEventCount)
+        }
       }
     } else {
       metrics.incCounter(config.skippedEventCount)

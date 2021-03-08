@@ -16,7 +16,7 @@ class DefinitionUtil(ttlMS: Long) {
     if (categoryDefinition == null) {
       logger.info(s"Getting Definition form Cloud for ObjectType: ${objectType} and version: ${version}.")
       val searchDefinition = getDefinition(basePath, objectType, version)
-      put(objectType, version, searchDefinition)
+      if (!searchDefinition.isEmpty) put(objectType, version, searchDefinition)
       searchDefinition
     } else {
       logger.info("Found definition node in Cache.")
@@ -34,10 +34,14 @@ class DefinitionUtil(ttlMS: Long) {
   }
 
   private def getDefinition(basePath: String, objectType: String, version: String): Map[String, AnyRef] = {
-    val path = s"${basePath}/${objectType.toLowerCase}/${version}/"
-    val schemaMap: Map[String, AnyRef] = ScalaJsonUtil.deserialize[Map[String, AnyRef]](getFileToString(path, "schema.json"))
-    val configMap: Map[String, AnyRef] = ScalaJsonUtil.deserialize[Map[String, AnyRef]](getFileToString(path, "config.json"))
-    Map("schema" -> schemaMap, "config" -> configMap)
+    try {
+      val path = s"${basePath}/${objectType.toLowerCase}/${version}/"
+      val schemaMap: Map[String, AnyRef] = ScalaJsonUtil.deserialize[Map[String, AnyRef]](getFileToString(path, "schema.json"))
+      val configMap: Map[String, AnyRef] = ScalaJsonUtil.deserialize[Map[String, AnyRef]](getFileToString(path, "config.json"))
+      Map("schema" -> schemaMap, "config" -> configMap)
+    } catch {
+      case ex: Exception => Map()
+    }
   }
 
   private def getFileToString(basePath: String, fileName: String): String = {
