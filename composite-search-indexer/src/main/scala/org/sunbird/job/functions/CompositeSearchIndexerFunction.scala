@@ -37,11 +37,11 @@ class CompositeSearchIndexerFunction(config: CompositeSearchIndexerConfig,
     try {
       val compositeObject = getCompositeIndexerobject(event)
       processESMessage(compositeObject)(elasticUtil, definitionUtil)
-      metrics.incCounter(config.successEventCount)
+      metrics.incCounter(config.successCompositeSearchEventCount)
     } catch {
       case ex: Exception =>
         logger.error("Error while processing message.", ex)
-        metrics.incCounter(config.failedEventCount)
+        metrics.incCounter(config.failedCompositeSearchEventCount)
         val failedEvent = getFailedEvent(event, ex)
         context.output(config.failedEventOutTag, failedEvent)
         throw ex
@@ -57,7 +57,7 @@ class CompositeSearchIndexerFunction(config: CompositeSearchIndexerConfig,
   }
 
   override def metricsList(): List[String] = {
-    List(config.successEventCount, config.failedEventCount, config.compositeSearchEventCount)
+    List(config.successCompositeSearchEventCount, config.failedCompositeSearchEventCount, config.compositeSearchEventCount)
   }
 
 }

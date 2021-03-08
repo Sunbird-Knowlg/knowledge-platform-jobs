@@ -7,13 +7,13 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.util.{FlinkUtil, HttpUtil}
+import org.sunbird.job.util.FlinkUtil
 import com.typesafe.config.ConfigFactory
 import org.apache.flink.api.java.utils.ParameterTool
 import org.sunbird.job.compositesearch.domain.Event
 import org.sunbird.job.functions.{CompositeSearchEventRouter, CompositeSearchIndexerFunction, DialCodeExternalIndexerFunction, DialCodeMetricIndexerFunction}
 
-class CompositeSearchIndexerStreamTask(config: CompositeSearchIndexerConfig, kafkaConnector: FlinkKafkaConnector, httpUtil: HttpUtil) {
+class CompositeSearchIndexerStreamTask(config: CompositeSearchIndexerConfig, kafkaConnector: FlinkKafkaConnector) {
 
   def process(): Unit = {
     implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
@@ -54,8 +54,7 @@ object CompositeSearchIndexerStreamTask {
     }.getOrElse(ConfigFactory.load("composite-search-indexer.conf").withFallback(ConfigFactory.systemEnvironment()))
     val searchIndexerConfig = new CompositeSearchIndexerConfig(config)
     val kafkaUtil = new FlinkKafkaConnector(searchIndexerConfig)
-    val httpUtil = new HttpUtil()
-    val task = new CompositeSearchIndexerStreamTask(searchIndexerConfig, kafkaUtil, httpUtil)
+    val task = new CompositeSearchIndexerStreamTask(searchIndexerConfig, kafkaUtil)
     task.process()
   }
 

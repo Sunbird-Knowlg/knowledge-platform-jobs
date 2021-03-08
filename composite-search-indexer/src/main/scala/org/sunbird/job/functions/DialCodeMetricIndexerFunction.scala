@@ -37,11 +37,11 @@ class DialCodeMetricIndexerFunction(config: CompositeSearchIndexerConfig,
     try {
       val uniqueId = event.readOrDefault("nodeUniqueId", "")
       upsertDialcodeMetricDocument(uniqueId, event.getMap().asScala.toMap)(elasticUtil)
-      metrics.incCounter(config.successEventCount)
+      metrics.incCounter(config.successDialcodeMetricEventCount)
     } catch {
       case ex: Exception =>
         logger.error("Error while processing message.", ex)
-        metrics.incCounter(config.failedEventCount)
+        metrics.incCounter(config.failedDialcodeMetricEventCount)
         val failedEvent = getFailedEvent(event, ex)
         context.output(config.failedEventOutTag, failedEvent)
         throw ex
@@ -49,7 +49,7 @@ class DialCodeMetricIndexerFunction(config: CompositeSearchIndexerConfig,
   }
 
   override def metricsList(): List[String] = {
-    List(config.successEventCount, config.failedEventCount, config.dialcodeMetricEventCount)
+    List(config.successDialcodeMetricEventCount, config.failedDialcodeMetricEventCount, config.dialcodeMetricEventCount)
   }
 
 }

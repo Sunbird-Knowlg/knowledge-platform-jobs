@@ -34,13 +34,16 @@ class CompositeSearchIndexerConfig(override val config: Config) extends BaseJobC
 
   // Metric List
   val totalEventsCount = "total-events-count"
-  val successEventCount = "success-events-count"
-  val failedEventCount = "failed-events-count"
   val skippedEventCount = "skipped-event-count"
-  val definitionUpdateEventCount = "definition-update-event-count"
   val compositeSearchEventCount = "composite-search-event-count"
+  val successCompositeSearchEventCount = "composite-search-event-success-count"
+  val failedCompositeSearchEventCount = "composite-search-event-failed-count"
   val dialcodeMetricEventCount = "dialcode-metric-event-count"
+  val successDialcodeMetricEventCount = "dialcode-metric-event-success-count"
+  val failedDialcodeMetricEventCount = "dialcode-metric-event-failed-count"
   val dialcodeExternalEventCount = "dialcode-external-event-count"
+  val successDialcodeExternalEventCount = "dialocde-external-event-success-count"
+  val failedDialcodeExternalEventCount = "dialocde-external-event-failed-count"
 
   // Tags
   val compositveSearchDataOutTag: OutputTag[Event] = OutputTag[Event]("composite-search-data")

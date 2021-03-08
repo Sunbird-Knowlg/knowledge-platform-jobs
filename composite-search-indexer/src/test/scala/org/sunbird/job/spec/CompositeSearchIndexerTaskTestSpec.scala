@@ -7,17 +7,21 @@ import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
+import org.apache.flink.streaming.api.functions.sink.SinkFunction
+import org.apache.flink.streaming.api.functions.source.SourceFunction
 import org.apache.flink.test.util.MiniClusterWithClientResource
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.Mockito
 import org.mockito.Mockito.{doNothing, times, verify, when}
 import org.sunbird.job.compositesearch.domain.Event
 import org.sunbird.job.connector.FlinkKafkaConnector
+import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext
 import org.sunbird.job.fixture.EventFixture
 import org.sunbird.job.functions.{CompositeSearchIndexerFunction, DialCodeExternalIndexerFunction, DialCodeMetricIndexerFunction}
-import org.sunbird.job.task.CompositeSearchIndexerConfig
+import org.sunbird.job.task.{CompositeSearchIndexerConfig, CompositeSearchIndexerStreamTask}
 import org.sunbird.job.util.{DefinitionUtil, ElasticSearchUtil, ScalaJsonUtil}
-import org.sunbird.spec.BaseTestSpec
+import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
+import pl.allegro.tech.embeddedelasticsearch.EmbeddedElastic
 
 class CompositeSearchIndexerTaskTestSpec extends BaseTestSpec {
 
@@ -34,14 +38,24 @@ class CompositeSearchIndexerTaskTestSpec extends BaseTestSpec {
   val jobConfig = new CompositeSearchIndexerConfig(config)
   val definitionUtil = new DefinitionUtil(600000)
   val mockElasticutil = mock[ElasticSearchUtil](Mockito.withSettings().serializable())
+  var embeddedElastic: EmbeddedElastic = _
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
+
+    embeddedElastic = EmbeddedElastic.builder()
+      .withElasticVersion("6.2.4")
+      //    .withSetting("TRANSPORT_TCP_PORT", )
+      //    .withSetting(CLUSTER_NAME, CLUSTER_NAME_VALUE)
+      .withEsJavaOpts("-Xms128m -Xmx1024m")
+      .build()
+      .start()
     flinkCluster.before()
   }
 
   override protected def afterAll(): Unit = {
     super.afterAll()
+    embeddedElastic.stop()
     flinkCluster.after()
   }
 
@@ -378,6 +392,54 @@ class CompositeSearchIndexerTaskTestSpec extends BaseTestSpec {
     event.index should be(false)
   }
 
+  "Composite Search Indexer" should " sync the Data Node " in {
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new CompositeSearchEventSource(List[String](EventFixture.DATA_NODE_CREATE)))
+    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
+
+    new CompositeSearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
+
+    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.compositeSearchIndex, jobConfig.compositeSearchIndexType)
+    val data = elasticUtil.getDocumentAsStringById("do_1132247274257203201191")
+    data.isEmpty should be(false)
+    data.contains("do_1132247274257203201191") should be(true)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(1)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.successCompositeSearchEventCount}").getValue() should be(1)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.compositeSearchEventCount}").getValue() should be(1)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.failedCompositeSearchEventCount}").getValue() should be(0)
+  }
+
+  "Composite Search Indexer" should " update the Data Node " in {
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new CompositeSearchEventSource(List[String](EventFixture.DATA_NODE_UPDATE)))
+    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
+
+    new CompositeSearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
+
+    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.compositeSearchIndex, jobConfig.compositeSearchIndexType)
+    val data = elasticUtil.getDocumentAsStringById("do_1132247274257203201191")
+    data.isEmpty should be(false)
+    data.contains("do_1132247274257203201191") should be(true)
+    data.contains("updated description") should be(true)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(1)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.successCompositeSearchEventCount}").getValue() should be(1)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.compositeSearchEventCount}").getValue() should be(1)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.failedCompositeSearchEventCount}").getValue() should be(0)
+  }
+
+  "Composite Search Indexer" should " create and delete the Data Node " in {
+    embeddedElastic.deleteIndices()
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new CompositeSearchEventSource(List[String](EventFixture.DATA_NODE_CREATE, EventFixture.DATA_NODE_DELETE)))
+    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
+
+    new CompositeSearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
+
+    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.compositeSearchIndex, jobConfig.compositeSearchIndexType)
+    val data = elasticUtil.getDocumentAsStringById("do_1132247274257203201191")
+    data should be(null)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(2)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.successCompositeSearchEventCount}").getValue() should be(2)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.compositeSearchEventCount}").getValue() should be(2)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.failedCompositeSearchEventCount}").getValue() should be(0)
+  }
 
   def getEvent(event: String, nodeGraphId: Int): Event = {
     val eventMap = ScalaJsonUtil.deserialize[util.Map[String, Any]](event)
@@ -385,4 +447,34 @@ class CompositeSearchIndexerTaskTestSpec extends BaseTestSpec {
     new Event(eventMap)
   }
 
+}
+
+private class CompositeSearchEventSource(events: List[String]) extends SourceFunction[Event] {
+
+  override def run(ctx: SourceContext[Event]) {
+  events.foreach(event => {
+    ctx.collect(getEvent(event, 509674))
+  })
+  }
+
+  override def cancel() = {}
+
+  def getEvent(event: String, nodeGraphId: Int): Event = {
+    val eventMap = ScalaJsonUtil.deserialize[util.Map[String, Any]](event)
+    eventMap.put("nodeGraphId", nodeGraphId)
+    new Event(eventMap)
+  }
+}
+
+class CompositeSearchFailedEventSink extends SinkFunction[String] {
+
+  override def invoke(value: String): Unit = {
+    synchronized {
+      CompositeSearchFailedEventSink.values.add(value)
+    }
+  }
+}
+
+object CompositeSearchFailedEventSink {
+  val values: util.List[String] = new util.ArrayList()
 }

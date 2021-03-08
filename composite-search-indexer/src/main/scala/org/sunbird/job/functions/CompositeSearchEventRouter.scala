@@ -43,6 +43,6 @@ class CompositeSearchEventRouter(config: CompositeSearchIndexerConfig)
   }
 
   override def metricsList(): List[String] = {
-    List(config.totalEventsCount, config.successEventCount, config.skippedEventCount, config.failedEventCount)
+    List(config.totalEventsCount, config.skippedEventCount)
   }
 }

@@ -37,11 +37,11 @@ class DialCodeExternalIndexerFunction(config: CompositeSearchIndexerConfig,
     try {
       val uniqueId = event.readOrDefault("nodeUniqueId", "")
       upsertExternalDocument(uniqueId, event.getMap().asScala.toMap)(elasticUtil)
-      metrics.incCounter(config.successEventCount)
+      metrics.incCounter(config.successDialcodeExternalEventCount)
     } catch {
       case ex: Exception =>
         logger.error("Error while processing message.", ex)
-        metrics.incCounter(config.failedEventCount)
+        metrics.incCounter(config.failedDialcodeExternalEventCount)
         val failedEvent = getFailedEvent(event, ex)
         context.output(config.failedEventOutTag, failedEvent)
         throw ex
@@ -49,6 +49,6 @@ class DialCodeExternalIndexerFunction(config: CompositeSearchIndexerConfig,
   }
 
   override def metricsList(): List[String] = {
-    List(config.successEventCount, config.failedEventCount, config.dialcodeExternalEventCount)
+    List(config.successDialcodeExternalEventCount, config.failedDialcodeExternalEventCount, config.dialcodeExternalEventCount)
   }
 }
