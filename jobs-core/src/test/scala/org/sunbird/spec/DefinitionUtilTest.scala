@@ -8,7 +8,7 @@ import org.sunbird.job.util.DefinitionUtil
 class DefinitionUtilTest extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
 
   val config: Config = ConfigFactory.load("test.conf")
-  val definitionUtil = new DefinitionUtil(600000)
+  val definitionUtil = new DefinitionUtil(600)
 
   "getDefinition" should "return the definition for the objectType and version specified " in {
     val definition = definitionUtil.get("collection", "1.0", "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local")

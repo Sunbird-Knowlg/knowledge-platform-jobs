@@ -5,7 +5,7 @@ import org.sunbird.job.domain.reader.JobRequest
 
 class Event(eventMap: java.util.Map[String, Any]) extends JobRequest(eventMap) {
 
-  val jobName = "CompositeSearchIndexer"
+  val jobName = "SearchIndexer"
 
   def index: Boolean = {
     val index = eventMap.get("index")

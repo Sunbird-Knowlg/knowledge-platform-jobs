@@ -23,7 +23,7 @@ import org.sunbird.job.util.{DefinitionUtil, ElasticSearchUtil, ScalaJsonUtil}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 import pl.allegro.tech.embeddedelasticsearch.EmbeddedElastic
 
-class CompositeSearchIndexerTaskTestSpec extends BaseTestSpec {
+class SearchIndexerTaskTestSpec extends BaseTestSpec {
 
   implicit val mapTypeInfo: TypeInformation[java.util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[java.util.Map[String, AnyRef]])
   implicit val strTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
@@ -36,7 +36,7 @@ class CompositeSearchIndexerTaskTestSpec extends BaseTestSpec {
   val mockKafkaUtil: FlinkKafkaConnector = mock[FlinkKafkaConnector](Mockito.withSettings().serializable())
   val config: Config = ConfigFactory.load("test.conf")
   val jobConfig = new SearchIndexerConfig(config)
-  val definitionUtil = new DefinitionUtil(600000)
+  val definitionUtil = new DefinitionUtil(600)
   val mockElasticUtil = mock[ElasticSearchUtil](Mockito.withSettings().serializable())
   var embeddedElastic: EmbeddedElastic = _
 

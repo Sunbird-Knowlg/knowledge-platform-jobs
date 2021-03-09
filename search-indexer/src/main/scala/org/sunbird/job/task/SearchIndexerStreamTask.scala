@@ -22,11 +22,11 @@ class SearchIndexerStreamTask(config: SearchIndexerConfig, kafkaConnector: Flink
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
 
     val source = kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)
-    val processStreamTask = env.addSource(source).name(config.compositeSearchIndexerConsumer)
-      .uid(config.compositeSearchIndexerConsumer).setParallelism(config.kafkaConsumerParallelism)
+    val processStreamTask = env.addSource(source).name(config.searchIndexerConsumer)
+      .uid(config.searchIndexerConsumer).setParallelism(config.kafkaConsumerParallelism)
       .rebalance
       .process(new TransactionEventRouter(config))
-      .name("composite-search-router").uid("composite-search-router")
+      .name(config.transactionEventRouter).uid(config.transactionEventRouter)
       .setParallelism(config.eventRouterParallelism)
 
     val compositeSearchStream = processStreamTask.getSideOutput(config.compositeSearchDataOutTag).process(new CompositeSearchIndexerFunction(config))
@@ -51,7 +51,7 @@ object SearchIndexerStreamTask {
     val configFilePath = Option(ParameterTool.fromArgs(args).get("config.file.path"))
     val config = configFilePath.map {
       path => ConfigFactory.parseFile(new File(path)).resolve()
-    }.getOrElse(ConfigFactory.load("composite-search-indexer.conf").withFallback(ConfigFactory.systemEnvironment()))
+    }.getOrElse(ConfigFactory.load("search-indexer.conf").withFallback(ConfigFactory.systemEnvironment()))
     val searchIndexerConfig = new SearchIndexerConfig(config)
     val kafkaUtil = new FlinkKafkaConnector(searchIndexerConfig)
     val task = new SearchIndexerStreamTask(searchIndexerConfig, kafkaUtil)

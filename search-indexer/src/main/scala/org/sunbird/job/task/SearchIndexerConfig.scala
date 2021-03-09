@@ -10,7 +10,7 @@ import org.sunbird.job.BaseJobConfig
 import org.sunbird.job.compositesearch.domain.Event
 import scala.collection.JavaConverters._
 
-class SearchIndexerConfig(override val config: Config) extends BaseJobConfig(config, "composite-search-indexer") {
+class SearchIndexerConfig(override val config: Config) extends BaseJobConfig(config, "search-indexer") {
 
   implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
   implicit val eventTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
@@ -29,8 +29,8 @@ class SearchIndexerConfig(override val config: Config) extends BaseJobConfig(con
   val dialCodeMetricIndexerParallelism: Int = config.getInt("task.dialcode_metric.parallelism")
 
   // Consumers
-  val compositeSearchIndexerConsumer = "composite-search-indexer-consumer"
-  val compositeSearchIndexerRouter = "composite-search-indexer"
+  val searchIndexerConsumer = "search-indexer-consumer"
+  val transactionEventRouter = "transaction-event-router"
 
   // Metric List
   val totalEventsCount = "total-events-count"
@@ -67,5 +67,5 @@ class SearchIndexerConfig(override val config: Config) extends BaseJobConfig(con
   val nestedFields: util.List[String] = if (config.hasPath("nested.fields")) config.getStringList("nested.fields") else new util.ArrayList[String]
   val definitionBasePath: String = if (config.hasPath("schema.base_path")) config.getString("schema.base_path") else "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local"
   val schemaSupportVersionMap = if (config.hasPath("schema.supported_version")) config.getAnyRef("schema.supported_version").asInstanceOf[util.Map[String, String]].asScala.toMap else Map[String, String]()
-  val definitionCacheExpiry: Long = if (config.hasPath("schema.definition_cache.expiry")) config.getLong("schema.definition_cache.expiry") else 600000.toLong
+  val definitionCacheExpiry: Int = if (config.hasPath("schema.definition_cache.expiry")) config.getInt("schema.definition_cache.expiry") else 14400
 }
