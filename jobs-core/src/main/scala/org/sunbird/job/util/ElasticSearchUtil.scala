@@ -68,12 +68,12 @@ class ElasticSearchUtil(connectionInfo: String, indexName: String, indexType: St
     response
   }
 
-  def addDocumentWithId(documentId: String, document: String): Unit = {
+  def addDocumentWithId(identifier: String, document: String): Unit = {
     try {
       // TODO
       // Replace mapper with JSONUtil once the JSONUtil is fixed
       val doc = mapper.readValue(document, new TypeReference[util.Map[String, AnyRef]]() {})
-      val response = esClient.index(new IndexRequest(indexName, indexType, documentId).source(doc))
+      val response = esClient.index(new IndexRequest(indexName, indexType, identifier).source(doc))
       logger.info(s"Added ${response.getId} to index ${response.getIndex}")
     } catch {
       case e: IOException =>
@@ -81,13 +81,13 @@ class ElasticSearchUtil(connectionInfo: String, indexName: String, indexType: St
     }
   }
 
-  def updateDocument(document: String, documentId: String): Unit = {
+  def updateDocument(identifier: String, document: String): Unit = {
     try {
       // TODO
       // Replace mapper with JSONUtil once the JSONUtil is fixed
       val doc = mapper.readValue(document, new TypeReference[util.Map[String, AnyRef]]() {})
-      val indexRequest = new IndexRequest(indexName, indexType, documentId).source(doc)
-      val request = new UpdateRequest().index(indexName).`type`(indexType).id(documentId).doc(doc).upsert(indexRequest)
+      val indexRequest = new IndexRequest(indexName, indexType, identifier).source(doc)
+      val request = new UpdateRequest().index(indexName).`type`(indexType).id(identifier).doc(doc).upsert(indexRequest)
       val response = esClient.update(request)
       logger.info(s"Updated ${response.getId} to index ${response.getIndex}")
     } catch {
@@ -96,13 +96,13 @@ class ElasticSearchUtil(connectionInfo: String, indexName: String, indexType: St
     }
   }
 
-  def deleteDocument(documentId: String): Unit = {
-    val response = esClient.delete(new DeleteRequest(indexName, indexType, documentId))
+  def deleteDocument(identifier: String): Unit = {
+    val response = esClient.delete(new DeleteRequest(indexName, indexType, identifier))
     logger.info(s"Deleted ${response.getId} to index ${response.getIndex}")
   }
 
-  def getDocumentAsStringById(documentId: String): String = {
-    val response = esClient.get(new GetRequest(indexName, indexType, documentId))
+  def getDocumentAsStringById(identifier: String): String = {
+    val response = esClient.get(new GetRequest(indexName, indexType, identifier))
     response.getSourceAsString
   }
 
@@ -113,8 +113,4 @@ class ElasticSearchUtil(connectionInfo: String, indexName: String, indexType: St
     }
   }
 
-}
-
-trait IESResultTransformer {
-  def getTransformedObject(obj: Any): Any
 }

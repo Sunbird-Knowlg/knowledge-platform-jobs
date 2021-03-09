@@ -12,21 +12,19 @@ class DefinitionUtil(ttlMS: Long) {
 
   def get(objectType: String, version: String, basePath: String): Map[String, AnyRef] = {
     val key = getKey(objectType, version)
-    val categoryDefinition = categoryDefinitionCache.getNonExpired(key).getOrElse(null)
-    if (categoryDefinition == null) {
-      logger.info(s"Getting Definition form Cloud for ObjectType: ${objectType} and version: ${version}.")
-      val searchDefinition = getDefinition(basePath, objectType, version)
-      if (!searchDefinition.isEmpty) put(objectType, version, searchDefinition)
-      searchDefinition
+    val cacheDefinition = categoryDefinitionCache.getNonExpired(key).getOrElse(null)
+    if (cacheDefinition == null) {
+      val definition = getDefinition(basePath, objectType, version)
+      if (definition.nonEmpty) put(objectType, version, definition)
+      definition
     } else {
-      logger.info("Found definition node in Cache.")
-      categoryDefinition
+      cacheDefinition
     }
   }
 
-  private def put(objectType: String, version: String, definitionNode: Map[String, AnyRef]): Unit = {
+  private def put(objectType: String, version: String, definition: Map[String, AnyRef]): Unit = {
     val key = getKey(objectType, version)
-    categoryDefinitionCache = categoryDefinitionCache.putClocked(key -> definitionNode)._2
+    categoryDefinitionCache = categoryDefinitionCache.putClocked(key -> definition)._2
   }
 
   private def getKey(objectType: String, version: String): String = {
@@ -34,13 +32,16 @@ class DefinitionUtil(ttlMS: Long) {
   }
 
   private def getDefinition(basePath: String, objectType: String, version: String): Map[String, AnyRef] = {
+    val path = s"${basePath}/${objectType.toLowerCase}/${version}/"
     try {
-      val path = s"${basePath}/${objectType.toLowerCase}/${version}/"
       val schemaMap: Map[String, AnyRef] = ScalaJsonUtil.deserialize[Map[String, AnyRef]](getFileToString(path, "schema.json"))
       val configMap: Map[String, AnyRef] = ScalaJsonUtil.deserialize[Map[String, AnyRef]](getFileToString(path, "config.json"))
       Map("schema" -> schemaMap, "config" -> configMap)
     } catch {
-      case ex: Exception => Map()
+      case ex: Exception =>  {
+        logger.info(s"Error fetching definition from path : ${path}.")
+        Map()
+      }
     }
   }
 
