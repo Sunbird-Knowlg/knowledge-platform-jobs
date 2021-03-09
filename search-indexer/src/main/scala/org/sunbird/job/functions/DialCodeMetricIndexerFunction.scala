@@ -32,7 +32,6 @@ class DialCodeMetricIndexerFunction(config: SearchIndexerConfig,
   }
 
   override def processElement(event: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
-    logger.info(s"Indexing event for DialMetric into ES")
     metrics.incCounter(config.dialcodeMetricEventCount)
     try {
       val uniqueId = event.readOrDefault("nodeUniqueId", "")
