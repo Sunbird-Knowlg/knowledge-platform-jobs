@@ -24,9 +24,9 @@ class SearchIndexerConfig(override val config: Config) extends BaseJobConfig(con
 
   // Parallelism
   val eventRouterParallelism: Int = config.getInt("task.router.parallelism")
-  val compositeSearchIndexerParallelism: Int = config.getInt("task.composite_search.parallelism")
-  val dialCodeExternalIndexerParallelism: Int = config.getInt("task.dialcode_external.parallelism")
-  val dialCodeMetricIndexerParallelism: Int = config.getInt("task.dialcode_metric.parallelism")
+  val compositeSearchIndexerParallelism: Int = config.getInt("task.compositeSearch.parallelism")
+  val dialCodeExternalIndexerParallelism: Int = config.getInt("task.dialcodeIndexer.parallelism")
+  val dialCodeMetricIndexerParallelism: Int = config.getInt("task.dialcodemetricsIndexer.parallelism")
 
   // Consumers
   val searchIndexerConsumer = "search-indexer-consumer"
