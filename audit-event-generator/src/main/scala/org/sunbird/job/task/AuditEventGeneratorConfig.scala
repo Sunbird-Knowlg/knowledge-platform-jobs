@@ -19,6 +19,7 @@ class AuditEventGeneratorConfig(override val config: Config) extends BaseJobConf
   val kafkaOutputTopic: String = config.getString("kafka.output.topic")
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
   override val parallelism: Int = config.getInt("task.parallelism")
+  val kafkaProducerParallelism: Int = config.getInt("task.producer.parallelism")
 
   val auditOutputTag: OutputTag[String] = OutputTag[String]("audit-event-tag")
 
@@ -39,7 +40,7 @@ class AuditEventGeneratorConfig(override val config: Config) extends BaseJobConf
   val graphRoutePath = config.getString("neo4j.routePath")
   val graphName = config.getString("neo4j.graph")
 
-  val basePath = config.getString("base_path")
+  val basePath = config.getString("schema.basePath")
 
   // Redis Configurations
   val relationCacheStore: Int = config.getInt("redis.database.relationCache.id")

@@ -9,16 +9,15 @@ class Event(eventMap: java.util.Map[String, Any]) extends JobRequest(eventMap) {
 
   private val jobName = "AuditEventGenerator"
 
-  def action: String = readOrDefault[String]("edata.action", "")
+  def operationType: String = readOrDefault("operationType", "")
 
-  def eid: String = readOrDefault[String]("eid", "")
+  def id: String = readOrDefault("nodeUniqueId", "")
 
-  def identifier: String = readOrDefault[String]("edata.identifier", "")
+  def nodeType: String = readOrDefault[String]("nodeType", "")
 
-  def eData: Map[String, AnyRef] = readOrDefault("edata", new util.HashMap[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
 
   def isValid: Boolean = {
-    StringUtils.isNotBlank(mid())
+    StringUtils.isNotBlank(nodeType)
   }
 
 }

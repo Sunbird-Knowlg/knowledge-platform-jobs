@@ -5,7 +5,7 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
-import org.sunbird.job.util.Neo4JUtil
+import org.sunbird.job.domain.Event
 import org.sunbird.job.service.AuditEventGeneratorService
 import org.sunbird.job.task.AuditEventGeneratorConfig
 import org.sunbird.job.{BaseProcessFunction, Metrics}
@@ -13,7 +13,7 @@ import org.sunbird.job.{BaseProcessFunction, Metrics}
 class AuditEventGenerator(config: AuditEventGeneratorConfig)
                           (implicit mapTypeInfo: TypeInformation[util.Map[String, AnyRef]],
                            stringTypeInfo: TypeInformation[String])
-                          extends BaseProcessFunction[util.Map[String, AnyRef], String](config) {
+                          extends BaseProcessFunction[Event, String](config) {
 
     implicit lazy val auditEventConfig: AuditEventGeneratorConfig = config
     private[this] lazy val logger = LoggerFactory.getLogger(classOf[AuditEventGenerator])
@@ -24,7 +24,6 @@ class AuditEventGenerator(config: AuditEventGeneratorConfig)
     }
 
     override def open(parameters: Configuration): Unit = {
-//        val neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName)
         auditEventService = new AuditEventGeneratorService()
         super.open(parameters)
     }
@@ -33,12 +32,12 @@ class AuditEventGenerator(config: AuditEventGeneratorConfig)
         super.close()
     }
 
-    override def processElement(event: util.Map[String, AnyRef],
-                                context: ProcessFunction[util.Map[String, AnyRef], String]#Context,
+    override def processElement(event: Event,
+                                context: ProcessFunction[Event, String]#Context,
                                 metrics: Metrics): Unit = {
         metrics.incCounter(config.totalEventsCount)
-        if(!event.containsKey("edata")) {
-            logger.info("valid event::"+event.get("mid"))
+        if(event.isValid) {
+            logger.info("valid event::"+event.mid)
             auditEventService.processEvent(event, context, metrics)
         } else metrics.incCounter(config.skippedEventCount)
     }

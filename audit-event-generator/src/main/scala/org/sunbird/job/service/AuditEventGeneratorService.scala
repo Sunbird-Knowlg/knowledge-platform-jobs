@@ -8,6 +8,7 @@ import org.sunbird.job.task.AuditEventGeneratorConfig
 import org.sunbird.job.util.JSONUtil
 import org.ekstep.telemetry.TelemetryGenerator
 import org.ekstep.telemetry.TelemetryParams
+import org.sunbird.job.domain.Event
 
 import java.util
 import scala.collection.mutable
@@ -32,11 +33,11 @@ class AuditEventGeneratorService(implicit config: AuditEventGeneratorConfig) {
     context
   }
 
-  def processEvent(message: util.Map[String, AnyRef], context: ProcessFunction[util.Map[String, AnyRef], String]#Context, metrics: Metrics): Unit = {
+  def processEvent(message: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
     logger.info("AUDIT Event::" + JSONUtil.serialize(message))
-    logger.info("Input Message Received for : [" + message.get("nodeUniqueId") + "], Txn Event createdOn:" + message.get("createdOn") + ", Operation Type:" + message.get("operationType"))
+    logger.info("Input Message Received for : [" + message.read("nodeUniqueId") + "], Txn Event createdOn:" + message.read("createdOn") + ", Operation Type:" + message.read("operationType"))
     try {
-      val auditEventStr = getAuditMessage(JSONUtil.deserialize[Map[String, AnyRef]](JSONUtil.serialize(message)))
+      val auditEventStr = getAuditMessage(message)
       val auditMap = JSONUtil.deserialize[Map[String, AnyRef]](auditEventStr)
       val objectType = auditMap.getOrElse("object", null).asInstanceOf[Map[String, AnyRef]].getOrElse("type", null).asInstanceOf[String]
       if (null != objectType) {
@@ -75,23 +76,23 @@ class AuditEventGeneratorService(implicit config: AuditEventGeneratorConfig) {
   }
 
 
-  def getAuditMessage(message: Map[String, AnyRef]): String = {
+  def getAuditMessage(message: Event): String = {
     var auditMap:String = null
-    var objectId = message.getOrElse("nodeUniqueId", null).asInstanceOf[String]
-    var objectType = message.getOrElse("objectType", null).asInstanceOf[String]
+    var objectId = message.readOrDefault("nodeUniqueId", null).asInstanceOf[String]
+    var objectType = message.readOrDefault("objectType", null).asInstanceOf[String]
     val env = if (null != objectType) objectType.toLowerCase.replace("image", "") else "system"
-    val graphId = message("graphId").asInstanceOf[String]
-    val userId = message("userId").asInstanceOf[String]
+    val graphId = message.readOrDefault("graphId", "")
+    val userId = message.readOrDefault("userId", "")
     val definitionNode:Map[String, AnyRef] = getDefinition(graphId, objectType)
     val inRelations = mutable.Map[String, String]()
     val outRelations = mutable.Map[String, String]()
     getRelationDefinitionMaps(definitionNode, inRelations, outRelations)
 
     var channelId = config.defaultChannel
-    val channel = message.getOrElse("channel", null).asInstanceOf[String]
+    val channel = message.readOrDefault("channel", null).asInstanceOf[String]
     if (null != channel) channelId = channel
 
-    val transactionData = message("transactionData").asInstanceOf[Map[String, AnyRef]]
+    val transactionData = message.readOrDefault("transactionData", Map[String, AnyRef]())
     val propertyMap = transactionData("properties").asInstanceOf[Map[String, AnyRef]]
     val statusMap = propertyMap.getOrElse("status", null).asInstanceOf[Map[String, AnyRef]]
     val lastStatusChangedOn = propertyMap.getOrElse("lastStatusChangedOn", null).asInstanceOf[Map[String, AnyRef]]
@@ -130,6 +131,7 @@ class AuditEventGeneratorService(implicit config: AuditEventGeneratorConfig) {
     if (StringUtils.isNotBlank(pkgVersion)) context ++= Map("pkgVersion" -> pkgVersion)
     if (StringUtils.isNotBlank(userId)) context ++= Map(TelemetryParams.ACTOR.name -> userId)
     if (propsExceptSystemProps.nonEmpty) {
+      TelemetryGenerator.setComponent("audit-event-generator")
       val auditMessage = TelemetryGenerator.audit(
         JSONUtil.deserialize[util.Map[String, String]](JSONUtil.serialize(context)),
         JSONUtil.deserialize[util.List[String]](JSONUtil.serialize(propsExceptSystemProps)),
