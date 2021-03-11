@@ -13,18 +13,16 @@ import org.sunbird.job.{BaseProcessFunction, Metrics}
 class AuditEventGenerator(config: AuditEventGeneratorConfig)
                           (implicit mapTypeInfo: TypeInformation[util.Map[String, AnyRef]],
                            stringTypeInfo: TypeInformation[String])
-                          extends BaseProcessFunction[Event, String](config) {
+                          extends BaseProcessFunction[Event, String](config) with AuditEventGeneratorService{
 
     implicit lazy val auditEventConfig: AuditEventGeneratorConfig = config
     private[this] lazy val logger = LoggerFactory.getLogger(classOf[AuditEventGenerator])
-    private var auditEventService:AuditEventGeneratorService = _
 
     override def metricsList(): List[String] = {
         List(config.totalEventsCount, config.skippedEventCount, config.successEventCount, config.skippedEventCount)
     }
 
     override def open(parameters: Configuration): Unit = {
-        auditEventService = new AuditEventGeneratorService()
         super.open(parameters)
     }
 
@@ -38,7 +36,7 @@ class AuditEventGenerator(config: AuditEventGeneratorConfig)
         metrics.incCounter(config.totalEventsCount)
         if(event.isValid) {
             logger.info("valid event::"+event.mid)
-            auditEventService.processEvent(event, context, metrics)
+            processEvent(event, context, metrics)(config)
         } else metrics.incCounter(config.skippedEventCount)
     }
 }

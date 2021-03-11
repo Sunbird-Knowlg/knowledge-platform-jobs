@@ -15,7 +15,7 @@ import scala.collection.mutable
 import java.text.SimpleDateFormat
 import scala.io.Source
 
-class AuditEventGeneratorService(implicit config: AuditEventGeneratorConfig) {
+trait AuditEventGeneratorService {
   private[this] lazy val logger = LoggerFactory.getLogger(classOf[AuditEventGeneratorService])
   private val IMAGE_SUFFIX = ".img"
   private val OBJECT_TYPE_IMAGE_SUFFIX = "Image"
@@ -33,7 +33,7 @@ class AuditEventGeneratorService(implicit config: AuditEventGeneratorConfig) {
     context
   }
 
-  def processEvent(message: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
+  def processEvent(message: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics)(implicit config: AuditEventGeneratorConfig): Unit = {
     logger.info("AUDIT Event::" + JSONUtil.serialize(message))
     logger.info("Input Message Received for : [" + message.read("nodeUniqueId") + "], Txn Event createdOn:" + message.read("createdOn") + ", Operation Type:" + message.read("operationType"))
     try {
@@ -57,7 +57,7 @@ class AuditEventGeneratorService(implicit config: AuditEventGeneratorConfig) {
   }
 
   // DefinitionUTIL will come start
-  def getSchema(objectType: String, version: String): Map[String, AnyRef] = {
+  def getSchema(objectType: String, version: String)(implicit config: AuditEventGeneratorConfig): Map[String, AnyRef] = {
     val path = s"${config.basePath}/${objectType.toLowerCase}/${version}/"
     try {
       JSONUtil.deserialize[Map[String, AnyRef]](Source.fromURL(path + "config.json").mkString)
@@ -71,12 +71,12 @@ class AuditEventGeneratorService(implicit config: AuditEventGeneratorConfig) {
 
   // DefinitionUTIL will come end
 
-  def getDefinition(graphId: String, objectType: String): Map[String, AnyRef] = {
+  def getDefinition(graphId: String, objectType: String)(implicit config: AuditEventGeneratorConfig): Map[String, AnyRef] = {
     getSchema(objectType, "1.0")
   }
 
 
-  def getAuditMessage(message: Event): String = {
+  def getAuditMessage(message: Event)(implicit config: AuditEventGeneratorConfig): String = {
     var auditMap:String = null
     var objectId = message.readOrDefault("nodeUniqueId", null).asInstanceOf[String]
     var objectType = message.readOrDefault("objectType", null).asInstanceOf[String]
