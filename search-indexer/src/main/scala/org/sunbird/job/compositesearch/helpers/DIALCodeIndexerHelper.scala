@@ -5,9 +5,9 @@ import org.sunbird.job.util.{ElasticSearchUtil, ScalaJsonUtil}
 
 import scala.collection.mutable
 
-trait DialCodeExternalIndexerHelper {
+trait DIALCodeIndexerHelper {
 
-  private[this] val logger = LoggerFactory.getLogger(classOf[DialCodeExternalIndexerHelper])
+  private[this] val logger = LoggerFactory.getLogger(classOf[DIALCodeIndexerHelper])
 
   def createDialCodeIndex()(esUtil: ElasticSearchUtil): Boolean = {
     val settings: String = """{"max_ngram_diff":"29","mapping":{"total_fields":{"limit":"1050"}},"analysis":{"analyzer":{"dc_index_analyzer":{"type":"custom","tokenizer":"standard","filter":["lowercase","mynGram"]},"dc_search_analyzer":{"type":"custom","tokenizer":"standard","filter":["standard","lowercase"]},"keylower":{"tokenizer":"keyword","filter":"lowercase"}},"filter":{"mynGram":{"type":"nGram","min_gram":1,"max_gram":30,"token_chars":["letter","digit","whitespace","punctuation","symbol"]}}}}"""

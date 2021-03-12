@@ -1,28 +1,24 @@
 package org.sunbird.job.functions
 
-import com.fasterxml.jackson.databind.ObjectMapper
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 import org.sunbird.job.compositesearch.domain.Event
-import org.sunbird.job.compositesearch.helpers.{DialCodeExternalIndexerHelper, FailedEventHelper}
+import org.sunbird.job.compositesearch.helpers.{DIALCodeMetricsIndexerHelper, FailedEventHelper}
 import org.sunbird.job.task.SearchIndexerConfig
 import org.sunbird.job.util.ElasticSearchUtil
 import scala.collection.JavaConverters._
 
-class DialCodeExternalIndexerFunction(config: SearchIndexerConfig,
-                                      @transient var elasticUtil: ElasticSearchUtil = null)
-  extends BaseProcessFunction[Event, String](config)
-    with DialCodeExternalIndexerHelper with FailedEventHelper {
+class DIALCodeMetricsIndexerFunction(config: SearchIndexerConfig,
+                                     @transient var elasticUtil: ElasticSearchUtil = null)
+  extends BaseProcessFunction[Event, String](config) with DIALCodeMetricsIndexerHelper with FailedEventHelper {
 
-  val mapper: ObjectMapper = new ObjectMapper
-
-  private[this] val logger = LoggerFactory.getLogger(classOf[DialCodeExternalIndexerFunction])
+  private[this] val logger = LoggerFactory.getLogger(classOf[DIALCodeMetricsIndexerFunction])
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
-    elasticUtil = new ElasticSearchUtil(config.esConnectionInfo, config.dialcodeExternalIndex, config.dialcodeExternalIndexType)
+    elasticUtil = new ElasticSearchUtil(config.esConnectionInfo, config.dialcodeMetricIndex, config.dialcodeMetricIndexType)
     createDialCodeIndex()(elasticUtil)
   }
 
@@ -32,14 +28,14 @@ class DialCodeExternalIndexerFunction(config: SearchIndexerConfig,
   }
 
   override def processElement(event: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
-    metrics.incCounter(config.dialcodeExternalEventCount)
+    metrics.incCounter(config.dialcodeMetricEventCount)
     try {
-      upsertExternalDocument(event.id, event.getMap().asScala.toMap)(elasticUtil)
-      metrics.incCounter(config.successDialcodeExternalEventCount)
+      upsertDialcodeMetricDocument(event.id, event.getMap().asScala.toMap)(elasticUtil)
+      metrics.incCounter(config.successDialcodeMetricEventCount)
     } catch {
       case ex: Exception =>
         logger.error(s"Error while processing message for identifier : ${event.id}. Error : ", ex)
-        metrics.incCounter(config.failedDialcodeExternalEventCount)
+        metrics.incCounter(config.failedDialcodeMetricEventCount)
         val failedEvent = getFailedEvent(event, ex)
         context.output(config.failedEventOutTag, failedEvent)
         throw ex
@@ -47,6 +43,7 @@ class DialCodeExternalIndexerFunction(config: SearchIndexerConfig,
   }
 
   override def metricsList(): List[String] = {
-    List(config.successDialcodeExternalEventCount, config.failedDialcodeExternalEventCount, config.dialcodeExternalEventCount)
+    List(config.successDialcodeMetricEventCount, config.failedDialcodeMetricEventCount, config.dialcodeMetricEventCount)
   }
+
 }

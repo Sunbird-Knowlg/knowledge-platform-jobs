@@ -17,7 +17,7 @@ import org.sunbird.job.compositesearch.domain.Event
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext
 import org.sunbird.job.fixture.EventFixture
-import org.sunbird.job.functions.{CompositeSearchIndexerFunction, DialCodeExternalIndexerFunction, DialCodeMetricIndexerFunction}
+import org.sunbird.job.functions.{CompositeSearchIndexerFunction, DIALCodeIndexerFunction, DIALCodeMetricsIndexerFunction}
 import org.sunbird.job.task.{SearchIndexerConfig, SearchIndexerStreamTask}
 import org.sunbird.job.util.{DefinitionUtil, ElasticSearchUtil, ScalaJsonUtil}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
@@ -169,7 +169,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
     when(mockElasticUtil.getDocumentAsStringById(anyString())).thenReturn(documentJson)
 
     val event = getEvent(EventFixture.DIALCODE_METRIC_UPDATE, 509674)
-    val dialcodeMetricFunc = new DialCodeMetricIndexerFunction(jobConfig)
+    val dialcodeMetricFunc = new DIALCodeMetricsIndexerFunction(jobConfig)
     val response = dialcodeMetricFunc.getIndexDocument(event.getMap().asScala.toMap, true)(mockElasticUtil)
     response.isEmpty should be(false)
     response.getOrElse("total_dial_scans_global", 0).asInstanceOf[Integer] should be(25)
@@ -177,7 +177,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
 
   "getIndexDocument " should " give the document for indexing the dialcode external " in {
     val event = getEvent(EventFixture.DIALCODE_EXTERNAL_CREATE, 509674)
-    val dialcodeExternalFunc = new DialCodeExternalIndexerFunction(jobConfig)
+    val dialcodeExternalFunc = new DIALCodeIndexerFunction(jobConfig)
     val response = dialcodeExternalFunc.getIndexDocument(event.getMap().asScala.toMap, false)(mockElasticUtil)
     response.isEmpty should be(false)
     response.getOrElse("identifier", "").asInstanceOf[String] should be("X8R3W4")
@@ -260,7 +260,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
     doNothing().when(mockElasticUtil).addDocumentWithId(anyString(), anyString())
 
     val event = getEvent(EventFixture.DIALCODE_METRIC_CREATE, 509674)
-    val dialcodeMetricFunc = new DialCodeMetricIndexerFunction(jobConfig)
+    val dialcodeMetricFunc = new DIALCodeMetricsIndexerFunction(jobConfig)
     val uniqueId = event.readOrDefault("nodeUniqueId", "")
     dialcodeMetricFunc.upsertDialcodeMetricDocument(uniqueId, event.getMap().asScala.toMap)(mockElasticUtil)
 
@@ -275,7 +275,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
     when(mockElasticUtil.getDocumentAsStringById(anyString())).thenReturn(documentJson)
 
     val event = getEvent(EventFixture.DIALCODE_METRIC_UPDATE, 509674)
-    val dialcodeMetricFunc = new DialCodeMetricIndexerFunction(jobConfig)
+    val dialcodeMetricFunc = new DIALCodeMetricsIndexerFunction(jobConfig)
     val uniqueId = event.readOrDefault("nodeUniqueId", "")
     dialcodeMetricFunc.upsertDialcodeMetricDocument(uniqueId, event.getMap().asScala.toMap)(mockElasticUtil)
 
@@ -286,7 +286,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
   "upsertDialcodeMetricDocument " should " delete the indexed dialcode metric event " in {
     Mockito.reset(mockElasticUtil)
     val event = getEvent(EventFixture.DIALCODE_METRIC_DELETE, 509674)
-    val dialcodeMetricFunc = new DialCodeMetricIndexerFunction(jobConfig)
+    val dialcodeMetricFunc = new DIALCodeMetricsIndexerFunction(jobConfig)
     val uniqueId = event.readOrDefault("nodeUniqueId", "")
     dialcodeMetricFunc.upsertDialcodeMetricDocument(uniqueId, event.getMap().asScala.toMap)(mockElasticUtil)
 
@@ -299,7 +299,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
     doNothing().when(mockElasticUtil).addDocumentWithId(anyString(), anyString())
 
     val event = getEvent(EventFixture.DIALCODE_EXTERNAL_CREATE, 509674)
-    val dialcodeExternalFunc = new DialCodeExternalIndexerFunction(jobConfig)
+    val dialcodeExternalFunc = new DIALCodeIndexerFunction(jobConfig)
     val uniqueId = event.readOrDefault("nodeUniqueId", "")
     dialcodeExternalFunc.upsertExternalDocument(uniqueId, event.getMap().asScala.toMap)(mockElasticUtil)
 
@@ -314,7 +314,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
     when(mockElasticUtil.getDocumentAsStringById(anyString())).thenReturn(documentJson)
 
     val event = getEvent(EventFixture.DIALCODE_EXTERNAL_UPDATE, 509674)
-    val dialcodeExternalFunc = new DialCodeExternalIndexerFunction(jobConfig)
+    val dialcodeExternalFunc = new DIALCodeIndexerFunction(jobConfig)
     val uniqueId = event.readOrDefault("nodeUniqueId", "")
     dialcodeExternalFunc.upsertExternalDocument(uniqueId, event.getMap().asScala.toMap)(mockElasticUtil)
 
@@ -325,7 +325,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
   "upsertExternalDocument " should " delete the indexed dialcode external event " in {
     Mockito.reset(mockElasticUtil)
     val event = getEvent(EventFixture.DIALCODE_EXTERNAL_DELETE, 509674)
-    val dialcodeExternalFunc = new DialCodeExternalIndexerFunction(jobConfig)
+    val dialcodeExternalFunc = new DIALCodeIndexerFunction(jobConfig)
     val uniqueId = event.readOrDefault("nodeUniqueId", "")
     dialcodeExternalFunc.upsertExternalDocument(uniqueId, event.getMap().asScala.toMap)(mockElasticUtil)
 
@@ -344,7 +344,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
   "createDialCodeIndex" should "create the elastic search index for dialcode" in {
     Mockito.reset(mockElasticUtil)
     when(mockElasticUtil.addIndex(anyString(), anyString())).thenReturn(false)
-    val compositeFunc = new DialCodeExternalIndexerFunction(jobConfig)
+    val compositeFunc = new DIALCodeIndexerFunction(jobConfig)
     val check = compositeFunc.createDialCodeIndex()(mockElasticUtil)
     check should be(false)
   }
@@ -352,13 +352,13 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
   "createDialCodeIndex" should "create the elastic search index for dialcode metric" in {
     Mockito.reset(mockElasticUtil)
     when(mockElasticUtil.addIndex(anyString(), anyString())).thenReturn(false)
-    val compositeFunc = new DialCodeMetricIndexerFunction(jobConfig)
+    val compositeFunc = new DIALCodeMetricsIndexerFunction(jobConfig)
     val check = compositeFunc.createDialCodeIndex()(mockElasticUtil)
     check should be(false)
   }
 
   "DialCodeMetricIndexerFunction" should "return the event with error message" in {
-    val compositeFunc = new DialCodeMetricIndexerFunction(jobConfig)
+    val compositeFunc = new DIALCodeMetricsIndexerFunction(jobConfig)
     val event = getEvent(EventFixture.DATA_NODE_DELETE, 509674)
     val exception = new Exception(s"Test Exception Handling")
     val failedEventString = compositeFunc.getFailedEvent(event, exception)

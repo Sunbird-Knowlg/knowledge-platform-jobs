@@ -12,14 +12,7 @@ class DefinitionUtil(ttlMS: Int) {
 
   def get(objectType: String, version: String, basePath: String): Map[String, AnyRef] = {
     val key = getKey(objectType, version)
-    val cacheDefinition = categoryDefinitionCache.getNonExpired(key).getOrElse(null)
-    if (cacheDefinition == null) {
-      val definition = getDefinition(basePath, objectType, version)
-      if (definition.nonEmpty) put(objectType, version, definition)
-      definition
-    } else {
-      cacheDefinition
-    }
+    categoryDefinitionCache.getNonExpired(key).getOrElse(getDefinition(basePath, objectType, version))
   }
 
   private def put(objectType: String, version: String, definition: Map[String, AnyRef]): Unit = {
@@ -33,19 +26,22 @@ class DefinitionUtil(ttlMS: Int) {
 
   private def getDefinition(basePath: String, objectType: String, version: String): Map[String, AnyRef] = {
     val path = s"${basePath}/${objectType.toLowerCase}/${version}/"
-    try {
-      val schemaMap: Map[String, AnyRef] = ScalaJsonUtil.deserialize[Map[String, AnyRef]](getFileToString(path, "schema.json"))
-      val configMap: Map[String, AnyRef] = ScalaJsonUtil.deserialize[Map[String, AnyRef]](getFileToString(path, "config.json"))
+    val definition: Map[String, AnyRef] = try {
+      val schemaMap: Map[String, AnyRef] = ScalaJsonUtil.deserialize[Map[String, AnyRef]](fileToString(path, "schema.json"))
+      val configMap: Map[String, AnyRef] = ScalaJsonUtil.deserialize[Map[String, AnyRef]](fileToString(path, "config.json"))
       Map("schema" -> schemaMap, "config" -> configMap)
     } catch {
       case ex: Exception =>  {
-        logger.info(s"Error fetching definition from path : ${path}.")
+        ex.printStackTrace()
+        logger.error(s"Error fetching definition from path : ${path}.", ex)
         Map()
       }
     }
+    if (definition.nonEmpty) put(objectType, version, definition)
+    definition
   }
 
-  private def getFileToString(basePath: String, fileName: String): String = {
+  private def fileToString(basePath: String, fileName: String): String = {
     Source.fromURL(basePath + fileName).mkString
   }
 }

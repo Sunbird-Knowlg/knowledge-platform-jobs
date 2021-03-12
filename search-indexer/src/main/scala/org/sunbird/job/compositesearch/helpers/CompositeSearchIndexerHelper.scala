@@ -24,8 +24,8 @@ trait CompositeSearchIndexerHelper {
   }
 
   def getIndexDocument(message: Map[String, Any], relationMap: Map[String, String], updateRequest: Boolean, externalProps: List[String], indexablePropList: List[String], nestedFields: List[String])(esUtil: ElasticSearchUtil): Map[String, AnyRef] = {
-    val indentifier = message.getOrElse("nodeUniqueId", "").asInstanceOf[String]
-    val indexDocument = if (updateRequest) getIndexDocument(indentifier)(esUtil) else mutable.Map[String, AnyRef]()
+    val identifier = message.getOrElse("nodeUniqueId", "").asInstanceOf[String]
+    val indexDocument = if (updateRequest) getIndexDocument(identifier)(esUtil) else mutable.Map[String, AnyRef]()
     val transactionData = message.getOrElse("transactionData", Map[String, Any]()).asInstanceOf[Map[String, Any]]
 
     if (!transactionData.isEmpty) {
@@ -81,8 +81,8 @@ trait CompositeSearchIndexerHelper {
     indexDocument.toMap
   }
 
-  def upsertDocument(indentifier: String, jsonIndexDocument: String)(esUtil: ElasticSearchUtil): Unit = {
-    esUtil.addDocumentWithId(indentifier, jsonIndexDocument)
+  def upsertDocument(identifier: String, jsonIndexDocument: String)(esUtil: ElasticSearchUtil): Unit = {
+    esUtil.addDocumentWithId(identifier, jsonIndexDocument)
   }
 
   def retrieveRelations(definitionNode: Map[String, AnyRef]): Map[String, String] = {
@@ -110,25 +110,26 @@ trait CompositeSearchIndexerHelper {
     upsertDocument(compositeObject.identifier, compositeMap, relationMap, externalProps, indexablePropertiesList, compositeObject.getNestedFields())(esUtil)
   }
 
-  private def upsertDocument(indentifier: String, message: Map[String, Any], relationMap: Map[String, String], externalProps: List[String], indexablePropList: List[String], nestedFields: List[String])(esUtil: ElasticSearchUtil): Unit = {
+
+  private def upsertDocument(identifier: String, message: Map[String, Any], relationMap: Map[String, String], externalProps: List[String], indexablePropList: List[String], nestedFields: List[String])(esUtil: ElasticSearchUtil): Unit = {
     val operationType = message.getOrElse("operationType", "").asInstanceOf[String]
     operationType match {
       case "CREATE" =>
         val indexDocument = getIndexDocument(message, relationMap, false, externalProps, indexablePropList, nestedFields)(esUtil)
         val jsonIndexDocument = ScalaJsonUtil.serialize(indexDocument)
-        upsertDocument(indentifier, jsonIndexDocument)(esUtil)
+        upsertDocument(identifier, jsonIndexDocument)(esUtil)
       case "UPDATE" =>
         val indexDocument = getIndexDocument(message, relationMap, true, externalProps, indexablePropList, nestedFields)(esUtil)
         val jsonIndexDocument = ScalaJsonUtil.serialize(indexDocument)
-        upsertDocument(indentifier, jsonIndexDocument)(esUtil)
+        upsertDocument(identifier, jsonIndexDocument)(esUtil)
       case "DELETE" =>
         val id = message.getOrElse("nodeUniqueId", "").asInstanceOf[String]
         val indexDocument = getIndexDocument(id)(esUtil)
         val visibility = indexDocument.getOrElse("visibility", "").asInstanceOf[String]
         if (StringUtils.equalsIgnoreCase("Parent", visibility)) logger.info(s"Not deleting the document (visibility: Parent) with ID: ${id}")
-        else esUtil.deleteDocument(indentifier)
+        else esUtil.deleteDocument(identifier)
       case _ =>
-        logger.info(s"Unknown Operation Type : ${operationType} for the identifier: ${indentifier}.")
+        logger.info(s"Unknown Operation Type : ${operationType} for the identifier: ${identifier}.")
     }
   }
 

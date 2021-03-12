@@ -13,8 +13,7 @@ import org.sunbird.job.models.CompositeIndexer
 
 class CompositeSearchIndexerFunction(config: SearchIndexerConfig,
                                      @transient var elasticUtil: ElasticSearchUtil = null)
-  extends BaseProcessFunction[Event, String](config)
-    with CompositeSearchIndexerHelper with FailedEventHelper {
+  extends BaseProcessFunction[Event, String](config) with CompositeSearchIndexerHelper with FailedEventHelper {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[CompositeSearchIndexerFunction])
   lazy val definitionUtil: DefinitionUtil = new DefinitionUtil(config.definitionCacheExpiry)
