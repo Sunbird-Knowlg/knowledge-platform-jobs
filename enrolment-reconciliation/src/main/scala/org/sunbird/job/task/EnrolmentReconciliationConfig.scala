@@ -26,11 +26,6 @@ class EnrolmentReconciliationConfig(override val config: Config) extends BaseJob
   // Consumers
   val enrolmentReconciliationConsumer = "enrolment-reconciliation-consumer"
 
-  // Cassandra Configurations
-  val dbUserContentConsumptionTable: String = config.getString("lms-cassandra.consumption.table")
-  val dbUserActivityAggTable: String = config.getString("lms-cassandra.user_activity_agg.table")
-  val dbUserEnrolmentsTable: String = config.getString("lms-cassandra.user_enrolments.table")
-  val dbKeyspace: String = config.getString("lms-cassandra.keyspace")
   val dbHost: String = config.getString("lms-cassandra.host")
   val dbPort: Int = config.getInt("lms-cassandra.port")
 

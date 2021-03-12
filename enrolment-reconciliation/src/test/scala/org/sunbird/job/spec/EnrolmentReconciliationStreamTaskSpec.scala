@@ -59,7 +59,6 @@ class EnrolmentReconciliationStreamTaskSpec extends BaseTestSpec {
     val dataLoader = new CQLDataLoader(session);
     dataLoader.load(new FileCQLDataSet(getClass.getResource("/test.cql").getPath, true, true));
     // Clear the metrics
-    testCassandraUtil(cassandraUtil)
     BaseMetricsReporter.gaugeMetrics.clear()
     nodesStore.flushDB()
     flinkCluster.before()
@@ -78,30 +77,10 @@ class EnrolmentReconciliationStreamTaskSpec extends BaseTestSpec {
   }
 
 
-  "RelationCacheUpdater " should "generate cache" in {
+  "EnrolmentReConciliation " should "validate metrics" in {
     when(mockKafkaUtil.kafkaMapSource(jobConfig.kafkaInputTopic)).thenReturn(new EnrolmentReconciliationMapSource)
     new EnrolmentReconciliationStreamTask(jobConfig, mockKafkaUtil).process()
-    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(0)
-    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.successEventCount}").getValue() should be(0)
-    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.failedEventCount}").getValue() should be(0)
-    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skippedEventCount}").getValue() should be(0)
 
-  }
-
-  def testCassandraUtil(cassandraUtil: CassandraUtil): Unit = {
-    cassandraUtil.reconnect()
-  }
-
-  def getKeys(pattern: String, redisDb: Jedis): List[String] = {
-    redisDb.keys(pattern).asScala.toList
-  }
-
-  def getKeysLength(pattern: String, redisDb: Jedis): Int = {
-    redisDb.keys(pattern).size()
-  }
-
-  def getList(key: String, redisDb: Jedis): List[String] = {
-    redisDb.smembers(key).asScala.toList
   }
 
 }
