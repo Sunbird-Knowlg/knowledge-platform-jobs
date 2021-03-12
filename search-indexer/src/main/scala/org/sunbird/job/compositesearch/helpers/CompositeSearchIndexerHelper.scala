@@ -4,10 +4,11 @@ import scala.collection.JavaConverters._
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.models.CompositeIndexer
-import org.sunbird.job.util.{DefinitionUtil, ElasticSearchUtil, ScalaJsonUtil}
+import org.sunbird.job.util.{DefinitionCache, ElasticSearchUtil, ScalaJsonUtil}
+
 import scala.collection.mutable
 
-trait CompositeSearchIndexerHelper {
+trait CompositeSearchIndexerHelper extends DefinitionCache {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[CompositeSearchIndexerHelper])
 
@@ -98,11 +99,8 @@ trait CompositeSearchIndexerHelper {
     })
   }
 
-  def processESMessage(compositeObject: CompositeIndexer)(esUtil: ElasticSearchUtil, definitionUtil: DefinitionUtil): Unit = {
-    val definition = definitionUtil.get(compositeObject.objectType, compositeObject.getVersionAsString(), compositeObject.getDefinitionBasePath())
-    if (definition.isEmpty) {
-      throw new Exception(s"ERR_DEFINITION_NOT_FOUND: definition node for graphId: ${compositeObject.graphId} and objectType: ${compositeObject.objectType} is null due to some issue")
-    }
+  def processESMessage(compositeObject: CompositeIndexer)(esUtil: ElasticSearchUtil): Unit = {
+    val definition = getDefinition(compositeObject.objectType, compositeObject.getVersionAsString(), compositeObject.getDefinitionBasePath())
     val relationMap = retrieveRelations(definition)
     val externalProps = retrieveExternalProperties(definition)
     val indexablePropertiesList = if (compositeObject.getRestrictMetadataObjectTypes().contains(compositeObject.objectType)) getIndexableProperties(definition) else List[String]()

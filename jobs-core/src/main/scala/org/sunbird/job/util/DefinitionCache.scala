@@ -1,18 +1,23 @@
 package org.sunbird.job.util
 
-import org.slf4j.LoggerFactory
-import scala.io.Source
 import com.twitter.storehaus.cache.Cache
 import com.twitter.util.Duration
+import org.slf4j.LoggerFactory
 
-class DefinitionUtil(ttlMS: Int) {
+import scala.io.Source
 
-  private[this] val logger = LoggerFactory.getLogger(classOf[DefinitionUtil])
-  private var categoryDefinitionCache = Cache.ttl[String, Map[String, AnyRef]](Duration.fromSeconds(ttlMS))
+trait DefinitionCache {
 
-  def get(objectType: String, version: String, basePath: String): Map[String, AnyRef] = {
+  private[this] val logger = LoggerFactory.getLogger(classOf[DefinitionCache])
+
+  private var categoryDefinitionCache = Cache.ttl[String, Map[String, AnyRef]](Duration.fromSeconds(600))
+
+  private var relationNameCache = Cache.ttl[String, String](Duration.fromSeconds(600))
+  private var externalPropsCache = Cache.ttl[String, List[String]](Duration.fromSeconds(600))
+
+  def getDefinition(objectType: String, version: String, basePath: String): Map[String, AnyRef] = {
     val key = getKey(objectType, version)
-    categoryDefinitionCache.getNonExpired(key).getOrElse(getDefinition(basePath, objectType, version))
+    categoryDefinitionCache.getNonExpired(key).getOrElse(prepareDefinition(basePath, objectType, version))
   }
 
   private def put(objectType: String, version: String, definition: Map[String, AnyRef]): Unit = {
@@ -24,7 +29,7 @@ class DefinitionUtil(ttlMS: Int) {
     s"${objectType}:def_node:${version}"
   }
 
-  private def getDefinition(basePath: String, objectType: String, version: String): Map[String, AnyRef] = {
+  private def prepareDefinition(basePath: String, objectType: String, version: String): Map[String, AnyRef] = {
     val path = s"${basePath}/${objectType.toLowerCase}/${version}/"
     val definition: Map[String, AnyRef] = try {
       val schemaMap: Map[String, AnyRef] = ScalaJsonUtil.deserialize[Map[String, AnyRef]](fileToString(path, "schema.json"))
@@ -34,7 +39,7 @@ class DefinitionUtil(ttlMS: Int) {
       case ex: Exception =>  {
         ex.printStackTrace()
         logger.error(s"Error fetching definition from path : ${path}.", ex)
-        Map()
+        throw new Exception("Error while fetching definition cache.", ex)
       }
     }
     if (definition.nonEmpty) put(objectType, version, definition)
@@ -44,4 +49,5 @@ class DefinitionUtil(ttlMS: Int) {
   private def fileToString(basePath: String, fileName: String): String = {
     Source.fromURL(basePath + fileName).mkString
   }
+
 }
