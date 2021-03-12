@@ -4,7 +4,6 @@ import org.neo4j.driver.v1.{Config, GraphDatabase}
 import org.slf4j.LoggerFactory
 import scala.collection.JavaConverters._
 
-
 class Neo4JUtil(routePath: String, graphId: String) {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[Neo4JUtil])
@@ -70,4 +69,19 @@ class Neo4JUtil(routePath: String, graphId: String) {
   def getNodesProps(identifiers: List[String]): Map[String, AnyRef] = {
     Map()
   }
+
+  def updateNode(identifier: String, metaData: Map[String, AnyRef]): Unit = {
+
+    var queryBuilder = new StringBuilder(s"""MATCH (n:$graphId {IL_UNIQUE_ID:"$identifier"}) SET n = """)
+    queryBuilder = queryBuilder.append("$properties return n;")
+    val query = queryBuilder.toString()
+    logger.info(s"Query for updating metadata for identifier : ${identifier} is : ${query}")
+    val session = driver.session()
+    val properties: java.util.Map[String, AnyRef] = Map[String, AnyRef]("properties" -> metaData.asJava).asJava
+    val result = session.run(query, properties)
+    if (result.hasNext)
+      logger.info(s"Successfully Updated node with identifier: $identifier")
+    else throw new Exception(s"Unable to update the node with identifier: $identifier")
+  }
+
 }
