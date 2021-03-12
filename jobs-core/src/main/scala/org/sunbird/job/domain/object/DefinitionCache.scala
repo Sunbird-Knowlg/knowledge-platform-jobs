@@ -1,26 +1,24 @@
-package org.sunbird.job.util
+package org.sunbird.job.domain.`object`
 
 import com.twitter.storehaus.cache.Cache
 import com.twitter.util.Duration
 import org.slf4j.LoggerFactory
+import org.sunbird.job.util.ScalaJsonUtil
 
 import scala.io.Source
 
-trait DefinitionCache {
+trait DefinitionCache extends Serializable {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[DefinitionCache])
 
-  private var categoryDefinitionCache = Cache.ttl[String, Map[String, AnyRef]](Duration.fromSeconds(600))
+  private var categoryDefinitionCache = Cache.ttl[String, ObjectDefinition](Duration.fromSeconds(600))
 
-  private var relationNameCache = Cache.ttl[String, String](Duration.fromSeconds(600))
-  private var externalPropsCache = Cache.ttl[String, List[String]](Duration.fromSeconds(600))
-
-  def getDefinition(objectType: String, version: String, basePath: String): Map[String, AnyRef] = {
+  def getDefinition(objectType: String, version: String, basePath: String): ObjectDefinition = {
     val key = getKey(objectType, version)
     categoryDefinitionCache.getNonExpired(key).getOrElse(prepareDefinition(basePath, objectType, version))
   }
 
-  private def put(objectType: String, version: String, definition: Map[String, AnyRef]): Unit = {
+  private def put(objectType: String, version: String, definition: ObjectDefinition): Unit = {
     val key = getKey(objectType, version)
     categoryDefinitionCache = categoryDefinitionCache.putClocked(key -> definition)._2
   }
@@ -29,12 +27,12 @@ trait DefinitionCache {
     s"${objectType}:def_node:${version}"
   }
 
-  private def prepareDefinition(basePath: String, objectType: String, version: String): Map[String, AnyRef] = {
+  private def prepareDefinition(basePath: String, objectType: String, version: String): ObjectDefinition = {
     val path = s"${basePath}/${objectType.toLowerCase}/${version}/"
-    val definition: Map[String, AnyRef] = try {
+    val definition = try {
       val schemaMap: Map[String, AnyRef] = ScalaJsonUtil.deserialize[Map[String, AnyRef]](fileToString(path, "schema.json"))
       val configMap: Map[String, AnyRef] = ScalaJsonUtil.deserialize[Map[String, AnyRef]](fileToString(path, "config.json"))
-      Map("schema" -> schemaMap, "config" -> configMap)
+      new ObjectDefinition(objectType, version, schemaMap, configMap)
     } catch {
       case ex: Exception =>  {
         ex.printStackTrace()
@@ -42,7 +40,7 @@ trait DefinitionCache {
         throw new Exception("Error while fetching definition cache.", ex)
       }
     }
-    if (definition.nonEmpty) put(objectType, version, definition)
+    if (definition != null) put(objectType, version, definition)
     definition
   }
 
