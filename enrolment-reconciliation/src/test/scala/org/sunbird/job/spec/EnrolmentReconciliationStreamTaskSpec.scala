@@ -56,8 +56,8 @@ class EnrolmentReconciliationStreamTaskSpec extends BaseTestSpec {
     cassandraUtil = new CassandraUtil(jobConfig.dbHost, jobConfig.dbPort)
     val session = cassandraUtil.session
 
-    val dataLoader = new CQLDataLoader(session);
-    dataLoader.load(new FileCQLDataSet(getClass.getResource("/test.cql").getPath, true, true));
+    val dataLoader = new CQLDataLoader(session)
+    dataLoader.load(new FileCQLDataSet(getClass.getResource("/test.cql").getPath, true, true))
     // Clear the metrics
     BaseMetricsReporter.gaugeMetrics.clear()
     nodesStore.flushDB()
@@ -70,8 +70,7 @@ class EnrolmentReconciliationStreamTaskSpec extends BaseTestSpec {
       EmbeddedCassandraServerHelper.cleanEmbeddedCassandra()
       redisServer.stop()
     } catch {
-      case ex: Exception => {
-      }
+      case ex: Exception => ex.printStackTrace()
     }
     flinkCluster.after()
   }
@@ -94,5 +93,5 @@ class EnrolmentReconciliationMapSource extends SourceFunction[java.util.Map[Stri
     ctx.collect(eventMap2.asJava)
   }
 
-  override def cancel() = {}
+  override def cancel(): Unit = {}
 }

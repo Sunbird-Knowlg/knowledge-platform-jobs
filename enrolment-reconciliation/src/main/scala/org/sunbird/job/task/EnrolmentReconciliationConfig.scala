@@ -9,8 +9,6 @@ import org.sunbird.job.BaseJobConfig
 
 class EnrolmentReconciliationConfig(override val config: Config) extends BaseJobConfig(config, "enrolment-reconciliation") {
 
-  private val serialVersionUID = 2905979434303791379L
-
   implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
   implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
 
