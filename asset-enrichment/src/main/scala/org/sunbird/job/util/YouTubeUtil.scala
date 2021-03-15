@@ -48,7 +48,7 @@ class YouTubeUtil(config: AssetEnrichmentConfig) {
     }
   }
 
-  private def getIdFromUrl(url: String): Option[String] = {
+  def getIdFromUrl(url: String): Option[String] = {
     val videoLink = getVideoLink(url)
     val result = videoIdRegex.map(p => Pattern.compile(p))
       .map(compiledPattern => compiledPattern.matcher(videoLink))
@@ -64,7 +64,7 @@ class YouTubeUtil(config: AssetEnrichmentConfig) {
     if (matcher.find) url.replace(matcher.group, "") else url
   }
 
-  def getVideoList(videoId: String, params: String): util.List[Video] = {
+  private def getVideoList(videoId: String, params: String): util.List[Video] = {
     if (limitExceeded) throw new Exception(s"Unable to Check License for videoId = ${videoId}. Please Try Again After Sometime!")
     try {
       val videosListByIdRequest = youtube.videos.list(params)
@@ -98,7 +98,7 @@ class YouTubeUtil(config: AssetEnrichmentConfig) {
     }
   }
 
-  private def computeVideoDuration(videoDuration: String): String = {
+  def computeVideoDuration(videoDuration: String): String = {
     val youtubeDuration = videoDuration.replaceAll("PT|S", "").replaceAll("H|M", ":")
     val values = youtubeDuration.split(":")
     if (null != values) {

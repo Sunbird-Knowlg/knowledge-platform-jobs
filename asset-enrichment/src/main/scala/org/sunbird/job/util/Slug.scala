@@ -31,10 +31,6 @@ object Slug {
     }
   }
 
-  def makeSlug(input: String): String = {
-    makeSlug(input, false)
-  }
-
   def makeSlug(input: String, isTransliterate: Boolean): String = {
     // Validate the input
     if (input == null) throw new IllegalArgumentException("Input is null")
@@ -46,7 +42,6 @@ object Slug {
     // Transliterate & cleanup
     val transliterated = if (isTransliterate) {
       transliterate(urlEncoded)
-      //transliterated = removeDuplicateChars(transliterated);
     } else urlEncoded
     // Replace all whitespace with dashes
     val nonWhitespaced = transliterated.replaceAll(WHITESPACE, "-")
@@ -73,20 +68,6 @@ object Slug {
       URLDecoder.decode(input, "UTF-8")
     catch {
       case ex: Exception => ""
-    }
-  }
-
-  def removeDuplicateChars(text: String): String = {
-    val ret = new StringBuilder(text.length)
-    if (text.length == 0) "" else {
-      // Zip with Index returns a tuple (character, index)
-      ret.append(text.charAt(0))
-      text.toCharArray.zipWithIndex
-        .foreach(zippedChar => {
-          if (zippedChar._2 != 0 && zippedChar._1 != text.charAt(zippedChar._2 - 1))
-            ret.append(zippedChar._1)
-        })
-      ret.toString()
     }
   }
 

@@ -4,7 +4,6 @@ import java.io.File
 
 import org.slf4j.LoggerFactory
 import org.sunbird.job.models.Asset
-import org.sunbird.job.task.AssetEnrichmentConfig
 import org.sunbird.job.util.CloudStorageUtil
 
 trait OptimizerHelper {

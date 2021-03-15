@@ -44,7 +44,7 @@ trait VideoEnrichmentHelper extends ThumbnailUtil {
       val data = youTubeUtil.getVideoInfo(videoUrl, "snippet,contentDetails", List[String]("thumbnail", "duration"))
       if (data.nonEmpty) {
         if (data.contains("thumbnail")) asset.addToMetaData("thumbnail", data("thumbnail").asInstanceOf[String])
-        if (data.contains("duration")) asset.addToMetaData("duration", data("duration").asInstanceOf[String])
+        if (data.contains("duration")) asset.addToMetaData("duration", data("duration").toString)
       } else throw new Exception(s"Failed to get data for Youtube Video Url : ${videoUrl} and identifier: ${asset.identifier}.")
     } else {
       val videoFile = FileUtils.copyURLToFile(asset.identifier, videoUrl, videoUrl.substring(videoUrl.lastIndexOf("/") + 1))

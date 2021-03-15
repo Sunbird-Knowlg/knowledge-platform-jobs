@@ -13,7 +13,6 @@ class CloudStorageUtil(config: AssetEnrichmentConfig) extends Serializable {
   val storageService: BaseStorageService = getService
   val container: String = getContainerName
 
-  @throws[Exception]
   def getService: BaseStorageService = {
     if (StringUtils.equalsIgnoreCase(cloudStorageType, "azure")) {
       val azureStorageKey = config.getString("azure_storage_key", "")

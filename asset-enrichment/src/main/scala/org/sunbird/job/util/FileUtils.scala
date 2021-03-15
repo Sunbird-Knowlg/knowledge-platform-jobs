@@ -20,21 +20,10 @@ object FileUtils {
     mimeTypes
   }
 
-  def printFileSize(fileName: String): Long = {
-    val file = new File(fileName)
-    if (file.exists) file.length else 0
-  }
-
   def getOutputFileName(input: File): String = {
     val outputFileName = input.getName.replaceAll("\\.", "\\.out\\.")
     val outputFolder = input.getParent
     s"$outputFolder/$outputFileName"
-  }
-
-  def replace(input: File, output: File): Unit = {
-    val inputFile = input.getAbsolutePath
-    input.delete
-    output.renameTo(new File(inputFile))
   }
 
   def getFileType(file: File): String = {
@@ -47,12 +36,6 @@ object FileUtils {
         case _ => "Other"
       }
     }
-  }
-
-  def getThumbnailFileName(input: File): String = {
-    val outputFileName = input.getName.replaceAll("\\.", "\\.thumb\\.")
-    val outputFolder = input.getParent
-    s"$outputFolder/$outputFileName"
   }
 
   def deleteDirectory(file: File): Unit = {

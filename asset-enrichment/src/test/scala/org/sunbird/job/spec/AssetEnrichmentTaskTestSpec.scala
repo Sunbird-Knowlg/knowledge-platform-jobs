@@ -19,7 +19,7 @@ import org.sunbird.job.fixture.EventFixture
 import org.sunbird.job.functions.{ImageEnrichmentFunction, VideoEnrichmentFunction}
 import org.sunbird.job.models.Asset
 import org.sunbird.job.task.AssetEnrichmentConfig
-import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, DefinitionUtil, JSONUtil, Neo4JUtil, ScalaJsonUtil, YouTubeUtil}
+import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, DefinitionUtil, JSONUtil, Neo4JUtil, ScalaJsonUtil, Slug, YouTubeUtil}
 import org.sunbird.spec.BaseTestSpec
 
 class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
@@ -43,22 +43,22 @@ class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
-    EmbeddedCassandraServerHelper.startEmbeddedCassandra(800000L)
-    cassandraUtil = new CassandraUtil(jobConfig.dbHost, jobConfig.dbPort)
-    val session = cassandraUtil.session
-    val dataLoader = new CQLDataLoader(session)
-    dataLoader.load(new FileCQLDataSet(getClass.getResource("/test.cql").getPath, true, true))
+        EmbeddedCassandraServerHelper.startEmbeddedCassandra(800000L)
+        cassandraUtil = new CassandraUtil(jobConfig.dbHost, jobConfig.dbPort)
+        val session = cassandraUtil.session
+        val dataLoader = new CQLDataLoader(session)
+        dataLoader.load(new FileCQLDataSet(getClass.getResource("/test.cql").getPath, true, true))
     flinkCluster.before()
   }
 
   override protected def afterAll(): Unit = {
     super.afterAll()
-    try {
-      EmbeddedCassandraServerHelper.cleanEmbeddedCassandra()
-    } catch {
-      case ex: Exception => {
-      }
-    }
+        try {
+          EmbeddedCassandraServerHelper.cleanEmbeddedCassandra()
+        } catch {
+          case ex: Exception => {
+          }
+        }
     flinkCluster.after()
   }
 
@@ -91,7 +91,6 @@ class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
     asset.getFromMetaData("status", "").asInstanceOf[String] should be("Live")
   }
 
-
   "vidoeEnrichment" should " enrich the video for the mp4 asset " in {
     when(mockCloudUtil.uploadFile(anyString(), any[File](), any())).thenReturn(Array[String]("content/do_1127129845261680641588/artifact/1615495839474.thumb.png", "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_1127129845261680641588/artifact/1615495839474.thumb.png"))
     doNothing().when(mockNeo4JUtil).updateNode(anyString(), any[Map[String, AnyRef]]())
@@ -109,12 +108,83 @@ class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
     when(mockYouTubeUtil.getVideoInfo(anyString(), anyString(), any[List[String]]())).thenReturn(youTubeVideoData)
     doNothing().when(mockNeo4JUtil).updateNode(anyString(), any[Map[String, AnyRef]]())
 
-    val metaData = getMetaDataForMp4VideoAsset
+    val metaData = getMetaDataForYouTubeVideoAsset
     val asset = getAsset(EventFixture.VIDEO_YOUTUBE_ASSET, metaData)
     new VideoEnrichmentFunction(jobConfig).videoEnrichment(asset)(jobConfig, mockYouTubeUtil, mockCloudUtil, mockNeo4JUtil, cassandraUtil)
-    asset.getFromMetaData("thumbnail", "").asInstanceOf[String] should be("https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_1127129845261680641599/artifact/1615495839474.thumb.png")
+    asset.getFromMetaData("thumbnail", "").asInstanceOf[String] should be("https://i.ytimg.com/vi/-SgZ3Enpau8/mqdefault.jpg")
     asset.getFromMetaData("status", "").asInstanceOf[String] should be("Live")
-    asset.getFromMetaData("duration", "0").asInstanceOf[String] should be("12")
+    asset.getFromMetaData("duration", "0").asInstanceOf[String] should be("273")
+  }
+
+  "test create Slug file " should " create slug file for the provided file" in {
+    val file = new File("-αimage.jpg")
+    val slugFile = Slug.createSlugFile(file)
+    assert("aimage.jpg" == slugFile.getName)
+  }
+
+  "validateForArtifactUrl" should "validate for content upload context driven" in {
+    val metaData = Map[String, AnyRef]("cloudStorageKey" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_113233716442578944194/artifact/1551338384003.png",
+      "s3Key" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_113233716442578944194/artifact/1551338384003.png",
+      "artifactBasePath" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev",
+      "artifactUrl" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_113233716442578944194/artifact/1551338384003.png")
+    val asset = getAsset(EventFixture.IMAGE_ASSET, metaData)
+    val validate = new VideoEnrichmentFunction(jobConfig).validateForArtifactUrl(asset, true)
+    validate should be(true)
+  }
+
+  "ImageEnrichmentHelper" should "return Exception if the image url is wrong" in {
+    val metaData = getMetaDataForImageAsset
+    val asset = getAsset(EventFixture.IMAGE_ASSET, metaData)
+    asset.addToMetaData("downloadUrl", "https://unknownurl123.com")
+    assertThrows[Exception] {
+      new ImageEnrichmentFunction(jobConfig).imageEnrichment(asset)(jobConfig, definitionUtil, mockCloudUtil, mockNeo4JUtil)
+    }
+  }
+
+  "VideoEnrichmentHelper" should "return Exception if the video url is wrong" in {
+    val metaData = getMetaDataForMp4VideoAsset
+    val asset = getAsset(EventFixture.VIDEO_MP4_ASSET, metaData)
+    asset.addToMetaData("artifactUrl", "https://unknownurl1234.com")
+    assertThrows[Exception] {
+      new VideoEnrichmentFunction(jobConfig).videoEnrichment(asset)(jobConfig, mockYouTubeUtil, mockCloudUtil, mockNeo4JUtil, cassandraUtil)
+    }
+  }
+
+  "VideoEnrichmentHelper" should "return Exception if the video url is empty" in {
+    val metaData = getMetaDataForMp4VideoAsset
+    val asset = getAsset(EventFixture.VIDEO_MP4_ASSET, metaData)
+    asset.addToMetaData("artifactUrl", "")
+    assertThrows[Exception] {
+      new VideoEnrichmentFunction(jobConfig).videoEnrichment(asset)(jobConfig, mockYouTubeUtil, mockCloudUtil, mockNeo4JUtil, cassandraUtil)
+    }
+  }
+
+  "VideoEnrichmentFunction" should "return Exception if the metadata is not found" in {
+    val metaData = getMetaDataForMp4VideoAsset
+    val asset = getAsset(EventFixture.VIDEO_MP4_ASSET, metaData)
+    asset.addToMetaData("artifactUrl", "")
+    assertThrows[Exception] {
+      new VideoEnrichmentFunction(jobConfig).getMetaData(asset.identifier)(mockNeo4JUtil)
+    }
+  }
+
+  "ImageEnrichmentFunction" should "return Exception if the metadata is not found" in {
+    val metaData = getMetaDataForImageAsset
+    val asset = getAsset(EventFixture.IMAGE_ASSET, metaData)
+    asset.addToMetaData("artifactUrl", "")
+    assertThrows[Exception] {
+      new ImageEnrichmentFunction(jobConfig).getMetaData(asset.identifier)(mockNeo4JUtil)
+    }
+  }
+
+  "getVideoInfo" should "return the id of the video for the provided Youtube URL" in {
+    val result = new YouTubeUtil(jobConfig).getIdFromUrl("https://www.youtube.com/watch?v=-SgZ3Enpau8")
+    result.getOrElse("") should be("-SgZ3Enpau8")
+  }
+
+  "getVideoInfo" should "return the duration of the video for the " in {
+    val result = new YouTubeUtil(jobConfig).computeVideoDuration("PT4M33S")
+    result should be("273")
   }
 
   def getAsset(event: String, metaData: Map[String, AnyRef]): Asset = {
@@ -130,12 +200,12 @@ class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
   }
 
   def getMetaDataForMp4VideoAsset: Map[String, AnyRef] = {
-    val metaData = """{"artifactUrl": "https://mazwai.com/download_new.php?hash=8d97194f49c50498a28c68d9d84a8a49", "ownershipType": ["createdBy"], "code": "Test_Asset_15_MB", "apoc_json": "{\"batch\": true}", "channel": "in.ekstep", "organisation": ["Sunbird", "QA ORG"], "language": ["English"], "mimeType": "video/mp4", "media": "video", "idealScreenSize": "normal", "createdOn": "2019-03-06T13:13:13.917+0000", "apoc_text": "APOC", "primaryCategory": "Asset", "appId": "local.sunbird.portal", "contentDisposition": "inline", "contentEncoding": "identity", "lastUpdatedOn": "2019-03-06T13:13:13.917+0000", "contentType": "Asset", "dialcodeRequired": "No", "apoc_num": 1, "audience": ["Learner"], "creator": "Creation", "createdFor": ["ORG_001", "0123653943740170242"], "visibility": "Default", "os": ["All"], "IL_SYS_NODE_TYPE": "DATA_NODE", "consumerId": "9393568c-3a56-47dd-a9a3-34da3c821638", "mediaType": "content", "osId": "org.ekstep.quiz.app", "versionKey": "1551877993917", "idealScreenDensity": "hdpi", "framework": "NCFCOPY", "createdBy": "874ed8a5-782e-4f6c-8f36-e0288455901e", "compatibilityLevel": 1.0, "IL_FUNC_OBJECT_TYPE": "Asset", "name": "Test_Asset_15_MB", "IL_UNIQUE_ID": "do_1127129845261680641588", "status": "Draft"}"""
+    val metaData = """{"artifactUrl": "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/kp_ft_1563562323128/artifact/sample_1563562323191.mp4", "ownershipType": ["createdBy"], "code": "Test_Asset_15_MB", "apoc_json": "{\"batch\": true}", "channel": "in.ekstep", "organisation": ["Sunbird", "QA ORG"], "language": ["English"], "mimeType": "video/mp4", "media": "video", "idealScreenSize": "normal", "createdOn": "2019-03-06T13:13:13.917+0000", "apoc_text": "APOC", "primaryCategory": "Asset", "appId": "local.sunbird.portal", "contentDisposition": "inline", "contentEncoding": "identity", "lastUpdatedOn": "2019-03-06T13:13:13.917+0000", "contentType": "Asset", "dialcodeRequired": "No", "apoc_num": 1, "audience": ["Learner"], "creator": "Creation", "createdFor": ["ORG_001", "0123653943740170242"], "visibility": "Default", "os": ["All"], "IL_SYS_NODE_TYPE": "DATA_NODE", "consumerId": "9393568c-3a56-47dd-a9a3-34da3c821638", "mediaType": "content", "osId": "org.ekstep.quiz.app", "versionKey": "1551877993917", "idealScreenDensity": "hdpi", "framework": "NCFCOPY", "createdBy": "874ed8a5-782e-4f6c-8f36-e0288455901e", "compatibilityLevel": 1.0, "IL_FUNC_OBJECT_TYPE": "Asset", "name": "Test_Asset_15_MB", "IL_UNIQUE_ID": "do_1127129845261680641588", "status": "Draft"}"""
     ScalaJsonUtil.deserialize[Map[String, AnyRef]](metaData)
   }
 
   def getMetaDataForYouTubeVideoAsset: Map[String, AnyRef] = {
-    val metaData = """{"artifactUrl": "https://www.youtube.com/watch?v=-SgZ3Enpau8", "ownershipType": ["createdBy"], "code": "Test_Asset_15_MB", apoc_json: "{\"batch\": true}", "channel": "in.ekstep", "organisation": ["Sunbird", "QA ORG"], "language": ["English"], "mimeType": "video/x-youtube", "media": "video", "idealScreenSize": "normal", "createdOn": "2019-03-06T13:13:13.917+0000", "apoc_text": "APOC", "primaryCategory": "Asset", "appId": "local.sunbird.portal", "contentDisposition": "inline", "contentEncoding": "identity", "lastUpdatedOn": "2019-03-06T13:13:13.917+0000", "contentType": "Asset", "dialcodeRequired": "No", "apoc_num": 1, "audience": ["Learner"], "creator": "Creation", "createdFor": ["ORG_001", "0123653943740170242"], "visibility": "Default", "os": ["All"], "IL_SYS_NODE_TYPE": "DATA_NODE", "consumerId": "9393568c-3a56-47dd-a9a3-34da3c821638", "mediaType": "content", "osId": "org.ekstep.quiz.app", "versionKey": "1551877993917", "idealScreenDensity": "hdpi", "framework": "NCFCOPY", "createdBy": "874ed8a5-782e-4f6c-8f36-e0288455901e", "compatibilityLevel": 1.0, "IL_FUNC_OBJECT_TYPE": "Asset", "name": "Test_Asset_15_MB", "IL_UNIQUE_ID": "do_1127129845261680641599", "status": "Draft"}"""
+    val metaData = """{"artifactUrl": "https://www.youtube.com/watch?v=-SgZ3Enpau8", "ownershipType": ["createdBy"], "code": "Test_Asset_15_MB", "apoc_json": "{\"batch\": true}", "channel": "in.ekstep", "organisation": ["Sunbird", "QA ORG"], "language": ["English"], "mimeType": "video/x-youtube", "media": "video", "idealScreenSize": "normal", "createdOn": "2019-03-06T13:13:13.917+0000", "apoc_text": "APOC", "primaryCategory": "Asset", "appId": "local.sunbird.portal", "contentDisposition": "inline", "contentEncoding": "identity", "lastUpdatedOn": "2019-03-06T13:13:13.917+0000", "contentType": "Asset", "dialcodeRequired": "No", "apoc_num": 1, "audience": ["Learner"], "creator": "Creation", "createdFor": ["ORG_001", "0123653943740170242"], "visibility": "Default", "os": ["All"], "IL_SYS_NODE_TYPE": "DATA_NODE", "consumerId": "9393568c-3a56-47dd-a9a3-34da3c821638", "mediaType": "content", "osId": "org.ekstep.quiz.app", "versionKey": "1551877993917", "idealScreenDensity": "hdpi", "framework": "NCFCOPY", "createdBy": "874ed8a5-782e-4f6c-8f36-e0288455901e", "compatibilityLevel": 1.0, "IL_FUNC_OBJECT_TYPE": "Asset", "name": "Test_Asset_15_MB", "IL_UNIQUE_ID": "do_1127129845261680641599", "status": "Draft"}"""
     ScalaJsonUtil.deserialize[Map[String, AnyRef]](metaData)
   }
 

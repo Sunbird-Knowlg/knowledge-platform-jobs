@@ -9,8 +9,6 @@ case class Asset(eventMap: util.Map[String, Any]) {
 
   def setMetaData(data: Map[String, AnyRef]): Unit = metaData ++= data
 
-  def mediaType: String = metaData.getOrElse("mediaType", "").asInstanceOf[String]
-
   def artifactBasePath: String = metaData.getOrElse("artifactBasePath", "").asInstanceOf[String]
 
   def artifactUrl: String = metaData.getOrElse("artifactUrl", "").asInstanceOf[String]
