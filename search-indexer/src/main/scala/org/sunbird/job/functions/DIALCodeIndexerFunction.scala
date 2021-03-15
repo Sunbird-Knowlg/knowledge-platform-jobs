@@ -30,7 +30,7 @@ class DIALCodeIndexerFunction(config: SearchIndexerConfig,
   override def processElement(event: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
     metrics.incCounter(config.dialcodeExternalEventCount)
     try {
-      upsertExternalDocument(event.id, event.getMap().asScala.toMap)(elasticUtil)
+      upsertDIALCodeDocument(event.id, event.getMap().asScala.toMap)(elasticUtil)
       metrics.incCounter(config.successDialcodeExternalEventCount)
     } catch {
       case ex: Exception =>

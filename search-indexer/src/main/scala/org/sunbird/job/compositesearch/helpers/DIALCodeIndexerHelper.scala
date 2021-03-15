@@ -16,12 +16,12 @@ trait DIALCodeIndexerHelper {
   }
 
   private def getIndexDocument(id: String)(esUtil: ElasticSearchUtil): mutable.Map[String, AnyRef] = {
-    val documentJson: String = esUtil.getDocumentAsStringById(id)
+    val documentJson: String = esUtil.getDocumentAsString(id)
     val indexDocument = if (documentJson != null && !documentJson.isEmpty) ScalaJsonUtil.deserialize[mutable.Map[String, AnyRef]](documentJson) else mutable.Map[String, AnyRef]()
     indexDocument
   }
 
-  def getIndexDocument(message: Map[String, Any], updateRequest: Boolean)(esUtil: ElasticSearchUtil): Map[String, AnyRef] = {
+  def getDocument(message: Map[String, Any], updateRequest: Boolean)(esUtil: ElasticSearchUtil): Map[String, AnyRef] = {
     val identifier: String = message.getOrElse("nodeUniqueId", "").asInstanceOf[String]
     val indexDocument = if (updateRequest) getIndexDocument(identifier)(esUtil) else mutable.Map[String, AnyRef]()
     val transactionData: Map[String, AnyRef] = message.getOrElse("transactionData", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
@@ -38,20 +38,20 @@ trait DIALCodeIndexerHelper {
   }
 
   private def upsertDocument(identifier: String, jsonIndexDocument: String)(esUtil: ElasticSearchUtil): Unit = {
-    esUtil.addDocumentWithId(identifier, jsonIndexDocument)
+    esUtil.addDocument(identifier, jsonIndexDocument)
   }
 
-  def upsertExternalDocument(identifier: String, message: Map[String, Any])(esUtil: ElasticSearchUtil): Unit = {
+  def upsertDIALCodeDocument(identifier: String, message: Map[String, Any])(esUtil: ElasticSearchUtil): Unit = {
     val operationType: String = message.getOrElse("operationType", "").asInstanceOf[String]
     operationType match {
       case "CREATE" =>
-        val indexDocument: Map[String, AnyRef] = getIndexDocument(message, false)(esUtil)
-        val jsonIndexDocument: String = ScalaJsonUtil.serialize(indexDocument)
-        upsertDocument(identifier, jsonIndexDocument)(esUtil)
+        val doc: Map[String, AnyRef] = getDocument(message, false)(esUtil)
+        val jsonDoc: String = ScalaJsonUtil.serialize(doc)
+        upsertDocument(identifier, jsonDoc)(esUtil)
       case "UPDATE" =>
-        val indexDocument: Map[String, AnyRef] = getIndexDocument(message, true)(esUtil)
-        val jsonIndexDocument: String = ScalaJsonUtil.serialize(indexDocument)
-        upsertDocument(identifier, jsonIndexDocument)(esUtil)
+        val doc: Map[String, AnyRef] = getDocument(message, true)(esUtil)
+        val jsonDoc: String = ScalaJsonUtil.serialize(doc)
+        upsertDocument(identifier, jsonDoc)(esUtil)
       case "DELETE" =>
         esUtil.deleteDocument(identifier)
       case _ =>

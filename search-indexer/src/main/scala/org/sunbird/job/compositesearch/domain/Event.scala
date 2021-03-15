@@ -20,4 +20,6 @@ class Event(eventMap: java.util.Map[String, Any]) extends JobRequest(eventMap) {
 
   def nodeType: String = readOrDefault("nodeType", "")
 
+  def validEvent(): Boolean = (operationType != null) && index
+
 }

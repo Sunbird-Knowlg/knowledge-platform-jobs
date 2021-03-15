@@ -15,7 +15,7 @@ trait DIALCodeMetricsIndexerHelper {
   }
 
   private def getIndexDocument(id: String)(esUtil: ElasticSearchUtil): mutable.Map[String, AnyRef] = {
-    val documentJson: String = esUtil.getDocumentAsStringById(id)
+    val documentJson: String = esUtil.getDocumentAsString(id)
     val indexDocument = if (documentJson != null && !documentJson.isEmpty) ScalaJsonUtil.deserialize[mutable.Map[String, AnyRef]](documentJson) else mutable.Map[String, AnyRef]()
     indexDocument
   }
@@ -37,7 +37,7 @@ trait DIALCodeMetricsIndexerHelper {
   }
 
   private def upsertDocument(identifier: String, jsonIndexDocument: String)(esUtil: ElasticSearchUtil): Unit = {
-    esUtil.addDocumentWithId(identifier, jsonIndexDocument)
+    esUtil.addDocument(identifier, jsonIndexDocument)
   }
 
   def upsertDialcodeMetricDocument(identifier: String, message: Map[String, Any])(esUtil: ElasticSearchUtil): Unit = {

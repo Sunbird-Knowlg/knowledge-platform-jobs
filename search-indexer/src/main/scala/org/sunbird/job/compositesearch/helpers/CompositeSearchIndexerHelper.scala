@@ -18,7 +18,7 @@ trait CompositeSearchIndexerHelper {
   }
 
   private def getIndexDocument(identifier: String)(esUtil: ElasticSearchUtil): scala.collection.mutable.Map[String, AnyRef] = {
-    val documentJson: String = esUtil.getDocumentAsStringById(identifier)
+    val documentJson: String = esUtil.getDocumentAsString(identifier)
     val indexDocument = if (documentJson != null && documentJson.nonEmpty) ScalaJsonUtil.deserialize[scala.collection.mutable.Map[String, AnyRef]](documentJson) else scala.collection.mutable.Map[String, AnyRef]()
     indexDocument
   }
@@ -78,7 +78,7 @@ trait CompositeSearchIndexerHelper {
   }
 
   def upsertDocument(identifier: String, jsonIndexDocument: String)(esUtil: ElasticSearchUtil): Unit = {
-    esUtil.addDocumentWithId(identifier, jsonIndexDocument)
+    esUtil.addDocument(identifier, jsonIndexDocument)
   }
 
   def processESMessage(compositeObject: CompositeIndexer)(esUtil: ElasticSearchUtil, defCache: DefinitionCache): Unit = {

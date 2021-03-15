@@ -68,7 +68,7 @@ class ElasticSearchUtil(connectionInfo: String, indexName: String, indexType: St
     response
   }
 
-  def addDocumentWithId(identifier: String, document: String): Unit = {
+  def addDocument(identifier: String, document: String): Unit = {
     try {
       // TODO
       // Replace mapper with JSONUtil once the JSONUtil is fixed
@@ -101,7 +101,7 @@ class ElasticSearchUtil(connectionInfo: String, indexName: String, indexType: St
     logger.info(s"Deleted ${response.getId} to index ${response.getIndex}")
   }
 
-  def getDocumentAsStringById(identifier: String): String = {
+  def getDocumentAsString(identifier: String): String = {
     val response = esClient.get(new GetRequest(indexName, indexType, identifier))
     response.getSourceAsString
   }
