@@ -8,7 +8,7 @@ import org.sunbird.job.domain.`object`.DefinitionCache
 class DefinitionCacheTestSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
 
   val config: Config = ConfigFactory.load("test.conf")
-  val definitionCache = new DummyDefinitionCache()
+  val definitionCache = new DefinitionCache()
   val basePath = "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local"
 
   "DefinitionCache" should "return the definition for the objectType and version specified " in {
@@ -29,6 +29,16 @@ class DefinitionCacheTestSpec extends FlatSpec with BeforeAndAfterAll with Match
     config.isEmpty should be(false)
     config.getOrElse("objectType", "").asInstanceOf[String] should be("Collection")
   }
-}
 
-class DummyDefinitionCache extends DefinitionCache {}
+  it should "return relation labels" in {
+    val definition = definitionCache.getDefinition("Collection", "1.0", basePath)
+    definition.relationLabel("Content", "IN", "hasSequenceMember") should be(Some("collections"))
+    definition.relationLabel("ContentImage", "OUT", "hasSequenceMember") should be(Some("children"))
+  }
+
+  it should "return external properties"  in {
+    val definition = definitionCache.getDefinition("Collection", "1.0", basePath)
+    definition.externalProperties.size should be(1)
+    definition.externalProperties contains("hierarchy")
+  }
+}
