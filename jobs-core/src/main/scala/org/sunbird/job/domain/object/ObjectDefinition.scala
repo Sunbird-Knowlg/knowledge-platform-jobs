@@ -21,7 +21,7 @@ class ObjectDefinition(val objectType: String, val version: String, val schema: 
   }
 
   def relationKey(objectType: String, direction: String, relationType: String): String =
-    s"${direction.toUpperCase}:$objectType:$relationType"
+    s"${direction.toUpperCase}:${objectType.toUpperCase}:${relationType.toUpperCase}"
 
   def relationLabel(objectType: String, direction: String, relationType: String): Option[String] =
     relationLabelsMap.get(relationKey(objectType, direction, relationType))

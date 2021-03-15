@@ -7,8 +7,6 @@ import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.models.CompositeIndexer
 import org.sunbird.job.util.{ElasticSearchUtil, ScalaJsonUtil}
 
-import scala.collection.mutable
-
 trait CompositeSearchIndexerHelper {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[CompositeSearchIndexerHelper])
@@ -19,15 +17,15 @@ trait CompositeSearchIndexerHelper {
     esUtil.addIndex(settings, mappings)
   }
 
-  private def getIndexDocument(identifier: String)(esUtil: ElasticSearchUtil): mutable.Map[String, AnyRef] = {
+  private def getIndexDocument(identifier: String)(esUtil: ElasticSearchUtil): scala.collection.mutable.Map[String, AnyRef] = {
     val documentJson: String = esUtil.getDocumentAsStringById(identifier)
-    val indexDocument = if (documentJson != null && documentJson.nonEmpty) ScalaJsonUtil.deserialize[mutable.Map[String, AnyRef]](documentJson) else mutable.Map[String, AnyRef]()
+    val indexDocument = if (documentJson != null && documentJson.nonEmpty) ScalaJsonUtil.deserialize[scala.collection.mutable.Map[String, AnyRef]](documentJson) else scala.collection.mutable.Map[String, AnyRef]()
     indexDocument
   }
 
   def getIndexDocument(message: Map[String, Any], isUpdate: Boolean, definition: ObjectDefinition, nestedFields: List[String])(esUtil: ElasticSearchUtil): Map[String, AnyRef] = {
     val identifier = message.getOrElse("nodeUniqueId", "").asInstanceOf[String]
-    val indexDocument = if (isUpdate) getIndexDocument(identifier)(esUtil) else mutable.Map[String, AnyRef]()
+    val indexDocument = if (isUpdate) getIndexDocument(identifier)(esUtil) else scala.collection.mutable.Map[String, AnyRef]()
     val transactionData = message.getOrElse("transactionData", Map[String, Any]()).asInstanceOf[Map[String, Any]]
 
     if (transactionData.nonEmpty) {
@@ -63,7 +61,10 @@ trait CompositeSearchIndexerHelper {
         if (title.nonEmpty) {
           val list = indexDocument.getOrElse(title.get, List[String]()).asInstanceOf[List[String]]
           val id = rel.getOrElse("id", "").asInstanceOf[String]
-          if (!list.contains(id)) indexDocument.put(title.get, (id :: list).asInstanceOf[AnyRef])
+          if (list.contains(id)) {
+            val updatedList =  list diff List(id)
+            indexDocument.put(title.get, updatedList.asInstanceOf[AnyRef])
+          }
         }
       })
     }
