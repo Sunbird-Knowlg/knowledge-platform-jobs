@@ -26,6 +26,11 @@ class EnrolmentReconciliationConfig(override val config: Config) extends BaseJob
 
   val dbHost: String = config.getString("lms-cassandra.host")
   val dbPort: Int = config.getInt("lms-cassandra.port")
+  val dbUserContentConsumptionTable: String = config.getString("lms-cassandra.consumption.table")
+  val dbUserActivityAggTable: String = config.getString("lms-cassandra.user_activity_agg.table")
+  val dbUserEnrolmentsTable: String = config.getString("lms-cassandra.user_enrolments.table")
+  val dbKeyspace: String = config.getString("lms-cassandra.keyspace")
+
 
 
   // Redis Configurations
@@ -35,6 +40,9 @@ class EnrolmentReconciliationConfig(override val config: Config) extends BaseJob
   val deDupRedisPort: Int = config.getInt("dedup-redis.port")
   val deDupStore: Int = config.getInt("dedup-redis.database.index")
   val deDupExpirySec: Int = config.getInt("dedup-redis.database.expiry")
+
+  val supportedEventType:String = "user-enrolment-sync"
+  val statusCacheExpirySec: Int = 10
 
 
 }
