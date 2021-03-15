@@ -17,10 +17,18 @@ class EnrolmentReconciliationConfig(override val config: Config) extends BaseJob
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
 
   // Metric List
-  val totalEventsCount = "total-events-count"
-  val successEventCount = "success-events-count"
+  val totalEventCount = "total-events-count"
   val failedEventCount = "failed-events-count"
-  val skippedEventCount = "skipped-event-count"
+  val dbUpdateCount = "db-update-count"
+  val dbReadCount = "db-read-count"
+  val cacheHitCount = "cache-hit-count"
+  val cacheMissCount = "cache-miss-count"
+  val skipEventsCount = "skipped-events-count"
+  val certIssueEventsCount = "cert-issue-events-count"
+  val processedEnrolmentCount = "processed-enrolment-count"
+  val enrolmentCompleteCount = "enrolment-complete-count"
+  val retiredCCEventsCount = "retired-consumption-events-count"
+
   // Consumers
   val enrolmentReconciliationConsumer = "enrolment-reconciliation-consumer"
 

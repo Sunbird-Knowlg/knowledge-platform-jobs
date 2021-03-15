@@ -49,19 +49,26 @@ class EnrolmentReconciliationFn(config: EnrolmentReconciliationConfig)
   }
 
   override def metricsList(): List[String] = {
-    List()
+    List(config.failedEventCount,
+      config.dbUpdateCount,
+      config.dbReadCount,
+      config.cacheHitCount,
+      config.cacheMissCount,
+      config.retiredCCEventsCount
+    )
   }
 
+
   override def processElement(event: java.util.Map[String, AnyRef], context: ProcessFunction[java.util.Map[String, AnyRef], String]#Context, metrics: Metrics): Unit = {
-    val eData = event.asScala.get("edata").asInstanceOf[java.util.Map[String, AnyRef]]
-    if (isValidEvent(eData.get("type").asInstanceOf[String])) {
-      val courseId = eData.get("courseId").asInstanceOf[String]
-      val batchId = eData.get("batchId").asInstanceOf[String]
-      val userId = eData.get("userId").asInstanceOf[String]
-      print("Enrolment Event" + event)
+    val eData = event.asScala.getOrElse("edata", Map()).asInstanceOf[java.util.Map[String, AnyRef]].asScala
+    if (isValidEvent(eData.getOrElse("type", "").asInstanceOf[String])) {
+      val courseId = eData.getOrElse("courseId", "").asInstanceOf[String]
+      val batchId = eData.getOrElse("batchId", "").asInstanceOf[String]
+      val userId = eData.getOrElse("userId", "").asInstanceOf[String]
+
 
     } else {
-      println("Invalid Event")
+
     }
 
   }
