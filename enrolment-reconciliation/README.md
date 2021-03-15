@@ -1,14 +1,14 @@
-# Relation Cache Updater
+# Enrolment Reconciliation
 
-Relation Cache updater job is write the content leafnodes and ancestors nodes 
+Enrolment Reconciliation is used to compute the progress for unit level and course level for each batch and user and updates to database.
 
 ## Getting Started
 
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a yarn or kubernetes.
-Design wiki link: https://project-sunbird.atlassian.net/wiki/spaces/SBDES/pages/1493041222/Courses+Infra+-+Design
+Design wiki link: https://project-sunbird.atlassian.net/wiki/spaces/SBDES/pages/2275672087/User+enrolment+progress+sync+-+SB-23493
 ### Prerequisites
 
-1. Download flink-1.10.0-scala_2.12 from [apache-flink-downloads](https://www.apache.org/dyn/closer.lua/flink/flink-1.10.0/flink-1.10.0-bin-scala_2.12.tgz). 
+1. Download flink-1.10.0-scala_2.12 from [apache-flink-downloads](https://www.apache.org/dyn/closer.lua/flink/flink-1.10.0/flink-1.10.0-bin-scala_2.12.tgz).
 2. Download [hadoop dependencies](https://repo.maven.apache.org/maven2/org/apache/flink/flink-shaded-hadoop-2-uber/2.8.3-10.0/flink-shaded-hadoop-2-uber-2.8.3-10.0.jar) (only for running on Yarn). Copy the hadoop dependency jar under lib folder of the flink download.
 3. export HADOOP_CLASSPATH=`<hadoop-executable-dir>/hadoop classpath` either in .bashrc or current execution shell.
 4. Docker installed.
@@ -25,7 +25,7 @@ mvn clean install
 Flink requires memory to be allocated for both job-manager and task manager. -yjm parameter assigns job-manager memory and -ytm assigns task-manager memory.
 
 ```
-./bin/flink run -m yarn-cluster -p 2 -yjm 1024m -ytm 1024m <knowledge-platform-jobs>/relation-cache-updater/target/relation-cache-updater-0.0.1.jar
+./bin/flink run -m yarn-cluster -p 2 -yjm 1024m -ytm 1024m <knowledge-platform-jobs>/activity-aggregate-updater/target/activity-aggregate-updater-0.0.1.jar
 ```
 
 ### Kubernetes
@@ -53,7 +53,7 @@ kubectl create -f knowledge-platform-job/kubernetes/taskmanager-deployment.yaml
 kubectl port-forward deployment/flink-jobmanager 8081:8081
 
 # Submit the job to the Kubernetes single node cluster flink-cluster
-./bin/flink run -m localhost:8081 <knowledge-platform-job>/relation-cache-updater/target/relation-cache-updater-0.0.1.jar
+./bin/flink run -m localhost:8081 <knowledge-platform-job>/activity-aggregate-updater/target/activity-aggregate-updater-0.0.1.jar
 
 # Commands to delete the pods created in the cluster
 kubectl delete deployment/flink-jobmanager
