@@ -9,7 +9,7 @@ import org.sunbird.job.util.{ElasticSearchUtil, ScalaJsonUtil}
 
 import scala.collection.mutable
 
-trait CompositeSearchIndexerHelper extends DefinitionCache {
+trait CompositeSearchIndexerHelper {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[CompositeSearchIndexerHelper])
 
@@ -21,16 +21,16 @@ trait CompositeSearchIndexerHelper extends DefinitionCache {
 
   private def getIndexDocument(identifier: String)(esUtil: ElasticSearchUtil): mutable.Map[String, AnyRef] = {
     val documentJson: String = esUtil.getDocumentAsStringById(identifier)
-    val indexDocument = if (documentJson != null && !documentJson.isEmpty) ScalaJsonUtil.deserialize[mutable.Map[String, AnyRef]](documentJson) else mutable.Map[String, AnyRef]()
+    val indexDocument = if (documentJson != null && documentJson.nonEmpty) ScalaJsonUtil.deserialize[mutable.Map[String, AnyRef]](documentJson) else mutable.Map[String, AnyRef]()
     indexDocument
   }
 
-  def getIndexDocument(message: Map[String, Any], updateRequest: Boolean, definition: ObjectDefinition, nestedFields: List[String])(esUtil: ElasticSearchUtil): Map[String, AnyRef] = {
+  def getIndexDocument(message: Map[String, Any], isUpdate: Boolean, definition: ObjectDefinition, nestedFields: List[String])(esUtil: ElasticSearchUtil): Map[String, AnyRef] = {
     val identifier = message.getOrElse("nodeUniqueId", "").asInstanceOf[String]
-    val indexDocument = if (updateRequest) getIndexDocument(identifier)(esUtil) else mutable.Map[String, AnyRef]()
+    val indexDocument = if (isUpdate) getIndexDocument(identifier)(esUtil) else mutable.Map[String, AnyRef]()
     val transactionData = message.getOrElse("transactionData", Map[String, Any]()).asInstanceOf[Map[String, Any]]
 
-    if (!transactionData.isEmpty) {
+    if (transactionData.nonEmpty) {
       val addedProperties = transactionData.getOrElse("properties", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
       addedProperties.foreach(property => {
         if (!definition.externalProperties.contains(property._1)) {
@@ -40,7 +40,7 @@ trait CompositeSearchIndexerHelper extends DefinitionCache {
       })
 
       val addedRelations = transactionData.getOrElse("addedRelations", List[Map[String, AnyRef]]()).asInstanceOf[List[Map[String, AnyRef]]]
-      if (!addedRelations.isEmpty) {
+      if (addedRelations.nonEmpty) {
         addedRelations.foreach(rel => {
           val direction = rel.getOrElse("dir", "").asInstanceOf[String]
           val relationType = rel.getOrElse("rel", "").asInstanceOf[String]
@@ -80,8 +80,8 @@ trait CompositeSearchIndexerHelper extends DefinitionCache {
     esUtil.addDocumentWithId(identifier, jsonIndexDocument)
   }
 
-  def processESMessage(compositeObject: CompositeIndexer)(esUtil: ElasticSearchUtil): Unit = {
-    val definition = getDefinition(compositeObject.objectType, compositeObject.getVersionAsString(), compositeObject.getDefinitionBasePath())
+  def processESMessage(compositeObject: CompositeIndexer)(esUtil: ElasticSearchUtil, defCache: DefinitionCache): Unit = {
+    val definition = defCache.getDefinition(compositeObject.objectType, compositeObject.getVersionAsString(), compositeObject.getDefinitionBasePath())
 
     val compositeMap = compositeObject.message.asScala.toMap
     upsertDocument(compositeObject.identifier, compositeMap, definition, compositeObject.getNestedFields())(esUtil)
@@ -103,10 +103,10 @@ trait CompositeSearchIndexerHelper extends DefinitionCache {
         val id = message.getOrElse("nodeUniqueId", "").asInstanceOf[String]
         val indexDocument = getIndexDocument(id)(esUtil)
         val visibility = indexDocument.getOrElse("visibility", "").asInstanceOf[String]
-        if (StringUtils.equalsIgnoreCase("Parent", visibility)) logger.info(s"Not deleting the document (visibility: Parent) with ID: ${id}")
+        if (StringUtils.equalsIgnoreCase("Parent", visibility)) logger.info(s"Not deleting the document (visibility: Parent) with ID: $id")
         else esUtil.deleteDocument(identifier)
       case _ =>
-        logger.info(s"Unknown Operation Type : ${operationType} for the identifier: ${identifier}.")
+        logger.info(s"Unknown Operation Type : $operationType for the identifier: $identifier.")
     }
   }
 

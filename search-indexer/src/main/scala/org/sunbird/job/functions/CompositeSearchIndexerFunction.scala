@@ -8,6 +8,7 @@ import org.sunbird.job.task.SearchIndexerConfig
 import org.sunbird.job.util.ElasticSearchUtil
 import org.sunbird.job.compositesearch.domain.Event
 import org.sunbird.job.compositesearch.helpers.{CompositeSearchIndexerHelper, FailedEventHelper}
+import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.models.CompositeIndexer
 
 
@@ -16,6 +17,7 @@ class CompositeSearchIndexerFunction(config: SearchIndexerConfig,
   extends BaseProcessFunction[Event, String](config) with CompositeSearchIndexerHelper with FailedEventHelper {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[CompositeSearchIndexerFunction])
+  lazy val defCache: DefinitionCache = new DefinitionCache()
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
@@ -32,7 +34,7 @@ class CompositeSearchIndexerFunction(config: SearchIndexerConfig,
     metrics.incCounter(config.compositeSearchEventCount)
     try {
       val compositeObject = getCompositeIndexerObject(event)
-      processESMessage(compositeObject)(elasticUtil)
+      processESMessage(compositeObject)(elasticUtil, defCache)
       metrics.incCounter(config.successCompositeSearchEventCount)
     } catch {
       case ex: Exception =>

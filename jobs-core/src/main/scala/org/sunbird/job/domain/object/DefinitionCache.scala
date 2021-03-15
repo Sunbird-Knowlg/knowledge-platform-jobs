@@ -7,7 +7,7 @@ import org.sunbird.job.util.ScalaJsonUtil
 
 import scala.io.Source
 
-trait DefinitionCache extends Serializable {
+class DefinitionCache extends Serializable {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[DefinitionCache])
 
