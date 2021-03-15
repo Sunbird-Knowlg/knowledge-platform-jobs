@@ -17,7 +17,7 @@ import org.sunbird.job.cache.RedisConnect
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.fixture.EventFixture
 import org.sunbird.job.task.{EnrolmentReconciliationConfig, EnrolmentReconciliationStreamTask}
-import org.sunbird.job.util.CassandraUtil
+import org.sunbird.job.util.{CassandraUtil, HttpUtil}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 import redis.clients.jedis.Jedis
 import redis.embedded.RedisServer
@@ -38,8 +38,8 @@ class EnrolmentReconciliationStreamTaskSpec extends BaseTestSpec {
   var redisServer: RedisServer = _
   redisServer = new RedisServer(6340)
   redisServer.start()
-  var deDupCacheDb: Jedis = _
-  var nodesStore: Jedis = _
+  var jedis: Jedis = _
+
   val mockKafkaUtil: FlinkKafkaConnector = mock[FlinkKafkaConnector](Mockito.withSettings().serializable())
   val gson = new Gson()
   val config: Config = ConfigFactory.load("test.conf")
@@ -51,7 +51,7 @@ class EnrolmentReconciliationStreamTaskSpec extends BaseTestSpec {
   override protected def beforeAll(): Unit = {
     super.beforeAll()
     val redisConnect = new RedisConnect(jobConfig)
-    nodesStore = redisConnect.getConnection(jobConfig.nodeStore)
+    jedis = redisConnect.getConnection(jobConfig.nodeStore)
     EmbeddedCassandraServerHelper.startEmbeddedCassandra(80000L)
     cassandraUtil = new CassandraUtil(jobConfig.dbHost, jobConfig.dbPort)
     val session = cassandraUtil.session
@@ -60,8 +60,12 @@ class EnrolmentReconciliationStreamTaskSpec extends BaseTestSpec {
     dataLoader.load(new FileCQLDataSet(getClass.getResource("/test.cql").getPath, true, true))
     // Clear the metrics
     BaseMetricsReporter.gaugeMetrics.clear()
-    nodesStore.flushDB()
+    jedis.flushDB()
     flinkCluster.before()
+
+    updateRedis(jedis, EventFixture.CASE_1.asInstanceOf[Map[String, AnyRef]])
+    updateRedis(jedis, EventFixture.CASE_2.asInstanceOf[Map[String, AnyRef]])
+    updateRedis(jedis, EventFixture.CASE_3.asInstanceOf[Map[String, AnyRef]])
   }
 
   override protected def afterAll(): Unit = {
@@ -78,8 +82,20 @@ class EnrolmentReconciliationStreamTaskSpec extends BaseTestSpec {
 
   "EnrolmentReConciliation " should "validate metrics" in {
     when(mockKafkaUtil.kafkaMapSource(jobConfig.kafkaInputTopic)).thenReturn(new EnrolmentReconciliationMapSource)
-    new EnrolmentReconciliationStreamTask(jobConfig, mockKafkaUtil).process()
+    new EnrolmentReconciliationStreamTask(jobConfig, mockKafkaUtil, httpUtil = new HttpUtil).process()
 
+  }
+
+  def updateRedis(jedis: Jedis, testData: Map[String, AnyRef]) {
+    testData.get("cacheData").map(data => {
+      data.asInstanceOf[List[Map[String, AnyRef]]].map(cacheData => {
+        cacheData.map(x => {
+          x._2.asInstanceOf[List[String]].foreach(d => {
+            jedis.sadd(x._1, d)
+          })
+        })
+      })
+    })
   }
 
 }
@@ -95,3 +111,4 @@ class EnrolmentReconciliationMapSource extends SourceFunction[java.util.Map[Stri
 
   override def cancel(): Unit = {}
 }
+
