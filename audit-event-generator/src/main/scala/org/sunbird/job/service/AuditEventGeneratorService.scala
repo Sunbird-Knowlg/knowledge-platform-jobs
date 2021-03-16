@@ -9,7 +9,9 @@ import org.sunbird.job.util.JSONUtil
 import org.ekstep.telemetry.TelemetryGenerator
 import org.ekstep.telemetry.TelemetryParams
 import org.sunbird.job.domain.Event
+import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 
+import java.io.FileNotFoundException
 import java.util
 import scala.collection.mutable
 import java.text.SimpleDateFormat
@@ -20,9 +22,10 @@ trait AuditEventGeneratorService {
   private val IMAGE_SUFFIX = ".img"
   private val OBJECT_TYPE_IMAGE_SUFFIX = "Image"
   private val SKIP_AUDIT = "{\"object\": {\"type\":null}}"
+  private lazy val definitionCache = new DefinitionCache
 
   private val systemPropsList = List("IL_SYS_NODE_TYPE", "IL_FUNC_OBJECT_TYPE", "IL_UNIQUE_ID", "IL_TAG_NAME", "IL_ATTRIBUTE_NAME", "IL_INDEXABLE_METADATA_KEY", "IL_NON_INDEXABLE_METADATA_KEY",
-    "IL_IN_RELATIONS_KEY", "IL_OUT_RELATIONS_KEY", "IL_REQUIRED_PROPERTIES", "IL_SYSTEM_TAGS_KEY", "IL_SEQUENCE_INDEX","SYS_INTERNAL_LAST_UPDATED_ON", "lastUpdatedOn", "versionKey", "lastStatusChangedOn")
+    "IL_IN_RELATIONS_KEY", "IL_OUT_RELATIONS_KEY", "IL_REQUIRED_PROPERTIES", "IL_SYSTEM_TAGS_KEY", "IL_SEQUENCE_INDEX", "SYS_INTERNAL_LAST_UPDATED_ON", "lastUpdatedOn", "versionKey", "lastStatusChangedOn")
 
   private def getContext(channelId: String, env: String): Map[String, String] = {
     val context = Map(
@@ -46,7 +49,7 @@ trait AuditEventGeneratorService {
         metrics.incCounter(config.successEventCount)
       }
       else {
-        logger.info("Skipped event as the objectype is not available, event =" + auditMap)
+        logger.info("Skipped event as the objectype is not available, event =" + auditEventStr)
         metrics.incCounter(config.skippedEventCount)
       }
     } catch {
@@ -56,37 +59,25 @@ trait AuditEventGeneratorService {
     }
   }
 
-  // DefinitionUTIL will come start
-  def getSchema(objectType: String, version: String)(implicit config: AuditEventGeneratorConfig): Map[String, AnyRef] = {
-    val path = s"${config.basePath}/${objectType.toLowerCase}/${version}/"
+  def getDefinition(graphId: String, objectType: String)(implicit config: AuditEventGeneratorConfig): ObjectDefinition = {
     try {
-      JSONUtil.deserialize[Map[String, AnyRef]](Source.fromURL(path + "config.json").mkString)
+      definitionCache.getDefinition(objectType, config.configVersion, config.basePath)
     } catch {
-      case e: Exception => {
-        Map[String, AnyRef]()
+      case ex: Exception => {
+        new ObjectDefinition(objectType, config.configVersion, Map[String, AnyRef](), Map[String, AnyRef]())
       }
     }
-
-  }
-
-  // DefinitionUTIL will come end
-
-  def getDefinition(graphId: String, objectType: String)(implicit config: AuditEventGeneratorConfig): Map[String, AnyRef] = {
-    getSchema(objectType, "1.0")
   }
 
 
   def getAuditMessage(message: Event)(implicit config: AuditEventGeneratorConfig): String = {
-    var auditMap:String = null
+    var auditMap: String = null
     var objectId = message.readOrDefault("nodeUniqueId", null).asInstanceOf[String]
     var objectType = message.readOrDefault("objectType", null).asInstanceOf[String]
     val env = if (null != objectType) objectType.toLowerCase.replace("image", "") else "system"
     val graphId = message.readOrDefault("graphId", "")
     val userId = message.readOrDefault("userId", "")
-    val definitionNode:Map[String, AnyRef] = getDefinition(graphId, objectType)
-    val inRelations = mutable.Map[String, String]()
-    val outRelations = mutable.Map[String, String]()
-    getRelationDefinitionMaps(definitionNode, inRelations, outRelations)
+    val definitionNode: ObjectDefinition = getDefinition(graphId, objectType)
 
     var channelId = config.defaultChannel
     val channel = message.readOrDefault("channel", null).asInstanceOf[String]
@@ -96,8 +87,8 @@ trait AuditEventGeneratorService {
     val propertyMap = transactionData("properties").asInstanceOf[Map[String, AnyRef]]
     val statusMap = propertyMap.getOrElse("status", null).asInstanceOf[Map[String, AnyRef]]
     val lastStatusChangedOn = propertyMap.getOrElse("lastStatusChangedOn", null).asInstanceOf[Map[String, AnyRef]]
-    val addedRelations = transactionData.getOrElse("addedRelations", null).asInstanceOf[List[Map[String, AnyRef]]]
-    val removedRelations = transactionData.getOrElse("removedRelations", null).asInstanceOf[List[Map[String, AnyRef]]]
+    val addedRelations = transactionData.getOrElse("addedRelations", List[Map[String, AnyRef]]()).asInstanceOf[List[Map[String, AnyRef]]]
+    val removedRelations = transactionData.getOrElse("removedRelations", List[Map[String, AnyRef]]()).asInstanceOf[List[Map[String, AnyRef]]]
     var pkgVersion = ""
     val pkgVerMap = propertyMap.getOrElse("pkgVersion", null).asInstanceOf[Map[String, AnyRef]]
     if (null != pkgVerMap) pkgVersion = s"${pkgVerMap.get("nv")}"
@@ -115,12 +106,12 @@ trait AuditEventGeneratorService {
         if (null != ov && null != nv) duration = String.valueOf(computeDuration(ov, nv))
       }
     }
-    var props:List[String] = propertyMap.keys.toList
-    props ++= getRelationProps(addedRelations, inRelations, outRelations)
-    props ++= getRelationProps(removedRelations, inRelations, outRelations)
+    var props: List[String] = propertyMap.keys.toList
+    props ++= getRelationProps(addedRelations, definitionNode)
+    props ++= getRelationProps(removedRelations, definitionNode)
     val propsExceptSystemProps = props.filter(prop => !systemPropsList.contains(prop))
     val cdata = getCData(addedRelations, removedRelations, propertyMap)
-    var context:Map[String, String] = getContext(channelId, env)
+    var context: Map[String, String] = getContext(channelId, env)
     objectId = if (null != objectId) objectId.replaceAll(IMAGE_SUFFIX, "")
     else objectId
     objectType = if (null != objectType) objectType.replaceAll(OBJECT_TYPE_IMAGE_SUFFIX, "")
@@ -154,7 +145,7 @@ trait AuditEventGeneratorService {
    * @param propertyMap
    * @return
    */
-  private def getCData(addedRelations: List[Map[String, AnyRef]], removedRelations: List[Map[String, AnyRef]], propertyMap: Map[String, AnyRef]):List[Map[String, AnyRef]] = {
+  private def getCData(addedRelations: List[Map[String, AnyRef]], removedRelations: List[Map[String, AnyRef]], propertyMap: Map[String, AnyRef]): List[Map[String, AnyRef]] = {
     var cdata = List[Map[String, AnyRef]]()
     if (null != propertyMap && propertyMap.nonEmpty && propertyMap.contains("dialcodes")) {
       val dialcodeMap = propertyMap("dialcodes").asInstanceOf[Map[String, AnyRef]]
@@ -186,52 +177,21 @@ trait AuditEventGeneratorService {
   /**
    *
    * @param relations
-   * @param inRelations
-   * @param outRelations
-   * @return
    */
-  private def getRelationProps(relations: List[Map[String, AnyRef]], inRelations: mutable.Map[String, String], outRelations: mutable.Map[String, String]) = {
-    var props = List[String]()
-    if (null != relations && !relations.isEmpty) {
-      for (relation <- relations) {
-        val key = relation("rel").asInstanceOf[String] + relation("type").asInstanceOf[String]
-        if (StringUtils.equalsIgnoreCase(relation("dir").asInstanceOf[String], "IN")) {
-          if (null != inRelations.getOrElse(key + "in", null)) props :+= inRelations(key + "in")
-        } else if (null != outRelations.getOrElse(key + "out", null)) props :+= outRelations(key + "out")
-      }
-    }
-    props
-  }
-
-  /**
-   * @param rDef
-   * @param relDefMap
-   * @param rel
-   */
-  private def getRelationDefinitionKey(rDef: Map[String, AnyRef], relDefMap: mutable.Map[String, String], rel: String, title: String): Unit = {
-    if (null != rDef("objects") && rDef("objects").asInstanceOf[List[String]].nonEmpty) {
-      rDef("objects").asInstanceOf[List[String]].map(objectType => {
-        val key = rDef("type") + objectType + rel
-        relDefMap ++= Map(key -> title)
+  private def getRelationProps(relations: List[Map[String, AnyRef]], objectDefinition: ObjectDefinition)(implicit config: AuditEventGeneratorConfig):List[String] = {
+    var relationProps = List[String]()
+    if (relations.nonEmpty) {
+      relations.foreach(rel => {
+        val direction = rel.getOrElse("dir", "").asInstanceOf[String]
+        val relationType = rel.getOrElse("rel", "").asInstanceOf[String]
+        val targetObjType = rel.getOrElse("type", "").asInstanceOf[String]
+        val relationProp = objectDefinition.relationLabel(targetObjType, direction, relationType)
+        if (relationProp.nonEmpty) {
+          relationProps :+= relationProp.get
+        }
       })
     }
-  }
-
-  /**
-   * @param definition
-   * @param inRelations
-   * @param outRelations
-   */
-  private def getRelationDefinitionMaps(definition: Map[String, AnyRef], inRelations: mutable.Map[String, String], outRelations: mutable.Map[String, String]): Unit = {
-    if (null != definition && definition.getOrElse("relations", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]].nonEmpty) {
-      for ((title, relation) <- definition.getOrElse("relations", Map[String, AnyRef]()).asInstanceOf[Map[String, Map[String, AnyRef]]]) {
-        if (relation("direction").asInstanceOf[String] == "in") {
-          getRelationDefinitionKey(relation, inRelations, "in", title)
-        } else if(relation("direction").asInstanceOf[String] == "out") {
-          getRelationDefinitionKey(relation, outRelations, "out", title)
-        }
-      }
-    }
+    relationProps
   }
 
   /**

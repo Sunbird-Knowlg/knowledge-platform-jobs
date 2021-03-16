@@ -41,6 +41,7 @@ class AuditEventGeneratorConfig(override val config: Config) extends BaseJobConf
   val graphName = config.getString("neo4j.graph")
 
   val basePath = config.getString("schema.basePath")
+  val configVersion = "1.0"
 
   // Redis Configurations
   val relationCacheStore: Int = config.getInt("redis.database.relationCache.id")

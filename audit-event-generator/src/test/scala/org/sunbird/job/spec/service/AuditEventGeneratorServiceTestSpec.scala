@@ -86,6 +86,20 @@ class AuditEventGeneratorServiceTestSpec extends BaseTestSpec {
     eventStr should be("{\"object\": {\"type\":null}}")
   }
 
+  "AuditEventGeneratorService" should "event for addedRelations" in {
+    val inputEvent:util.Map[String, Any] = JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_6)
+
+    val eventStr = auditEventGenerator.getAuditMessage(new Event(inputEvent))(jobConfig);
+    val eventMap = JSONUtil.deserialize[Map[String, AnyRef]](eventStr)
+
+    eventMap("eid") should be("AUDIT")
+    eventMap("ver") should be("3.0")
+    eventMap("edata").asInstanceOf[Map[String, AnyRef]]("props").asInstanceOf[List[String]] should contain ("name")
+    eventMap("edata").asInstanceOf[Map[String, AnyRef]]("props").asInstanceOf[List[String]] should contain ("collections")
+    val duration = eventMap("edata").asInstanceOf[Map[String, AnyRef]].getOrElse("duration", null)
+    duration should be(null)
+  }
+
   "AuditEventGeneratorService" should "compute duration" in {
     val ov = "2019-03-13T13:25:43.129+0530"
     val nv = "2019-03-13T13:38:24.358+0530"
