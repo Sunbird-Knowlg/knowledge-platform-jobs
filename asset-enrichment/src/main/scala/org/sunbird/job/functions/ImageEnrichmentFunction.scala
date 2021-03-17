@@ -4,10 +4,11 @@ import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.domain.Event
+import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.helpers.{ImageEnrichmentHelper, OptimizerHelper}
 import org.sunbird.job.models.Asset
 import org.sunbird.job.task.AssetEnrichmentConfig
-import org.sunbird.job.util.{CloudStorageUtil, DefinitionUtil, Neo4JUtil}
+import org.sunbird.job.util.{CloudStorageUtil, Neo4JUtil}
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import scala.collection.JavaConverters._
@@ -18,7 +19,7 @@ class ImageEnrichmentFunction(config: AssetEnrichmentConfig,
   with ImageEnrichmentHelper with OptimizerHelper {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[ImageEnrichmentFunction])
-  lazy val definitionUtil: DefinitionUtil = new DefinitionUtil(config.definitionCacheExpiry)
+  lazy val definitionCache: DefinitionCache = new DefinitionCache
   lazy val cloudStorageUtil: CloudStorageUtil = new CloudStorageUtil(config)
 
   override def open(parameters: Configuration): Unit = {
@@ -37,7 +38,7 @@ class ImageEnrichmentFunction(config: AssetEnrichmentConfig,
     try {
       if (validateForArtifactUrl(asset, config.contentUploadContextDriven)) replaceArtifactUrl(asset)(cloudStorageUtil)
       asset.setMetaData(getMetaData(event.id)(neo4JUtil))
-      imageEnrichment(asset)(config, definitionUtil, cloudStorageUtil, neo4JUtil)
+      imageEnrichment(asset)(config, definitionCache, cloudStorageUtil, neo4JUtil)
       metrics.incCounter(config.successImageEnrichmentEventCount)
     } catch {
       case ex: Exception =>

@@ -3,8 +3,9 @@ package org.sunbird.job.helpers
 import java.io.File
 
 import org.slf4j.LoggerFactory
-import org.sunbird.job.util.{CloudStorageUtil, DefinitionUtil, FileUtils, Neo4JUtil, ImageResizerUtil, ScalaJsonUtil, Slug}
+import org.sunbird.job.util.{CloudStorageUtil, FileUtils, ImageResizerUtil, Neo4JUtil, ScalaJsonUtil, Slug}
 import org.im4java.core.Info
+import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.models.Asset
 import org.sunbird.job.task.AssetEnrichmentConfig
 
@@ -17,10 +18,10 @@ trait ImageEnrichmentHelper {
   private val CONTENT_FOLDER = "content"
   private val ARTIFACT_FOLDER = "artifact"
 
-  def imageEnrichment(asset: Asset)(config: AssetEnrichmentConfig, definitionUtil: DefinitionUtil, cloudStorageUtil: CloudStorageUtil, neo4JUtil: Neo4JUtil): Unit = {
+  def imageEnrichment(asset: Asset)(config: AssetEnrichmentConfig, definitionCache: DefinitionCache, cloudStorageUtil: CloudStorageUtil, neo4JUtil: Neo4JUtil): Unit = {
     val downloadUrl = asset.getFromMetaData("downloadUrl", "").asInstanceOf[String]
     try {
-      val variantsMap = optimizeImage(asset.identifier, downloadUrl)(config, definitionUtil, cloudStorageUtil)
+      val variantsMap = optimizeImage(asset.identifier, downloadUrl)(config, definitionCache, cloudStorageUtil)
       processImage(variantsMap, asset)(neo4JUtil)
     } catch {
       case e: Exception =>
@@ -32,10 +33,10 @@ trait ImageEnrichmentHelper {
     }
   }
 
-  def optimizeImage(contentId: String, originalURL: String)(config: AssetEnrichmentConfig, definitionUtil: DefinitionUtil, cloudStorageUtil: CloudStorageUtil): Map[String, String] = {
+  def optimizeImage(contentId: String, originalURL: String)(config: AssetEnrichmentConfig, definitionCache: DefinitionCache, cloudStorageUtil: CloudStorageUtil): Map[String, String] = {
     val variantsMap = mutable.Map[String, String]()
     // TODO
-    // get variant from the definition once updated : getVariantFromDefinition()(definitionUtil, config)
+    // get variant from the definition once updated : getVariantFromDefinition()(definitionCache, config)
     val variants = getVariant
     if (variants != null && variants.nonEmpty) {
       val originalFile = FileUtils.copyURLToFile(contentId, originalURL, originalURL.substring(originalURL.lastIndexOf("/") + 1, originalURL.length))
@@ -78,10 +79,10 @@ trait ImageEnrichmentHelper {
       "low" -> Map("dimensions" -> List[Int](128, 128), "dpi" -> 240))
   }
 
-  private def getVariantFromDefinition()(definitionUtil: DefinitionUtil, config: AssetEnrichmentConfig): Map[String, AnyRef] = {
+  private def getVariantFromDefinition()(definitionCache: DefinitionCache, config: AssetEnrichmentConfig): Map[String, AnyRef] = {
     val version = config.schemaSupportVersionMap.getOrElse("asset", "1.0")
-    val definition = definitionUtil.get("Asset", version, config.definitionBasePath)
-    val variants = definition.getOrElse("config", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]].getOrElse("variants", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
+    val definition = definitionCache.getDefinition("Asset", version, config.definitionBasePath)
+    val variants = definition.config.getOrElse("variants", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
     variants
   }
 

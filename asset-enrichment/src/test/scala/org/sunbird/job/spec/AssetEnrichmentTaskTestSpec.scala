@@ -11,15 +11,16 @@ import org.apache.flink.test.util.MiniClusterWithClientResource
 import org.cassandraunit.CQLDataLoader
 import org.cassandraunit.dataset.cql.FileCQLDataSet
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
-import org.mockito.ArgumentMatchers.{any, anyBoolean, anyString, contains}
+import org.mockito.ArgumentMatchers.{any, anyBoolean, anyString}
 import org.mockito.Mockito
 import org.mockito.Mockito.{doNothing, when}
 import org.sunbird.job.connector.FlinkKafkaConnector
+import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.fixture.EventFixture
 import org.sunbird.job.functions.{ImageEnrichmentFunction, VideoEnrichmentFunction}
 import org.sunbird.job.models.Asset
 import org.sunbird.job.task.AssetEnrichmentConfig
-import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, DefinitionUtil, JSONUtil, Neo4JUtil, ScalaJsonUtil, Slug, YouTubeUtil}
+import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, JSONUtil, Neo4JUtil, ScalaJsonUtil, Slug, YouTubeUtil}
 import org.sunbird.spec.BaseTestSpec
 
 class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
@@ -35,7 +36,7 @@ class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
   val mockKafkaUtil: FlinkKafkaConnector = mock[FlinkKafkaConnector](Mockito.withSettings().serializable())
   val config: Config = ConfigFactory.load("test.conf")
   val jobConfig = new AssetEnrichmentConfig(config)
-  val definitionUtil = new DefinitionUtil(600)
+  val definitionUtil = new DefinitionCache
   var cassandraUtil: CassandraUtil = _
   implicit val mockNeo4JUtil: Neo4JUtil = mock[Neo4JUtil](Mockito.withSettings().serializable())
   implicit val mockCloudUtil: CloudStorageUtil = mock[CloudStorageUtil](Mockito.withSettings().serializable())

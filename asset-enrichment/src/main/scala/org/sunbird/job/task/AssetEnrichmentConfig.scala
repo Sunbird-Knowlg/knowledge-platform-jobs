@@ -51,7 +51,6 @@ class AssetEnrichmentConfig(override val config: Config) extends BaseJobConfig(c
   // Asset Variables
   val contentUploadContextDriven: Boolean = if (config.hasPath("content.upload.context.driven")) config.getBoolean("content.upload.context.driven") else true
   val maxIterationCount: Int = if (config.hasPath("max.iteration.count")) config.getInt("max.iteration.count") else 2
-  val definitionCacheExpiry: Int = if (config.hasPath("asset.definitionCache.expiry")) config.getInt("asset.definitionCache.expiry") else 14400
 
   // Video Enrichment
   val youtubeAppName: String = if (config.hasPath("learning.content.youtube.applicationName")) config.getString("learning.content.youtube.applicationName") else "fetch-youtube-license"
