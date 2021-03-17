@@ -22,7 +22,7 @@ class VideoStreamGeneratorConfig(override val config: Config) extends BaseJobCon
   override val parallelism: Int = config.getInt("task.parallelism")
 
   val timerDuration = config.getInt("task.timer.duration") // Timer duration in sec.
-  val maxRetries = 10
+  val maxRetries = if (config.hasPath("task.max.retries")) config.getInt("task.max.retries") else 10
 
   // Metric List
   val totalEventsCount = "total-events-count"

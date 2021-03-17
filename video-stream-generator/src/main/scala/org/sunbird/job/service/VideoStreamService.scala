@@ -79,7 +79,7 @@ class VideoStreamService(implicit config: VideoStreamGeneratorConfig, httpUtil: 
       }
     }.filter(x =>  x != null).map{ streamStage:StreamingStage =>
       val counter = if (streamStage.status.equals("FINISHED")) config.successEventCount else {
-        if (streamStage.iteration <= 10) config.retryEventCount else config.failedEventCount
+        if (streamStage.iteration <= config.maxRetries) config.retryEventCount else config.failedEventCount
       }
       metrics.incCounter(counter)
       updateJobRequestStage(streamStage)
