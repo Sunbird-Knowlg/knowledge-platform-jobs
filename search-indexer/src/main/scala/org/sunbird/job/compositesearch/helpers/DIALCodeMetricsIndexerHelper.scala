@@ -4,9 +4,9 @@ import org.slf4j.LoggerFactory
 import org.sunbird.job.util.{ElasticSearchUtil, ScalaJsonUtil}
 import scala.collection.mutable
 
-trait DialCodeMetricIndexerHelper {
+trait DIALCodeMetricsIndexerHelper {
 
-  private[this] val logger = LoggerFactory.getLogger(classOf[DialCodeMetricIndexerHelper])
+  private[this] val logger = LoggerFactory.getLogger(classOf[DIALCodeMetricsIndexerHelper])
 
   def createDialCodeIndex()(esUtil: ElasticSearchUtil): Boolean = {
     val settings: String = """{"number_of_shards":5}"""
@@ -15,7 +15,7 @@ trait DialCodeMetricIndexerHelper {
   }
 
   private def getIndexDocument(id: String)(esUtil: ElasticSearchUtil): mutable.Map[String, AnyRef] = {
-    val documentJson: String = esUtil.getDocumentAsStringById(id)
+    val documentJson: String = esUtil.getDocumentAsString(id)
     val indexDocument = if (documentJson != null && !documentJson.isEmpty) ScalaJsonUtil.deserialize[mutable.Map[String, AnyRef]](documentJson) else mutable.Map[String, AnyRef]()
     indexDocument
   }
@@ -37,7 +37,7 @@ trait DialCodeMetricIndexerHelper {
   }
 
   private def upsertDocument(identifier: String, jsonIndexDocument: String)(esUtil: ElasticSearchUtil): Unit = {
-    esUtil.addDocumentWithId(identifier, jsonIndexDocument)
+    esUtil.addDocument(identifier, jsonIndexDocument)
   }
 
   def upsertDialcodeMetricDocument(identifier: String, message: Map[String, Any])(esUtil: ElasticSearchUtil): Unit = {

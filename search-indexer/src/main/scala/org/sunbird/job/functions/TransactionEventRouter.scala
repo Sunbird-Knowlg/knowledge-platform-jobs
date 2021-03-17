@@ -26,7 +26,7 @@ class TransactionEventRouter(config: SearchIndexerConfig)
 
   override def processElement(event: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
     metrics.incCounter(config.totalEventsCount)
-    if (validateEvent(event)) {
+    if (event.validEvent()) {
       event.nodeType match {
         case "SET" | "DATA_NODE" => context.output(config.compositeSearchDataOutTag, event)
         case "EXTERNAL" => context.output(config.dialCodeExternalOutTag, event)
@@ -46,10 +46,6 @@ class TransactionEventRouter(config: SearchIndexerConfig)
     List(config.totalEventsCount, config.skippedEventCount)
   }
 
-  def validateEvent(event: Event): Boolean = {
-    if (event.operationType != null) {
-      if(BooleanUtils.isTrue(event.index)) true else false
-    } else false
-  }
+
 
 }

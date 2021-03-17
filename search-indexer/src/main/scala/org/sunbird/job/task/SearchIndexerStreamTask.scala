@@ -11,7 +11,7 @@ import org.sunbird.job.util.FlinkUtil
 import com.typesafe.config.ConfigFactory
 import org.apache.flink.api.java.utils.ParameterTool
 import org.sunbird.job.compositesearch.domain.Event
-import org.sunbird.job.functions.{TransactionEventRouter, CompositeSearchIndexerFunction, DialCodeExternalIndexerFunction, DialCodeMetricIndexerFunction}
+import org.sunbird.job.functions.{TransactionEventRouter, CompositeSearchIndexerFunction, DIALCodeIndexerFunction, DIALCodeMetricsIndexerFunction}
 
 class SearchIndexerStreamTask(config: SearchIndexerConfig, kafkaConnector: FlinkKafkaConnector) {
 
@@ -31,9 +31,9 @@ class SearchIndexerStreamTask(config: SearchIndexerConfig, kafkaConnector: Flink
 
     val compositeSearchStream = processStreamTask.getSideOutput(config.compositeSearchDataOutTag).process(new CompositeSearchIndexerFunction(config))
       .name("composite-search-indexer").uid("composite-search-indexer").setParallelism(config.compositeSearchIndexerParallelism)
-    val dialcodeExternalStream = processStreamTask.getSideOutput(config.dialCodeExternalOutTag).process(new DialCodeExternalIndexerFunction(config))
+    val dialcodeExternalStream = processStreamTask.getSideOutput(config.dialCodeExternalOutTag).process(new DIALCodeIndexerFunction(config))
       .name("dialcode-external-indexer").uid("dialcode-external-indexer").setParallelism(config.dialCodeExternalIndexerParallelism)
-    val dialcodeMetricStream = processStreamTask.getSideOutput(config.dialCodeMetricOutTag).process(new DialCodeMetricIndexerFunction(config))
+    val dialcodeMetricStream = processStreamTask.getSideOutput(config.dialCodeMetricOutTag).process(new DIALCodeMetricsIndexerFunction(config))
       .name("dialcode-metric-indexer").uid("dialcode-metric-indexer").setParallelism(config.dialCodeMetricIndexerParallelism)
 
     compositeSearchStream.getSideOutput(config.failedEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
