@@ -78,14 +78,16 @@ class VideoStreamService(implicit config: VideoStreamGeneratorConfig, httpUtil: 
         StreamingStage(jobRequest.request_id, jobRequest.client_key, null, stageName, "FAILED", "FAILED", iteration + 1, jobRequest.err_message.getOrElse(""));
       }
     }.filter(x =>  x != null).map{ streamStage:StreamingStage =>
-      metrics.incCounter(if(streamStage.status == "FINISHED") config.successEventCount else config.failedEventCount)
+      val counter = if (streamStage.status.equals("FINISHED")) config.successEventCount else {
+        if (streamStage.iteration <= config.maxRetries) config.retryEventCount else config.failedEventCount
+      }
+      metrics.incCounter(counter)
       updateJobRequestStage(streamStage)
     }
   }
 
   def resubmitFailedJob(): Unit = {
-    val failedJobRequests = readFromDB(Map("status" -> "FAILED", "iteration" -> Map("type"-> "lte", "value" -> 10))).toArray
-
+    val failedJobRequests = readFromDB(Map("status" -> "FAILED", "iteration" -> Map("type"-> "lte", "value" -> config.maxRetries))).toArray
     failedJobRequests.foreach { jobRequest =>
       submitStreamJob(jobRequest)
     }
