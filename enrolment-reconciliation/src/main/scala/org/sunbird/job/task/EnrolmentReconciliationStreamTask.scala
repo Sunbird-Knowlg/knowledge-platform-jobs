@@ -50,7 +50,7 @@ class EnrolmentReconciliationStreamTask(config: EnrolmentReconciliationConfig, k
 }
 
 // $COVERAGE-OFF$ Disabling scoverage as the below code can only be invoked within flink cluster
-object RelationCacheUpdaterStreamTask {
+object EnrolmentReconciliationStreamTask {
 
   def main(args: Array[String]): Unit = {
     val configFilePath = Option(ParameterTool.fromArgs(args).get("config.file.path"))
