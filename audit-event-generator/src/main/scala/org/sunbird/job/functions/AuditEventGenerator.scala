@@ -15,11 +15,10 @@ class AuditEventGenerator(config: AuditEventGeneratorConfig)
                            stringTypeInfo: TypeInformation[String])
                           extends BaseProcessFunction[Event, String](config) with AuditEventGeneratorService{
 
-    implicit lazy val auditEventConfig: AuditEventGeneratorConfig = config
     private[this] lazy val logger = LoggerFactory.getLogger(classOf[AuditEventGenerator])
 
     override def metricsList(): List[String] = {
-        List(config.totalEventsCount, config.skippedEventCount, config.successEventCount, config.skippedEventCount)
+        List(config.totalEventsCount, config.successEventCount, config.failedEventCount, config.skippedEventCount)
     }
 
     override def open(parameters: Configuration): Unit = {
