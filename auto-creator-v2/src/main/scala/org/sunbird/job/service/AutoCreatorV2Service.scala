@@ -12,7 +12,7 @@ trait AutoCreatorV2Service {
   private[this] lazy val logger = LoggerFactory.getLogger(classOf[AutoCreatorV2Service])
 
   def processEvent(message: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics)(implicit config: AutoCreatorV2Config): Unit = {
-    logger.info("Event::" + JSONUtil.serialize(message))
+    logger.info("Event::" + message.getJson)
   }
 
 }

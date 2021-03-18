@@ -16,7 +16,7 @@ class AutoCreatorV2Config(override val config: Config) extends BaseJobConfig(con
 
   // Kafka Topics Configuration
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
-  val kafkaOutputTopic: String = config.getString("kafka.output.topic")
+  val kafkaOutputTopic: String = config.getString("kafka.failed.topic")
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
   override val parallelism: Int = config.getInt("task.parallelism")
   val kafkaProducerParallelism: Int = config.getInt("task.producer.parallelism")
