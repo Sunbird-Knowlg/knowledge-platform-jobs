@@ -5,8 +5,6 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
-import org.sunbird.job.cache.RedisConnect
-import org.sunbird.job.dedup.DeDupEngine
 import org.sunbird.job.domain._
 import org.sunbird.job.task.EnrolmentReconciliationConfig
 import org.sunbird.job.util.CassandraUtil
@@ -18,23 +16,18 @@ class CollectionProgressUpdateFunction(config: EnrolmentReconciliationConfig)(im
   extends BaseProcessFunction[List[CollectionProgress], String](config) {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[CollectionProgressUpdateFunction])
-  var deDupEngine: DeDupEngine = _
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
     cassandraUtil = new CassandraUtil(config.dbHost, config.dbPort)
-    deDupEngine = new DeDupEngine(config, new RedisConnect(config, Option(config.deDupRedisHost), Option(config.deDupRedisPort)), config.deDupStore, config.deDupExpirySec)
-    deDupEngine.init()
   }
 
   override def close(): Unit = {
     cassandraUtil.close()
-    deDupEngine.close()
     super.close()
   }
 
   override def processElement(events: List[CollectionProgress], context: ProcessFunction[List[CollectionProgress], String]#Context, metrics: Metrics): Unit = {
-    println("Recieved event in progress update fn")
     val pendingEnrolments = if (config.filterCompletedEnrolments) events.filter { p =>
       val row = getEnrolment(p.userId, p.courseId, p.batchId)(metrics)
       (row != null && row.getInt("status") != 2)

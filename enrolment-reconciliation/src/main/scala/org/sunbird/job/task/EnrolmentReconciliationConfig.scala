@@ -23,7 +23,6 @@ class EnrolmentReconciliationConfig(override val config: Config) extends BaseJob
 
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
   val enrolmentReconciliationParallelism: Int = config.getInt("task.enrolment.reconciliation.parallelism")
-  val deDupProcessParallelism: Int = config.getInt("task.dedup.parallelism")
   val enrolmentCompleteParallelism: Int = config.getInt("task.enrolment.complete.parallelism")
 
   // Metric List
@@ -58,10 +57,6 @@ class EnrolmentReconciliationConfig(override val config: Config) extends BaseJob
 
   // Redis Configurations
   val nodeStore: Int = config.getInt("redis.database.relationCache.id") // Both LeafNodes And Ancestor nodes
-  val deDupRedisHost: String = config.getString("dedup-redis.host")
-  val deDupRedisPort: Int = config.getInt("dedup-redis.port")
-  val deDupStore: Int = config.getInt("dedup-redis.database.index")
-  val deDupExpirySec: Int = config.getInt("dedup-redis.database.expiry")
 
   val supportedEventType:String = "user-enrolment-sync"
 
@@ -83,7 +78,6 @@ class EnrolmentReconciliationConfig(override val config: Config) extends BaseJob
   // Job specific configurations
   val thresholdBatchWriteSize: Int = config.getInt("threshold.batch.write.size")
   val moduleAggEnabled: Boolean = config.getBoolean("activity.module.aggs.enabled")
-  val dedupEnabled: Boolean = config.getBoolean("activity.input.dedup.enabled")
   val statusCacheExpirySec: Int = config.getInt("activity.collection.status.cache.expiry")
   val filterCompletedEnrolments: Boolean =  if (config.hasPath("activity.filter.processed.enrolments")) config.getBoolean("activity.filter.processed.enrolments") else true
 
