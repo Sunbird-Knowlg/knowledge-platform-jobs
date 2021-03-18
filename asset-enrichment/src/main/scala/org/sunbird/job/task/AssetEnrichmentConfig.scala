@@ -10,7 +10,7 @@ import org.sunbird.job.BaseJobConfig
 import org.sunbird.job.domain.Event
 import scala.collection.JavaConverters._
 
-class AssetEnrichmentConfig(override val config: Config) extends BaseJobConfig(config, "composite-search-indexer") {
+class AssetEnrichmentConfig(override val config: Config) extends BaseJobConfig(config, "asset-enrichment") {
 
   implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
   implicit val eventTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
