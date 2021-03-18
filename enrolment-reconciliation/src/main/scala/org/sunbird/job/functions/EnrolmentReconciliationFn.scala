@@ -12,13 +12,15 @@ import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cache.{DataCache, RedisConnect}
-import org.sunbird.job.domain.{CollectionProgress, ContentStatus, UserActivityAgg, UserContentConsumption}
+import org.sunbird.job.domain.{CollectionProgress, ContentStatus, UserActivityAgg, UserContentConsumption, UserEnrolmentAgg}
 import org.sunbird.job.task.EnrolmentReconciliationConfig
 import org.sunbird.job.util.{CassandraUtil, HttpUtil}
 import org.sunbird.job.{BaseProcessFunction, Metrics}
-
 import java.lang.reflect.Type
 import java.util.concurrent.TimeUnit
+
+import org.apache.commons.collections.CollectionUtils
+
 import scala.collection.JavaConverters._
 
 
@@ -65,16 +67,39 @@ class EnrolmentReconciliationFn(config: EnrolmentReconciliationConfig,  httpUtil
       val courseId = eData.getOrElse("courseId", "").asInstanceOf[String]
       val batchId = eData.getOrElse("batchId", "").asInstanceOf[String]
       val userId = eData.getOrElse("userId", "").asInstanceOf[String]
-      println("It's Valid ")
-
       // Fetch the content status from the table in batch format
-      val dbUserConsumption: Map[String, UserContentConsumption] = getContentStatusFromDB(
+      val dbUserConsumption: List[UserContentConsumption] = getContentStatusFromDB(
         Map("courseId" -> courseId, "userId" -> userId, "batchId" -> batchId),
         metrics)
 
-    } else {
-      println("It's InValid ")
+      val courseAggregations = dbUserConsumption.flatMap{ userConsumption =>
+        // Course Level Agg using the merged data of ContentConsumption per user, course and batch.
+        val optCourseAgg = courseActivityAgg(userConsumption, context)(metrics)
+        val courseAggs = if (optCourseAgg.nonEmpty) List(optCourseAgg.get) else List()
 
+        // Identify the children of the course (only collections) for which aggregates computation required.
+        // Computation of aggregates using leafNodes (of the specific collection) and user completed contents.
+        // Here computing only "completedCount" aggregate.
+        if (config.moduleAggEnabled) {
+          val courseChildrenAggs = courseChildrenActivityAgg(userConsumption)(metrics)
+          courseAggs ++ courseChildrenAggs
+        } else courseAggs
+      }
+      // Saving all queries for course and it's children (only collection) aggregates.
+      val aggQueries = courseAggregations.map(agg => getUserAggQuery(agg.activityAgg))
+      updateDB(config.thresholdBatchWriteSize, aggQueries)(metrics)
+
+      // Saving enrolment completion data.
+      val collectionProgressList = courseAggregations.filter(agg => agg.collectionProgress.nonEmpty).map(agg => agg.collectionProgress.get)
+      val collectionProgressUpdateList = collectionProgressList.filter(progress => !progress.completed)
+      context.output(config.collectionUpdateOutputTag, collectionProgressUpdateList)
+      
+      val collectionProgressCompleteList = collectionProgressList.filter(progress => progress.completed)
+      context.output(config.collectionCompleteOutputTag, collectionProgressCompleteList)
+
+    } else {
+      metrics.incCounter(config.skipEventsCount)
+      logger.info("Event skipped as it is invalid ", event)
     }
 
   }
@@ -143,18 +168,16 @@ class EnrolmentReconciliationFn(config: EnrolmentReconciliationConfig,  httpUtil
     }
   }
 
-  def getContentStatusFromDB(eDataBatch: Map[String, String], metrics: Metrics): Map[String, UserContentConsumption] = {
-
-    val contentConsumption = scala.collection.mutable.Map[String, UserContentConsumption]()
+  def getContentStatusFromDB(eDataBatch: Map[String, String], metrics: Metrics): List[UserContentConsumption] = {
     val primaryFields = Map(
       config.userId.toLowerCase() -> eDataBatch.getOrElse("userId", ""),
-      config.batchId.toLowerCase -> eDataBatch.getOrElse("userId", ""),
-      config.courseId.toLowerCase -> eDataBatch.getOrElse("userId", "")
+      config.batchId.toLowerCase -> eDataBatch.getOrElse("batchId", ""),
+      config.courseId.toLowerCase -> eDataBatch.getOrElse("courseId", "")
     )
 
     val records = Option(readFromDB(primaryFields, config.dbKeyspace, config.dbUserContentConsumptionTable, metrics))
-    records.map(record => record.groupBy(col => Map(config.batchId -> col.getObject(config.batchId.toLowerCase()).asInstanceOf[String], config.userId -> col.getObject(config.userId.toLowerCase()).asInstanceOf[String], config.courseId -> col.getObject(config.courseId.toLowerCase()).asInstanceOf[String])))
-      .foreach(groupedRecords => groupedRecords.map(entry => {
+    val contentConsumption = records.map(record => record.groupBy(col => Map(config.batchId -> col.getObject(config.batchId.toLowerCase()).asInstanceOf[String], config.userId -> col.getObject(config.userId.toLowerCase()).asInstanceOf[String], config.courseId -> col.getObject(config.courseId.toLowerCase()).asInstanceOf[String])))
+      .map(groupedRecords => groupedRecords.map(entry => {
         val identifierMap = entry._1
         val consumptionList = entry._2.flatMap(row => Map(row.getObject(config.contentId.toLowerCase()).asInstanceOf[String] -> Map(config.status -> row.getObject(config.status), config.viewcount -> row.getObject(config.viewcount), config.completedcount -> row.getObject(config.completedcount))))
           .map(entry => {
@@ -170,11 +193,9 @@ class EnrolmentReconciliationFn(config: EnrolmentReconciliationConfig,  httpUtil
         val batchId = identifierMap(config.batchId)
         val courseId = identifierMap(config.courseId)
 
-        val userContentConsumption = UserContentConsumption(userId, batchId, courseId, consumptionList)
-        contentConsumption += getUCKey(userContentConsumption) -> userContentConsumption
-
-      }))
-    contentConsumption.toMap
+        UserContentConsumption(userId, batchId, courseId, consumptionList)
+      })).getOrElse(List[UserContentConsumption]()).toList
+    contentConsumption
   }
 
   def readFromDB(columns: Map[String, AnyRef], keySpace: String, table: String, metrics: Metrics): List[Row] = {
@@ -198,6 +219,109 @@ class EnrolmentReconciliationFn(config: EnrolmentReconciliationConfig,  httpUtil
     userConsumption.userId + ":" + userConsumption.courseId + ":" + userConsumption.batchId
   }
 
+  /**
+   * Course Level Agg using the merged data of ContentConsumption per user, course and batch.
+   */
+  def courseActivityAgg(userConsumption: UserContentConsumption, context: ProcessFunction[java.util.Map[String, AnyRef], String]#Context)(implicit metrics: Metrics): Option[UserEnrolmentAgg] = {
+    val courseId = userConsumption.courseId
+    val userId = userConsumption.userId
+    val contextId = "cb:" + userConsumption.batchId
+    val key = s"$courseId:$courseId:${config.leafNodes}"
+    val leafNodes = readFromCache(key, metrics).distinct
+    if (leafNodes.isEmpty) {
+      logger.error(s"leaf nodes are not available for: $key")
+      context.output(config.failedEventOutputTag, gson.toJson(userConsumption))
+      val status = getCollectionStatus(courseId)
+      if (StringUtils.equals("Retired", status)) {
+        metrics.incCounter(config.retiredCCEventsCount)
+        println(s"contents consumed from a retired collection: $courseId")
+        logger.warn(s"contents consumed from a retired collection: $courseId")
+        None
+      } else {
+        metrics.incCounter(config.failedEventCount)
+        val message = s"leaf nodes are not available for a published collection: $courseId"
+        logger.error(message)
+        throw new Exception(message)
+      }
+    } else {
+      val completedCount = leafNodes.intersect(userConsumption.contents.filter(cc => cc._2.status == 2).map(cc => cc._2.contentId).toList.distinct).size
+      val contentStatus = userConsumption.contents.map(cc => (cc._2.contentId, cc._2.status)).toMap
+      val inputContents = userConsumption.contents.filter(cc => cc._2.fromInput).keys.toList
+      val collectionProgress = if (completedCount >= leafNodes.size) {
+        Option(CollectionProgress(userId, userConsumption.batchId, courseId, completedCount, new java.util.Date(), contentStatus, inputContents, true))
+      } else {
+        Option(CollectionProgress(userId, userConsumption.batchId, courseId, completedCount, null, contentStatus, inputContents))
+      }
+      Option(UserEnrolmentAgg(UserActivityAgg("Course", userId, courseId, contextId, Map("completedCount" -> completedCount), Map("completedCount" -> System.currentTimeMillis())), collectionProgress))
+    }
+  }
+
+  def readFromCache(key: String, metrics: Metrics): List[String] = {
+    metrics.incCounter(config.cacheHitCount)
+    val list = cache.getKeyMembers(key)
+    if (CollectionUtils.isEmpty(list)) {
+      metrics.incCounter(config.cacheMissCount)
+      logger.info("Redis cache (smembers) not available for key: " + key)
+    }
+    list.asScala.toList
+  }
+
+  /**
+   * Identified the children of the course (only collections) for which aggregates computation required.
+   * Computation of aggregates using leafNodes (of the specific collection) and user completed contents.
+   * Here computing only "completedCount" aggregate.
+   */
+  def courseChildrenActivityAgg(userConsumption: UserContentConsumption)(implicit metrics: Metrics): List[UserEnrolmentAgg] = {
+    val courseId = userConsumption.courseId
+    val userId = userConsumption.userId
+    val contextId = "cb:" + userConsumption.batchId
+
+    // These are the child collections which require computation of aggregates - for this user.
+    val ancestors = userConsumption.contents.mapValues(content => {
+      val contentId = content.contentId
+      readFromCache(key = s"$courseId:$contentId:${config.ancestors}", metrics)
+    }).values.flatten.filter(a => !StringUtils.equals(a, courseId)).toList.distinct
+
+    // LeafNodes of the identified child collections - for this user.
+    val collectionsWithLeafNodes = ancestors.map(unitId => {
+      (unitId, readFromCache(key = s"$courseId:$unitId:${config.leafNodes}", metrics).distinct)
+    }).toMap
+
+    // Content completed - By this user.
+    val userCompletedContents = userConsumption.contents.filter(cc => cc._2.status == 2).map(cc => cc._2.contentId).toList.distinct
+
+    // Child Collection UserAggregate list - for this user.
+    collectionsWithLeafNodes.map(e => {
+      val collectionId = e._1
+      val leafNodes = e._2
+      val completedCount = leafNodes.intersect(userCompletedContents).size
+      /* TODO - List
+       TODO 1. Generalise activityType from "Course" to "Collection".
+       TODO 2.Identify how to generate start and end event for CourseUnit.
+       */
+      val activityAgg = UserActivityAgg("Course", userId, collectionId, contextId, Map("completedCount" -> completedCount), Map("completedCount" -> System.currentTimeMillis()))
+      UserEnrolmentAgg(activityAgg, None)
+    }).toList
+  }
+
+  /**
+   * Method to update the specific table in a batch format.
+   */
+  def updateDB(batchSize: Int, queriesList: List[Update.Where])(implicit metrics: Metrics): Unit = {
+    val groupedQueries = queriesList.grouped(batchSize).toList
+    groupedQueries.foreach(queries => {
+      val cqlBatch = QueryBuilder.batch()
+      queries.map(query => cqlBatch.add(query))
+      val result = cassandraUtil.upsert(cqlBatch.toString)
+      if (result) {
+        metrics.incCounter(config.dbUpdateCount)
+      } else {
+        val msg = "Database update has failed: " + cqlBatch.toString
+        logger.error(msg)
+        throw new Exception(msg)
+      }
+    })
+  }
 
 }
 
