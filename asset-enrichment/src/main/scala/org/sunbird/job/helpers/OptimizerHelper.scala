@@ -12,7 +12,7 @@ trait OptimizerHelper {
 
   def replaceArtifactUrl(asset: Asset)(cloudStorageUtil: CloudStorageUtil): Unit = {
     if (asset.artifactUrl.contains(asset.artifactBasePath)) {
-      val sourcePath = asset.artifactUrl.substring(asset.artifactUrl.indexOf(asset.artifactBasePath))
+      val sourcePath = asset.artifactUrl.replace(asset.artifactBasePath + File.separator, "")
       val destinationPath = sourcePath.replace(asset.artifactBasePath + File.separator, "")
       try {
         cloudStorageUtil.copyObjectsByPrefix(sourcePath, destinationPath, false)

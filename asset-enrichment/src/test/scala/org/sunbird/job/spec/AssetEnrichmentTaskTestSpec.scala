@@ -11,9 +11,9 @@ import org.apache.flink.test.util.MiniClusterWithClientResource
 import org.cassandraunit.CQLDataLoader
 import org.cassandraunit.dataset.cql.FileCQLDataSet
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
-import org.mockito.ArgumentMatchers.{any, anyBoolean, anyString}
+import org.mockito.ArgumentMatchers.{any, anyString}
 import org.mockito.Mockito
-import org.mockito.Mockito.{doNothing, when}
+import org.mockito.Mockito.doNothing
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.fixture.EventFixture
@@ -34,13 +34,13 @@ class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
     .setNumberTaskManagers(1)
     .build)
   val mockKafkaUtil: FlinkKafkaConnector = mock[FlinkKafkaConnector](Mockito.withSettings().serializable())
-  val config: Config = ConfigFactory.load("test.conf")
+  val config: Config = ConfigFactory.load("test.conf").withFallback(ConfigFactory.systemEnvironment())
   val jobConfig = new AssetEnrichmentConfig(config)
   val definitionUtil = new DefinitionCache
   var cassandraUtil: CassandraUtil = _
   implicit val mockNeo4JUtil: Neo4JUtil = mock[Neo4JUtil](Mockito.withSettings().serializable())
-  implicit val mockCloudUtil: CloudStorageUtil = mock[CloudStorageUtil](Mockito.withSettings().serializable())
-  implicit val mockYouTubeUtil: YouTubeUtil = mock[YouTubeUtil](Mockito.withSettings().serializable())
+  implicit val cloudUtil: CloudStorageUtil = new CloudStorageUtil(jobConfig)
+  implicit val youTubeUtil: YouTubeUtil = new YouTubeUtil(jobConfig)
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
@@ -64,27 +64,24 @@ class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
   }
 
   "replaceArtifactUrl" should " update the provided asset properties " in {
-    doNothing().when(mockCloudUtil).copyObjectsByPrefix(anyString(), anyString(), anyBoolean())
-
-    val metaData = Map[String, AnyRef]("cloudStorageKey" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_113233716442578944194/artifact/1551338384003.png",
-      "s3Key" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_113233716442578944194/artifact/1551338384003.png",
+    val metaData = Map[String, AnyRef]("cloudStorageKey" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg",
+      "s3Key" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg",
       "artifactBasePath" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev",
-      "artifactUrl" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_113233716442578944194/artifact/1551338384003.png")
+      "artifactUrl" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg")
     val asset = getAsset(EventFixture.IMAGE_ASSET, metaData)
-    new ImageEnrichmentFunction(jobConfig).replaceArtifactUrl(asset)(mockCloudUtil)
-    asset.getFromMetaData("artifactUrl", "") should be("content/do_113233716442578944194/artifact/1551338384003.png")
-    asset.getFromMetaData("downloadUrl", "") should be("content/do_113233716442578944194/artifact/1551338384003.png")
-    asset.getFromMetaData("cloudStorageKey", "") should be("content/do_113233716442578944194/artifact/1551338384003.png")
-    asset.getFromMetaData("s3Key", "") should be("content/do_113233716442578944194/artifact/1551338384003.png")
+    new ImageEnrichmentFunction(jobConfig).replaceArtifactUrl(asset)(cloudUtil)
+    asset.getFromMetaData("artifactUrl", "") should be("https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg")
+    asset.getFromMetaData("downloadUrl", "") should be("https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg")
+    asset.getFromMetaData("cloudStorageKey", "") should be("content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg")
+    asset.getFromMetaData("s3Key", "") should be("content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg")
   }
 
   "imageEnrichment" should " enrich the image for the asset " in {
-    when(mockCloudUtil.uploadFile(anyString(), any[File](), any())).thenReturn(Array[String]("content/do_113233717480390656195/artifact/bitcoin-4_1545114579639.jpg", "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_113233717480390656195/artifact/bitcoin-4_1545114579639.jpg"))
     doNothing().when(mockNeo4JUtil).updateNode(anyString(), any[Map[String, AnyRef]]())
 
     val metaData = getMetaDataForImageAsset
     val asset = getAsset(EventFixture.IMAGE_ASSET, metaData)
-    new ImageEnrichmentFunction(jobConfig).imageEnrichment(asset)(jobConfig, definitionUtil, mockCloudUtil, mockNeo4JUtil)
+    new ImageEnrichmentFunction(jobConfig).imageEnrichment(asset)(jobConfig, definitionUtil, cloudUtil, mockNeo4JUtil)
     val variants = ScalaJsonUtil.deserialize[Map[String, String]](asset.getFromMetaData("variants", "").asInstanceOf[String])
     variants.size should be(3)
     variants.keys should contain allOf("high", "medium", "low")
@@ -93,25 +90,20 @@ class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
   }
 
   "vidoeEnrichment" should " enrich the video for the mp4 asset " in {
-    when(mockCloudUtil.uploadFile(anyString(), any[File](), any())).thenReturn(Array[String]("content/do_1127129845261680641588/artifact/1615495839474.thumb.png", "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_1127129845261680641588/artifact/1615495839474.thumb.png"))
     doNothing().when(mockNeo4JUtil).updateNode(anyString(), any[Map[String, AnyRef]]())
 
     val metaData = getMetaDataForMp4VideoAsset
     val asset = getAsset(EventFixture.VIDEO_MP4_ASSET, metaData)
-    new VideoEnrichmentFunction(jobConfig).videoEnrichment(asset)(jobConfig, mockYouTubeUtil, mockCloudUtil, mockNeo4JUtil, cassandraUtil)
-    asset.getFromMetaData("thumbnail", "") should be("https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_1127129845261680641588/artifact/1615495839474.thumb.png")
+    new VideoEnrichmentFunction(jobConfig).videoEnrichment(asset)(jobConfig, youTubeUtil, cloudUtil, mockNeo4JUtil, cassandraUtil)
     asset.getFromMetaData("status", "").asInstanceOf[String] should be("Live")
   }
 
   "vidoeEnrichment" should " enrich the video for the youtube asset " in {
-    val youTubeVideoData = Map[String, AnyRef]("thumbnail" -> "https://i.ytimg.com/vi/-SgZ3Enpau8/mqdefault.jpg".asInstanceOf[AnyRef], "duration" -> 273.asInstanceOf[AnyRef])
-    when(mockCloudUtil.uploadFile(anyString(), any[File](), any())).thenReturn(Array[String]("content/do_1127129845261680641599/artifact/1615495839474.thumb.png", "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_1127129845261680641599/artifact/1615495839474.thumb.png"))
-    when(mockYouTubeUtil.getVideoInfo(anyString(), anyString(), any[List[String]]())).thenReturn(youTubeVideoData)
     doNothing().when(mockNeo4JUtil).updateNode(anyString(), any[Map[String, AnyRef]]())
 
     val metaData = getMetaDataForYouTubeVideoAsset
     val asset = getAsset(EventFixture.VIDEO_YOUTUBE_ASSET, metaData)
-    new VideoEnrichmentFunction(jobConfig).videoEnrichment(asset)(jobConfig, mockYouTubeUtil, mockCloudUtil, mockNeo4JUtil, cassandraUtil)
+    new VideoEnrichmentFunction(jobConfig).videoEnrichment(asset)(jobConfig, youTubeUtil, cloudUtil, mockNeo4JUtil, cassandraUtil)
     asset.getFromMetaData("thumbnail", "").asInstanceOf[String] should be("https://i.ytimg.com/vi/-SgZ3Enpau8/mqdefault.jpg")
     asset.getFromMetaData("status", "").asInstanceOf[String] should be("Live")
     asset.getFromMetaData("duration", "0").asInstanceOf[String] should be("273")
@@ -124,10 +116,10 @@ class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
   }
 
   "validateForArtifactUrl" should "validate for content upload context driven" in {
-    val metaData = Map[String, AnyRef]("cloudStorageKey" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_113233716442578944194/artifact/1551338384003.png",
-      "s3Key" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_113233716442578944194/artifact/1551338384003.png",
+    val metaData = Map[String, AnyRef]("cloudStorageKey" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg",
+      "s3Key" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg",
       "artifactBasePath" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev",
-      "artifactUrl" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_113233716442578944194/artifact/1551338384003.png")
+      "artifactUrl" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg")
     val asset = getAsset(EventFixture.IMAGE_ASSET, metaData)
     val validate = new VideoEnrichmentFunction(jobConfig).validateForArtifactUrl(asset, true)
     validate should be(true)
@@ -138,7 +130,7 @@ class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
     val asset = getAsset(EventFixture.IMAGE_ASSET, metaData)
     asset.addToMetaData("downloadUrl", "https://unknownurl123.com")
     assertThrows[Exception] {
-      new ImageEnrichmentFunction(jobConfig).imageEnrichment(asset)(jobConfig, definitionUtil, mockCloudUtil, mockNeo4JUtil)
+      new ImageEnrichmentFunction(jobConfig).imageEnrichment(asset)(jobConfig, definitionUtil, cloudUtil, mockNeo4JUtil)
     }
   }
 
@@ -147,7 +139,7 @@ class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
     val asset = getAsset(EventFixture.VIDEO_MP4_ASSET, metaData)
     asset.addToMetaData("artifactUrl", "https://unknownurl1234.com")
     assertThrows[Exception] {
-      new VideoEnrichmentFunction(jobConfig).videoEnrichment(asset)(jobConfig, mockYouTubeUtil, mockCloudUtil, mockNeo4JUtil, cassandraUtil)
+      new VideoEnrichmentFunction(jobConfig).videoEnrichment(asset)(jobConfig, youTubeUtil, cloudUtil, mockNeo4JUtil, cassandraUtil)
     }
   }
 
@@ -156,7 +148,7 @@ class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
     val asset = getAsset(EventFixture.VIDEO_MP4_ASSET, metaData)
     asset.addToMetaData("artifactUrl", "")
     assertThrows[Exception] {
-      new VideoEnrichmentFunction(jobConfig).videoEnrichment(asset)(jobConfig, mockYouTubeUtil, mockCloudUtil, mockNeo4JUtil, cassandraUtil)
+      new VideoEnrichmentFunction(jobConfig).videoEnrichment(asset)(jobConfig, youTubeUtil, cloudUtil, mockNeo4JUtil, cassandraUtil)
     }
   }
 

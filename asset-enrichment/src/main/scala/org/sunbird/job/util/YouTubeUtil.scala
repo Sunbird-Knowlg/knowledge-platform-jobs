@@ -18,7 +18,7 @@ class YouTubeUtil(config: AssetEnrichmentConfig) {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[YouTubeUtil])
   private val APP_NAME = config.youtubeAppName
-  private val API_KEY = config.youtubeApiKey
+  private val API_KEY = config.getString("content_youtube_apikey", "")
   private val videoIdRegex = config.videoIdRegex.asScala.toList
   private var limitExceeded = false
   private val youtube: YouTube = initializeYoutube()

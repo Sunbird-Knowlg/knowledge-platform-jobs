@@ -53,8 +53,7 @@ class AssetEnrichmentConfig(override val config: Config) extends BaseJobConfig(c
   val maxIterationCount: Int = if (config.hasPath("max.iteration.count")) config.getInt("max.iteration.count") else 2
 
   // Video Enrichment
-  val youtubeAppName: String = if (config.hasPath("learning.content.youtube.applicationName")) config.getString("learning.content.youtube.applicationName") else "fetch-youtube-license"
-  val youtubeApiKey: String = config.getString("learning.content.youtube.apikey")
+  val youtubeAppName: String = if (config.hasPath("content.youtube.applicationName")) config.getString("content.youtube.applicationName") else "fetch-youtube-license"
   val videoIdRegex: util.List[String] = if (config.hasPath("youtube.license.regexPattern")) config.getStringList("youtube.license.regexPattern") else util.Arrays.asList[String]("\\?vi?=([^&]*)", "watch\\?.*v=([^&]*)", "(?:embed|vi?)/([^/?]*)", "^([A-Za-z0-9\\-\\_]*)")
   val streamableMimeType: util.List[String] = if (config.hasPath("content.stream.mimeType")) config.getStringList("content.stream.mimeType") else util.Arrays.asList[String]("video/mp4")
   val isStreamingEnabled: Boolean = if (config.hasPath("content.streamingEnabled")) config.getBoolean("content.streamingEnabled") else false
