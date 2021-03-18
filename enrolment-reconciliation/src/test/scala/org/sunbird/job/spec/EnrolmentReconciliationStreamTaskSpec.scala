@@ -91,7 +91,7 @@ class EnrolmentReconciliationStreamTaskSpec extends BaseTestSpec {
     initialize()
     new EnrolmentReconciliationStreamTask(jobConfig, mockKafkaUtil, httpUtil = new HttpUtil).process()
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventCount}").getValue() should be(2)
-    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.dbUpdateCount}").getValue() should be(2)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.dbUpdateCount}").getValue() should be(1)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skipEventsCount}").getValue() should be(1)
   }
 
