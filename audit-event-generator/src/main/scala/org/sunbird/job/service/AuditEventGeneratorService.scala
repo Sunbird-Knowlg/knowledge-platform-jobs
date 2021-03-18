@@ -11,11 +11,8 @@ import org.ekstep.telemetry.TelemetryParams
 import org.sunbird.job.domain.Event
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 
-import java.io.FileNotFoundException
 import java.util
-import scala.collection.mutable
 import java.text.SimpleDateFormat
-import scala.io.Source
 
 trait AuditEventGeneratorService {
   private[this] lazy val logger = LoggerFactory.getLogger(classOf[AuditEventGeneratorService])
