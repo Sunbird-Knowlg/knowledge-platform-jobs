@@ -21,8 +21,8 @@ import org.sunbird.job.util.{CassandraUtil, HttpUtil}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 import redis.clients.jedis.Jedis
 import redis.embedded.RedisServer
-
 import java.util
+
 import scala.collection.JavaConverters._
 
 class EnrolmentReconciliationStreamTaskSpec extends BaseTestSpec {
@@ -79,11 +79,20 @@ class EnrolmentReconciliationStreamTaskSpec extends BaseTestSpec {
     flinkCluster.after()
   }
 
+  def initialize() {
+    when(mockKafkaUtil.kafkaMapSource(jobConfig.kafkaInputTopic)).thenReturn(new EnrolmentReconciliationMapSource)
+    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaAuditEventTopic)).thenReturn(new AuditEventSink)
+    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaFailedEventTopic)).thenReturn(new FailedEventSink)
+    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaCertIssueTopic)).thenReturn(new CertificateIssuedEventsSink)
+  }
+
 
   "EnrolmentReConciliation " should "validate metrics" in {
-    when(mockKafkaUtil.kafkaMapSource(jobConfig.kafkaInputTopic)).thenReturn(new EnrolmentReconciliationMapSource)
+    initialize()
     new EnrolmentReconciliationStreamTask(jobConfig, mockKafkaUtil, httpUtil = new HttpUtil).process()
-
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventCount}").getValue() should be(2)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.dbUpdateCount}").getValue() should be(2)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skipEventsCount}").getValue() should be(1)
   }
 
   def updateRedis(jedis: Jedis, testData: Map[String, AnyRef]) {
@@ -110,5 +119,6 @@ class EnrolmentReconciliationMapSource extends SourceFunction[java.util.Map[Stri
   }
 
   override def cancel(): Unit = {}
+  
 }
 
