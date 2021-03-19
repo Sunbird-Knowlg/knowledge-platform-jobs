@@ -32,12 +32,11 @@ class BatchCreateFunction(config: PostPublishProcessorConfig, httpUtil: HttpUtil
       createBatch(eData, startDate)(config, httpUtil)
       logger.info("Batch created for " + collectionId)
     } catch {
-      case ex: Exception =>
+      case ex: Throwable =>
         logger.error(s"Error while processing message for identifier : ${collectionId}.", ex)
         metrics.incCounter(config.batchCreationFailedCount)
         throw ex
     }
-
   }
 
   override def metricsList(): List[String] = {

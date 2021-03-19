@@ -43,7 +43,7 @@ class DIALCodeLinkFunction(config: PostPublishProcessorConfig, httpUtil: HttpUti
       if (!dialcode.isEmpty)
         createQRGeneratorEvent(edata, dialcode, context, config)(metrics, ExtDataConfig(config.dialcodeKeyspaceName, config.dialcodeTableName), cassandraUtil)
     } catch {
-      case ex: Exception =>
+      case ex: Throwable =>
         logger.error(s"Error while processing message for identifier : ${edata.get("identifier").asInstanceOf[String]}.", ex)
         metrics.incCounter(config.dialLinkFailedCount)
         throw ex

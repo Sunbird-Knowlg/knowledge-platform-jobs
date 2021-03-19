@@ -53,6 +53,7 @@ class PostPublishEventRouter(config: PostPublishProcessorConfig, httpUtil: HttpU
         context.output(config.linkDIALCodeOutTag, dialCodeDetails)
     } else {
       metrics.incCounter(config.skippedEventCount)
+      logger.info(s"Event not qualified for publishing for Identifier : ${event.collectionId}.")
     }
   }
 
