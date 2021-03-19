@@ -56,6 +56,11 @@
 			<name>Scala-tools Maven2 Repository</name>
 			<url>https://oss.sonatype.org/content/groups/scala-tools</url>
 		</repository>
+		<repository>
+			<id>orgsunbird-1103</id>
+			<name>Telemetry Generator</name>
+			<url>https://oss.sonatype.org/content/repositories/orgsunbird-1103</url>
+		</repository>
 	</repositories>
 
 	<pluginRepositories>

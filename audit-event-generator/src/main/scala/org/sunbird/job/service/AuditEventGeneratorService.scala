@@ -6,8 +6,8 @@ import org.slf4j.LoggerFactory
 import org.sunbird.job.Metrics
 import org.sunbird.job.task.AuditEventGeneratorConfig
 import org.sunbird.job.util.JSONUtil
-import org.ekstep.telemetry.TelemetryGenerator
-import org.ekstep.telemetry.TelemetryParams
+import org.sunbird.telemetry.TelemetryGenerator
+import org.sunbird.telemetry.TelemetryParams
 import org.sunbird.job.domain.Event
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 
