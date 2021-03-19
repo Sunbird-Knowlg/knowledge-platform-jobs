@@ -33,12 +33,17 @@ class PostPublishProcessorConfig(override val config: Config) extends BaseJobCon
 
   // Metric List
   val totalEventsCount = "total-events-count"
-  val successEventCount = "success-events-count"
-  val failedEventCount = "failed-events-count"
-  val skippedEventCount = "skipped-event-count"
-  val shallowCopyPublishEventCount = "shallow-copy-publish-events-count"
+  val skippedEventCount = "skipped-events-count"
   val batchCreationCount = "batch-creation-count"
-  val dialLinkingCount = "dial-linking-count"
+  val batchCreationSuccessCount = "batch-creation-success-count"
+  val batchCreationFailedCount = "batch-creation-failed-count"
+  val shallowCopyCount = "shallow-copy-count"
+  val shallowCopySuccessCount = "shallow-copy-success-count"
+  val shallowCopyFailedCount = "shallow-copy-failed-count"
+  val dialLinkCount = "dial-link-count"
+  val dialLinkSuccessCount = "dial-link-success-count"
+  val dialLinkFailedCount = "dial-link-failed-count"
+
   val qrImageGeneratorEventCount = "qr-image-event-count"
 
   // Cassandra Configurations

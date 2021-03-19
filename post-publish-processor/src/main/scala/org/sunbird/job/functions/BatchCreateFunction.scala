@@ -25,15 +25,23 @@ class BatchCreateFunction(config: PostPublishProcessorConfig, httpUtil: HttpUtil
 
   override def processElement(eData: java.util.Map[String, AnyRef], context: ProcessFunction[java.util.Map[String, AnyRef], String]#Context, metrics: Metrics): Unit = {
     val collectionId = eData.getOrDefault("identifier", "")
+    metrics.incCounter(config.batchCreationCount)
     val startDate = ZonedDateTime.now(ZoneId.of("Asia/Kolkata")).format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
     logger.info("Creating Batch for " + collectionId + " with start date:" + startDate)
-    createBatch(eData, startDate)(config, httpUtil)
-    metrics.incCounter(config.batchCreationCount)
-    logger.info("Batch created for " + collectionId)
+    try {
+      createBatch(eData, startDate)(config, httpUtil)
+      logger.info("Batch created for " + collectionId)
+    } catch {
+      case ex: Exception =>
+        logger.error(s"Error while processing message for identifier : ${collectionId}.", ex)
+        metrics.incCounter(config.batchCreationFailedCount)
+        throw ex
+    }
+
   }
 
   override def metricsList(): List[String] = {
-    List(config.batchCreationCount)
+    List(config.batchCreationCount, config.batchCreationSuccessCount, config.batchCreationFailedCount)
   }
 
 }
