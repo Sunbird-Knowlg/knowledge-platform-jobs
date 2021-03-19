@@ -15,10 +15,10 @@ import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import scala.collection.JavaConverters._
 
-class CollectionProgressCompleteFunction(config: EnrolmentReconciliationConfig)(implicit val enrolmentCompleteTypeInfo: TypeInformation[List[CollectionProgress]], val stringTypeInfo: TypeInformation[String], @transient var cassandraUtil: CassandraUtil = null)
+class ProgressCompleteFunction(config: EnrolmentReconciliationConfig)(implicit val enrolmentCompleteTypeInfo: TypeInformation[List[CollectionProgress]], val stringTypeInfo: TypeInformation[String], @transient var cassandraUtil: CassandraUtil = null)
   extends BaseProcessFunction[List[CollectionProgress], String](config) {
 
-  private[this] val logger = LoggerFactory.getLogger(classOf[CollectionProgressCompleteFunction])
+  private[this] val logger = LoggerFactory.getLogger(classOf[ProgressCompleteFunction])
   lazy private val gson = new Gson()
 
   override def open(parameters: Configuration): Unit = {
