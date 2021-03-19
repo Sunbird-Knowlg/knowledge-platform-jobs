@@ -12,10 +12,10 @@ import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import scala.collection.JavaConverters._
 
-class CollectionProgressUpdateFunction(config: EnrolmentReconciliationConfig)(implicit val enrolmentCompleteTypeInfo: TypeInformation[List[CollectionProgress]], val stringTypeInfo: TypeInformation[String], @transient var cassandraUtil: CassandraUtil = null)
+class ProgressUpdateFunction(config: EnrolmentReconciliationConfig)(implicit val enrolmentCompleteTypeInfo: TypeInformation[List[CollectionProgress]], val stringTypeInfo: TypeInformation[String], @transient var cassandraUtil: CassandraUtil = null)
   extends BaseProcessFunction[List[CollectionProgress], String](config) {
 
-  private[this] val logger = LoggerFactory.getLogger(classOf[CollectionProgressUpdateFunction])
+  private[this] val logger = LoggerFactory.getLogger(classOf[ProgressUpdateFunction])
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
