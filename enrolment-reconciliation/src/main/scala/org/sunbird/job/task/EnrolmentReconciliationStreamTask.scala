@@ -10,7 +10,7 @@ import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.domain.CollectionProgress
-import org.sunbird.job.functions.{CollectionProgressCompleteFunction, CollectionProgressUpdateFunction, EnrolmentReconciliationFn}
+import org.sunbird.job.functions.{ProgressCompleteFunction, ProgressUpdateFunction, EnrolmentReconciliationFn}
 import org.sunbird.job.util.{FlinkUtil, HttpUtil}
 
 
@@ -35,9 +35,9 @@ class EnrolmentReconciliationStreamTask(config: EnrolmentReconciliationConfig, k
       .name(config.enrolmentReconciliationFailedEventProducer).uid(config.enrolmentReconciliationFailedEventProducer)
 
     // TODO: set separate parallelism for below task.
-    progressStream.getSideOutput(config.collectionUpdateOutputTag).process(new CollectionProgressUpdateFunction(config))
+    progressStream.getSideOutput(config.collectionUpdateOutputTag).process(new ProgressUpdateFunction(config))
       .name(config.collectionProgressUpdateFn).uid(config.collectionProgressUpdateFn).setParallelism(config.enrolmentCompleteParallelism)
-    val enrolmentCompleteStream = progressStream.getSideOutput(config.collectionCompleteOutputTag).process(new CollectionProgressCompleteFunction(config))
+    val enrolmentCompleteStream = progressStream.getSideOutput(config.collectionCompleteOutputTag).process(new ProgressCompleteFunction(config))
       .name(config.collectionCompleteFn).uid(config.collectionCompleteFn).setParallelism(config.enrolmentCompleteParallelism)
 
     enrolmentCompleteStream.getSideOutput(config.certIssueOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaCertIssueTopic))
