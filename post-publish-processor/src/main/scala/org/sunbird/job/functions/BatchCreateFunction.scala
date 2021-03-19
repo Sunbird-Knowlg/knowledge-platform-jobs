@@ -30,6 +30,7 @@ class BatchCreateFunction(config: PostPublishProcessorConfig, httpUtil: HttpUtil
     logger.info("Creating Batch for " + collectionId + " with start date:" + startDate)
     try {
       createBatch(eData, startDate)(config, httpUtil)
+      metrics.incCounter(config.batchCreationSuccessCount)
       logger.info("Batch created for " + collectionId)
     } catch {
       case ex: Throwable =>
