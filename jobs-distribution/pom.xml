@@ -57,6 +57,7 @@
             <type>jar</type>
         </dependency>
         <dependency>
+            <groupId>org.sunbird</groupId>
             <artifactId>enrolment-reconciliation</artifactId>
             <version>1.0.0</version>
             <type>jar</type>
