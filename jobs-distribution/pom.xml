@@ -56,6 +56,11 @@
             <version>1.0.0</version>
             <type>jar</type>
         </dependency>
+        <dependency>
+            <artifactId>enrolment-reconciliation</artifactId>
+            <version>1.0.0</version>
+            <type>jar</type>
+        </dependency>
     </dependencies>
 
     <build>
