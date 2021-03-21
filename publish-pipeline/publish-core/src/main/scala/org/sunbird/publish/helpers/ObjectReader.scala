@@ -13,8 +13,11 @@ trait ObjectReader {
   def getObject(identifier: String, pkgVersion: Double, readerConfig: ExtDataConfig)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil): ObjectData = {
     logger.info("Reading editable object data for: " + identifier + " with pkgVersion: " + pkgVersion)
     val metadata = getMetadata(identifier, pkgVersion)
+    logger.info("ObjectReader:: metadata:: " + metadata)
     val extData = getExtData(identifier, pkgVersion, readerConfig)
+    logger.info("ObjectReader:: extData:: " + extData)
     val hierarchy = getHierarchy(identifier, pkgVersion, readerConfig)
+    logger.info("ObjectReader:: hierarchy:: " + hierarchy)
     new ObjectData(identifier, metadata, extData, hierarchy)
   }
 
