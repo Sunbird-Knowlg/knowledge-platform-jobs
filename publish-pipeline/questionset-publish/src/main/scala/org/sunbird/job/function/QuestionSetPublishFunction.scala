@@ -51,11 +51,12 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 	}
 
 	override def metricsList(): List[String] = {
-		List(config.questionSetPublishEventCount)
+		List(config.questionSetPublishEventCount, config.questionSetPublishSuccessEventCount, config.questionSetPublishFailedEventCount)
 	}
 
 	override def processElement(data: PublishMetadata, context: ProcessFunction[PublishMetadata, String]#Context, metrics: Metrics): Unit = {
 		logger.info("QuestionSet publishing started for : " + data.identifier)
+		metrics.incCounter(config.questionSetPublishEventCount)
 		val obj = getObject(data.identifier, data.pkgVersion, readerConfig)(neo4JUtil, cassandraUtil)
 		logger.info("processElement ::: obj metadata before publish ::: " + ScalaJsonUtil.serialize(obj.metadata))
 		logger.info("processElement ::: obj hierarchy before publish ::: " + ScalaJsonUtil.serialize(obj.hierarchy.getOrElse(Map())))
@@ -83,12 +84,15 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 				val updatedObj = generatePreviewUrl(objWithEcar, qList)(httpUtil, cloudStorageUtil)
 				saveOnSuccess(updatedObj)(neo4JUtil, cassandraUtil, readerConfig)
 				logger.info("QuestionSet publishing completed successfully for : " + data.identifier)
+				metrics.incCounter(config.questionSetPublishSuccessEventCount)
 			} else {
 				saveOnFailure(obj, pubMsgs)(neo4JUtil)
+				metrics.incCounter(config.questionSetPublishFailedEventCount)
 				logger.info("QuestionSet publishing failed for : " + data.identifier)
 			}
 		} else {
 			saveOnFailure(obj, messages)(neo4JUtil)
+			metrics.incCounter(config.questionSetPublishFailedEventCount)
 			logger.info("QuestionSet publishing failed for : " + data.identifier)
 		}
 	}

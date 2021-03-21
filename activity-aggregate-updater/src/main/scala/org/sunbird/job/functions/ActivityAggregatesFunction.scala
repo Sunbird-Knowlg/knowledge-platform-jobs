@@ -441,7 +441,7 @@ class ActivityAggregatesFunction(config: ActivityAggregateUpdaterConfig, httpUti
     val cacheStatus = collectionStatusCache.getNonExpired(collectionId).getOrElse("")
     if (StringUtils.isEmpty(cacheStatus)) {
       val dbStatus = getDBStatus(collectionId)
-      collectionStatusCache.putClocked(collectionId, dbStatus)
+      collectionStatusCache = collectionStatusCache.putClocked(collectionId, dbStatus)._2
       dbStatus
     } else cacheStatus
   }
