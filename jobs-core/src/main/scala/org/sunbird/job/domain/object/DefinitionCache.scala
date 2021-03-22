@@ -28,7 +28,8 @@ class DefinitionCache extends Serializable {
   }
 
   private def prepareDefinition(basePath: String, objectType: String, version: String): ObjectDefinition = {
-    val path = s"${basePath}/${objectType.toLowerCase}/${version}/"
+    val objectName = objectType.toLowerCase.replace("image", "")
+    val path = s"${basePath}/${objectName}/${version}/"
     val definition = try {
       val schemaMap: Map[String, AnyRef] = ScalaJsonUtil.deserialize[Map[String, AnyRef]](fileToString(path, "schema.json"))
       val configMap: Map[String, AnyRef] = ScalaJsonUtil.deserialize[Map[String, AnyRef]](fileToString(path, "config.json"))
