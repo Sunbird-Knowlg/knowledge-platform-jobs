@@ -58,8 +58,5 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
   val collectionPublishOutTag: OutputTag[PublishMetadata] = OutputTag[PublishMetadata]("collection-publish")
   val generatePostPublishProcessorTag: OutputTag[String] = OutputTag[String]("post-publish-processor-request")
 
-  // Service Urls
-  val printServiceBaseUrl: String = config.getString("print_service.base_url")
-
-  val postPublishProcessorTopic: String = config.getString("kafka.post_publish.topic")//"sunbirddev.content.postpublish.request"
+  val postPublishProcessorTopic: String = config.getString("kafka.post_publish.topic")
 }
