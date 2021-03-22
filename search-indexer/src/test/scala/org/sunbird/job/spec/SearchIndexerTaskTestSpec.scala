@@ -529,6 +529,14 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
     CompositeSearchFailedEventSink.values.forEach(value => println(value))
   }
 
+  "Search Indexer" should " ignore the event with restricted ObjectTypes " in {
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new CompositeSearchEventSource(List[String](EventFixture.DATA_NODE_IGNORE)))
+    new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
+
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(1)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skippedEventCount}").getValue() should be(1)
+  }
+
   def getEvent(event: String, nodeGraphId: Int): Event = {
     val eventMap = ScalaJsonUtil.deserialize[util.Map[String, Any]](event)
     eventMap.put("nodeGraphId", nodeGraphId)
