@@ -46,8 +46,9 @@ class PublishEventRouter(config: QuestionSetPublishConfig) extends BaseProcessFu
 					logger.info("Invalid Object Type Received For Publish.| Identifier : " + event.objectId + " , objectType : " + event.objectType)
 				}
 			}
-		} else
+		} else {
       logger.warn("Event skipped for identifier: " + event.objectId + " objectType: " + event.objectType)
 			metrics.incCounter(config.skippedEventCount)
+		}
 	}
 }

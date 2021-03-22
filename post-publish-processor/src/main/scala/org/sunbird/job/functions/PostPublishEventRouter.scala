@@ -35,6 +35,7 @@ class PostPublishEventRouter(config: PostPublishProcessorConfig, httpUtil: HttpU
 
   override def processElement(event: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
     logger.info("Processed event using JobRequest-SerDe: " + event)
+    metrics.incCounter(config.totalEventsCount)
     if (event.validEvent()) {
       val identifier = event.collectionId
 
@@ -50,14 +51,13 @@ class PostPublishEventRouter(config: PostPublishProcessorConfig, httpUtil: HttpU
       val dialCodeDetails = getDialCodeDetails(identifier, event)(neo4JUtil, config)
       if (!dialCodeDetails.isEmpty)
         context.output(config.linkDIALCodeOutTag, dialCodeDetails)
-
     } else {
       metrics.incCounter(config.skippedEventCount)
+      logger.info(s"Event not qualified for publishing for Identifier : ${event.collectionId}.")
     }
-    metrics.incCounter(config.totalEventsCount)
   }
 
   override def metricsList(): List[String] = {
-    List(config.successEventCount, config.failedEventCount, config.skippedEventCount, config.totalEventsCount)
+    List(config.skippedEventCount, config.totalEventsCount)
   }
 }
