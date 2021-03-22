@@ -33,7 +33,7 @@ class DIALCodeIndexerFunction(config: SearchIndexerConfig,
       upsertDIALCodeDocument(event.id, event.getMap().asScala.toMap)(elasticUtil)
       metrics.incCounter(config.successDialcodeExternalEventCount)
     } catch {
-      case ex: Exception =>
+      case ex: Throwable =>
         logger.error(s"Error while processing message for identifier : ${event.id}. Error : ", ex)
         metrics.incCounter(config.failedDialcodeExternalEventCount)
         val failedEvent = getFailedEvent(event, ex)

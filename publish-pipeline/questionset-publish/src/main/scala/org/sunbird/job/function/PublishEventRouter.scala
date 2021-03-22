@@ -25,10 +25,11 @@ class PublishEventRouter(config: QuestionSetPublishConfig) extends BaseProcessFu
 	}
 
 	override def metricsList(): List[String] = {
-		List(config.successEventCount, config.failedEventCount, config.skippedEventCount, config.totalEventsCount)
+		List(config.skippedEventCount, config.totalEventsCount)
 	}
 
 	override def processElement(event: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
+		metrics.incCounter(config.totalEventsCount)
 		if (event.validEvent()) {
 			logger.info("PublishEventRouter :: Event: " + event)
 			event.objectType match {
@@ -45,9 +46,9 @@ class PublishEventRouter(config: QuestionSetPublishConfig) extends BaseProcessFu
 					logger.info("Invalid Object Type Received For Publish.| Identifier : " + event.objectId + " , objectType : " + event.objectType)
 				}
 			}
-		} else
+		} else {
       logger.warn("Event skipped for identifier: " + event.objectId + " objectType: " + event.objectType)
 			metrics.incCounter(config.skippedEventCount)
-		metrics.incCounter(config.totalEventsCount)
+		}
 	}
 }

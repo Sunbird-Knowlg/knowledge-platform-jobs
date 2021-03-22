@@ -36,10 +36,18 @@ class DIALCodeLinkFunction(config: PostPublishProcessorConfig, httpUtil: HttpUti
 
   override def processElement(edata: java.util.Map[String, AnyRef], context: ProcessFunction[java.util.Map[String, AnyRef], String]#Context, metrics: Metrics): Unit = {
     logger.info(s"Link DIAL Code operation triggered with object : ${edata}")
-    metrics.incCounter(config.dialLinkingCount)
-    val dialcode: String = getDialcode(edata)
-    if (!dialcode.isEmpty)
-      createQRGeneratorEvent(edata, dialcode, context, config)(metrics, ExtDataConfig(config.dialcodeKeyspaceName, config.dialcodeTableName), cassandraUtil)
+    metrics.incCounter(config.dialLinkCount)
+    try {
+      val dialcode: String = getDialcode(edata)
+      metrics.incCounter(config.dialLinkSuccessCount)
+      if (!dialcode.isEmpty)
+        createQRGeneratorEvent(edata, dialcode, context, config)(metrics, ExtDataConfig(config.dialcodeKeyspaceName, config.dialcodeTableName), cassandraUtil)
+    } catch {
+      case ex: Throwable =>
+        logger.error(s"Error while processing message for identifier : ${edata.get("identifier").asInstanceOf[String]}.", ex)
+        metrics.incCounter(config.dialLinkFailedCount)
+        throw ex
+    }
   }
 
   def getDialcode(edata: java.util.Map[String, AnyRef]): String = {
@@ -61,13 +69,13 @@ class DIALCodeLinkFunction(config: PostPublishProcessorConfig, httpUtil: HttpUti
         }
         case _ => {
           logger.info(s"Couldn't reserve any dialcodes for object with identifier:${identifier}")
-          ""
+          throw new Exception(s"Failed to Reserve dialcode for object with identifier:${identifier}.")
         }
       }
     } else if (validateQR(dialcodes.get(0))(ExtDataConfig(config.dialcodeKeyspaceName, config.dialcodeTableName), cassandraUtil)) "" else dialcodes.get(0)
   }
 
   override def metricsList(): List[String] = {
-    List(config.dialLinkingCount, config.qrImageGeneratorEventCount, config.skippedEventCount)
+    List(config.dialLinkCount, config.qrImageGeneratorEventCount, config.dialLinkSuccessCount, config.dialLinkFailedCount)
   }
 }
