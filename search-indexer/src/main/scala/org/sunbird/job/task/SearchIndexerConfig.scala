@@ -68,4 +68,5 @@ class SearchIndexerConfig(override val config: Config) extends BaseJobConfig(con
   val definitionBasePath: String = if (config.hasPath("schema.basePath")) config.getString("schema.basePath") else "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local"
   val schemaSupportVersionMap = if (config.hasPath("schema.supportedVersion")) config.getObject("schema.supportedVersion").unwrapped().asScala else Map[String, AnyRef]()
   val definitionCacheExpiry: Int = if (config.hasPath("schema.definition_cache.expiry")) config.getInt("schema.definition_cache.expiry") else 14400
+  val restrictObjectTypes: util.List[String] = if(config.hasPath("restrict.objectTypes")) config.getStringList("restrict.objectTypes") else new util.ArrayList[String]
 }
