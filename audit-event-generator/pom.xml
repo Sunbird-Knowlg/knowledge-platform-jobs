@@ -82,6 +82,8 @@
             <groupId>org.sunbird</groupId>
             <artifactId>platform-telemetry</artifactId>
             <version>1.0-beta</version>
+            <scope>system</scope>
+            <systemPath>${project.basedir}/src/main/resources/platform-telemetry-1.0-beta-jar-with-dependencies.jar</systemPath>
         </dependency>
     </dependencies>
 
