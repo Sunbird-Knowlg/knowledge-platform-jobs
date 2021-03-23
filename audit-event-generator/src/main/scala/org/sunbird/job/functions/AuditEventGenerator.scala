@@ -34,7 +34,7 @@ class AuditEventGenerator(config: AuditEventGeneratorConfig)
                                 metrics: Metrics): Unit = {
         metrics.incCounter(config.totalEventsCount)
         if(event.isValid) {
-            logger.info("valid event::"+event.mid)
+            logger.info("valid event::"+event.nodeUniqueId)
             processEvent(event, context, metrics)(config)
         } else metrics.incCounter(config.skippedEventCount)
     }

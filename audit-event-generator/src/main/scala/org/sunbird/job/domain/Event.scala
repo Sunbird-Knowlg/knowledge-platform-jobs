@@ -11,13 +11,13 @@ class Event(eventMap: java.util.Map[String, Any]) extends JobRequest(eventMap) {
 
   def operationType: String = readOrDefault("operationType", "")
 
-  def id: String = readOrDefault("nodeUniqueId", "")
+  def nodeUniqueId: String = readOrDefault("nodeUniqueId", null)
 
-  def nodeType: String = readOrDefault[String]("nodeType", "")
+  def objectType: String = readOrDefault[String]("objectType", null)
 
 
   def isValid: Boolean = {
-    StringUtils.isNotBlank(nodeType)
+    StringUtils.isNotBlank(objectType)
   }
 
 }

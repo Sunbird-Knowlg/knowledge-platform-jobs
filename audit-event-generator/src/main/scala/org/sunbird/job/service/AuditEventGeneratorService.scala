@@ -35,7 +35,7 @@ trait AuditEventGeneratorService {
 
   def processEvent(message: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics)(implicit config: AuditEventGeneratorConfig): Unit = {
     logger.info("AUDIT Event::" + JSONUtil.serialize(message))
-    logger.info("Input Message Received for : [" + message.read("nodeUniqueId") + "], Txn Event createdOn:" + message.read("createdOn") + ", Operation Type:" + message.read("operationType"))
+    logger.info("Input Message Received for : [" + message.nodeUniqueId + "], Txn Event createdOn:" + message.read("createdOn") + ", Operation Type:" + message.operationType)
     try {
       val auditEventStr = getAuditMessage(message)
       val auditMap = JSONUtil.deserialize[Map[String, AnyRef]](auditEventStr)
@@ -69,8 +69,8 @@ trait AuditEventGeneratorService {
 
   def getAuditMessage(message: Event)(implicit config: AuditEventGeneratorConfig): String = {
     var auditMap: String = null
-    var objectId = message.readOrDefault("nodeUniqueId", null).asInstanceOf[String]
-    var objectType = message.readOrDefault("objectType", null).asInstanceOf[String]
+    var objectId = message.nodeUniqueId
+    var objectType = message.objectType
     val env = if (null != objectType) objectType.toLowerCase.replace("image", "") else "system"
     val graphId = message.readOrDefault("graphId", "")
     val userId = message.readOrDefault("userId", "")
