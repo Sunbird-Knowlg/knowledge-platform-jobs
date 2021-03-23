@@ -34,7 +34,7 @@ class AuditHistoryIndexer(config: AuditHistoryIndexerConfig)
                                 metrics: Metrics): Unit = {
         metrics.incCounter(config.totalEventsCount)
         if(event.isValid) {
-            processEvent(event, context, metrics)(config)
+            processEvent(event, metrics)(config)
         } else metrics.incCounter(config.skippedEventCount)
     }
 }
