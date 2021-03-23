@@ -22,6 +22,13 @@
 		<scoverage.plugin.version>1.4.0</scoverage.plugin.version>
 	</properties>
 
+    <repositories>
+        <repository>
+            <id>local-custom-repo</id>
+            <url>file://${project.basedir}/libs</url>
+        </repository>
+    </repositories>
+
     <dependencies>
         <dependency>
             <groupId>org.apache.flink</groupId>
@@ -82,9 +89,6 @@
             <groupId>org.sunbird</groupId>
             <artifactId>platform-telemetry</artifactId>
             <version>1.0-beta</version>
-            <classifier>assembly</classifier>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/src/main/resources/platform-telemetry-1.0-beta-jar-with-dependencies.jar</systemPath>
         </dependency>
     </dependencies>
 
