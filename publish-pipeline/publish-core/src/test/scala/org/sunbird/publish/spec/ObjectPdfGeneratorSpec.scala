@@ -32,23 +32,28 @@ class ObjectPdfGeneratorSpec extends FlatSpec with BeforeAndAfterAll with Matche
 
     "Object Pdf Generator getPreviewFileUrl" should "return a url of the html file after uploading it to cloud" in {
         val pdfGenerator = new TestQuestionPdfGenerator()
-        val obj = pdfGenerator.getPreviewFileUrl(getObjectList(), getObject(), "questionSetTemplate.vm")
+        val fileNameSuffix = System.currentTimeMillis().toString
+        val obj = pdfGenerator.getPreviewFileUrl(getObjectList(), getObject(), "questionSetTemplate.vm", fileNameSuffix)
         obj.getOrElse("").isEmpty should be(false)
     }
 
     "Object PDF generator getPdfFileUrl" should "return a url of the pdf file after uploading it to cloud" in {
-        when(mockHttpUtil.post(ArgumentMatchers.anyString(), ArgumentMatchers.anyString())).thenReturn(getHttpResponse())
+        val fileNameSuffix = System.currentTimeMillis().toString
+        when(mockHttpUtil.post(s"http://11.2.6.6/print/v1/print/preview/generate?fileUrl=https://sunbirddev.blob.core.windows.net/sunbird-content-dev/questionset/do_xyz/do_xyz_html_${fileNameSuffix}.html", "")).thenReturn(getHttpResponse())
+//        when(mockHttpUtil.post(ArgumentMatchers.anyString(), ArgumentMatchers.anyString(), ArgumentMatchers.any())).thenReturn(getHttpResponse())
         val pdfGenerator = new TestQuestionPdfGenerator()
-        val (pdfUrl, previewUrl) = pdfGenerator.getPdfFileUrl(getObjectList(), getObject(), "questionSetTemplate.vm", "http://11.2.6.6/print")
+        val (pdfUrl, previewUrl) = pdfGenerator.getPdfFileUrl(getObjectList(), getObject(), "questionSetTemplate.vm", "http://11.2.6.6/print", fileNameSuffix)
         pdfUrl.getOrElse("").isEmpty should be(false)
         previewUrl.getOrElse("").isEmpty should be(false)
 
     }
 
     "Object PDF generator getPdfFileUrl" should "return a Empty pdfUrl if failed to convert to PDF " in {
-        when(mockHttpUtil.post(ArgumentMatchers.anyString(), ArgumentMatchers.anyString())).thenReturn(getFailedHttpResponse())
+        val fileNameSuffix = System.currentTimeMillis().toString
+        when(mockHttpUtil.post(s"http://11.2.6.6/print/v1/print/preview/generate?fileUrl=https://sunbirddev.blob.core.windows.net/sunbird-content-dev/questionset/do_xyz/do_xyz_html_${fileNameSuffix}.html", "")).thenReturn(getFailedHttpResponse())
+//        when(mockHttpUtil.post(ArgumentMatchers.anyString(), ArgumentMatchers.anyString(), ArgumentMatchers.any())).thenReturn(getFailedHttpResponse())
         val pdfGenerator = new TestQuestionPdfGenerator()
-        val (pdfUrl, previewUrl) = pdfGenerator.getPdfFileUrl(getObjectList(), getObject(), "questionSetTemplate.vm", "http://11.2.6.6/print")
+        val (pdfUrl, previewUrl) = pdfGenerator.getPdfFileUrl(getObjectList(), getObject(), "questionSetTemplate.vm", "http://11.2.6.6/print", fileNameSuffix)
         pdfUrl.getOrElse("").isEmpty should be(true)
         previewUrl.getOrElse("").isEmpty should be(false)
     }

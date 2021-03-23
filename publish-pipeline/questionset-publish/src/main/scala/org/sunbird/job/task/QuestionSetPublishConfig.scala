@@ -30,15 +30,13 @@ class QuestionSetPublishConfig(override val config: Config) extends PublishConfi
 
 	// Metric List
 	val totalEventsCount = "total-events-count"
-	val successEventCount = "success-events-count"
-	val failedEventCount = "failed-events-count"
 	val skippedEventCount = "skipped-event-count"
 	val questionPublishEventCount = "question-publish-count"
+	val questionPublishSuccessEventCount = "question-publish-success-count"
+	val questionPublishFailedEventCount = "question-publish-failed-count"
 	val questionSetPublishEventCount = "questionset-publish-count"
-	val dbUpdateCount = "db-update-count"
-	val dbReadCount = "db-read-count"
-	val cacheHitCount = "cache-hit-count"
-	val cacheMissCount = "cache-miss-count"
+	val questionSetPublishSuccessEventCount = "questionset-publish-success-count"
+	val questionSetPublishFailedEventCount = "questionset-publish-failed-count"
 
 	// Cassandra Configurations
 	val cassandraHost: String = config.getString("lms-cassandra.host")

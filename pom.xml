@@ -23,9 +23,12 @@
 		<module>jobs-core</module>
 		<module>relation-cache-updater</module>
 		<module>activity-aggregate-updater</module>
-    <module>post-publish-processor</module>
+        <module>post-publish-processor</module>
 		<module>credential-generator</module>
-    <module>publish-pipeline</module>
+        <module>publish-pipeline</module>
+		<module>video-stream-generator</module>
+		<module>search-indexer</module>
+		<module>enrolment-reconciliation</module>
     </modules>
 
 	<properties>
@@ -42,7 +45,7 @@
 	<repositories>
 		<repository>
 			<id>my-local-repo</id>
-			<url>file://${user.home}/.m2/repository</url>
+		<url>file://${user.home}/.m2/repository</url>
 		</repository>
 		<repository>
 			<id>apache-releases</id>

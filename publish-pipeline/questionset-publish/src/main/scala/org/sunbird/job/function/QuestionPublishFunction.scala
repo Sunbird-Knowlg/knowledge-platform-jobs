@@ -39,23 +39,22 @@ class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUt
 	}
 
 	override def metricsList(): List[String] = {
-		List(config.totalEventsCount, config.questionPublishEventCount, config.successEventCount, config.failedEventCount)
+		List(config.questionPublishEventCount, config.questionPublishSuccessEventCount, config.questionPublishFailedEventCount)
 	}
 
 	override def processElement(data: PublishMetadata, context: ProcessFunction[PublishMetadata, String]#Context, metrics: Metrics): Unit = {
-		metrics.incCounter(config.totalEventsCount)
 		logger.info("Question publishing started for : " + data.identifier)
+		metrics.incCounter(config.questionPublishEventCount)
 		val obj = getObject(data.identifier, data.pkgVersion, readerConfig)(neo4JUtil, cassandraUtil)
 		val messages:List[String] = validate(obj, obj.identifier, validateQuestion)
 		if (messages.isEmpty) {
 			val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil)
 			saveOnSuccess(enrichedObj)(neo4JUtil, cassandraUtil, readerConfig)
-			metrics.incCounter(config.questionPublishEventCount)
-			metrics.incCounter(config.successEventCount)
+			metrics.incCounter(config.questionPublishSuccessEventCount)
 			logger.info("Question publishing completed successfully for : " + data.identifier)
 		} else {
 			saveOnFailure(obj, messages)(neo4JUtil)
-			metrics.incCounter(config.failedEventCount)
+			metrics.incCounter(config.questionPublishFailedEventCount)
 			logger.info("Question publishing failed for : " + data.identifier)
 		}
 	}

@@ -40,7 +40,7 @@
         </dependency>
         <dependency>
             <groupId>org.sunbird</groupId>
-            <artifactId>collection-complete-post-processor</artifactId>
+            <artifactId>video-stream-generator</artifactId>
             <version>1.0.0</version>
             <type>jar</type>
         </dependency>
@@ -50,7 +50,24 @@
             <version>1.0.0</version>
             <type>jar</type>
         </dependency>
-        
+        <dependency>
+            <groupId>org.sunbird</groupId>
+            <artifactId>search-indexer</artifactId>
+            <version>1.0.0</version>
+            <type>jar</type>
+        </dependency>
+        <dependency>
+            <groupId>org.sunbird</groupId>
+            <artifactId>enrolment-reconciliation</artifactId>
+            <version>1.0.0</version>
+            <type>jar</type>
+        </dependency>
+        <dependency>
+            <groupId>org.sunbird</groupId>
+            <artifactId>collection-complete-post-processor</artifactId>
+            <version>1.0.0</version>
+            <type>jar</type>
+        </dependency>
     </dependencies>
 
     <build>
