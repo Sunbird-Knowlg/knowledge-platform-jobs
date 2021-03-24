@@ -9,11 +9,13 @@ import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
+import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.function.{PublishEventRouter, QuestionPublishFunction, QuestionSetPublishFunction}
 import org.sunbird.job.publish.domain.{Event, PublishMetadata}
 import org.sunbird.job.util.{FlinkUtil, HttpUtil}
+import org.sunbird.publish.core.DefinitionConfig
 
-class QuestionSetPublishStreamTask(config: QuestionSetPublishConfig, kafkaConnector: FlinkKafkaConnector, httpUtil: HttpUtil) {
+class QuestionSetPublishStreamTask(config: QuestionSetPublishConfig, kafkaConnector: FlinkKafkaConnector, httpUtil: HttpUtil, definitionCache: DefinitionCache, definitionConfig: DefinitionConfig) {
 
 	def process(): Unit = {
 		implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
@@ -30,10 +32,10 @@ class QuestionSetPublishStreamTask(config: QuestionSetPublishConfig, kafkaConnec
 		  .name("publish-event-router").uid("publish-event-router")
 		  .setParallelism(config.eventRouterParallelism)
 
-		processStreamTask.getSideOutput(config.questionPublishOutTag).process(new QuestionPublishFunction(config, httpUtil))
+		processStreamTask.getSideOutput(config.questionPublishOutTag).process(new QuestionPublishFunction(config, httpUtil, definitionCache, definitionConfig))
 		  .name("question-publish-process").uid("question-publish-process").setParallelism(1)
 
-		processStreamTask.getSideOutput(config.questionSetPublishOutTag).process(new QuestionSetPublishFunction(config, httpUtil))
+		processStreamTask.getSideOutput(config.questionSetPublishOutTag).process(new QuestionSetPublishFunction(config, httpUtil, definitionCache, definitionConfig))
 		  .name("questionset-publish-process").uid("questionset-publish-process").setParallelism(1)
 		env.execute(config.jobName)
 	}
@@ -50,7 +52,9 @@ object QuestionSetPublishStreamTask {
 		val publishConfig = new QuestionSetPublishConfig(config)
 		val kafkaUtil = new FlinkKafkaConnector(publishConfig)
 		val httpUtil = new HttpUtil
-		val task = new QuestionSetPublishStreamTask(publishConfig, kafkaUtil, httpUtil)
+		val definitionCache: DefinitionCache = new DefinitionCache()
+		val definitionConfig: DefinitionConfig = DefinitionConfig(publishConfig.schemaSupportVersionMap, publishConfig.definitionBasePath)
+		val task = new QuestionSetPublishStreamTask(publishConfig, kafkaUtil, httpUtil, definitionCache, definitionConfig)
 		task.process()
 	}
 }
