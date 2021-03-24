@@ -9,20 +9,21 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
+import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 import org.sunbird.job.publish.domain.PublishMetadata
 import org.sunbird.job.publish.helpers.QuestionSetPublisher
 import org.sunbird.job.publish.util.QuestionPublishUtil
 import org.sunbird.job.task.QuestionSetPublishConfig
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil, ScalaJsonUtil}
-import org.sunbird.publish.core.{ExtDataConfig, ObjectData}
+import org.sunbird.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
 import org.sunbird.publish.util.CloudStorageUtil
 
 import scala.concurrent.ExecutionContext
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 
-class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUtil,
+class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUtil, definitionCache: DefinitionCache, definitionConfig: DefinitionConfig,
                                  @transient var neo4JUtil: Neo4JUtil = null,
                                  @transient var cassandraUtil: CassandraUtil = null,
                                  @transient var cloudStorageUtil: CloudStorageUtil = null)
@@ -70,7 +71,7 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 			//TODO: Remove below statement
 			childQuestions.foreach(ch => logger.info("child questions visibility parent identifier : " + ch.identifier))
 			// Publish Child Questions
-			QuestionPublishUtil.publishQuestions(obj.identifier, childQuestions)(neo4JUtil, cassandraUtil, qReaderConfig, cloudStorageUtil)
+			QuestionPublishUtil.publishQuestions(obj.identifier, childQuestions)(neo4JUtil, cassandraUtil, qReaderConfig, cloudStorageUtil, definitionCache, definitionConfig)
 			val pubMsgs: List[String] = isChildrenPublished(childQuestions)
 			if(pubMsgs.isEmpty) {
 				// Enrich Object as well as hierarchy
@@ -82,7 +83,7 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 				val objWithEcar = generateECAR(enrichedObj, pkgTypes)(ec, cloudStorageUtil)
 				// Generate PDF URL
 				val updatedObj = generatePreviewUrl(objWithEcar, qList)(httpUtil, cloudStorageUtil)
-				saveOnSuccess(updatedObj)(neo4JUtil, cassandraUtil, readerConfig)
+				saveOnSuccess(updatedObj)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
 				logger.info("QuestionSet publishing completed successfully for : " + data.identifier)
 				metrics.incCounter(config.questionSetPublishSuccessEventCount)
 			} else {
