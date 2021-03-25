@@ -16,10 +16,12 @@ import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
 import org.sunbird.publish.core.{DefinitionConfig, ExtDataConfig}
 import org.sunbird.publish.util.CloudStorageUtil
 
-class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUtil, definitionCache: DefinitionCache, definitionConfig: DefinitionConfig,
+class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUtil,
                               @transient var neo4JUtil: Neo4JUtil = null,
                               @transient var cassandraUtil: CassandraUtil = null,
-                              @transient var cloudStorageUtil: CloudStorageUtil = null)
+                              @transient var cloudStorageUtil: CloudStorageUtil = null,
+                              @transient var definitionCache: DefinitionCache = null,
+                              @transient var definitionConfig: DefinitionConfig = null)
                              (implicit val stringTypeInfo: TypeInformation[String])
   extends BaseProcessFunction[PublishMetadata, String](config) with QuestionPublisher {
 
@@ -32,6 +34,8 @@ class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUt
 		cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort)
 		neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName)
 		cloudStorageUtil = new CloudStorageUtil(config)
+		definitionCache = new DefinitionCache()
+		definitionConfig = DefinitionConfig(config.schemaSupportVersionMap, config.definitionBasePath)
 	}
 
 	override def close(): Unit = {

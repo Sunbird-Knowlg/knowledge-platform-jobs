@@ -48,14 +48,15 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
 	override def getExtData(identifier: String,pkgVersion: Double, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = {
 		val row: Row = Option(getQuestionData(getEditableObjId(identifier, pkgVersion), readerConfig)).getOrElse(getQuestionData(identifier, readerConfig))
 		//TODO: covert below code in scala. entire props should be in scala.
-		if (null != row) Option(extProps.map(prop => prop -> row.getString(prop)).toMap.filter(p => StringUtils.isNotBlank(p._2.asInstanceOf[String]))) else Option(Map[String, AnyRef]())
+		if (null != row) Option(extProps.map(prop => prop -> row.getString(prop.toLowerCase())).toMap.filter(p => StringUtils.isNotBlank(p._2.asInstanceOf[String]))) else Option(Map[String, AnyRef]())
 	}
 
 	def getQuestionData(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Row = {
 		logger.info("QuestionPublisher ::: getQuestionData ::: Reading Question External Data For : "+identifier)
 		val select = QueryBuilder.select()
-		extProps.foreach(prop => if (lang3.StringUtils.equals("body", prop) | lang3.StringUtils.equals("answer", prop)) select.fcall("blobAsText", QueryBuilder.column(prop)).as(prop) else select.column(prop).as(prop))
+		extProps.foreach(prop => if (lang3.StringUtils.equals("body", prop) | lang3.StringUtils.equals("answer", prop)) select.fcall("blobAsText", QueryBuilder.column(prop.toLowerCase())).as(prop.toLowerCase()) else select.column(prop.toLowerCase()).as(prop.toLowerCase()))
 		val selectWhere: Select.Where = select.from(readerConfig.keyspace, readerConfig.table).where().and(QueryBuilder.eq("identifier", identifier))
+		logger.info("Cassandra Fetch Query :: "+ selectWhere.toString)
 		cassandraUtil.findOne(selectWhere.toString)
 	}
 
@@ -76,12 +77,12 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
 			.where(QueryBuilder.eq("identifier", identifier))
 			.`with`(QueryBuilder.set("body",  QueryBuilder.fcall("textAsBlob", extData.getOrElse("body", null))))
 			.and(QueryBuilder.set("answer", QueryBuilder.fcall("textAsBlob", extData.getOrElse("answer", null))))
-			.and(QueryBuilder.set("editorstate", extData.getOrElse("editorstate", null)))
+			.and(QueryBuilder.set("editorstate", extData.getOrElse("editorState", null)))
 			.and(QueryBuilder.set("solutions", extData.getOrElse("solutions", null)))
 			.and(QueryBuilder.set("instructions", extData.getOrElse("instructions", null)))
 			.and(QueryBuilder.set("media", extData.getOrElse("media", null)))
 			.and(QueryBuilder.set("hints", extData.getOrElse("hints", null)))
-			.and(QueryBuilder.set("responsedeclaration", extData.getOrElse("responsedeclaration", null)))
+			.and(QueryBuilder.set("responsedeclaration", extData.getOrElse("responseDeclaration", null)))
 			.and(QueryBuilder.set("interactions", extData.getOrElse("interactions", null)))
 
 		logger.info(s"Updating Question in Cassandra For ${identifier} : ${query.toString}")

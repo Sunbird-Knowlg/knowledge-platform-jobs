@@ -23,10 +23,12 @@ import scala.concurrent.ExecutionContext
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 
-class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUtil, definitionCache: DefinitionCache, definitionConfig: DefinitionConfig,
+class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUtil,
                                  @transient var neo4JUtil: Neo4JUtil = null,
                                  @transient var cassandraUtil: CassandraUtil = null,
-                                 @transient var cloudStorageUtil: CloudStorageUtil = null)
+                                 @transient var cloudStorageUtil: CloudStorageUtil = null,
+                                 @transient var definitionCache: DefinitionCache = null,
+                                 @transient var definitionConfig: DefinitionConfig = null)
                                 (implicit val stringTypeInfo: TypeInformation[String])
   extends BaseProcessFunction[PublishMetadata, String](config) with QuestionSetPublisher {
 
@@ -34,6 +36,7 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 	val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
 	private val readerConfig = ExtDataConfig(config.questionSetKeyspaceName, config.questionSetTableName)
 	private val qReaderConfig = ExtDataConfig(config.questionKeyspaceName, config.questionTableName)
+
 	@transient var ec: ExecutionContext = _
 	private val pkgTypes = List("SPINE", "ONLINE")
 
@@ -44,6 +47,8 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 		neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName)
 		cloudStorageUtil = new CloudStorageUtil(config)
 		ec = ExecutionContexts.global
+		definitionCache = new DefinitionCache()
+		definitionConfig = DefinitionConfig(config.schemaSupportVersionMap, config.definitionBasePath)
 	}
 
 	override def close(): Unit = {
