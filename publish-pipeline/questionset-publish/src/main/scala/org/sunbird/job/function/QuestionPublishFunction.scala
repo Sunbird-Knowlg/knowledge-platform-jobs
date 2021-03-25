@@ -7,15 +7,16 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
+import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 import org.sunbird.job.publish.domain.PublishMetadata
 import org.sunbird.job.publish.helpers.QuestionPublisher
 import org.sunbird.job.task.QuestionSetPublishConfig
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
-import org.sunbird.publish.core.ExtDataConfig
+import org.sunbird.publish.core.{DefinitionConfig, ExtDataConfig}
 import org.sunbird.publish.util.CloudStorageUtil
 
-class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUtil,
+class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUtil, definitionCache: DefinitionCache, definitionConfig: DefinitionConfig,
                               @transient var neo4JUtil: Neo4JUtil = null,
                               @transient var cassandraUtil: CassandraUtil = null,
                               @transient var cloudStorageUtil: CloudStorageUtil = null)
@@ -49,7 +50,7 @@ class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUt
 		val messages:List[String] = validate(obj, obj.identifier, validateQuestion)
 		if (messages.isEmpty) {
 			val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil)
-			saveOnSuccess(enrichedObj)(neo4JUtil, cassandraUtil, readerConfig)
+			saveOnSuccess(enrichedObj)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
 			metrics.incCounter(config.questionPublishSuccessEventCount)
 			logger.info("Question publishing completed successfully for : " + data.identifier)
 		} else {

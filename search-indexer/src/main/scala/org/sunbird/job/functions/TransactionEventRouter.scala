@@ -2,7 +2,6 @@ package org.sunbird.job.functions
 
 import java.lang.reflect.Type
 import com.google.gson.reflect.TypeToken
-import org.apache.commons.lang3.BooleanUtils
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
@@ -26,7 +25,7 @@ class TransactionEventRouter(config: SearchIndexerConfig)
 
   override def processElement(event: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
     metrics.incCounter(config.totalEventsCount)
-    if (event.validEvent()) {
+    if (event.validEvent(config.restrictObjectTypes)) {
       event.nodeType match {
         case "SET" | "DATA_NODE" => context.output(config.compositeSearchDataOutTag, event)
         case "EXTERNAL" => context.output(config.dialCodeExternalOutTag, event)
