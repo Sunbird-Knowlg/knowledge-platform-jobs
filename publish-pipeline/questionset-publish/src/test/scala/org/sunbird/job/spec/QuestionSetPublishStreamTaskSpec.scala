@@ -16,13 +16,11 @@ import org.cassandraunit.utils.EmbeddedCassandraServerHelper
 import org.mockito.Mockito
 import org.mockito.Mockito.when
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.task.{QuestionSetPublishConfig, QuestionSetPublishStreamTask}
 import org.sunbird.job.fixture.EventFixture
 import org.sunbird.job.publish.domain.Event
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
 import org.sunbird.publish.config.PublishConfig
-import org.sunbird.publish.core.DefinitionConfig
 import org.sunbird.publish.util.CloudStorageUtil
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 
@@ -74,9 +72,7 @@ class QuestionSetPublishStreamTaskSpec extends BaseTestSpec {
 
 	ignore should " publish the question " in {
 		initialize
-		val definitionCache: DefinitionCache = new DefinitionCache()
-		val definitionConfig: DefinitionConfig = DefinitionConfig(jobConfig.schemaSupportVersionMap, jobConfig.definitionBasePath)
-		new QuestionSetPublishStreamTask(jobConfig, mockKafkaUtil, mockHttpUtil, definitionCache, definitionConfig).process()
+		new QuestionSetPublishStreamTask(jobConfig, mockKafkaUtil, mockHttpUtil).process()
 		BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(1)
 		BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.questionPublishEventCount}").getValue() should be(1)
 	}
