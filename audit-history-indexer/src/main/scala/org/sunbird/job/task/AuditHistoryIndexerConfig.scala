@@ -30,6 +30,13 @@ class AuditHistoryIndexerConfig(override val config: Config) extends BaseJobConf
 
   val configVersion = "1.0"
 
+  // ES Configs
+  val esConnectionInfo = config.getString("es.basePath")
+
+  var auditHistoryIndex = "kp_audit_log"
+  val operationCreate = "CREATE"
+  val auditHistoryIndexType = "ah"
+
   // Redis Configurations
   val relationCacheStore: Int = config.getInt("redis.database.relationCache.id")
   val collectionCacheStore: Int = config.getInt("redis.database.collectionCache.id")

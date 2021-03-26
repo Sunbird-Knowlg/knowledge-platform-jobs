@@ -1,4 +1,4 @@
-package org.sunbird.job.domain
+package org.sunbird.job.audithistory.domain
 
 import java.io.Serializable
 import java.util.Date

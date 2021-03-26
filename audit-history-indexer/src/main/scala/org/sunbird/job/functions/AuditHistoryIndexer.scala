@@ -5,13 +5,14 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
-import org.sunbird.job.domain.Event
+import org.sunbird.job.audithistory.domain.Event
 import org.sunbird.job.service.AuditHistoryIndexerService
 import org.sunbird.job.task.AuditHistoryIndexerConfig
 import org.sunbird.job.{BaseProcessFunction, Metrics}
+import org.sunbird.job.util.ElasticSearchUtil
 
-class AuditHistoryIndexer(config: AuditHistoryIndexerConfig)
-                          (implicit mapTypeInfo: TypeInformation[util.Map[String, AnyRef]],
+class AuditHistoryIndexer(config: AuditHistoryIndexerConfig, @transient var esUtil: ElasticSearchUtil = null)
+                          (implicit mapTypeInfo: TypeInformation[util.Map[String, Any]],
                            stringTypeInfo: TypeInformation[String])
                           extends BaseProcessFunction[Event, String](config) with AuditHistoryIndexerService{
 
@@ -23,9 +24,11 @@ class AuditHistoryIndexer(config: AuditHistoryIndexerConfig)
 
     override def open(parameters: Configuration): Unit = {
         super.open(parameters)
+        esUtil = new ElasticSearchUtil(config.esConnectionInfo, config.auditHistoryIndex, config.auditHistoryIndexType)
     }
 
     override def close(): Unit = {
+        esUtil.close()
         super.close()
     }
 
@@ -34,7 +37,7 @@ class AuditHistoryIndexer(config: AuditHistoryIndexerConfig)
                                 metrics: Metrics): Unit = {
         metrics.incCounter(config.totalEventsCount)
         if(event.isValid) {
-            processEvent(event, metrics)(config)
+            processEvent(event, metrics)(esUtil, config)
         } else metrics.incCounter(config.skippedEventCount)
     }
 }
