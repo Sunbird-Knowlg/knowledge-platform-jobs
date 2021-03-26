@@ -8,13 +8,17 @@ import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
 import org.apache.flink.streaming.api.functions.source.SourceFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext
 import org.apache.flink.test.util.MiniClusterWithClientResource
-import org.sunbird.job.util.JSONUtil
+import org.mockito.ArgumentMatchers.anyString
+import org.sunbird.job.util.{ElasticSearchUtil, JSONUtil}
 import org.mockito.Mockito
-import org.mockito.Mockito.when
+import org.mockito.Mockito.{times, verify, when}
+import org.sunbird.job.audithistory.domain.Event
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.fixture.EventFixture
 import org.sunbird.job.task.{AuditHistoryIndexerConfig, AuditHistoryIndexerStreamTask}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
+
+import java.util
 
 class AuditHistoryIndexerTaskTestSpec extends BaseTestSpec {
 
@@ -28,6 +32,7 @@ class AuditHistoryIndexerTaskTestSpec extends BaseTestSpec {
   val mockKafkaUtil: FlinkKafkaConnector = mock[FlinkKafkaConnector](Mockito.withSettings().serializable())
   val config: Config = ConfigFactory.load("test.conf")
   val jobConfig: AuditHistoryIndexerConfig = new AuditHistoryIndexerConfig(config)
+  val mockElasticUtil = mock[ElasticSearchUtil](Mockito.withSettings().serializable())
   var currentMilliSecond = 1605816926271L
 
   override protected def beforeAll(): Unit = {
@@ -41,17 +46,23 @@ class AuditHistoryIndexerTaskTestSpec extends BaseTestSpec {
     super.afterAll()
   }
 
-  ignore should "generate event" in {
-    when(mockKafkaUtil.kafkaMapSource(jobConfig.kafkaInputTopic)).thenReturn(new AuditHistoryIndexerMapSource)
+  "AuditHistoryIndexerStreamTask" should "generate event" in {
+    Mockito.reset(mockElasticUtil)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new AuditHistoryIndexerMapSource)
 
     new AuditHistoryIndexerStreamTask(jobConfig, mockKafkaUtil).process()
+
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(1)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.successEventCount}").getValue() should be(1)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.failedEventCount}").getValue() should be(0)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skippedEventCount}").getValue() should be(0)
   }
 }
 
-class AuditHistoryIndexerMapSource extends SourceFunction[util.Map[String, AnyRef]] {
+class AuditHistoryIndexerMapSource extends SourceFunction[Event] {
 
-  override def run(ctx: SourceContext[util.Map[String, AnyRef]]) {
-    ctx.collect(JSONUtil.deserialize[util.Map[String, AnyRef]](EventFixture.EVENT_1))
+  override def run(ctx: SourceContext[Event]) {
+    ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_1)))
   }
 
   override def cancel(): Unit = {}
