@@ -52,17 +52,20 @@ class AuditHistoryIndexerTaskTestSpec extends BaseTestSpec {
 
     new AuditHistoryIndexerStreamTask(jobConfig, mockKafkaUtil).process()
 
-    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(1)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(2)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.successEventCount}").getValue() should be(1)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.failedEventCount}").getValue() should be(0)
-    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skippedEventCount}").getValue() should be(0)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skippedEventCount}").getValue() should be(1)
   }
 }
 
 class AuditHistoryIndexerMapSource extends SourceFunction[Event] {
 
   override def run(ctx: SourceContext[Event]) {
+    // Valid event
     ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_1)))
+    // Invalid event
+    ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_4)))
   }
 
   override def cancel(): Unit = {}

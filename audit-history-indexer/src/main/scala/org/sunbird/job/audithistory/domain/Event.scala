@@ -32,7 +32,7 @@ class Event(eventMap: java.util.Map[String, Any]) extends JobRequest(eventMap) {
     readOrDefault("transactionData", new util.HashMap[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
   }
 
-  def operationType: String = readOrDefault("operationType", "")
+  def operationType: String = readOrDefault("operationType", null)
 
   def syncMessage: String = readOrDefault("syncMessage", null)
 
