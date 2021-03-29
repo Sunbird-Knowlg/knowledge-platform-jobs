@@ -22,6 +22,7 @@ class AuditHistoryIndexerConfig(override val config: Config) extends BaseJobConf
   val totalEventsCount = "total-events-count"
   val successEventCount = "success-events-count"
   val failedEventCount = "failed-events-count"
+  val esFailedEventCount = "elasticsearch-error-events-count"
   val skippedEventCount = "skipped-events-count"
 
   // Consumers
@@ -36,8 +37,4 @@ class AuditHistoryIndexerConfig(override val config: Config) extends BaseJobConf
   var auditHistoryIndex = "kp_audit_log"
   val operationCreate = "CREATE"
   val auditHistoryIndexType = "ah"
-
-  // Redis Configurations
-  val relationCacheStore: Int = config.getInt("redis.database.relationCache.id")
-  val collectionCacheStore: Int = config.getInt("redis.database.collectionCache.id")
 }

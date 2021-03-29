@@ -7,7 +7,8 @@ import org.sunbird.job.audithistory.domain.{AuditHistoryRecord, Event}
 import org.sunbird.job.task.AuditHistoryIndexerConfig
 import org.sunbird.job.util.{ElasticSearchUtil, JSONUtil}
 
-import java.util.{Calendar, Date}
+import java.io.IOException
+import java.util.{Calendar, Date, TimeZone}
 import scala.collection.mutable.Map
 import scala.collection.immutable
 
@@ -16,17 +17,20 @@ trait AuditHistoryIndexerService {
 
   def processEvent(event: Event, metrics: Metrics)(implicit esUtil: ElasticSearchUtil, config: AuditHistoryIndexerConfig): Unit = {
     if (event.isValid) {
-      logger.debug("Audit learning event received")
+      val identifier = event.nodeUniqueId
+      logger.info("Audit learning event received" + identifier)
       try {
         val record = getAuditHistory(event)
-        val identifier = event.nodeUniqueId
-        logger.info("Audit record created for " + identifier)
         val document = JSONUtil.serialize(record)
-        logger.debug("Saving the record into ES")
         val indexName = getIndexName(event.ets)
         esUtil.addDocumentWithIndex(document, indexName)
+        logger.info("Audit record created for " + identifier)
         metrics.incCounter(config.successEventCount)
       } catch {
+        case ex: IOException =>
+          logger.error("Error while indexing message :: " + event.getJson + " :: ", ex)
+          metrics.incCounter(config.esFailedEventCount)
+          throw ex
         case ex: Exception =>
           logger.error("Error while processing message :: " + event.getJson + " :: ", ex)
           metrics.incCounter(config.failedEventCount)
@@ -36,16 +40,13 @@ trait AuditHistoryIndexerService {
   }
 
   private def getIndexName(ets: Long)(implicit config: AuditHistoryIndexerConfig):String = {
-    val cal = Calendar.getInstance
+    val cal = Calendar.getInstance(TimeZone.getTimeZone("IST"))
     cal.setTime(new Date(ets))
     config.auditHistoryIndex + "_" + cal.get(Calendar.YEAR) + "_" + cal.get(Calendar.WEEK_OF_YEAR)
   }
 
   def getAuditHistory(transactionDataMap: Event): AuditHistoryRecord = {
-    var nodeUniqueId = transactionDataMap.nodeUniqueId
-    if (StringUtils.endsWith(nodeUniqueId, ".img")) {
-      nodeUniqueId = StringUtils.replace(nodeUniqueId, ".img", "")
-    }
+    val nodeUniqueId = StringUtils.replace(transactionDataMap.nodeUniqueId, ".img", "")
     val summary = setSummaryData(transactionDataMap)
     AuditHistoryRecord(nodeUniqueId, transactionDataMap.objectType, transactionDataMap.label, transactionDataMap.graphId, transactionDataMap.userId, transactionDataMap.requestId, JSONUtil.serialize(transactionDataMap.transactionData), transactionDataMap.operationType, transactionDataMap.createdOnDate, summary)
   }

@@ -16,10 +16,8 @@ class AuditHistoryIndexer(config: AuditHistoryIndexerConfig, @transient var esUt
                            stringTypeInfo: TypeInformation[String])
                           extends BaseProcessFunction[Event, String](config) with AuditHistoryIndexerService{
 
-    private[this] lazy val logger = LoggerFactory.getLogger(classOf[AuditHistoryIndexer])
-
     override def metricsList(): List[String] = {
-        List(config.totalEventsCount, config.successEventCount, config.failedEventCount, config.skippedEventCount)
+        List(config.totalEventsCount, config.successEventCount, config.failedEventCount, config.esFailedEventCount, config.skippedEventCount)
     }
 
     override def open(parameters: Configuration): Unit = {
