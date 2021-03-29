@@ -18,7 +18,7 @@ trait AuditHistoryIndexerService {
   def processEvent(event: Event, metrics: Metrics)(implicit esUtil: ElasticSearchUtil, config: AuditHistoryIndexerConfig): Unit = {
     if (event.isValid) {
       val identifier = event.nodeUniqueId
-      logger.info("Audit learning event received" + identifier)
+      logger.info("Audit learning event received :: " + identifier)
       try {
         val record = getAuditHistory(event)
         val document = JSONUtil.serialize(record)
@@ -54,7 +54,6 @@ trait AuditHistoryIndexerService {
   private def setSummaryData(transactionDataMap: Event): String = {
     var summaryData = Map[String, AnyRef]()
     var relations = Map[String, Integer]()
-    var tags = Map[String, Integer]()
     var properties = Map[String, AnyRef]()
     var fields = List[String]()
     val transactionMap:immutable.Map[String, AnyRef] = transactionDataMap.transactionData
@@ -74,18 +73,6 @@ trait AuditHistoryIndexerService {
           if (null != list && list.nonEmpty) relations ++= Map("removedRelations"-> list.size)
           else relations ++= Map("removedRelations"-> 0)
           summaryData ++= Map("relations"-> relations)
-
-        case "addedTags" =>
-          list = entryVal.asInstanceOf[List[AnyRef]]
-          if (null != list && list.nonEmpty) tags ++= Map("addedTags"-> list.size)
-          else tags ++= Map("addedTags"-> 0)
-          summaryData ++= Map("tags"-> tags)
-
-        case "removedTags" =>
-          list = entryVal.asInstanceOf[List[AnyRef]]
-          if (null != list && list.nonEmpty) tags ++= Map("removedTags"-> list.size)
-          else tags ++= Map("removedTags"-> 0)
-          summaryData ++= Map("tags"-> tags)
 
         case "properties" =>
           if (StringUtils.isNotBlank(entryVal.toString)) {
