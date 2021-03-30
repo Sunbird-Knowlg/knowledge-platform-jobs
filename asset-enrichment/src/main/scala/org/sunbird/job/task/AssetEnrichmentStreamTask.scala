@@ -30,9 +30,10 @@ class AssetEnrichmentStreamTask(config: AssetEnrichmentConfig, kafkaConnector: F
     processStreamTask.getSideOutput(config.imageEnrichmentDataOutTag).process(new ImageEnrichmentFunction(config))
       .name("image-enrichment-process").uid("image-enrichment-process").setParallelism(config.imageEnrichmentIndexerParallelism)
 
-    processStreamTask.getSideOutput(config.videoEnrichmentDataOutTag).process(new VideoEnrichmentFunction(config))
+    val videoStream = processStreamTask.getSideOutput(config.videoEnrichmentDataOutTag).process(new VideoEnrichmentFunction(config))
       .name("video-enrichment-process").uid("video-enrichment-process").setParallelism(config.videoEnrichmentIndexerParallelism)
 
+    videoStream.getSideOutput(config.generateVideoStreamingOutTag).addSink(kafkaConnector.kafkaStringSink(config.videoStreamingTopic))
     env.execute(config.jobName)
   }
 }

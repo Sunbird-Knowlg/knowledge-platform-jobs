@@ -10,14 +10,13 @@ import org.slf4j.LoggerFactory
 trait ThumbnailUtil {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[ThumbnailUtil])
-  private val THUMBNAIL_SIZE = 56
 
-  def generateOutFile(inFile: File): Option[File] = {
+  def generateOutFile(inFile: File, thumbnailSize: Int): Option[File] = {
     if (inFile != null) {
       try {
         val srcImage = ImageIO.read(inFile)
-        if ((srcImage.getHeight > THUMBNAIL_SIZE) || (srcImage.getWidth > THUMBNAIL_SIZE)) {
-          val scaledImage: BufferedImage = Scalr.resize(srcImage, THUMBNAIL_SIZE)
+        if ((srcImage.getHeight > thumbnailSize) || (srcImage.getWidth > thumbnailSize)) {
+          val scaledImage: BufferedImage = Scalr.resize(srcImage, thumbnailSize)
           val thumbFile = getThumbnailFileName(inFile)
           val outFile = FileUtils.createFile(thumbFile)
           ImageIO.write(scaledImage, "png", outFile)

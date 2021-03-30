@@ -34,8 +34,7 @@ class YouTubeUtil(config: AssetEnrichmentConfig) {
     val videoId = getIdFromUrl(videoUrl)
     videoId match {
       case Some(id: String) =>
-        val videoList = getVideoList(id, apiParams)
-        val video: Video = if (null != videoList && !videoList.isEmpty) videoList.get(0) else null
+        val video: Video = getVideo(id, apiParams)
         if (null != video) {
           metadata.flatMap(str => {
             val res = getResult(str, video)
@@ -64,7 +63,7 @@ class YouTubeUtil(config: AssetEnrichmentConfig) {
     if (matcher.find) url.replace(matcher.group, "") else url
   }
 
-  private def getVideoList(videoId: String, params: String): util.List[Video] = {
+  private def getVideo(videoId: String, params: String): Video = {
     if (limitExceeded) throw new Exception(s"Unable to Check License for videoId = ${videoId}. Please Try Again After Sometime!")
     try {
       val videosListByIdRequest = youtube.videos.list(params)
@@ -72,7 +71,7 @@ class YouTubeUtil(config: AssetEnrichmentConfig) {
       videosListByIdRequest.setId(videoId)
       val response = videosListByIdRequest.execute
       val items = response.getItems
-      if (items.isEmpty) null else items
+      if (items == null || items.isEmpty) null else items.get(0)
     } catch {
       case ex: GoogleJsonResponseException =>
         val error = ex.getDetails.getErrors.get(0)

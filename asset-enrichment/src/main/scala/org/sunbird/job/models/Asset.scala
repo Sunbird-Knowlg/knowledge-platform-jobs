@@ -7,7 +7,13 @@ case class Asset(eventMap: util.Map[String, Any]) {
 
   val metaData: mutable.Map[String, AnyRef] = mutable.Map[String, AnyRef]()
 
-  def setMetaData(data: Map[String, AnyRef]): Unit = metaData ++= data
+  def putAll(data: Map[String, AnyRef]): Unit = metaData ++= data
+
+  def put(key: String, value: AnyRef): Unit = metaData.put(key, value.asInstanceOf[AnyRef])
+
+  def get(key: String, defaultValue: AnyRef): AnyRef = metaData.getOrElse(key, defaultValue)
+
+  def getMetaData: Map[String, AnyRef] = metaData.toMap
 
   def artifactBasePath: String = metaData.getOrElse("artifactBasePath", "").asInstanceOf[String]
 
@@ -15,10 +21,9 @@ case class Asset(eventMap: util.Map[String, Any]) {
 
   def identifier: String = metaData.getOrElse("IL_UNIQUE_ID", "").asInstanceOf[String]
 
-  def addToMetaData(key: String, value: AnyRef): Unit = metaData.put(key, value.asInstanceOf[AnyRef])
+  def mimeType: String = metaData.getOrElse("mimeType", "").asInstanceOf[String]
 
-  def getFromMetaData(key: String, defaultValue: AnyRef): AnyRef = metaData.getOrElse(key, defaultValue)
-
-  def getMetaData: Map[String, AnyRef] = metaData.toMap
-
+  def validate(contentUploadContextDriven: Boolean): Boolean = {
+    contentUploadContextDriven && artifactBasePath.nonEmpty && artifactUrl.nonEmpty && artifactUrl.contains(artifactBasePath)
+  }
 }

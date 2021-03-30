@@ -16,7 +16,7 @@ import scala.collection.JavaConverters._
 class ImageEnrichmentFunction(config: AssetEnrichmentConfig,
                               @transient var neo4JUtil: Neo4JUtil = null)
   extends BaseProcessFunction[Event, String](config)
-  with ImageEnrichmentHelper with OptimizerHelper {
+    with ImageEnrichmentHelper with OptimizerHelper {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[ImageEnrichmentFunction])
   lazy val definitionCache: DefinitionCache = new DefinitionCache
@@ -36,9 +36,9 @@ class ImageEnrichmentFunction(config: AssetEnrichmentConfig,
     metrics.incCounter(config.imageEnrichmentEventCount)
     val asset = Asset(event.data)
     try {
-      if (validateForArtifactUrl(asset, config.contentUploadContextDriven)) replaceArtifactUrl(asset)(cloudStorageUtil)
-      asset.setMetaData(getMetaData(event.id)(neo4JUtil))
-      imageEnrichment(asset)(config, definitionCache, cloudStorageUtil, neo4JUtil)
+      if (asset.validate(config.contentUploadContextDriven)) replaceArtifactUrl(asset)(cloudStorageUtil)
+      asset.putAll(getMetaData(event.id)(neo4JUtil))
+      enrichImage(asset)(config, definitionCache, cloudStorageUtil, neo4JUtil)
       metrics.incCounter(config.successImageEnrichmentEventCount)
     } catch {
       case ex: Exception =>
@@ -54,7 +54,7 @@ class ImageEnrichmentFunction(config: AssetEnrichmentConfig,
 
   def getMetaData(identifier: String)(neo4JUtil: Neo4JUtil): Map[String, AnyRef] = {
     val metaData = neo4JUtil.getNodeProperties(identifier).asScala.toMap
-    if(metaData != null && metaData.nonEmpty) metaData else throw new Exception(s"Received null or Empty metaData for identifier: $identifier.")
+    if (metaData != null && metaData.nonEmpty) metaData else throw new Exception(s"Received null or Empty metaData for identifier: $identifier.")
   }
 
 }

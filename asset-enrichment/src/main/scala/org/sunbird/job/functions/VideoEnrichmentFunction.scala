@@ -7,16 +7,15 @@ import org.sunbird.job.domain.Event
 import org.sunbird.job.helpers.{OptimizerHelper, VideoEnrichmentHelper}
 import org.sunbird.job.models.Asset
 import org.sunbird.job.task.AssetEnrichmentConfig
-import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, Neo4JUtil, YouTubeUtil}
+import org.sunbird.job.util.{CloudStorageUtil, Neo4JUtil, YouTubeUtil}
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import scala.collection.JavaConverters._
 
 class VideoEnrichmentFunction(config: AssetEnrichmentConfig,
-                              @transient var neo4JUtil: Neo4JUtil = null,
-                              @transient var cassandraUtil: CassandraUtil = null)
+                              @transient var neo4JUtil: Neo4JUtil = null)
   extends BaseProcessFunction[Event, String](config)
-  with VideoEnrichmentHelper with OptimizerHelper {
+    with VideoEnrichmentHelper with OptimizerHelper {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[VideoEnrichmentFunction])
   lazy val youTubeUtil = new YouTubeUtil(config)
@@ -25,11 +24,9 @@ class VideoEnrichmentFunction(config: AssetEnrichmentConfig,
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
     neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName)
-    cassandraUtil = new CassandraUtil(config.dbHost, config.dbPort)
   }
 
   override def close(): Unit = {
-    cassandraUtil.close()
     super.close()
   }
 
@@ -38,9 +35,10 @@ class VideoEnrichmentFunction(config: AssetEnrichmentConfig,
     metrics.incCounter(config.videoEnrichmentEventCount)
     val asset = Asset(event.data)
     try {
-      if (validateForArtifactUrl(asset, config.contentUploadContextDriven)) replaceArtifactUrl(asset)(cloudStorageUtil)
-      asset.setMetaData(getMetaData(event.id)(neo4JUtil))
-      videoEnrichment(asset)(config, youTubeUtil, cloudStorageUtil, neo4JUtil, cassandraUtil)
+      if (asset.validate(config.contentUploadContextDriven)) replaceArtifactUrl(asset)(cloudStorageUtil)
+      asset.putAll(getMetaData(event.id)(neo4JUtil))
+      val enrichedAsset = enrichVideo(asset)(config, youTubeUtil, cloudStorageUtil, neo4JUtil)
+      pushStreamingUrlEvent(enrichedAsset, context)(metrics, config)
       metrics.incCounter(config.successVideoEnrichmentEventCount)
     } catch {
       case ex: Exception =>
@@ -51,12 +49,12 @@ class VideoEnrichmentFunction(config: AssetEnrichmentConfig,
   }
 
   override def metricsList(): List[String] = {
-    List(config.successVideoEnrichmentEventCount, config.failedVideoEnrichmentEventCount, config.videoEnrichmentEventCount)
+    List(config.successVideoEnrichmentEventCount, config.failedVideoEnrichmentEventCount, config.videoEnrichmentEventCount, config.videoStreamingGeneratorEventCount)
   }
 
   def getMetaData(identifier: String)(neo4JUtil: Neo4JUtil): Map[String, AnyRef] = {
     val metaData = neo4JUtil.getNodeProperties(identifier).asScala.toMap
-    if(metaData != null && metaData.nonEmpty) metaData else throw new Exception(s"Received null or Empty metaData for identifier: $identifier.")
+    if (metaData != null && metaData.nonEmpty) metaData else throw new Exception(s"Received null or Empty metaData for identifier: $identifier.")
   }
 
 }
