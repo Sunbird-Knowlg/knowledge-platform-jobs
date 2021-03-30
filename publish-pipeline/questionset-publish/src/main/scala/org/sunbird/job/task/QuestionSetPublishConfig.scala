@@ -7,8 +7,8 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.streaming.api.scala.OutputTag
 import org.sunbird.job.publish.domain.PublishMetadata
-import org.sunbird.job.BaseJobConfig
 import org.sunbird.publish.config.PublishConfig
+import scala.collection.JavaConverters._
 
 class QuestionSetPublishConfig(override val config: Config) extends PublishConfig(config, "questionset-publish"){
 
@@ -56,4 +56,7 @@ class QuestionSetPublishConfig(override val config: Config) extends PublishConfi
 
 	// Service Urls
 	val printServiceBaseUrl: String = config.getString("print_service.base_url")
+
+	val definitionBasePath: String = if (config.hasPath("schema.basePath")) config.getString("schema.basePath") else "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local"
+	val schemaSupportVersionMap = if (config.hasPath("schema.supportedVersion")) config.getObject("schema.supportedVersion").unwrapped().asScala.toMap else Map[String, AnyRef]()
 }
