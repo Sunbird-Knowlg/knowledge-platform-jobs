@@ -10,7 +10,7 @@ import org.sunbird.job.task.AuditHistoryIndexerConfig
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 import org.sunbird.job.util.ElasticSearchUtil
 
-class AuditHistoryIndexer(config: AuditHistoryIndexerConfig, @transient var esUtil: ElasticSearchUtil = null)
+class AuditHistoryIndexer(config: AuditHistoryIndexerConfig, var esUtil: ElasticSearchUtil = null)
                           (implicit mapTypeInfo: TypeInformation[util.Map[String, Any]],
                            stringTypeInfo: TypeInformation[String])
                           extends BaseProcessFunction[Event, String](config) with AuditHistoryIndexerService{

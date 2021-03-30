@@ -11,7 +11,7 @@ import org.apache.flink.test.util.MiniClusterWithClientResource
 import org.mockito.ArgumentMatchers.anyString
 import org.sunbird.job.util.{ElasticSearchUtil, JSONUtil}
 import org.mockito.Mockito
-import org.mockito.Mockito.{times, verify, when}
+import org.mockito.Mockito.{when, doNothing}
 import org.sunbird.job.audithistory.domain.Event
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.fixture.EventFixture
@@ -50,7 +50,8 @@ class AuditHistoryIndexerTaskTestSpec extends BaseTestSpec {
     Mockito.reset(mockElasticUtil)
     when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new AuditHistoryIndexerMapSource)
 
-    new AuditHistoryIndexerStreamTask(jobConfig, mockKafkaUtil).process()
+    doNothing().when(mockElasticUtil).addDocumentWithIndex(anyString(), anyString(), anyString())
+    new AuditHistoryIndexerStreamTask(jobConfig, mockKafkaUtil, mockElasticUtil).process()
 
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(2)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.successEventCount}").getValue() should be(1)

@@ -10,10 +10,10 @@ import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.audithistory.domain.Event
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.functions.AuditHistoryIndexer
-import org.sunbird.job.util.{FlinkUtil, HttpUtil}
+import org.sunbird.job.util.{ElasticSearchUtil, FlinkUtil}
 
 
-class AuditHistoryIndexerStreamTask(config: AuditHistoryIndexerConfig, kafkaConnector: FlinkKafkaConnector) {
+class AuditHistoryIndexerStreamTask(config: AuditHistoryIndexerConfig, kafkaConnector: FlinkKafkaConnector, esUtil: ElasticSearchUtil) {
   def process(): Unit = {
     implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
     implicit val eventTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
@@ -23,7 +23,7 @@ class AuditHistoryIndexerStreamTask(config: AuditHistoryIndexerConfig, kafkaConn
     env.addSource(kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)).name(config.eventConsumer)
       .uid(config.eventConsumer).setParallelism(config.kafkaConsumerParallelism)
       .rebalance
-      .process(new AuditHistoryIndexer(config))
+      .process(new AuditHistoryIndexer(config, esUtil))
       .name(config.auditHistoryIndexerFunction)
       .uid(config.auditHistoryIndexerFunction)
       .setParallelism(config.parallelism)
@@ -42,8 +42,8 @@ object AuditHistoryIndexerStreamTask {
     }.getOrElse(ConfigFactory.load("audit-history-indexer.conf").withFallback(ConfigFactory.systemEnvironment()))
     val auditHistoryIndexerConfig = new AuditHistoryIndexerConfig(config)
     val kafkaUtil = new FlinkKafkaConnector(auditHistoryIndexerConfig)
-    val httpUtil = new HttpUtil
-    val task = new AuditHistoryIndexerStreamTask(auditHistoryIndexerConfig, kafkaUtil)
+    val esUtil:ElasticSearchUtil = null
+    val task = new AuditHistoryIndexerStreamTask(auditHistoryIndexerConfig, kafkaUtil, esUtil)
     task.process()
   }
 }
