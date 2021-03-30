@@ -38,7 +38,7 @@ class ObjectBundleSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
 	"getHierarchyFile" should "return valid file" in {
 		val obj = new TestObjectBundle
 		val hierarchy = Map("identifier" -> "do_123", "children" -> List(Map("identifier" -> "do_234", "name" -> "Children-1"), Map("identifier" -> "do_345", "name" -> "Children-2")))
-		val metadata = Map("identifier" -> "do_123", "IL_UNIQUE_ID" -> "do_123", "IL_FUNC_OBJECT_TYPE" -> "QuesstionSet", "name" -> "Test QuestionSet", "status" -> "Live")
+		val metadata = Map("identifier" -> "do_123", "IL_UNIQUE_ID" -> "do_123", "IL_FUNC_OBJECT_TYPE" -> "QuestionSet", "name" -> "Test QuestionSet", "status" -> "Live")
 		val objData = new ObjectData("do_123", metadata, None, Some(hierarchy))
 		val file = obj.getHierarchyFile(objData, "/tmp/data").get
 		null != file should be(true)
