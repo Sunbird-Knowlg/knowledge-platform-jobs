@@ -4,7 +4,6 @@ import java.util
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
-import org.slf4j.LoggerFactory
 import org.sunbird.job.audithistory.domain.Event
 import org.sunbird.job.service.AuditHistoryIndexerService
 import org.sunbird.job.task.AuditHistoryIndexerConfig

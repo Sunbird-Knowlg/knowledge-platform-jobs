@@ -9,8 +9,6 @@ import org.sunbird.job.util.{ElasticSearchUtil, JSONUtil}
 
 import java.io.IOException
 import java.util.{Calendar, Date, TimeZone}
-import scala.collection.mutable.Map
-import scala.collection.immutable
 
 trait AuditHistoryIndexerService {
   private[this] lazy val logger = LoggerFactory.getLogger(classOf[AuditHistoryIndexerService])
@@ -30,7 +28,6 @@ trait AuditHistoryIndexerService {
         case ex: IOException =>
           logger.error("Error while indexing message :: " + event.getJson + " :: ", ex)
           metrics.incCounter(config.esFailedEventCount)
-          throw ex
         case ex: Exception =>
           logger.error("Error while processing message :: " + event.getJson + " :: ", ex)
           metrics.incCounter(config.failedEventCount)
@@ -47,51 +44,7 @@ trait AuditHistoryIndexerService {
 
   def getAuditHistory(transactionDataMap: Event): AuditHistoryRecord = {
     val nodeUniqueId = StringUtils.replace(transactionDataMap.nodeUniqueId, ".img", "")
-    val summary = setSummaryData(transactionDataMap)
-    AuditHistoryRecord(nodeUniqueId, transactionDataMap.objectType, transactionDataMap.label, transactionDataMap.graphId, transactionDataMap.userId, transactionDataMap.requestId, JSONUtil.serialize(transactionDataMap.transactionData), transactionDataMap.operationType, transactionDataMap.createdOnDate, summary)
-  }
-
-  private def setSummaryData(transactionDataMap: Event): String = {
-    var summaryData = Map[String, AnyRef]()
-    var relations = Map[String, Integer]()
-    var properties = Map[String, AnyRef]()
-    var fields = List[String]()
-    val transactionMap:immutable.Map[String, AnyRef] = transactionDataMap.transactionData
-
-    for ((entryKey, entryVal) <- transactionMap) {
-      var list:List[AnyRef] = null
-
-      entryKey match {
-        case "addedRelations" =>
-          list = entryVal.asInstanceOf[List[AnyRef]]
-          if (null != list && list.nonEmpty) relations ++= Map("addedRelations"-> list.size)
-          else relations ++= Map("addedRelations"-> 0)
-          summaryData ++= Map("relations"-> relations)
-
-        case "removedRelations" =>
-          list = entryVal.asInstanceOf[List[AnyRef]]
-          if (null != list && list.nonEmpty) relations ++= Map("removedRelations"-> list.size)
-          else relations ++= Map("removedRelations"-> 0)
-          summaryData ++= Map("relations"-> relations)
-
-        case "properties" =>
-          if (StringUtils.isNotBlank(entryVal.toString)) {
-            val propsMap = entryVal.asInstanceOf[immutable.Map[String, AnyRef]]
-            val propertiesSet = propsMap.keySet
-            if (null != propertiesSet) {
-                fields ++= propertiesSet
-            }
-            else properties ++= Map("count"-> 0.asInstanceOf[AnyRef])
-          }
-          properties ++= Map("count"-> fields.size.asInstanceOf[AnyRef])
-          properties ++= Map("fields"-> fields)
-          summaryData ++= Map("properties"-> properties)
-
-        case _ =>
-
-      }
-    }
-    JSONUtil.serialize(summaryData)
+    AuditHistoryRecord(nodeUniqueId, transactionDataMap.objectType, transactionDataMap.label, transactionDataMap.graphId, transactionDataMap.userId, transactionDataMap.requestId, JSONUtil.serialize(transactionDataMap.transactionData), transactionDataMap.operationType, transactionDataMap.createdOnDate)
   }
 
 }
