@@ -7,18 +7,21 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
+import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 import org.sunbird.job.publish.domain.PublishMetadata
 import org.sunbird.job.publish.helpers.QuestionPublisher
 import org.sunbird.job.task.QuestionSetPublishConfig
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
-import org.sunbird.publish.core.ExtDataConfig
+import org.sunbird.publish.core.{DefinitionConfig, ExtDataConfig}
 import org.sunbird.publish.util.CloudStorageUtil
 
 class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUtil,
                               @transient var neo4JUtil: Neo4JUtil = null,
                               @transient var cassandraUtil: CassandraUtil = null,
-                              @transient var cloudStorageUtil: CloudStorageUtil = null)
+                              @transient var cloudStorageUtil: CloudStorageUtil = null,
+                              @transient var definitionCache: DefinitionCache = null,
+                              @transient var definitionConfig: DefinitionConfig = null)
                              (implicit val stringTypeInfo: TypeInformation[String])
   extends BaseProcessFunction[PublishMetadata, String](config) with QuestionPublisher {
 
@@ -31,6 +34,8 @@ class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUt
 		cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort)
 		neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName)
 		cloudStorageUtil = new CloudStorageUtil(config)
+		definitionCache = new DefinitionCache()
+		definitionConfig = DefinitionConfig(config.schemaSupportVersionMap, config.definitionBasePath)
 	}
 
 	override def close(): Unit = {
@@ -39,23 +44,22 @@ class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUt
 	}
 
 	override def metricsList(): List[String] = {
-		List(config.totalEventsCount, config.questionPublishEventCount, config.successEventCount, config.failedEventCount)
+		List(config.questionPublishEventCount, config.questionPublishSuccessEventCount, config.questionPublishFailedEventCount)
 	}
 
 	override def processElement(data: PublishMetadata, context: ProcessFunction[PublishMetadata, String]#Context, metrics: Metrics): Unit = {
-		metrics.incCounter(config.totalEventsCount)
 		logger.info("Question publishing started for : " + data.identifier)
+		metrics.incCounter(config.questionPublishEventCount)
 		val obj = getObject(data.identifier, data.pkgVersion, readerConfig)(neo4JUtil, cassandraUtil)
 		val messages:List[String] = validate(obj, obj.identifier, validateQuestion)
 		if (messages.isEmpty) {
 			val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil)
-			saveOnSuccess(enrichedObj)(neo4JUtil, cassandraUtil, readerConfig)
-			metrics.incCounter(config.questionPublishEventCount)
-			metrics.incCounter(config.successEventCount)
+			saveOnSuccess(enrichedObj)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
+			metrics.incCounter(config.questionPublishSuccessEventCount)
 			logger.info("Question publishing completed successfully for : " + data.identifier)
 		} else {
 			saveOnFailure(obj, messages)(neo4JUtil)
-			metrics.incCounter(config.failedEventCount)
+			metrics.incCounter(config.questionPublishFailedEventCount)
 			logger.info("Question publishing failed for : " + data.identifier)
 		}
 	}

@@ -25,7 +25,7 @@ class EcarGeneratorSpec extends FlatSpec with BeforeAndAfterAll with Matchers {
   "Object Ecar Generator generateEcar" should "return a Map containing Packaging Type and its url after uploading it to cloud" in {
 
     val hierarchy = Map("identifier" -> "do_123", "children" -> List(Map("identifier" -> "do_234", "name" -> "Children-1"), Map("identifier" -> "do_345", "name" -> "Children-2")))
-    val metadata = Map("identifier" -> "do_123", "appIcon" -> "https://dev.sunbirded.org/assets/images/sunbird_logo.png", "IL_UNIQUE_ID" -> "do_123", "IL_FUNC_OBJECT_TYPE" -> "QuesstionSet", "name" -> "Test QuestionSet", "status" -> "Live")
+    val metadata = Map("identifier" -> "do_123", "appIcon" -> "https://dev.sunbirded.org/assets/images/sunbird_logo.png", "IL_UNIQUE_ID" -> "do_123", "IL_FUNC_OBJECT_TYPE" -> "QuestionSet", "name" -> "Test QuestionSet", "status" -> "Live")
     val objData = new ObjectData("do_123", metadata, None, Some(hierarchy))
     val obj = new TestEcarGenerator()
     val result = obj.generateEcar(objData,List("SPINE"))
@@ -35,6 +35,6 @@ class EcarGeneratorSpec extends FlatSpec with BeforeAndAfterAll with Matchers {
 
 class TestEcarGenerator extends EcarGenerator {
 
-  val testObj = List(Map("children" -> List(Map("identifier" -> "do_234", "name" -> "Children-1"), Map("identifier" -> "do_345", "name" -> "Children-2")), "name" -> "Test QuestionSet", "appIcon" -> "https://dev.sunbirded.org/assets/images/sunbird_logo.png", "IL_FUNC_OBJECT_TYPE" -> "QuesstionSet", "identifier" -> "do_123", "status" -> "Live", "IL_UNIQUE_ID" -> "do_123"), Map("identifier" -> "do_234", "name" -> "Children-1"), Map("identifier" -> "do_345", "name" -> "Children-2"))
+  val testObj = List(Map("children" -> List(Map("identifier" -> "do_234", "name" -> "Children-1"), Map("identifier" -> "do_345", "name" -> "Children-2")), "name" -> "Test QuestionSet", "appIcon" -> "https://dev.sunbirded.org/assets/images/sunbird_logo.png", "IL_FUNC_OBJECT_TYPE" -> "QuestionSet", "identifier" -> "do_123", "status" -> "Live", "IL_UNIQUE_ID" -> "do_123"), Map("identifier" -> "do_234", "name" -> "Children-1"), Map("identifier" -> "do_345", "name" -> "Children-2"))
   override def getDataForEcar(obj: ObjectData): Option[List[Map[String, AnyRef]]] = Some(testObj)
 }

@@ -1,5 +1,6 @@
 package org.sunbird.job.compositesearch.domain
 
+import java.util
 import org.apache.commons.lang3.BooleanUtils
 import org.sunbird.job.domain.reader.JobRequest
 
@@ -20,6 +21,10 @@ class Event(eventMap: java.util.Map[String, Any]) extends JobRequest(eventMap) {
 
   def nodeType: String = readOrDefault("nodeType", "")
 
-  def validEvent(): Boolean = (operationType != null) && index
+  def objectType: String = readOrDefault("objectType", "")
+
+  def validEvent(restrictObjectTypes: util.List[String]): Boolean = {
+    (operationType != null) && index && (!restrictObjectTypes.contains(objectType))
+  }
 
 }
