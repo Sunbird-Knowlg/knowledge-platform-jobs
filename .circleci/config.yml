@@ -56,13 +56,13 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - v1-dependencies-{{ checksum "pom.xml" }} # appends cache key with a hash of pom.xml file
-            - v1-dependencies- # fallback in case previous cache key is not found
+            - kp-jobs-dependency-cache-{{ checksum "pom.xml" }} # appends cache key with a hash of pom.xml file
+            - kp-jobs-dependency-cache- # fallback in case previous cache key is not found
       - run: mvn clean install -DskipTests
       - save_cache:
             paths:
               - ~/.m2
-            key: v1-dependencies-{{ checksum "pom.xml" }}
+            key: kp-jobs-dependency-cache-{{ checksum "pom.xml" }}
 
 workflows:
   version: 2
