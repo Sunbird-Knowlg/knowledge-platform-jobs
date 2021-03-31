@@ -14,7 +14,12 @@ jobs:
       - run: |
           pwd
           ls
-          ls ./activity-aggregate-updater/src
+          ls ./activity-aggregate-updater/src/test/scala/
+          ls ./activity-aggregate-updater/src/test/scala/org/
+          ls ./activity-aggregate-updater/src/test/scala/org/sunbird/
+          ls ./activity-aggregate-updater/src/test/scala/org/job/
+          ls ./activity-aggregate-updater/src/test/scala/org/spec/
+          ls ./activity-aggregate-updater/src/test/scala/org/spec/**.scala
           ls ./activity-aggregate-updater/src/test/scala/**/**.scala
 
           mvn -Dtest=$(for file in $(circleci tests glob "./**/src/test/**/**.scala" \
