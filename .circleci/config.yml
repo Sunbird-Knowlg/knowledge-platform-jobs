@@ -1,33 +1,8 @@
-# version: 2.1
-# jobs:
-#   knowledge-platform-jobs-build:
-#     working_directory: ~/kp
-#     machine:
-#       image: ubuntu-2004:202008-01
-#     steps:
-#       - checkout:
-#           path: ~/kp
-#       - restore_cache:
-#           key: kp-jobs-dependency-cache-{{ checksum "pom.xml" }}
-#       - run: mvn clean scoverage:report
-#       - save_cache:
-#           key: kp-jobs-dependency-cache-{{ checksum "pom.xml" }}
-#           paths: ~/.m2
-#       - run:
-#           name: sonar
-#           command: |
-#             mvn -X sonar:sonar -Dlog4j.configuration=./logs sonar:sonar -Dsonar.projectKey=project-sunbird_knowledge-platform-jobs -Dsonar.organization=project-sunbird -Dsonar.host.url=https://sonarcloud.io -Dsonar.exclusions=**/cert-processor/** -Dsonar.scala.coverage.reportPaths=/home/circleci/kp/target/scoverage.xml
-# workflows:
-#   version: 2.1
-#   build_and_test:
-#     jobs:
-#       - knowledge-platform-jobs-build
-
 version: 2.0
 
 jobs:
   test:
-    parallelism: 1 # parallel containers to split the tests among
+    parallelism: 4 # parallel containers to split the tests among
     docker:
       - image: circleci/openjdk:stretch
         auth:
