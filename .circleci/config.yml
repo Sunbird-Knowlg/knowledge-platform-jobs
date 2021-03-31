@@ -27,7 +27,7 @@ version: 2.0
 
 jobs:
   test:
-    parallelism: 2 # parallel containers to split the tests among
+    parallelism: 4 # parallel containers to split the tests among
     docker:
       - image: circleci/openjdk:stretch
         auth:
@@ -37,7 +37,7 @@ jobs:
       - checkout
       - run: |
           ./mvnw \
-          -Dtest=$(for file in $(circleci tests glob "src/test/**/**.scala" \
+          -Dtest=$(for file in $(circleci tests glob "/**/src/test/**/**.scala" \
           | circleci tests split --split-by=timings); \
           do basename $file \
           | sed -e "s/.scala/,/"; \
@@ -54,7 +54,15 @@ jobs:
           password: Manju@123  # context / project UI env-var reference
     steps:
       - checkout
+      - restore_cache:
+          keys:
+            - v1-dependencies-{{ checksum "pom.xml" }} # appends cache key with a hash of pom.xml file
+            - v1-dependencies- # fallback in case previous cache key is not found
       - run: mvn clean install -DskipTests
+      - save_cache:
+            paths:
+              - ~/.m2
+            key: v1-dependencies-{{ checksum "pom.xml" }}
 
 workflows:
   version: 2
