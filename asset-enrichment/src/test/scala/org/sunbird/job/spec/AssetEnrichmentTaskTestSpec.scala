@@ -8,9 +8,9 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
 import org.apache.flink.test.util.MiniClusterWithClientResource
-import org.mockito.ArgumentMatchers.{any, anyBoolean, anyString}
+import org.mockito.ArgumentMatchers.{any, anyString}
 import org.mockito.Mockito
-import org.mockito.Mockito.doNothing
+import org.mockito.Mockito.{doNothing}
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.domain.Event
 import org.sunbird.job.domain.`object`.DefinitionCache
@@ -18,7 +18,7 @@ import org.sunbird.job.fixture.EventFixture
 import org.sunbird.job.functions.{ImageEnrichmentFunction, VideoEnrichmentFunction}
 import org.sunbird.job.models.Asset
 import org.sunbird.job.task.AssetEnrichmentConfig
-import org.sunbird.job.util.{CloudStorageUtil, FileUtils, JSONUtil, Neo4JUtil, ScalaJsonUtil, Slug, YouTubeUtil}
+import org.sunbird.job.util.{CloudStorageUtil, FileUtils, ImageResizerUtil, JSONUtil, Neo4JUtil, ScalaJsonUtil, YouTubeUtil}
 import org.sunbird.spec.BaseTestSpec
 
 class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
@@ -47,22 +47,6 @@ class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
   override protected def afterAll(): Unit = {
     super.afterAll()
     flinkCluster.after()
-  }
-
-  "replaceArtifactUrl" should " update the provided asset properties " in {
-    implicit val mockCloudUtil: CloudStorageUtil = mock[CloudStorageUtil](Mockito.withSettings().serializable())
-    doNothing().when(mockCloudUtil).copyObjectsByPrefix(anyString(), anyString(), anyBoolean())
-
-    val metaData = Map[String, AnyRef]("cloudStorageKey" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/tmp/content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg",
-      "s3Key" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/tmp/content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg",
-      "artifactBasePath" -> "tmp",
-      "artifactUrl" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/tmp/content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg")
-    val asset = getAsset(EventFixture.IMAGE_ASSET, metaData)
-    new ImageEnrichmentFunction(jobConfig).replaceArtifactUrl(asset)(mockCloudUtil)
-    asset.get("artifactUrl", "") should be("https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg")
-    asset.get("downloadUrl", "") should be("https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg")
-    asset.get("cloudStorageKey", "") should be("https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg")
-    asset.get("s3Key", "") should be("https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg")
   }
 
   "enrichImage()" should " enrich the image for the asset " in {
@@ -96,12 +80,6 @@ class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
     asset.get("thumbnail", "").asInstanceOf[String] should be("https://i.ytimg.com/vi/-SgZ3Enpau8/mqdefault.jpg")
     asset.get("status", "").asInstanceOf[String] should be("Live")
     asset.get("duration", "0").asInstanceOf[String] should be("273")
-  }
-
-  "test create Slug file " should " create slug file for the provided file" in {
-    val file = new File("-αimage.jpg")
-    val slugFile = Slug.createSlugFile(file)
-    assert("aimage.jpg" == slugFile.getName)
   }
 
   "validateForArtifactUrl" should "validate for content upload context driven" in {
@@ -159,31 +137,6 @@ class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
     }
   }
 
-  "getIdFromUrl" should "return the id of the video for the provided Youtube URL" in {
-    val result = new YouTubeUtil(jobConfig).getIdFromUrl("https://www.youtube.com/watch?v=-SgZ3Enpau8")
-    result.getOrElse("") should be("-SgZ3Enpau8")
-  }
-
-  "computeVideoDuration" should "return the duration of the medium video for the " in {
-    val result = new YouTubeUtil(jobConfig).computeVideoDuration("PT4M33S")
-    result should be("273")
-  }
-
-  "computeVideoDuration" should "return the duration of the long video for the " in {
-    val result = new YouTubeUtil(jobConfig).computeVideoDuration("PT1H4M33S")
-    result should be("3873")
-  }
-
-  "computeVideoDuration" should "return the duration of the short video for the " in {
-    val result = new YouTubeUtil(jobConfig).computeVideoDuration("PT33S")
-    result should be("33")
-  }
-
-  "getVideoInfo" should "return empty map if no url is passed " in {
-    val result = new YouTubeUtil(jobConfig).getVideoInfo("", "snippet,contentDetails", List[String]("thumbnail", "duration", "license"))
-    result.isEmpty should be(true)
-  }
-
   "getVideoInfo" should "throw exception if video Url is empty" in {
     val metaData = getMetaDataForYouTubeVideoAsset
     val asset = getAsset(EventFixture.VIDEO_YOUTUBE_ASSET, metaData)
@@ -198,38 +151,36 @@ class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
     message.isEmpty should be(true)
   }
 
-  "getVideoInfo" should "return the error for the incorrect provided Youtube URL" in {
-    val result = new YouTubeUtil(jobConfig).getVideoInfo("https://www.youtube.com/watch?v=-SgZ3En23sd", "snippet,contentDetails", List[String]("thumbnail", "duration"))
-    result.isEmpty should be(true)
-  }
-
-  "FileUtil.getBasePath" should "return empty string for empty Object ID" in {
-    val path = FileUtils.getBasePath("")
-    path.isEmpty should be(true)
-  }
-
-  "ThumbnailUtil.generateOutFile" should " return null for no file" in {
-    val file = new VideoEnrichmentFunction(jobConfig).generateOutFile(null, 150)
-    file should be(None)
-  }
-
-  "ThumbnailUtil.generateOutFile" should " return None for file" in {
-    val contentId = "do_1127129845261680641588"
-    val originalURL = "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/kp_ft_1563562323128/artifact/sample_1563562323191.mp4"
-    try {
-      val originalFile = FileUtils.copyURLToFile(contentId, originalURL, originalURL.substring(originalURL.lastIndexOf("/") + 1, originalURL.length))
-      val result = new VideoEnrichmentFunction(jobConfig).generateOutFile(originalFile.get, 150)
-      result should be(None)
-    } finally {
-      FileUtils.deleteDirectory(new File(s"/tmp/${contentId}"))
-    }
-  }
-
   "getStreamingEvent" should "return event string for streaming for video assset" in {
     val metaData = getMetaDataForMp4VideoAsset
     val asset = getAsset(EventFixture.VIDEO_MP4_ASSET, metaData)
     val eventMsg = new VideoEnrichmentFunction(jobConfig).getStreamingEvent(asset)(jobConfig)
     eventMsg.isEmpty should be(false)
+  }
+
+  "upload" should " throw exception for incorrect file in ImageEnrichment " in {
+    assertThrows[Exception] {
+      new ImageEnrichmentFunction(jobConfig).upload(null, "do_123")(cloudUtil)
+    }
+  }
+
+  "upload" should " throw exception for incorrect file in VideoEnrichment " in {
+    assertThrows[Exception] {
+      new VideoEnrichmentFunction(jobConfig).upload(null, "do_123")(cloudUtil)
+    }
+  }
+
+  "ImageResizerUtil" should " replace the provided files " in {
+    val imageUrl = "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_113233717480390656195/artifact/bitcoin-4_1545114579639.jpg"
+    try {
+      val file = FileUtils.copyURLToFile("do_113233717480390656195", imageUrl, imageUrl.substring(imageUrl.lastIndexOf("/") + 1))
+      val newFile = new File("/tmp/do_113233717480390656195/1617194149349_temp/bitcoin-4_1545114579640.jpg")
+      val result = new ImageResizerUtil().replace(file.get, newFile)
+      result.getAbsolutePath should endWith("bitcoin-4_1545114579640.jpg")
+    } finally {
+      FileUtils.deleteDirectory(new File(s"/tmp/do_113233717480390656195"))
+    }
+
   }
 
   def getAsset(event: String, metaData: Map[String, AnyRef]): Asset = {

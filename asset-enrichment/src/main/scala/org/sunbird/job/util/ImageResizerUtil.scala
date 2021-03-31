@@ -25,7 +25,7 @@ class ImageResizerUtil {
     if (outputFileNameSuffix.equalsIgnoreCase("out")) replace(file, new File(outputFileName)) else new File(outputFileName)
   }
 
-  private def replace(input: File, output: File): File = {
+  def replace(input: File, output: File): File = {
     val inputFile = input.getAbsolutePath
     input.delete
     output.renameTo(new File(inputFile))

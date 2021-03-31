@@ -138,9 +138,7 @@ trait VideoEnrichmentHelper extends ThumbnailUtil {
 
   def pushStreamingUrlEvent(asset: Asset, context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics, config: AssetEnrichmentConfig): Unit = {
     if (config.isStreamingEnabled && config.streamableMimeType.contains(asset.get("mimeType", "").asInstanceOf[String])) {
-      logger.info(s"Generating event for Video Streaming for ID: ${asset.identifier}.")
       val event = getStreamingEvent(asset)
-      logger.info(s"Video Streaming  Event Object : ${event}")
       context.output(config.generateVideoStreamingOutTag, event)
       metrics.incCounter(config.videoStreamingGeneratorEventCount)
     }
@@ -153,6 +151,7 @@ trait VideoEnrichmentHelper extends ThumbnailUtil {
     val channelId = metaData.getOrElse("channel", "").asInstanceOf[String]
     val ver = metaData.getOrElse("versionKey", "").asInstanceOf[String]
     val event = s"""{"eid":"BE_JOB_REQUEST", "ets": ${ets}, "mid": "${mid}", "actor": {"id": "Post Publish Processor", "type": "System"}, "context":{"pdata":{"ver":"1.0","id":"org.ekstep.platform"}, "channel":"${channelId}","env":"${config.jobEnv}"},"object":{"ver":"${ver}","id":"${asset.identifier}"},"edata": {"action":"post-publish-process","iteration":1,"identifier":"${asset.identifier}","channel":"${channelId}","artifactUrl":"${asset.artifactUrl}","mimeType":"video/mp4","contentType":"Resource","pkgVersion":1,"status":"Live"}}""".stripMargin
+    logger.info(s"Video Streaming Event for identifier ${asset.identifier}  is  : ${event}")
     event
   }
 

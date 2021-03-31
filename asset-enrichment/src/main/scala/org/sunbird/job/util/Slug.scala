@@ -57,7 +57,7 @@ object Slug {
     normalizedDashes.toLowerCase(Locale.ENGLISH)
   }
 
-  private def validateResult(input: String, origInput: String): Unit = {
+  def validateResult(input: String, origInput: String): Unit = {
     if (input.length == 0) throw new IllegalArgumentException("Failed to cleanup the input " + origInput)
   }
 

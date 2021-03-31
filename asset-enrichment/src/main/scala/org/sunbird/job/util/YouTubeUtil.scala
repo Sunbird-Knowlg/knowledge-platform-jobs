@@ -63,7 +63,7 @@ class YouTubeUtil(config: AssetEnrichmentConfig) {
     if (matcher.find) url.replace(matcher.group, "") else url
   }
 
-  private def getVideo(videoId: String, params: String): Video = {
+  def getVideo(videoId: String, params: String): Video = {
     if (limitExceeded) throw new Exception(s"Unable to Check License for videoId = ${videoId}. Please Try Again After Sometime!")
     try {
       val videosListByIdRequest = youtube.videos.list(params)
@@ -100,14 +100,12 @@ class YouTubeUtil(config: AssetEnrichmentConfig) {
   def computeVideoDuration(videoDuration: String): String = {
     val youtubeDuration = videoDuration.replaceAll("PT|S", "").replaceAll("H|M", ":")
     val values = youtubeDuration.split(":")
-    if (null != values) {
-      values.length match {
-        case 1 => values(0)
-        case 2 => String.valueOf((values(0).toInt * 60) + (values(1).toInt * 1))
-        case 3 => String.valueOf((values(0).toInt * 3600) + (values(1).toInt * 60) + (values(2).toInt * 1))
-        case _ => ""
-      }
-    } else ""
+    values.length match {
+      case 1 => values(0)
+      case 2 => String.valueOf((values(0).toInt * 60) + (values(1).toInt * 1))
+      case 3 => String.valueOf((values(0).toInt * 3600) + (values(1).toInt * 60) + (values(2).toInt * 1))
+      case _ => ""
+    }
   }
 
 }

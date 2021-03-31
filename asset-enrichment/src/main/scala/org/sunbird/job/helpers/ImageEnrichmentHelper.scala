@@ -68,10 +68,6 @@ trait ImageEnrichmentHelper {
     val version = config.schemaSupportVersionMap.getOrElse("asset", "1.0")
     val definition = definitionCache.getDefinition("Asset", version, config.definitionBasePath)
     val variants = definition.config.getOrElse("variants", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
-    if (variants == null && variants.isEmpty) {
-      logger.error("No variants found for asset optimization.")
-      throw new Exception(s"Error while processing due to missing asset variant's definition.")
-    }
     variants
   }
 
