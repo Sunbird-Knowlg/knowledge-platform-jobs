@@ -36,8 +36,10 @@ jobs:
     steps:
       - checkout
       - run: |
+          pwd
+          ls
           ./mvnw \
-          -Dtest=$(for file in $(circleci tests glob "/**/src/test/**/**.scala" \
+          -Dtest=$(for file in $(circleci tests glob "./activity-aggregate-updater/src/test/**/**.scala" \
           | circleci tests split --split-by=timings); \
           do basename $file \
           | sed -e "s/.scala/,/"; \
