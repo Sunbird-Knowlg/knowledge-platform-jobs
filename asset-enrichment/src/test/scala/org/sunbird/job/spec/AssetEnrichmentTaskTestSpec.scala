@@ -8,7 +8,7 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
 import org.apache.flink.test.util.MiniClusterWithClientResource
-import org.mockito.ArgumentMatchers.{any, anyString}
+import org.mockito.ArgumentMatchers.{any, anyBoolean, anyString}
 import org.mockito.Mockito
 import org.mockito.Mockito.doNothing
 import org.sunbird.job.connector.FlinkKafkaConnector
@@ -48,17 +48,20 @@ class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
     flinkCluster.after()
   }
 
-  ignore should " update the provided asset properties " in {
+  "replaceArtifactUrl" should " update the provided asset properties " in {
+    implicit val mockCloudUtil: CloudStorageUtil = mock[CloudStorageUtil](Mockito.withSettings().serializable())
+    doNothing().when(mockCloudUtil).copyObjectsByPrefix(anyString(), anyString(), anyBoolean())
+
     val metaData = Map[String, AnyRef]("cloudStorageKey" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/tmp/content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg",
       "s3Key" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/tmp/content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg",
       "artifactBasePath" -> "tmp",
       "artifactUrl" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/tmp/content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg")
     val asset = getAsset(EventFixture.IMAGE_ASSET, metaData)
-    new ImageEnrichmentFunction(jobConfig).replaceArtifactUrl(asset)(cloudUtil)
-    asset.get("artifactUrl", "").asInstanceOf[String].endsWith("content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg") should be(true)
-    asset.get("downloadUrl", "").asInstanceOf[String].endsWith("content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg") should be(true)
-    asset.get("cloudStorageKey", "") should be("content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg")
-    asset.get("s3Key", "") should be("content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg")
+    new ImageEnrichmentFunction(jobConfig).replaceArtifactUrl(asset)(mockCloudUtil)
+    asset.get("artifactUrl", "") should be("https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg")
+    asset.get("downloadUrl", "") should be("https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg")
+    asset.get("cloudStorageKey", "") should be("https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg")
+    asset.get("s3Key", "") should be("https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg")
   }
 
   "enrichImage()" should " enrich the image for the asset " in {
