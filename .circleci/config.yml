@@ -53,7 +53,7 @@ jobs:
       - image: circleci/openjdk:stretch
         auth:
           username: manjudr
-          password: Manju@123  # context / project UI env-var reference
+          password: Manju@123
     steps:
       - checkout
       - restore_cache:
@@ -71,7 +71,7 @@ workflows:
 
   build-then-test:
     jobs:
-      - build
+      #- build
       - test:
           requires:
             - build
