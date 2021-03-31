@@ -71,7 +71,7 @@ workflows:
 
   build-then-test:
     jobs:
-      #- build
+      - build
       - test:
           requires:
             - build
