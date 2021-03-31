@@ -5,9 +5,9 @@ jobs:
     parallelism: 2 # parallel containers to split the tests among
     docker:
       - image: circleci/openjdk:stretch
-        auth:
-          username: manjudr
-          password: Manju@123  # context / project UI env-var reference
+        #auth:
+        #  username: manjudr
+        #  password: Manju  # context / project UI env-var reference
     steps:
       - checkout
       - restore_cache:
@@ -38,9 +38,9 @@ jobs:
   build:
     docker:
       - image: circleci/openjdk:stretch
-        auth:
-          username: manjudr
-          password: Manju@123
+        #auth:
+        #  username: manjudr
+        #  password: Manju@123
     steps:
       - checkout
       - restore_cache:
