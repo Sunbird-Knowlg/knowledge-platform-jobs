@@ -40,7 +40,7 @@ jobs:
           -Dtest=$(for file in $(circleci tests glob "src/test/**/**.scala" \
           | circleci tests split --split-by=timings); \
           do basename $file \
-          | sed -e "s/.java/,/"; \
+          | sed -e "s/.scala/,/"; \
           done | tr -d '\r\n') \
           -e test
       - store_test_results: # We use this timing data to optimize the future runs
@@ -54,7 +54,7 @@ jobs:
           password: Manju@123  # context / project UI env-var reference
     steps:
       - checkout
-      - run: ./mvnw -Dmaven.test.skip=true package
+      - run: mvn clean install -DskipTests
 
 workflows:
   version: 2
