@@ -20,12 +20,6 @@ object FileUtils {
     mimeTypes
   }
 
-  def getOutputFileName(input: File): String = {
-    val outputFileName = input.getName.replaceAll("\\.", "\\.out\\.")
-    val outputFolder = input.getParent
-    s"$outputFolder/$outputFileName"
-  }
-
   def getFileType(file: File): String = {
     if (file.isDirectory) "Directory" else {
       val mimeType = mimeTypesMap.getContentType(file)

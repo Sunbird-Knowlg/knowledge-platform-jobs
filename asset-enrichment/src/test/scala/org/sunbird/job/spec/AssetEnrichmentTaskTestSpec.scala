@@ -12,12 +12,13 @@ import org.mockito.ArgumentMatchers.{any, anyBoolean, anyString}
 import org.mockito.Mockito
 import org.mockito.Mockito.doNothing
 import org.sunbird.job.connector.FlinkKafkaConnector
+import org.sunbird.job.domain.Event
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.fixture.EventFixture
 import org.sunbird.job.functions.{ImageEnrichmentFunction, VideoEnrichmentFunction}
 import org.sunbird.job.models.Asset
 import org.sunbird.job.task.AssetEnrichmentConfig
-import org.sunbird.job.util.{CloudStorageUtil, JSONUtil, Neo4JUtil, ScalaJsonUtil, Slug, YouTubeUtil}
+import org.sunbird.job.util.{CloudStorageUtil, FileUtils, JSONUtil, Neo4JUtil, ScalaJsonUtil, Slug, YouTubeUtil}
 import org.sunbird.spec.BaseTestSpec
 
 class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
@@ -158,14 +159,77 @@ class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
     }
   }
 
-  "getVideoInfo" should "return the id of the video for the provided Youtube URL" in {
+  "getIdFromUrl" should "return the id of the video for the provided Youtube URL" in {
     val result = new YouTubeUtil(jobConfig).getIdFromUrl("https://www.youtube.com/watch?v=-SgZ3Enpau8")
     result.getOrElse("") should be("-SgZ3Enpau8")
   }
 
-  "getVideoInfo" should "return the duration of the video for the " in {
+  "computeVideoDuration" should "return the duration of the medium video for the " in {
     val result = new YouTubeUtil(jobConfig).computeVideoDuration("PT4M33S")
     result should be("273")
+  }
+
+  "computeVideoDuration" should "return the duration of the long video for the " in {
+    val result = new YouTubeUtil(jobConfig).computeVideoDuration("PT1H4M33S")
+    result should be("3873")
+  }
+
+  "computeVideoDuration" should "return the duration of the short video for the " in {
+    val result = new YouTubeUtil(jobConfig).computeVideoDuration("PT33S")
+    result should be("33")
+  }
+
+  "getVideoInfo" should "return empty map if no url is passed " in {
+    val result = new YouTubeUtil(jobConfig).getVideoInfo("", "snippet,contentDetails", List[String]("thumbnail", "duration", "license"))
+    result.isEmpty should be(true)
+  }
+
+  "getVideoInfo" should "throw exception if video Url is empty" in {
+    val metaData = getMetaDataForYouTubeVideoAsset
+    val asset = getAsset(EventFixture.VIDEO_YOUTUBE_ASSET, metaData)
+    assertThrows[Exception] {
+      new VideoEnrichmentFunction(jobConfig).processYoutubeVideo(asset, "")(youTubeUtil)
+    }
+  }
+
+  "event.validate" should " validate the event " in {
+    val event = new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.IMAGE_ASSET))
+    val message = event.validate(jobConfig.maxIterationCount)
+    message.isEmpty should be(true)
+  }
+
+  "getVideoInfo" should "return the error for the incorrect provided Youtube URL" in {
+    val result = new YouTubeUtil(jobConfig).getVideoInfo("https://www.youtube.com/watch?v=-SgZ3En23sd", "snippet,contentDetails", List[String]("thumbnail", "duration"))
+    result.isEmpty should be(true)
+  }
+
+  "FileUtil.getBasePath" should "return empty string for empty Object ID" in {
+    val path = FileUtils.getBasePath("")
+    path.isEmpty should be(true)
+  }
+
+  "ThumbnailUtil.generateOutFile" should " return null for no file" in {
+    val file = new VideoEnrichmentFunction(jobConfig).generateOutFile(null, 150)
+    file should be(None)
+  }
+
+  "ThumbnailUtil.generateOutFile" should " return None for file" in {
+    val contentId = "do_1127129845261680641588"
+    val originalURL = "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/kp_ft_1563562323128/artifact/sample_1563562323191.mp4"
+    try {
+      val originalFile = FileUtils.copyURLToFile(contentId, originalURL, originalURL.substring(originalURL.lastIndexOf("/") + 1, originalURL.length))
+      val result = new VideoEnrichmentFunction(jobConfig).generateOutFile(originalFile.get, 150)
+      result should be(None)
+    } finally {
+      FileUtils.deleteDirectory(new File(s"/tmp/${contentId}"))
+    }
+  }
+
+  "getStreamingEvent" should "return event string for streaming for video assset" in {
+    val metaData = getMetaDataForMp4VideoAsset
+    val asset = getAsset(EventFixture.VIDEO_MP4_ASSET, metaData)
+    val eventMsg = new VideoEnrichmentFunction(jobConfig).getStreamingEvent(asset)(jobConfig)
+    eventMsg.isEmpty should be(false)
   }
 
   def getAsset(event: String, metaData: Map[String, AnyRef]): Asset = {
