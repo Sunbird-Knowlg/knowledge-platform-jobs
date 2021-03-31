@@ -10,7 +10,7 @@ import org.sunbird.job.task.AuditHistoryIndexerConfig
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 import org.sunbird.job.util.ElasticSearchUtil
 
-class AuditHistoryIndexer(config: AuditHistoryIndexerConfig, var esUtil: ElasticSearchUtil = null)
+class AuditHistoryIndexer(config: AuditHistoryIndexerConfig, var esUtil: ElasticSearchUtil)
                           (implicit mapTypeInfo: TypeInformation[util.Map[String, Any]],
                            stringTypeInfo: TypeInformation[String])
                           extends BaseProcessFunction[Event, String](config) with AuditHistoryIndexerService{
@@ -21,7 +21,9 @@ class AuditHistoryIndexer(config: AuditHistoryIndexerConfig, var esUtil: Elastic
 
     override def open(parameters: Configuration): Unit = {
         super.open(parameters)
-        esUtil = new ElasticSearchUtil(config.esConnectionInfo, config.auditHistoryIndex, config.auditHistoryIndexType)
+        if (esUtil == null) {
+            esUtil = new ElasticSearchUtil(config.esConnectionInfo, config.auditHistoryIndex, config.auditHistoryIndexType)
+        }
     }
 
     override def close(): Unit = {

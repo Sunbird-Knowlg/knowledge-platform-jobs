@@ -11,7 +11,8 @@ import org.apache.flink.test.util.MiniClusterWithClientResource
 import org.mockito.ArgumentMatchers.anyString
 import org.sunbird.job.util.{ElasticSearchUtil, JSONUtil}
 import org.mockito.Mockito
-import org.mockito.Mockito.{when, doNothing}
+import org.mockito.Mockito.{doNothing, when}
+import org.mockito.mock.SerializableMode
 import org.sunbird.job.audithistory.domain.Event
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.fixture.EventFixture
@@ -32,7 +33,7 @@ class AuditHistoryIndexerTaskTestSpec extends BaseTestSpec {
   val mockKafkaUtil: FlinkKafkaConnector = mock[FlinkKafkaConnector](Mockito.withSettings().serializable())
   val config: Config = ConfigFactory.load("test.conf")
   val jobConfig: AuditHistoryIndexerConfig = new AuditHistoryIndexerConfig(config)
-  val mockElasticUtil = mock[ElasticSearchUtil](Mockito.withSettings().serializable())
+  val mockElasticUtil = mock[ElasticSearchUtil](Mockito.withSettings().serializable(SerializableMode.ACROSS_CLASSLOADERS))
   var currentMilliSecond = 1605816926271L
 
   override protected def beforeAll(): Unit = {

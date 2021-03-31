@@ -18,7 +18,7 @@ import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.common.xcontent.XContentType
 import org.slf4j.LoggerFactory
 
-class ElasticSearchUtil(connectionInfo: String, indexName: String, indexType: String, batchSize: Int = 1000) {
+class ElasticSearchUtil(connectionInfo: String, indexName: String, indexType: String, batchSize: Int = 1000) extends Serializable {
 
   private val resultLimit = 100
   private val esClient: RestHighLevelClient = createClient(connectionInfo)
@@ -81,7 +81,7 @@ class ElasticSearchUtil(connectionInfo: String, indexName: String, indexType: St
     }
   }
 
-  @throws[IOException](s"Error while adding document to index $indexName")
+  @throws[IOException]
   def addDocumentWithIndex(document: String, indexName: String, identifier: String = null): Unit = {
     // TODO
     // Replace mapper with JSONUtil once the JSONUtil is fixed

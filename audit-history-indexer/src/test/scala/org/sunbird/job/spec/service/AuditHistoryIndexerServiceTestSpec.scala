@@ -3,11 +3,12 @@ package org.sunbird.job.spec.service
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
+import org.mockito.Mockito
 import org.sunbird.job.audithistory.domain.{AuditHistoryRecord, Event}
 import org.sunbird.job.fixture.EventFixture
 import org.sunbird.job.functions.AuditHistoryIndexer
 import org.sunbird.job.task.AuditHistoryIndexerConfig
-import org.sunbird.job.util.JSONUtil
+import org.sunbird.job.util.{ElasticSearchUtil, JSONUtil}
 import org.sunbird.spec.BaseTestSpec
 
 import java.util
@@ -18,7 +19,8 @@ class AuditHistoryIndexerServiceTestSpec extends BaseTestSpec {
 
   val config: Config = ConfigFactory.load("test.conf")
   lazy val jobConfig: AuditHistoryIndexerConfig = new AuditHistoryIndexerConfig(config)
-  lazy val auditHistoryIndexer: AuditHistoryIndexer = new AuditHistoryIndexer(jobConfig)
+  val mockElasticUtil:ElasticSearchUtil = mock[ElasticSearchUtil](Mockito.withSettings().serializable())
+  lazy val auditHistoryIndexer: AuditHistoryIndexer = new AuditHistoryIndexer(jobConfig, mockElasticUtil)
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
