@@ -5,9 +5,6 @@ jobs:
     parallelism: 2 # parallel containers to split the tests among
     docker:
       - image: circleci/openjdk:stretch
-        #auth:
-        #  username: manjudr
-        #  password: Manju  # context / project UI env-var reference
     steps:
       - checkout
       - restore_cache:
@@ -17,6 +14,7 @@ jobs:
       - run: |
           pwd
           ls
+          ls ./**/src/test/**/**.scala
           mvn -Dtest=$(for file in $(circleci tests glob "./**/src/test/**/**.scala" \
           | circleci tests split --split-by=timings); \
           do basename $file \
@@ -38,9 +36,6 @@ jobs:
   build:
     docker:
       - image: circleci/openjdk:stretch
-        #auth:
-        #  username: manjudr
-        #  password: Manju@123
     steps:
       - checkout
       - restore_cache:
