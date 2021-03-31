@@ -54,6 +54,12 @@ jobs:
             paths:
               - ~/.m2
             key: kp-jobs-dependency-cache-{{ checksum "pom.xml" }}
+      - run:
+           name: sonar
+           command: |
+             mvn -X sonar:sonar -Dlog4j.configuration=./logs sonar:sonar -Dsonar.projectKey=project-sunbird_knowledge-platform-jobs -Dsonar.organization=project-sunbird -Dsonar.host.url=https://sonarcloud.io -Dsonar.exclusions=**/cert-processor/** -Dsonar.scala.coverage.reportPaths=/home/circleci/project/target/scoverage.xml
+ 
+
   build:
     docker:
       - image: circleci/openjdk:stretch
