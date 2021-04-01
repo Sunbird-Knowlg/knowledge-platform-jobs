@@ -16,7 +16,8 @@ jobs:
           ls
           ls ./activity-aggregate-updater/src/test/scala/org/sunbird/job/spec/
           ls ./activity-aggregate-updater/src/test/scala/org/sunbird/job/spec/*.scala
-          mvn -Dtest=$(for file in $(circleci tests glob "./**/src/test/**/**.scala" \
+          ls ./activity-aggregate-updater/src/test/scala/org/sunbird/job/spec/**.scala
+          mvn -Dtest=$(for file in $(circleci tests glob "./**/src/test/**/*.scala" \
           | circleci tests split --split-by=timings); \
           do basename $file \
           | sed -e "s/.scala/,/"; \
