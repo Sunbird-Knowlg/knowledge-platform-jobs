@@ -19,15 +19,6 @@ jobs:
           | sed -e "s/.scala/,/"; \
           done | tr -d '\r\n') \
           -e test
-      # - store_test_results: # We use this timing data to optimize the future runs
-      #     path: /home/circleci/project/test-results
-      # - store_artifacts:
-      #     path: /home/circleci/project/test-results
-      #     destination: test_results  
-      #- store_test_results:
-      #    path: test-results
-      #- store_artifacts:
-      #    path: test-results
       - save_cache:
             paths:
               - ~/.m2
@@ -37,9 +28,10 @@ jobs:
            command: |
              mvn -X sonar:sonar -Dlog4j.configuration=./logs sonar:sonar -Dsonar.projectKey=project-sunbird_knowledge-platform-jobs -Dsonar.organization=project-sunbird -Dsonar.host.url=https://sonarcloud.io -Dsonar.exclusions=**/cert-processor/** -Dsonar.scala.coverage.reportPaths=/home/circleci/kp/target/scoverage.xml
       - store_test_results:
-          path: test-results
+          path: /tmp/test-results
       - store_artifacts:
-          path: test-results    
+          path: /tmp/test-results
+          destination: test_results
 
   build:
     docker:
