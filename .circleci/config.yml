@@ -12,17 +12,24 @@ jobs:
             - kp-jobs-dependency-cache-{{ checksum "pom.xml" }} # appends cache key with a hash of pom.xml file
             - kp-jobs-dependency-cache- # fallback in case previous cache key is not found
       - run: |
+          mkdir -p test-results
+          pwd
+          ls
           mvn -Dtest=$(for file in $(circleci tests glob "./**/src/test/**/*.scala" \
           | circleci tests split --split-by=timings); \
           do basename $file \
           | sed -e "s/.scala/,/"; \
           done | tr -d '\r\n') \
           -e test
-      - store_test_results: # We use this timing data to optimize the future runs
-          path: /home/circleci/project/test-results
+      # - store_test_results: # We use this timing data to optimize the future runs
+      #     path: /home/circleci/project/test-results
+      # - store_artifacts:
+      #     path: /home/circleci/project/test-results
+      #     destination: test_results  
+      - store_test_results:
+          path: ./test-results
       - store_artifacts:
-          path: /home/circleci/project/test-results
-          destination: test_results    
+          path: test-results
       - save_cache:
             paths:
               - ~/.m2
