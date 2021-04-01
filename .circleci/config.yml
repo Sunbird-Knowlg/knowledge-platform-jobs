@@ -14,7 +14,7 @@ jobs:
             - kp-jobs-dependency-cache- # fallback in case previous cache key is not found
       - run: |
           mvn -Dtest=$(for file in $(circleci tests glob "./**/src/test/**/spec/*.scala" \
-          | circleci tests split --split-by=timings); \
+          | circleci tests split --split-by=timings --timings-type=classname); \
           do basename $file \
           | sed -e "s/.scala/,/"; \
           done | tr -d '\r\n') \
