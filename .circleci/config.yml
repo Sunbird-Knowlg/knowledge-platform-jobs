@@ -81,8 +81,8 @@ jobs:
 
       - restore_cache:
           keys:
-            - my-multi-module-mvn-prj-{{ checksum "~/pom-checksum" }}
-            - my-multi-module-mvn-prj-
+            - kp-jobs-dependency-cache-{{ checksum "pom.xml" }} # appends cache key with a hash of pom.xml file
+            - kp-jobs-dependency-cache- # fallback in case previous cache key is not found
 
       - run: mvn de.qaware.maven:go-offline-maven-plugin:resolve-dependencies
 
