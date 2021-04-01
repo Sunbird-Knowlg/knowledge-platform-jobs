@@ -22,7 +22,7 @@ jobs:
           done | tr -d '\r\n') \
           -e test
       - store_test_results: # We use this timing data to optimize the future runs
-          path: target/surefire-reports
+          path: /tmp/test-results
       - save_cache:
             paths:
               - ~/.m2
