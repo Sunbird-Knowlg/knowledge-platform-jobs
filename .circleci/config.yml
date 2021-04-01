@@ -16,8 +16,6 @@ jobs:
           ls /
           ls
           mkdir /tmp/test-results
-          ls
-          ls /
           ls /tmp/
           mvn -Dtest=$(for file in $(circleci tests glob "./**/src/test/**/*.scala" \
           | circleci tests split --split-by=timings); \
