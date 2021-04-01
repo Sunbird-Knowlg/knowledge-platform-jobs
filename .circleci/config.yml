@@ -1,59 +1,107 @@
-version: 2.0
+# version: 2.0
 
+# jobs:
+#   test:
+#     parallelism: 2 # parallel containers to split the tests among
+#     docker:
+#       - image: circleci/openjdk:stretch
+#     working_directory: ~/kp
+#     steps:
+#       - checkout
+#       - restore_cache:
+#           keys:
+#             - kp-jobs-dependency-cache-{{ checksum "pom.xml" }} # appends cache key with a hash of pom.xml file
+#             - kp-jobs-dependency-cache- # fallback in case previous cache key is not found
+#       - run: |
+#           mvn -Dtest=$(for file in $(circleci tests glob "./**/src/test/**/*.scala" \
+#           | circleci tests split --split-by=timings); \
+#           do basename $file \
+#           | sed -e "s/.scala/,/"; \
+#           done | tr -d '\r\n') \
+#           -e test
+#       - save_cache:
+#             paths:
+#               - ~/.m2
+#             key: kp-jobs-dependency-cache-{{ checksum "pom.xml" }}
+#       - run:
+#            name: sonar
+#            command: |
+#              mvn -X sonar:sonar -Dlog4j.configuration=./logs sonar:sonar -Dsonar.projectKey=project-sunbird_knowledge-platform-jobs -Dsonar.organization=project-sunbird -Dsonar.host.url=https://sonarcloud.io -Dsonar.exclusions=**/cert-processor/** -Dsonar.scala.coverage.reportPaths=/home/circleci/kp/target/scoverage.xml
+#       - store_test_results:
+#           path: /tmp/test-results
+#       - store_artifacts:
+#           path: /tmp/test-results
+#           destination: test_results
+
+#   build:
+#     docker:
+#       - image: circleci/openjdk:stretch
+#     steps:
+#       - checkout
+#       - restore_cache:
+#           keys:
+#             - kp-jobs-dependency-cache-{{ checksum "pom.xml" }} # appends cache key with a hash of pom.xml file
+#             - kp-jobs-dependency-cache- # fallback in case previous cache key is not found
+#       - run: mvn clean install -DskipTests
+#       - save_cache:
+#             paths:
+#               - ~/.m2
+#             key: kp-jobs-dependency-cache-{{ checksum "pom.xml" }}
+
+# workflows:
+#   version: 2
+
+#   build-then-test:
+#     jobs:
+#       - build
+#       - test:
+#           requires:
+#             - build
+
+
+
+
+version: 2
 jobs:
-  test:
-    parallelism: 2 # parallel containers to split the tests among
-    docker:
-      - image: circleci/openjdk:stretch
-    working_directory: ~/kp
-    steps:
-      - checkout
-      - restore_cache:
-          keys:
-            - kp-jobs-dependency-cache-{{ checksum "pom.xml" }} # appends cache key with a hash of pom.xml file
-            - kp-jobs-dependency-cache- # fallback in case previous cache key is not found
-      - run: |
-          mvn -Dtest=$(for file in $(circleci tests glob "./**/src/test/**/*.scala" \
-          | circleci tests split --split-by=timings); \
-          do basename $file \
-          | sed -e "s/.scala/,/"; \
-          done | tr -d '\r\n') \
-          -e test
-      - save_cache:
-            paths:
-              - ~/.m2
-            key: kp-jobs-dependency-cache-{{ checksum "pom.xml" }}
-      - run:
-           name: sonar
-           command: |
-             mvn -X sonar:sonar -Dlog4j.configuration=./logs sonar:sonar -Dsonar.projectKey=project-sunbird_knowledge-platform-jobs -Dsonar.organization=project-sunbird -Dsonar.host.url=https://sonarcloud.io -Dsonar.exclusions=**/cert-processor/** -Dsonar.scala.coverage.reportPaths=/home/circleci/kp/target/scoverage.xml
-      - store_test_results:
-          path: /tmp/test-results
-      - store_artifacts:
-          path: /tmp/test-results
-          destination: test_results
-
   build:
+    working_directory: ~/my-multi-module-mvn-prj
+
     docker:
-      - image: circleci/openjdk:stretch
+      - image: circleci/openjdk:8-jdk-stretch
+
     steps:
       - checkout
+
+      - run:
+          name: Generate cumulative pom.xml checksum
+          command: |
+            find . -type f -name "pom.xml" -exec sh -c "sha256sum {} >> ~/pom-checksum.tmp" \;
+            sort -o ~/pom-checksum ~/pom-checksum.tmp
+          when: always
+
       - restore_cache:
           keys:
-            - kp-jobs-dependency-cache-{{ checksum "pom.xml" }} # appends cache key with a hash of pom.xml file
-            - kp-jobs-dependency-cache- # fallback in case previous cache key is not found
-      - run: mvn clean install -DskipTests
+            - my-multi-module-mvn-prj-{{ checksum "~/pom-checksum" }}
+            - my-multi-module-mvn-prj-
+
+      - run: mvn de.qaware.maven:go-offline-maven-plugin:resolve-dependencies
+
       - save_cache:
-            paths:
-              - ~/.m2
-            key: kp-jobs-dependency-cache-{{ checksum "pom.xml" }}
+          paths:
+            - ~/.m2
+          key: my-multi-module-mvn-prj-{{ checksum "~/pom-checksum" }}
 
-workflows:
-  version: 2
+      - run: mvn package
 
-  build-then-test:
-    jobs:
-      - build
-      - test:
-          requires:
-            - build
+      - run:
+          name: Save test results
+          command: |
+            mkdir -p ~/test-results/junit/
+            find . -type f -regex ".*/target/surefire-reports/.*xml" -exec cp {} ~/test-results/junit/ \;
+          when: always
+
+      - store_test_results:
+          path: ~/test-results
+
+      - store_artifacts:
+          path: my-service/target/my-service.jar
