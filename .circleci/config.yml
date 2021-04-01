@@ -5,9 +5,6 @@ jobs:
     parallelism: 2 # parallel containers to split the tests among
     docker:
       - image: circleci/openjdk:stretch
-
-    environment:
-      CIRCLE_TEST_RESULTS: $HOME/test-results  
     steps:
       - checkout
       - restore_cache:
@@ -15,7 +12,7 @@ jobs:
             - kp-jobs-dependency-cache-{{ checksum "pom.xml" }} # appends cache key with a hash of pom.xml file
             - kp-jobs-dependency-cache- # fallback in case previous cache key is not found
       - run: |
-          mkdir -p $CIRCLE_TEST_RESULTS
+          mkdir -p test-results
           pwd
           ls
           mvn -Dtest=$(for file in $(circleci tests glob "./**/src/test/**/*.scala" \
@@ -30,7 +27,7 @@ jobs:
       #     path: /home/circleci/project/test-results
       #     destination: test_results  
       - store_test_results:
-          path: $CIRCLE_TEST_RESULTS
+          path: test-results
       #- store_artifacts:
       #    path: test-results
       - save_cache:
@@ -41,7 +38,7 @@ jobs:
            name: sonar
            command: |
              pwd
-             ls $CIRCLE_TEST_RESULTS
+             ls test-results
              mvn -X sonar:sonar -Dlog4j.configuration=./logs sonar:sonar -Dsonar.projectKey=project-sunbird_knowledge-platform-jobs -Dsonar.organization=project-sunbird -Dsonar.host.url=https://sonarcloud.io -Dsonar.exclusions=**/cert-processor/** -Dsonar.scala.coverage.reportPaths=/home/circleci/project/target/scoverage.xml
  
 
