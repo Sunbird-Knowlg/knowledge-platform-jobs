@@ -19,9 +19,9 @@ jobs:
           done | tr -d '\r\n') \
           -e test
       - store_test_results: # We use this timing data to optimize the future runs
-          path: /tmp/test-results
+          path: /home/circleci/project/test-results
       - store_artifacts:
-          path: /tmp/test-results
+          path: /home/circleci/project/test-results
           destination: test_results    
       - save_cache:
             paths:
