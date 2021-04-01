@@ -13,12 +13,19 @@ jobs:
             - kp-jobs-dependency-cache-{{ checksum "pom.xml" }} # appends cache key with a hash of pom.xml fi
             - kp-jobs-dependency-cache- # fallback in case previous cache key is not found
       - run: |
-          mvn -Dtest=$(for file in $(circleci tests glob "./**/src/test/**/spec/*.scala" \
-          | circleci tests split); \
-          do basename $file \
-          | sed -e "s/.scala/,/"; \
-          done | tr -d '\r\n') \
-          -e test
+          command: |
+            echo $(circleci tests glob "./**/src/test/**/spec/*.scala")
+            circleci tests glob "./**/src/test/**/spec/*.scala" | xargs -n 1 echo
+
+
+          # circleci tests glob "./tests/unit/*.scala" "tests/functional/*.java"
+
+          # mvn -Dtest=$(for file in $(circleci tests glob "./**/src/test/**/spec/*.scala" \
+          # | circleci tests split); \
+          # do basename $file \
+          # | sed -e "s/.scala/,/"; \
+          # done | tr -d '\r\n') \
+          # -e test
       - run:
           name: Save test results
           command: |
