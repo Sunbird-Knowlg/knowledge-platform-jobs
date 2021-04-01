@@ -15,7 +15,7 @@ jobs:
           pwd
           ls /
           ls
-          mkdir /test-results
+          mkdir /tmp/test-results
           ls
           ls /
           mvn -Dtest=$(for file in $(circleci tests glob "./**/src/test/**/*.scala" \
@@ -25,7 +25,7 @@ jobs:
           done | tr -d '\r\n') \
           -e test
       - store_test_results: # We use this timing data to optimize the future runs
-          path: /test-results
+          path: /tmp/test-results
       - save_cache:
             paths:
               - ~/.m2
