@@ -13,15 +13,15 @@ jobs:
             - kp-jobs-dependency-cache-{{ checksum "pom.xml" }} # appends cache key with a hash of pom.xml file
             - kp-jobs-dependency-cache- # fallback in case previous cache key is not found
       - run: |
-          cd relation-cache-updater
           mvn -Dtest=$(for file in $(circleci tests glob "./**/src/test/**/*.scala" \
           | circleci tests split --split-by=timings); \
+          | echo $file \
           do basename $file \
           | sed -e "s/.scala/,/"; \
           done | tr -d '\r\n') \
           -e test
-      - store_test_results: # We use this timing data to optimize the future runs
-          path: /home/circleci/kp/relation-cache-updater/test-results
+      # - store_test_results: # We use this timing data to optimize the future runs
+      #     path: /home/circleci/project/test-results
       # - store_artifacts:
       #     path: /home/circleci/project/test-results
       #     destination: test_results  
@@ -37,13 +37,14 @@ jobs:
            name: sonar
            command: |
              mvn -X sonar:sonar -Dlog4j.configuration=./logs sonar:sonar -Dsonar.projectKey=project-sunbird_knowledge-platform-jobs -Dsonar.organization=project-sunbird -Dsonar.host.url=https://sonarcloud.io -Dsonar.exclusions=**/cert-processor/** -Dsonar.scala.coverage.reportPaths=/home/circleci/kp/target/scoverage.xml
-      #- store_test_results:
-      #    path: test-results
+      - store_test_results:
+          path: test-results
+      - store_artifacts:
+          path: test-results    
 
   build:
     docker:
       - image: circleci/openjdk:stretch
-    working_directory: ~/kp  
     steps:
       - checkout
       - restore_cache:
