@@ -14,9 +14,8 @@ jobs:
       - run: |
           pwd
           ls
-          ls ./**/src/test/scala/org/sunbird/job/spec/*.scala
-          ls ./**/src/test/**/*.scala
-          mvn -Dtest=$(for file in $(circleci tests glob "./**/src/test/**/*.scala" \
+          ls /tmp/test-results
+          mvn -Dtest=$(for file in $(circleci tests glob "/**/src/test/scala/org/sunbird/job/spec/*.scala" \
           | circleci tests split --split-by=timings); \
           do basename $file \
           | sed -e "s/.scala/,/"; \
