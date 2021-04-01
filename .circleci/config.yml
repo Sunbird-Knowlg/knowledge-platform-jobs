@@ -15,7 +15,6 @@ jobs:
       - run: |
           mvn -Dtest=$(for file in $(circleci tests glob "./**/src/test/**/*.scala" \
           | circleci tests split --split-by=timings); \
-          | echo $file \
           do basename $file \
           | sed -e "s/.scala/,/"; \
           done | tr -d '\r\n') \
