@@ -13,8 +13,7 @@ jobs:
             - kp-jobs-dependency-cache- # fallback in case previous cache key is not found
       - run: |
           pwd
-          ls /
-          ls
+          ls /tmp/
           mkdir /tmp/test-results
           ls /tmp/
           mvn -Dtest=$(for file in $(circleci tests glob "./**/src/test/**/*.scala" \
