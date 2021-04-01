@@ -1,6 +1,8 @@
 version: 2.0
 
 jobs:
+  knowledge-platform-jobs-build:
+    working_directory: ~/kp
   test:
     parallelism: 2 # parallel containers to split the tests among
     docker:
@@ -40,7 +42,7 @@ jobs:
            command: |
              pwd
              ls test-results
-             mvn -X sonar:sonar -Dlog4j.configuration=./logs sonar:sonar -Dsonar.projectKey=project-sunbird_knowledge-platform-jobs -Dsonar.organization=project-sunbird -Dsonar.host.url=https://sonarcloud.io -Dsonar.exclusions=**/cert-processor/** -Dsonar.scala.coverage.reportPaths=/home/circleci/project/target/scoverage.xml
+             mvn -X sonar:sonar -Dlog4j.configuration=./logs sonar:sonar -Dsonar.projectKey=project-sunbird_knowledge-platform-jobs -Dsonar.organization=project-sunbird -Dsonar.host.url=https://sonarcloud.io -Dsonar.exclusions=**/cert-processor/** -Dsonar.scala.coverage.reportPaths=/home/circleci/kp/target/scoverage.xml
       - store_test_results:
           path: test-results
 
