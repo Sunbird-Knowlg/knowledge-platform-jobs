@@ -1,12 +1,11 @@
 version: 2.0
 
 jobs:
-  knowledge-platform-jobs-build:
-    working_directory: ~/kp
   test:
     parallelism: 2 # parallel containers to split the tests among
     docker:
       - image: circleci/openjdk:stretch
+    working_directory: ~/kp
     steps:
       - checkout
       - restore_cache:
@@ -49,6 +48,7 @@ jobs:
   build:
     docker:
       - image: circleci/openjdk:stretch
+    working_directory: ~/kp  
     steps:
       - checkout
       - restore_cache:
