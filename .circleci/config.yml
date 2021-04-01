@@ -13,9 +13,11 @@ jobs:
             - kp-jobs-dependency-cache-{{ checksum "pom.xml" }} # appends cache key with a hash of pom.xml fi
             - kp-jobs-dependency-cache- # fallback in case previous cache key is not found
       - run: |
-          command: |
-            echo $(circleci tests glob "./**/src/test/**/spec/*.scala")
-            circleci tests glob "./**/src/test/**/spec/*.scala" | xargs -n 1 echo
+          circleci tests glob "./**/src/test/**/spec/*.scala" | circleci tests split --split-by=filesize
+
+          # command: |
+          #   echo $(circleci tests glob "./**/src/test/**/spec/*.scala")
+          #   circleci tests glob "./**/src/test/**/spec/*.scala" | xargs -n 1 echo
 
 
           # circleci tests glob "./tests/unit/*.scala" "tests/functional/*.java"
