@@ -26,8 +26,8 @@ jobs:
       # - store_artifacts:
       #     path: /home/circleci/project/test-results
       #     destination: test_results  
-      - store_test_results:
-          path: test-results
+      #- store_test_results:
+      #    path: test-results
       #- store_artifacts:
       #    path: test-results
       - save_cache:
@@ -40,7 +40,8 @@ jobs:
              pwd
              ls test-results
              mvn -X sonar:sonar -Dlog4j.configuration=./logs sonar:sonar -Dsonar.projectKey=project-sunbird_knowledge-platform-jobs -Dsonar.organization=project-sunbird -Dsonar.host.url=https://sonarcloud.io -Dsonar.exclusions=**/cert-processor/** -Dsonar.scala.coverage.reportPaths=/home/circleci/project/target/scoverage.xml
- 
+      - store_test_results:
+          path: test-results
 
   build:
     docker:
