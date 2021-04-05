@@ -22,9 +22,9 @@ class AssetEnrichmentEventRouter(config: AssetEnrichmentConfig)
 
   override def processElement(event: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
     logger.info(s"Processing event for AssetEnrichment for identifier : ${event.id}")
+    metrics.incCounter(config.totalEventsCount)
     val message = event.validate(config.maxIterationCount)
     if (message.isEmpty) {
-      metrics.incCounter(config.totalEventsCount)
       event.mediaType.toLowerCase match {
         case "image" =>
           context.output(config.imageEnrichmentDataOutTag, event)
