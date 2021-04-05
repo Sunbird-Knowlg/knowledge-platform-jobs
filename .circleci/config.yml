@@ -23,7 +23,7 @@ jobs:
           # circleci tests glob "./tests/unit/*.scala" "tests/functional/*.java"
 
           mvn -Dtest=$(for file in $(circleci tests glob "./**/src/test/**/spec/*.scala" \
-          | circleci tests split --split-by=filesize); \
+          |  circleci tests split --split-by=timings); \
           do basename $file \
           | sed -e "s/.scala/,/"; \
           done | tr -d '\r\n') \
