@@ -33,7 +33,7 @@ class AuditHistoryIndexerTaskTestSpec extends BaseTestSpec {
   val mockKafkaUtil: FlinkKafkaConnector = mock[FlinkKafkaConnector](Mockito.withSettings().serializable())
   val config: Config = ConfigFactory.load("test.conf")
   val jobConfig: AuditHistoryIndexerConfig = new AuditHistoryIndexerConfig(config)
-  val mockElasticUtil = mock[ElasticSearchUtil](Mockito.withSettings().serializable(SerializableMode.ACROSS_CLASSLOADERS))
+  val mockElasticUtil:ElasticSearchUtil = null
   var currentMilliSecond = 1605816926271L
 
   override protected def beforeAll(): Unit = {
@@ -48,10 +48,8 @@ class AuditHistoryIndexerTaskTestSpec extends BaseTestSpec {
   }
 
   "AuditHistoryIndexerStreamTask" should "generate event" in {
-    Mockito.reset(mockElasticUtil)
     when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new AuditHistoryIndexerMapSource)
 
-    doNothing().when(mockElasticUtil).addDocumentWithIndex(anyString(), anyString(), anyString())
     new AuditHistoryIndexerStreamTask(jobConfig, mockKafkaUtil, mockElasticUtil).process()
 
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(2)

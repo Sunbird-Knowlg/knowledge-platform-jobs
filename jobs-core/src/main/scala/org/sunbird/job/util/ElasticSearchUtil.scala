@@ -83,12 +83,17 @@ class ElasticSearchUtil(connectionInfo: String, indexName: String, indexType: St
 
   @throws[IOException]
   def addDocumentWithIndex(document: String, indexName: String, identifier: String = null): Unit = {
-    // TODO
-    // Replace mapper with JSONUtil once the JSONUtil is fixed
-    val doc = mapper.readValue(document, new TypeReference[util.Map[String, AnyRef]]() {})
-    val indexRequest = if(identifier == null) new IndexRequest(indexName, indexType) else new IndexRequest(indexName, indexType, identifier)
-    val response = esClient.index(indexRequest.source(doc))
-    logger.info(s"Added ${response.getId} to index ${response.getIndex}")
+    try {
+      // TODO
+      // Replace mapper with JSONUtil once the JSONUtil is fixed
+      val doc = mapper.readValue(document, new TypeReference[util.Map[String, AnyRef]]() {})
+      val indexRequest = if(identifier == null) new IndexRequest(indexName, indexType) else new IndexRequest(indexName, indexType, identifier)
+      val response = esClient.index(indexRequest.source(doc))
+      logger.info(s"Added ${response.getId} to index ${response.getIndex}")
+    } catch {
+      case e: IOException =>
+        logger.error(s"Error while adding document to index : $indexName", e)
+    }
   }
 
   def updateDocument(identifier: String, document: String): Unit = {
