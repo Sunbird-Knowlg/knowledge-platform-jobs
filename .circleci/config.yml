@@ -31,11 +31,14 @@ jobs:
             key: kp-jobs-dependency-cache-{{ checksum "pom.xml" }}
       - store_test_results:
           path: ~/test-results
+      -run:
+          name: getResult
+          command: |
+            ls $CIRCLE_INTERNAL_TASK_DATA/circle-test-results
+            cat $CIRCLE_INTERNAL_TASK_DATA/circle-test-results/results.json
       - run:
            name: sonar
            command: |
-             ls $CIRCLE_INTERNAL_TASK_DATA/circle-test-results
-             cat $CIRCLE_INTERNAL_TASK_DATA/circle-test-results/results.json
              mvn -X sonar:sonar -Dlog4j.configuration=./logs sonar:sonar -Dsonar.projectKey=project-sunbird_knowledge-platform-jobs -Dsonar.organization=project-sunbird -Dsonar.host.url=https://sonarcloud.io -Dsonar.exclusions=**/cert-processor/** -Dsonar.scala.coverage.reportPaths=/home/circleci/kp/target/scoverage.xml
           
   build:
