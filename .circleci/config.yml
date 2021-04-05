@@ -31,7 +31,8 @@ jobs:
             key: kp-jobs-dependency-cache-{{ checksum "pom.xml" }}
       - store_test_results:
           path: ~/test-results
-      -run:
+
+      - run:
           name: getResult
           command: |
             ls $CIRCLE_INTERNAL_TASK_DATA/circle-test-results
