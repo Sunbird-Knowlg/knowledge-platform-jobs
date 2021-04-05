@@ -37,7 +37,7 @@ trait AuditHistoryIndexerService {
   }
 
   private def getIndexName(ets: Long)(implicit config: AuditHistoryIndexerConfig):String = {
-    val cal = Calendar.getInstance(TimeZone.getTimeZone("IST"))
+    val cal = Calendar.getInstance(TimeZone.getTimeZone(config.timeZone))
     cal.setTime(new Date(ets))
     config.auditHistoryIndex + "_" + cal.get(Calendar.YEAR) + "_" + cal.get(Calendar.WEEK_OF_YEAR)
   }

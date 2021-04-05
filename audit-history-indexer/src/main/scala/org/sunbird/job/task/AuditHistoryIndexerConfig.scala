@@ -34,7 +34,8 @@ class AuditHistoryIndexerConfig(override val config: Config) extends BaseJobConf
   // ES Configs
   val esConnectionInfo = config.getString("es.basePath")
 
-  var auditHistoryIndex = "kp_audit_log"
+  val timeZone =  if(config.hasPath("timezone")) config.getString("timezone") else "IST"
+  val auditHistoryIndex = "kp_audit_log"
   val operationCreate = "CREATE"
   val auditHistoryIndexType = "ah"
 }
