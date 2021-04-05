@@ -2,7 +2,7 @@ version: 2.0
 
 jobs:
   test:
-    parallelism: 2 # parallel containers to split the test cases
+    parallelism: 4 # parallel containers to split the test cases
     docker:
       - image: circleci/openjdk:stretch
     working_directory: ~/kp
