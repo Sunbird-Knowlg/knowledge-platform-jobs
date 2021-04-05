@@ -13,15 +13,6 @@ jobs:
             - kp-jobs-dependency-cache-{{ checksum "pom.xml" }} # appends cache key with a hash of pom.xml fi
             - kp-jobs-dependency-cache- # fallback in case previous cache key is not foun
       - run: |
-          #mvn -Dtest circleci tests glob "./**/src/test/**/spec/*.scala" | circleci tests split --split-by=filesize
-
-          # command: |
-          #   echo $(circleci tests glob "./**/src/test/**/spec/*.scala")
-          #   circleci tests glob "./**/src/test/**/spec/*.scala" | xargs -n 1 echo
-
-
-          # circleci tests glob "./tests/unit/*.scala" "tests/functional/*.java"
-
           mvn -Dtest=$(for file in $(circleci tests glob "./**/src/test/**/spec/*.scala" \
           |  circleci tests split --split-by=timings --timings-type=classname); \
           do basename $file \
@@ -43,6 +34,7 @@ jobs:
       - run:
            name: sonar
            command: |
+             ls $CIRCLE_INTERNAL_TASK_DATA/circle-test-results
              mvn -X sonar:sonar -Dlog4j.configuration=./logs sonar:sonar -Dsonar.projectKey=project-sunbird_knowledge-platform-jobs -Dsonar.organization=project-sunbird -Dsonar.host.url=https://sonarcloud.io -Dsonar.exclusions=**/cert-processor/** -Dsonar.scala.coverage.reportPaths=/home/circleci/kp/target/scoverage.xml
           
   build:
