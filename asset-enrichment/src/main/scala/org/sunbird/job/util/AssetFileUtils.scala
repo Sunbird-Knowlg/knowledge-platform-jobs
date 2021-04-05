@@ -7,9 +7,9 @@ import javax.activation.MimetypesFileTypeMap
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 
-object FileUtils {
+object AssetFileUtils {
 
-  private[this] val logger = LoggerFactory.getLogger(FileUtils.getClass)
+  private[this] val logger = LoggerFactory.getLogger(AssetFileUtils.getClass)
   val mimeTypesMap: MimetypesFileTypeMap = initializeMimeTypes()
 
   def initializeMimeTypes(): MimetypesFileTypeMap = {

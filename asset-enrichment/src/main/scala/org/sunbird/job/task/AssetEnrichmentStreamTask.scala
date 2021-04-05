@@ -24,7 +24,7 @@ class AssetEnrichmentStreamTask(config: AssetEnrichmentConfig, kafkaConnector: F
       .uid(config.assetEnrichmentConsumer).setParallelism(config.kafkaConsumerParallelism)
       .rebalance
       .process(new AssetEnrichmentEventRouter(config))
-      .name("assetEnrichmentRouter").uid("assetEnrichmentRouter")
+      .name("asset-enrichment-router").uid("asset-enrichment-router")
       .setParallelism(config.eventRouterParallelism)
 
     processStreamTask.getSideOutput(config.imageEnrichmentDataOutTag).process(new ImageEnrichmentFunction(config))

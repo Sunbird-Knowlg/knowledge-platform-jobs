@@ -70,11 +70,11 @@ class Neo4JUtil(routePath: String, graphId: String) {
     Map()
   }
 
-  def updateNode(identifier: String, metaData: Map[String, AnyRef]): Unit = {
+  def updateNode(identifier: String, metadata: Map[String, AnyRef]): Unit = {
     val query = s"""MATCH (n:$graphId {IL_UNIQUE_ID:"$identifier"}) SET n = """ + "$properties return n;"
     logger.info(s"Query for updating metadata for identifier : ${identifier} is : ${query}")
     val session = driver.session()
-    val properties: java.util.Map[String, AnyRef] = Map[String, AnyRef]("properties" -> metaData.asJava).asJava
+    val properties: java.util.Map[String, AnyRef] = Map[String, AnyRef]("properties" -> metadata.asJava).asJava
     val result = session.run(query, properties)
     if (result.hasNext)
       logger.info(s"Successfully Updated node with identifier: $identifier")

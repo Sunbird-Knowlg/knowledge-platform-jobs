@@ -21,7 +21,7 @@ class OptimizerHelperSpec extends BaseTestSpec {
 
   "replaceArtifactUrl" should " update the provided asset properties " in {
     doNothing().when(mockCloudUtil).copyObjectsByPrefix(anyString(), anyString(), anyBoolean())
-    val asset = getAsset(EventFixture.IMAGE_ASSET, getMetaData)
+    val asset = getAsset(EventFixture.IMAGE_ASSET, getMetadata)
     new ImageEnrichmentFunction(jobConfig).replaceArtifactUrl(asset)(mockCloudUtil)
     asset.get("artifactUrl", "") should be("https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg")
     asset.get("downloadUrl", "") should be("https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg")
@@ -31,25 +31,25 @@ class OptimizerHelperSpec extends BaseTestSpec {
 
   "replaceArtifactUrl" should " throw exception for invalid asset " in {
     when(mockCloudUtil.copyObjectsByPrefix(anyString(), anyString(), anyBoolean())).thenThrow(new IllegalArgumentException("Failed to copy the artifact."))
-    val asset = getAsset(EventFixture.IMAGE_ASSET, getMetaData)
+    val asset = getAsset(EventFixture.IMAGE_ASSET, getMetadata)
     assertThrows[Exception] {
       new ImageEnrichmentFunction(jobConfig).replaceArtifactUrl(asset)(mockCloudUtil)
     }
   }
 
 
-  def getAsset(event: String, metaData: Map[String, AnyRef]): Asset = {
+  def getAsset(event: String, metadata: Map[String, AnyRef]): Asset = {
     val eventMap = JSONUtil.deserialize[util.Map[String, Any]](event)
     val asset = Asset(eventMap)
-    asset.putAll(metaData)
+    asset.putAll(metadata)
     asset
   }
 
-  def getMetaData: Map[String, AnyRef] = {
-    val metaData = Map[String, AnyRef]("cloudStorageKey" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/tmp/content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg",
+  def getMetadata: Map[String, AnyRef] = {
+    val metadata = Map[String, AnyRef]("cloudStorageKey" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/tmp/content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg",
       "s3Key" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/tmp/content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg",
       "artifactBasePath" -> "tmp",
       "artifactUrl" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/tmp/content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg")
-    metaData
+    metadata
   }
 }

@@ -18,7 +18,7 @@ trait ThumbnailUtil {
         if ((srcImage.getHeight > thumbnailSize) || (srcImage.getWidth > thumbnailSize)) {
           val scaledImage: BufferedImage = Scalr.resize(srcImage, thumbnailSize)
           val thumbFile = getThumbnailFileName(inFile)
-          val outFile = FileUtils.createFile(thumbFile)
+          val outFile = AssetFileUtils.createFile(thumbFile)
           ImageIO.write(scaledImage, "png", outFile)
           Some(outFile)
         } else None

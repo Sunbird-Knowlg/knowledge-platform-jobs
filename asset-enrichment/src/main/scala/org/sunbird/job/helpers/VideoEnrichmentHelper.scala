@@ -32,7 +32,7 @@ trait VideoEnrichmentHelper extends ThumbnailUtil {
         logger.error(s"Something Went Wrong While Performing Asset Enrichment operation. Content Id: ${asset.identifier}. ", e)
         asset.put("processingError", e.getMessage)
         asset.put("status", "Failed")
-        neo4JUtil.updateNode(asset.identifier, asset.getMetaData)
+        neo4JUtil.updateNode(asset.identifier, asset.getMetadata)
         throw e
     }
   }
@@ -41,7 +41,7 @@ trait VideoEnrichmentHelper extends ThumbnailUtil {
     if (StringUtils.equalsIgnoreCase("video/x-youtube", asset.mimeType)) processYoutubeVideo(asset, videoUrl)(youTubeUtil)
     else processOtherVideo(asset, videoUrl)(cloudStorageUtil, config)
     asset.put("status", "Live")
-    neo4JUtil.updateNode(asset.identifier, asset.getMetaData)
+    neo4JUtil.updateNode(asset.identifier, asset.getMetadata)
     asset
   }
 
@@ -54,7 +54,7 @@ trait VideoEnrichmentHelper extends ThumbnailUtil {
   }
 
   def processOtherVideo(asset: Asset, videoUrl: String)(implicit cloudStorageUtil: CloudStorageUtil, config: AssetEnrichmentConfig): Unit = {
-    val videoFile = FileUtils.copyURLToFile(asset.identifier, videoUrl, videoUrl.substring(videoUrl.lastIndexOf("/") + 1))
+    val videoFile = AssetFileUtils.copyURLToFile(asset.identifier, videoUrl, videoUrl.substring(videoUrl.lastIndexOf("/") + 1))
     try {
       videoFile match {
         case Some(file: File) => enrichVideo(asset, file)(cloudStorageUtil, config)
@@ -62,7 +62,7 @@ trait VideoEnrichmentHelper extends ThumbnailUtil {
           throw new Exception(s"Invalid Artifact Url for identifier: ${asset.identifier}!")
       }
     } finally {
-      FileUtils.deleteDirectory(new File(s"/tmp/${asset.identifier}"))
+      AssetFileUtils.deleteDirectory(new File(s"/tmp/${asset.identifier}"))
     }
   }
 
@@ -87,7 +87,7 @@ trait VideoEnrichmentHelper extends ThumbnailUtil {
     var thumbnail: File = null
     var colorCount = 0
     for (i <- 1 to sampleThumbnailCount) {
-      val inFile = FileUtils.createFile(s"${FileUtils.getBasePath(identifier)}${File.separator}${System.currentTimeMillis}.png")
+      val inFile = AssetFileUtils.createFile(s"${AssetFileUtils.getBasePath(identifier)}${File.separator}${System.currentTimeMillis}.png")
       frameGrabber.setFrameNumber((numberOfFrames / sampleThumbnailCount).toInt * i)
       try {
         val bufferedImage = converter.convert(frameGrabber.grabImage())
@@ -147,9 +147,9 @@ trait VideoEnrichmentHelper extends ThumbnailUtil {
   def getStreamingEvent(asset: Asset)(implicit config: AssetEnrichmentConfig) : String = {
     val ets = System.currentTimeMillis
     val mid = s"""LP.${ets}.${UUID.randomUUID}"""
-    val metaData = asset.getMetaData
-    val channelId = metaData.getOrElse("channel", "").asInstanceOf[String]
-    val ver = metaData.getOrElse("versionKey", "").asInstanceOf[String]
+    val metadata = asset.getMetadata
+    val channelId = metadata.getOrElse("channel", "").asInstanceOf[String]
+    val ver = metadata.getOrElse("versionKey", "").asInstanceOf[String]
     val event = s"""{"eid":"BE_JOB_REQUEST", "ets": ${ets}, "mid": "${mid}", "actor": {"id": "Post Publish Processor", "type": "System"}, "context":{"pdata":{"ver":"1.0","id":"org.ekstep.platform"}, "channel":"${channelId}","env":"${config.jobEnv}"},"object":{"ver":"${ver}","id":"${asset.identifier}"},"edata": {"action":"post-publish-process","iteration":1,"identifier":"${asset.identifier}","channel":"${channelId}","artifactUrl":"${asset.artifactUrl}","mimeType":"video/mp4","contentType":"Resource","pkgVersion":1,"status":"Live"}}""".stripMargin
     logger.info(s"Video Streaming Event for identifier ${asset.identifier}  is  : ${event}")
     event

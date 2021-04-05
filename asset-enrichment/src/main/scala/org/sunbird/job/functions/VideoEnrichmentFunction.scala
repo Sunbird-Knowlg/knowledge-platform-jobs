@@ -36,7 +36,7 @@ class VideoEnrichmentFunction(config: AssetEnrichmentConfig,
     val asset = Asset(event.data)
     try {
       if (asset.validate(config.contentUploadContextDriven)) replaceArtifactUrl(asset)(cloudStorageUtil)
-      asset.putAll(getMetaData(event.id)(neo4JUtil))
+      asset.putAll(getMetadata(event.id)(neo4JUtil))
       val enrichedAsset = enrichVideo(asset)(config, youTubeUtil, cloudStorageUtil, neo4JUtil)
       pushStreamingUrlEvent(enrichedAsset, context)(metrics, config)
       metrics.incCounter(config.successVideoEnrichmentEventCount)
@@ -52,9 +52,9 @@ class VideoEnrichmentFunction(config: AssetEnrichmentConfig,
     List(config.successVideoEnrichmentEventCount, config.failedVideoEnrichmentEventCount, config.videoEnrichmentEventCount, config.videoStreamingGeneratorEventCount)
   }
 
-  def getMetaData(identifier: String)(neo4JUtil: Neo4JUtil): Map[String, AnyRef] = {
-    val metaData = neo4JUtil.getNodeProperties(identifier).asScala.toMap
-    if (metaData != null && metaData.nonEmpty) metaData else throw new Exception(s"Received null or Empty metaData for identifier: $identifier.")
+  def getMetadata(identifier: String)(neo4JUtil: Neo4JUtil): Map[String, AnyRef] = {
+    val metadata = neo4JUtil.getNodeProperties(identifier).asScala.toMap
+    if (metadata != null && metadata.nonEmpty) metadata else throw new Exception(s"Received null or Empty metadata for identifier: $identifier.")
   }
 
 }

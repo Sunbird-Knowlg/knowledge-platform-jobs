@@ -3,7 +3,7 @@ package org.sunbird.job.helpers
 import java.io.File
 
 import org.slf4j.LoggerFactory
-import org.sunbird.job.util.{CloudStorageUtil, FileUtils, ImageResizerUtil, Neo4JUtil, ScalaJsonUtil, Slug}
+import org.sunbird.job.util.{CloudStorageUtil, AssetFileUtils, ImageResizerUtil, Neo4JUtil, ScalaJsonUtil, Slug}
 import org.im4java.core.Info
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.models.Asset
@@ -28,7 +28,7 @@ trait ImageEnrichmentHelper {
         logger.error(s"Something Went Wrong While Performing Asset Enrichment operation.Content Id: ${asset.identifier}", e)
         asset.put("processingError", e.getMessage)
         asset.put("status", "Failed")
-        neo4JUtil.updateNode(asset.identifier, asset.getMetaData)
+        neo4JUtil.updateNode(asset.identifier, asset.getMetadata)
         throw e
     }
   }
@@ -36,7 +36,7 @@ trait ImageEnrichmentHelper {
   def optimizeImage(contentId: String, originalURL: String)(implicit config: AssetEnrichmentConfig, definitionCache: DefinitionCache, cloudStorageUtil: CloudStorageUtil): Map[String, String] = {
     val variantsMap = mutable.Map[String, String]()
     val variants = getVariant()(definitionCache, config)
-    val originalFile = FileUtils.copyURLToFile(contentId, originalURL, originalURL.substring(originalURL.lastIndexOf("/") + 1, originalURL.length))
+    val originalFile = AssetFileUtils.copyURLToFile(contentId, originalURL, originalURL.substring(originalURL.lastIndexOf("/") + 1, originalURL.length))
     try {
       originalFile match {
         case Some(file: File) => variants.foreach(variant => {
@@ -58,7 +58,7 @@ trait ImageEnrichmentHelper {
           throw new Exception(s"Please Provide Valid File Url for identifier : ${contentId} and URL : ${originalURL}.")
       }
     } finally {
-      FileUtils.deleteDirectory(new File(s"/tmp/${contentId}"))
+      AssetFileUtils.deleteDirectory(new File(s"/tmp/${contentId}"))
     }
     if (variantsMap.getOrElse("medium", "").isEmpty && originalURL.nonEmpty) variantsMap.put("medium", originalURL)
     variantsMap.toMap
@@ -72,7 +72,7 @@ trait ImageEnrichmentHelper {
   }
 
   private def optimizeImage(file: File, dpi: Double, width: Int, height: Int, resolution: String): File = {
-    val fileType = FileUtils.getFileType(file)
+    val fileType = AssetFileUtils.getFileType(file)
     val proc = new ImageResizerUtil
     if (proc.isApplicable(fileType)) proc.process(file, dpi, width, height, resolution) else null
   }
@@ -82,7 +82,7 @@ trait ImageEnrichmentHelper {
     val imageInfo = new Info(inputFileName, false)
     val width = imageInfo.getImageWidth
     val height = imageInfo.getImageHeight
-    if (dimensionX < width && dimensionY < height) true else false
+    (dimensionX < width && dimensionY < height)
   }
 
   def getOptimalDPI(file: File, dpi: Int): Double = {
@@ -102,7 +102,7 @@ trait ImageEnrichmentHelper {
     asset.put("status", "Live")
     asset.put("variants", ScalaJsonUtil.serialize(variantsMap))
     logger.info(s"Processed Image for identifier: ${asset.identifier}. Updating metadata.")
-    neo4JUtil.updateNode(asset.identifier, asset.getMetaData)
+    neo4JUtil.updateNode(asset.identifier, asset.getMetadata)
   }
 
   def upload(file: File, identifier: String)(implicit cloudStorageUtil: CloudStorageUtil): Array[String] = {
