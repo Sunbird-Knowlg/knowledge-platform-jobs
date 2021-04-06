@@ -59,6 +59,7 @@ jobs:
             - kp-jobs-dependency-cache- # fallback in case previous cache key is not foun
       - run: |
           ls /usr/lib/jvm/
+          ls /usr/local/
           export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
           export PATH=$JAVA_HOME/bin:$PATH
           echo $PATH
