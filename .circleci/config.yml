@@ -12,6 +12,8 @@ jobs:
             - kp-jobs-dependency-cache-{{ checksum "pom.xml" }} # appends cache key with a hash of pom.xml fi
             - kp-jobs-dependency-cache- # fallback in case previous cache key is not foun
       - run: |
+          export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-amd64
+          export PATH=$JAVA_HOME/bin:$PATH
           mvn test
           # Commenting below code which used for parllel test run 
           # mvn -Dtest=$(for file in $(circleci tests glob "./**/src/test/**/spec/*.scala" \
@@ -45,7 +47,10 @@ jobs:
           keys:
             - kp-jobs-dependency-cache-{{ checksum "pom.xml" }} # appends cache key with a hash of pom.xml file
             - kp-jobs-dependency-cache- # fallback in case previous cache key is not foun
-      - run: mvn clean install -DskipTests
+      - run: |
+          export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-amd64
+          export PATH=$JAVA_HOME/bin:$PATH
+          mvn clean install -DskipTests
       - save_cache:
             paths:
               - ~/.m2
