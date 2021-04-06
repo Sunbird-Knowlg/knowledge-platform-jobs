@@ -13,7 +13,7 @@ jobs:
             - kp-jobs-dependency-cache- # fallback in case previous cache key is not foun
       - run: |
           ls /usr/lib/jvm/
-          export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-amd64
+          export JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64 
           export PATH=$JAVA_HOME/bin:$PATH
           mvn test
           # Commenting below code which used for parllel test run 
@@ -50,6 +50,8 @@ jobs:
             - kp-jobs-dependency-cache- # fallback in case previous cache key is not foun
       - run: |
           ls /usr/lib/jvm/
+          export JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64 
+          export PATH=$JAVA_HOME/bin:$PATH
           mvn clean install -DskipTests
       - save_cache:
             paths:
