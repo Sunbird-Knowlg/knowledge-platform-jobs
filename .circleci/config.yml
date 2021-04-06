@@ -4,7 +4,13 @@ jobs:
   test:
     docker:
       - image: circleci/openjdk:stretch
-      - image: jweissig/alpine-imagemagick
+    dependencies:
+      pre:
+        - sudo apt-get --reinstall install libept1.4.12
+        - sudo apt-get install -y aptitude
+        - sudo aptitude -y install imagemagick
+        - sudo aptitude -y install libmagickcore-dev
+        - sudo aptitude -y install libmagickwand-dev  
     working_directory: ~/kp
     steps:
       - checkout
