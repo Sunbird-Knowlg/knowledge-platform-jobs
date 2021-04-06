@@ -20,6 +20,14 @@ class ObjectDefinition(val objectType: String, val version: String, val schema: 
     })
   }
 
+  val objectTypeProperties = if (schema.isEmpty) List() else {
+    val properties = schema.getOrElse("properties", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
+    properties.filter(prop => {
+      val value = prop._2.asInstanceOf[Map[String, AnyRef]]
+      value.getOrElse("type", "").asInstanceOf[String].equals("object")
+    }).keys.toList
+  }
+
   def relationKey(objectType: String, direction: String, relationType: String): String =
     s"${direction.toUpperCase}:${objectType.toUpperCase}:${relationType.toUpperCase}"
 

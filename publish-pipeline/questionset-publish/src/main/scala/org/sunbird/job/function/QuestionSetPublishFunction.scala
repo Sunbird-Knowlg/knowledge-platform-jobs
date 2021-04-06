@@ -9,13 +9,14 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
+import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 import org.sunbird.job.publish.domain.PublishMetadata
 import org.sunbird.job.publish.helpers.QuestionSetPublisher
 import org.sunbird.job.publish.util.QuestionPublishUtil
 import org.sunbird.job.task.QuestionSetPublishConfig
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil, ScalaJsonUtil}
-import org.sunbird.publish.core.{ExtDataConfig, ObjectData}
+import org.sunbird.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
 import org.sunbird.publish.util.CloudStorageUtil
 
 import scala.concurrent.ExecutionContext
@@ -25,7 +26,9 @@ import scala.collection.mutable.ListBuffer
 class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUtil,
                                  @transient var neo4JUtil: Neo4JUtil = null,
                                  @transient var cassandraUtil: CassandraUtil = null,
-                                 @transient var cloudStorageUtil: CloudStorageUtil = null)
+                                 @transient var cloudStorageUtil: CloudStorageUtil = null,
+                                 @transient var definitionCache: DefinitionCache = null,
+                                 @transient var definitionConfig: DefinitionConfig = null)
                                 (implicit val stringTypeInfo: TypeInformation[String])
   extends BaseProcessFunction[PublishMetadata, String](config) with QuestionSetPublisher {
 
@@ -33,6 +36,7 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 	val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
 	private val readerConfig = ExtDataConfig(config.questionSetKeyspaceName, config.questionSetTableName)
 	private val qReaderConfig = ExtDataConfig(config.questionKeyspaceName, config.questionTableName)
+
 	@transient var ec: ExecutionContext = _
 	private val pkgTypes = List("SPINE", "ONLINE")
 
@@ -43,6 +47,8 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 		neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName)
 		cloudStorageUtil = new CloudStorageUtil(config)
 		ec = ExecutionContexts.global
+		definitionCache = new DefinitionCache()
+		definitionConfig = DefinitionConfig(config.schemaSupportVersionMap, config.definitionBasePath)
 	}
 
 	override def close(): Unit = {
@@ -70,7 +76,7 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 			//TODO: Remove below statement
 			childQuestions.foreach(ch => logger.info("child questions visibility parent identifier : " + ch.identifier))
 			// Publish Child Questions
-			QuestionPublishUtil.publishQuestions(obj.identifier, childQuestions)(neo4JUtil, cassandraUtil, qReaderConfig, cloudStorageUtil)
+			QuestionPublishUtil.publishQuestions(obj.identifier, childQuestions)(neo4JUtil, cassandraUtil, qReaderConfig, cloudStorageUtil, definitionCache, definitionConfig)
 			val pubMsgs: List[String] = isChildrenPublished(childQuestions)
 			if(pubMsgs.isEmpty) {
 				// Enrich Object as well as hierarchy
@@ -82,7 +88,7 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 				val objWithEcar = generateECAR(enrichedObj, pkgTypes)(ec, cloudStorageUtil)
 				// Generate PDF URL
 				val updatedObj = generatePreviewUrl(objWithEcar, qList)(httpUtil, cloudStorageUtil)
-				saveOnSuccess(updatedObj)(neo4JUtil, cassandraUtil, readerConfig)
+				saveOnSuccess(updatedObj)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
 				logger.info("QuestionSet publishing completed successfully for : " + data.identifier)
 				metrics.incCounter(config.questionSetPublishSuccessEventCount)
 			} else {
