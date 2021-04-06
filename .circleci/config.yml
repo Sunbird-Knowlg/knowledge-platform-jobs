@@ -13,7 +13,7 @@ jobs:
             - kp-jobs-dependency-cache- # fallback in case previous cache key is not foun
       - run: |
           ls /usr/lib/jvm/
-          export JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64 
+          export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
           export PATH=$JAVA_HOME/bin:$PATH
           echo $PATH
           echo $JAVA_HOME
@@ -52,8 +52,10 @@ jobs:
             - kp-jobs-dependency-cache- # fallback in case previous cache key is not foun
       - run: |
           ls /usr/lib/jvm/
-          export JAVA_HOME=/usr/lib/jvm/java-1.11.0-openjdk-amd64 
+          export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
           export PATH=$JAVA_HOME/bin:$PATH
+          echo $PATH
+          echo $JAVA_HOME
           mvn clean install -DskipTests
       - save_cache:
             paths:
