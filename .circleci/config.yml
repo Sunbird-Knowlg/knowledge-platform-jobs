@@ -59,4 +59,6 @@ workflows:
   build-then-test:
     jobs:
       - build
-      - unit-tests
+      - unit-tests:
+          requires:
+            - build
