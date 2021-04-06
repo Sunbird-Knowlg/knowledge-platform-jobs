@@ -18,7 +18,7 @@ import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.common.xcontent.XContentType
 import org.slf4j.LoggerFactory
 
-class ElasticSearchUtil(connectionInfo: String, indexName: String, indexType: String, batchSize: Int = 1000) {
+class ElasticSearchUtil(connectionInfo: String, indexName: String, indexType: String, batchSize: Int = 1000) extends Serializable {
 
   private val resultLimit = 100
   private val esClient: RestHighLevelClient = createClient(connectionInfo)
@@ -74,6 +74,21 @@ class ElasticSearchUtil(connectionInfo: String, indexName: String, indexType: St
       // Replace mapper with JSONUtil once the JSONUtil is fixed
       val doc = mapper.readValue(document, new TypeReference[util.Map[String, AnyRef]]() {})
       val response = esClient.index(new IndexRequest(indexName, indexType, identifier).source(doc))
+      logger.info(s"Added ${response.getId} to index ${response.getIndex}")
+    } catch {
+      case e: IOException =>
+        logger.error(s"Error while adding document to index : $indexName", e)
+    }
+  }
+
+  @throws[IOException]
+  def addDocumentWithIndex(document: String, indexName: String, identifier: String = null): Unit = {
+    try {
+      // TODO
+      // Replace mapper with JSONUtil once the JSONUtil is fixed
+      val doc = mapper.readValue(document, new TypeReference[util.Map[String, AnyRef]]() {})
+      val indexRequest = if(identifier == null) new IndexRequest(indexName, indexType) else new IndexRequest(indexName, indexType, identifier)
+      val response = esClient.index(indexRequest.source(doc))
       logger.info(s"Added ${response.getId} to index ${response.getIndex}")
     } catch {
       case e: IOException =>
