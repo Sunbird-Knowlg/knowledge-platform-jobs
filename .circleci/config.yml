@@ -4,6 +4,7 @@ jobs:
   test:
     docker:
       - image: circleci/openjdk:stretch
+      - image: jweissig/alpine-imagemagick
     working_directory: ~/kp
     steps:
       - checkout
