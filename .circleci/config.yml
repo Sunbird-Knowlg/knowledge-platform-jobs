@@ -12,6 +12,7 @@ jobs:
             - kp-jobs-dependency-cache-{{ checksum "pom.xml" }} # appends cache key with a hash of pom.xml fi
             - kp-jobs-dependency-cache- # fallback in case previous cache key is not foun
       - run: |
+          ls /usr/lib/jvm/
           export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-amd64
           export PATH=$JAVA_HOME/bin:$PATH
           mvn test
@@ -48,8 +49,7 @@ jobs:
             - kp-jobs-dependency-cache-{{ checksum "pom.xml" }} # appends cache key with a hash of pom.xml file
             - kp-jobs-dependency-cache- # fallback in case previous cache key is not foun
       - run: |
-          export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-amd64
-          export PATH=$JAVA_HOME/bin:$PATH
+          ls /usr/lib/jvm/
           mvn clean install -DskipTests
       - save_cache:
             paths:
