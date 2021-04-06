@@ -45,9 +45,9 @@ jobs:
             - kp-jobs-dependency-cache-{{ checksum "pom.xml" }} # appends cache key with a hash of pom.xml file
             - kp-jobs-dependency-cache- # fallback in case previous cache key is not foun
       - run: 
-        name: Build without tests
-        command: |
-          mvn clean install -DskipTests
+          name: Build without tests
+          command: |
+            mvn clean install -DskipTests
       - save_cache:
             paths:
               - ~/.m2
