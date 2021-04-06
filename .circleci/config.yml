@@ -10,7 +10,8 @@ jobs:
         - sudo apt-get install -y aptitude
         - sudo aptitude -y install imagemagick
         - sudo aptitude -y install libmagickcore-dev
-        - sudo aptitude -y install libmagickwand-dev  
+        - sudo aptitude -y install libmagickwand-dev 
+        - sudo apt-get install -y graphicsmagick 
     working_directory: ~/kp
     steps:
       - checkout
@@ -59,7 +60,6 @@ jobs:
             - kp-jobs-dependency-cache- # fallback in case previous cache key is not foun
       - run: |
           ls /usr/lib/jvm/
-          apt-get install -y graphicsmagick.
           ls /usr/local/
           export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
           export PATH=$JAVA_HOME/bin:$PATH
