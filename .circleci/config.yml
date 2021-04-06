@@ -4,6 +4,7 @@ jobs:
   unit-tests:
     docker:
       - image: circleci/openjdk:stretch
+    resource_class: small
     working_directory: ~/kp
     steps:
       - checkout
@@ -36,23 +37,6 @@ jobs:
            name: sonar
            command: |
              mvn -X sonar:sonar -Dlog4j.configuration=./logs sonar:sonar -Dsonar.projectKey=project-sunbird_knowledge-platform-jobs -Dsonar.organization=project-sunbird -Dsonar.host.url=https://sonarcloud.io -Dsonar.exclusions=**/cert-processor/** -Dsonar.scala.coverage.reportPaths=/home/circleci/kp/target/scoverage.xml
-  build:
-    docker:
-      - image: circleci/openjdk:stretch
-    steps:
-      - checkout
-      - restore_cache:
-          keys:
-            - kp-jobs-dependency-cache-{{ checksum "pom.xml" }} # appends cache key with a hash of pom.xml file
-            - kp-jobs-dependency-cache- # fallback in case previous cache key is not foun
-      - run: 
-          name: Build without tests
-          command: |
-            mvn clean install -DskipTests
-      - save_cache:
-            paths:
-              - ~/.m2
-            key: kp-jobs-dependency-cache-{{ checksum "pom.xml" }}
 
 workflows:
   version: 2
