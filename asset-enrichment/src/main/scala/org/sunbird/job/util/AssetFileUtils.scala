@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory
 
 object AssetFileUtils {
 
-  private[this] val logger = LoggerFactory.getLogger("AssetFileUtils")
+  private[this] val logger = LoggerFactory.getLogger("org.sunbird.job.util.AssetFileUtils")
   val mimeTypesMap: MimetypesFileTypeMap = initializeMimeTypes()
 
   def initializeMimeTypes(): MimetypesFileTypeMap = {
