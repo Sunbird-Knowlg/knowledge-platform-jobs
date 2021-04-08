@@ -64,6 +64,18 @@
         </dependency>
         <dependency>
             <groupId>org.sunbird</groupId>
+            <artifactId>asset-enrichment</artifactId>
+            <version>1.0.0</version>
+            <type>jar</type>
+        </dependency>
+        <dependency>
+            <groupId>org.sunbird</groupId>
+            <artifactId>audit-history-indexer</artifactId>
+            <version>1.0.0</version>
+            <type>jar</type>
+        </dependency>
+        <dependency>
+            <groupId>org.sunbird</groupId>
             <artifactId>auto-creator-v2</artifactId>
             <version>1.0.0</version>
             <type>jar</type>
