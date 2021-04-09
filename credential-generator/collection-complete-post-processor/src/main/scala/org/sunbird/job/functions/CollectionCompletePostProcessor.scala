@@ -10,12 +10,13 @@ import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.collectioncomplete.domain.Event
 import org.sunbird.job.cache.{DataCache, RedisConnect}
-import org.sunbird.job.domain.CertTemplate
+import org.sunbird.job.domain.{ActorObject, CertTemplate, CertificateGenerateEvent, EventContext, EventObject}
 import org.sunbird.job.task.CollectionCompletePostProcessorConfig
 import org.sunbird.job.util.{CassandraUtil, JSONUtil}
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import scala.collection.JavaConverters
+import scala.collection.JavaConverters._
 
 class CollectionCompletePostProcessor(config: CollectionCompletePostProcessorConfig)
                                      (implicit val stringTypeInfo: TypeInformation[String],
@@ -116,19 +117,10 @@ class CollectionCompletePostProcessor(config: CollectionCompletePostProcessorCon
   }
 
   private def generateCertificateFinalEvent(edata: util.Map[String, AnyRef]): util.Map[String, AnyRef] = {
-    new util.HashMap[String, AnyRef](){{
-      put("eid","BE_JOB_REQUEST")
-      put("ets",System.currentTimeMillis().asInstanceOf[AnyRef])
-      put("mid",s"LMS.${UUID.randomUUID().toString}")
-      put("edata",edata)
-      put("object",new util.HashMap[String, AnyRef]{{put("id",edata.get(config.userId).asInstanceOf[String])
-        put("type","GenerateCertificate")
-      }})
-      put("context",new util.HashMap[String, AnyRef]{{put("pdata", new util.HashMap[String, AnyRef](){{put("ver","1.0")
-        put("id","org.sunbird.platform")}})}})
-      put("actor",new util.HashMap[String, AnyRef]{{put("id","Certificate Generator")
-        put("type","System")}})
-    }}
+    convertToMap(CertificateGenerateEvent("BE_JOB_REQUEST", System.currentTimeMillis(), s"LMS.${UUID.randomUUID().toString}",
+      edata, EventObject(edata.get(config.userId).asInstanceOf[String], "GenerateCertificate"),
+      EventContext(Map("ver" -> "1.0", "id" -> "org.sunbird.platform").asJava),
+      ActorObject("Certificate Generator", "System")))
   }
 
   def convertToMap(cc: AnyRef) = {
