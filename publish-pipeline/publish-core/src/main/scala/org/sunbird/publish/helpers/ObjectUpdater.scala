@@ -3,27 +3,25 @@ package org.sunbird.publish.helpers
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.util.{CassandraUtil, JSONUtil, Neo4JUtil, ScalaJsonUtil}
-import org.sunbird.publish.core.{ExtDataConfig, ObjectData}
+import org.sunbird.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
 import java.text.SimpleDateFormat
 import java.util
 import java.util.Date
 
 import org.neo4j.driver.v1.StatementResult
+import org.sunbird.job.domain.`object`.DefinitionCache
 
 trait ObjectUpdater {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[ObjectUpdater])
 
   @throws[Exception]
-  def saveOnSuccess(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): Unit = {
+  def saveOnSuccess(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, definitionCache: DefinitionCache, config: DefinitionConfig): Unit = {
     val publishType = obj.metadata.getOrElse("publish_type", "Public").asInstanceOf[String]
     val status = if (StringUtils.equals("Private", publishType)) "Unlisted" else "Live"
     val editId = obj.dbId
     val identifier = obj.identifier
-    // TODO: Need to handle strnigified json separately. e.g: variants, originData
-    //val variantsData: java.util.Map[String, String] = obj.metadata.getOrElse("variants", new util.HashMap()).asInstanceOf[java.util.Map[String, String]]
-    //val variants = if(variantsData.isEmpty) null else JSONUtil.serialize(JSONUtil.serialize(variantsData))
-    val metadataUpdateQuery = metaDataQuery(obj)
+    val metadataUpdateQuery = metaDataQuery(obj)(definitionCache, config)
     val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$identifier"}) SET n.status="$status",n.pkgVersion=${obj.pkgVersion},$metadataUpdateQuery,$auditPropsUpdateQuery;"""
     logger.info("Query: " + query)
     if (!StringUtils.equalsIgnoreCase(editId, identifier)) {
@@ -50,33 +48,38 @@ trait ObjectUpdater {
     neo4JUtil.executeQuery(query)
   }
 
-  def metaDataQuery(obj: ObjectData): String = {
+  def metaDataQuery(obj: ObjectData)(definitionCache: DefinitionCache, config: DefinitionConfig): String = {
+    val version = config.supportedVersion.getOrElse(obj.dbObjType.toLowerCase(), "1.0").asInstanceOf[String]
+    val definition = definitionCache.getDefinition(obj.dbObjType, version, config.basePath)
     val metadata = obj.metadata - ("IL_UNIQUE_ID", "identifier", "IL_FUNC_OBJECT_TYPE", "IL_SYS_NODE_TYPE", "pkgVersion", "lastStatusChangedOn", "lastUpdatedOn", "status", "objectType")
     metadata.map(prop => {
-      val key = prop._1
-      val value = prop._2
-      if (null == value) s"n.$key=$value"
-      else value match {
-        case _: String =>
-          s"""n.$key="$value""""
-        case _: List[String] =>
-          s"""n.$key=${ScalaJsonUtil.serialize(value)}"""
-        case _: util.Map[String, AnyRef] =>
-          val strValue = JSONUtil.serialize(JSONUtil.serialize(value))
-          logger.info(s"**value for $key : $strValue")
-          s"""n.$key=$strValue"""
-        case _: Map[String, AnyRef] =>
-          val strValue = JSONUtil.serialize(ScalaJsonUtil.serialize(value))
-          logger.info(s"##value for $key : $strValue")
-          s"""n.$key=$strValue"""
-        case _ =>
-          val strValue = JSONUtil.serialize(value)
-          logger.info(s"~~value for $key : $strValue")
-          s"""n.$key=$strValue"""
+      if (null == prop._2) s"n.${prop._1}=${prop._2}"
+      else if (definition.objectTypeProperties.contains(prop._1)) {
+        prop._2 match {
+          case _: Map[String, AnyRef] =>
+            val strValue = JSONUtil.serialize(ScalaJsonUtil.serialize(prop._2))
+            s"""n.${prop._1}=${strValue}"""
+          case _: util.Map[String, AnyRef] =>
+            val strValue = JSONUtil.serialize(JSONUtil.serialize(prop._2))
+            s"""n.${prop._1}=${strValue}"""
+          case _: String =>
+            val strValue = JSONUtil.serialize(prop._2)
+            s"""n.${prop._1}=${strValue}"""
+        }
+      } else {
+        prop._2 match {
+          case _: List[String] =>
+            val strValue = ScalaJsonUtil.serialize(prop._2)
+            s"""n.${prop._1}=${strValue}"""
+          case _: String =>
+            s"""n.${prop._1}="${prop._2}""""
+          case _ =>
+            val strValue = JSONUtil.serialize(prop._2)
+            s"""n.${prop._1}=$strValue"""
+        }
       }
     }).mkString(",")
   }
-
 
   private def auditPropsUpdateQuery(): String = {
     val sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");

@@ -1,24 +1,45 @@
-version: 2.1
+version: 2.0
+
 jobs:
-  knowledge-platform-jobs-build:
+  unit-tests:
+    docker:
+      - image: circleci/openjdk:stretch
+    resource_class: medium
     working_directory: ~/kp
-    machine:
-      image: ubuntu-2004:202008-01
     steps:
-      - checkout:
-          path: ~/kp
+      - checkout
       - restore_cache:
-          key: kp-jobs-dependency-cache-{{ checksum "pom.xml" }}
-      - run: mvn clean scoverage:report
-      - save_cache:
-          key: kp-jobs-dependency-cache-{{ checksum "pom.xml" }}
-          paths: ~/.m2
-      - run:
-          name: sonar
+          keys:
+            - kp-jobs-dependency-cache-{{ checksum "pom.xml" }} # appends cache key with a hash of pom.xml fi
+            - kp-jobs-dependency-cache- # fallback in case previous cache key is not foun
+      - run: 
+          name: Installation of imagemagick
           command: |
-            mvn -X sonar:sonar -Dlog4j.configuration=./logs sonar:sonar -Dsonar.projectKey=project-sunbird_knowledge-platform-jobs -Dsonar.organization=project-sunbird -Dsonar.host.url=https://sonarcloud.io -Dsonar.exclusions=**/cert-processor/** -Dsonar.scala.coverage.reportPaths=/home/circleci/kp/target/scoverage.xml
+            sudo apt-get update || sudo apt-get update
+            sudo apt-get install -y imagemagick
+      - run:
+          name: Execute coverage report
+          command: |
+            mvn clean scoverage:report
+      - run:
+          name: Save test results
+          command: |
+            mkdir -p ~/test-results/junit/
+            find . -type f -regex ".*/target/surefire-reports/.*xml" -exec cp {} ~/test-results/junit/ \;
+          when: always
+      - save_cache:
+            paths:
+              - ~/.m2
+            key: kp-jobs-dependency-cache-{{ checksum "pom.xml" }}
+      - store_test_results:
+          path: ~/test-results
+      - run:
+           name: sonar
+           command: |
+             mvn -X sonar:sonar -Dlog4j.configuration=./logs sonar:sonar -Dsonar.projectKey=project-sunbird_knowledge-platform-jobs -Dsonar.organization=project-sunbird -Dsonar.host.url=https://sonarcloud.io -Dsonar.exclusions=**/cert-processor/** -Dsonar.scala.coverage.reportPaths=/home/circleci/kp/target/scoverage.xml
+
 workflows:
-  version: 2.1
-  build_and_test:
+  version: 2
+  build-and-test:
     jobs:
-      - knowledge-platform-jobs-build
+      - unit-tests

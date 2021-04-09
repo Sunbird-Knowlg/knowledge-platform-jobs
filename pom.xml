@@ -29,7 +29,9 @@
 		<module>video-stream-generator</module>
 		<module>search-indexer</module>
 		<module>enrolment-reconciliation</module>
-    </modules>
+		<module>asset-enrichment</module>
+		<module>audit-history-indexer</module>
+  </modules>
 
 	<properties>
 		<!-- maven specific properties -->
