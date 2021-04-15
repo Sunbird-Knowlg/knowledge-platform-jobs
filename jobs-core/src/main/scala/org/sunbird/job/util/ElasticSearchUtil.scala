@@ -93,6 +93,7 @@ class ElasticSearchUtil(connectionInfo: String, indexName: String, indexType: St
     } catch {
       case e: IOException =>
         logger.error(s"Error while adding document to index : $indexName", e)
+        throw e
     }
   }
 
