@@ -9,12 +9,12 @@ import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.util.{CassandraUtil, Neo4JUtil, ScalaJsonUtil}
 import org.sunbird.publish.core.{ExtDataConfig, ObjectData}
-import org.sunbird.publish.helpers.{ObjectEnrichment, ObjectReader, ObjectUpdater, ObjectValidator}
+import org.sunbird.publish.helpers._
 
 import scala.collection.mutable.ListBuffer
 import scala.collection.JavaConverters._
 
-trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnrichment with ObjectUpdater {
+trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnrichment with EcarGenerator with ObjectUpdater {
 
 	private[this] val logger = LoggerFactory.getLogger(classOf[QuestionPublisher])
 	val extProps = List("body", "editorState", "answer", "solutions", "instructions", "hints", "media", "responseDeclaration", "interactions")
@@ -103,4 +103,7 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
 		cassandraUtil.session.execute(query.toString)
 	}
 
+	override def getDataForEcar(obj: ObjectData): Option[List[Map[String, AnyRef]]] = {
+		Some(List(obj.metadata ++ obj.extData.getOrElse(Map()).filter(p => !excludeBundleMeta.contains(p._1.asInstanceOf[String]))))
+	}
 }
