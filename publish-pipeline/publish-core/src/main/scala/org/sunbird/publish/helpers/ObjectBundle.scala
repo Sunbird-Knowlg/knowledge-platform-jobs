@@ -174,7 +174,9 @@ trait ObjectBundle {
 				}
 				case false => {
 					if(StringUtils.equalsIgnoreCase(entry._1, "media")){
-						val media: List[Map[String, AnyRef]] = if(null != entry._2) entry._2.asInstanceOf[List[Map[String, AnyRef]]] else List()
+						logger.info("MEDIA::  " + entry._2.asInstanceOf[String])
+						val media: List[Map[String, AnyRef]] = if(null != entry._2) ScalaJsonUtil.deserialize[List[Map[String, AnyRef]]](entry._2.asInstanceOf[String]) else List()
+						logger.info("MEDIA::::  " + media)
 						getMediaUrl(media, identifier, pkgType)
 					}else{
 						if (entry._2.isInstanceOf[File]) {
