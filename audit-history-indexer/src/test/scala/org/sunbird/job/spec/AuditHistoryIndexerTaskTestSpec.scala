@@ -32,7 +32,7 @@ class AuditHistoryIndexerTaskTestSpec extends BaseTestSpec {
   val mockKafkaUtil: FlinkKafkaConnector = mock[FlinkKafkaConnector](Mockito.withSettings().serializable())
   val config: Config = ConfigFactory.load("test.conf")
   val jobConfig: AuditHistoryIndexerConfig = new AuditHistoryIndexerConfig(config)
-  val esUtil:ElasticSearchUtil = null
+  val esUtil: ElasticSearchUtil = null
   val server = new MockWebServer()
 
   var currentMilliSecond = 1605816926271L

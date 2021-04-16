@@ -26,7 +26,8 @@ trait AuditHistoryIndexerService {
         metrics.incCounter(config.successEventCount)
       } catch {
         case ex: IOException =>
-          logger.error("Error while indexing message :: " + event.getJson + " :: ", ex)
+          logger.error("Error while indexing message :: " + event.getJson + " :: " + ex.getMessage)
+          ex.printStackTrace()
           metrics.incCounter(config.esFailedEventCount)
           throw ex
         case ex: Exception =>
