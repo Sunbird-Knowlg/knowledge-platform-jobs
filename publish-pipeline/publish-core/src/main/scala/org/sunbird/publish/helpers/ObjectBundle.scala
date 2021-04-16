@@ -192,7 +192,7 @@ trait ObjectBundle {
 		media.map(entry => {
 			val url = entry.getOrElse("baseUrl", "").asInstanceOf[String] + entry.getOrElse("src", "").asInstanceOf[String]
 			if (url.isInstanceOf[String] && validUrl(url.asInstanceOf[String])) {
-				Map[AnyRef, String](url, identifier.trim + entry.getOrElse("src", "").asInstanceOf[String])
+				Map[AnyRef, String](url -> (identifier.trim + entry.getOrElse("src", "").asInstanceOf[String]))
 			} else Map[AnyRef, String]()
 		}).flatten.toMap
 	}
