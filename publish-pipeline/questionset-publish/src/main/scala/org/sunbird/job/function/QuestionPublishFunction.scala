@@ -2,6 +2,7 @@ package org.sunbird.job.function
 
 import java.lang.reflect.Type
 
+import akka.dispatch.ExecutionContexts
 import com.google.gson.reflect.TypeToken
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
@@ -40,6 +41,7 @@ class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUt
 		cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort)
 		neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName)
 		cloudStorageUtil = new CloudStorageUtil(config)
+		ec = ExecutionContexts.global
 		definitionCache = new DefinitionCache()
 		definitionConfig = DefinitionConfig(config.schemaSupportVersionMap, config.definitionBasePath)
 	}
@@ -61,7 +63,9 @@ class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUt
 		if (messages.isEmpty) {
 			val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil)
 			// Generate ECAR
+			logger.info("Ecar generation for Question: " + enrichedObj.identifier)
 			val objWithEcar = generateECAR(enrichedObj, pkgTypes)(ec, cloudStorageUtil)
+			logger.info("Ecar generation done for Question: " + enrichedObj.identifier)
 			saveOnSuccess(objWithEcar)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
 			//saveOnSuccess(enrichedObj)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
 			metrics.incCounter(config.questionPublishSuccessEventCount)
@@ -74,6 +78,7 @@ class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUt
 	}
 
 	def generateECAR(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil): ObjectData = {
+		logger.info("QuestionPublishFunction:generateECAR: Ecar generation done for Question: " + data.identifier)
 		val ecarMap: Map[String, String] = generateEcar(data, pkgTypes)
 		val variants: java.util.Map[String, String] = ecarMap.map { case (key, value) => key.toLowerCase -> value }.asJava
 		logger.info("QuestionSetPublishFunction ::: generateECAR ::: ecar map ::: " + ecarMap)
