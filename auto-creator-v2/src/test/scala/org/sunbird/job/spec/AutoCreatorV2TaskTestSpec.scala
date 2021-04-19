@@ -8,7 +8,7 @@ import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
 import org.apache.flink.streaming.api.functions.source.SourceFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext
 import org.apache.flink.test.util.MiniClusterWithClientResource
-import org.sunbird.job.util.JSONUtil
+import org.sunbird.job.util.{HttpUtil, JSONUtil}
 import org.mockito.Mockito
 import org.mockito.Mockito.when
 import org.sunbird.job.connector.FlinkKafkaConnector
@@ -29,6 +29,7 @@ class AutoCreatorV2TaskTestSpec extends BaseTestSpec {
   val config: Config = ConfigFactory.load("test.conf")
   val jobConfig: AutoCreatorV2Config = new AutoCreatorV2Config(config)
   var currentMilliSecond = 1605816926271L
+  val mockHttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
 
   override protected def beforeAll(): Unit = {
     BaseMetricsReporter.gaugeMetrics.clear()
@@ -44,7 +45,7 @@ class AutoCreatorV2TaskTestSpec extends BaseTestSpec {
   ignore should "generate event" in {
     when(mockKafkaUtil.kafkaMapSource(jobConfig.kafkaInputTopic)).thenReturn(new AutoCreatorV2MapSource)
 
-    new AutoCreatorV2StreamTask(jobConfig, mockKafkaUtil).process()
+    new AutoCreatorV2StreamTask(jobConfig, mockKafkaUtil, mockHttpUtil).process()
   }
 }
 

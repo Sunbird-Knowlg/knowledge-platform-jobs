@@ -9,27 +9,24 @@ import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.domain.Event
-import org.sunbird.job.functions.AutoCreatorV2
+import org.sunbird.job.functions.AutoCreatorFunction
 import org.sunbird.job.util.{FlinkUtil, HttpUtil}
 
 
-class AutoCreatorV2StreamTask(config: AutoCreatorV2Config, kafkaConnector: FlinkKafkaConnector) {
+class AutoCreatorV2StreamTask(config: AutoCreatorV2Config, kafkaConnector: FlinkKafkaConnector, httpUtil: HttpUtil) {
   def process(): Unit = {
     implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
     implicit val eventTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
     implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
 
-    val processStreamTask = env.addSource(kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)).name(config.eventConsumer)
+    env.addSource(kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)).name(config.eventConsumer)
       .uid(config.eventConsumer).setParallelism(config.kafkaConsumerParallelism)
       .rebalance
-      .process(new AutoCreatorV2(config))
+      .process(new AutoCreatorFunction(config, httpUtil))
       .name(config.autoCreatorV2Function)
       .uid(config.autoCreatorV2Function)
       .setParallelism(config.parallelism)
-
-    processStreamTask.getSideOutput(config.autoCreatorOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaOutputTopic))
-      .name(config.autoCreatorEventProducer).uid(config.autoCreatorEventProducer).setParallelism(config.kafkaProducerParallelism)
 
     env.execute(config.jobName)
   }
@@ -46,7 +43,7 @@ object AutoCreatorV2StreamTask {
     val autoCreatorConfig = new AutoCreatorV2Config(config)
     val kafkaUtil = new FlinkKafkaConnector(autoCreatorConfig)
     val httpUtil = new HttpUtil
-    val task = new AutoCreatorV2StreamTask(autoCreatorConfig, kafkaUtil)
+    val task = new AutoCreatorV2StreamTask(autoCreatorConfig, kafkaUtil, httpUtil)
     task.process()
   }
 }

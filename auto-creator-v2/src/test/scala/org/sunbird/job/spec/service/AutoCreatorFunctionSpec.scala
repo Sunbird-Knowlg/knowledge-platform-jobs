@@ -5,20 +5,22 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.sunbird.job.domain.Event
 import org.sunbird.job.fixture.EventFixture
-import org.sunbird.job.functions.AutoCreatorV2
+import org.sunbird.job.functions.AutoCreatorFunction
 import org.sunbird.job.task.AutoCreatorV2Config
-import org.sunbird.job.util.JSONUtil
+import org.sunbird.job.util.{HttpUtil, JSONUtil}
 import org.sunbird.spec.BaseTestSpec
-
 import java.util
 
-class AutoCreatorV2ServiceTestSpec extends BaseTestSpec {
+import org.mockito.Mockito
+
+class AutoCreatorFunctionSpec extends BaseTestSpec {
   implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
   implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
 
   val config: Config = ConfigFactory.load("test.conf")
+  val mockHttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
   lazy val jobConfig: AutoCreatorV2Config = new AutoCreatorV2Config(config)
-  lazy val autoCreatorV2: AutoCreatorV2 = new AutoCreatorV2(jobConfig)
+  lazy val autoCreatorV2: AutoCreatorFunction = new AutoCreatorFunction(jobConfig, mockHttpUtil)
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()

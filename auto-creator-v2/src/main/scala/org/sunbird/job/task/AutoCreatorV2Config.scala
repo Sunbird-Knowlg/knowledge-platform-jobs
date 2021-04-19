@@ -4,8 +4,8 @@ import java.util
 import com.typesafe.config.Config
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
-import org.apache.flink.streaming.api.scala.OutputTag
 import org.sunbird.job.BaseJobConfig
+import scala.collection.JavaConverters._
 
 class AutoCreatorV2Config(override val config: Config) extends BaseJobConfig(config, "auto-creator-v2") {
 
@@ -16,12 +16,9 @@ class AutoCreatorV2Config(override val config: Config) extends BaseJobConfig(con
 
   // Kafka Topics Configuration
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
-  val kafkaOutputTopic: String = config.getString("kafka.failed.topic")
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
   override val parallelism: Int = config.getInt("task.parallelism")
   val kafkaProducerParallelism: Int = config.getInt("task.producer.parallelism")
-
-  val autoCreatorOutputTag: OutputTag[String] = OutputTag[String]("auto-creator-event-tag")
 
   // Metric List
   val totalEventsCount = "total-events-count"
@@ -36,7 +33,26 @@ class AutoCreatorV2Config(override val config: Config) extends BaseJobConfig(con
 
   val configVersion = "1.0"
 
-  // Redis Configurations
-  val relationCacheStore: Int = config.getInt("redis.database.relationCache.id")
-  val collectionCacheStore: Int = config.getInt("redis.database.collectionCache.id")
+  // DB Config
+  val cassandraHost: String = config.getString("lms-cassandra.host")
+  val cassandraPort: Int = config.getInt("lms-cassandra.port")
+  val graphRoutePath = config.getString("neo4j.routePath")
+  val graphName = config.getString("neo4j.graph")
+
+
+  // Schema Config
+  val definitionBasePath: String = if (config.hasPath("schema.basePath")) config.getString("schema.basePath") else "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local"
+  val schemaSupportVersionMap = if (config.hasPath("schema.supportedVersion")) config.getObject("schema.supportedVersion").unwrapped().asScala.toMap else Map[String, AnyRef]()
+
+  val cloudProps: List[String] = if (config.hasPath("object.cloud_props")) config.getStringList("object.cloud_props").asScala.toList else List("variants", "downloadUrl", "appIcon", "posterImage", "pdfUrl")
+  val overrideManifestProps: List[String] = if (config.hasPath("object.override_manifest_props")) config.getStringList("object.override_manifest_props").asScala.toList else List("variants", "downloadUrl", "previewUrl")
+  val expandableObjects: List[String] = if (config.hasPath("expandable_objects")) config.getStringList("expandable_objects").asScala.toList else List("QuestionSet")
+  val contentServiceBaseUrl : String = config.getString("content_service.baseUrl")
+
+
+  def getString(key: String, default: String): String = {
+    if(config.hasPath(key)) config.getString(key) else default
+  }
+
+  def getConfig() = config
 }
