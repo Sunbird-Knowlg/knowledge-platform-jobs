@@ -19,7 +19,7 @@ import scala.collection.mutable
 
 trait VideoEnrichmentHelper extends ThumbnailUtil {
 
-  private[this] val logger = LoggerFactory.getLogger(classOf[ImageEnrichmentHelper])
+  private[this] val logger = LoggerFactory.getLogger(classOf[VideoEnrichmentHelper])
   private val CONTENT_FOLDER = "content"
   private val ARTIFACT_FOLDER = "artifact"
 
