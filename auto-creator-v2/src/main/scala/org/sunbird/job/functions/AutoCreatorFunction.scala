@@ -47,8 +47,7 @@ class AutoCreatorFunction(config: AutoCreatorV2Config, httpUtil: HttpUtil,
 			logger.info("Processing event for bulk approval operation having identifier : " + event.objectId)
             logger.info("event edata : " + event.eData)
 			val definition: ObjectDefinition = defCache.getDefinition(event.objectType, config.schemaSupportVersionMap.getOrElse(event.objectType.toLowerCase(), "1.0").asInstanceOf[String], config.definitionBasePath)
-            val downloadUrl = event.metadata.getOrElse("downloadUrl", "").asInstanceOf[String]
-			val obj: ObjectData = getObject(event.objectId, event.objectType, downloadUrl, definition)(config)
+			val obj: ObjectData = getObject(event.objectId, event.objectType, event.downloadUrl, definition)(config)
 			logger.info("graph metadata for "+obj.identifier + " : "+obj.metadata)
 			val enObj = enrichMetadata(obj, event.metadata)(config)
 			logger.info("enriched metadata for "+enObj.identifier + " : "+enObj.metadata)
@@ -56,7 +55,7 @@ class AutoCreatorFunction(config: AutoCreatorV2Config, httpUtil: HttpUtil,
 			logger.info("final updated metadata for " + updatedObj.identifier + " : " + JSONUtil.serialize(updatedObj.metadata))
 			val enrObj = if(config.expandableObjects.contains(updatedObj.objectType)) {
 				val chMap: Map[String, AnyRef] = getChildren(updatedObj)(config)
-				val childrenObj: List[ObjectData] = processChildren(chMap)(config, neo4JUtil, cassandraUtil, cloudStorageUtil, defCache)
+				val childrenObj: Map[String, ObjectData] = processChildren(chMap)(config, neo4JUtil, cassandraUtil, cloudStorageUtil, defCache)
 				enrichHierarchy(updatedObj, childrenObj)(config)
 			} else updatedObj
 			val extConfig = ExtDataConfig(config.getString(enrObj.objectType.toLowerCase+"_keyspace", ""), definition.getExternalTable, definition.getExternalPrimaryKey, definition.getExternalProps)

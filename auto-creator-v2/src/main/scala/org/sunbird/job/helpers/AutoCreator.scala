@@ -10,7 +10,7 @@ import org.sunbird.job.model.{ExtDataConfig, ObjectData}
 import org.sunbird.job.task.AutoCreatorV2Config
 import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, FileUtils, HTTPResponse, HttpUtil, JSONUtil, Neo4JUtil}
 
-trait AutoCreator extends ObjectUpdater {
+trait AutoCreator extends ObjectUpdater with CollectionUpdater with HierarchyEnricher {
 
 	private[this] val logger = LoggerFactory.getLogger(classOf[AutoCreator])
 
@@ -36,15 +36,6 @@ trait AutoCreator extends ObjectUpdater {
 		new ObjectData(obj.identifier, obj.objectType, (obj.metadata ++ sysMeta ++ oProps), obj.extData, obj.hierarchy)
 	}
 
-	def enrichHierarchy(obj: ObjectData, childrens: List[ObjectData])(implicit config: AutoCreatorV2Config): ObjectData = {
-		//TODO: use children's for hierarchy enrichment.
-		val data: Map[String, AnyRef] = config.cloudProps.filter(x => obj.metadata.get(x).nonEmpty).flatMap(prop => List((prop, obj.metadata.get(prop).get))).toMap
-		val hierarchy: Map[String, AnyRef] = obj.hierarchy.get ++ data
-		val extData = obj.extData.getOrElse(Map()) ++ Map("hierarchy" -> hierarchy)
-		new ObjectData(obj.identifier, obj.objectType, obj.metadata, Some(extData), Some(hierarchy))
-
-	}
-
 	def processCloudMeta(obj: ObjectData)(implicit config: AutoCreatorV2Config, cloudStorageUtil: CloudStorageUtil): ObjectData = {
 		val data = config.cloudProps.filter(x => obj.metadata.get(x).nonEmpty).flatMap(prop => {
 			if (StringUtils.equalsIgnoreCase("variants", prop)) obj.metadata.getOrElse("variants", Map()).asInstanceOf[Map[String, AnyRef]].toList
@@ -61,16 +52,8 @@ trait AutoCreator extends ObjectUpdater {
 		new ObjectData(obj.identifier, obj.objectType, updatedMeta, obj.extData, obj.hierarchy)
 	}
 
-	def getChildren(obj: ObjectData)(implicit config: AutoCreatorV2Config): Map[String, AnyRef] = {
-		//TODO: Filter only visibility Parent end resource
-		obj.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]].flatMap(ch => {
-			val childProps: Map[String, AnyRef] = config.cloudProps.filter(x => obj.metadata.get(x).nonEmpty).map(prop => (prop, obj.metadata.getOrElse(prop, ""))).toMap
-			Map(ch.getOrElse("identifier", "").asInstanceOf[String] -> childProps)
-		}).toMap
-	}
-
-	def processChildren(children: Map[String, AnyRef])(implicit config: AutoCreatorV2Config, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, cloudStorageUtil: CloudStorageUtil, defCache: DefinitionCache): List[ObjectData] = {
-		children.map(ch => {
+	def processChildren(children: Map[String, AnyRef])(implicit config: AutoCreatorV2Config, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, cloudStorageUtil: CloudStorageUtil, defCache: DefinitionCache): Map[String, ObjectData] = {
+		children.flatMap(ch => {
 			logger.info("Processing Children Having Identifier : " + ch._1)
 			val objType = ch._2.asInstanceOf[Map[String, AnyRef]].getOrElse("objectType", "").asInstanceOf[String]
 			val definition: ObjectDefinition = defCache.getDefinition(objType, config.schemaSupportVersionMap.getOrElse(objType.toLowerCase(), "1.0").asInstanceOf[String], config.definitionBasePath)
@@ -84,52 +67,8 @@ trait AutoCreator extends ObjectUpdater {
 			val extConfig = ExtDataConfig(config.getString(updatedObj.objectType.toLowerCase + "_keyspace", ""), definition.getExternalTable, definition.getExternalPrimaryKey, definition.getExternalProps)
 			saveExternalData(updatedObj.identifier, updatedObj.extData.getOrElse(Map()), extConfig)(cassandraUtil)
 			saveGraphData(updatedObj.identifier, updatedObj.metadata, definition)(neo4JUtil)
-			updatedObj
-		}).toList
+			Map(updatedObj.identifier-> updatedObj)
+		})
 	}
 
-	def linkCollection(identifier: String, collection: List[Map[String, AnyRef]])(implicit config: AutoCreatorV2Config, httpUtil: HttpUtil) = {
-		if (collection.nonEmpty)
-			collection.foreach(coll => {
-				val collId = coll.getOrElse("identifier", "").asInstanceOf[String]
-				val unitId = coll.getOrElse("unitId", "").asInstanceOf[String]
-				if ((StringUtils.isNotBlank(collId) && StringUtils.isNotBlank(unitId)) && isValidHierarchy(collId, unitId)) addToHierarchy(collId, unitId, identifier)
-			})
-	}
-
-	def isValidHierarchy(collId: String, unitId: String)(implicit config: AutoCreatorV2Config, httpUtil: HttpUtil): Boolean = {
-		val hierarchy = getHierarchy(collId)
-		val childNodes: List[String] = hierarchy.getOrElse("childNodes", List()).asInstanceOf[List[String]]
-		if (childNodes.nonEmpty && childNodes.contains(unitId)) true else false
-	}
-
-	def getHierarchy(identifier: String)(implicit config: AutoCreatorV2Config, httpUtil: HttpUtil): Map[String, AnyRef] = {
-		val url = config.contentServiceBaseUrl + "/content/v3/hierarchy/" + identifier + "?mode=edit"
-		val resp: HTTPResponse = httpUtil.get(url)
-		if (null != resp && resp.status == 200) getResult(resp).getOrElse("content", Map()).asInstanceOf[Map[String, AnyRef]] else {
-			val msg = "Unable to fetch collection hierarchy for : " + identifier + " | Response Code : " + resp.status
-			logger.error(msg)
-			throw new Exception(msg)
-		}
-	}
-
-	def addToHierarchy(collId: String, unitId: String, resourceId: String)(implicit config: AutoCreatorV2Config, httpUtil: HttpUtil) = {
-		val url = config.contentServiceBaseUrl + "/content/v3/hierarchy/add"
-		val requestBody = "{\"request\":{\"rootId\":\"" + collId + "\",\"unitId\":\"" + unitId + "\",\"children\":[\"" + resourceId + "\"]}}"
-		val resp = httpUtil.patch(url, requestBody)
-		if (null != resp && resp.status == 200) {
-			val contentId = getResult(resp).getOrElse("rootId", "").asInstanceOf[String]
-			if (StringUtils.equalsIgnoreCase(contentId, collId))
-				logger.info("Content Hierarchy Updated Successfully for: " + collId)
-		} else {
-			val msg = "Hierarchy Update Failed For : " + collId
-			logger.error(msg)
-			throw new Exception(msg)
-		}
-	}
-
-	def getResult(response: HTTPResponse): Map[String, AnyRef] = {
-		val body = JSONUtil.deserialize[Map[String, AnyRef]](response.body)
-		body.getOrElse("result", Map()).asInstanceOf[Map[String, AnyRef]]
-	}
 }

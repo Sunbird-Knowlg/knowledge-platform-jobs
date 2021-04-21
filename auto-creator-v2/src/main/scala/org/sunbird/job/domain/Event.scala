@@ -25,13 +25,14 @@ class Event(eventMap: java.util.Map[String, Any]) extends JobRequest(eventMap) {
 
 	def repository: String = readOrDefault[String]("edata.repository", "")
 
+	def downloadUrl: String = readOrDefault[String]("edata.metadata.downloadUrl", "")
+
 	def pkgVersion: Double = {
 		val pkgVersion = readOrDefault[Int]("edata.metadata.pkgVersion", 0)
 		pkgVersion.toDouble
 	}
 
 	def isValid(): Boolean = {
-		val downloadUrl = metadata.getOrElse("downloadUrl", "").asInstanceOf[String]
 		(StringUtils.equals("auto-create", action) && StringUtils.isNotBlank(objectId)) && (objectTypes.contains(objectType)
 		  && StringUtils.isNotBlank(repository) && metadata.nonEmpty) && (StringUtils.isNotBlank(downloadUrl) && StringUtils.endsWith(downloadUrl, ".ecar"))
 	}
