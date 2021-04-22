@@ -25,7 +25,7 @@ object QuestionPublishUtil extends QuestionPublisher {
 				val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil)
 				// Generate ECAR
 				logger.info("Ecar generation for Question: " + enrichedObj.identifier)
-				val objWithEcar = generateECAR(enrichedObj, pkgTypes)(ec, cloudStorageUtil)
+				val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, cloudStorageUtil)
 				logger.info("Ecar generation done for Question: " + enrichedObj.identifier)
 
 				saveOnSuccess(objWithEcar)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
@@ -37,14 +37,7 @@ object QuestionPublishUtil extends QuestionPublisher {
 		})
 
 	}
-	def generateECAR(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil): ObjectData = {
-		logger.info("QuestionPublishFunction:generateECAR: Ecar generation done for Question: " + data.identifier)
-		val ecarMap: Map[String, String] = generateEcar(data, pkgTypes)
-		val variants: java.util.Map[String, String] = ecarMap.map { case (key, value) => key.toLowerCase -> value }.asJava
-		logger.info("QuestionSetPublishFunction ::: generateECAR ::: ecar map ::: " + ecarMap)
-		val meta: Map[String, AnyRef] = Map("downloadUrl" -> ecarMap.getOrElse("FULL", ""), "variants" -> variants)
-		new ObjectData(data.identifier, data.metadata ++ meta, data.extData, data.hierarchy)
-	}
+
 }
 
 class QuestionPublishUtil {}

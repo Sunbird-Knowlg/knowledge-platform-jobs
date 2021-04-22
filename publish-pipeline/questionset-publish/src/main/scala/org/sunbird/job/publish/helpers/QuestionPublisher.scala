@@ -7,12 +7,14 @@ import com.datastax.driver.core.querybuilder.{QueryBuilder, Select, Update}
 import org.apache.commons.lang3
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
-import org.sunbird.job.util.{CassandraUtil, Neo4JUtil, ScalaJsonUtil}
+import org.sunbird.job.util.{CassandraUtil, Neo4JUtil}
 import org.sunbird.publish.core.{ExtDataConfig, ObjectData}
 import org.sunbird.publish.helpers._
+import org.sunbird.publish.util.CloudStorageUtil
 
 import scala.collection.mutable.ListBuffer
 import scala.collection.JavaConverters._
+import scala.concurrent.ExecutionContext
 
 trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnrichment with EcarGenerator with ObjectUpdater {
 
@@ -105,5 +107,14 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
 
 	override def getDataForEcar(obj: ObjectData): Option[List[Map[String, AnyRef]]] = {
 		Some(List(obj.metadata ++ obj.extData.getOrElse(Map()).filter(p => !excludeBundleMeta.contains(p._1.asInstanceOf[String]))))
+	}
+
+	def getObjectWithEcar(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil): ObjectData = {
+		logger.info("QuestionPublishFunction:generateECAR: Ecar generation done for Question: " + data.identifier)
+		val ecarMap: Map[String, String] = generateEcar(data, pkgTypes)
+		val variants: java.util.Map[String, String] = ecarMap.map { case (key, value) => key.toLowerCase -> value }.asJava
+		logger.info("QuestionSetPublishFunction ::: generateECAR ::: ecar map ::: " + ecarMap)
+		val meta: Map[String, AnyRef] = Map("downloadUrl" -> ecarMap.getOrElse("FULL", ""), "variants" -> variants)
+		new ObjectData(data.identifier, data.metadata ++ meta, data.extData, data.hierarchy)
 	}
 }
