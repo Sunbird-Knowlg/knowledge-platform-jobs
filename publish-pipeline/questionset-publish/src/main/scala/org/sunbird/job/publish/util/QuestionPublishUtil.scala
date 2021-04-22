@@ -6,9 +6,7 @@ import org.sunbird.job.publish.helpers.QuestionPublisher
 import org.sunbird.job.util.{CassandraUtil, Neo4JUtil}
 import org.sunbird.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
 import org.sunbird.publish.util.CloudStorageUtil
-
 import scala.concurrent.ExecutionContext
-import scala.collection.JavaConverters._
 
 object QuestionPublishUtil extends QuestionPublisher {
 
@@ -23,11 +21,8 @@ object QuestionPublishUtil extends QuestionPublisher {
 			val messages: List[String] = validate(obj, obj.identifier, validateQuestion)
 			if (messages.isEmpty) {
 				val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil)
-				// Generate ECAR
-				logger.info("Ecar generation for Question: " + enrichedObj.identifier)
 				val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, cloudStorageUtil)
-				logger.info("Ecar generation done for Question: " + enrichedObj.identifier)
-
+				logger.info("Ecar generation done for Question: " + objWithEcar.identifier)
 				saveOnSuccess(objWithEcar)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
 				logger.info("Question publishing completed successfully for : " + qData.identifier)
 			} else {
@@ -37,7 +32,6 @@ object QuestionPublishUtil extends QuestionPublisher {
 		})
 
 	}
-
 }
 
 class QuestionPublishUtil {}
