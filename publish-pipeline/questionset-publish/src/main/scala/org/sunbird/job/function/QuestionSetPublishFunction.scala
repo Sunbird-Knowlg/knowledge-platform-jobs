@@ -76,7 +76,7 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 			//TODO: Remove below statement
 			childQuestions.foreach(ch => logger.info("child questions visibility parent identifier : " + ch.identifier))
 			// Publish Child Questions
-			QuestionPublishUtil.publishQuestions(obj.identifier, childQuestions)(neo4JUtil, cassandraUtil, qReaderConfig, cloudStorageUtil, definitionCache, definitionConfig)
+			QuestionPublishUtil.publishQuestions(obj.identifier, childQuestions)(ec, neo4JUtil, cassandraUtil, qReaderConfig, cloudStorageUtil, definitionCache, definitionConfig)
 			val pubMsgs: List[String] = isChildrenPublished(childQuestions)
 			if(pubMsgs.isEmpty) {
 				// Enrich Object as well as hierarchy

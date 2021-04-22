@@ -2,6 +2,7 @@ package org.sunbird.job.function
 
 import java.lang.reflect.Type
 
+import akka.dispatch.ExecutionContexts
 import com.google.gson.reflect.TypeToken
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
@@ -13,8 +14,11 @@ import org.sunbird.job.publish.domain.PublishMetadata
 import org.sunbird.job.publish.helpers.QuestionPublisher
 import org.sunbird.job.task.QuestionSetPublishConfig
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
-import org.sunbird.publish.core.{DefinitionConfig, ExtDataConfig}
+import org.sunbird.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
 import org.sunbird.publish.util.CloudStorageUtil
+
+import scala.collection.JavaConverters._
+import scala.concurrent.ExecutionContext
 
 class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUtil,
                               @transient var neo4JUtil: Neo4JUtil = null,
@@ -29,11 +33,15 @@ class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUt
 	val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
 	private val readerConfig = ExtDataConfig(config.questionKeyspaceName, config.questionTableName)
 
+	@transient var ec: ExecutionContext = _
+	private val pkgTypes = List("FULL", "ONLINE")
+
 	override def open(parameters: Configuration): Unit = {
 		super.open(parameters)
 		cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort)
 		neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName)
 		cloudStorageUtil = new CloudStorageUtil(config)
+		ec = ExecutionContexts.global
 		definitionCache = new DefinitionCache()
 		definitionConfig = DefinitionConfig(config.schemaSupportVersionMap, config.definitionBasePath)
 	}
@@ -54,7 +62,12 @@ class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUt
 		val messages:List[String] = validate(obj, obj.identifier, validateQuestion)
 		if (messages.isEmpty) {
 			val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil)
-			saveOnSuccess(enrichedObj)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
+			// Generate ECAR
+			logger.info("Ecar generation for Question: " + enrichedObj.identifier)
+			val objWithEcar = generateECAR(enrichedObj, pkgTypes)(ec, cloudStorageUtil)
+			logger.info("Ecar generation done for Question: " + enrichedObj.identifier)
+			saveOnSuccess(objWithEcar)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
+			//saveOnSuccess(enrichedObj)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
 			metrics.incCounter(config.questionPublishSuccessEventCount)
 			logger.info("Question publishing completed successfully for : " + data.identifier)
 		} else {
@@ -62,6 +75,15 @@ class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUt
 			metrics.incCounter(config.questionPublishFailedEventCount)
 			logger.info("Question publishing failed for : " + data.identifier)
 		}
+	}
+
+	def generateECAR(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil): ObjectData = {
+		logger.info("QuestionPublishFunction:generateECAR: Ecar generation done for Question: " + data.identifier)
+		val ecarMap: Map[String, String] = generateEcar(data, pkgTypes)
+		val variants: java.util.Map[String, String] = ecarMap.map { case (key, value) => key.toLowerCase -> value }.asJava
+		logger.info("QuestionSetPublishFunction ::: generateECAR ::: ecar map ::: " + ecarMap)
+		val meta: Map[String, AnyRef] = Map("downloadUrl" -> ecarMap.getOrElse("FULL", ""), "variants" -> variants)
+		new ObjectData(data.identifier, data.metadata ++ meta, data.extData, data.hierarchy)
 	}
 
 }

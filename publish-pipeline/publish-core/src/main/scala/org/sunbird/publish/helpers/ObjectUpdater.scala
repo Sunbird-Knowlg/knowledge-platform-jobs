@@ -68,11 +68,20 @@ trait ObjectUpdater {
         }
       } else {
         prop._2 match {
+          case _: Map[String, AnyRef] =>
+            val strValue = JSONUtil.serialize(ScalaJsonUtil.serialize(prop._2))
+            s"""n.${prop._1}=${strValue}"""
+          case _: util.Map[String, AnyRef] =>
+            val strValue = JSONUtil.serialize(JSONUtil.serialize(prop._2))
+            s"""n.${prop._1}=${strValue}"""
           case _: List[String] =>
             val strValue = ScalaJsonUtil.serialize(prop._2)
             s"""n.${prop._1}=${strValue}"""
           case _: String =>
             s"""n.${prop._1}="${prop._2}""""
+          case _: util.List[String] =>
+            val strValue = JSONUtil.serialize(prop._2)
+            s"""n.${prop._1}=$strValue"""
           case _ =>
             val strValue = JSONUtil.serialize(prop._2)
             s"""n.${prop._1}=$strValue"""

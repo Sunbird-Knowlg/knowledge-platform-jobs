@@ -164,7 +164,7 @@ trait ObjectBundle {
 	}
 
 	def getDownloadUrls(identifier: String, pkgType: String, isOnlineObj: Boolean, data: Map[String, AnyRef]): Map[AnyRef, String] = {
-		val urlFields = if (StringUtils.equals("ONLINE", pkgType)) List() else List("appIcon", "grayScaleAppIcon", "artifactUrl", "itemSetPreviewUrl")
+		val urlFields = if (StringUtils.equals("ONLINE", pkgType)) List() else List("appIcon", "grayScaleAppIcon", "artifactUrl", "itemSetPreviewUrl", "media")
 		data.filter(en => urlFields.contains(en._1) && null != en._2).flatMap(entry => {
 			isOnlineObj match {
 				case true => {
@@ -173,14 +173,30 @@ trait ObjectBundle {
 					} else Map[AnyRef, String]()
 				}
 				case false => {
-					if (entry._2.isInstanceOf[File]) {
-						getUrlMap(identifier, pkgType, entry._1, entry._2)
-					} else if (entry._2.isInstanceOf[String] && validUrl(entry._2.asInstanceOf[String])) {
-						getUrlMap(identifier, pkgType, entry._1, entry._2)
-					} else Map[AnyRef, String]()
+					if(StringUtils.equalsIgnoreCase(entry._1, "media")){
+						logger.info("MEDIA::  " + entry._2.asInstanceOf[String])
+						val media: List[Map[String, AnyRef]] = if(null != entry._2) ScalaJsonUtil.deserialize[List[Map[String, AnyRef]]](entry._2.asInstanceOf[String]) else List()
+						logger.info("MEDIA::::  " + media)
+						getMediaUrl(media, identifier, pkgType)
+					}else{
+						if (entry._2.isInstanceOf[File]) {
+							getUrlMap(identifier, pkgType, entry._1, entry._2)
+						} else if (entry._2.isInstanceOf[String] && validUrl(entry._2.asInstanceOf[String])) {
+							getUrlMap(identifier, pkgType, entry._1, entry._2)
+						} else Map[AnyRef, String]()
+					}
 				}
 			}
 		})
+	}
+
+	def getMediaUrl(media: List[Map[String, AnyRef]], identifier: String, pkgType: String): Map[AnyRef, String] ={
+		media.map(entry => {
+			val url = entry.getOrElse("baseUrl", "").asInstanceOf[String] + entry.getOrElse("src", "").asInstanceOf[String]
+			if (url.isInstanceOf[String] && validUrl(url.asInstanceOf[String])) {
+				Map[AnyRef, String](url -> (identifier.trim + entry.getOrElse("src", "").asInstanceOf[String]))
+			} else Map[AnyRef, String]()
+		}).flatten.toMap
 	}
 
 	def getUrlMap(identifier: String, pkgType: String, key: String, value: AnyRef): Map[AnyRef, String] = {
