@@ -44,7 +44,6 @@ class AutoCreatorV2TaskTestSpec extends BaseTestSpec {
 
   ignore should "generate event" in {
     when(mockKafkaUtil.kafkaMapSource(jobConfig.kafkaInputTopic)).thenReturn(new AutoCreatorV2MapSource)
-
     new AutoCreatorV2StreamTask(jobConfig, mockKafkaUtil, mockHttpUtil).process()
   }
 }

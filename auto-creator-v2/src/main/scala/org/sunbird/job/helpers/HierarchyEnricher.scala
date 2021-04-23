@@ -42,6 +42,8 @@ trait HierarchyEnricher {
 		newChildren
 	}
 
+	//TODO: If children is expandable object, read the hierarchy and replace in actual hierarchy.
+	// If Not Found, throw exception and kill the job.
 	def enrichMetadata(element: Map[String, AnyRef], chObjects: Map[String, ObjectData])(implicit config: AutoCreatorV2Config): Map[String, AnyRef] = {
 		if (config.expandableObjects.contains(element.getOrElse("objectType", "").asInstanceOf[String]) && StringUtils.equalsIgnoreCase(element.getOrElse("visibility", "").asInstanceOf[String], "Parent")) {
 			val children: List[Map[String, AnyRef]] = element.getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]

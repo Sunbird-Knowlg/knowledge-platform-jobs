@@ -43,6 +43,7 @@ class AutoCreatorFunction(config: AutoCreatorV2Config, httpUtil: HttpUtil,
 	                            context: ProcessFunction[Event, String]#Context,
 	                            metrics: Metrics): Unit = {
 		metrics.incCounter(config.totalEventsCount)
+		// TODO: Check if object already exists. If exists, add validation based on pkgVersion
 		if (event.isValid) {
 			logger.info("Processing event for bulk approval operation having identifier : " + event.objectId)
             logger.info("event edata : " + event.eData)
@@ -62,6 +63,8 @@ class AutoCreatorFunction(config: AutoCreatorV2Config, httpUtil: HttpUtil,
 			saveExternalData(enrObj.identifier, enrObj.extData.getOrElse(Map()), extConfig)(cassandraUtil)
 			saveGraphData(enrObj.identifier, enrObj.metadata, definition)(neo4JUtil)
 			linkCollection(enrObj.identifier, event.collection)(config, httpUtil)
+			logger.info("Bulk approval operation completed for : " + event.objectId)
+			metrics.incCounter(config.successEventCount)
 		} else {
 			logger.info("Event is not qualified for bulk approval having identifier : " + event.objectId + " | objectType : " + event.objectType + " | source : " + event.repository)
 			metrics.incCounter(config.skippedEventCount)
