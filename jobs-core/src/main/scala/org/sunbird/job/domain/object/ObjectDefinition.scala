@@ -33,4 +33,23 @@ class ObjectDefinition(val objectType: String, val version: String, val schema: 
 
   def relationLabel(objectType: String, direction: String, relationType: String): Option[String] =
     relationLabelsMap.get(relationKey(objectType, direction, relationType))
+
+  def getExternalProps(): Map[String, AnyRef] = {
+    val external = config.getOrElse("external", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
+    val properties = external.getOrElse("properties", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
+    val prop: Map[String, AnyRef] = properties.map(p => (p._1, p._2.asInstanceOf[Map[String, AnyRef]].getOrElse("type", "").asInstanceOf[String]))
+    prop
+  }
+
+  def getExternalTable(): String = {
+    val external = config.getOrElse("external", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
+    external.getOrElse("tableName", "").asInstanceOf[String]
+  }
+
+  def getExternalPrimaryKey(): List[String] = {
+    val external = config.getOrElse("external", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
+    external.getOrElse("primaryKey", List()).asInstanceOf[List[String]]
+  }
+
+  def getRelationLabels(): List[String] = relationLabelsMap.values.toList.distinct
 }
