@@ -10,8 +10,9 @@ import java.net.{HttpURLConnection, URL}
 import org.apache.commons.io.{FileUtils, FilenameUtils, IOUtils}
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
-import org.sunbird.job.util.ScalaJsonUtil
-import org.sunbird.publish.core.{ObjectData, Slug}
+import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
+import org.sunbird.job.util.{JSONUtil, ScalaJsonUtil}
+import org.sunbird.publish.core.{DefinitionConfig, ObjectData, Slug}
 
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.concurrent.duration.Duration
@@ -32,24 +33,30 @@ trait ObjectBundle {
 		Slug.makeSlug(metadata.getOrElse("name", "").asInstanceOf[String], true) + "_" + System.currentTimeMillis() + "_" + identifier + "_" + metadata.getOrElse("pkgVersion", "") + (if (StringUtils.equals("FULL", pkgType)) ".ecar" else "_" + pkgType + ".ecar")
 	}
 
-	def getManifestData(identifier: String, pkgType: String, objList: List[Map[String, AnyRef]]): (List[Map[String, AnyRef]], List[Map[AnyRef, String]]) = {
+	def getManifestData(identifier: String, pkgType: String, objList: List[Map[String, AnyRef]])(implicit defCache: DefinitionCache, defConfig: DefinitionConfig): (List[Map[String, AnyRef]], List[Map[AnyRef, String]]) = {
 		objList.map(data => {
 			val identifier = data.getOrElse("identifier", "").asInstanceOf[String]
 			val mimeType = data.getOrElse("mimeType", "").asInstanceOf[String]
+			val objectType = data.getOrElse("objectType", "").asInstanceOf[String].replaceAll("Image", "")
 			val contentDisposition = data.getOrElse("contentDisposition", "").asInstanceOf[String]
 			val dUrlMap: Map[AnyRef, String] = getDownloadUrls(identifier, pkgType, isOnline(mimeType, contentDisposition), data)
 			val updatedObj: Map[String, AnyRef] = data.map(entry => if (dUrlMap.contains(entry._2)) (entry._1.asInstanceOf[String], dUrlMap.getOrElse(entry._2.asInstanceOf[String], "").asInstanceOf[AnyRef]) else entry)
-			val dMap = if (StringUtils.equalsIgnoreCase(contentDisposition, "online-only")) Map("downloadUrl" -> "")
-			else Map("downloadUrl" -> updatedObj.getOrElse("artifactUrl", "").asInstanceOf[String])
+			val downloadUrl: String = updatedObj.getOrElse("downloadUrl", "").asInstanceOf[String]
+			val dUrl: String = if(StringUtils.isNotBlank(downloadUrl)) downloadUrl else updatedObj.getOrElse("artifactUrl", "").asInstanceOf[String]
+			val dMap = if (StringUtils.equalsIgnoreCase(contentDisposition, "online-only")) Map("downloadUrl" -> null)
+			else Map("downloadUrl" -> dUrl)
 			val downloadUrls: Map[AnyRef, String] = dUrlMap.keys.flatMap(key => Map(key -> identifier)).toMap
-			(updatedObj ++ dMap, downloadUrls)
+			val mergedMeta = updatedObj ++ dMap
+			val definition: ObjectDefinition = defCache.getDefinition(objectType, defConfig.supportedVersion.getOrElse(objectType.toLowerCase, "1.0").asInstanceOf[String], defConfig.basePath)
+			val enMeta = mergedMeta.filter(x => null != x._2).map(element => (element._1, convertJsonProperties(element, definition.getJsonProps())))
+			(enMeta, downloadUrls)
 		}).unzip
 	}
 
-	def getObjectBundle(obj: ObjectData, objList: List[Map[String, AnyRef]], pkgType: String)(implicit ec: ExecutionContext): File = {
+	def getObjectBundle(obj: ObjectData, objList: List[Map[String, AnyRef]], pkgType: String)(implicit ec: ExecutionContext, defCache: DefinitionCache, defConfig: DefinitionConfig): File = {
 		val bundleFileName = bundleLocation + File.separator + getBundleFileName(obj.identifier, obj.metadata, pkgType)
 		val bundlePath = bundleLocation + File.separator + System.currentTimeMillis + "_temp"
-		val objType = obj.metadata.getOrElse("IL_FUNC_OBJECT_TYPE", "").asInstanceOf[String]
+		val objType = obj.metadata.getOrElse("objectType", "").asInstanceOf[String]
 		// create manifest data
 		val (updatedObjList, dUrls) = getManifestData(obj.identifier, pkgType, objList)
 		logger.info("ObjectBundle ::: getObjectBundle ::: updatedObjList :::: " + updatedObjList)
@@ -220,10 +227,6 @@ trait ObjectBundle {
 		try {
 			val file: File = new File(bundlePath + File.separator + manifestFileName)
 			val header: String = s"""{"id": "sunbird.${objType.toLowerCase()}.archive", "ver": "$defaultManifestVersion" ,"ts":"$getTimeStamp", "params":{"resmsgid": "$getUUID"}, "archive":{ "count": ${objList.size}, "ttl":24, "items": """
-			val jsonProps = List("variants", "originData")
-			//TODO: complete below commented code
-			//convertStringToMapInMetadata(contents, ContentWorkflowPipelineParams.variants.name());
-			//convertStringToMapInMetadata(contents, ContentWorkflowPipelineParams.originData.name());
 			val mJson = header + ScalaJsonUtil.serialize(objList) + "}}"
 			FileUtils.writeStringToFile(file, mJson)
 			file
@@ -237,7 +240,7 @@ trait ObjectBundle {
 		try {
 			if (obj.hierarchy.getOrElse(Map()).nonEmpty) {
 				val file: File = new File(bundlePath + File.separator + hierarchyFileName)
-				val objType: String = obj.metadata.getOrElse("IL_FUNC_OBJECT_TYPE", "").asInstanceOf[String]
+				val objType: String = obj.metadata.getOrElse("objectType", "").asInstanceOf[String]
 				val metadata = obj.metadata - ("IL_UNIQUE_ID", "IL_FUNC_OBJECT_TYPE", "IL_SYS_NODE_TYPE")
 				val children = obj.hierarchy.get.getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
 				val hMap: Map[String, AnyRef] = metadata ++ Map("identifier" -> obj.identifier.replace(".img", ""), "objectType" -> objType, "children" -> children)
@@ -273,4 +276,12 @@ trait ObjectBundle {
 	}
 
 	def getUUID(): String = util.UUID.randomUUID().toString
+
+	def convertJsonProperties(entry: (String, AnyRef), jsonProps: scala.List[String]) = {
+		if(jsonProps.contains(entry._1)) {
+			try {JSONUtil.deserialize[Object](entry._2.asInstanceOf[String])}
+			catch { case e: Exception => entry._2 }
+		}
+		else entry._2
+	}
 }

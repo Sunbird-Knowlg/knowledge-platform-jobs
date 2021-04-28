@@ -11,10 +11,11 @@ import org.cassandraunit.utils.EmbeddedCassandraServerHelper
 import org.mockito.Mockito
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
+import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.publish.helpers.QuestionPublisher
 import org.sunbird.job.task.QuestionSetPublishConfig
 import org.sunbird.job.util.{CassandraUtil, Neo4JUtil}
-import org.sunbird.publish.core.{ExtDataConfig, ObjectData}
+import org.sunbird.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
 import org.sunbird.publish.util.CloudStorageUtil
 
 
@@ -27,6 +28,8 @@ class QuestionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matcher
 	implicit val readerConfig: ExtDataConfig = ExtDataConfig(jobConfig.questionKeyspaceName, jobConfig.questionTableName)
 	implicit val cloudStorageUtil = new CloudStorageUtil(jobConfig)
 	implicit val ec = ExecutionContexts.global
+	implicit val defCache = new DefinitionCache()
+	implicit val defConfig = DefinitionConfig(jobConfig.schemaSupportVersionMap, jobConfig.definitionBasePath)
 
 	override protected def beforeAll(): Unit = {
 		super.beforeAll()
@@ -106,7 +109,7 @@ class QuestionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matcher
 	"getObjectWithEcar" should "return object with ecar url" in {
 		//val media = List(Map("id"->"do_1127129497561497601326", "type"->"image","src"->"/content/do_1127129497561497601326.img/artifact/sunbird_1551961194254.jpeg","baseUrl"->"https://sunbirddev.blob.core.windows.net/sunbird-content-dev"))
 		val data = new ObjectData("do_123", Map("objectType" -> "Question", "identifier"->"do_123", "name"->"Test Question"), Some(Map("responseDeclaration" -> "test", "media"->"[{\"id\":\"do_1127129497561497601326\",\"type\":\"image\",\"src\":\"/content/do_1127129497561497601326.img/artifact/sunbird_1551961194254.jpeg\",\"baseUrl\":\"https://sunbirddev.blob.core.windows.net/sunbird-content-dev\"}]")), Some(Map()))
-		val result = new TestQuestionPublisher().getObjectWithEcar(data, List("FULL", "ONLINE"))(ec, cloudStorageUtil)
+		val result = new TestQuestionPublisher().getObjectWithEcar(data, List("FULL", "ONLINE"))(ec, cloudStorageUtil, defCache, defConfig)
 		StringUtils.isNotBlank(result.metadata.getOrElse("downloadUrl", "").asInstanceOf[String])
 
 	}
