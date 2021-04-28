@@ -42,7 +42,7 @@ trait ObjectUpdater {
   @throws[Exception]
   def saveOnFailure(obj: ObjectData, messages: List[String])(implicit neo4JUtil: Neo4JUtil): Unit = {
     val errorMessages = messages.mkString("; ")
-    val nodeId = obj.metadata.get("IL_UNIQUE_ID").get
+    val nodeId = obj.dbId
     val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$nodeId"}) SET n.status="Failed", n.publishError="$errorMessages", $auditPropsUpdateQuery;"""
     logger.info("Query: " + query)
     neo4JUtil.executeQuery(query)
