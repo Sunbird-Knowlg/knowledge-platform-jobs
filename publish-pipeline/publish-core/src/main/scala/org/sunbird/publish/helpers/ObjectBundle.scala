@@ -240,7 +240,7 @@ trait ObjectBundle {
 		try {
 			if (obj.hierarchy.getOrElse(Map()).nonEmpty) {
 				val file: File = new File(bundlePath + File.separator + hierarchyFileName)
-				val objType: String = obj.metadata.getOrElse("IL_FUNC_OBJECT_TYPE", "").asInstanceOf[String]
+				val objType: String = obj.metadata.getOrElse("objectType", "").asInstanceOf[String]
 				val metadata = obj.metadata - ("IL_UNIQUE_ID", "IL_FUNC_OBJECT_TYPE", "IL_SYS_NODE_TYPE")
 				val children = obj.hierarchy.get.getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
 				val hMap: Map[String, AnyRef] = metadata ++ Map("identifier" -> obj.identifier.replace(".img", ""), "objectType" -> objType, "children" -> children)
