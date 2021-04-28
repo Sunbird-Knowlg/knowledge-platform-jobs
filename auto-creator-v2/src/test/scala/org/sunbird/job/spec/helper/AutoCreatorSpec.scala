@@ -4,14 +4,17 @@ import com.typesafe.config.{Config, ConfigFactory}
 import org.cassandraunit.CQLDataLoader
 import org.cassandraunit.dataset.cql.FileCQLDataSet
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
+import org.mockito.ArgumentMatchers.{any, anyString}
 import org.mockito.Mockito
+import org.mockito.Mockito.when
+import org.neo4j.driver.v1.StatementResult
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.helpers.AutoCreator
-import org.sunbird.job.model.{ExtDataConfig, ObjectData}
+import org.sunbird.job.model.ObjectData
 import org.sunbird.job.task.AutoCreatorV2Config
-import org.sunbird.job.util.{CassandraUtil, Neo4JUtil}
+import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, Neo4JUtil}
 
 class AutoCreatorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
 
@@ -22,7 +25,7 @@ class AutoCreatorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with
 	val defCache = new DefinitionCache()
 	val qDefinition: ObjectDefinition = defCache.getDefinition("Question", jobConfig.schemaSupportVersionMap.getOrElse("question", "1.0").asInstanceOf[String], jobConfig.definitionBasePath)
 	val qsDefinition: ObjectDefinition = defCache.getDefinition("QuestionSet", jobConfig.schemaSupportVersionMap.getOrElse("questionset", "1.0").asInstanceOf[String], jobConfig.definitionBasePath)
-	//val qReaderConfig: ExtDataConfig = ExtDataConfig(jobConfig., jobConfig.questionTableName)
+	implicit val mockCloudUtil: CloudStorageUtil = mock[CloudStorageUtil](Mockito.withSettings().serializable())
 
 	override protected def beforeAll(): Unit = {
 		super.beforeAll()
@@ -69,6 +72,25 @@ class AutoCreatorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with
 		result.metadata.getOrElse("downloadUrl", "").asInstanceOf[String] shouldEqual downloadUrl
 	}
 
+	"processCloudMeta" should "return object with updated cloud urls" in {
+		val downloadUrl = "https://dockstorage.blob.core.windows.net/sunbird-content-dock/questionset/do_113244425048121344131/added1_1616751462043_do_113244425048121344131_1_SPINE.ecar"
+		when(mockCloudUtil.uploadFile(anyString(), any(), any())).thenReturn(Array[String]("", downloadUrl))
+		val data = new ObjectData("do_123", "QuestionSet", Map("spine" -> downloadUrl), Some(Map()), Some(Map()))
+		val result = new TestAutoCreator().processCloudMeta(data)(jobConfig, mockCloudUtil)
+		result.metadata.getOrElse("spine", "").asInstanceOf[String] shouldEqual downloadUrl
+	}
+
+	ignore should "enrich children object"  in {
+		val downloadUrl = "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/questionset/do_113264104174723072120/test-1_1619580036855_do_113264104174723072120_9.ecar"
+		val children = Map("do_113264104174723072120" -> Map("objectType" -> "Question", "downloadUrl" -> downloadUrl, "variants" -> Map("full" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/questionset/do_113264104174723072120/test-1_1619552229284_do_113264104174723072120_8.ecar", "online" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/questionset/do_113264104174723072120/test-1_1619552232513_do_113264104174723072120_8_ONLINE.ecar")))
+		when(mockCloudUtil.uploadFile(anyString(), any(), any())).thenReturn(Array[String]("", downloadUrl))
+		val mockResult = mock[StatementResult](Mockito.withSettings().serializable())
+		when(mockNeo4JUtil.executeQuery(anyString())).thenReturn(mockResult)
+		val result = new TestAutoCreator().processChildren(children)(jobConfig, mockNeo4JUtil, cassandraUtil, mockCloudUtil, defCache)
+		val objectData = result.get("do_113264104174723072120").get
+		objectData.identifier shouldEqual "do_113264104174723072120"
+		objectData.objectType shouldEqual "Question"
+	}
 }
 
 class TestAutoCreator extends AutoCreator {}
