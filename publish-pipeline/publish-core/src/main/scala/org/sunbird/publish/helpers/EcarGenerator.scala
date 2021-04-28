@@ -25,14 +25,14 @@ trait EcarGenerator extends ObjectBundle {
 	def generateEcar(obj: ObjectData, objList: List[Map[String, AnyRef]], pkgType: String)(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil, defCache: DefinitionCache, defConfig: DefinitionConfig): String = {
 		logger.info(s"Generating ${pkgType} Ecar For : " + obj.identifier)
 		val bundle: File = getObjectBundle(obj, objList, pkgType)
-		uploadFile(Some(bundle), obj.identifier).getOrElse("")
+		uploadFile(Some(bundle), obj.identifier, obj.dbObjType.replaceAll("Image", "")).getOrElse("")
 	}
 
-	private def uploadFile(fileOption: Option[File], identifier: String)(implicit cloudStorageUtil: CloudStorageUtil): Option[String] = {
+	private def uploadFile(fileOption: Option[File], identifier: String, objectType: String)(implicit cloudStorageUtil: CloudStorageUtil): Option[String] = {
 		fileOption match {
 			case Some(file: File) => {
 				logger.info("bundle file path ::: "+file.getAbsolutePath)
-				val folder = "questionset" + File.separator + identifier
+				val folder = objectType.toLowerCase + File.separator + identifier
 				val urlArray: Array[String] = cloudStorageUtil.uploadFile(folder, file, Some(false))
 				logger.info(s"EcarGenerator ::: uploadFile ::: ecar url for $identifier is : ${urlArray(1)}")
 				Some(urlArray(1))
