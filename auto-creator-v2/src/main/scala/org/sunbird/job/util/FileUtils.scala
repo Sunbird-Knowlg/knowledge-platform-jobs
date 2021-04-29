@@ -27,7 +27,7 @@ object FileUtils {
 	def getBasePath(objectId: String): String = {
 		if (!StringUtils.isBlank(objectId))
 			s"/tmp/$objectId/${System.currentTimeMillis}_temp"
-		else ""
+		else s"/tmp/${System.currentTimeMillis}_temp"
 	}
 
 	def uploadFile(fileOption: Option[File], identifier: String, objType: String)(implicit cloudStorageUtil: CloudStorageUtil): Option[String] = {
