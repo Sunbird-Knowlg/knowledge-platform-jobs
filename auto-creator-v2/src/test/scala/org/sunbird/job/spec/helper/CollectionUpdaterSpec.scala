@@ -22,6 +22,20 @@ class CollectionUpdaterSpec extends FlatSpec with BeforeAndAfterAll with Matcher
     when(mockHttpUtil.patch(anyString(), any(), any())).thenReturn(HTTPResponse(200, """{"id":"api.content.hierarchy.get","ver":"3.0","ts":"2020-08-07T15:56:47ZZ","params":{"resmsgid":"bbd98348-c70b-47bc-b9f1-396c5e803436","msgid":null,"err":null,"status":"successful","errmsg":null},"responseCode":"OK","result":{"content":{"rootId":"do_234"}}}"""))
     new TestCollectionUpdater().linkCollection("do_123", collection)(jobConfig, mockHttpUtil)
   }
+
+  "getHierarchy with invalid identifier" should "throw Exception" in {
+    when(mockHttpUtil.get(anyString(), any())).thenReturn(HTTPResponse(404, """{"id":"api.content.hierarchy.get","ver":"3.0","ts":"2020-08-07T15:56:47ZZ","params":{"resmsgid":"bbd98348-c70b-47bc-b9f1-396c5e803436","msgid":null,"err":null,"status":"failed","errmsg":null},"responseCode":"RESOURCE_NOT_FOUND","result":{}}"""))
+    intercept[Exception] {
+      new TestCollectionUpdater().getHierarchy("do_123")(jobConfig, mockHttpUtil)
+    }
+  }
+
+  "addToHierarchy with invalid identifier" should "throw Exception" in {
+    when(mockHttpUtil.patch(anyString(), any(), any())).thenReturn(HTTPResponse(400, """{"id":"api.content.hierarchy.get","ver":"3.0","ts":"2020-08-07T15:56:47ZZ","params":{"resmsgid":"bbd98348-c70b-47bc-b9f1-396c5e803436","msgid":null,"err":null,"status":"failed","errmsg":null},"responseCode":"RESOURCE_NOT_FOUND","result":{}}"""))
+    intercept[Exception] {
+      new TestCollectionUpdater().addToHierarchy("do_123", "do_234", "do_345")(jobConfig, mockHttpUtil)
+    }
+  }
 }
 
 class TestCollectionUpdater extends CollectionUpdater {}

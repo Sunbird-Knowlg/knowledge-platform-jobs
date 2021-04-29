@@ -1,5 +1,7 @@
 package org.sunbird.job.spec.helper
 
+import java.util
+
 import com.typesafe.config.{Config, ConfigFactory}
 import org.cassandraunit.CQLDataLoader
 import org.cassandraunit.dataset.cql.FileCQLDataSet
@@ -80,6 +82,16 @@ class ObjectUpdaterSpec extends FlatSpec with BeforeAndAfterAll with Matchers wi
     val enrObj = new ObjectData("do_123", "Content", Map(), Some(Map("hierarchy" -> getHierarchy())), Some(Map()))
     val extConfig = ExtDataConfig(jobConfig.getString("questionset_keyspace", ""), qsDefinition.getExternalTable, qsDefinition.getExternalPrimaryKey, qsDefinition.getExternalProps)
     new TestObjectUpdater().saveExternalData("do_123", enrObj.extData.get, extConfig)(cassandraUtil)
+  }
+
+  "metaDataQuery" should " give the update query " in {
+    val variants = new util.HashMap[String, String] {{
+      put("spine","https://sunbirddev.blob.core.windows.net/sunbird-content-dev/questionset/do_1132380439842324481319/hindi-questionset-17_1615972827743_do_1132380439842324481319_1_SPINE.ecar")
+      put("online","https://sunbirddev.blob.core.windows.net/sunbird-content-dev/questionset/do_1132380439842324481319/hindi-questionset-17_1615972829357_do_1132380439842324481319_1_ONLINE.ecar")
+    }}
+    val metadata: Map[String, AnyRef] = Map("keywords" -> List("anusha"),"channel" -> "01309282781705830427","mimeType" -> "application/vnd.sunbird.questionset","showHints" -> "No","objectType" -> "QuestionSet","primaryCategory" -> "Practice Question Set","contentEncoding" -> "gzip","showSolutions" -> "No","identifier" -> "do_1132421849134858241686","visibility" -> "Default","showTimer" -> "Yes","author" -> "anusha","childNodes" -> util.Arrays.asList("do_1132421859856875521687"),"consumerId" -> "273f3b18-5dda-4a27-984a-060c7cd398d3","version" -> 1.asInstanceOf[AnyRef],"prevState" -> "Draft","IL_FUNC_OBJECT_TYPE" -> "QuestionSet","name" -> "Timer","timeLimits" -> "{\"maxTime\":\"3541\",\"warningTime\":\"2401\"}","IL_UNIQUE_ID" -> "do_1132421849134858241686","board" -> "CBSE", "variants" -> variants)
+    val result = new TestObjectUpdater().metaDataQuery(metadata, qsDefinition)
+    result.nonEmpty shouldBe(true)
   }
 
   def getHierarchy(): Map[String, AnyRef] = {

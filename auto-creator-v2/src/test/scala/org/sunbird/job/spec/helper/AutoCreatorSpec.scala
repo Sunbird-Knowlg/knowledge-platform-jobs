@@ -25,7 +25,7 @@ class AutoCreatorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with
 	val defCache = new DefinitionCache()
 	val qDefinition: ObjectDefinition = defCache.getDefinition("Question", jobConfig.schemaSupportVersionMap.getOrElse("question", "1.0").asInstanceOf[String], jobConfig.definitionBasePath)
 	val qsDefinition: ObjectDefinition = defCache.getDefinition("QuestionSet", jobConfig.schemaSupportVersionMap.getOrElse("questionset", "1.0").asInstanceOf[String], jobConfig.definitionBasePath)
-	implicit val mockCloudUtil: CloudStorageUtil = mock[CloudStorageUtil](Mockito.withSettings().serializable())
+	implicit val cloudUtil : CloudStorageUtil = new CloudStorageUtil(jobConfig)
 
 	override protected def beforeAll(): Unit = {
 		super.beforeAll()
@@ -74,18 +74,16 @@ class AutoCreatorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with
 
 	"processCloudMeta" should "return object with updated cloud urls" in {
 		val downloadUrl = "https://dockstorage.blob.core.windows.net/sunbird-content-dock/questionset/do_113244425048121344131/added1_1616751462043_do_113244425048121344131_1_SPINE.ecar"
-		when(mockCloudUtil.uploadFile(anyString(), any(), any())).thenReturn(Array[String]("", downloadUrl))
 		val data = new ObjectData("do_123", "QuestionSet", Map("downloadUrl" -> downloadUrl, "variants" -> Map("spine"->downloadUrl, "online"->downloadUrl)), Some(Map()), Some(Map()))
-		val result = new TestAutoCreator().processCloudMeta(data)(jobConfig, mockCloudUtil)
-		result.metadata.getOrElse("downloadUrl", "").asInstanceOf[String] shouldEqual downloadUrl
+		val result = new TestAutoCreator().processCloudMeta(data)(jobConfig, cloudUtil)
+		result.metadata.getOrElse("downloadUrl", "").asInstanceOf[String].nonEmpty shouldBe(true)
 	}
 
 	"processChildren" should "create and return the children object" in {
-		when(mockCloudUtil.uploadFile(anyString(), any(), any())).thenReturn(Array[String]("", "http://test.com/test-location/abc.ecar"))
 		val mockResult = mock[StatementResult](Mockito.withSettings().serializable())
 		when(mockNeo4JUtil.executeQuery(anyString())).thenReturn(mockResult)
 		val child: Map[String, AnyRef] = Map("do_113264104174723072120" -> Map("objectType" -> "Question", "downloadUrl" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/question/do_113264104174723072120/test-1_1619640554144_do_113264104174723072120_15.ecar", "variants"-> Map("full" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/question/do_113264104174723072120/test-1_1619640554144_do_113264104174723072120_15.ecar", "online"->"https://sunbirddev.blob.core.windows.net/sunbird-content-dev/question/do_113264104174723072120/test-1_1619640555385_do_113264104174723072120_15_ONLINE.ecar")))
-		val result: Map[String, ObjectData] = new TestAutoCreator().processChildren(child)(jobConfig, mockNeo4JUtil, cassandraUtil, mockCloudUtil, defCache)
+		val result: Map[String, ObjectData] = new TestAutoCreator().processChildren(child)(jobConfig, mockNeo4JUtil, cassandraUtil, cloudUtil, defCache)
 		result.nonEmpty shouldBe(true)
 		result.contains("do_113264104174723072120") shouldBe(true)
 		result.get("do_113264104174723072120").get.asInstanceOf[ObjectData].identifier shouldEqual "do_113264104174723072120"
