@@ -48,8 +48,12 @@ trait AutoCreator extends ObjectUpdater with CollectionUpdater with HierarchyEnr
 			(en._1, url.getOrElse(""))
 		})
 		logger.info("processCloudMeta :: updatedUrls : " + updatedUrls)
-		val updatedMeta = obj.metadata ++ updatedUrls.filterKeys(k => !List("spine", "online").contains(k)) ++ Map("variants" -> Map("spine" -> updatedUrls.getOrElse("spine", ""), "online" -> updatedUrls.getOrElse("online", "")))
+		val updatedMeta = obj.metadata ++ updatedUrls.filterKeys(k => !List("spine", "online").contains(k)) ++ Map("variants" -> getVariantMap(updatedUrls))
 		new ObjectData(obj.identifier, obj.objectType, updatedMeta, obj.extData, obj.hierarchy)
+	}
+
+	def getVariantMap(map: Map[String, AnyRef]): Map[String, AnyRef] = {
+		List("full", "online", "spine").filter(x => map.contains(x)).map(m => (m, map.getOrElse(m, "").asInstanceOf[String])).toMap
 	}
 
 	def processChildren(children: Map[String, AnyRef])(implicit config: AutoCreatorV2Config, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, cloudStorageUtil: CloudStorageUtil, defCache: DefinitionCache): Map[String, ObjectData] = {

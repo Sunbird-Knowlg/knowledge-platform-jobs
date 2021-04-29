@@ -60,23 +60,6 @@ object FileUtils {
 		val lines = try source.mkString finally source.close()
 		JSONUtil.deserialize[Map[String, AnyRef]](lines)
 	}
-
-	/*def uploadFile(fileOption: Option[File], identifier: String, objType: String)(implicit cloudStorageUtil: CloudStorageUtil): Option[String] = {
-		fileOption match {
-			case Some(file: File) => {
-				logger.info("file path ::: "+file.getAbsolutePath)
-				val folder = objType.toLowerCase + File.separator + identifier
-				val urlArray: Array[String] = cloudStorageUtil.uploadFile(folder, file, Some(false))
-				logger.info(s"FileUtils ::: uploadFile ::: cloud url for $identifier is : ${urlArray(1)}")
-				Some(urlArray(1))
-			}
-			case _ => {
-				throw new Exception("ERR_INVALID_FILE | Invalid file received while uploading to cloud for : " + identifier)
-				None
-			}
-		}
-	}*/
-
 }
 
 class FileUtils {}

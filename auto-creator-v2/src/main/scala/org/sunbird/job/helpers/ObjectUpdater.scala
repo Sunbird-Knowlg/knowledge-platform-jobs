@@ -32,7 +32,7 @@ trait ObjectUpdater {
 		val query: Insert = QueryBuilder.insertInto(extDataConfig.keyspace, extDataConfig.table)
 		query.value(extDataConfig.primaryKey(0), identifier)
 		data.map(d => {
-			extDataConfig.propsMapping.getOrElse(d._1.toLowerCase, "") match {
+			extDataConfig.propsMapping.getOrElse(d._1, "") match {
 				case "blob" => query.value(d._1.toLowerCase, QueryBuilder.fcall("textAsBlob", d._2))
 				case "string" => d._2 match {
 					case value: String => query.value(d._1.toLowerCase, value)

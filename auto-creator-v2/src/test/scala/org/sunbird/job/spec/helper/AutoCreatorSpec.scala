@@ -75,22 +75,23 @@ class AutoCreatorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with
 	"processCloudMeta" should "return object with updated cloud urls" in {
 		val downloadUrl = "https://dockstorage.blob.core.windows.net/sunbird-content-dock/questionset/do_113244425048121344131/added1_1616751462043_do_113244425048121344131_1_SPINE.ecar"
 		when(mockCloudUtil.uploadFile(anyString(), any(), any())).thenReturn(Array[String]("", downloadUrl))
-		val data = new ObjectData("do_123", "QuestionSet", Map("spine" -> downloadUrl), Some(Map()), Some(Map()))
+		val data = new ObjectData("do_123", "QuestionSet", Map("downloadUrl" -> downloadUrl, "variants" -> Map("spine"->downloadUrl, "online"->downloadUrl)), Some(Map()), Some(Map()))
 		val result = new TestAutoCreator().processCloudMeta(data)(jobConfig, mockCloudUtil)
-		result.metadata.getOrElse("spine", "").asInstanceOf[String] shouldEqual downloadUrl
+		result.metadata.getOrElse("downloadUrl", "").asInstanceOf[String] shouldEqual downloadUrl
 	}
 
-	ignore should "enrich children object"  in {
-		val downloadUrl = "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/questionset/do_113264104174723072120/test-1_1619580036855_do_113264104174723072120_9.ecar"
-		val children = Map("do_113264104174723072120" -> Map("objectType" -> "Question", "downloadUrl" -> downloadUrl, "variants" -> Map("full" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/questionset/do_113264104174723072120/test-1_1619552229284_do_113264104174723072120_8.ecar", "online" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/questionset/do_113264104174723072120/test-1_1619552232513_do_113264104174723072120_8_ONLINE.ecar")))
-		when(mockCloudUtil.uploadFile(anyString(), any(), any())).thenReturn(Array[String]("", downloadUrl))
+	"processChildren" should "create and return the children object" in {
+		when(mockCloudUtil.uploadFile(anyString(), any(), any())).thenReturn(Array[String]("", "http://test.com/test-location/abc.ecar"))
 		val mockResult = mock[StatementResult](Mockito.withSettings().serializable())
 		when(mockNeo4JUtil.executeQuery(anyString())).thenReturn(mockResult)
-		val result = new TestAutoCreator().processChildren(children)(jobConfig, mockNeo4JUtil, cassandraUtil, mockCloudUtil, defCache)
-		val objectData = result.get("do_113264104174723072120").get
-		objectData.identifier shouldEqual "do_113264104174723072120"
-		objectData.objectType shouldEqual "Question"
+		val child: Map[String, AnyRef] = Map("do_113264104174723072120" -> Map("objectType" -> "Question", "downloadUrl" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/question/do_113264104174723072120/test-1_1619640554144_do_113264104174723072120_15.ecar", "variants"-> Map("full" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/question/do_113264104174723072120/test-1_1619640554144_do_113264104174723072120_15.ecar", "online"->"https://sunbirddev.blob.core.windows.net/sunbird-content-dev/question/do_113264104174723072120/test-1_1619640555385_do_113264104174723072120_15_ONLINE.ecar")))
+		val result: Map[String, ObjectData] = new TestAutoCreator().processChildren(child)(jobConfig, mockNeo4JUtil, cassandraUtil, mockCloudUtil, defCache)
+		result.nonEmpty shouldBe(true)
+		result.contains("do_113264104174723072120") shouldBe(true)
+		result.get("do_113264104174723072120").get.asInstanceOf[ObjectData].identifier shouldEqual "do_113264104174723072120"
 	}
+
+
 }
 
 class TestAutoCreator extends AutoCreator {}
