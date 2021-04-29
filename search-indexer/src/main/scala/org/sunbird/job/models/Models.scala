@@ -9,4 +9,5 @@ case class CompositeIndexer(graphId: String, objectType: String, identifier: Str
   def getDefinitionBasePath(): String = config.definitionBasePath
   def getVersionAsString(): String = config.schemaSupportVersionMap.getOrElse(objectType.toLowerCase(), "1.0").asInstanceOf[String]
   def getRestrictMetadataObjectTypes(): List[String] = config.restrictMetadataObjectTypes.asScala.toList
+  def getIgnoredFields(): List[String] = config.ignoredFields
 }
