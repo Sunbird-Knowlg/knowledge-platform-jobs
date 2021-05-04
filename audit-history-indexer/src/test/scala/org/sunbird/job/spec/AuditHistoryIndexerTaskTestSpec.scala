@@ -81,9 +81,9 @@ class AuditHistoryIndexerMapSource extends SourceFunction[Event] {
 
   override def run(ctx: SourceContext[Event]) {
     // Valid event
-    ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_1)))
+    ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_1), 0, 10))
     // Invalid event
-    ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_4)))
+    ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_4), 0, 11))
   }
 
   override def cancel(): Unit = {}

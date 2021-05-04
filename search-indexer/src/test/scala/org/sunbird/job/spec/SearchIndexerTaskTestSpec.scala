@@ -314,23 +314,23 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
   "Event.index" should "return whether event is indexable " in {
     var eventMap = new util.HashMap[String, Any]()
     eventMap.put("index", "true")
-    var event = new Event(eventMap)
+    var event = new Event(eventMap,0, 10)
     event.index should be(true)
 
     eventMap.put("index", "false")
-    event = new Event(eventMap)
+    event = new Event(eventMap,0, 11)
     event.index should be(false)
 
     eventMap.put("index", null)
-    event = new Event(eventMap)
+    event = new Event(eventMap,0, 12)
     event.index should be(true)
 
     eventMap.put("index", true)
-    event = new Event(eventMap)
+    event = new Event(eventMap,0, 13)
     event.index should be(true)
 
     eventMap.put("index", false)
-    event = new Event(eventMap)
+    event = new Event(eventMap,0, 14)
     event.index should be(false)
   }
 
@@ -540,7 +540,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
   def getEvent(event: String, nodeGraphId: Int): Event = {
     val eventMap = ScalaJsonUtil.deserialize[util.Map[String, Any]](event)
     eventMap.put("nodeGraphId", nodeGraphId)
-    new Event(eventMap)
+    new Event(eventMap,0, 15)
   }
 
 }
@@ -558,7 +558,7 @@ private class CompositeSearchEventSource(events: List[String]) extends SourceFun
   def getEvent(event: String, nodeGraphId: Int): Event = {
     val eventMap = ScalaJsonUtil.deserialize[util.Map[String, Any]](event)
     eventMap.put("nodeGraphId", nodeGraphId)
-    new Event(eventMap)
+    new Event(eventMap,0, 16)
   }
 }
 
