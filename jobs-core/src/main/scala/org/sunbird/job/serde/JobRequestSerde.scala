@@ -22,12 +22,15 @@ class JobRequestDeserializationSchema[T <: JobRequest](implicit ct: ClassTag[T])
   override def deserialize(record: ConsumerRecord[Array[Byte], Array[Byte]]): T = {
     try {
       val result = JSONUtil.deserialize[java.util.HashMap[String, AnyRef]](record.value())
-      ct.runtimeClass.getConstructor(classOf[java.util.Map[String, AnyRef]]).newInstance(result).asInstanceOf[T]
+      val partition = record.partition()
+      val offset = record.offset()
+      ct.runtimeClass.getConstructor(classOf[java.util.Map[String, AnyRef]], classOf[Int], classOf[Long])
+        .newInstance(Array(result, partition, offset)).asInstanceOf[T]
     }
     catch {
       case ex: Exception =>
         logger.error("Exception when parsing event from kafka: " + record, ex)
-        ct.runtimeClass.getConstructor(classOf[java.util.Map[String, AnyRef]]).newInstance(new java.util.HashMap[String, AnyRef]()).asInstanceOf[T]
+        ct.runtimeClass.getConstructor(classOf[java.util.Map[String, AnyRef]], classOf[Int], classOf[Long]).newInstance(Array(new java.util.HashMap[String, AnyRef](), record.partition(), record.offset())).asInstanceOf[T]
     }
   }
 

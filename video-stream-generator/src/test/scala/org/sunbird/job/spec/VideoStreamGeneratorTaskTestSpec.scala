@@ -120,8 +120,8 @@ class VideoStreamGeneratorTaskTestSpec extends BaseTestSpec {
 class VideoStreamGeneratorMapSource extends SourceFunction[Event] {
 
   override def run(ctx: SourceContext[Event]) {
-    ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_1)))
-    ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_2)))
+    ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_1),0, 10))
+    ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_2),0, 11))
 
   }
 

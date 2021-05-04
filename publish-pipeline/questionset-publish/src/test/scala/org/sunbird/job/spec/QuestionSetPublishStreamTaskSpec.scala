@@ -91,7 +91,7 @@ private class QuestionPublishEventSource extends SourceFunction[Event] {
 		val data = gson.fromJson(json, new util.LinkedHashMap[String, Any]().getClass).asInstanceOf[util.Map[String, Any]]
 		val metadataMap = data.get("edata").asInstanceOf[util.Map[String, Any]].get("metadata").asInstanceOf[util.Map[String, Any]]
 		metadataMap.put("pkgVersion",metadataMap.get("pkgVersion").asInstanceOf[Double].toInt)
-		new Event(data)
+		new Event(data, 0, 10)
 	}
 
 }
