@@ -4,6 +4,7 @@ import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.domain.Event
+import org.sunbird.job.exception.InvalidEventException
 import org.sunbird.job.helpers.{OptimizerHelper, VideoEnrichmentHelper}
 import org.sunbird.job.models.Asset
 import org.sunbird.job.task.AssetEnrichmentConfig
@@ -30,6 +31,7 @@ class VideoEnrichmentFunction(config: AssetEnrichmentConfig,
     super.close()
   }
 
+  @throws(classOf[InvalidEventException])
   override def processElement(event: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
     logger.info(s"Received message for Video Enrichment for identifier : ${event.id}.")
     metrics.incCounter(config.videoEnrichmentEventCount)
@@ -42,9 +44,8 @@ class VideoEnrichmentFunction(config: AssetEnrichmentConfig,
       metrics.incCounter(config.successVideoEnrichmentEventCount)
     } catch {
       case ex: Exception =>
-        logger.error(s"Error while processing message for Video Enrichment for identifier : ${asset.identifier}.", ex)
         metrics.incCounter(config.failedVideoEnrichmentEventCount)
-        throw ex
+        throw new InvalidEventException(ex.getMessage, Map("partition" -> event.partition, "offset" -> event.offset), ex)
     }
   }
 

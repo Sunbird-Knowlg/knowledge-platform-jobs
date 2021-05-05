@@ -9,6 +9,7 @@ import org.sunbird.job.util.ElasticSearchUtil
 import org.sunbird.job.compositesearch.domain.Event
 import org.sunbird.job.compositesearch.helpers.{CompositeSearchIndexerHelper, FailedEventHelper}
 import org.sunbird.job.domain.`object`.DefinitionCache
+import org.sunbird.job.exception.InvalidEventException
 import org.sunbird.job.models.CompositeIndexer
 
 
@@ -29,7 +30,7 @@ class CompositeSearchIndexerFunction(config: SearchIndexerConfig,
     elasticUtil.close()
     super.close()
   }
-
+  @throws(classOf[InvalidEventException])
   override def processElement(event: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
     metrics.incCounter(config.compositeSearchEventCount)
     try {
@@ -38,11 +39,10 @@ class CompositeSearchIndexerFunction(config: SearchIndexerConfig,
       metrics.incCounter(config.successCompositeSearchEventCount)
     } catch {
       case ex: Throwable =>
-        logger.error(s"Error while processing message for identifier : ${event.id}. Partition: ${event.partition} and Offset: ${event.offset}. Error : ", ex)
         metrics.incCounter(config.failedCompositeSearchEventCount)
         val failedEvent = getFailedEvent(event, ex)
         context.output(config.failedEventOutTag, failedEvent)
-        throw ex
+        throw new InvalidEventException(ex.getMessage, Map("partition" -> event.partition, "offset" -> event.offset), ex)
     }
   }
 

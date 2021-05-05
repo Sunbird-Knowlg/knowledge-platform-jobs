@@ -5,6 +5,7 @@ import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.domain.Event
 import org.sunbird.job.domain.`object`.DefinitionCache
+import org.sunbird.job.exception.InvalidEventException
 import org.sunbird.job.helpers.{ImageEnrichmentHelper, OptimizerHelper}
 import org.sunbird.job.models.Asset
 import org.sunbird.job.task.AssetEnrichmentConfig
@@ -31,6 +32,7 @@ class ImageEnrichmentFunction(config: AssetEnrichmentConfig,
     super.close()
   }
 
+  @throws(classOf[InvalidEventException])
   override def processElement(event: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
     logger.info(s"Received message for Image Enrichment for identifier : ${event.id}.")
     metrics.incCounter(config.imageEnrichmentEventCount)
@@ -42,9 +44,8 @@ class ImageEnrichmentFunction(config: AssetEnrichmentConfig,
       metrics.incCounter(config.successImageEnrichmentEventCount)
     } catch {
       case ex: Exception =>
-        logger.error(s"Error while processing message for Image Enrichment for identifier : ${asset.identifier}.", ex)
         metrics.incCounter(config.failedImageEnrichmentEventCount)
-        throw ex
+        throw new InvalidEventException(ex.getMessage, Map("partition" -> event.partition, "offset" -> event.offset), ex)
     }
   }
 
