@@ -6,8 +6,10 @@ import org.slf4j.LoggerFactory
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 import org.sunbird.job.compositesearch.domain.Event
 import org.sunbird.job.compositesearch.helpers.{DIALCodeMetricsIndexerHelper, FailedEventHelper}
+import org.sunbird.job.exception.InvalidEventException
 import org.sunbird.job.task.SearchIndexerConfig
 import org.sunbird.job.util.ElasticSearchUtil
+
 import scala.collection.JavaConverters._
 
 class DIALCodeMetricsIndexerFunction(config: SearchIndexerConfig,
@@ -27,6 +29,7 @@ class DIALCodeMetricsIndexerFunction(config: SearchIndexerConfig,
     super.close()
   }
 
+  @throws(classOf[InvalidEventException])
   override def processElement(event: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
     metrics.incCounter(config.dialcodeMetricEventCount)
     try {
@@ -38,7 +41,7 @@ class DIALCodeMetricsIndexerFunction(config: SearchIndexerConfig,
         metrics.incCounter(config.failedDialcodeMetricEventCount)
         val failedEvent = getFailedEvent(event, ex)
         context.output(config.failedEventOutTag, failedEvent)
-        throw ex
+        throw new InvalidEventException(ex.getMessage, Map("partition" -> event.partition, "offset" -> event.offset), ex)
     }
   }
 
