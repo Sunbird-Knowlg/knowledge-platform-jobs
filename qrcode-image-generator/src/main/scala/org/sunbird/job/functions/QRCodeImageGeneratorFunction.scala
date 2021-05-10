@@ -19,8 +19,8 @@ class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig)
 
     private val LOGGER = LoggerFactory.getLogger(classOf[QRCodeImageGeneratorFunction])
     var cloudStorageUtil: CloudStorageUtil = _
-    val qRCodeImageGeneratorUtil = new QRCodeImageGeneratorUtil(config)
     var cassandraUtil: CassandraUtil = _
+    var qRCodeImageGeneratorUtil: QRCodeImageGeneratorUtil = _
 
     override def metricsList(): List[String] = {
         List(config.totalEventsCount, config.successEventCount, config.failedEventCount, config.skippedEventCount)
@@ -29,6 +29,7 @@ class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig)
     override def open(parameters: Configuration): Unit = {
         cloudStorageUtil = new CloudStorageUtil(config)
         cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort)
+        qRCodeImageGeneratorUtil = new QRCodeImageGeneratorUtil(config, cassandraUtil, cloudStorageUtil)
         super.open(parameters)
     }
 
@@ -42,8 +43,6 @@ class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig)
                                 metrics: Metrics): Unit = {
         metrics.incCounter(config.totalEventsCount)
         val qrCodeImageGeneratorReq = JSONUtil.deserialize[QRCodeGenerationRequest](JSONUtil.serialize(event))
-        println("event: " + event)
-        println("map: " + qrCodeImageGeneratorReq)
         val availableImages = new util.ArrayList[File]
 
         var zipFile: File = null
@@ -54,11 +53,8 @@ class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig)
             if (!event.containsKey(qrCodeImageGeneratorReq.eid) && qrCodeImageGeneratorReq.eid.equalsIgnoreCase(config.eid)) {
                 val eid = qrCodeImageGeneratorReq.eid
                 val qrImageconfig = qrCodeImageGeneratorReq.config
-                println("config: " + config)
-                println("eid: " + eid)
 
                 val dialCodes = event.getOrDefault("dialcodes", List[Map[String, AnyRef]]()).asInstanceOf[List[Map[String, AnyRef]]]
-                println("dialcodes: " + dialCodes)
                 val imageFormat: String = qrImageconfig.imageFormat.getOrElse("png")
 
                 val dataList = new util.ArrayList[String]
@@ -70,7 +66,6 @@ class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig)
 
                 import scala.collection.JavaConversions._
                 for (dialCode <- dialCodes) {
-                    println("location present or not: " + dialCode.containsKey("location"))
                     if (dialCode.containsKey("location")) {
                         try {
                             downloadUrl = dialCode.get("location").asInstanceOf[String]
@@ -89,18 +84,11 @@ class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig)
                     dataList.add(dialCode.getOrElse("data", "").asInstanceOf[String])
                     textList.add(dialCode.getOrElse("text", "").asInstanceOf[String])
                     fileNameList.add(dialCode.getOrElse("id", "").asInstanceOf[String])
-
-                    println("dataList: " + dataList)
-                    println("dataList: " + textList)
-                    println("dataList: " + fileNameList)
                 }
                 val storage = qrCodeImageGeneratorReq.storage
 
                 val qrGenRequest: org.sunbird.job.model.QRCodeGenerationRequest = getQRCodeGenerationRequest(qrImageconfig, dataList, textList, fileNameList)
-                println("qrGenReqyest: " + JSONUtil.serialize(qrGenRequest))
-
                 val generatedImages = qRCodeImageGeneratorUtil.createQRImages(qrGenRequest, config, storage.container, storage.path)
-                println("generatedImages: " + generatedImages)
                 if (!StringUtils.isBlank(qrCodeImageGeneratorReq.processId)) {
                     val processId = qrCodeImageGeneratorReq.processId
                     var zipFileName = storage.fileName

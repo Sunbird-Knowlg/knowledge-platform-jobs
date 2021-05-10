@@ -9,12 +9,15 @@ import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
 import org.apache.flink.streaming.api.functions.source.SourceFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext
 import org.apache.flink.test.util.MiniClusterWithClientResource
+import org.cassandraunit.CQLDataLoader
+import org.cassandraunit.dataset.cql.FileCQLDataSet
+import org.cassandraunit.utils.EmbeddedCassandraServerHelper
 import org.mockito.Mockito
 import org.mockito.Mockito.when
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.fixture.EventFixture
 import org.sunbird.job.task.{QRCodeImageGeneratorConfig, QRCodeImageGeneratorTask}
-import org.sunbird.job.util.{ElasticSearchUtil, JSONUtil}
+import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, JSONUtil}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 
 class QRCodeImageGeneratorTaskTestSpec extends BaseTestSpec {
@@ -29,11 +32,18 @@ class QRCodeImageGeneratorTaskTestSpec extends BaseTestSpec {
   val mockKafkaUtil: FlinkKafkaConnector = mock[FlinkKafkaConnector](Mockito.withSettings().serializable())
   val config: Config = ConfigFactory.load("test.conf")
   val jobConfig: QRCodeImageGeneratorConfig = new QRCodeImageGeneratorConfig(config)
-  val mockElasticUtil:ElasticSearchUtil = null
+  val cloudStorageUtil:CloudStorageUtil = new CloudStorageUtil(jobConfig)
+  var cassandraUtils: CassandraUtil = _
+
   var currentMilliSecond = 1605816926271L
 
   override protected def beforeAll(): Unit = {
     BaseMetricsReporter.gaugeMetrics.clear()
+    EmbeddedCassandraServerHelper.startEmbeddedCassandra(80000L)
+    cassandraUtils = new CassandraUtil(jobConfig.cassandraHost, jobConfig.cassandraPort)
+    val session = cassandraUtils.session
+    val dataLoader = new CQLDataLoader(session)
+    dataLoader.load(new FileCQLDataSet(getClass.getResource("/test.cql").getPath, true, true))
     flinkCluster.before()
     super.beforeAll()
   }

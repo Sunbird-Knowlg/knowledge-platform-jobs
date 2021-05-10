@@ -17,12 +17,10 @@ import org.sunbird.job.model.QRCodeGenerationRequest
 import org.sunbird.job.task.QRCodeImageGeneratorConfig
 
 
-class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig) {
+class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil: CassandraUtil, cloudStorageUtil: CloudStorageUtil) {
   private val qrCodeWriter = new QRCodeWriter()
   private val fontStore: util.HashMap[String, Font] = new util.HashMap[String, Font]()
   private val LOGGER = LoggerFactory.getLogger(classOf[QRCodeImageGeneratorUtil])
-//  val cloudStorageUtil = new CloudStorageUtil(config)
-  val qRCodeCassandraConnector = new CassandraUtil(config.cassandraHost, config.cassandraPort)
   @throws[WriterException]
   @throws[IOException]
   @throws[NotFoundException]
@@ -61,9 +59,8 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig) {
       ImageIO.write(qrImage, imageFormat, finalImageFile)
       fileList.add(finalImageFile)
       try {
-//        val imageDownloadUrl = cloudStorageUtil.uploadFile(container, path, finalImageFile, false)
-        val imageDownloadUrl = ""
-        qRCodeCassandraConnector.updateDownloadUrl(fileName, imageDownloadUrl)
+        val imageDownloadUrl = cloudStorageUtil.uploadFile(container, path, finalImageFile, false)
+        cassandraUtil.updateDownloadUrl(fileName, imageDownloadUrl)
       } catch {
         case e: Exception =>
 
@@ -150,10 +147,10 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig) {
   }
 
   private def getImage(bitMatrix: BitMatrix, colorModel: String) = {
-    val imageWidth = bitMatrix.getWidth
-    val imageHeight = bitMatrix.getHeight
+    val imageWidth = bitMatrix.getWidth()
+    val imageHeight = bitMatrix.getHeight()
     val image = new BufferedImage(imageWidth, imageHeight, getImageType(colorModel))
-    image.createGraphics
+    image.createGraphics()
     val graphics = image.getGraphics.asInstanceOf[Graphics2D]
     graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF)
     graphics.setColor(Color.WHITE)
@@ -162,7 +159,9 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig) {
 
     for(i <- 0 to imageWidth) {
       for(j <- 0 to imageHeight) {
-        if (bitMatrix.get(i, j)) graphics.fillRect(i, j, 1, 1)
+        if (bitMatrix.get(i, j)) {
+          graphics.fillRect(i, j, 1, 1)
+        }
       }
     }
 

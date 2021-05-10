@@ -12,9 +12,10 @@ import java.nio.channels.Channels
 import org.sunbird.job.task.QRCodeImageGeneratorConfig
 
 
-class CloudStorageUtil(config: QRCodeImageGeneratorConfig) {
-  private var storageService: BaseStorageService = getStorageService
-  private val cloudStoreType = config.cloudStorageType
+class CloudStorageUtil(config: QRCodeImageGeneratorConfig) extends Serializable {
+
+  val cloudStoreType = config.cloudStorageType
+  var storageService: BaseStorageService = getStorageService
 
   def getStorageService: BaseStorageService = {
     if (StringUtils.equalsIgnoreCase(cloudStoreType, "azure")) {

@@ -93,6 +93,12 @@
             <artifactId>javase</artifactId>
             <version>3.3.3</version>
         </dependency>
+        <dependency>
+            <groupId>org.cassandraunit</groupId>
+            <artifactId>cassandra-unit</artifactId>
+            <version>3.11.2.0</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>
