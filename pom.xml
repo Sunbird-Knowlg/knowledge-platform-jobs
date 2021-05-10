@@ -30,7 +30,8 @@
 		<module>enrolment-reconciliation</module>
 		<module>asset-enrichment</module>
 		<module>audit-history-indexer</module>
-  </modules>
+		<module>qrcode-image-generator</module>
+	</modules>
 
 	<properties>
 		<!-- maven specific properties -->
