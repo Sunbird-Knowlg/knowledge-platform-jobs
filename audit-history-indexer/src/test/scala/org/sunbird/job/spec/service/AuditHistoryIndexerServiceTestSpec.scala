@@ -31,7 +31,7 @@ class AuditHistoryIndexerServiceTestSpec extends BaseTestSpec {
   }
 
   "AuditHistoryIndexerService" should "generate es log" in {
-    val inputEvent:Event = new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_1))
+    val inputEvent:Event = new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_1),0, 10)
 
     val auditHistoryRec:AuditHistoryRecord = auditHistoryIndexer.getAuditHistory(inputEvent);
 
@@ -41,7 +41,7 @@ class AuditHistoryIndexerServiceTestSpec extends BaseTestSpec {
   }
 
   "AuditHistoryIndexerService" should "generate with added relations" in {
-    val inputEvent:Event = new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_2))
+    val inputEvent:Event = new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_2), 0, 11)
 
     val auditHistoryRec:AuditHistoryRecord = auditHistoryIndexer.getAuditHistory(inputEvent);
 
@@ -51,7 +51,7 @@ class AuditHistoryIndexerServiceTestSpec extends BaseTestSpec {
   }
 
   "AuditHistoryIndexerService" should "generate with removed relations" in {
-    val inputEvent:Event = new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_3))
+    val inputEvent:Event = new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_3),0, 12)
 
     val auditHistoryRec:AuditHistoryRecord = auditHistoryIndexer.getAuditHistory(inputEvent);
 

@@ -68,7 +68,7 @@ class VideoStreamServiceTestSpec extends BaseTestSpec {
     when(mockHttpUtil.patch(contains(jobConfig.contentV3Update), any(), any())).thenReturn(HTTPResponse(200, getJobJson))
     doNothing().when(mockMetrics).incCounter(any())
 
-    val eventMap1 = new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_1))
+    val eventMap1 = new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_1),0, 12)
 
     val videoStreamService = new VideoStreamService()(jobConfig, mockHttpUtil);
     videoStreamService.submitJobRequest(eventMap1.eData)

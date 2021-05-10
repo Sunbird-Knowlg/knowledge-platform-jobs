@@ -42,7 +42,7 @@ trait ObjectUpdater {
   @throws[Exception]
   def saveOnFailure(obj: ObjectData, messages: List[String])(implicit neo4JUtil: Neo4JUtil): Unit = {
     val errorMessages = messages.mkString("; ")
-    val nodeId = obj.metadata.get("IL_UNIQUE_ID").get
+    val nodeId = obj.dbId
     val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$nodeId"}) SET n.status="Failed", n.publishError="$errorMessages", $auditPropsUpdateQuery;"""
     logger.info("Query: " + query)
     neo4JUtil.executeQuery(query)
@@ -68,11 +68,20 @@ trait ObjectUpdater {
         }
       } else {
         prop._2 match {
+          case _: Map[String, AnyRef] =>
+            val strValue = JSONUtil.serialize(ScalaJsonUtil.serialize(prop._2))
+            s"""n.${prop._1}=${strValue}"""
+          case _: util.Map[String, AnyRef] =>
+            val strValue = JSONUtil.serialize(JSONUtil.serialize(prop._2))
+            s"""n.${prop._1}=${strValue}"""
           case _: List[String] =>
             val strValue = ScalaJsonUtil.serialize(prop._2)
             s"""n.${prop._1}=${strValue}"""
           case _: String =>
             s"""n.${prop._1}="${prop._2}""""
+          case _: util.List[String] =>
+            val strValue = JSONUtil.serialize(prop._2)
+            s"""n.${prop._1}=$strValue"""
           case _ =>
             val strValue = JSONUtil.serialize(prop._2)
             s"""n.${prop._1}=$strValue"""

@@ -6,7 +6,7 @@ import org.sunbird.job.domain.reader.JobRequest
 
 import scala.collection.JavaConverters._
 
-class Event(eventMap: java.util.Map[String, Any]) extends JobRequest(eventMap) {
+class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) extends JobRequest(eventMap, partition, offset) {
 
 	private val jobName = "questionset-publish"
 
