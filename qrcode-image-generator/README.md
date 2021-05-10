@@ -1,6 +1,6 @@
-# Audit History Indexer
+# QR Code Image Generator
 
-Audit History Indexer job
+QR Code Image Generator job
 
 ## Getting Started
 
