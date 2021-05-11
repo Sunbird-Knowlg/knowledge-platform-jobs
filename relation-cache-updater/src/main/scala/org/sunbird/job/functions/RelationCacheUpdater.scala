@@ -1,7 +1,6 @@
 package org.sunbird.job.functions
 
 import java.lang.reflect.Type
-
 import com.datastax.driver.core.querybuilder.QueryBuilder
 import com.google.gson.reflect.TypeToken
 import org.apache.commons.collections.{CollectionUtils, MapUtils}
@@ -12,6 +11,7 @@ import org.apache.flink.shaded.jackson2.com.fasterxml.jackson.databind.ObjectMap
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cache.{DataCache, RedisConnect}
+import org.sunbird.job.domain.Event
 import org.sunbird.job.task.RelationCacheUpdaterConfig
 import org.sunbird.job.util.CassandraUtil
 import org.sunbird.job.{BaseProcessFunction, Metrics}
@@ -22,10 +22,9 @@ import scala.collection.JavaConverters._
 class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
                           (implicit val stringTypeInfo: TypeInformation[String],
                            @transient var cassandraUtil: CassandraUtil = null)
-    extends BaseProcessFunction[java.util.Map[String, AnyRef], String](config) {
+    extends BaseProcessFunction[Event, String](config) {
 
     private[this] val logger = LoggerFactory.getLogger(classOf[RelationCacheUpdater])
-    val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
     private var dataCache: DataCache = _
     private var collectionCache: DataCache = _
     lazy private val mapper: ObjectMapper = new ObjectMapper()
@@ -55,11 +54,10 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
         super.close()
     }
 
-    override def processElement(event: java.util.Map[String, AnyRef], context: ProcessFunction[java.util.Map[String, AnyRef], String]#Context, metrics: Metrics): Unit = {
-        val eData = event.get("edata").asInstanceOf[java.util.Map[String, AnyRef]]
-        if (isValidEvent(eData)) {
-            val rootId = eData.get("identifier").asInstanceOf[String]
-            logger.info("Processing - identifier: " + rootId)
+    override def processElement(event: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
+        if (event.isValidEvent(allowedActions)) {
+            val rootId = event.identifier
+            println("Processing - identifier: " + rootId)
             val hierarchy = getHierarchy(rootId)(metrics)
             if (MapUtils.isNotEmpty(hierarchy)) {
                 val leafNodesMap = getLeafNodes(rootId, hierarchy)
@@ -84,16 +82,6 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
 
     override def metricsList(): List[String] = {
         List(config.successEventCount, config.failedEventCount, config.skippedEventCount, config.totalEventsCount, config.dbReadCount, config.cacheWrite)
-    }
-
-    private def isValidEvent(eData: java.util.Map[String, AnyRef]): Boolean = {
-        val action = eData.getOrDefault("action", "").asInstanceOf[String]
-        val mimeType = eData.getOrDefault("mimeType", "").asInstanceOf[String]
-        val identifier = eData.getOrDefault("identifier", "").asInstanceOf[String]
-
-      allowedActions.contains(action) &&
-            StringUtils.equalsIgnoreCase(mimeType, "application/vnd.ekstep.content-collection") &&
-            StringUtils.isNotBlank(identifier)
     }
 
     private def getHierarchy(identifier: String)(implicit metrics: Metrics): java.util.Map[String, AnyRef] = {
