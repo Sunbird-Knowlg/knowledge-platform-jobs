@@ -15,14 +15,15 @@ import org.mockito.Mockito
 import org.mockito.Mockito._
 import org.sunbird.job.cache.RedisConnect
 import org.sunbird.job.connector.FlinkKafkaConnector
+import org.sunbird.job.domain.Event
 import org.sunbird.job.fixture.EventFixture
 import org.sunbird.job.task.{EnrolmentReconciliationConfig, EnrolmentReconciliationStreamTask}
-import org.sunbird.job.util.{CassandraUtil, HttpUtil}
+import org.sunbird.job.util.{CassandraUtil, HttpUtil, JSONUtil}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 import redis.clients.jedis.Jedis
 import redis.embedded.RedisServer
-import java.util
 
+import java.util
 import scala.collection.JavaConverters._
 
 class EnrolmentReconciliationStreamTaskSpec extends BaseTestSpec {
@@ -80,7 +81,7 @@ class EnrolmentReconciliationStreamTaskSpec extends BaseTestSpec {
   }
 
   def initialize() {
-    when(mockKafkaUtil.kafkaMapSource(jobConfig.kafkaInputTopic)).thenReturn(new EnrolmentReconciliationMapSource)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new EnrolmentReconciliationEventSource)
     when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaAuditEventTopic)).thenReturn(new AuditEventSink)
     when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaFailedEventTopic)).thenReturn(new FailedEventSink)
     when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaCertIssueTopic)).thenReturn(new CertificateIssuedEventsSink)
@@ -109,13 +110,10 @@ class EnrolmentReconciliationStreamTaskSpec extends BaseTestSpec {
 
 }
 
-class EnrolmentReconciliationMapSource extends SourceFunction[java.util.Map[String, AnyRef]] {
-  override def run(ctx: SourceContext[util.Map[String, AnyRef]]): Unit = {
-    val gson = new Gson()
-    val eventMap1 = gson.fromJson(EventFixture.EVENT_1, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]].asScala
-    val eventMap2 = gson.fromJson(EventFixture.EVENT_2, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]].asScala
-    ctx.collect(eventMap1.asJava)
-    ctx.collect(eventMap2.asJava)
+class EnrolmentReconciliationEventSource extends SourceFunction[Event] {
+  override def run(ctx: SourceContext[Event]): Unit = {
+    ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_1), 0, 10))
+    ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_2), 0, 11))
   }
 
   override def cancel(): Unit = {}
