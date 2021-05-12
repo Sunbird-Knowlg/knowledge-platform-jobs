@@ -4,8 +4,6 @@ import org.sunbird.job.util.HttpUtil
 import org.sunbird.job.videostream.helpers.{AzureRequestBody, AzureResult, MediaRequest, MediaResponse, Response}
 import org.sunbird.job.videostream.service.AzureMediaService
 import org.sunbird.job.videostream.task.VideoStreamGeneratorConfig
-import org.sunbird.job.videostream.helpers.{AzureRequestBody, AzureResult}
-import org.sunbird.job.videostream.task.VideoStreamGeneratorConfig
 
 import scala.collection.immutable.HashMap
 
