@@ -17,7 +17,7 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 
   def artifactUrl: String = readOrDefault[String]("edata.artifactUrl", "")
 
-  def identifier: String = readOrDefault[String]("edata.identifier", "")
+  def identifier(): String = readOrDefault[String]("edata.identifier", "")
 
   def eData: Map[String, AnyRef] = readOrDefault("edata", new util.HashMap[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
 

@@ -43,7 +43,7 @@ class VideoStreamGenerator(config: VideoStreamGeneratorConfig, httpUtil:HttpUtil
         metrics.incCounter(config.totalEventsCount)
         if (event.isValid) {
           videoStreamService.submitJobRequest(event.eData)
-          logger.info("Streaming job submitted for " + event.identifier + " with url: " + event.artifactUrl)
+          logger.info("Streaming job submitted for " + event.identifier() + " with url: " + event.artifactUrl)
           val nextTimerTimestamp = context.timestamp() + timerDurationInMS
           context.timerService().registerProcessingTimeTimer(nextTimerTimestamp)
           logger.info("Timer registered to execute at " + nextTimerTimestamp)

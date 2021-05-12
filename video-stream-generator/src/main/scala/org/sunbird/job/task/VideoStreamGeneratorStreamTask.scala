@@ -26,7 +26,7 @@ class VideoStreamGeneratorStreamTask(config: VideoStreamGeneratorConfig, kafkaCo
     env.addSource(source).name(config.videoStreamConsumer)
       .uid(config.videoStreamConsumer).setParallelism(config.kafkaConsumerParallelism)
       .rebalance
-      .keyBy(_.identifier)
+      .keyBy(_.identifier())
       .process(new VideoStreamGenerator(config, httpUtil))
       .name(config.videoStreamGeneratorFunction)
       .uid(config.videoStreamGeneratorFunction)
