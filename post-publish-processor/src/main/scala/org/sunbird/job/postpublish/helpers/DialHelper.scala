@@ -108,7 +108,7 @@ trait DialHelper {
 
     if (validatePrimaryCategory(metadata)(config)) {
       logger.info(s"Primary Category match found. Starting the process for Dial Code Generation.")
-      Map[String, AnyRef]("identifier" -> metadata.get("identifier"),
+      Map[String, AnyRef]("identifier" -> identifier,
         "primaryCategory" -> metadata.getOrDefault("primaryCategory", ""),
         "contentType" -> metadata.getOrDefault("contentType", ""),
         "channel" -> metadata.getOrDefault("channel", ""),

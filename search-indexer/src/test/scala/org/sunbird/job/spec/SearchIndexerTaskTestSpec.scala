@@ -70,7 +70,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
     val definition = defCache.getDefinition("Collection", "1.0", jobConfig.definitionBasePath)
     val compositeFunc = new CompositeSearchIndexerFunction(jobConfig)
     val message = getEvent(EventFixture.DATA_NODE_CREATE, 509674).getMap().asScala.toMap
-    val indexDocument: Map[String, AnyRef] = compositeFunc.getIndexDocument(message,  false, definition,  jobConfig.nestedFields.asScala.toList)(mockElasticUtil)
+    val indexDocument: Map[String, AnyRef] = compositeFunc.getIndexDocument(message,  false, definition,  jobConfig.nestedFields.asScala.toList, jobConfig.ignoredFields)(mockElasticUtil)
     val trackable = indexDocument.getOrElse("trackable", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
     indexDocument.isEmpty should be(false)
     indexDocument.getOrElse("identifier", "").asInstanceOf[String] should be("do_1132247274257203201191")
@@ -82,7 +82,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
     val definition = defCache.getDefinition("Collection", "1.0", jobConfig.definitionBasePath)
     val compositeFunc = new CompositeSearchIndexerFunction(jobConfig)
     val message = getEvent(EventFixture.DATA_NODE_CREATE_WITH_RELATION, 509674).getMap().asScala.toMap
-    val indexDocument: Map[String, AnyRef] = compositeFunc.getIndexDocument(message,  false, definition, jobConfig.nestedFields.asScala.toList)(mockElasticUtil)
+    val indexDocument: Map[String, AnyRef] = compositeFunc.getIndexDocument(message,  false, definition, jobConfig.nestedFields.asScala.toList, jobConfig.ignoredFields)(mockElasticUtil)
     indexDocument.isEmpty should be(false)
     indexDocument.getOrElse("identifier", "").asInstanceOf[String] should be("do_112276071067320320114")
     indexDocument.getOrElse("objectType", "").asInstanceOf[String] should be("Content")
@@ -96,7 +96,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
     val definition = defCache.getDefinition("Collection", "1.0", jobConfig.definitionBasePath)
     val compositeFunc = new CompositeSearchIndexerFunction(jobConfig)
     val message = getEvent(EventFixture.DATA_NODE_UPDATE_WITH_RELATION, 509674).getMap().asScala.toMap
-    val indexDocument: Map[String, AnyRef] = compositeFunc.getIndexDocument(message, true, definition, jobConfig.nestedFields.asScala.toList)(mockElasticUtil)
+    val indexDocument: Map[String, AnyRef] = compositeFunc.getIndexDocument(message, true, definition, jobConfig.nestedFields.asScala.toList, jobConfig.ignoredFields)(mockElasticUtil)
     val collections = indexDocument.getOrElse("collections", List[String]()).asInstanceOf[List[String]]
     indexDocument.isEmpty should be(false)
     indexDocument.getOrElse("identifier", "").asInstanceOf[String] should be("do_112276071067320320114")
@@ -113,7 +113,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
     val definition = defCache.getDefinition("Collection", "1.0", jobConfig.definitionBasePath)
     val compositeFunc = new CompositeSearchIndexerFunction(jobConfig)
     val message = getEvent(EventFixture.DATA_NODE_UPDATE, 509674).getMap().asScala.toMap
-    val indexDocument: Map[String, AnyRef] = compositeFunc.getIndexDocument(message, true, definition, jobConfig.nestedFields.asScala.toList)(mockElasticUtil)
+    val indexDocument: Map[String, AnyRef] = compositeFunc.getIndexDocument(message, true, definition, jobConfig.nestedFields.asScala.toList, jobConfig.ignoredFields)(mockElasticUtil)
     indexDocument.isEmpty should be(false)
     indexDocument.getOrElse("identifier", "").asInstanceOf[String] should be("do_1132247274257203201191")
     indexDocument.getOrElse("objectType", "").asInstanceOf[String] should be("Collection")

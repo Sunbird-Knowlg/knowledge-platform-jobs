@@ -23,7 +23,7 @@ trait CompositeSearchIndexerHelper {
     indexDocument
   }
 
-  def getIndexDocument(message: Map[String, Any], isUpdate: Boolean, definition: ObjectDefinition, nestedFields: List[String])(esUtil: ElasticSearchUtil): Map[String, AnyRef] = {
+  def getIndexDocument(message: Map[String, Any], isUpdate: Boolean, definition: ObjectDefinition, nestedFields: List[String], ignoredFields: List[String])(esUtil: ElasticSearchUtil): Map[String, AnyRef] = {
     val identifier = message.getOrElse("nodeUniqueId", "").asInstanceOf[String]
     val indexDocument = if (isUpdate) getIndexDocument(identifier)(esUtil) else scala.collection.mutable.Map[String, AnyRef]()
     val transactionData = message.getOrElse("transactionData", Map[String, Any]()).asInstanceOf[Map[String, Any]]
@@ -68,6 +68,9 @@ trait CompositeSearchIndexerHelper {
         }
       })
     }
+    
+    //Ignored fields are removed-> it can be a propertyName or relation Name
+    indexDocument --= ignoredFields
 
     indexDocument.put("graph_id", message.getOrElse("graphId", "").asInstanceOf[String])
     indexDocument.put("node_id", message.getOrElse("nodeGraphId", 0).asInstanceOf[Integer])
@@ -85,19 +88,19 @@ trait CompositeSearchIndexerHelper {
     val definition = defCache.getDefinition(compositeObject.objectType, compositeObject.getVersionAsString(), compositeObject.getDefinitionBasePath())
 
     val compositeMap = compositeObject.message.asScala.toMap
-    upsertDocument(compositeObject.identifier, compositeMap, definition, compositeObject.getNestedFields())(esUtil)
+    upsertDocument(compositeObject.identifier, compositeMap, definition, compositeObject.getNestedFields(), compositeObject.getIgnoredFields())(esUtil)
   }
 
 
-  private def upsertDocument(identifier: String, message: Map[String, Any], definition: ObjectDefinition, nestedFields: List[String])(esUtil: ElasticSearchUtil): Unit = {
+  private def upsertDocument(identifier: String, message: Map[String, Any], definition: ObjectDefinition, nestedFields: List[String], ignoredFields: List[String])(esUtil: ElasticSearchUtil): Unit = {
     val operationType = message.getOrElse("operationType", "").asInstanceOf[String]
     operationType match {
       case "CREATE" =>
-        val indexDocument = getIndexDocument(message, false, definition, nestedFields)(esUtil)
+        val indexDocument = getIndexDocument(message, false, definition, nestedFields, ignoredFields)(esUtil)
         val jsonIndexDocument = ScalaJsonUtil.serialize(indexDocument)
         upsertDocument(identifier, jsonIndexDocument)(esUtil)
       case "UPDATE" =>
-        val indexDocument = getIndexDocument(message, true, definition, nestedFields)(esUtil)
+        val indexDocument = getIndexDocument(message, true, definition, nestedFields, ignoredFields)(esUtil)
         val jsonIndexDocument = ScalaJsonUtil.serialize(indexDocument)
         upsertDocument(identifier, jsonIndexDocument)(esUtil)
       case "DELETE" =>
