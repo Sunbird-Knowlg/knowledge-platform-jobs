@@ -4,10 +4,12 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import com.typesafe.config.{Config, ConfigFactory}
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.sunbird.job.domain.`object`.DefinitionCache
+import org.sunbird.job.util.ScalaJsonUtil
 import org.sunbird.publish.config.PublishConfig
 import org.sunbird.publish.core.{DefinitionConfig, ObjectData}
 import org.sunbird.publish.helpers.EcarGenerator
 import org.sunbird.publish.util.CloudStorageUtil
+
 import scala.collection.JavaConverters._
 
 class EcarGeneratorSpec extends FlatSpec with BeforeAndAfterAll with Matchers {
@@ -40,7 +42,12 @@ class EcarGeneratorSpec extends FlatSpec with BeforeAndAfterAll with Matchers {
 }
 
 class TestEcarGenerator extends EcarGenerator {
-
-  val testObj = List(Map("children" -> List(Map("identifier" -> "do_234", "name" -> "Children-1", "objectType" -> "Question"), Map("identifier" -> "do_345", "name" -> "Children-2", "objectType" -> "Question")), "name" -> "Test QuestionSet", "appIcon" -> "https://dev.sunbirded.org/assets/images/sunbird_logo.png", "objectType" -> "QuestionSet", "identifier" -> "do_123", "status" -> "Live", "identifier" -> "do_123"), Map("identifier" -> "do_234", "name" -> "Children-1", "objectType" -> "Question"), Map("identifier" -> "do_345", "name" -> "Children-2", "objectType" -> "Question"))
+  val media = Map(
+    "id" -> "do_1127129497561497601326",
+    "type" -> "image",
+    "src" -> "somepath/sunbird_1551961194254.jpeg",
+    "baseUrl" -> "some_base_url"
+  )
+  val testObj = List(Map("children" -> List(Map("identifier" -> "do_234", "name" -> "Children-1", "objectType" -> "Question"), Map("identifier" -> "do_345", "name" -> "Children-2", "objectType" -> "Question")), "name" -> "Test QuestionSet", "appIcon" -> "https://dev.sunbirded.org/assets/images/sunbird_logo.png", "objectType" -> "QuestionSet", "identifier" -> "do_123", "status" -> "Live", "identifier" -> "do_123"), Map("identifier" -> "do_234", "name" -> "Children-1", "objectType" -> "Question", "media" -> ScalaJsonUtil.serialize(List(media))), Map("identifier" -> "do_345", "name" -> "Children-2", "objectType" -> "Question"))
   override def getDataForEcar(obj: ObjectData): Option[List[Map[String, AnyRef]]] = Some(testObj)
 }
