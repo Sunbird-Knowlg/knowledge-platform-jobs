@@ -26,7 +26,7 @@ class MVCProcessorIndexer(config: MVCProcessorIndexerConfig, var esUtil: Elastic
         if (esUtil == null) {
             esUtil = new ElasticSearchUtil(config.esConnectionInfo, config.mvcProcessorIndex, config.mvcProcessorIndexType)
         }
-        var cassandraUtil: CassandraUtil = _
+        var cassandraUtil: CassandraUtil = new CassandraUtil(config.dbHost, config.dbPort)
     }
 
     override def close(): Unit = {
