@@ -1,7 +1,7 @@
-package org.sunbird.job.service.impl
+package org.sunbird.job.videostream.service.impl
 
-import org.sunbird.job.exception.MediaServiceException
-import org.sunbird.job.service.IMediaService
+import org.sunbird.job.videostream.exception.MediaServiceException
+import org.sunbird.job.videostream.service.IMediaService
 
 //import org.ekstep.media.config.AppConfig
 

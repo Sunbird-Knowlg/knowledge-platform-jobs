@@ -1,4 +1,4 @@
-package org.sunbird.job.helpers
+package org.sunbird.job.videostream.helpers
 
 import org.apache.commons.lang3.StringUtils
 

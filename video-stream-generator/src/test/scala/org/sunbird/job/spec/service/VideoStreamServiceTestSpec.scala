@@ -11,11 +11,11 @@ import org.mockito.ArgumentMatchers.{any, anyString, contains}
 import org.mockito.Mockito
 import org.mockito.Mockito._
 import org.sunbird.job.fixture.EventFixture
-import org.sunbird.job.service.VideoStreamService
-import org.sunbird.job.task.VideoStreamGeneratorConfig
+import org.sunbird.job.videostream.service.VideoStreamService
+import org.sunbird.job.videostream.task.VideoStreamGeneratorConfig
 import org.sunbird.spec.BaseTestSpec
 import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, JSONUtil}
-import org.sunbird.job.domain.Event
+import org.sunbird.job.videostream.domain.Event
 import org.sunbird.job.Metrics
 
 class VideoStreamServiceTestSpec extends BaseTestSpec {
