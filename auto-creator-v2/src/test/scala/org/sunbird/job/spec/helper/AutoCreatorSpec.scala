@@ -85,7 +85,7 @@ class AutoCreatorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with
 		val child: Map[String, AnyRef] = Map("do_113264104174723072120" -> Map("objectType" -> "Question", "downloadUrl" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/question/do_113264104174723072120/test-1_1619640554144_do_113264104174723072120_15.ecar", "variants"-> Map("full" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/question/do_113264104174723072120/test-1_1619640554144_do_113264104174723072120_15.ecar", "online"->"https://sunbirddev.blob.core.windows.net/sunbird-content-dev/question/do_113264104174723072120/test-1_1619640555385_do_113264104174723072120_15_ONLINE.ecar")))
 		val result: Map[String, ObjectData] = new TestAutoCreator().processChildren(child)(jobConfig, mockNeo4JUtil, cassandraUtil, cloudUtil, defCache)
 		result should not be empty
-    result should contain ("do_113264104174723072120")
+    result.keys should contain ("do_113264104174723072120")
 		result.get("do_113264104174723072120").get.identifier shouldEqual "do_113264104174723072120"
 	}
 

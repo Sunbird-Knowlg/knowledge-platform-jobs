@@ -17,6 +17,9 @@ import org.sunbird.job.fixture.EventFixture
 import org.sunbird.job.task.{AutoCreatorV2Config, AutoCreatorV2StreamTask}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 
+import java.security.cert.PKIXRevocationChecker.Option
+import scala.Some
+
 class AutoCreatorV2TaskTestSpec extends BaseTestSpec {
 
   implicit val mapTypeInfo: TypeInformation[java.util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[java.util.Map[String, AnyRef]])
@@ -50,7 +53,7 @@ class AutoCreatorV2TaskTestSpec extends BaseTestSpec {
     event.mimeType should be("application/vnd.ekstep.html-archive")
     event.objectId should be("do_113244425048121344131")
     event.objectType should be("QuestionSet")
-    event.repository should be("https://dock.sunbirded.org/api/questionset/v1/read/do_113244425048121344131")
+    event.repository should be (Option("https://dock.sunbirded.org/api/questionset/v1/read/do_113244425048121344131"))
     event.downloadUrl should be("https://dockstorage.blob.core.windows.net/sunbird-content-dock/questionset/do_113244425048121344131/added1_1616751462043_do_113244425048121344131_1_SPINE.ecar")
     event.pkgVersion should be(1.0)
     event.eData.size should be(8)
