@@ -4,6 +4,7 @@ import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.domain.`object`.DefinitionCache
+import org.sunbird.job.exception.InvalidEventException
 import org.sunbird.job.searchindexer.compositesearch.domain.Event
 import org.sunbird.job.searchindexer.compositesearch.helpers.{CompositeSearchIndexerHelper, FailedEventHelper}
 import org.sunbird.job.searchindexer.models.CompositeIndexer
@@ -30,6 +31,7 @@ class CompositeSearchIndexerFunction(config: SearchIndexerConfig,
     super.close()
   }
 
+  @throws(classOf[InvalidEventException])
   override def processElement(event: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
     metrics.incCounter(config.compositeSearchEventCount)
     try {
@@ -42,7 +44,7 @@ class CompositeSearchIndexerFunction(config: SearchIndexerConfig,
         metrics.incCounter(config.failedCompositeSearchEventCount)
         val failedEvent = getFailedEvent(event, ex)
         context.output(config.failedEventOutTag, failedEvent)
-        throw ex
+        throw new InvalidEventException(ex.getMessage, Map("partition" -> event.partition, "offset" -> event.offset), ex)
     }
   }
 
