@@ -1,6 +1,5 @@
 package org.sunbird.job.publish.spec
 
-import java.util
 import org.mockito.ArgumentMatchers.{any, anyString}
 import org.mockito.Mockito
 import org.mockito.Mockito.when
@@ -10,7 +9,8 @@ import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
 import org.sunbird.job.publish.helpers.ObjectUpdater
 import org.sunbird.job.util.{CassandraUtil, Neo4JUtil}
-import org.sunbird.publish.core.DefinitionConfig
+
+import java.util
 
 class ObjectUpdaterSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
 

@@ -1,10 +1,10 @@
 package org.sunbird.job.publish.util
 
-import java.io.{File, IOException}
-import java.net.URL
-
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
+
+import java.io.{File, IOException}
+import java.net.URL
 
 object FileUtils {
 

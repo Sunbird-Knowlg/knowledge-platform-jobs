@@ -1,11 +1,12 @@
 package org.sunbird.job.publish.util
 
-import java.io.File
 import org.apache.commons.lang3.StringUtils
 import org.sunbird.cloud.storage.BaseStorageService
 import org.sunbird.cloud.storage.factory.{StorageConfig, StorageServiceFactory}
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.Slug
+
+import java.io.File
 
 class CloudStorageUtil(config: PublishConfig) extends Serializable {
 

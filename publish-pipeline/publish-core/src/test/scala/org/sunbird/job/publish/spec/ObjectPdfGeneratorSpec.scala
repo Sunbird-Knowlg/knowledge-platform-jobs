@@ -1,7 +1,7 @@
 package org.sunbird.job.publish.spec
 
 import com.typesafe.config.{Config, ConfigFactory}
-import org.mockito.{ArgumentMatchers, Mockito}
+import org.mockito.Mockito
 import org.mockito.Mockito.when
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar

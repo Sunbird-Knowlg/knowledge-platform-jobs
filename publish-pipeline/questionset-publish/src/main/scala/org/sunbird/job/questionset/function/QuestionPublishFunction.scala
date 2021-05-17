@@ -1,6 +1,5 @@
 package org.sunbird.job.questionset.function
 
-import java.lang.reflect.Type
 import akka.dispatch.ExecutionContexts
 import com.google.gson.reflect.TypeToken
 import org.apache.flink.api.common.typeinfo.TypeInformation
@@ -9,16 +8,14 @@ import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig}
-import org.sunbird.job.{BaseProcessFunction, Metrics}
-import org.sunbird.job.publish.domain.PublishMetadata
-import org.sunbird.job.publish.helpers.QuestionPublisher
 import org.sunbird.job.publish.util.CloudStorageUtil
 import org.sunbird.job.questionset.publish.domain.PublishMetadata
-import org.sunbird.job.task.QuestionSetPublishConfig
+import org.sunbird.job.questionset.publish.helpers.QuestionPublisher
+import org.sunbird.job.questionset.task.QuestionSetPublishConfig
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
-import org.sunbird.publish.core.DefinitionConfig
-import org.sunbird.questionset.publish.domain.PublishMetadata
+import org.sunbird.job.{BaseProcessFunction, Metrics}
 
+import java.lang.reflect.Type
 import scala.concurrent.ExecutionContext
 
 class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUtil,

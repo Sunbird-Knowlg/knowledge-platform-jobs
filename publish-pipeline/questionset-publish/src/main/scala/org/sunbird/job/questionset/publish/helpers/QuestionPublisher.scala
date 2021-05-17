@@ -1,21 +1,19 @@
 package org.sunbird.job.questionset.publish.helpers
 
-import java.util
 import com.datastax.driver.core.Row
-import com.datastax.driver.core.querybuilder.{QueryBuilder, Select, Update}
+import com.datastax.driver.core.querybuilder.{QueryBuilder, Select}
 import org.apache.commons.lang3
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
-import org.sunbird.job.publish.helpers.{EcarGenerator, ObjectEnrichment, ObjectReader, ObjectUpdater, ObjectValidator}
+import org.sunbird.job.publish.helpers._
 import org.sunbird.job.publish.util.CloudStorageUtil
 import org.sunbird.job.util.{CassandraUtil, Neo4JUtil}
-import org.sunbird.publish.core.DefinitionConfig
-import org.sunbird.publish.helpers._
 
-import scala.collection.mutable.ListBuffer
+import java.util
 import scala.collection.JavaConverters._
+import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext
 
 trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnrichment with EcarGenerator with ObjectUpdater {

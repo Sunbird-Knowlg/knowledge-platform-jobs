@@ -1,10 +1,10 @@
 package org.sunbird.job.publish.helpers
 
-import java.io.StringWriter
-import java.util.Properties
-
 import org.apache.velocity.VelocityContext
 import org.apache.velocity.app.Velocity
+
+import java.io.StringWriter
+import java.util.Properties
 
 trait ObjectTemplateGenerator {
 

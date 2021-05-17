@@ -2,7 +2,6 @@ package org.sunbird.job.publish.spec
 
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
-import org.sunbird.job.publish.core.ObjectData
 import org.sunbird.job.publish.helpers.ObjectTemplateGenerator
 
 

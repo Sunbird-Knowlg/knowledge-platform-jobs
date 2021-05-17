@@ -1,15 +1,13 @@
 package org.sunbird.job.publish.helpers
 
-import java.io.{BufferedWriter, File, FileWriter}
 import com.google.gson.Gson
 import org.slf4j.LoggerFactory
 import org.sunbird.job.publish.core.{ObjectData, Slug}
 import org.sunbird.job.publish.handler.{QuestionHandlerFactory, QuestionTypeHandler}
 import org.sunbird.job.publish.util.{CloudStorageUtil, FileUtils}
 import org.sunbird.job.util.HttpUtil
-import org.sunbird.publish.core.Slug
-import org.sunbird.publish.handler.QuestionHandlerFactory
-import org.sunbird.publish.util.CloudStorageUtil
+
+import java.io.{BufferedWriter, File, FileWriter}
 
 
 trait QuestionPdfGenerator extends ObjectTemplateGenerator {

@@ -1,8 +1,9 @@
 package org.sunbird.job.publish.spec
 
-import java.io.File
 import org.scalatest.{FlatSpec, Matchers}
 import org.sunbird.job.publish.core.Slug
+
+import java.io.File
 
 class SlugSpec extends FlatSpec with Matchers {
 

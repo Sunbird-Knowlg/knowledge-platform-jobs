@@ -1,11 +1,11 @@
 package org.sunbird.job.publish.helpers
 
-import java.util
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.publish.core.ObjectData
 import org.sunbird.job.util.Neo4JUtil
 
+import java.util
 import scala.collection.JavaConverters._
 
 trait FrameworkDataEnrichment {

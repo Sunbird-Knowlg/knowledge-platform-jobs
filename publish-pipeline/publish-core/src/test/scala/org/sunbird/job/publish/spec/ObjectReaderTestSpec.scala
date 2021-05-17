@@ -1,12 +1,12 @@
 package org.sunbird.job.publish.spec
 
-import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
-import org.scalatestplus.mockito.MockitoSugar
-import org.sunbird.job.util.{CassandraUtil, Neo4JUtil}
 import org.mockito.Mockito
 import org.mockito.Mockito._
+import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
+import org.scalatestplus.mockito.MockitoSugar
 import org.sunbird.job.publish.core.ExtDataConfig
 import org.sunbird.job.publish.helpers.ObjectReader
+import org.sunbird.job.util.{CassandraUtil, Neo4JUtil}
 
 import scala.collection.JavaConverters._
 

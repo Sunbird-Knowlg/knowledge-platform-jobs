@@ -1,6 +1,5 @@
 package org.sunbird.job.publish.spec
 
-import scala.concurrent.ExecutionContext.Implicits.global
 import com.typesafe.config.{Config, ConfigFactory}
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.sunbird.job.domain.`object`.DefinitionCache
@@ -8,9 +7,9 @@ import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ObjectData}
 import org.sunbird.job.publish.helpers.EcarGenerator
 import org.sunbird.job.publish.util.CloudStorageUtil
-import org.sunbird.publish.core.{DefinitionConfig, ObjectData}
 
 import scala.collection.JavaConverters._
+import scala.concurrent.ExecutionContext.Implicits.global
 
 class EcarGeneratorSpec extends FlatSpec with BeforeAndAfterAll with Matchers {
 

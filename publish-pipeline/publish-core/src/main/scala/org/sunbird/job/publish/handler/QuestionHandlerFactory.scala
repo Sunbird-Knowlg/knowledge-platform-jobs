@@ -1,9 +1,8 @@
 package org.sunbird.job.publish.handler
 
-import java.util
-
 import com.google.gson.Gson
 
+import java.util
 import scala.collection.JavaConverters._
 
 object QuestionHandlerFactory {

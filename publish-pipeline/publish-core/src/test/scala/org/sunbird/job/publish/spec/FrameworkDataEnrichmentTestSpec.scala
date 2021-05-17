@@ -1,7 +1,7 @@
 package org.sunbird.job.publish.spec
 
-import org.mockito.{ArgumentMatchers, Mockito}
 import org.mockito.Mockito.when
+import org.mockito.{ArgumentMatchers, Mockito}
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
 import org.sunbird.job.publish.core.ObjectData

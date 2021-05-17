@@ -3,7 +3,6 @@ package org.sunbird.job.publish.helpers
 import org.sunbird.job.publish.core.{ExtDataConfig, ObjectData}
 import org.sunbird.job.publish.util.CloudStorageUtil
 import org.sunbird.job.util.{CassandraUtil, Neo4JUtil}
-import org.sunbird.publish.core.ExtDataConfig
 
 trait ObjectEnrichment extends FrameworkDataEnrichment with ThumbnailGenerator {
 

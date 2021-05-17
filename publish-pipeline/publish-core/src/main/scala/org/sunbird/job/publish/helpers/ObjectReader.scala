@@ -3,7 +3,6 @@ package org.sunbird.job.publish.helpers
 import org.slf4j.LoggerFactory
 import org.sunbird.job.publish.core.{ExtDataConfig, ObjectData}
 import org.sunbird.job.util.{CassandraUtil, Neo4JUtil}
-import org.sunbird.publish.core.ExtDataConfig
 
 import scala.collection.JavaConverters._
 

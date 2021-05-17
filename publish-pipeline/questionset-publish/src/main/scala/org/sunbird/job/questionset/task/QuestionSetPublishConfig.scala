@@ -1,13 +1,13 @@
 package org.sunbird.job.questionset.task
 
-import java.util
 import com.typesafe.config.Config
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.streaming.api.scala.OutputTag
 import org.sunbird.job.publish.config.PublishConfig
-import org.sunbird.job.publish.domain.PublishMetadata
+import org.sunbird.job.questionset.publish.domain.PublishMetadata
 
+import java.util
 import scala.collection.JavaConverters._
 
 class QuestionSetPublishConfig(override val config: Config) extends PublishConfig(config, "questionset-publish"){

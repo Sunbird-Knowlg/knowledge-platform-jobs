@@ -1,12 +1,11 @@
 package org.sunbird.job.publish.helpers
 
-import java.io.File
 import org.slf4j.LoggerFactory
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.publish.core.{DefinitionConfig, ObjectData}
 import org.sunbird.job.publish.util.CloudStorageUtil
-import org.sunbird.publish.core.{DefinitionConfig, ObjectData}
 
+import java.io.File
 import scala.concurrent.ExecutionContext
 
 trait EcarGenerator extends ObjectBundle {

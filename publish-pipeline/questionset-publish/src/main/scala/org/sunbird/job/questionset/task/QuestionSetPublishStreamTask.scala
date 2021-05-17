@@ -1,17 +1,17 @@
 package org.sunbird.job.questionset.task
 
-import java.io.File
-import java.util
-
 import com.typesafe.config.ConfigFactory
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.function.{PublishEventRouter, QuestionPublishFunction, QuestionSetPublishFunction}
-import org.sunbird.job.publish.domain.{Event, PublishMetadata}
+import org.sunbird.job.questionset.function.{PublishEventRouter, QuestionPublishFunction, QuestionSetPublishFunction}
+import org.sunbird.job.questionset.publish.domain.{Event, PublishMetadata}
 import org.sunbird.job.util.{FlinkUtil, HttpUtil}
+
+import java.io.File
+import java.util
 
 class QuestionSetPublishStreamTask(config: QuestionSetPublishConfig, kafkaConnector: FlinkKafkaConnector, httpUtil: HttpUtil) {
 

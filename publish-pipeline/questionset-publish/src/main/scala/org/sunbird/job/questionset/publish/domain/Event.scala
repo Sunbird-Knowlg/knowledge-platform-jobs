@@ -1,9 +1,9 @@
 package org.sunbird.job.questionset.publish.domain
 
-import java.{lang, util}
 import org.apache.commons.lang3.StringUtils
 import org.sunbird.job.domain.reader.JobRequest
 
+import java.util
 import scala.collection.JavaConverters._
 
 class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) extends JobRequest(eventMap, partition, offset) {

@@ -1,21 +1,20 @@
 package org.sunbird.job.publish.helpers
 
-import java.io.{BufferedOutputStream, ByteArrayOutputStream, File, FileInputStream, FileOutputStream}
-import java.text.SimpleDateFormat
-import java.util
-import java.util.Date
-import java.util.zip.{ZipEntry, ZipOutputStream}
-import java.net.{HttpURLConnection, URL}
 import org.apache.commons.io.{FileUtils, FilenameUtils, IOUtils}
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.publish.core.{DefinitionConfig, ObjectData, Slug}
 import org.sunbird.job.util.{JSONUtil, ScalaJsonUtil}
-import org.sunbird.publish.core.Slug
 
-import scala.concurrent.{Await, ExecutionContext, Future}
+import java.io._
+import java.net.{HttpURLConnection, URL}
+import java.text.SimpleDateFormat
+import java.util
+import java.util.Date
+import java.util.zip.{ZipEntry, ZipOutputStream}
 import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, ExecutionContext, Future}
 
 trait ObjectBundle {
 
