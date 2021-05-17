@@ -124,7 +124,7 @@
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                                 <transformer
                                         implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>org.sunbird.job.task.QuestionSetPublishStreamTask</mainClass>
+                                    <mainClass>org.sunbird.job.questionset.task.QuestionSetPublishStreamTask</mainClass>
                                 </transformer>
                                 <!-- append default configs -->
                                 <transformer

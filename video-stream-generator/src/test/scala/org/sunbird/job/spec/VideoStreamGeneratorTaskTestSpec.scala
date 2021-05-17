@@ -17,10 +17,10 @@ import org.mockito.Mockito
 import org.mockito.Mockito._
 import org.mockito.ArgumentMatchers.{any, anyString, contains}
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.domain.Event
+import org.sunbird.job.videostream.domain.Event
 import org.sunbird.job.fixture.EventFixture
-import org.sunbird.job.service.IMediaService
-import org.sunbird.job.task.{VideoStreamGeneratorConfig, VideoStreamGeneratorStreamTask}
+import org.sunbird.job.videostream.service.IMediaService
+import org.sunbird.job.videostream.task.{VideoStreamGeneratorConfig, VideoStreamGeneratorStreamTask}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 
 import scala.collection.JavaConverters._

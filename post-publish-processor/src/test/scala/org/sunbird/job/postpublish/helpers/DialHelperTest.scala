@@ -1,21 +1,19 @@
 package org.sunbird.job.postpublish.helpers
 
-import java.util
-
 import com.typesafe.config.{Config, ConfigFactory}
 import org.cassandraunit.CQLDataLoader
 import org.cassandraunit.dataset.cql.FileCQLDataSet
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
+import org.mockito.Mockito.{doNothing, when}
 import org.mockito.{ArgumentMatchers, Mockito}
-import org.mockito.Mockito.when
-import org.mockito.Mockito.doNothing
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
 import org.sunbird.job.Metrics
-import org.sunbird.job.models.ExtDataConfig
-import org.sunbird.job.task.PostPublishProcessorConfig
+import org.sunbird.job.postpublish.models.ExtDataConfig
+import org.sunbird.job.postpublish.task.PostPublishProcessorConfig
 import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, Neo4JUtil}
 
+import java.util
 import scala.collection.JavaConverters._
 
 class DialHelperTest extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
