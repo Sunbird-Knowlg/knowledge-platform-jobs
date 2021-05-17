@@ -8,7 +8,6 @@ import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.audithistory.audithistory.domain.Event
-import org.sunbird.job.audithistory.audithistory.domain.Event
 import org.sunbird.job.audithistory.domain.Event
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.functions.AuditHistoryIndexer
