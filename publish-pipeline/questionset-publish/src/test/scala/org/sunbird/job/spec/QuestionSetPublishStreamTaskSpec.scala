@@ -1,7 +1,6 @@
 package org.sunbird.job.spec
 
 import java.util
-
 import com.google.gson.Gson
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.flink.api.common.typeinfo.TypeInformation
@@ -18,10 +17,10 @@ import org.mockito.Mockito.when
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.task.{QuestionSetPublishConfig, QuestionSetPublishStreamTask}
 import org.sunbird.job.fixture.EventFixture
+import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.domain.Event
+import org.sunbird.job.publish.util.CloudStorageUtil
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
-import org.sunbird.publish.config.PublishConfig
-import org.sunbird.publish.util.CloudStorageUtil
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 
 class QuestionSetPublishStreamTaskSpec extends BaseTestSpec {

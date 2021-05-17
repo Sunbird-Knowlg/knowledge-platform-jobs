@@ -7,10 +7,11 @@ import org.cassandraunit.utils.EmbeddedCassandraServerHelper
 import org.mockito.Mockito
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
+import org.sunbird.job.publish.core.{ExtDataConfig, ObjectData}
 import org.sunbird.job.publish.helpers.QuestionSetPublisher
 import org.sunbird.job.task.QuestionSetPublishConfig
 import org.sunbird.job.util.{CassandraUtil, Neo4JUtil}
-import org.sunbird.publish.core.{ExtDataConfig, ObjectData}
+import org.sunbird.publish.core.ExtDataConfig
 
 class QuestionSetPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
 

@@ -1,7 +1,6 @@
 package org.sunbird.job.publish.helpers.spec
 
 import java.util
-
 import akka.dispatch.ExecutionContexts
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.commons.lang3.StringUtils
@@ -12,11 +11,12 @@ import org.mockito.Mockito
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
 import org.sunbird.job.domain.`object`.DefinitionCache
+import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
 import org.sunbird.job.publish.helpers.QuestionPublisher
+import org.sunbird.job.publish.util.CloudStorageUtil
 import org.sunbird.job.task.QuestionSetPublishConfig
 import org.sunbird.job.util.{CassandraUtil, Neo4JUtil}
-import org.sunbird.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
-import org.sunbird.publish.util.CloudStorageUtil
+import org.sunbird.publish.core.DefinitionConfig
 
 
 class QuestionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
