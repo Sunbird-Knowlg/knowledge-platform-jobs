@@ -1,17 +1,17 @@
 package org.sunbird.job.audithistory.task
 
-import java.io.File
-import java.util
 import com.typesafe.config.ConfigFactory
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
-import org.sunbird.audithistory.audithistory.domain.Event
 import org.sunbird.job.audithistory.domain.Event
+import org.sunbird.job.audithistory.functions.AuditHistoryIndexer
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.functions.AuditHistoryIndexer
 import org.sunbird.job.util.{ElasticSearchUtil, FlinkUtil}
+
+import java.io.File
+import java.util
 
 
 class AuditHistoryIndexerStreamTask(config: AuditHistoryIndexerConfig, kafkaConnector: FlinkKafkaConnector, esUtil: ElasticSearchUtil) {

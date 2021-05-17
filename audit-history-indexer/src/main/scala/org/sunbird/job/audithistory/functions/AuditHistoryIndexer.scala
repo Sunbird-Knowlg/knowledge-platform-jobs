@@ -1,14 +1,15 @@
 package org.sunbird.job.audithistory.functions
 
-import java.util
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.sunbird.job.audithistory.domain.Event
-import org.sunbird.job.service.AuditHistoryIndexerService
-import org.sunbird.job.task.AuditHistoryIndexerConfig
-import org.sunbird.job.{BaseProcessFunction, Metrics}
+import org.sunbird.job.audithistory.service.AuditHistoryIndexerService
+import org.sunbird.job.audithistory.task.AuditHistoryIndexerConfig
 import org.sunbird.job.util.ElasticSearchUtil
+import org.sunbird.job.{BaseProcessFunction, Metrics}
+
+import java.util
 
 class AuditHistoryIndexer(config: AuditHistoryIndexerConfig, var esUtil: ElasticSearchUtil)
                           (implicit mapTypeInfo: TypeInformation[util.Map[String, Any]],

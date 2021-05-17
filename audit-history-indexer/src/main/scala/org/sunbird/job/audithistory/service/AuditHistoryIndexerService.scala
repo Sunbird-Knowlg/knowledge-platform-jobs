@@ -4,7 +4,7 @@ import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.Metrics
 import org.sunbird.job.audithistory.domain.{AuditHistoryRecord, Event}
-import org.sunbird.job.task.AuditHistoryIndexerConfig
+import org.sunbird.job.audithistory.task.AuditHistoryIndexerConfig
 import org.sunbird.job.util.{ElasticSearchUtil, JSONUtil}
 
 import java.io.IOException
