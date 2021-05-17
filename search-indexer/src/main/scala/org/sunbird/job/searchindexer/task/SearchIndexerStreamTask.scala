@@ -1,18 +1,17 @@
 package org.sunbird.job.searchindexer.task
 
-import java.io.File
-import java.util
+import com.typesafe.config.ConfigFactory
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
+import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.util.FlinkUtil
-import com.typesafe.config.ConfigFactory
-import org.apache.flink.api.java.utils.ParameterTool
-import org.sunbird.job.compositesearch.domain.Event
-import org.sunbird.job.functions.{CompositeSearchIndexerFunction, DIALCodeIndexerFunction, DIALCodeMetricsIndexerFunction, TransactionEventRouter}
 import org.sunbird.job.searchindexer.compositesearch.domain.Event
-import org.sunbird.searchindexer.compositesearch.domain.Event
+import org.sunbird.job.searchindexer.functions.{CompositeSearchIndexerFunction, DIALCodeIndexerFunction, DIALCodeMetricsIndexerFunction, TransactionEventRouter}
+import org.sunbird.job.util.FlinkUtil
+
+import java.io.File
+import java.util
 
 class SearchIndexerStreamTask(config: SearchIndexerConfig, kafkaConnector: FlinkKafkaConnector) {
 

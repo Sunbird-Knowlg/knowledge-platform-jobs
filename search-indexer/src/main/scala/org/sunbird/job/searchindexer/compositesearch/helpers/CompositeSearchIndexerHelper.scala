@@ -1,11 +1,12 @@
 package org.sunbird.job.searchindexer.compositesearch.helpers
 
-import scala.collection.JavaConverters._
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
-import org.sunbird.job.models.CompositeIndexer
+import org.sunbird.job.searchindexer.models.CompositeIndexer
 import org.sunbird.job.util.{ElasticSearchUtil, ScalaJsonUtil}
+
+import scala.collection.JavaConverters._
 
 trait CompositeSearchIndexerHelper {
 

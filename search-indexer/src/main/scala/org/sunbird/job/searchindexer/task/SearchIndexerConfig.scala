@@ -1,13 +1,13 @@
 package org.sunbird.job.searchindexer.task
 
-import java.util
-
 import com.typesafe.config.Config
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.streaming.api.scala.OutputTag
 import org.sunbird.job.BaseJobConfig
-import org.sunbird.job.compositesearch.domain.Event
+import org.sunbird.job.searchindexer.compositesearch.domain.Event
+
+import java.util
 import scala.collection.JavaConverters._
 
 class SearchIndexerConfig(override val config: Config) extends BaseJobConfig(config, "search-indexer") {

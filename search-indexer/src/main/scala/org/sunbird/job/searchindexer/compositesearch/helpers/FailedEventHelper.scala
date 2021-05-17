@@ -1,8 +1,9 @@
 package org.sunbird.job.searchindexer.compositesearch.helpers
 
-import java.io.{PrintWriter, StringWriter}
-import org.sunbird.job.compositesearch.domain.Event
+import org.sunbird.job.searchindexer.compositesearch.domain.Event
 import org.sunbird.job.util.ScalaJsonUtil
+
+import java.io.{PrintWriter, StringWriter}
 
 trait FailedEventHelper {
 

@@ -1,13 +1,14 @@
 package org.sunbird.job.searchindexer.functions
 
-import java.lang.reflect.Type
 import com.google.gson.reflect.TypeToken
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
-import org.sunbird.job.compositesearch.domain.Event
+import org.sunbird.job.searchindexer.compositesearch.domain.Event
+import org.sunbird.job.searchindexer.task.SearchIndexerConfig
 import org.sunbird.job.{BaseProcessFunction, Metrics}
-import org.sunbird.job.task.SearchIndexerConfig
+
+import java.lang.reflect.Type
 
 class TransactionEventRouter(config: SearchIndexerConfig)
   extends BaseProcessFunction[Event, String](config) {

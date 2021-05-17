@@ -2,6 +2,7 @@ package org.sunbird.job.searchindexer.compositesearch.helpers
 
 import org.slf4j.LoggerFactory
 import org.sunbird.job.util.{ElasticSearchUtil, ScalaJsonUtil}
+
 import scala.collection.mutable
 
 trait DIALCodeMetricsIndexerHelper {
