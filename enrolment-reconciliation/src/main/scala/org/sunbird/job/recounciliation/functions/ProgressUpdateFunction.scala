@@ -5,8 +5,8 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
-import org.sunbird.job.domain._
-import org.sunbird.job.task.EnrolmentReconciliationConfig
+import org.sunbird.job.recounciliation.domain.CollectionProgress
+import org.sunbird.job.recounciliation.task.EnrolmentReconciliationConfig
 import org.sunbird.job.util.CassandraUtil
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 

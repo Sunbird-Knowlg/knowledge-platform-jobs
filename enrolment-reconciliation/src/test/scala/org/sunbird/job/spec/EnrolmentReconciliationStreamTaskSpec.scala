@@ -16,13 +16,13 @@ import org.mockito.Mockito._
 import org.sunbird.job.cache.RedisConnect
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.fixture.EventFixture
-import org.sunbird.job.task.{EnrolmentReconciliationConfig, EnrolmentReconciliationStreamTask}
+import org.sunbird.job.recounciliation.task.{EnrolmentReconciliationConfig, EnrolmentReconciliationStreamTask}
 import org.sunbird.job.util.{CassandraUtil, HttpUtil}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 import redis.clients.jedis.Jedis
 import redis.embedded.RedisServer
-import java.util
 
+import java.util
 import scala.collection.JavaConverters._
 
 class EnrolmentReconciliationStreamTaskSpec extends BaseTestSpec {

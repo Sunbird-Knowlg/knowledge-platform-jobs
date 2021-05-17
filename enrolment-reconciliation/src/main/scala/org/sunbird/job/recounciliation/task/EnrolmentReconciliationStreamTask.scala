@@ -1,18 +1,17 @@
 package org.sunbird.job.recounciliation.task
 
-import java.io.File
-import java.util
 import com.typesafe.config.ConfigFactory
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.domain.CollectionProgress
-import org.sunbird.job.functions.{EnrolmentReconciliationFn, ProgressCompleteFunction, ProgressUpdateFunction}
 import org.sunbird.job.recounciliation.domain.CollectionProgress
+import org.sunbird.job.recounciliation.functions.{EnrolmentReconciliationFn, ProgressCompleteFunction, ProgressUpdateFunction}
 import org.sunbird.job.util.{FlinkUtil, HttpUtil}
-import org.sunbird.recounciliation.domain.CollectionProgress
+
+import java.io.File
+import java.util
 
 
 class EnrolmentReconciliationStreamTask(config: EnrolmentReconciliationConfig, kafkaConnector: FlinkKafkaConnector, httpUtil: HttpUtil) {

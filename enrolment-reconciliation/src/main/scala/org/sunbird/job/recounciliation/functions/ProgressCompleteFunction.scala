@@ -1,18 +1,17 @@
 package org.sunbird.job.recounciliation.functions
 
-import java.util.UUID
-
 import com.datastax.driver.core.querybuilder.{QueryBuilder, Select, Update}
 import com.google.gson.Gson
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
-import org.sunbird.job.domain._
-import org.sunbird.job.task.EnrolmentReconciliationConfig
+import org.sunbird.job.recounciliation.domain.CollectionProgress
+import org.sunbird.job.recounciliation.task.EnrolmentReconciliationConfig
 import org.sunbird.job.util.CassandraUtil
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
+import java.util.UUID
 import scala.collection.JavaConverters._
 
 class ProgressCompleteFunction(config: EnrolmentReconciliationConfig)(implicit val enrolmentCompleteTypeInfo: TypeInformation[List[CollectionProgress]], val stringTypeInfo: TypeInformation[String], @transient var cassandraUtil: CassandraUtil = null)

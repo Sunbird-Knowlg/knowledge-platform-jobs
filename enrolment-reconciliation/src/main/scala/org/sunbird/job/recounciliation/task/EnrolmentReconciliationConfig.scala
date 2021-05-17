@@ -1,14 +1,13 @@
 package org.sunbird.job.recounciliation.task
 
-import java.util
 import com.typesafe.config.Config
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.streaming.api.scala.OutputTag
 import org.sunbird.job.BaseJobConfig
-import org.sunbird.job.domain.CollectionProgress
 import org.sunbird.job.recounciliation.domain.CollectionProgress
-import org.sunbird.recounciliation.domain.CollectionProgress
+
+import java.util
 
 class EnrolmentReconciliationConfig(override val config: Config) extends BaseJobConfig(config, "enrolment-reconciliation") {
 
