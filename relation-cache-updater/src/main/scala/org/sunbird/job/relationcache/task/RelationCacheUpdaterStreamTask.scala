@@ -9,7 +9,7 @@ import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.functions.RelationCacheUpdater
+import org.sunbird.job.relationcache.functions.RelationCacheUpdater
 import org.sunbird.job.util.FlinkUtil
 
 
