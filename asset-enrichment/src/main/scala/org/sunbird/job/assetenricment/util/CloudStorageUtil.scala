@@ -1,11 +1,11 @@
 package org.sunbird.job.assetenricment.util
 
-import java.io.File
-
 import org.apache.commons.lang3.StringUtils
 import org.sunbird.cloud.storage.BaseStorageService
 import org.sunbird.cloud.storage.factory.{StorageConfig, StorageServiceFactory}
-import org.sunbird.job.task.AssetEnrichmentConfig
+import org.sunbird.job.assetenricment.task.AssetEnrichmentConfig
+
+import java.io.File
 
 class CloudStorageUtil(config: AssetEnrichmentConfig) extends Serializable {
 

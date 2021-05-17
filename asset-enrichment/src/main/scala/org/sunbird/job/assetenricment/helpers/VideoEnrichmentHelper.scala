@@ -1,20 +1,20 @@
 package org.sunbird.job.assetenricment.helpers
 
-import java.io.File
-import java.util.UUID
-import java.util.concurrent.TimeUnit
-
-import javax.imageio.ImageIO
 import org.apache.commons.lang3.StringUtils
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.bytedeco.javacv.{FFmpegFrameGrabber, Java2DFrameConverter}
 import org.slf4j.LoggerFactory
 import org.sunbird.job.Metrics
-import org.sunbird.job.domain.Event
-import org.sunbird.job.models.Asset
-import org.sunbird.job.task.AssetEnrichmentConfig
+import org.sunbird.job.assetenricment.domain.Event
+import org.sunbird.job.assetenricment.models.Asset
+import org.sunbird.job.assetenricment.task.AssetEnrichmentConfig
+import org.sunbird.job.assetenricment.util._
 import org.sunbird.job.util._
 
+import java.io.File
+import java.util.UUID
+import java.util.concurrent.TimeUnit
+import javax.imageio.ImageIO
 import scala.collection.mutable
 
 trait VideoEnrichmentHelper extends ThumbnailUtil {

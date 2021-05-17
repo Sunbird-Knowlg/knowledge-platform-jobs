@@ -1,16 +1,16 @@
 package org.sunbird.job.assetenricment.task
 
-import java.io.File
-
 import com.typesafe.config.ConfigFactory
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
+import org.sunbird.job.assetenricment.domain.Event
+import org.sunbird.job.assetenricment.functions.{AssetEnrichmentEventRouter, ImageEnrichmentFunction, VideoEnrichmentFunction}
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.domain.Event
-import org.sunbird.job.functions.{AssetEnrichmentEventRouter, ImageEnrichmentFunction, VideoEnrichmentFunction}
 import org.sunbird.job.util.FlinkUtil
+
+import java.io.File
 
 class AssetEnrichmentStreamTask(config: AssetEnrichmentConfig, kafkaConnector: FlinkKafkaConnector) {
 

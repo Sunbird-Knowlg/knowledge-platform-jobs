@@ -1,11 +1,11 @@
 package org.sunbird.job.assetenricment.util
 
-import java.io.{File, IOException}
-import java.net.URL
-
-import javax.activation.MimetypesFileTypeMap
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
+
+import java.io.{File, IOException}
+import java.net.URL
+import javax.activation.MimetypesFileTypeMap
 
 object AssetFileUtils {
 

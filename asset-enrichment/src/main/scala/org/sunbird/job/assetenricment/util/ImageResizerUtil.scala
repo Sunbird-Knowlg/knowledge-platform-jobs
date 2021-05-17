@@ -1,7 +1,8 @@
 package org.sunbird.job.assetenricment.util
 
+import org.im4java.core.{ConvertCmd, IMOperation}
+
 import java.io.File
-import org.im4java.core.{ConvertCmd, IMOperation, Info}
 
 class ImageResizerUtil {
 

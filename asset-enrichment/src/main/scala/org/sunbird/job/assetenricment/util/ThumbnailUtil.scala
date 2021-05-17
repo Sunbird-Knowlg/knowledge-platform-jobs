@@ -1,11 +1,11 @@
 package org.sunbird.job.assetenricment.util
 
-import java.awt.image.BufferedImage
-import java.io.File
-
-import javax.imageio.ImageIO
 import org.imgscalr.Scalr
 import org.slf4j.LoggerFactory
+
+import java.awt.image.BufferedImage
+import java.io.File
+import javax.imageio.ImageIO
 
 trait ThumbnailUtil {
 

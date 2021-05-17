@@ -1,13 +1,13 @@
 package org.sunbird.job.assetenricment.task
 
-import java.util
-
 import com.typesafe.config.Config
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.streaming.api.scala.OutputTag
 import org.sunbird.job.BaseJobConfig
-import org.sunbird.job.domain.Event
+import org.sunbird.job.assetenricment.domain.Event
+
+import java.util
 import scala.collection.JavaConverters._
 
 class AssetEnrichmentConfig(override val config: Config) extends BaseJobConfig(config, "asset-enrichment") {

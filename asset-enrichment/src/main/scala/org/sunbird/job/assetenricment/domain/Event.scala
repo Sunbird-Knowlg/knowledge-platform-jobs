@@ -1,7 +1,8 @@
 package org.sunbird.job.assetenricment.domain
 
-import java.util
 import org.sunbird.job.domain.reader.JobRequest
+
+import java.util
 
 class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) extends JobRequest(eventMap, partition, offset) {
 

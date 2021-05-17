@@ -1,10 +1,10 @@
 package org.sunbird.job.assetenricment.helpers
 
-import java.io.File
-
 import org.slf4j.LoggerFactory
-import org.sunbird.job.models.Asset
-import org.sunbird.job.util.CloudStorageUtil
+import org.sunbird.job.assetenricment.models.Asset
+import org.sunbird.job.assetenricment.util.CloudStorageUtil
+
+import java.io.File
 
 trait OptimizerHelper {
 

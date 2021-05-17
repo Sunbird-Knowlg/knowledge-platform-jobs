@@ -3,12 +3,8 @@ package org.sunbird.job.assetenricment.functions
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
-import org.sunbird.assetenricment.domain.Event
-import org.sunbird.assetenricment.task.AssetEnrichmentConfig
 import org.sunbird.job.assetenricment.domain.Event
 import org.sunbird.job.assetenricment.task.AssetEnrichmentConfig
-import org.sunbird.job.domain.Event
-import org.sunbird.job.task.AssetEnrichmentConfig
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 class AssetEnrichmentEventRouter(config: AssetEnrichmentConfig)

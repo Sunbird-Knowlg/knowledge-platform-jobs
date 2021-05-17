@@ -1,10 +1,11 @@
 package org.sunbird.job.spec
 
-import java.io.File
-import org.sunbird.spec.BaseTestSpec
 import com.typesafe.config.{Config, ConfigFactory}
-import org.sunbird.job.task.AssetEnrichmentConfig
-import org.sunbird.job.util.{AssetFileUtils, ThumbnailUtil}
+import org.sunbird.job.assetenricment.task.AssetEnrichmentConfig
+import org.sunbird.job.assetenricment.util.{AssetFileUtils, ThumbnailUtil}
+import org.sunbird.spec.BaseTestSpec
+
+import java.io.File
 
 class ThubnailUtilSpec extends BaseTestSpec {
 

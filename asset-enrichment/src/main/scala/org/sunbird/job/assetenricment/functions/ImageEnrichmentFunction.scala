@@ -3,12 +3,13 @@ package org.sunbird.job.assetenricment.functions
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
-import org.sunbird.job.domain.Event
+import org.sunbird.job.assetenricment.domain.Event
+import org.sunbird.job.assetenricment.helpers.{ImageEnrichmentHelper, OptimizerHelper}
+import org.sunbird.job.assetenricment.models.Asset
+import org.sunbird.job.assetenricment.task.AssetEnrichmentConfig
+import org.sunbird.job.assetenricment.util.CloudStorageUtil
 import org.sunbird.job.domain.`object`.DefinitionCache
-import org.sunbird.job.helpers.{ImageEnrichmentHelper, OptimizerHelper}
-import org.sunbird.job.models.Asset
-import org.sunbird.job.task.AssetEnrichmentConfig
-import org.sunbird.job.util.{CloudStorageUtil, Neo4JUtil}
+import org.sunbird.job.util.Neo4JUtil
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import scala.collection.JavaConverters._

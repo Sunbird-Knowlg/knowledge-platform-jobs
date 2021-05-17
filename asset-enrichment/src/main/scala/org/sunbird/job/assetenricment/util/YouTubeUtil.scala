@@ -1,8 +1,5 @@
 package org.sunbird.job.assetenricment.util
 
-import java.util
-import java.util.regex.{Matcher, Pattern}
-
 import com.google.api.client.googleapis.json.GoogleJsonResponseException
 import com.google.api.client.http.javanet.NetHttpTransport
 import com.google.api.client.http.{HttpRequest, HttpRequestInitializer}
@@ -10,8 +7,9 @@ import com.google.api.client.json.jackson2.JacksonFactory
 import com.google.api.services.youtube.YouTube
 import com.google.api.services.youtube.model.Video
 import org.slf4j.LoggerFactory
-import org.sunbird.job.task.AssetEnrichmentConfig
+import org.sunbird.job.assetenricment.task.AssetEnrichmentConfig
 
+import java.util.regex.{Matcher, Pattern}
 import scala.collection.JavaConverters._
 
 class YouTubeUtil(config: AssetEnrichmentConfig) {

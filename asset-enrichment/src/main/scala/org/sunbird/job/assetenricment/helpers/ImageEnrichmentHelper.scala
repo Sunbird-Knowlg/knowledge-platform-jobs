@@ -1,14 +1,14 @@
 package org.sunbird.job.assetenricment.helpers
 
-import java.io.File
-
-import org.slf4j.LoggerFactory
-import org.sunbird.job.util.{CloudStorageUtil, AssetFileUtils, ImageResizerUtil, Neo4JUtil, ScalaJsonUtil, Slug}
 import org.im4java.core.Info
+import org.slf4j.LoggerFactory
+import org.sunbird.job.assetenricment.models.Asset
+import org.sunbird.job.assetenricment.task.AssetEnrichmentConfig
+import org.sunbird.job.assetenricment.util.{AssetFileUtils, CloudStorageUtil, ImageResizerUtil, Slug}
 import org.sunbird.job.domain.`object`.DefinitionCache
-import org.sunbird.job.models.Asset
-import org.sunbird.job.task.AssetEnrichmentConfig
+import org.sunbird.job.util.{Neo4JUtil, ScalaJsonUtil}
 
+import java.io.File
 import scala.collection.mutable
 
 
