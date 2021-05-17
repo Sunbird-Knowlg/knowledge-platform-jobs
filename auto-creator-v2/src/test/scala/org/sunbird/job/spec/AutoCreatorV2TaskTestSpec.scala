@@ -17,8 +17,6 @@ import org.sunbird.job.fixture.EventFixture
 import org.sunbird.job.task.{AutoCreatorV2Config, AutoCreatorV2StreamTask}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 
-import java.security.cert.PKIXRevocationChecker.Option
-import scala.Some
 
 class AutoCreatorV2TaskTestSpec extends BaseTestSpec {
 
