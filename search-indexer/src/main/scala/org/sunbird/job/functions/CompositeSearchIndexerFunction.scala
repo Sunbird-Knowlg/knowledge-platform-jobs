@@ -38,7 +38,7 @@ class CompositeSearchIndexerFunction(config: SearchIndexerConfig,
       metrics.incCounter(config.successCompositeSearchEventCount)
     } catch {
       case ex: Throwable =>
-        logger.error(s"Error while processing message for identifier : ${event.id}. Error : ", ex)
+        logger.error(s"Error while processing message for identifier : ${event.id}. Partition: ${event.partition} and Offset: ${event.offset}. Error : ", ex)
         metrics.incCounter(config.failedCompositeSearchEventCount)
         val failedEvent = getFailedEvent(event, ex)
         context.output(config.failedEventOutTag, failedEvent)

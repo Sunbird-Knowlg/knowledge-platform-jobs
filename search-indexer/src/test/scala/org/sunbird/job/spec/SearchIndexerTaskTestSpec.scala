@@ -70,7 +70,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
     val definition = defCache.getDefinition("Collection", "1.0", jobConfig.definitionBasePath)
     val compositeFunc = new CompositeSearchIndexerFunction(jobConfig)
     val message = getEvent(EventFixture.DATA_NODE_CREATE, 509674).getMap().asScala.toMap
-    val indexDocument: Map[String, AnyRef] = compositeFunc.getIndexDocument(message,  false, definition,  jobConfig.nestedFields.asScala.toList)(mockElasticUtil)
+    val indexDocument: Map[String, AnyRef] = compositeFunc.getIndexDocument(message,  false, definition,  jobConfig.nestedFields.asScala.toList, jobConfig.ignoredFields)(mockElasticUtil)
     val trackable = indexDocument.getOrElse("trackable", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
     indexDocument.isEmpty should be(false)
     indexDocument.getOrElse("identifier", "").asInstanceOf[String] should be("do_1132247274257203201191")
@@ -82,7 +82,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
     val definition = defCache.getDefinition("Collection", "1.0", jobConfig.definitionBasePath)
     val compositeFunc = new CompositeSearchIndexerFunction(jobConfig)
     val message = getEvent(EventFixture.DATA_NODE_CREATE_WITH_RELATION, 509674).getMap().asScala.toMap
-    val indexDocument: Map[String, AnyRef] = compositeFunc.getIndexDocument(message,  false, definition, jobConfig.nestedFields.asScala.toList)(mockElasticUtil)
+    val indexDocument: Map[String, AnyRef] = compositeFunc.getIndexDocument(message,  false, definition, jobConfig.nestedFields.asScala.toList, jobConfig.ignoredFields)(mockElasticUtil)
     indexDocument.isEmpty should be(false)
     indexDocument.getOrElse("identifier", "").asInstanceOf[String] should be("do_112276071067320320114")
     indexDocument.getOrElse("objectType", "").asInstanceOf[String] should be("Content")
@@ -96,7 +96,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
     val definition = defCache.getDefinition("Collection", "1.0", jobConfig.definitionBasePath)
     val compositeFunc = new CompositeSearchIndexerFunction(jobConfig)
     val message = getEvent(EventFixture.DATA_NODE_UPDATE_WITH_RELATION, 509674).getMap().asScala.toMap
-    val indexDocument: Map[String, AnyRef] = compositeFunc.getIndexDocument(message, true, definition, jobConfig.nestedFields.asScala.toList)(mockElasticUtil)
+    val indexDocument: Map[String, AnyRef] = compositeFunc.getIndexDocument(message, true, definition, jobConfig.nestedFields.asScala.toList, jobConfig.ignoredFields)(mockElasticUtil)
     val collections = indexDocument.getOrElse("collections", List[String]()).asInstanceOf[List[String]]
     indexDocument.isEmpty should be(false)
     indexDocument.getOrElse("identifier", "").asInstanceOf[String] should be("do_112276071067320320114")
@@ -113,7 +113,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
     val definition = defCache.getDefinition("Collection", "1.0", jobConfig.definitionBasePath)
     val compositeFunc = new CompositeSearchIndexerFunction(jobConfig)
     val message = getEvent(EventFixture.DATA_NODE_UPDATE, 509674).getMap().asScala.toMap
-    val indexDocument: Map[String, AnyRef] = compositeFunc.getIndexDocument(message, true, definition, jobConfig.nestedFields.asScala.toList)(mockElasticUtil)
+    val indexDocument: Map[String, AnyRef] = compositeFunc.getIndexDocument(message, true, definition, jobConfig.nestedFields.asScala.toList, jobConfig.ignoredFields)(mockElasticUtil)
     indexDocument.isEmpty should be(false)
     indexDocument.getOrElse("identifier", "").asInstanceOf[String] should be("do_1132247274257203201191")
     indexDocument.getOrElse("objectType", "").asInstanceOf[String] should be("Collection")
@@ -314,23 +314,23 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
   "Event.index" should "return whether event is indexable " in {
     var eventMap = new util.HashMap[String, Any]()
     eventMap.put("index", "true")
-    var event = new Event(eventMap)
+    var event = new Event(eventMap,0, 10)
     event.index should be(true)
 
     eventMap.put("index", "false")
-    event = new Event(eventMap)
+    event = new Event(eventMap,0, 11)
     event.index should be(false)
 
     eventMap.put("index", null)
-    event = new Event(eventMap)
+    event = new Event(eventMap,0, 12)
     event.index should be(true)
 
     eventMap.put("index", true)
-    event = new Event(eventMap)
+    event = new Event(eventMap,0, 13)
     event.index should be(true)
 
     eventMap.put("index", false)
-    event = new Event(eventMap)
+    event = new Event(eventMap,0, 14)
     event.index should be(false)
   }
 
@@ -540,7 +540,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
   def getEvent(event: String, nodeGraphId: Int): Event = {
     val eventMap = ScalaJsonUtil.deserialize[util.Map[String, Any]](event)
     eventMap.put("nodeGraphId", nodeGraphId)
-    new Event(eventMap)
+    new Event(eventMap,0, 15)
   }
 
 }
@@ -558,7 +558,7 @@ private class CompositeSearchEventSource(events: List[String]) extends SourceFun
   def getEvent(event: String, nodeGraphId: Int): Event = {
     val eventMap = ScalaJsonUtil.deserialize[util.Map[String, Any]](event)
     eventMap.put("nodeGraphId", nodeGraphId)
-    new Event(eventMap)
+    new Event(eventMap,0, 16)
   }
 }
 

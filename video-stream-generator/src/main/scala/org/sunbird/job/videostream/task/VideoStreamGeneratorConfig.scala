@@ -1,13 +1,12 @@
-package org.sunbird.job.task
+package org.sunbird.job.videostream.task
 
 import java.util
 
 import com.typesafe.config.Config
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
-import org.apache.flink.streaming.api.scala.OutputTag
 import org.sunbird.job.BaseJobConfig
-import org.sunbird.job.exception.MediaServiceException
+import org.sunbird.job.videostream.exception.MediaServiceException
 
 class VideoStreamGeneratorConfig(override val config: Config) extends BaseJobConfig(config, "video-stream-generator") {
 

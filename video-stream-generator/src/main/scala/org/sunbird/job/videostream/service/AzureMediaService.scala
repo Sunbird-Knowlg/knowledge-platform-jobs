@@ -1,11 +1,11 @@
-package org.sunbird.job.service
+package org.sunbird.job.videostream.service
 
 import java.io.File
 import org.apache.commons.lang3.StringUtils
-import org.sunbird.job.exception.MediaServiceException
-import org.sunbird.job.task.VideoStreamGeneratorConfig
+import org.sunbird.job.videostream.exception.MediaServiceException
 import org.sunbird.job.util.{HttpUtil, JSONUtil}
-import org.sunbird.job.helpers.{AzureRequestBody, MediaResponse, Response}
+import org.sunbird.job.videostream.helpers.{AzureRequestBody, MediaResponse, Response}
+import org.sunbird.job.videostream.task.VideoStreamGeneratorConfig
 
 import scala.collection.immutable.HashMap
 

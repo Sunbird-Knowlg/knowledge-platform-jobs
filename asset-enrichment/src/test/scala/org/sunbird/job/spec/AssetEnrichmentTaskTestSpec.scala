@@ -146,7 +146,7 @@ class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
   }
 
   "event.validate" should " validate the event " in {
-    val event = new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.IMAGE_ASSET))
+    val event = new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.IMAGE_ASSET), 0, 10)
     val message = event.validate(jobConfig.maxIterationCount)
     message.isEmpty should be(true)
   }

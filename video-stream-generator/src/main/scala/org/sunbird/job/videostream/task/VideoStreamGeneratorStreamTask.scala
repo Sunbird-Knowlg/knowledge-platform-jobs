@@ -1,4 +1,4 @@
-package org.sunbird.job.task
+package org.sunbird.job.videostream.task
 
 import java.io.File
 import java.util
@@ -7,11 +7,9 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
-import org.apache.flink.streaming.api.windowing.assigners.TumblingProcessingTimeWindows
-import org.apache.flink.streaming.api.windowing.time.Time
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.domain.Event
-import org.sunbird.job.functions.VideoStreamGenerator
+import org.sunbird.job.videostream.domain.Event
+import org.sunbird.job.videostream.functions.VideoStreamGenerator
 import org.sunbird.job.util.{FlinkUtil, HttpUtil}
 
 
@@ -26,7 +24,7 @@ class VideoStreamGeneratorStreamTask(config: VideoStreamGeneratorConfig, kafkaCo
     env.addSource(source).name(config.videoStreamConsumer)
       .uid(config.videoStreamConsumer).setParallelism(config.kafkaConsumerParallelism)
       .rebalance
-      .keyBy(_.identifier)
+      .keyBy(_.identifier())
       .process(new VideoStreamGenerator(config, httpUtil))
       .name(config.videoStreamGeneratorFunction)
       .uid(config.videoStreamGeneratorFunction)

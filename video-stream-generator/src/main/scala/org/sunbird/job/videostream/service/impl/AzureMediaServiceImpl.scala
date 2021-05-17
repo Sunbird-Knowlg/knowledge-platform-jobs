@@ -1,9 +1,9 @@
-package org.sunbird.job.service.impl
+package org.sunbird.job.videostream.service.impl
 
 import org.sunbird.job.util.HttpUtil
-import org.sunbird.job.helpers.{AzureRequestBody, AzureResult, MediaRequest, MediaResponse, Response}
-import org.sunbird.job.service.AzureMediaService
-import org.sunbird.job.task.VideoStreamGeneratorConfig
+import org.sunbird.job.videostream.helpers.{AzureRequestBody, AzureResult, MediaRequest, MediaResponse, Response}
+import org.sunbird.job.videostream.service.AzureMediaService
+import org.sunbird.job.videostream.task.VideoStreamGeneratorConfig
 
 import scala.collection.immutable.HashMap
 

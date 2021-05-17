@@ -1,4 +1,4 @@
-package org.sunbird.job.service
+package org.sunbird.job.videostream.service
 
 import java.util.UUID
 
@@ -6,10 +6,10 @@ import com.datastax.driver.core.querybuilder.{QueryBuilder, Select}
 import org.joda.time.DateTime
 import org.slf4j.LoggerFactory
 import org.sunbird.job.Metrics
-import org.sunbird.job.service.impl.MediaServiceFactory
-import org.sunbird.job.task.VideoStreamGeneratorConfig
+import org.sunbird.job.videostream.service.impl.MediaServiceFactory
+import org.sunbird.job.videostream.task.VideoStreamGeneratorConfig
 import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, JSONUtil}
-import org.sunbird.job.helpers.{JobRequest, MediaRequest, MediaResponse, StreamingStage}
+import org.sunbird.job.videostream.helpers.{JobRequest, MediaRequest, MediaResponse, StreamingStage}
 
 import scala.collection.JavaConverters._
 

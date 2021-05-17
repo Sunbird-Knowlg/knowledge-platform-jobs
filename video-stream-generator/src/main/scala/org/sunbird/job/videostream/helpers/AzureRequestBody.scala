@@ -1,4 +1,4 @@
-package org.sunbird.job.helpers
+package org.sunbird.job.videostream.helpers
 
 object AzureRequestBody {
 

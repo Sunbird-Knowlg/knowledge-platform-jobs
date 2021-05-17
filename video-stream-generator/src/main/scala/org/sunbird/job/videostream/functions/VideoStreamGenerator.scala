@@ -1,4 +1,4 @@
-package org.sunbird.job.functions
+package org.sunbird.job.videostream.functions
 
 import org.apache.flink.api.common.state.{ValueState, ValueStateDescriptor}
 
@@ -7,9 +7,9 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.{KeyedProcessFunction, ProcessFunction}
 import org.slf4j.LoggerFactory
-import org.sunbird.job.domain.Event
-import org.sunbird.job.service.VideoStreamService
-import org.sunbird.job.task.VideoStreamGeneratorConfig
+import org.sunbird.job.videostream.domain.Event
+import org.sunbird.job.videostream.service.VideoStreamService
+import org.sunbird.job.videostream.task.VideoStreamGeneratorConfig
 import org.sunbird.job.util.HttpUtil
 import org.sunbird.job.{BaseProcessKeyedFunction, Metrics}
 
@@ -43,7 +43,7 @@ class VideoStreamGenerator(config: VideoStreamGeneratorConfig, httpUtil:HttpUtil
         metrics.incCounter(config.totalEventsCount)
         if (event.isValid) {
           videoStreamService.submitJobRequest(event.eData)
-          logger.info("Streaming job submitted for " + event.identifier + " with url: " + event.artifactUrl)
+          logger.info("Streaming job submitted for " + event.identifier() + " with url: " + event.artifactUrl)
           val nextTimerTimestamp = context.timestamp() + timerDurationInMS
           context.timerService().registerProcessingTimeTimer(nextTimerTimestamp)
           logger.info("Timer registered to execute at " + nextTimerTimestamp)
