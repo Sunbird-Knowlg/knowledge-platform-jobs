@@ -1,17 +1,16 @@
 package org.sunbird.job.postpublish.functions
 
-import java.lang.reflect.Type
 import com.google.gson.reflect.TypeToken
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.postpublish.domain.Event
 import org.sunbird.job.postpublish.helpers.{BatchCreation, DialHelper, ShallowCopyPublishing}
-import org.sunbird.job.postpublish.postpublish.helpers.DialHelper
-import org.sunbird.job.{BaseProcessFunction, Metrics}
-import org.sunbird.job.task.PostPublishProcessorConfig
+import org.sunbird.job.postpublish.task.PostPublishProcessorConfig
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
-import org.sunbird.postpublish.postpublish.helpers.DialHelper
+import org.sunbird.job.{BaseProcessFunction, Metrics}
+
+import java.lang.reflect.Type
 
 case class PublishMetadata(identifier: String, contentType: String, mimeType: String, pkgVersion: Int)
 

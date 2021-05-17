@@ -1,13 +1,13 @@
 package org.sunbird.job.postpublish.functions
 
-import java.util.UUID
-
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
+import org.sunbird.job.postpublish.task.PostPublishProcessorConfig
 import org.sunbird.job.{BaseProcessFunction, Metrics}
-import org.sunbird.job.task.PostPublishProcessorConfig
+
+import java.util.UUID
 
 class ShallowCopyPublishFunction(config: PostPublishProcessorConfig)
                                 (implicit val stringTypeInfo: TypeInformation[String])

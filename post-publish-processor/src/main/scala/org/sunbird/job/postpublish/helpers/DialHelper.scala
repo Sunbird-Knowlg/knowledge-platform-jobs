@@ -1,16 +1,15 @@
 package org.sunbird.job.postpublish.helpers
 
-import java.util
-
 import com.google.gson.Gson
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.Metrics
-import org.sunbird.job.models.ExtDataConfig
 import org.sunbird.job.postpublish.domain.Event
-import org.sunbird.job.task.PostPublishProcessorConfig
+import org.sunbird.job.postpublish.models.ExtDataConfig
+import org.sunbird.job.postpublish.task.PostPublishProcessorConfig
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, JSONUtil, Neo4JUtil}
 
+import java.util
 import scala.collection.JavaConverters._
 
 trait DialHelper {

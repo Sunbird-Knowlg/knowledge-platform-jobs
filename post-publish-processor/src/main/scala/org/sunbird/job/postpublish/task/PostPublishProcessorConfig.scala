@@ -1,13 +1,13 @@
 package org.sunbird.job.postpublish.task
 
-import java.util
-
 import com.typesafe.config.Config
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.streaming.api.scala.OutputTag
 import org.sunbird.job.BaseJobConfig
-import org.sunbird.job.functions.PublishMetadata
+import org.sunbird.job.postpublish.functions.PublishMetadata
+
+import java.util
 
 class PostPublishProcessorConfig(override val config: Config) extends BaseJobConfig(config, "post-publish-processor") {
 
