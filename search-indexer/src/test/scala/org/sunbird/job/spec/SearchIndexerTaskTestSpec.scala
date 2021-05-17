@@ -1,27 +1,29 @@
 package org.sunbird.job.spec
 
-import java.util
-import scala.collection.JavaConverters._
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
 import org.apache.flink.streaming.api.functions.sink.SinkFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction
+import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext
 import org.apache.flink.test.util.MiniClusterWithClientResource
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.Mockito
 import org.mockito.Mockito.{doNothing, times, verify, when}
-import org.sunbird.job.compositesearch.domain.Event
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.fixture.EventFixture
-import org.sunbird.job.functions.{CompositeSearchIndexerFunction, DIALCodeIndexerFunction, DIALCodeMetricsIndexerFunction}
-import org.sunbird.job.task.{SearchIndexerConfig, SearchIndexerStreamTask}
+import org.sunbird.job.searchindexer.compositesearch.domain.Event
+import org.sunbird.job.searchindexer.functions.{CompositeSearchIndexerFunction, DIALCodeIndexerFunction, DIALCodeMetricsIndexerFunction}
+import org.sunbird.job.searchindexer.task.{SearchIndexerConfig, SearchIndexerStreamTask}
 import org.sunbird.job.util.{ElasticSearchUtil, ScalaJsonUtil}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 import pl.allegro.tech.embeddedelasticsearch.EmbeddedElastic
+
+import java.util
+import scala.collection.JavaConverters._
+
 
 class SearchIndexerTaskTestSpec extends BaseTestSpec {
 
