@@ -14,7 +14,7 @@ import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.helpers.AutoCreator
 import org.sunbird.job.model.ObjectData
 import org.sunbird.job.task.AutoCreatorV2Config
-import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, Neo4JUtil}
+import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, Neo4JUtil}
 
 class AutoCreatorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
 
@@ -26,6 +26,7 @@ class AutoCreatorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with
 	val qDefinition: ObjectDefinition = defCache.getDefinition("Question", jobConfig.schemaSupportVersionMap.getOrElse("question", "1.0").asInstanceOf[String], jobConfig.definitionBasePath)
 	val qsDefinition: ObjectDefinition = defCache.getDefinition("QuestionSet", jobConfig.schemaSupportVersionMap.getOrElse("questionset", "1.0").asInstanceOf[String], jobConfig.definitionBasePath)
 	implicit val cloudUtil : CloudStorageUtil = new CloudStorageUtil(jobConfig)
+  var httpUtil: HttpUtil = mock[HttpUtil]
 
 	override protected def beforeAll(): Unit = {
 		super.beforeAll()
@@ -57,7 +58,7 @@ class AutoCreatorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with
 
 	"getObject" should "return a valid object" in {
 		val downloadUrl = "https://dockstorage.blob.core.windows.net/sunbird-content-dock/questionset/do_113244425048121344131/added1_1616751462043_do_113244425048121344131_1_SPINE.ecar"
-		val result = new TestAutoCreator().getObject("do_113244425048121344131", "QuestionSet", downloadUrl)(jobConfig, qsDefinition)
+		val result = new TestAutoCreator().getObject("do_113244425048121344131", "QuestionSet", downloadUrl)(jobConfig, httpUtil, qsDefinition)
 		result.identifier shouldEqual "do_113244425048121344131"
 		result.metadata.nonEmpty shouldBe(true)
 	}
@@ -83,7 +84,7 @@ class AutoCreatorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with
 		val mockResult = mock[StatementResult](Mockito.withSettings().serializable())
 		when(mockNeo4JUtil.executeQuery(anyString())).thenReturn(mockResult)
 		val child: Map[String, AnyRef] = Map("do_113264104174723072120" -> Map("objectType" -> "Question", "downloadUrl" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/question/do_113264104174723072120/test-1_1619640554144_do_113264104174723072120_15.ecar", "variants"-> Map("full" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/question/do_113264104174723072120/test-1_1619640554144_do_113264104174723072120_15.ecar", "online"->"https://sunbirddev.blob.core.windows.net/sunbird-content-dev/question/do_113264104174723072120/test-1_1619640555385_do_113264104174723072120_15_ONLINE.ecar")))
-		val result: Map[String, ObjectData] = new TestAutoCreator().processChildren(child)(jobConfig, mockNeo4JUtil, cassandraUtil, cloudUtil, defCache)
+		val result: Map[String, ObjectData] = new TestAutoCreator().processChildren(child)(jobConfig, mockNeo4JUtil, cassandraUtil, cloudUtil, defCache, httpUtil)
 		result should not be empty
     result.keys should contain ("do_113264104174723072120")
 		result.get("do_113264104174723072120").get.identifier shouldEqual "do_113264104174723072120"

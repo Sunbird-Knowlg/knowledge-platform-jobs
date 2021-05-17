@@ -8,15 +8,15 @@ import org.slf4j.LoggerFactory
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.model.{ExtDataConfig, ObjectData}
 import org.sunbird.job.task.AutoCreatorV2Config
-import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, FileUtils, HTTPResponse, HttpUtil, JSONUtil, Neo4JUtil}
+import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, FileUtils, HttpUtil, JSONUtil, Neo4JUtil}
 
 trait AutoCreator extends ObjectUpdater with CollectionUpdater with HierarchyEnricher {
 
 	private[this] val logger = LoggerFactory.getLogger(classOf[AutoCreator])
 
-	def getObject(identifier: String, objType: String, downloadUrl: String, metaUrl: Option[String] = None)(implicit config: AutoCreatorV2Config, objDef: ObjectDefinition): ObjectData = {
+	def getObject(identifier: String, objType: String, downloadUrl: String, metaUrl: Option[String] = None)(implicit config: AutoCreatorV2Config, httpUtil: HttpUtil, objDef: ObjectDefinition): ObjectData = {
 		val extractPath = extractDataZip(identifier, downloadUrl)
-		val manifestData = getObjectDetails(identifier, extractPath, metaUrl)
+		val manifestData = getObjectDetails(identifier, extractPath, objType, metaUrl)
 		val metadata = manifestData.filterKeys(k => !(objDef.getRelationLabels.contains(k) || objDef.externalProperties.contains(k)))
 		val extData = manifestData.filterKeys(k => objDef.externalProperties.contains(k))
 		val hierarchy = getHierarchy(extractPath, objType)(config)
@@ -34,12 +34,23 @@ trait AutoCreator extends ObjectUpdater with CollectionUpdater with HierarchyEnr
     extractPath
   }
 
-  private def getObjectDetails(identifier: String, extractPath: String, metaUrl: Option[String]): Map[String, AnyRef] = {
+  private def getObjectDetails(identifier: String, extractPath: String, objectType: String, metaUrl: Option[String])(implicit httpUtil: HttpUtil) : Map[String, AnyRef] = {
     val manifest = FileUtils.readJsonFile(extractPath, "manifest.json")
-    manifest.getOrElse("archive", Map()).asInstanceOf[Map[String, AnyRef]]
+    val manifestMetadata: Map[String, AnyRef] = manifest.getOrElse("archive", Map()).asInstanceOf[Map[String, AnyRef]]
       .getOrElse("items", List()).asInstanceOf[List[Map[String, AnyRef]]]
-      .filter(p => StringUtils.equalsIgnoreCase(identifier, p.getOrElse("identifier", "").asInstanceOf[String]))
-      .headOption.getOrElse(Map())
+      .find(p => StringUtils.equalsIgnoreCase(identifier, p.getOrElse("identifier", "").asInstanceOf[String])).getOrElse(Map())
+    if (metaUrl.nonEmpty) {
+      val metadata = getMetaUrlData(metaUrl.head, objectType)(httpUtil)
+      manifestMetadata.++(metadata)
+    } else manifestMetadata
+  }
+
+  private def getMetaUrlData(metaUrl: String, objectType: String)(implicit httpUtil: HttpUtil): Map[String, AnyRef] = {
+    val response = httpUtil.get(metaUrl)
+    if (response.status == 200) {
+      JSONUtil.deserialize[Map[String, AnyRef]](response.body).getOrElse("result", Map()).asInstanceOf[Map[String, AnyRef]]
+        .getOrElse(objectType.toLowerCase, Map()).asInstanceOf[Map[String, AnyRef]]
+    } else throw new Exception("Invalid object read url for fetching metadata.")
   }
 
   private def getHierarchy(extractPath: String, objectType: String)(implicit config: AutoCreatorV2Config): Map[String, AnyRef] = {
@@ -51,8 +62,8 @@ trait AutoCreator extends ObjectUpdater with CollectionUpdater with HierarchyEnr
 
 	def enrichMetadata(obj: ObjectData, eventMeta: Map[String, AnyRef])(implicit config: AutoCreatorV2Config): ObjectData = {
 		val sysMeta = Map("IL_UNIQUE_ID" -> obj.identifier, "IL_FUNC_OBJECT_TYPE" -> obj.objectType, "IL_SYS_NODE_TYPE" -> "DATA_NODE")
-		val oProps: Map[String, AnyRef] = config.overrideManifestProps.map(prop => (prop, eventMeta.getOrElse(prop, ""))).toMap
-		new ObjectData(obj.identifier, obj.objectType, (obj.metadata ++ sysMeta ++ oProps), obj.extData, obj.hierarchy)
+//		val oProps: Map[String, AnyRef] = config.overrideManifestProps.map(prop => (prop, eventMeta.getOrElse(prop, ""))).toMap
+		new ObjectData(obj.identifier, obj.objectType, obj.metadata ++ sysMeta, obj.extData, obj.hierarchy)
 	}
 
 	def processCloudMeta(obj: ObjectData)(implicit config: AutoCreatorV2Config, cloudStorageUtil: CloudStorageUtil): ObjectData = {
@@ -75,17 +86,17 @@ trait AutoCreator extends ObjectUpdater with CollectionUpdater with HierarchyEnr
 		List("full", "online", "spine").filter(x => map.contains(x)).map(m => (m, map.getOrElse(m, "").asInstanceOf[String])).toMap
 	}
 
-	def processChildren(children: Map[String, AnyRef])(implicit config: AutoCreatorV2Config, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, cloudStorageUtil: CloudStorageUtil, defCache: DefinitionCache): Map[String, ObjectData] = {
+	def processChildren(children: Map[String, AnyRef])(implicit config: AutoCreatorV2Config, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, cloudStorageUtil: CloudStorageUtil, defCache: DefinitionCache, httpUtil: HttpUtil): Map[String, ObjectData] = {
 		children.flatMap(ch => {
 			logger.info("Processing Children Having Identifier : " + ch._1)
 			val objType = ch._2.asInstanceOf[Map[String, AnyRef]].getOrElse("objectType", "").asInstanceOf[String]
 			val definition: ObjectDefinition = defCache.getDefinition(objType, config.schemaSupportVersionMap.getOrElse(objType.toLowerCase(), "1.0").asInstanceOf[String], config.definitionBasePath)
 			val downloadUrl = ch._2.asInstanceOf[Map[String, AnyRef]].getOrElse("downloadUrl", "").asInstanceOf[String]
-			val obj: ObjectData = getObject(ch._1, objType, downloadUrl)(config, definition)
+			val obj: ObjectData = getObject(ch._1, objType, downloadUrl)(config, httpUtil, definition)
 			logger.info("graph metadata for " + obj.identifier + " : " + obj.metadata)
 			val enObj = enrichMetadata(obj, ch._2.asInstanceOf[Map[String, AnyRef]])(config)
 			logger.info("enriched metadata for " + enObj.identifier + " : " + enObj.metadata)
-			val updatedObj = processCloudMeta(enObj)(config, cloudStorageUtil)
+			val updatedObj = processCloudMeta(enObj)
 			logger.info("final updated metadata for " + updatedObj.identifier + " : " + JSONUtil.serialize(updatedObj.metadata))
 			val extConfig = ExtDataConfig(config.getString(updatedObj.objectType.toLowerCase + "_keyspace", ""), definition.getExternalTable, definition.getExternalPrimaryKey, definition.getExternalProps)
 			saveExternalData(updatedObj.identifier, updatedObj.extData.getOrElse(Map()), extConfig)(cassandraUtil)
