@@ -57,7 +57,6 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
     override def processElement(event: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
         if (event.isValidEvent(allowedActions)) {
             val rootId = event.identifier
-            println("Processing - identifier: " + rootId)
             logger.info("Processing - identifier: " + rootId)
             val hierarchy = getHierarchy(rootId)(metrics)
             if (MapUtils.isNotEmpty(hierarchy)) {
