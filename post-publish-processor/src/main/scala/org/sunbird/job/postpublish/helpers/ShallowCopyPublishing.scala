@@ -3,6 +3,7 @@ package org.sunbird.job.postpublish.helpers
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.functions.PublishMetadata
+import org.sunbird.job.postpublish.functions.PublishMetadata
 import org.sunbird.job.task.PostPublishProcessorConfig
 import org.sunbird.job.util.{HttpUtil, JSONUtil}
 
