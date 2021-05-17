@@ -3,7 +3,7 @@ package org.sunbird.job.domain
 import org.apache.commons.lang3.StringUtils
 import org.sunbird.job.domain.reader.JobRequest
 
-class Event(eventMap: java.util.Map[String, Any]) extends JobRequest(eventMap) {
+class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) extends JobRequest(eventMap, partition, offset) {
 
 	private val jobName = "auto-creator-v2"
 
@@ -23,7 +23,7 @@ class Event(eventMap: java.util.Map[String, Any]) extends JobRequest(eventMap) {
 
 	def objectType: String = readOrDefault[String]("edata.objectType", "")
 
-	def repository: String = readOrDefault[String]("edata.repository", "")
+	def repository: Option[String] = read[String]("edata.repository")
 
 	def downloadUrl: String = readOrDefault[String]("edata.metadata.downloadUrl", "")
 
@@ -34,6 +34,6 @@ class Event(eventMap: java.util.Map[String, Any]) extends JobRequest(eventMap) {
 
 	def isValid(): Boolean = {
 		(StringUtils.equals("auto-create", action) && StringUtils.isNotBlank(objectId)) && (objectTypes.contains(objectType)
-		  && StringUtils.isNotBlank(repository) && metadata.nonEmpty) && (StringUtils.isNotBlank(downloadUrl) && StringUtils.endsWith(downloadUrl, ".ecar"))
+		  && repository.nonEmpty && metadata.nonEmpty) && (StringUtils.isNotBlank(downloadUrl) && StringUtils.endsWith(downloadUrl, ".ecar"))
 	}
 }

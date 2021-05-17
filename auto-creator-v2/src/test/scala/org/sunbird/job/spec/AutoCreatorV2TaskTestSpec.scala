@@ -44,7 +44,7 @@ class AutoCreatorV2TaskTestSpec extends BaseTestSpec {
   }
 
   "event" should " process the input map and return metadata " in {
-    val event = new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_2))
+    val event = new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_2), 0, 1)
     event.isValid should be(true)
     event.action should be("auto-create")
     event.mimeType should be("application/vnd.ekstep.html-archive")

@@ -14,21 +14,40 @@ trait AutoCreator extends ObjectUpdater with CollectionUpdater with HierarchyEnr
 
 	private[this] val logger = LoggerFactory.getLogger(classOf[AutoCreator])
 
-	def getObject(identifier: String, objType: String, downloadUrl: String, objDef: ObjectDefinition)(implicit config: AutoCreatorV2Config): ObjectData = {
-		val suffix = FilenameUtils.getName(downloadUrl).replace(".ecar", ".zip")
-		val zipFile: File = FileUtils.copyURLToFile(identifier, downloadUrl, suffix).get
-		logger.info("zip file path :: " + zipFile.getAbsolutePath)
-		val extractPath = FileUtils.getBasePath(identifier)
-		logger.info("zip extracted path :: " + extractPath)
-		FileUtils.extractPackage(zipFile, extractPath)
-		val manifest = FileUtils.readJsonFile(extractPath, "manifest.json")
-		val manifestData = manifest.getOrElse("archive", Map()).asInstanceOf[Map[String, AnyRef]].getOrElse("items", List()).asInstanceOf[List[Map[String, AnyRef]]].filter(p => StringUtils.equalsIgnoreCase(identifier, p.getOrElse("identifier", "").asInstanceOf[String]))(0)
+	def getObject(identifier: String, objType: String, downloadUrl: String, metaUrl: Option[String] = None)(implicit config: AutoCreatorV2Config, objDef: ObjectDefinition): ObjectData = {
+		val extractPath = extractDataZip(identifier, downloadUrl)
+		val manifestData = getObjectDetails(identifier, extractPath, metaUrl)
 		val metadata = manifestData.filterKeys(k => !(objDef.getRelationLabels.contains(k) || objDef.externalProperties.contains(k)))
 		val extData = manifestData.filterKeys(k => objDef.externalProperties.contains(k))
-		val hierarchy = if (config.expandableObjects.contains(objType)) FileUtils.readJsonFile(extractPath, "hierarchy.json").getOrElse(objType.toLowerCase(), Map()).asInstanceOf[Map[String, AnyRef]] else Map[String, AnyRef]()
+		val hierarchy = getHierarchy(extractPath, objType)(config)
 		val externalData = if (hierarchy.nonEmpty) extData ++ Map("hierarchy" -> hierarchy) else extData
 		new ObjectData(identifier, objType, metadata, Some(externalData), Some(hierarchy))
 	}
+
+  private def extractDataZip(identifier: String, downloadUrl: String): String = {
+    val suffix = FilenameUtils.getName(downloadUrl).replace(".ecar", ".zip")
+    val zipFile: File = FileUtils.copyURLToFile(identifier, downloadUrl, suffix).get
+    logger.info("zip file path :: " + zipFile.getAbsolutePath)
+    val extractPath = FileUtils.getBasePath(identifier)
+    logger.info("zip extracted path :: " + extractPath)
+    FileUtils.extractPackage(zipFile, extractPath)
+    extractPath
+  }
+
+  private def getObjectDetails(identifier: String, extractPath: String, metaUrl: Option[String]): Map[String, AnyRef] = {
+    val manifest = FileUtils.readJsonFile(extractPath, "manifest.json")
+    manifest.getOrElse("archive", Map()).asInstanceOf[Map[String, AnyRef]]
+      .getOrElse("items", List()).asInstanceOf[List[Map[String, AnyRef]]]
+      .filter(p => StringUtils.equalsIgnoreCase(identifier, p.getOrElse("identifier", "").asInstanceOf[String]))
+      .headOption.getOrElse(Map())
+  }
+
+  private def getHierarchy(extractPath: String, objectType: String)(implicit config: AutoCreatorV2Config): Map[String, AnyRef] = {
+    if (config.expandableObjects.contains(objectType))
+      FileUtils.readJsonFile(extractPath, "hierarchy.json")
+        .getOrElse(objectType.toLowerCase(), Map()).asInstanceOf[Map[String, AnyRef]]
+    else Map[String, AnyRef]()
+  }
 
 	def enrichMetadata(obj: ObjectData, eventMeta: Map[String, AnyRef])(implicit config: AutoCreatorV2Config): ObjectData = {
 		val sysMeta = Map("IL_UNIQUE_ID" -> obj.identifier, "IL_FUNC_OBJECT_TYPE" -> obj.objectType, "IL_SYS_NODE_TYPE" -> "DATA_NODE")
@@ -62,7 +81,7 @@ trait AutoCreator extends ObjectUpdater with CollectionUpdater with HierarchyEnr
 			val objType = ch._2.asInstanceOf[Map[String, AnyRef]].getOrElse("objectType", "").asInstanceOf[String]
 			val definition: ObjectDefinition = defCache.getDefinition(objType, config.schemaSupportVersionMap.getOrElse(objType.toLowerCase(), "1.0").asInstanceOf[String], config.definitionBasePath)
 			val downloadUrl = ch._2.asInstanceOf[Map[String, AnyRef]].getOrElse("downloadUrl", "").asInstanceOf[String]
-			val obj: ObjectData = getObject(ch._1, objType, downloadUrl, definition)(config)
+			val obj: ObjectData = getObject(ch._1, objType, downloadUrl)(config, definition)
 			logger.info("graph metadata for " + obj.identifier + " : " + obj.metadata)
 			val enObj = enrichMetadata(obj, ch._2.asInstanceOf[Map[String, AnyRef]])(config)
 			logger.info("enriched metadata for " + enObj.identifier + " : " + enObj.metadata)

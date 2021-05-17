@@ -57,7 +57,7 @@ class AutoCreatorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with
 
 	"getObject" should "return a valid object" in {
 		val downloadUrl = "https://dockstorage.blob.core.windows.net/sunbird-content-dock/questionset/do_113244425048121344131/added1_1616751462043_do_113244425048121344131_1_SPINE.ecar"
-		val result = new TestAutoCreator().getObject("do_113244425048121344131", "QuestionSet", downloadUrl, qsDefinition)(jobConfig)
+		val result = new TestAutoCreator().getObject("do_113244425048121344131", "QuestionSet", downloadUrl)(jobConfig, qsDefinition)
 		result.identifier shouldEqual "do_113244425048121344131"
 		result.metadata.nonEmpty shouldBe(true)
 	}
@@ -84,9 +84,9 @@ class AutoCreatorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with
 		when(mockNeo4JUtil.executeQuery(anyString())).thenReturn(mockResult)
 		val child: Map[String, AnyRef] = Map("do_113264104174723072120" -> Map("objectType" -> "Question", "downloadUrl" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/question/do_113264104174723072120/test-1_1619640554144_do_113264104174723072120_15.ecar", "variants"-> Map("full" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/question/do_113264104174723072120/test-1_1619640554144_do_113264104174723072120_15.ecar", "online"->"https://sunbirddev.blob.core.windows.net/sunbird-content-dev/question/do_113264104174723072120/test-1_1619640555385_do_113264104174723072120_15_ONLINE.ecar")))
 		val result: Map[String, ObjectData] = new TestAutoCreator().processChildren(child)(jobConfig, mockNeo4JUtil, cassandraUtil, cloudUtil, defCache)
-		result.nonEmpty shouldBe(true)
-		result.contains("do_113264104174723072120") shouldBe(true)
-		result.get("do_113264104174723072120").get.asInstanceOf[ObjectData].identifier shouldEqual "do_113264104174723072120"
+		result should not be empty
+    result should contain ("do_113264104174723072120")
+		result.get("do_113264104174723072120").get.identifier shouldEqual "do_113264104174723072120"
 	}
 
 

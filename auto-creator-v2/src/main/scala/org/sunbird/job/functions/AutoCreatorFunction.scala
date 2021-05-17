@@ -1,5 +1,6 @@
 package org.sunbird.job.functions
 
+
 import java.util
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
@@ -12,6 +13,7 @@ import org.sunbird.job.model.{ExtDataConfig, ObjectData}
 import org.sunbird.job.task.AutoCreatorV2Config
 import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, JSONUtil, Neo4JUtil}
 import org.sunbird.job.{BaseProcessFunction, Metrics}
+
 
 class AutoCreatorFunction(config: AutoCreatorV2Config, httpUtil: HttpUtil,
                           @transient var neo4JUtil: Neo4JUtil = null,
@@ -48,7 +50,7 @@ class AutoCreatorFunction(config: AutoCreatorV2Config, httpUtil: HttpUtil,
 			logger.info("Processing event for bulk approval operation having identifier : " + event.objectId)
             logger.info("event edata : " + event.eData)
 			val definition: ObjectDefinition = defCache.getDefinition(event.objectType, config.schemaSupportVersionMap.getOrElse(event.objectType.toLowerCase(), "1.0").asInstanceOf[String], config.definitionBasePath)
-			val obj: ObjectData = getObject(event.objectId, event.objectType, event.downloadUrl, definition)(config)
+			val obj: ObjectData = getObject(event.objectId, event.objectType, event.downloadUrl, event.repository)(config, definition)
 			logger.info("graph metadata for "+obj.identifier + " : "+obj.metadata)
 			val enObj = enrichMetadata(obj, event.metadata)(config)
 			logger.info("enriched metadata for "+enObj.identifier + " : "+enObj.metadata)
