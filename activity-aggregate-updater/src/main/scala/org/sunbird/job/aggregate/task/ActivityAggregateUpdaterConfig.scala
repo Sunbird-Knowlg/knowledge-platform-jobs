@@ -7,7 +7,7 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.streaming.api.scala.OutputTag
 import org.sunbird.job.BaseJobConfig
-import org.sunbird.job.domain.CollectionProgress
+import org.sunbird.job.aggregate.domain.CollectionProgress
 
 class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJobConfig(config, "activity-aggregate-updater") {
 

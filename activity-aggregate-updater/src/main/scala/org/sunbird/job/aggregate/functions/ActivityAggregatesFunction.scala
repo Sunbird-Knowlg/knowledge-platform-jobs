@@ -17,8 +17,8 @@ import org.apache.flink.streaming.api.scala.function.ProcessWindowFunction
 import org.apache.flink.streaming.api.windowing.windows.GlobalWindow
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cache.{DataCache, RedisConnect}
-import org.sunbird.job.domain.{UserContentConsumption, _}
-import org.sunbird.job.task.ActivityAggregateUpdaterConfig
+import org.sunbird.job.aggregate.domain.{UserContentConsumption, _}
+import org.sunbird.job.aggregate.task.ActivityAggregateUpdaterConfig
 import org.sunbird.job.util.{CassandraUtil, HttpUtil}
 import org.sunbird.job.{Metrics, WindowBaseProcessFunction}
 

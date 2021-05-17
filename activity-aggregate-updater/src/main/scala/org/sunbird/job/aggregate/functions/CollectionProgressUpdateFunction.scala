@@ -6,10 +6,10 @@ import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cache.RedisConnect
-import org.sunbird.job.common.DeDupHelper
+import org.sunbird.job.aggregate.common.DeDupHelper
 import org.sunbird.job.dedup.DeDupEngine
-import org.sunbird.job.domain._
-import org.sunbird.job.task.ActivityAggregateUpdaterConfig
+import org.sunbird.job.aggregate.domain._
+import org.sunbird.job.aggregate.task.ActivityAggregateUpdaterConfig
 import org.sunbird.job.util.CassandraUtil
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 

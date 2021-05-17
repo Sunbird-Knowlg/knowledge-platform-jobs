@@ -11,8 +11,8 @@ import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.domain.CollectionProgress
-import org.sunbird.job.functions.{ActivityAggregatesFunction, CollectionProgressCompleteFunction, CollectionProgressUpdateFunction, ContentConsumptionDeDupFunction}
+import org.sunbird.job.aggregate.domain.CollectionProgress
+import org.sunbird.job.aggregate.functions.{ActivityAggregatesFunction, CollectionProgressCompleteFunction, CollectionProgressUpdateFunction, ContentConsumptionDeDupFunction}
 import org.sunbird.job.util.{FlinkUtil, HttpUtil}
 
 

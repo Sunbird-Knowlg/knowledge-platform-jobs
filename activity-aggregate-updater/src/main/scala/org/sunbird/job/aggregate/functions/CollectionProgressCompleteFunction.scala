@@ -9,11 +9,11 @@ import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cache.RedisConnect
-import org.sunbird.job.common.DeDupHelper
+import org.sunbird.job.aggregate.common.DeDupHelper
 import org.sunbird.job.dedup.DeDupEngine
 import org.sunbird.job.{BaseProcessFunction, Metrics}
-import org.sunbird.job.domain.{ActorObject, CollectionProgress, EventContext, EventData, EventObject, TelemetryEvent}
-import org.sunbird.job.task.ActivityAggregateUpdaterConfig
+import org.sunbird.job.aggregate.domain.{ActorObject, CollectionProgress, EventContext, EventData, EventObject, TelemetryEvent}
+import org.sunbird.job.aggregate.task.ActivityAggregateUpdaterConfig
 import org.sunbird.job.util.CassandraUtil
 
 import scala.collection.JavaConverters._
