@@ -25,7 +25,7 @@ import scala.collection.JavaConverters._
 
 class EnrolmentReconciliationFn(config: EnrolmentReconciliationConfig,  httpUtil: HttpUtil, @transient var cassandraUtil: CassandraUtil = null)
                                (implicit val stringTypeInfo: TypeInformation[String])
-  extends BaseProcessFunction[java.util.Map[String, AnyRef], String](config) {
+  extends BaseProcessFunction[Event, String](config) {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[EnrolmentReconciliationFn])
   val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
@@ -62,17 +62,12 @@ class EnrolmentReconciliationFn(config: EnrolmentReconciliationConfig,  httpUtil
   }
 
 
-  override def processElement(event: java.util.Map[String, AnyRef], context: ProcessFunction[java.util.Map[String, AnyRef], String]#Context, metrics: Metrics): Unit = {
+  override def processElement(event: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
     metrics.incCounter(config.totalEventCount)
-    val eData = event.asScala.getOrElse("edata", Map()).asInstanceOf[java.util.Map[String, AnyRef]].asScala
-    if (isValidEvent(eData.getOrElse("action", "").asInstanceOf[String])) {
-      val courseId = eData.getOrElse("courseId", "").asInstanceOf[String]
-      val batchId = eData.getOrElse("batchId", "").asInstanceOf[String]
-      val userId = eData.getOrElse("userId", "").asInstanceOf[String]
+    if (event.isValidEvent(config.supportedEventType)) {
       // Fetch the content status from the table in batch format
       val dbUserConsumption: List[UserContentConsumption] = getContentStatusFromDB(
-        Map("courseId" -> courseId, "userId" -> userId, "batchId" -> batchId),
-        metrics)
+        Map("courseId" -> event.courseId, "userId" -> event.userId, "batchId" -> event.batchId), metrics)
 
       val courseAggregations = dbUserConsumption.flatMap{ userConsumption =>
         // Course Level Agg using the merged data of ContentConsumption per user, course and batch.
@@ -104,10 +99,6 @@ class EnrolmentReconciliationFn(config: EnrolmentReconciliationConfig,  httpUtil
       logger.info("Event skipped as it is invalid ", event)
     }
 
-  }
-
-  def isValidEvent(eType: String): Boolean = {
-    StringUtils.equalsIgnoreCase(eType, config.supportedEventType)
   }
 
   def getUserAggQuery(progress: UserActivityAgg):
@@ -224,7 +215,7 @@ class EnrolmentReconciliationFn(config: EnrolmentReconciliationConfig,  httpUtil
   /**
    * Course Level Agg using the merged data of ContentConsumption per user, course and batch.
    */
-  def courseActivityAgg(userConsumption: UserContentConsumption, context: ProcessFunction[java.util.Map[String, AnyRef], String]#Context)(implicit metrics: Metrics): Option[UserEnrolmentAgg] = {
+  def courseActivityAgg(userConsumption: UserContentConsumption, context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Option[UserEnrolmentAgg] = {
     val courseId = userConsumption.courseId
     val userId = userConsumption.userId
     val contextId = "cb:" + userConsumption.batchId
