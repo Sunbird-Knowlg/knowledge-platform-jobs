@@ -19,6 +19,7 @@ class AutoCreatorV2StreamTask(config: AutoCreatorV2Config, kafkaConnector: Flink
   private[this] val logger = LoggerFactory.getLogger(classOf[AutoCreatorV2StreamTask])
   def process(): Unit = {
    try {
+     logger.info("Initializing AutoCreatorV2StreamTask")
      implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
      implicit val eventTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
      implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
@@ -33,10 +34,11 @@ class AutoCreatorV2StreamTask(config: AutoCreatorV2Config, kafkaConnector: Flink
        .setParallelism(config.parallelism)
      env.execute(config.jobName)
    } catch {
-     case ex: Exception => {
+     case ex: Exception =>
        ex.printStackTrace()
+       logger.info(s"Error while processing message ${ex.getMessage}")
+       println("Error while processing message" + ex.getMessage)
        logger.error(s"Error while processing message ${ex.getMessage}")
-     }
    }
   }
 }
