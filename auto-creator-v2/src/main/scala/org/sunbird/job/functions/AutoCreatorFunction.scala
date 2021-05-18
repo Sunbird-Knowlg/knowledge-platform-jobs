@@ -46,45 +46,30 @@ class AutoCreatorFunction(config: AutoCreatorV2Config, httpUtil: HttpUtil,
                               metrics: Metrics): Unit = {
     metrics.incCounter(config.totalEventsCount)
     // TODO: Check if object already exists. If exists, add validation based on pkgVersion
-
-    logger.info(s"Processing a message")
-    logger.error(s"Processing a message")
-    println("processing a message")
-    try {
-      if (event.isValid) {
-        logger.info("Processing event for bulk approval operation having identifier : " + event.objectId)
-        logger.info("event edata : " + event.eData)
-        val definition: ObjectDefinition = defCache.getDefinition(event.objectType, config.schemaSupportVersionMap.getOrElse(event.objectType.toLowerCase(), "1.0").asInstanceOf[String], config.definitionBasePath)
-        val obj: ObjectData = getObject(event.objectId, event.objectType, event.downloadUrl, event.repository)(config, httpUtil, definition)
-        logger.info("graph metadata for " + obj.identifier + " : " + obj.metadata)
-        val enObj = enrichMetadata(obj, event.metadata)(config)
-        logger.info("enriched metadata for " + enObj.identifier + " : " + enObj.metadata)
-        val updatedObj = processCloudMeta(enObj)(config, cloudStorageUtil)
-        logger.info("final updated metadata for " + updatedObj.identifier + " : " + JSONUtil.serialize(updatedObj.metadata))
-        val enrObj = if (config.expandableObjects.contains(updatedObj.objectType)) {
-          val chMap: Map[String, AnyRef] = getChildren(updatedObj)(config)
-          val childrenObj: Map[String, ObjectData] = processChildren(chMap)(config, neo4JUtil, cassandraUtil, cloudStorageUtil, defCache, httpUtil)
-          enrichHierarchy(updatedObj, childrenObj)(config)
-        } else updatedObj
-        val extConfig = ExtDataConfig(config.getString(enrObj.objectType.toLowerCase + "_keyspace", ""), definition.getExternalTable, definition.getExternalPrimaryKey, definition.getExternalProps)
-        saveExternalData(enrObj.identifier, enrObj.extData.getOrElse(Map()), extConfig)(cassandraUtil)
-        saveGraphData(enrObj.identifier, enrObj.metadata, definition)(neo4JUtil)
-        linkCollection(enrObj.identifier, event.collection)(config, httpUtil)
-        logger.info("Bulk approval operation completed for : " + event.objectId)
-        metrics.incCounter(config.successEventCount)
-      } else {
-        logger.info("Event is not qualified for bulk approval having identifier : " + event.objectId + " | objectType : " + event.objectType + " | source : " + event.repository)
-        metrics.incCounter(config.skippedEventCount)
-      }
-    } catch {
-      case ex: Exception => {
-        ex.printStackTrace()
-        logger.info(s"Error at processElement fn, ${ex.getMessage}")
-        logger.error(s"Error at processElement fn, ${ex.getMessage}")
-        println(s"Error at processElement fn, ${ex.getMessage}")
-      }
+    if (event.isValid) {
+      logger.info("Processing event for bulk approval operation having identifier : " + event.objectId)
+      logger.info("event edata : " + event.eData)
+      val definition: ObjectDefinition = defCache.getDefinition(event.objectType, config.schemaSupportVersionMap.getOrElse(event.objectType.toLowerCase(), "1.0").asInstanceOf[String], config.definitionBasePath)
+      val obj: ObjectData = getObject(event.objectId, event.objectType, event.downloadUrl, event.repository)(config, httpUtil, definition)
+      logger.info("graph metadata for " + obj.identifier + " : " + obj.metadata)
+      val enObj = enrichMetadata(obj, event.metadata)(config)
+      logger.info("enriched metadata for " + enObj.identifier + " : " + enObj.metadata)
+      val updatedObj = processCloudMeta(enObj)(config, cloudStorageUtil)
+      logger.info("final updated metadata for " + updatedObj.identifier + " : " + JSONUtil.serialize(updatedObj.metadata))
+      val enrObj = if (config.expandableObjects.contains(updatedObj.objectType)) {
+        val chMap: Map[String, AnyRef] = getChildren(updatedObj)(config)
+        val childrenObj: Map[String, ObjectData] = processChildren(chMap)(config, neo4JUtil, cassandraUtil, cloudStorageUtil, defCache, httpUtil)
+        enrichHierarchy(updatedObj, childrenObj)(config)
+      } else updatedObj
+      val extConfig = ExtDataConfig(config.getString(enrObj.objectType.toLowerCase + "_keyspace", ""), definition.getExternalTable, definition.getExternalPrimaryKey, definition.getExternalProps)
+      saveExternalData(enrObj.identifier, enrObj.extData.getOrElse(Map()), extConfig)(cassandraUtil)
+      saveGraphData(enrObj.identifier, enrObj.metadata, definition)(neo4JUtil)
+      linkCollection(enrObj.identifier, event.collection)(config, httpUtil)
+      logger.info("Bulk approval operation completed for : " + event.objectId)
+      metrics.incCounter(config.successEventCount)
+    } else {
+      logger.info("Event is not qualified for bulk approval having identifier : " + event.objectId + " | objectType : " + event.objectType + " | source : " + event.repository)
+      metrics.incCounter(config.skippedEventCount)
     }
   }
-
-
 }
