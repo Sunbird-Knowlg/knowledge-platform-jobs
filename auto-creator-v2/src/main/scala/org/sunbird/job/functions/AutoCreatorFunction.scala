@@ -61,7 +61,7 @@ class AutoCreatorFunction(config: AutoCreatorV2Config, httpUtil: HttpUtil,
         val childrenObj: Map[String, ObjectData] = processChildren(chMap)(config, neo4JUtil, cassandraUtil, cloudStorageUtil, defCache, httpUtil)
         enrichHierarchy(updatedObj, childrenObj)(config)
       } else updatedObj
-      val extConfig = ExtDataConfig(config.getString(enrObj.objectType.toLowerCase + "_keyspace", ""), definition.getExternalTable, definition.getExternalPrimaryKey, definition.getExternalProps)
+      val extConfig = ExtDataConfig(config.getString(enrObj.objectType.toLowerCase + ".keyspace", ""), definition.getExternalTable, definition.getExternalPrimaryKey, definition.getExternalProps)
       saveExternalData(enrObj.identifier, enrObj.extData.getOrElse(Map()), extConfig)(cassandraUtil)
       saveGraphData(enrObj.identifier, enrObj.metadata, definition)(neo4JUtil)
       linkCollection(enrObj.identifier, event.collection)(config, httpUtil)
