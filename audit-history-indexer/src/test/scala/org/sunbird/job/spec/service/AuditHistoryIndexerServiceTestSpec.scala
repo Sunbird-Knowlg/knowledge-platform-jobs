@@ -5,9 +5,9 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.mockito.Mockito
 import org.sunbird.job.audithistory.domain.{AuditHistoryRecord, Event}
+import org.sunbird.job.audithistory.functions.AuditHistoryIndexer
+import org.sunbird.job.audithistory.task.AuditHistoryIndexerConfig
 import org.sunbird.job.fixture.EventFixture
-import org.sunbird.job.functions.AuditHistoryIndexer
-import org.sunbird.job.task.AuditHistoryIndexerConfig
 import org.sunbird.job.util.{ElasticSearchUtil, JSONUtil}
 import org.sunbird.spec.BaseTestSpec
 

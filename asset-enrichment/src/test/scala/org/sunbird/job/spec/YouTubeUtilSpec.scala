@@ -1,8 +1,8 @@
 package org.sunbird.job.spec
 
 import com.typesafe.config.{Config, ConfigFactory}
-import org.sunbird.job.task.AssetEnrichmentConfig
-import org.sunbird.job.util.YouTubeUtil
+import org.sunbird.job.assetenricment.task.AssetEnrichmentConfig
+import org.sunbird.job.assetenricment.util.YouTubeUtil
 import org.sunbird.spec.BaseTestSpec
 
 class YouTubeUtilSpec extends BaseTestSpec {

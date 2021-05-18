@@ -1,17 +1,18 @@
 package org.sunbird.job.spec
 
-import java.util
-
 import com.typesafe.config.{Config, ConfigFactory}
 import org.mockito.ArgumentMatchers.{anyBoolean, anyString}
 import org.mockito.Mockito
 import org.mockito.Mockito.{doNothing, when}
+import org.sunbird.job.assetenricment.functions.ImageEnrichmentFunction
+import org.sunbird.job.assetenricment.models.Asset
+import org.sunbird.job.assetenricment.task.AssetEnrichmentConfig
+import org.sunbird.job.assetenricment.util.CloudStorageUtil
 import org.sunbird.job.fixture.EventFixture
-import org.sunbird.job.functions.ImageEnrichmentFunction
-import org.sunbird.job.models.Asset
-import org.sunbird.job.task.AssetEnrichmentConfig
-import org.sunbird.job.util.{CloudStorageUtil, JSONUtil}
+import org.sunbird.job.util.JSONUtil
 import org.sunbird.spec.BaseTestSpec
+
+import java.util
 
 class OptimizerHelperSpec extends BaseTestSpec {
 

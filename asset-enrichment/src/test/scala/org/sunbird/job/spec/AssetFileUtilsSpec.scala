@@ -1,9 +1,9 @@
 package org.sunbird.job.spec
 
-import java.io.File
-
-import org.sunbird.job.util.AssetFileUtils
+import org.sunbird.job.assetenricment.util.AssetFileUtils
 import org.sunbird.spec.BaseTestSpec
+
+import java.io.File
 
 class AssetFileUtilsSpec extends BaseTestSpec{
 

@@ -1,8 +1,8 @@
 package org.sunbird.job.spec
 
-import java.util
-
 import org.apache.flink.streaming.api.functions.sink.SinkFunction
+
+import java.util
 
 
 class AuditEventSink extends SinkFunction[String] {
