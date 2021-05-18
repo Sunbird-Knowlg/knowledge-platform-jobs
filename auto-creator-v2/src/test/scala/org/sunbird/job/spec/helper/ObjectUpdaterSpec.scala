@@ -72,7 +72,7 @@ class ObjectUpdaterSpec extends FlatSpec with BeforeAndAfterAll with Matchers wi
 
   "saveExternalData" should "throw exception" in {
     val enrObj = new ObjectData("do_123", "Content", Map(), Some(Map("hierarchy" -> getHierarchy())), Some(Map()))
-    val extConfig = ExtDataConfig(jobConfig.getString("questionset_keyspace", ""), qDefinition.getExternalTable, qDefinition.getExternalPrimaryKey, qDefinition.getExternalProps)
+    val extConfig = ExtDataConfig(jobConfig.getString("questionset.keyspace", ""), qDefinition.getExternalTable, qDefinition.getExternalPrimaryKey, qDefinition.getExternalProps)
     assertThrows[Exception] {
       new TestObjectUpdater().saveExternalData("do_123", enrObj.extData.get, extConfig)(cassandraUtil)
     }
@@ -80,7 +80,7 @@ class ObjectUpdaterSpec extends FlatSpec with BeforeAndAfterAll with Matchers wi
 
   "saveExternalData" should "return a valid object" in {
     val enrObj = new ObjectData("do_123", "Content", Map(), Some(Map("hierarchy" -> getHierarchy())), Some(Map()))
-    val extConfig = ExtDataConfig(jobConfig.getString("questionset_keyspace", ""), qsDefinition.getExternalTable, qsDefinition.getExternalPrimaryKey, qsDefinition.getExternalProps)
+    val extConfig = ExtDataConfig(jobConfig.getString("questionset.keyspace", ""), qsDefinition.getExternalTable, qsDefinition.getExternalPrimaryKey, qsDefinition.getExternalProps)
     new TestObjectUpdater().saveExternalData("do_123", enrObj.extData.get, extConfig)(cassandraUtil)
   }
 
