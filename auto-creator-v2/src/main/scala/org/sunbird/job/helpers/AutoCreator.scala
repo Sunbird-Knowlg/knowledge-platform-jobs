@@ -98,7 +98,7 @@ trait AutoCreator extends ObjectUpdater with CollectionUpdater with HierarchyEnr
 			logger.info("enriched metadata for " + enObj.identifier + " : " + enObj.metadata)
 			val updatedObj = processCloudMeta(enObj)
 			logger.info("final updated metadata for " + updatedObj.identifier + " : " + JSONUtil.serialize(updatedObj.metadata))
-			val extConfig = ExtDataConfig(config.getString(updatedObj.objectType.toLowerCase + "_keyspace", ""), definition.getExternalTable, definition.getExternalPrimaryKey, definition.getExternalProps)
+			val extConfig = ExtDataConfig(config.getString(updatedObj.objectType.toLowerCase + ".keyspace", ""), definition.getExternalTable, definition.getExternalPrimaryKey, definition.getExternalProps)
 			saveExternalData(updatedObj.identifier, updatedObj.extData.getOrElse(Map()), extConfig)(cassandraUtil)
 			saveGraphData(updatedObj.identifier, updatedObj.metadata, definition)(neo4JUtil)
 			Map(updatedObj.identifier-> updatedObj)
