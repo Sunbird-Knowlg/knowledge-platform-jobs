@@ -70,7 +70,7 @@ class AutoCreatorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with
 		val result = new TestAutoCreator().enrichMetadata(data, eventMeta)(jobConfig)
 		result.metadata.getOrElse("IL_UNIQUE_ID", "").asInstanceOf[String] shouldEqual "do_123"
 		result.metadata.getOrElse("IL_FUNC_OBJECT_TYPE", "").asInstanceOf[String] shouldEqual "QuestionSet"
-		result.metadata.getOrElse("downloadUrl", "").asInstanceOf[String] shouldEqual downloadUrl
+		result.metadata.getOrElse("IL_SYS_NODE_TYPE", "").asInstanceOf[String] shouldEqual "DATA_NODE"
 	}
 
 	"processCloudMeta" should "return object with updated cloud urls" in {
