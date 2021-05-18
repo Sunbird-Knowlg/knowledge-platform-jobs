@@ -11,24 +11,33 @@ import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.domain.Event
 import org.sunbird.job.functions.AutoCreatorFunction
 import org.sunbird.job.util.{FlinkUtil, HttpUtil}
+import org.slf4j.LoggerFactory
+
 
 
 class AutoCreatorV2StreamTask(config: AutoCreatorV2Config, kafkaConnector: FlinkKafkaConnector, httpUtil: HttpUtil) {
+  private[this] val logger = LoggerFactory.getLogger(classOf[AutoCreatorV2StreamTask])
   def process(): Unit = {
-    implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
-    implicit val eventTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
-    implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
-    implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
+   try {
+     implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
+     implicit val eventTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
+     implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
+     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
 
-    env.addSource(kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)).name(config.eventConsumer)
-      .uid(config.eventConsumer).setParallelism(config.kafkaConsumerParallelism)
-      .rebalance
-      .process(new AutoCreatorFunction(config, httpUtil))
-      .name(config.autoCreatorV2Function)
-      .uid(config.autoCreatorV2Function)
-      .setParallelism(config.parallelism)
-
-    env.execute(config.jobName)
+     env.addSource(kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)).name(config.eventConsumer)
+       .uid(config.eventConsumer).setParallelism(config.kafkaConsumerParallelism)
+       .rebalance
+       .process(new AutoCreatorFunction(config, httpUtil))
+       .name(config.autoCreatorV2Function)
+       .uid(config.autoCreatorV2Function)
+       .setParallelism(config.parallelism)
+     env.execute(config.jobName)
+   } catch {
+     case ex: Exception => {
+       ex.printStackTrace()
+       logger.error(s"Error while processing message ${ex.getMessage}")
+     }
+   }
   }
 }
 
