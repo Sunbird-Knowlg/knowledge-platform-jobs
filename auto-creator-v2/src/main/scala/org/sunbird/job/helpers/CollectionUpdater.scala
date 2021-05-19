@@ -25,10 +25,10 @@ trait CollectionUpdater {
 	}
 
 	def getHierarchy(identifier: String)(implicit config: AutoCreatorV2Config, httpUtil: HttpUtil): Map[String, AnyRef] = {
-		val url = config.contentServiceBaseUrl + "/content/v3/hierarchy/" + identifier + "?mode=edit"
+		val url = s"${config.contentServiceBaseUrl}/content/v3/hierarchy/$identifier?mode=edit"
 		val resp: HTTPResponse = httpUtil.get(url)
 		if (null != resp && resp.status == 200) getResult(resp).getOrElse("content", Map()).asInstanceOf[Map[String, AnyRef]] else {
-			val msg = "Unable to fetch collection hierarchy for : " + identifier + " | Response Code : " + resp.status
+			val msg = s"Unable to fetch collection hierarchy for : $identifier | Response Code : ${resp.status}"
 			logger.error(msg)
 			throw new Exception(msg)
 		}
@@ -36,14 +36,15 @@ trait CollectionUpdater {
 
 	def addToHierarchy(collId: String, unitId: String, resourceId: String)(implicit config: AutoCreatorV2Config, httpUtil: HttpUtil) = {
 		val url = config.contentServiceBaseUrl + "/content/v3/hierarchy/add"
-		val requestBody = "{\"request\":{\"rootId\":\"" + collId + "\",\"unitId\":\"" + unitId + "\",\"children\":[\"" + resourceId + "\"]}}"
+		val requestBody = s"""{"request":{"rootId": "$collId", "unitId": "$unitId", "children": ["$resourceId"]}}"""
+    logger.info(s"Add to hierarchy request body:" + ${requestBody})
 		val resp = httpUtil.patch(url, requestBody)
 		if (null != resp && resp.status == 200) {
 			val contentId = getResult(resp).getOrElse("rootId", "").asInstanceOf[String]
 			if (StringUtils.equalsIgnoreCase(contentId, collId))
-				logger.info("Content Hierarchy Updated Successfully for: " + collId)
+				logger.info(s"Content Hierarchy Updated Successfully for: $collId")
 		} else {
-			val msg = "Hierarchy Update Failed For : " + collId
+			val msg = s"Hierarchy Update Failed For : $collId. ${resp.body} :: status: ${resp.status}"
 			logger.error(msg)
 			throw new Exception(msg)
 		}
