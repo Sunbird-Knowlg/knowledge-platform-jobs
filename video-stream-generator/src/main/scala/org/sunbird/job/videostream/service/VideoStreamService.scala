@@ -18,7 +18,7 @@ class VideoStreamService(implicit config: VideoStreamGeneratorConfig, httpUtil: 
   private lazy val mediaService = MediaServiceFactory.getMediaService()
   private lazy val dbKeyspace:String = config.dbKeyspace
   private lazy val dbTable:String = config.dbTable
-  lazy val cassandraUtil:CassandraUtil = new CassandraUtil(config.dbHost, config.dbPort)
+  lazy val cassandraUtil:CassandraUtil = new CassandraUtil(config.lmsDbHost, config.lmsDbPort)
   private lazy val clientKey:String = "SYSTEM_LP"
   private lazy val SUBMITTED:String = "SUBMITTED"
   private lazy val VIDEO_STREAMING:String = "VIDEO_STREAMING"
@@ -43,46 +43,62 @@ class VideoStreamService(implicit config: VideoStreamGeneratorConfig, httpUtil: 
   def updateProcessingRequest(metrics: Metrics): Unit = {
     val processingJobRequests = readFromDB(Map("status" -> "PROCESSING"))
     val stageName = "STREAMING_JOB_COMPLETE"
+    var streamStage:StreamingStage = null
+    var throwException: Boolean = false
 
-    processingJobRequests.map { jobRequest =>
-      val iteration = jobRequest.iteration
-      if (jobRequest.job_id != None) {
-        val mediaResponse:MediaResponse = mediaService.getJob(jobRequest.job_id.get)
-        logger.info("Get job details while saving: " + JSONUtil.serialize(mediaResponse.result))
-        if(mediaResponse.responseCode.contentEquals("OK")) {
-          val job = mediaResponse.result.getOrElse("job", Map()).asInstanceOf[Map[String, AnyRef]]
-          val jobStatus = job.getOrElse("status","").asInstanceOf[String]
+    for (jobRequest <- processingJobRequests) {
+      try {
+        val iteration = jobRequest.iteration
+        streamStage = if (jobRequest.job_id != None) {
+          val mediaResponse:MediaResponse = mediaService.getJob(jobRequest.job_id.get)
+          logger.info("Get job details while saving: " + JSONUtil.serialize(mediaResponse.result))
+          if(mediaResponse.responseCode.contentEquals("OK")) {
+            val job = mediaResponse.result.getOrElse("job", Map()).asInstanceOf[Map[String, AnyRef]]
+            val jobStatus = job.getOrElse("status","").asInstanceOf[String]
 
-          if(jobStatus.equalsIgnoreCase("FINISHED")) {
-            val streamingUrl = mediaService.getStreamingPaths(jobRequest.job_id.get).result.getOrElse("streamUrl","").asInstanceOf[String]
-            val requestData = JSONUtil.deserialize[Map[String, AnyRef]](jobRequest.request_data)
-            val contentId = requestData.getOrElse("identifier", "").asInstanceOf[String]
-            val channel = requestData.getOrElse("channel", "").asInstanceOf[String]
+            if(jobStatus.equalsIgnoreCase("FINISHED")) {
+              val streamingUrl = mediaService.getStreamingPaths(jobRequest.job_id.get).result.getOrElse("streamUrl","").asInstanceOf[String]
+              val requestData = JSONUtil.deserialize[Map[String, AnyRef]](jobRequest.request_data)
+              val contentId = requestData.getOrElse("identifier", "").asInstanceOf[String]
+              val channel = requestData.getOrElse("channel", "").asInstanceOf[String]
 
-            if(updatePreviewUrl(contentId, streamingUrl, channel)) {
-              StreamingStage(jobRequest.request_id, jobRequest.client_key, jobRequest.job_id.get, stageName, jobStatus, "FINISHED", iteration + 1);
+              if(updatePreviewUrl(contentId, streamingUrl, channel)) {
+                StreamingStage(jobRequest.request_id, jobRequest.client_key, jobRequest.job_id.get, stageName, jobStatus, "FINISHED", iteration + 1);
+              } else {
+                null
+              }
+            } else if(jobStatus.equalsIgnoreCase("ERROR")){
+              val errMessage = job.getOrElse("error", Map()).asInstanceOf[Map[String, AnyRef]].getOrElse("errorMessage", "No error message").asInstanceOf[String]
+              StreamingStage(jobRequest.request_id, jobRequest.client_key, jobRequest.job_id.get, stageName, jobStatus, "FAILED", iteration + 1, errMessage)
             } else {
               null
             }
-          } else if(jobStatus.equalsIgnoreCase("ERROR")){
-            val errMessage = job.getOrElse("error", Map()).asInstanceOf[Map[String, AnyRef]].getOrElse("errorMessage", "No error message").asInstanceOf[String]
-            StreamingStage(jobRequest.request_id, jobRequest.client_key, jobRequest.job_id.get, stageName, jobStatus, "FAILED", iteration + 1, errMessage)
           } else {
-            null
+            val errorMsg = mediaResponse.result.toString
+            StreamingStage(jobRequest.request_id, jobRequest.client_key, null, stageName, "FAILED", "FAILED", iteration + 1, errorMsg);
           }
         } else {
-          val errorMsg = mediaResponse.result.toString
-          StreamingStage(jobRequest.request_id, jobRequest.client_key, null, stageName, "FAILED", "FAILED", iteration + 1, errorMsg);
+          StreamingStage(jobRequest.request_id, jobRequest.client_key, null, stageName, "FAILED", "FAILED", iteration + 1, jobRequest.err_message.getOrElse(""));
         }
-      } else {
-        StreamingStage(jobRequest.request_id, jobRequest.client_key, null, stageName, "FAILED", "FAILED", iteration + 1, jobRequest.err_message.getOrElse(""));
+      } catch {
+        case ex: Exception =>
+          throwException = true
+          logger.error(s"Exception on processing JobRequest :: ${jobRequest.request_id} :: ${ex.getMessage}")
+          StreamingStage(jobRequest.request_id, jobRequest.client_key, null, stageName, "FAILED", "FAILED", jobRequest.iteration + 1, ex.getMessage);
       }
-    }.filter(x =>  x != null).map{ streamStage:StreamingStage =>
-      val counter = if (streamStage.status.equals("FINISHED")) config.successEventCount else {
-        if (streamStage.iteration <= config.maxRetries) config.retryEventCount else config.failedEventCount
+
+
+      if (streamStage != null) {
+        val counter = if (streamStage.status.equals("FINISHED")) config.successEventCount else {
+          if (streamStage.iteration <= config.maxRetries) config.retryEventCount else config.failedEventCount
+        }
+        metrics.incCounter(counter)
+        updateJobRequestStage(streamStage)
+
+        if (throwException) {
+          throw new Exception(jobRequest.err_message.get)
+        }
       }
-      metrics.incCounter(counter)
-      updateJobRequestStage(streamStage)
     }
   }
 

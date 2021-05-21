@@ -35,10 +35,8 @@ class VideoStreamGeneratorConfig(override val config: Config) extends BaseJobCon
   val videoStreamGeneratorFunction = "manage-streaming-jobs"
 
   // Cassandra Configurations
-  val dbTable: String = config.getString("dp-cassandra.table")
-  val dbKeyspace: String = config.getString("dp-cassandra.keyspace")
-  val dbHost: String = config.getString("dp-cassandra.host")
-  val dbPort: Int = config.getInt("dp-cassandra.port")
+  val dbTable: String = config.getString("lms-cassandra.table")
+  val dbKeyspace: String = config.getString("lms-cassandra.keyspace")
   val hierarchyPrimaryKey: List[String] = List("identifier")
 
   // LP Configurations
