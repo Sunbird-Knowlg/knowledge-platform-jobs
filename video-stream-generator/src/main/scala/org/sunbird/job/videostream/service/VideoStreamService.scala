@@ -18,7 +18,7 @@ class VideoStreamService(implicit config: VideoStreamGeneratorConfig, httpUtil: 
   private lazy val mediaService = MediaServiceFactory.getMediaService()
   private lazy val dbKeyspace:String = config.dbKeyspace
   private lazy val dbTable:String = config.dbTable
-  lazy val cassandraUtil:CassandraUtil = new CassandraUtil(config.dbHost, config.dbPort)
+  lazy val cassandraUtil:CassandraUtil = new CassandraUtil(config.lmsDbHost, config.lmsDbPort)
   private lazy val clientKey:String = "SYSTEM_LP"
   private lazy val SUBMITTED:String = "SUBMITTED"
   private lazy val VIDEO_STREAMING:String = "VIDEO_STREAMING"
