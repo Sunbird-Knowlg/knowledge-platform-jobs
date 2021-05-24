@@ -1,4 +1,4 @@
-package org.sunbird.job.util
+package org.sunbird.job.autocreatorv2.util
 
 import org.scalatest.{FlatSpec, Matchers}
 

@@ -1,17 +1,16 @@
-package org.sunbird.job.spec.service
+package org.sunbird.job.autocreatorv2.spec.service
 
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
-import org.sunbird.job.domain.Event
-import org.sunbird.job.fixture.EventFixture
-import org.sunbird.job.functions.AutoCreatorFunction
+import org.mockito.Mockito
+import org.sunbird.job.autocreatorv2.fixture.EventFixture
+import org.sunbird.job.autocreatorv2.functions.AutoCreatorFunction
 import org.sunbird.job.task.AutoCreatorV2Config
 import org.sunbird.job.util.{HttpUtil, JSONUtil}
 import org.sunbird.spec.BaseTestSpec
-import java.util
 
-import org.mockito.Mockito
+import java.util
 
 class AutoCreatorFunctionSpec extends BaseTestSpec {
   implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])

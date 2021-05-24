@@ -1,20 +1,21 @@
-package org.sunbird.job.spec.helper
+package org.sunbird.job.autocreatorv2.spec.helper
 
 import com.typesafe.config.{Config, ConfigFactory}
 import org.cassandraunit.CQLDataLoader
 import org.cassandraunit.dataset.cql.FileCQLDataSet
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
-import org.mockito.ArgumentMatchers.{any, anyString}
+import org.mockito.ArgumentMatchers.anyString
 import org.mockito.Mockito
 import org.mockito.Mockito.when
 import org.neo4j.driver.v1.StatementResult
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
+import org.sunbird.job.autocreatorv2.helpers.AutoCreator
+import org.sunbird.job.autocreatorv2.model.ObjectData
+import org.sunbird.job.autocreatorv2.util.CloudStorageUtil
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
-import org.sunbird.job.helpers.AutoCreator
-import org.sunbird.job.model.ObjectData
 import org.sunbird.job.task.AutoCreatorV2Config
-import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, Neo4JUtil}
+import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
 
 class AutoCreatorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
 

@@ -1,11 +1,11 @@
-package org.sunbird.job.util
+package org.sunbird.job.autocreatorv2.util
 
-import java.io.File
-
-import org.sunbird.job.task.AutoCreatorV2Config
 import org.apache.commons.lang3.StringUtils
 import org.sunbird.cloud.storage.BaseStorageService
 import org.sunbird.cloud.storage.factory.{StorageConfig, StorageServiceFactory}
+import org.sunbird.job.task.AutoCreatorV2Config
+
+import java.io.File
 
 class CloudStorageUtil(config: AutoCreatorV2Config) extends Serializable {
 

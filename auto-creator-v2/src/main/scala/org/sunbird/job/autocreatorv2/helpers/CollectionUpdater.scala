@@ -1,4 +1,4 @@
-package org.sunbird.job.helpers
+package org.sunbird.job.autocreatorv2.helpers
 
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory

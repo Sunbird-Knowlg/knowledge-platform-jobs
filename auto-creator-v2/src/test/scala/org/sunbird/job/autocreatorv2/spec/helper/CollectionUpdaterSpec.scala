@@ -1,4 +1,4 @@
-package org.sunbird.job.spec.helper
+package org.sunbird.job.autocreatorv2.spec.helper
 
 import com.typesafe.config.{Config, ConfigFactory}
 import org.mockito.ArgumentMatchers.{any, anyString}
@@ -6,7 +6,7 @@ import org.mockito.Mockito
 import org.mockito.Mockito.when
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
-import org.sunbird.job.helpers.CollectionUpdater
+import org.sunbird.job.autocreatorv2.helpers.CollectionUpdater
 import org.sunbird.job.task.AutoCreatorV2Config
 import org.sunbird.job.util.{HTTPResponse, HttpUtil}
 

@@ -1,18 +1,19 @@
-package org.sunbird.job.functions
+package org.sunbird.job.autocreatorv2.functions
 
-
-import java.util
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
-import org.sunbird.job.domain.Event
+import org.sunbird.job.autocreatorv2.domain.Event
+import org.sunbird.job.autocreatorv2.helpers.AutoCreator
+import org.sunbird.job.autocreatorv2.model.{ExtDataConfig, ObjectData}
+import org.sunbird.job.autocreatorv2.util.CloudStorageUtil
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
-import org.sunbird.job.helpers.AutoCreator
-import org.sunbird.job.model.{ExtDataConfig, ObjectData}
 import org.sunbird.job.task.AutoCreatorV2Config
-import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, JSONUtil, Neo4JUtil}
+import org.sunbird.job.util._
 import org.sunbird.job.{BaseProcessFunction, Metrics}
+
+import java.util
 
 
 class AutoCreatorFunction(config: AutoCreatorV2Config, httpUtil: HttpUtil,

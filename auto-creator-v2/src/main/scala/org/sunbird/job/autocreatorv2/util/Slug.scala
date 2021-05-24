@@ -1,14 +1,14 @@
-package org.sunbird.job.util
+package org.sunbird.job.autocreatorv2.util
+
+import net.sf.junidecode.Junidecode
+import org.apache.commons.io.FilenameUtils
+import org.apache.commons.lang3.StringUtils
 
 import java.io.File
 import java.net.URLDecoder
 import java.text.Normalizer
 import java.text.Normalizer.Form
 import java.util.Locale
-
-import net.sf.junidecode.Junidecode
-import org.apache.commons.io.FilenameUtils
-import org.apache.commons.lang3.StringUtils
 
 object Slug {
 

@@ -1,13 +1,13 @@
-package org.sunbird.job.helpers
-
-import java.util
+package org.sunbird.job.autocreatorv2.helpers
 
 import com.datastax.driver.core.querybuilder.{Insert, QueryBuilder}
 import org.neo4j.driver.v1.StatementResult
 import org.slf4j.LoggerFactory
+import org.sunbird.job.autocreatorv2.model.ExtDataConfig
 import org.sunbird.job.domain.`object`.ObjectDefinition
-import org.sunbird.job.model.ExtDataConfig
 import org.sunbird.job.util.{CassandraUtil, JSONUtil, Neo4JUtil, ScalaJsonUtil}
+
+import java.util
 
 trait ObjectUpdater {
 

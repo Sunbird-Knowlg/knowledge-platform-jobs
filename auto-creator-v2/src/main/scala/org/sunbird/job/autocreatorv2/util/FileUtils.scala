@@ -1,13 +1,13 @@
-package org.sunbird.job.util
+package org.sunbird.job.autocreatorv2.util
+
+import org.apache.commons.lang3.StringUtils
+import org.slf4j.LoggerFactory
+import org.sunbird.job.util.JSONUtil
 
 import java.io.{File, IOException}
 import java.net.URL
 import java.nio.file.{Files, Paths}
 import java.util.zip.ZipFile
-
-import org.apache.commons.lang3.StringUtils
-import org.slf4j.LoggerFactory
-
 import scala.collection.JavaConverters._
 
 object FileUtils {

@@ -1,6 +1,5 @@
-package org.sunbird.job.spec
+package org.sunbird.job.autocreatorv2.spec
 
-import java.util
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
@@ -8,14 +7,16 @@ import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
 import org.apache.flink.streaming.api.functions.source.SourceFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext
 import org.apache.flink.test.util.MiniClusterWithClientResource
-import org.sunbird.job.util.{HttpUtil, JSONUtil}
 import org.mockito.Mockito
 import org.mockito.Mockito.when
+import org.sunbird.job.autocreatorv2.domain.Event
+import org.sunbird.job.autocreatorv2.fixture.EventFixture
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.domain.Event
-import org.sunbird.job.fixture.EventFixture
 import org.sunbird.job.task.{AutoCreatorV2Config, AutoCreatorV2StreamTask}
+import org.sunbird.job.util.{HttpUtil, JSONUtil}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
+
+import java.util
 
 
 class AutoCreatorV2TaskTestSpec extends BaseTestSpec {

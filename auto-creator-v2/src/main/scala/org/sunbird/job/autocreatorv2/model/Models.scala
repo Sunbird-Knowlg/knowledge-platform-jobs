@@ -1,4 +1,4 @@
-package org.sunbird.job.model
+package org.sunbird.job.autocreatorv2.model
 
 case class ExtDataConfig(keyspace: String, table: String, primaryKey:List[String], propsMapping: Map[String, AnyRef])
 

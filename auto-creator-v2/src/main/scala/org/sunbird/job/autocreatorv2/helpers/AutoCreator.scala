@@ -1,14 +1,17 @@
-package org.sunbird.job.helpers
-
-import java.io.File
+package org.sunbird.job.autocreatorv2.helpers
 
 import org.apache.commons.io.FilenameUtils
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
+import org.sunbird.job.autocreatorv2.model.{ExtDataConfig, ObjectData}
+import org.sunbird.job.autocreatorv2.util.{CloudStorageUtil, FileUtils}
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
-import org.sunbird.job.model.{ExtDataConfig, ObjectData}
+import org.sunbird.job.autocreatorv2.helpers.ObjectUpdater
+import org.sunbird.job.autocreatorv2.model.ObjectData
 import org.sunbird.job.task.AutoCreatorV2Config
-import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, FileUtils, HttpUtil, JSONUtil, Neo4JUtil}
+import org.sunbird.job.util._
+
+import java.io.File
 
 trait AutoCreator extends ObjectUpdater with CollectionUpdater with HierarchyEnricher {
 

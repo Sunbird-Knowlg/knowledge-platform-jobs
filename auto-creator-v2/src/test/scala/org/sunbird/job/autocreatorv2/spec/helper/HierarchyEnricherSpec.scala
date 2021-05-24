@@ -1,10 +1,10 @@
-package org.sunbird.job.spec.helper
+package org.sunbird.job.autocreatorv2.spec.helper
 
 import com.typesafe.config.{Config, ConfigFactory}
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
-import org.sunbird.job.helpers.HierarchyEnricher
-import org.sunbird.job.model.ObjectData
+import org.sunbird.job.autocreatorv2.helpers.HierarchyEnricher
+import org.sunbird.job.autocreatorv2.model.ObjectData
 import org.sunbird.job.task.AutoCreatorV2Config
 import org.sunbird.job.util.JSONUtil
 

@@ -1,8 +1,8 @@
-package org.sunbird.job.util
-
-import java.io.File
+package org.sunbird.job.autocreatorv2.util
 
 import org.scalatest.{FlatSpec, Matchers}
+
+import java.io.File
 
 class SlugSpec extends FlatSpec with Matchers {
 

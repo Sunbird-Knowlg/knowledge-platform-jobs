@@ -1,6 +1,4 @@
-package org.sunbird.job.spec.helper
-
-import java.util
+package org.sunbird.job.autocreatorv2.spec.helper
 
 import com.typesafe.config.{Config, ConfigFactory}
 import org.cassandraunit.CQLDataLoader
@@ -12,11 +10,13 @@ import org.mockito.Mockito.when
 import org.neo4j.driver.v1.StatementResult
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
+import org.sunbird.job.autocreatorv2.helpers.ObjectUpdater
+import org.sunbird.job.autocreatorv2.model.{ExtDataConfig, ObjectData}
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
-import org.sunbird.job.helpers.ObjectUpdater
-import org.sunbird.job.model.{ExtDataConfig, ObjectData}
 import org.sunbird.job.task.AutoCreatorV2Config
 import org.sunbird.job.util.{CassandraUtil, JSONUtil, Neo4JUtil}
+
+import java.util
 
 class ObjectUpdaterSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
 

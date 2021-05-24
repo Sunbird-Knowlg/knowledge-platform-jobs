@@ -8,10 +8,10 @@ import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.domain.Event
-import org.sunbird.job.functions.AutoCreatorFunction
 import org.sunbird.job.util.{FlinkUtil, HttpUtil}
 import org.slf4j.LoggerFactory
+import org.sunbird.job.autocreatorv2.domain.Event
+import org.sunbird.job.autocreatorv2.functions.AutoCreatorFunction
 
 
 class AutoCreatorV2StreamTask(config: AutoCreatorV2Config, kafkaConnector: FlinkKafkaConnector, httpUtil: HttpUtil) {
