@@ -7,6 +7,7 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.{KeyedProcessFunction, ProcessFunction}
 import org.slf4j.LoggerFactory
+import org.sunbird.job.exception.InvalidEventException
 import org.sunbird.job.videostream.domain.Event
 import org.sunbird.job.videostream.service.VideoStreamService
 import org.sunbird.job.videostream.task.VideoStreamGeneratorConfig
@@ -37,6 +38,7 @@ class VideoStreamGenerator(config: VideoStreamGeneratorConfig, httpUtil:HttpUtil
         super.close()
     }
 
+    @throws(classOf[InvalidEventException])
     override def processElement(event: Event,
                                 context: KeyedProcessFunction[String, Event, Event]#Context,
                                 metrics: Metrics): Unit = {
@@ -50,10 +52,9 @@ class VideoStreamGenerator(config: VideoStreamGeneratorConfig, httpUtil:HttpUtil
           logger.info("Timer registered to execute at " + nextTimerTimestamp)
         } else metrics.incCounter(config.skippedEventCount)
       } catch {
-        case ex: Throwable =>
-          logger.error(s"Error while processing message for identifier : ${event.mid()}. Partition: ${event.partition} and Offset: ${event.offset} and content: ${event.identifier()}. Error : ", ex)
+        case ex: Exception =>
           metrics.incCounter(config.failedEventCount)
-          throw ex
+          throw new InvalidEventException(ex.getMessage, Map("partition" -> event.partition, "offset" -> event.offset), ex)
       }
     }
 
