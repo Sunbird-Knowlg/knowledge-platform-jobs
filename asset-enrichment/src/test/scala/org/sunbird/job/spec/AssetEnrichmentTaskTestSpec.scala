@@ -1,8 +1,5 @@
 package org.sunbird.job.spec
 
-import java.io.File
-import java.util
-
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
@@ -10,16 +7,20 @@ import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
 import org.apache.flink.test.util.MiniClusterWithClientResource
 import org.mockito.ArgumentMatchers.{any, anyString}
 import org.mockito.Mockito
-import org.mockito.Mockito.{doNothing}
+import org.mockito.Mockito.doNothing
+import org.sunbird.job.assetenricment.domain.Event
+import org.sunbird.job.assetenricment.functions.{ImageEnrichmentFunction, VideoEnrichmentFunction}
+import org.sunbird.job.assetenricment.models.Asset
+import org.sunbird.job.assetenricment.task.AssetEnrichmentConfig
+import org.sunbird.job.assetenricment.util.{AssetFileUtils, CloudStorageUtil, ImageResizerUtil, YouTubeUtil}
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.domain.Event
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.fixture.EventFixture
-import org.sunbird.job.functions.{ImageEnrichmentFunction, VideoEnrichmentFunction}
-import org.sunbird.job.models.Asset
-import org.sunbird.job.task.AssetEnrichmentConfig
-import org.sunbird.job.util.{CloudStorageUtil, AssetFileUtils, ImageResizerUtil, JSONUtil, Neo4JUtil, ScalaJsonUtil, YouTubeUtil}
+import org.sunbird.job.util.{JSONUtil, Neo4JUtil, ScalaJsonUtil}
 import org.sunbird.spec.BaseTestSpec
+
+import java.io.File
+import java.util
 
 class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
 
@@ -146,7 +147,7 @@ class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
   }
 
   "event.validate" should " validate the event " in {
-    val event = new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.IMAGE_ASSET))
+    val event = new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.IMAGE_ASSET), 0, 10)
     val message = event.validate(jobConfig.maxIterationCount)
     message.isEmpty should be(true)
   }

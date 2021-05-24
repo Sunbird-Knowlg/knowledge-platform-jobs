@@ -92,7 +92,9 @@ class ElasticSearchUtil(connectionInfo: String, indexName: String, indexType: St
       logger.info(s"Added ${response.getId} to index ${response.getIndex}")
     } catch {
       case e: IOException =>
-        logger.error(s"Error while adding document to index : $indexName", e)
+        logger.error(s"Error while adding document to index : $indexName : " + e.getMessage)
+        e.printStackTrace()
+        throw e
     }
   }
 

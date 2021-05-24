@@ -1,18 +1,24 @@
 package org.sunbird.job.publish.helpers.spec
 
-import java.util
-
+import akka.dispatch.ExecutionContexts
 import com.typesafe.config.{Config, ConfigFactory}
+import org.apache.commons.lang3.StringUtils
 import org.cassandraunit.CQLDataLoader
 import org.cassandraunit.dataset.cql.FileCQLDataSet
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
 import org.mockito.Mockito
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
-import org.sunbird.job.publish.helpers.QuestionPublisher
-import org.sunbird.job.task.QuestionSetPublishConfig
+import org.sunbird.job.domain.`object`.DefinitionCache
+import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
+import org.sunbird.job.publish.util.CloudStorageUtil
+import org.sunbird.job.questionset.publish.helpers.QuestionPublisher
+import org.sunbird.job.questionset.task.QuestionSetPublishConfig
 import org.sunbird.job.util.{CassandraUtil, Neo4JUtil}
-import org.sunbird.publish.core.{ExtDataConfig, ObjectData}
+
+import java.util
+
+
 
 
 class QuestionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
@@ -22,6 +28,10 @@ class QuestionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matcher
 	val config: Config = ConfigFactory.load("test.conf").withFallback(ConfigFactory.systemEnvironment())
 	val jobConfig: QuestionSetPublishConfig = new QuestionSetPublishConfig(config)
 	implicit val readerConfig: ExtDataConfig = ExtDataConfig(jobConfig.questionKeyspaceName, jobConfig.questionTableName)
+	implicit val cloudStorageUtil = new CloudStorageUtil(jobConfig)
+	implicit val ec = ExecutionContexts.global
+	implicit val defCache = new DefinitionCache()
+	implicit val defConfig = DefinitionConfig(jobConfig.schemaSupportVersionMap, jobConfig.definitionBasePath)
 
 	override protected def beforeAll(): Unit = {
 		super.beforeAll()
@@ -90,6 +100,20 @@ class QuestionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matcher
 	"getHierarchies " should "do nothing " in {
 		val identifier = "do_113188615625731";
 		new TestQuestionPublisher().getHierarchies(List(identifier), readerConfig)
+	}
+
+	"getDataForEcar" should "return one element in list" in {
+		val data = new ObjectData("do_123", Map("objectType"->"Question"), Some(Map("responseDeclaration"->"test")), Some(Map()))
+		val result: Option[List[Map[String, AnyRef]]] = new TestQuestionPublisher().getDataForEcar(data)
+		result.size should be (1)
+	}
+
+	"getObjectWithEcar" should "return object with ecar url" in {
+		//val media = List(Map("id"->"do_1127129497561497601326", "type"->"image","src"->"/content/do_1127129497561497601326.img/artifact/sunbird_1551961194254.jpeg","baseUrl"->"https://sunbirddev.blob.core.windows.net/sunbird-content-dev"))
+		val data = new ObjectData("do_123", Map("objectType" -> "Question", "identifier"->"do_123", "name"->"Test Question"), Some(Map("responseDeclaration" -> "test", "media"->"[{\"id\":\"do_1127129497561497601326\",\"type\":\"image\",\"src\":\"/content/do_1127129497561497601326.img/artifact/sunbird_1551961194254.jpeg\",\"baseUrl\":\"https://sunbirddev.blob.core.windows.net/sunbird-content-dev\"}]")), Some(Map()))
+		val result = new TestQuestionPublisher().getObjectWithEcar(data, List("FULL", "ONLINE"))(ec, cloudStorageUtil, defCache, defConfig)
+		StringUtils.isNotBlank(result.metadata.getOrElse("downloadUrl", "").asInstanceOf[String])
+
 	}
 
 	def delay(time: Long): Unit = {

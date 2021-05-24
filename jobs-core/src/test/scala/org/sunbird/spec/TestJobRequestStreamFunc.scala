@@ -20,6 +20,6 @@ class TestJobRequestStreamFunc(config: BaseProcessTestConfig) extends BaseProces
   }
 }
 
-class TestJobRequest(map: java.util.Map[String, Any]) extends JobRequest(map) {
+class TestJobRequest(map: java.util.Map[String, Any], partition: Int, offset: Long) extends JobRequest(map, partition, offset) {
 
 }

@@ -1,5 +1,7 @@
 package org.sunbird.job.domain.`object`
 
+import org.apache.commons.lang3.StringUtils
+
 class ObjectDefinition(val objectType: String, val version: String, val schema: Map[String, AnyRef], val config: Map[String, AnyRef]) {
 
   val externalProperties = if (config.isEmpty) List() else {
@@ -33,4 +35,14 @@ class ObjectDefinition(val objectType: String, val version: String, val schema: 
 
   def relationLabel(objectType: String, direction: String, relationType: String): Option[String] =
     relationLabelsMap.get(relationKey(objectType, direction, relationType))
+
+  def getJsonProps(): List[String] = {
+    if (schema.isEmpty) List() else {
+      val properties = schema.getOrElse("properties", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
+      properties.filter(prop => {
+        val pType = prop._2.asInstanceOf[Map[String, AnyRef]].getOrElse("type", "").asInstanceOf[String]
+        List("object", "array").contains(pType)
+      }).keys.toList
+    }
+  }
 }

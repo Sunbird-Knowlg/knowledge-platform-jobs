@@ -11,11 +11,11 @@ import org.mockito.ArgumentMatchers.{any, anyString, contains}
 import org.mockito.Mockito
 import org.mockito.Mockito._
 import org.sunbird.job.fixture.EventFixture
-import org.sunbird.job.service.VideoStreamService
-import org.sunbird.job.task.VideoStreamGeneratorConfig
+import org.sunbird.job.videostream.service.VideoStreamService
+import org.sunbird.job.videostream.task.VideoStreamGeneratorConfig
 import org.sunbird.spec.BaseTestSpec
 import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, JSONUtil}
-import org.sunbird.job.domain.Event
+import org.sunbird.job.videostream.domain.Event
 import org.sunbird.job.Metrics
 
 class VideoStreamServiceTestSpec extends BaseTestSpec {
@@ -37,7 +37,7 @@ class VideoStreamServiceTestSpec extends BaseTestSpec {
   override protected def beforeAll(): Unit = {
     DateTimeUtils.setCurrentMillisFixed(1605816926271L);
     EmbeddedCassandraServerHelper.startEmbeddedCassandra(80000L)
-    cassandraUtil = new CassandraUtil(jobConfig.dbHost, jobConfig.dbPort)
+    cassandraUtil = new CassandraUtil(jobConfig.lmsDbHost, jobConfig.lmsDbPort)
     val session = cassandraUtil.session
     val dataLoader = new CQLDataLoader(session);
     dataLoader.load(new FileCQLDataSet(getClass.getResource("/test.cql").getPath, true, true));
@@ -68,7 +68,7 @@ class VideoStreamServiceTestSpec extends BaseTestSpec {
     when(mockHttpUtil.patch(contains(jobConfig.contentV3Update), any(), any())).thenReturn(HTTPResponse(200, getJobJson))
     doNothing().when(mockMetrics).incCounter(any())
 
-    val eventMap1 = new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_1))
+    val eventMap1 = new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_1),0, 12)
 
     val videoStreamService = new VideoStreamService()(jobConfig, mockHttpUtil);
     videoStreamService.submitJobRequest(eventMap1.eData)

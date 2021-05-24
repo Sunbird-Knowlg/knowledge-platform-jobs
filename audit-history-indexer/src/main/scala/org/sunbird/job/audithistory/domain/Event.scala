@@ -6,7 +6,7 @@ import java.text.{DateFormat, SimpleDateFormat}
 import java.util
 import java.util.Date
 
-class Event(eventMap: java.util.Map[String, Any]) extends JobRequest(eventMap) {
+class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) extends JobRequest(eventMap, partition, offset) {
 
   private val df:DateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
 

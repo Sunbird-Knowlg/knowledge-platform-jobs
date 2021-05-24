@@ -1,9 +1,5 @@
 package org.sunbird.job.spec
 
-import java.time.{ZoneId, ZonedDateTime}
-import java.time.format.DateTimeFormatter
-import java.util
-
 import com.google.gson.Gson
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.flink.api.common.typeinfo.TypeInformation
@@ -16,19 +12,21 @@ import org.apache.flink.test.util.MiniClusterWithClientResource
 import org.cassandraunit.CQLDataLoader
 import org.cassandraunit.dataset.cql.FileCQLDataSet
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
-import org.sunbird.job.functions.DIALCodeLinkFunction
 import org.mockito.ArgumentMatchers.{any, anyString, endsWith}
-import org.sunbird.job.functions.PostPublishEventRouter
-import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, Neo4JUtil}
-import org.sunbird.spec.BaseTestSpec
 import org.mockito.Mockito
 import org.mockito.Mockito._
 import org.neo4j.driver.v1.StatementResult
-import org.sunbird.job.postpublish.domain.Event
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.fixture.EventFixture
-import org.sunbird.job.task.{PostPublishProcessorConfig, PostPublishProcessorStreamTask}
+import org.sunbird.job.postpublish.domain.Event
+import org.sunbird.job.postpublish.functions.{DIALCodeLinkFunction, PostPublishEventRouter}
+import org.sunbird.job.postpublish.task.{PostPublishProcessorConfig, PostPublishProcessorStreamTask}
+import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, Neo4JUtil}
+import org.sunbird.spec.BaseTestSpec
 
+import java.time.format.DateTimeFormatter
+import java.time.{ZoneId, ZonedDateTime}
+import java.util
 import scala.collection.JavaConverters._
 
 class PostPublishProcessorTaskTestSpec extends BaseTestSpec {
@@ -153,7 +151,7 @@ class PostPublishProcessorTaskTestSpec extends BaseTestSpec {
     val identifier = "do_113214556543234"
     when(mockNeo4JUtil.getNodeProperties(anyString())).thenReturn(metadata)
     val qrEventMap1 = gson.fromJson(EventFixture.QREVENT_1, new util.LinkedHashMap[String, Any]().getClass).asInstanceOf[util.Map[String, Any]].asScala ++ Map("partition" -> 0.asInstanceOf[Any])
-    val event = new Event(qrEventMap1.asJava)
+    val event = new Event(qrEventMap1.asJava,0, 10)
     val dialcodeMetadata = new PostPublishEventRouter(jobConfig, mockHttpUtil, mockNeo4JUtil, cassandraUtil).getDialCodeDetails(identifier, event)(mockNeo4JUtil, jobConfig)
     dialcodeMetadata.isEmpty() should be(false)
     dialcodeMetadata.get("dialcodes").asInstanceOf[util.List[String]] should contain("Q1I5I3")
@@ -178,7 +176,7 @@ class PostPublishProcessorTaskTestSpec extends BaseTestSpec {
     val identifier = "do_113214556543234"
     when(mockNeo4JUtil.getNodeProperties(anyString())).thenReturn(metadata)
     val qrEventMap1 = gson.fromJson(EventFixture.QREVENT_1, new util.LinkedHashMap[String, Any]().getClass).asInstanceOf[util.Map[String, Any]].asScala ++ Map("partition" -> 0.asInstanceOf[Any])
-    val event = new Event(qrEventMap1.asJava)
+    val event = new Event(qrEventMap1.asJava, 0, 11)
     val dialcodeMetadata = new PostPublishEventRouter(jobConfig, mockHttpUtil, mockNeo4JUtil, cassandraUtil).getDialCodeDetails(identifier, event)(mockNeo4JUtil, jobConfig)
     dialcodeMetadata.isEmpty() should be(true)
   }
@@ -299,16 +297,16 @@ class PostPublishEventSource extends SourceFunction[Event] {
     val gson = new Gson()
     // Event for Batch Creation and ShallowCopy
     val eventMap1 = gson.fromJson(EventFixture.EVENT_1, new util.LinkedHashMap[String, Any]().getClass).asInstanceOf[util.Map[String, Any]].asScala ++ Map("partition" -> 0.asInstanceOf[Any])
-    ctx.collect(new Event(eventMap1.asJava))
+    ctx.collect(new Event(eventMap1.asJava,0, 10))
     // Event for Dial Codes
     val qrEventMap1 = gson.fromJson(EventFixture.QREVENT_1, new util.LinkedHashMap[String, Any]().getClass).asInstanceOf[util.Map[String, Any]].asScala ++ Map("partition" -> 0.asInstanceOf[Any])
-    ctx.collect(new Event(qrEventMap1.asJava))
+    ctx.collect(new Event(qrEventMap1.asJava,0, 11))
     val qrEventMap2 = gson.fromJson(EventFixture.QREVENT_2, new util.LinkedHashMap[String, Any]().getClass).asInstanceOf[util.Map[String, Any]].asScala ++ Map("partition" -> 0.asInstanceOf[Any])
-    ctx.collect(new Event(qrEventMap2.asJava))
+    ctx.collect(new Event(qrEventMap2.asJava,0, 12))
     val qrEventMap3 = gson.fromJson(EventFixture.QREVENT_3, new util.LinkedHashMap[String, Any]().getClass).asInstanceOf[util.Map[String, Any]].asScala ++ Map("partition" -> 0.asInstanceOf[Any])
-    ctx.collect(new Event(qrEventMap3.asJava))
+    ctx.collect(new Event(qrEventMap3.asJava,0, 13))
     val qrEventMap4 = gson.fromJson(EventFixture.QREVENT_4, new util.LinkedHashMap[String, Any]().getClass).asInstanceOf[util.Map[String, Any]].asScala ++ Map("partition" -> 0.asInstanceOf[Any])
-    ctx.collect(new Event(qrEventMap4.asJava))
+    ctx.collect(new Event(qrEventMap4.asJava,0, 14))
   }
 
   override def cancel() = {}
