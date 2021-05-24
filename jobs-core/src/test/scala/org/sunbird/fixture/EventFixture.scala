@@ -63,6 +63,11 @@ object EventFixture {
       |  }
       |}
       |
+      |lms-cassandra {
+      |  host = "localhost"
+      |  port = 9142
+      |}
+      |
       |redis-meta {
       |  host = 127.0.0.1
       |  port = 6341
