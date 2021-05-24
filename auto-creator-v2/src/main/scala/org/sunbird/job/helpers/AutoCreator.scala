@@ -41,9 +41,10 @@ trait AutoCreator extends ObjectUpdater with CollectionUpdater with HierarchyEnr
       .find(p => StringUtils.equalsIgnoreCase(identifier, p.getOrElse("identifier", "").asInstanceOf[String])).getOrElse(Map())
     if (metaUrl.nonEmpty) {
       // TODO: deprecate setting "origin" after single sourcing refactoring.
-      val originDetails = Map("origin" -> identifier, "originData" -> s"{\"identifier\": \"$identifier\",\"repository\":\"${metaUrl.head}\"}")
-      val metadata = getMetaUrlData(metaUrl.head, objectType)(httpUtil)
-      manifestMetadata.++(metadata).++(originDetails)
+      val originData = "{\"identifier\": \"" + identifier + "\",\"repository\":\"" + metaUrl.head + "\"}"
+      val originDetails = Map[String, AnyRef]("origin" -> identifier, "originData" -> originData)
+      val metadata = getMetaUrlData(metaUrl.head, objectType)(httpUtil) ++ originDetails
+      manifestMetadata.++(metadata)
     } else manifestMetadata
   }
 
