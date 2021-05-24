@@ -40,6 +40,7 @@ class VideoStreamGenerator(config: VideoStreamGeneratorConfig, httpUtil:HttpUtil
     override def processElement(event: Event,
                                 context: KeyedProcessFunction[String, Event, Event]#Context,
                                 metrics: Metrics): Unit = {
+      try {
         metrics.incCounter(config.totalEventsCount)
         if (event.isValid) {
           videoStreamService.submitJobRequest(event.eData)
@@ -48,6 +49,12 @@ class VideoStreamGenerator(config: VideoStreamGeneratorConfig, httpUtil:HttpUtil
           context.timerService().registerProcessingTimeTimer(nextTimerTimestamp)
           logger.info("Timer registered to execute at " + nextTimerTimestamp)
         } else metrics.incCounter(config.skippedEventCount)
+      } catch {
+        case ex: Throwable =>
+          logger.error(s"Error while processing message for identifier : ${event.mid()}. Partition: ${event.partition} and Offset: ${event.offset} and content: ${event.identifier()}. Error : ", ex)
+          metrics.incCounter(config.failedEventCount)
+          throw ex
+      }
     }
 
     override def onTimer(timestamp: Long, ctx: KeyedProcessFunction[String, Event, Event]#OnTimerContext, metrics: Metrics): Unit = {
