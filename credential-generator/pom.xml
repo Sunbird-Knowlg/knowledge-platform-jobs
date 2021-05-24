@@ -11,7 +11,7 @@
   <name>credential-generator</name>
 
   <modules>
-    <module>collection-complete-post-processor</module>
+    <module>collection-cert-pre-processor</module>
   </modules>
 
   <build>
