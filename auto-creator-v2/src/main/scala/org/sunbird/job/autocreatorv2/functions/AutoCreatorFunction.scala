@@ -49,14 +49,14 @@ class AutoCreatorFunction(config: AutoCreatorV2Config, httpUtil: HttpUtil,
     // TODO: Check if object already exists. If exists, add validation based on pkgVersion
     if (event.isValid) {
       logger.info("Processing event for bulk approval operation having identifier : " + event.objectId)
-      logger.info("event edata : " + event.eData)
+      logger.debug("event edata : " + event.eData)
       val definition: ObjectDefinition = defCache.getDefinition(event.objectType, config.schemaSupportVersionMap.getOrElse(event.objectType.toLowerCase(), "1.0").asInstanceOf[String], config.definitionBasePath)
       val obj: ObjectData = getObject(event.objectId, event.objectType, event.downloadUrl, event.repository)(config, httpUtil, definition)
-      logger.info("graph metadata for " + obj.identifier + " : " + obj.metadata)
+      logger.debug("Constructed the ObjectData for " + obj.identifier)
       val enObj = enrichMetadata(obj, event.metadata)(config)
-      logger.info("enriched metadata for " + enObj.identifier + " : " + enObj.metadata)
+      logger.info("Enriched metadata for " + enObj.identifier)
       val updatedObj = processCloudMeta(enObj)(config, cloudStorageUtil)
-      logger.info("final updated metadata for " + updatedObj.identifier + " : " + JSONUtil.serialize(updatedObj.metadata))
+      logger.info("Final updated metadata |with cloud-store updates| for " + updatedObj.identifier)
       val enrObj = if (config.expandableObjects.contains(updatedObj.objectType)) {
         val chMap: Map[String, AnyRef] = getChildren(updatedObj)(config)
         val childrenObj: Map[String, ObjectData] = processChildren(chMap)(config, neo4JUtil, cassandraUtil, cloudStorageUtil, defCache, httpUtil)

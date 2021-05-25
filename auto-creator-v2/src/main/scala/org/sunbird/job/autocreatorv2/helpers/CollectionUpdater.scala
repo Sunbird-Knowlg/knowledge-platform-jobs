@@ -37,7 +37,7 @@ trait CollectionUpdater {
 	def addToHierarchy(collId: String, unitId: String, resourceId: String)(implicit config: AutoCreatorV2Config, httpUtil: HttpUtil) = {
 		val url = config.contentServiceBaseUrl + "/content/v3/hierarchy/add"
 		val requestBody = s"""{"request":{"rootId": "$collId", "unitId": "$unitId", "children": ["$resourceId"]}}"""
-    logger.info(s"Add to hierarchy request body:${requestBody}")
+    logger.debug(s"Add to hierarchy request body:${requestBody}")
 		val resp = httpUtil.patch(url, requestBody)
 		if (null != resp && resp.status == 200) {
 			val contentId = getResult(resp).getOrElse("rootId", "").asInstanceOf[String]

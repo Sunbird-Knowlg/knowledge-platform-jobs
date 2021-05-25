@@ -3,10 +3,9 @@ package org.sunbird.job.autocreatorv2.helpers
 import org.apache.commons.io.FilenameUtils
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
-import org.sunbird.job.autocreatorv2.model.{ExtDataConfig, ObjectData}
+import org.sunbird.job.autocreatorv2.model.{ExtDataConfig}
 import org.sunbird.job.autocreatorv2.util.{CloudStorageUtil, FileUtils}
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
-import org.sunbird.job.autocreatorv2.helpers.ObjectUpdater
 import org.sunbird.job.autocreatorv2.model.ObjectData
 import org.sunbird.job.task.AutoCreatorV2Config
 import org.sunbird.job.util._
@@ -30,9 +29,9 @@ trait AutoCreator extends ObjectUpdater with CollectionUpdater with HierarchyEnr
   private def extractDataZip(identifier: String, downloadUrl: String): String = {
     val suffix = FilenameUtils.getName(downloadUrl).replace(".ecar", ".zip")
     val zipFile: File = FileUtils.copyURLToFile(identifier, downloadUrl, suffix).get
-    logger.info("zip file path :: " + zipFile.getAbsolutePath)
+    logger.debug("zip file path :: " + zipFile.getAbsolutePath)
     val extractPath = FileUtils.getBasePath(identifier)
-    logger.info("zip extracted path :: " + extractPath)
+    logger.debug("zip extracted path :: " + extractPath)
     FileUtils.extractPackage(zipFile, extractPath)
     extractPath
   }
@@ -99,11 +98,11 @@ trait AutoCreator extends ObjectUpdater with CollectionUpdater with HierarchyEnr
 			val definition: ObjectDefinition = defCache.getDefinition(objType, config.schemaSupportVersionMap.getOrElse(objType.toLowerCase(), "1.0").asInstanceOf[String], config.definitionBasePath)
 			val downloadUrl = ch._2.asInstanceOf[Map[String, AnyRef]].getOrElse("downloadUrl", "").asInstanceOf[String]
 			val obj: ObjectData = getObject(ch._1, objType, downloadUrl)(config, httpUtil, definition)
-			logger.info("graph metadata for " + obj.identifier + " : " + obj.metadata)
+			logger.debug("graph metadata for " + obj.identifier + " : " + obj.metadata)
 			val enObj = enrichMetadata(obj, ch._2.asInstanceOf[Map[String, AnyRef]])(config)
-			logger.info("enriched metadata for " + enObj.identifier + " : " + enObj.metadata)
+			logger.debug("enriched metadata for " + enObj.identifier + " : " + enObj.metadata)
 			val updatedObj = processCloudMeta(enObj)
-			logger.info("final updated metadata for " + updatedObj.identifier + " : " + JSONUtil.serialize(updatedObj.metadata))
+			logger.debug("final updated metadata for " + updatedObj.identifier + " : " + JSONUtil.serialize(updatedObj.metadata))
 			val extConfig = ExtDataConfig(config.getString(updatedObj.objectType.toLowerCase + ".keyspace", ""), definition.getExternalTable, definition.getExternalPrimaryKey, definition.getExternalProps)
 			saveExternalData(updatedObj.identifier, updatedObj.extData.getOrElse(Map()), extConfig)(cassandraUtil)
 			saveGraphData(updatedObj.identifier, updatedObj.metadata, definition)(neo4JUtil)

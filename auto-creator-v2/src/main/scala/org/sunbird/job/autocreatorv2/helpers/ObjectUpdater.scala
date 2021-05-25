@@ -17,12 +17,12 @@ trait ObjectUpdater {
 		val metadata = data - ("identifier", "objectType")
 		val metaQuery = metaDataQuery(metadata, objectDef)
 		val query = s"""MERGE (n:domain{IL_UNIQUE_ID:"$identifier"}) ON CREATE SET $metaQuery ON MATCH SET $metaQuery;"""
-		logger.info("Graph Query: " + query)
+		logger.debug("Graph Query: " + query)
 		val result: StatementResult = neo4JUtil.executeQuery(query)
 		if (null != result) {
-			logger.info("Object Graph Data Stored Successfully For " + identifier)
+			logger.info("Object graph data stored successfully for " + identifier)
 		}else {
-			val msg = "Object Graph Data Insertion Failed For " + identifier
+			val msg = s"""Object graph data insertion failed for $identifier"""
 			logger.error(msg)
 			throw new Exception(msg)
 		}
@@ -41,10 +41,10 @@ trait ObjectUpdater {
 				case _ => query.value(d._1, d._2)
 			}
 		})
-		logger.info(s"Saving Object External Data For ${identifier} | Query : ${query.toString}")
+		logger.debug(s"Saving object external data for $identifier | Query : ${query.toString}")
 		val result = cassandraUtil.upsert(query.toString)
 		if (result) {
-			logger.info(s"Object External Data Saved Successfully For ${identifier}")
+			logger.info(s"Object external data saved successfully for ${identifier}")
 		} else {
 			val msg = s"Object External Data Insertion Failed For ${identifier}"
 			logger.error(msg)
