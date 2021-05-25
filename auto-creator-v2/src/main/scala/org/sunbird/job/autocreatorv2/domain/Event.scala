@@ -13,7 +13,7 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 
 	def metadata: Map[String, AnyRef] = readOrDefault("edata.metadata", Map())
 
-	def collection: List[Map[String, AnyRef]] = readOrDefault("edata.collection", List(Map())).asInstanceOf[List[Map[String, AnyRef]]]
+	def collection: List[Map[String, String]] = readOrDefault("edata.collection", List(Map())).asInstanceOf[List[Map[String, String]]]
 
 	def action: String = readOrDefault[String]("edata.action", "")
 

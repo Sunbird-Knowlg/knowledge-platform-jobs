@@ -11,7 +11,8 @@ import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.util.{FlinkUtil, HttpUtil}
 import org.slf4j.LoggerFactory
 import org.sunbird.job.autocreatorv2.domain.Event
-import org.sunbird.job.autocreatorv2.functions.AutoCreatorFunction
+import org.sunbird.job.autocreatorv2.functions.{AutoCreatorFunction, LinkCollectionFunction}
+import org.sunbird.job.autocreatorv2.model.ObjectParent
 
 
 class AutoCreatorV2StreamTask(config: AutoCreatorV2Config, kafkaConnector: FlinkKafkaConnector, httpUtil: HttpUtil) {
@@ -21,15 +22,20 @@ class AutoCreatorV2StreamTask(config: AutoCreatorV2Config, kafkaConnector: Flink
     implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
     implicit val eventTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
     implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
+    implicit val objectParentTypeInfo: TypeInformation[ObjectParent] = TypeExtractor.getForClass(classOf[ObjectParent])
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
 
-    env.addSource(kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)).name(config.eventConsumer)
+    val autoCreatorStream = env.addSource(kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)).name(config.eventConsumer)
       .uid(config.eventConsumer).setParallelism(config.kafkaConsumerParallelism)
       .rebalance
       .process(new AutoCreatorFunction(config, httpUtil))
       .name(config.autoCreatorV2Function)
       .uid(config.autoCreatorV2Function)
       .setParallelism(config.parallelism)
+
+    autoCreatorStream.getSideOutput(config.linkCollectionOutputTag).process(new LinkCollectionFunction(config, httpUtil))
+      .name(config.linkCollectionFunction).uid(config.linkCollectionFunction).setParallelism(config.linkCollectionParallelism)
+
     env.execute(config.jobName)
   }
 }

@@ -6,7 +6,7 @@ import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.autocreatorv2.domain.Event
 import org.sunbird.job.autocreatorv2.helpers.AutoCreator
-import org.sunbird.job.autocreatorv2.model.{ExtDataConfig, ObjectData}
+import org.sunbird.job.autocreatorv2.model.{ExtDataConfig, ObjectData, ObjectParent}
 import org.sunbird.job.autocreatorv2.util.CloudStorageUtil
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.task.AutoCreatorV2Config
@@ -65,7 +65,7 @@ class AutoCreatorFunction(config: AutoCreatorV2Config, httpUtil: HttpUtil,
       val extConfig = ExtDataConfig(config.getString(enrObj.objectType.toLowerCase + ".keyspace", ""), definition.getExternalTable, definition.getExternalPrimaryKey, definition.getExternalProps)
       saveExternalData(enrObj.identifier, enrObj.extData.getOrElse(Map()), extConfig)(cassandraUtil)
       saveGraphData(enrObj.identifier, enrObj.metadata, definition)(neo4JUtil)
-      linkCollection(enrObj.identifier, event.collection)(config, httpUtil)
+      context.output(config.linkCollectionOutputTag, ObjectParent(enrObj.identifier, event.collection))
       logger.info("Bulk approval operation completed for : " + event.objectId)
       metrics.incCounter(config.successEventCount)
     } else {

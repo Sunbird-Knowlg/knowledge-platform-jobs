@@ -4,7 +4,10 @@ import java.util
 import com.typesafe.config.Config
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
+import org.apache.flink.streaming.api.scala.OutputTag
 import org.sunbird.job.BaseJobConfig
+import org.sunbird.job.autocreatorv2.model.ObjectParent
+
 import scala.collection.JavaConverters._
 
 class AutoCreatorV2Config(override val config: Config) extends BaseJobConfig(config, "auto-creator-v2") {
@@ -13,11 +16,14 @@ class AutoCreatorV2Config(override val config: Config) extends BaseJobConfig(con
 
   implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
   implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
+  implicit val objectParentTypeInfo: TypeInformation[ObjectParent] = TypeExtractor.getForClass(classOf[ObjectParent])
 
   // Kafka Topics Configuration
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
   override val parallelism: Int = config.getInt("task.parallelism")
+  val linkCollectionParallelism: Int = if (config.hasPath("task.link-collection.parallelism"))
+    config.getInt("task.link-collection.parallelism") else 1
 
   // Metric List
   val totalEventsCount = "total-events-count"
@@ -27,8 +33,12 @@ class AutoCreatorV2Config(override val config: Config) extends BaseJobConfig(con
 
   // Consumers
   val eventConsumer = "auto-creator-v2-consumer"
-  val autoCreatorV2Function = "auto-creator-v2-function"
+  val autoCreatorV2Function = "auto-creator-v2"
   val autoCreatorEventProducer = "auto-creator-v2-producer"
+  val linkCollectionFunction = "link-collection-process"
+
+  // Tags
+  val linkCollectionOutputTag: OutputTag[ObjectParent] = OutputTag[ObjectParent]("link-collection")
 
   val configVersion = "1.0"
 

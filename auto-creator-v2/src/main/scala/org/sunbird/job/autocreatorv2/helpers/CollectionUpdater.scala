@@ -35,8 +35,6 @@ trait CollectionUpdater {
 	}
 
 	def addToHierarchy(collId: String, unitId: String, resourceId: String)(implicit config: AutoCreatorV2Config, httpUtil: HttpUtil) = {
-    logger.info(s"""Waiting 5sec before adding to hierarchy for $resourceId""")
-    Thread.sleep(5000)
 		val url = config.contentServiceBaseUrl + "/content/v3/hierarchy/add"
 		val requestBody = s"""{"request":{"rootId": "$collId", "unitId": "$unitId", "children": ["$resourceId"]}}"""
     logger.info(s"Add to hierarchy request body:${requestBody}")
