@@ -25,7 +25,7 @@ class VideoStreamGenerator(config: VideoStreamGeneratorConfig, httpUtil:HttpUtil
     lazy val timerDurationInMS: Long = config.timerDuration * 1000
 
     override def metricsList(): List[String] = {
-        List(config.totalEventsCount, config.skippedEventCount, config.successEventCount, config.failedEventCount)
+        List(config.totalEventsCount, config.skippedEventCount, config.successEventCount, config.failedEventCount, config.retryEventCount)
     }
 
     override def open(parameters: Configuration): Unit = {
