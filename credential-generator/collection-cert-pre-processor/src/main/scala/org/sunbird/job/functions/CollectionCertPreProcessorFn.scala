@@ -10,12 +10,12 @@ import org.slf4j.LoggerFactory
 import org.sunbird.collectioncert.domain.Event
 import org.sunbird.job.cache.{DataCache, RedisConnect}
 import org.sunbird.job.task.CollectionCertPreProcessorConfig
-import org.sunbird.job.util.{CassandraUtil, ScalaJsonUtil}
+import org.sunbird.job.util.{CassandraUtil, HttpUtil, ScalaJsonUtil}
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import scala.collection.JavaConverters._
 
-class CollectionCertPreProcessorFn(config: CollectionCertPreProcessorConfig)
+class CollectionCertPreProcessorFn(config: CollectionCertPreProcessorConfig, httpUtil: HttpUtil)
                                   (implicit val stringTypeInfo: TypeInformation[String],
                                    @transient var cassandraUtil: CassandraUtil = null)
   extends BaseProcessFunction[Event, String](config) with IssueCertificateHelper {
@@ -38,7 +38,7 @@ class CollectionCertPreProcessorFn(config: CollectionCertPreProcessorConfig)
     }
 
     override def metricsList(): List[String] = {
-        List(config.totalEventsCount, config.dbReadCount, config.dbUpdateCount, config.failedEventCount, config.skippedEventCount,
+        List(config.totalEventsCount, config.dbReadCount, config.dbUpdateCount, config.failedEventCount, config.skippedEventCount, config.successEventCount,
             config.cacheHitCount)
     }
 
@@ -46,24 +46,29 @@ class CollectionCertPreProcessorFn(config: CollectionCertPreProcessorConfig)
                                 context: ProcessFunction[Event, String]#Context,
                                 metrics: Metrics): Unit = {
         try {
+            metrics.incCounter(config.totalEventsCount)
             if(isValidEvent(event)) {
                 val certTemplates = fetchTemplates(event)(metrics)
                 if(!certTemplates.isEmpty) {
                     certTemplates.map(template => {
-                        val certEvent = issueCertificate(event, template._2)(cassandraUtil, cache, metrics, config)
+                        val certEvent = issueCertificate(event, template._2)(cassandraUtil, cache, metrics, config, httpUtil)
+                        println(certEvent)
                         context.output(config.generateCertificateOutputTag, certEvent)
+                        metrics.incCounter(config.successEventCount)
                     })
                 } else {
-                    println("no templates")
+                    logger.info(s"No certTemplates available for batchId :${event.batchId}")
+                    metrics.incCounter(config.skippedEventCount)
                 }
             } else {
-                println("Invalid request")
+                logger.info(s"Invalid request : ${event}")
+                metrics.incCounter(config.skippedEventCount)
             }
         } catch {
             case ex: Exception => {
-                context.output(config.failedEventOutputTag, ScalaJsonUtil.serialize(event.eData))
-                logger.error("Certificate generate event failed sent to next topic : ", ex)
+                logger.error(s"Certificate generate event failed sent to next topic for event : ${event}", ex)
                 metrics.incCounter(config.failedEventCount)
+                context.output(config.failedEventOutputTag, ScalaJsonUtil.serialize(event.eData))
             }
         }
         
@@ -71,8 +76,8 @@ class CollectionCertPreProcessorFn(config: CollectionCertPreProcessorConfig)
     }
 
     def isValidEvent(event: Event): Boolean = {
-        config.issueCertificate.equalsIgnoreCase(event.action) && !event.batchId.isBlank && !event.courseId.isBlank && 
-          !event.userId.isBlank
+        config.issueCertificate.equalsIgnoreCase(event.action) && !event.batchId.isEmpty && !event.courseId.isEmpty && 
+          !event.userId.isEmpty
     }
 
     def fetchTemplates(event: Event)(implicit metrics: Metrics): Map[String, Map[String, String]] = {

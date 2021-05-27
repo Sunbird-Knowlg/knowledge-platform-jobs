@@ -13,11 +13,9 @@ import scala.collection.JavaConverters._
 
 trait IssueCertificateHelper {
     
-    val httpUtil:HttpUtil = new HttpUtil
-    
     def validateTemplate(template: Map[String, String])(config: CollectionCertPreProcessorConfig):Map[String, AnyRef] = {
         val criteria = ScalaJsonUtil.deserialize[Map[String, AnyRef]](template.getOrElse(config.criteria, "{}"))
-        if(!template.getOrElse("url", "").isBlank && !criteria.isEmpty && !criteria.keySet.intersect(Set(config.enrollment, config.assessment, config.users)).isEmpty) {
+        if(!template.getOrElse("url", "").isEmpty && !criteria.isEmpty && !criteria.keySet.intersect(Set(config.enrollment, config.assessment, config.users)).isEmpty) {
             criteria
         } else {
             throw new Exception("Invalid template")
@@ -26,10 +24,11 @@ trait IssueCertificateHelper {
 
     def validateEnrolmentCriteria(event: Event, enrollmentCriteria: Map[String, AnyRef], certName: String)(metrics:Metrics, cassandraUtil: CassandraUtil, config:CollectionCertPreProcessorConfig): EnrolledUser = {
         if(!enrollmentCriteria.isEmpty) {
-            val query = QueryBuilder.select("active", "issued_certificates", "status").from(config.keyspace, config.userEnrolmentsTable)
+            val query = QueryBuilder.select("active", "issued_certificates", "completedon", "status").from(config.keyspace, config.userEnrolmentsTable)
               .where(QueryBuilder.eq(config.dbUserId, event.userId)).and(QueryBuilder.eq(config.dbCourseId, event.courseId))
               .and(QueryBuilder.eq(config.dbBatchId, event.batchId))
             val row = cassandraUtil.findOne(query.toString)
+            metrics.incCounter(config.dbReadCount)
             if(null != row){
                 val active:Boolean = row.getBool(config.active)   
                 val issuedCertificates = row.getList(config.issuedCertificates, TypeTokens.mapOf(classOf[String], classOf[String])).asScala.toList
@@ -51,6 +50,7 @@ trait IssueCertificateHelper {
           .and(QueryBuilder.eq("user_id", event.userId)).groupBy("user_id", "course_id", "batch_id", "content_id")
         
         val rows: java.util.List[Row] = cassandraUtil.find(query.toString)
+        metrics.incCounter(config.dbReadCount)
         if(null != rows && !rows.isEmpty) {
             rows.asScala.toList.map(row => ((row.getDouble("score")*100)/row.getDouble("total_max_score"))).toList.max
         } else 0d
@@ -60,40 +60,49 @@ trait IssueCertificateHelper {
         if(assessmentCriteria.get("score").isInstanceOf[Number]) {
             score == assessmentCriteria.get("score").asInstanceOf[Int].toDouble
         } else {
-            val operation = assessmentCriteria.get("score").asInstanceOf[Map[String, Int]].head._1
-            val criteriaScore = assessmentCriteria.get("score").asInstanceOf[Map[String, Int]].head._2.toDouble
-            operation match {
-                case "EQ" => criteriaScore == score
-                case "eq" => criteriaScore == score
-                case "=" => criteriaScore == score
-                case ">" => criteriaScore > score
-                case "<" => criteriaScore < score
-                case ">=" => criteriaScore >= score
-                case "<=" => criteriaScore <= score
-                case "ne" => criteriaScore != score
-                case "!=" => criteriaScore != score
-                case _ => false
+            val scoreCriteria = assessmentCriteria.getOrElse("score", Map[String, AnyRef]()).asInstanceOf[Map[String, Int]]
+            if(scoreCriteria.isEmpty) false
+            else {
+                val operation = scoreCriteria.head._1
+                val criteriaScore = scoreCriteria.head._2.toDouble
+                operation match {
+                    case "EQ" => score == criteriaScore
+                    case "eq" => score == criteriaScore
+                    case "=" => score == criteriaScore
+                    case ">" => score > criteriaScore
+                    case "<" => score < criteriaScore
+                    case ">=" => score >= criteriaScore
+                    case "<=" => score <= criteriaScore
+                    case "ne" => score != criteriaScore
+                    case "!=" => score != criteriaScore
+                    case _ => false
+                }
             }
+            
         }
     }
 
     def validateAssessmentCriteria(event: Event, assessmentCriteria: Map[String, AnyRef], enrolledUser: String)(metrics:Metrics, cassandraUtil: CassandraUtil, config:CollectionCertPreProcessorConfig):String = {
         var assessedUser = enrolledUser
         
-        if(!assessmentCriteria.isEmpty && !enrolledUser.isBlank) {
+        if(!assessmentCriteria.isEmpty && !enrolledUser.isEmpty) {
             val score:Double = getMaxScore(event)(metrics, cassandraUtil, config)
-            if(!isValidAssessCriteria(assessmentCriteria, score)) assessedUser = ""
+            if(!isValidAssessCriteria(assessmentCriteria, score)) 
+                assessedUser = ""
         }
         assessedUser   
     }
 
-    def validateUser(userId: String, map: Map[String, AnyRef])(metrics:Metrics, config:CollectionCertPreProcessorConfig) = {
-        val url = config.learnerBasePath + config.userReadApi + "/" + userId
-        val result = getAPICall(url, "response")(config)
-        result
+    def validateUser(userId: String, map: Map[String, AnyRef])(metrics:Metrics, config:CollectionCertPreProcessorConfig, httpUtil: HttpUtil) = {
+        if(!userId.isEmpty) {
+            val url = config.learnerBasePath + config.userReadApi + "/" + userId
+            val result = getAPICall(url, "response")(config, httpUtil)
+            result
+        } else Map[String, AnyRef]()
+        
     }
     
-    def getAPICall(url: String, responseParam: String)(config:CollectionCertPreProcessorConfig): Map[String,AnyRef] = {
+    def getAPICall(url: String, responseParam: String)(config:CollectionCertPreProcessorConfig, httpUtil: HttpUtil): Map[String,AnyRef] = {
         val response = httpUtil.get(url, config.defaultHeaders)
         if(200 == response.status) {
             ScalaJsonUtil.deserialize[Map[String, AnyRef]](response.body)
@@ -104,23 +113,23 @@ trait IssueCertificateHelper {
         }
     }
 
-    def getCourseName(courseId: String)(metrics:Metrics, config:CollectionCertPreProcessorConfig, cache:DataCache) = {
+    def getCourseName(courseId: String)(metrics:Metrics, config:CollectionCertPreProcessorConfig, cache:DataCache, httpUtil: HttpUtil) = {
         val courseMetadata = cache.getWithRetry(courseId)
         if(!courseMetadata.isEmpty) {
             val url = config.contentBasePath + config.contentReadApi + "/" + courseId + "?fields=name"
-            val response = getAPICall(url, "content")(config)
+            val response = getAPICall(url, "content")(config, httpUtil)
             response.getOrElse(config.name, "")
         } else {
             courseMetadata.getOrElse(config.name, "")
         }
     }
 
-    def generateCertificateEvent(event: Event, template: Map[String, String], userDetails: Map[String, AnyRef], enrolledUser: EnrolledUser, certName: String)(metrics:Metrics, config:CollectionCertPreProcessorConfig, cache:DataCache) = {
+    def generateCertificateEvent(event: Event, template: Map[String, String], userDetails: Map[String, AnyRef], enrolledUser: EnrolledUser, certName: String)(metrics:Metrics, config:CollectionCertPreProcessorConfig, cache:DataCache, httpUtil: HttpUtil) = {
         val firstName = userDetails.getOrElse("firstName", "").asInstanceOf[String]
         val lastName = userDetails.getOrElse("lastName", "").asInstanceOf[String]
         def nullStringCheck(name:String) = {if(!"null".equalsIgnoreCase(name)) name  else ""}
         val recipientName = (nullStringCheck(firstName) + " " + nullStringCheck(lastName)).trim
-        val courseName = getCourseName(event.courseId)(metrics, config, cache)
+        val courseName = getCourseName(event.courseId)(metrics, config, cache, httpUtil)
         val eData = Map[String, AnyRef] (
             "issuedOn" -> enrolledUser.issuedOn,
             "data" -> List(Map[String, AnyRef]("recipientName" -> recipientName, "recipientId" -> event.userId)),
@@ -142,20 +151,20 @@ trait IssueCertificateHelper {
         ScalaJsonUtil.serialize(BEJobRequestEvent(edata = eData, `object` = EventObject(id= event.userId)))
     }
 
-    def issueCertificate(event:Event, template: Map[String, String])(cassandraUtil: CassandraUtil, cache:DataCache, metrics: Metrics, config: CollectionCertPreProcessorConfig): String = {
+    def issueCertificate(event:Event, template: Map[String, String])(cassandraUtil: CassandraUtil, cache:DataCache, metrics: Metrics, config: CollectionCertPreProcessorConfig, httpUtil: HttpUtil): String = {
         //validCriteria
         val criteria = validateTemplate(template)(config)
         //validateEnrolmentCriteria
         val certName = template.getOrElse(config.name, "")
         val enrolledUser: EnrolledUser = validateEnrolmentCriteria(event, criteria.getOrElse(config.enrollment, Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]], certName)(metrics, cassandraUtil, config)
         //validateAssessmentCriteria
-        val assessedUser = validateAssessmentCriteria(event, criteria.getOrElse(config.enrollment, Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]], enrolledUser.userId)(metrics, cassandraUtil, config)
+        val assessedUser = validateAssessmentCriteria(event, criteria.getOrElse(config.assessment, Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]], enrolledUser.userId)(metrics, cassandraUtil, config)
         //validateUserCriteria
-        val userDetails = validateUser(assessedUser, criteria.getOrElse(config.user, Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]])(metrics, config)
+        val userDetails = validateUser(assessedUser, criteria.getOrElse(config.user, Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]])(metrics, config, httpUtil)
         
         //generateCertificateEvent
         if(!userDetails.isEmpty) {
-            generateCertificateEvent(event, template, userDetails, enrolledUser, certName)(metrics, config, cache)
+            generateCertificateEvent(event, template, userDetails, enrolledUser, certName)(metrics, config, cache, httpUtil)
         } else throw new Exception(s"""User :: ${event.userId} did not match the criteria for batch :: ${event.batchId} and course :: ${event.courseId}""")
     }
 

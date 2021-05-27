@@ -64,7 +64,7 @@
         </dependency>
         <dependency>
             <groupId>org.sunbird</groupId>
-            <artifactId>collection-complete-post-processor</artifactId>
+            <artifactId>collection-cert-pre-processor</artifactId>
             <version>1.0.0</version>
             <type>jar</type>
         </dependency>

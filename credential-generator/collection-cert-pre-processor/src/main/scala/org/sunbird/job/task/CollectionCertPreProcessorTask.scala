@@ -10,9 +10,9 @@ import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.collectioncert.domain.Event
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.functions.CollectionCertPreProcessorFn
-import org.sunbird.job.util.FlinkUtil
+import org.sunbird.job.util.{FlinkUtil, HttpUtil}
 
-class CollectionCertPreProcessorTask(config: CollectionCertPreProcessorConfig, kafkaConnector: FlinkKafkaConnector) {
+class CollectionCertPreProcessorTask(config: CollectionCertPreProcessorConfig, kafkaConnector: FlinkKafkaConnector, httpUtil: HttpUtil) {
     def process(): Unit = {
         implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
         implicit val eventTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
@@ -23,7 +23,7 @@ class CollectionCertPreProcessorTask(config: CollectionCertPreProcessorConfig, k
             env.addSource(source).name(config.certificatePreProcessorConsumer)
               .uid(config.certificatePreProcessorConsumer).setParallelism(config.kafkaConsumerParallelism)
               .rebalance
-              .process(new CollectionCertPreProcessorFn(config))
+              .process(new CollectionCertPreProcessorFn(config, httpUtil))
               .name("collection-cert-pre-processor").uid("collection-cert-pre-processor")
               .setParallelism(config.parallelism)
 
@@ -43,7 +43,8 @@ object CollectionCertPreProcessorTask {
         }.getOrElse(ConfigFactory.load("collection-cert-pre-processor.conf").withFallback(ConfigFactory.systemEnvironment()))
         val certificatePreProcessorConfig = new CollectionCertPreProcessorConfig(config)
         val kafkaUtil = new FlinkKafkaConnector(certificatePreProcessorConfig)
-        val task = new CollectionCertPreProcessorTask(certificatePreProcessorConfig, kafkaUtil)
+        val httpUtil = new HttpUtil()
+        val task = new CollectionCertPreProcessorTask(certificatePreProcessorConfig, kafkaUtil, httpUtil)
         task.process()
     }
 }
