@@ -70,7 +70,7 @@ trait ObjectUpdater {
 			} else {
 				prop._2 match {
 					case _: List[String] =>
-						val strValue = ScalaJsonUtil.serialize(prop._2)
+						val strValue = ScalaJsonUtil.serialize(prop._2.asInstanceOf[List[String]].distinct)
 						s"""n.${prop._1}=${strValue}"""
 					case _: String =>
 						s"""n.${prop._1}="${prop._2}""""
