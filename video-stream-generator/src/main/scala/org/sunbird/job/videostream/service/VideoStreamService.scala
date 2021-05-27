@@ -44,9 +44,9 @@ class VideoStreamService(implicit config: VideoStreamGeneratorConfig, httpUtil: 
     val processingJobRequests = readFromDB(Map("status" -> "PROCESSING"))
     val stageName = "STREAMING_JOB_COMPLETE"
 
-    processingJobRequests.map { jobRequest =>
+    for (jobRequest <- processingJobRequests) {
       val iteration = jobRequest.iteration
-      if (jobRequest.job_id != None) {
+      val streamStage = if (jobRequest.job_id != None) {
         val mediaResponse:MediaResponse = mediaService.getJob(jobRequest.job_id.get)
         logger.info("Get job details while saving: " + JSONUtil.serialize(mediaResponse.result))
         if(mediaResponse.responseCode.contentEquals("OK")) {
@@ -77,7 +77,7 @@ class VideoStreamService(implicit config: VideoStreamGeneratorConfig, httpUtil: 
       } else {
         StreamingStage(jobRequest.request_id, jobRequest.client_key, null, stageName, "FAILED", "FAILED", iteration + 1, jobRequest.err_message.getOrElse(""));
       }
-    }.filter(x =>  x != null).map{ streamStage:StreamingStage =>
+
       val counter = if (streamStage.status.equals("FINISHED")) config.successEventCount else {
         if (streamStage.iteration <= config.maxRetries) config.retryEventCount else config.failedEventCount
       }
