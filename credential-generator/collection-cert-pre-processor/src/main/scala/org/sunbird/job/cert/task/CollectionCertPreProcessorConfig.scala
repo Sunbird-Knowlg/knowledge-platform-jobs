@@ -1,4 +1,4 @@
-package org.sunbird.job.task
+package org.sunbird.job.cert.task
 
 import com.typesafe.config.Config
 import org.apache.flink.api.common.typeinfo.TypeInformation
@@ -21,7 +21,7 @@ class CollectionCertPreProcessorConfig(override val config: Config) extends Base
     val generateCertificateProducer = "generate-certificate-sink"
     val generateCertificateFailedEventProducer = "generate-certificate-failed-sink"
     override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
-    val generateCertificateParallelism:Int = config.getInt("task.generateCertificateParallelism")
+    val generateCertificateParallelism:Int = config.getInt("task.generate_certificate.parallelism")
     val kafkaFailedEventTopic: String = config.getString("kafka.output.failed.topic")
     
     //Tags
@@ -34,9 +34,9 @@ class CollectionCertPreProcessorConfig(override val config: Config) extends Base
     val dbHost: String = config.getString("lms-cassandra.host")
     val dbPort: Int = config.getInt("lms-cassandra.port")
     val keyspace: String = config.getString("lms-cassandra.keyspace")
-    val courseTable: String = config.getString("lms-cassandra.batchTable")
-    val userEnrolmentsTable: String = config.getString("lms-cassandra.enrollmentTable")
-    val assessmentTable: String = config.getString("lms-cassandra.assessmentAggregatorTable")
+    val courseTable: String = config.getString("lms-cassandra.course_batch.table")
+    val userEnrolmentsTable: String = config.getString("lms-cassandra.user_enrolments.table")
+    val assessmentTable: String = config.getString("lms-cassandra.assessment_aggregator.table")
     val dbBatchId = "batchid"
     val dbCourseId = "courseid"
     val dbUserId = "userid"

@@ -9,7 +9,7 @@ import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.collectioncert.domain.Event
 import org.sunbird.job.cache.{DataCache, RedisConnect}
-import org.sunbird.job.task.CollectionCertPreProcessorConfig
+import org.sunbird.job.cert.task.CollectionCertPreProcessorConfig
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, ScalaJsonUtil}
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 

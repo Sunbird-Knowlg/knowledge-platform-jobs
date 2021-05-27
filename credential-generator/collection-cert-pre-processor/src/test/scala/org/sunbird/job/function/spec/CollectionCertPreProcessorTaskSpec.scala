@@ -18,9 +18,9 @@ import org.mockito.Mockito.when
 import org.mockito.{ArgumentMatchers, Mockito}
 import org.sunbird.collectioncert.domain.Event
 import org.sunbird.job.cache.RedisConnect
+import org.sunbird.job.cert.task.{CollectionCertPreProcessorConfig, CollectionCertPreProcessorTask}
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.fixture.EvenFixture
-import org.sunbird.job.task.{CollectionCertPreProcessorConfig, CollectionCertPreProcessorTask}
 import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, JSONUtil}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 import redis.clients.jedis.Jedis
