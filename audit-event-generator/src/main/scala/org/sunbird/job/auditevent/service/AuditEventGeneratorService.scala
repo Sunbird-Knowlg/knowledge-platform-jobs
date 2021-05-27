@@ -1,14 +1,14 @@
-package org.sunbird.job.service
+package org.sunbird.job.auditevent.service
 
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.Metrics
-import org.sunbird.job.task.AuditEventGeneratorConfig
+import org.sunbird.job.auditevent.task.AuditEventGeneratorConfig
 import org.sunbird.job.util.JSONUtil
 import org.sunbird.telemetry.TelemetryGenerator
 import org.sunbird.telemetry.TelemetryParams
-import org.sunbird.job.domain.Event
+import org.sunbird.job.auditevent.domain.Event
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 
 import java.util

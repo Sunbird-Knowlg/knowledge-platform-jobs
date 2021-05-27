@@ -1,13 +1,13 @@
-package org.sunbird.job.functions
+package org.sunbird.job.auditevent.functions
 
 import java.util
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
-import org.sunbird.job.domain.Event
-import org.sunbird.job.service.AuditEventGeneratorService
-import org.sunbird.job.task.AuditEventGeneratorConfig
+import org.sunbird.job.auditevent.domain.Event
+import org.sunbird.job.auditevent.service.AuditEventGeneratorService
+import org.sunbird.job.auditevent.task.AuditEventGeneratorConfig
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 class AuditEventGenerator(config: AuditEventGeneratorConfig)

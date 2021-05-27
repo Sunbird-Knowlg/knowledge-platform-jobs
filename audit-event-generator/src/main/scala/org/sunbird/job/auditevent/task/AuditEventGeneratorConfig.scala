@@ -1,4 +1,4 @@
-package org.sunbird.job.task
+package org.sunbird.job.auditevent.task
 
 import java.util
 import com.typesafe.config.Config
