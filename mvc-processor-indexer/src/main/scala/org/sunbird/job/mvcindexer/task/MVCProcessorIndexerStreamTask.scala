@@ -1,4 +1,4 @@
-package org.sunbird.job.task
+package org.sunbird.job.mvcindexer.task
 
 import java.io.File
 import java.util
@@ -9,7 +9,7 @@ import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.mvcindexer.domain.Event
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.functions.MVCProcessorIndexer
+import org.sunbird.job.mvcindexer.functions.MVCProcessorIndexer
 import org.sunbird.job.util.{ElasticSearchUtil, FlinkUtil}
 
 

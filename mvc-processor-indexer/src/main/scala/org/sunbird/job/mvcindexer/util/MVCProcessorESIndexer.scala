@@ -1,10 +1,7 @@
-/**
- *
- */
-package org.sunbird.job.util
+package org.sunbird.job.mvcindexer.util
 
 import org.slf4j.LoggerFactory
-import org.sunbird.job.task.MVCProcessorIndexerConfig
+import org.sunbird.job.mvcindexer.task.MVCProcessorIndexerConfig
 
 import java.io.IOException
 import java.util.concurrent.CompletableFuture

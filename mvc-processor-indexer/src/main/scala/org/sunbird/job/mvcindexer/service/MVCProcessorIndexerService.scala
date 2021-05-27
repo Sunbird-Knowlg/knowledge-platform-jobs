@@ -1,17 +1,17 @@
-package org.sunbird.job.service
+package org.sunbird.job.mvcindexer.service
 
 import org.slf4j.LoggerFactory
 import org.apache.commons.lang3.BooleanUtils
 import org.apache.commons.lang3.exception.ExceptionUtils
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.sunbird.job.mvcindexer.domain.Event
-import org.sunbird.mvcjobs.samza.service.util.MVCProcessorESIndexer
-import org.sunbird.jobs.samza.util.FailedEventsUtil
+//import org.sunbird.jobs.samza.util.FailedEventsUtil
 import org.sunbird.searchindex.util.CompositeSearchConstants
 import org.elasticsearch.client.transport.NoNodeAvailableException
 import org.sunbird.job.Metrics
-import org.sunbird.job.task.MVCProcessorIndexerConfig
-import org.sunbird.job.util.{ElasticSearchUtil, ContentUtil, MVCProcessorCassandraIndexer, PlatformErrorCodes}
+import org.sunbird.job.mvcindexer.task.MVCProcessorIndexerConfig
+import org.sunbird.job.mvcindexer.util.{ContentUtil, MVCProcessorCassandraIndexer, PlatformErrorCodes, MVCProcessorESIndexer}
+import org.sunbird.job.util.{ElasticSearchUtil}
 
 
 trait MVCProcessorIndexerService() {

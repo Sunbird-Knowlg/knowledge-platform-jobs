@@ -1,11 +1,11 @@
-package org.sunbird.job.util
+package org.sunbird.job.mvcindexer.util
 
 import org.apache.commons.lang3.StringUtils
 import org.json.JSONArray
 import org.json.JSONObject
 import org.slf4j.LoggerFactory
-import org.sunbird.job.service.MVCProcessorIndexerService
-import org.sunbird.job.task.MVCProcessorIndexerConfig
+import org.sunbird.job.mvcindexer.service.MVCProcessorIndexerService
+import org.sunbird.job.mvcindexer.task.MVCProcessorIndexerConfig
 
 class MVCProcessorCassandraIndexer(config: MVCProcessorIndexerConfig) {
   val mlworkbenchapirequest = "{\"request\":{ \"input\" :{ \"content\" : [] } } }"

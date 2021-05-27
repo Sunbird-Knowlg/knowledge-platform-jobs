@@ -1,12 +1,12 @@
-package org.sunbird.job.functions
+package org.sunbird.job.mvcindexer.functions
 
 import java.util
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.sunbird.job.mvcindexer.domain.Event
-import org.sunbird.job.service.MVCProcessorIndexerService
-import org.sunbird.job.task.MVCProcessorIndexerConfig
+import org.sunbird.job.mvcindexer.service.MVCProcessorIndexerService
+import org.sunbird.job.mvcindexer.task.MVCProcessorIndexerConfig
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 import org.sunbird.job.util.{CassandraUtil, ElasticSearchUtil}
 

@@ -1,4 +1,4 @@
-package org.sunbird.job.task
+package org.sunbird.job.mvcindexer.task
 
 import java.util
 import com.typesafe.config.Config

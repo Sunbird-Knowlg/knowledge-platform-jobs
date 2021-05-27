@@ -1,4 +1,4 @@
-package org.sunbird.job.util
+package org.sunbird.job.mvcindexer.util
 
 object PlatformErrorCodes extends Enumeration {
   type PlatformErrorCodes = Value
