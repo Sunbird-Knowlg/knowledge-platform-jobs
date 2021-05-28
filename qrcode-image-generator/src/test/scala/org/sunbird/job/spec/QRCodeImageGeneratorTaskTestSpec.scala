@@ -5,6 +5,7 @@ import java.util
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
+import org.apache.flink.runtime.client.JobExecutionException
 import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
 import org.apache.flink.streaming.api.functions.source.SourceFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext
@@ -14,6 +15,7 @@ import org.cassandraunit.dataset.cql.FileCQLDataSet
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
 import org.mockito.Mockito
 import org.mockito.Mockito.when
+import org.sunbird.job.domain.Event
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.fixture.EventFixture
 import org.sunbird.job.task.{QRCodeImageGeneratorConfig, QRCodeImageGeneratorTask}
@@ -54,9 +56,10 @@ class QRCodeImageGeneratorTaskTestSpec extends BaseTestSpec {
   }
 
   "QRCodeImageGeneratorTask" should "generate event" in {
-    when(mockKafkaUtil.kafkaMapSource(jobConfig.kafkaInputTopic)).thenReturn(new QRCodeImageGeneratorMapSource)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new QRCodeImageGeneratorMapSource)
 
-    assertThrows[Exception] {
+//    new QRCodeImageGeneratorTask(jobConfig, mockKafkaUtil).process()
+    assertThrows[JobExecutionException] {
       new QRCodeImageGeneratorTask(jobConfig, mockKafkaUtil).process()
     }
 //    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(2)
@@ -66,11 +69,12 @@ class QRCodeImageGeneratorTaskTestSpec extends BaseTestSpec {
   }
 }
 
-class QRCodeImageGeneratorMapSource extends SourceFunction[util.Map[String,AnyRef]] {
+class QRCodeImageGeneratorMapSource extends SourceFunction[Event] {
 
-  override def run(ctx: SourceContext[util.Map[String,AnyRef]]) {
+  override def run(ctx: SourceContext[Event]) {
     // Valid event
-    ctx.collect(JSONUtil.deserialize[util.Map[String, AnyRef]](EventFixture.EVENT_1))
+    ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_1), 0, 10))
+    ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_2), 0, 11))
     // Invalid event
 //    ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_4)))
   }

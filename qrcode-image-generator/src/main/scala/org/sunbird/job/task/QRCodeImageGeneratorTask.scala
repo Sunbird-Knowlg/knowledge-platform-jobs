@@ -1,7 +1,6 @@
 package org.sunbird.job.task
 
 import java.io.File
-import java.util
 
 import com.typesafe.config.ConfigFactory
 import org.apache.flink.api.common.typeinfo.TypeInformation
@@ -9,6 +8,7 @@ import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
+import org.sunbird.job.domain.Event
 import org.sunbird.job.functions.QRCodeImageGeneratorFunction
 import org.sunbird.job.util.{ElasticSearchUtil, FlinkUtil}
 
@@ -16,10 +16,10 @@ import org.sunbird.job.util.{ElasticSearchUtil, FlinkUtil}
 class QRCodeImageGeneratorTask(config: QRCodeImageGeneratorConfig, kafkaConnector: FlinkKafkaConnector) {
   def process(): Unit = {
     implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
-    implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
+    implicit val eventTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
 
-    val source = kafkaConnector.kafkaMapSource(config.kafkaInputTopic)
+    val source = kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)
     env.addSource(source)
       .name(config.eventConsumer)
       .uid(config.eventConsumer)

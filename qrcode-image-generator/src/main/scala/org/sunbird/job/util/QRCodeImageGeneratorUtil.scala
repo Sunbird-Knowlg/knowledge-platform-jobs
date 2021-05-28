@@ -21,6 +21,7 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
   private val qrCodeWriter = new QRCodeWriter()
   private val fontStore: util.HashMap[String, Font] = new util.HashMap[String, Font]()
   private val LOGGER = LoggerFactory.getLogger(classOf[QRCodeImageGeneratorUtil])
+
   @throws[WriterException]
   @throws[IOException]
   @throws[NotFoundException]
@@ -60,7 +61,8 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
       fileList.add(finalImageFile)
       try {
         val imageDownloadUrl = cloudStorageUtil.uploadFile(container, path, finalImageFile, false)
-        cassandraUtil.updateDownloadUrl(fileName, imageDownloadUrl)
+        val updateDownloadUrlQuery = "update dialcodes.dialcode_images set status=2, url='" + imageDownloadUrl + "' where filename='" + fileName + "'"
+        cassandraUtil.executeQuery(updateDownloadUrlQuery)
       } catch {
         case e: Exception =>
 
@@ -146,7 +148,7 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
     graphics.dispose()
   }
 
-  private def getImage(bitMatrix: BitMatrix, colorModel: String) = {
+    private def getImage(bitMatrix: BitMatrix, colorModel: String) = {
     val imageWidth = bitMatrix.getWidth()
     val imageHeight = bitMatrix.getHeight()
     val image = new BufferedImage(imageWidth, imageHeight, getImageType(colorModel))

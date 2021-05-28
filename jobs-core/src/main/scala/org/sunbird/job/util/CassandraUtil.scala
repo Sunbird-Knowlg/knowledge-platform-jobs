@@ -7,7 +7,6 @@ import com.datastax.driver.core.exceptions.DriverException
 
 class CassandraUtil(host: String, port: Int) {
 
-
   val cluster = {
     Cluster.builder()
       .addContactPoints(host)
@@ -61,25 +60,7 @@ class CassandraUtil(host: String, port: Int) {
     rs.wasApplied
   }
 
-  def updateDownloadUrl(id: String, downloadUrl: String): Unit = {
-    val query = "update dialcodes.dialcode_images set status=2, url='" + downloadUrl + "' where filename='" + id + "'"
-    println("query: " + query)
-    executeQuery(query)
-  }
-
-  def updateDownloadZIPUrl(id: String, downloadZIPUrl: String): Unit = {
-    val query = "update dialcodes.dialcode_batch set status=2, url='" + downloadZIPUrl + "' where processid=" + id
-    println("query: " + query)
-    executeQuery(query)
-  }
-
-  def updateFailure(id: String, errMsg: String): Unit = {
-    val query = "update dialcodes.dialcode_batch set status=3, url='' where processid=" + id
-    println("query: " + query)
-    executeQuery(query)
-  }
-
-  private def executeQuery(query: String): Unit = {
+  def executeQuery(query: String): Unit = {
     session.execute(query)
   }
 }
