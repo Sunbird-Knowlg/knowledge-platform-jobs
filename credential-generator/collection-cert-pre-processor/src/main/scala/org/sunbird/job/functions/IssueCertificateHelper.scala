@@ -115,7 +115,7 @@ trait IssueCertificateHelper {
 
     def getCourseName(courseId: String)(metrics:Metrics, config:CollectionCertPreProcessorConfig, cache:DataCache, httpUtil: HttpUtil) = {
         val courseMetadata = cache.getWithRetry(courseId)
-        if(!courseMetadata.isEmpty) {
+        if(null != courseMetadata && !courseMetadata.isEmpty) {
             val url = config.contentBasePath + config.contentReadApi + "/" + courseId + "?fields=name"
             val response = getAPICall(url, "content")(config, httpUtil)
             response.getOrElse(config.name, "")

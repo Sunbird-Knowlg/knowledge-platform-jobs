@@ -16,6 +16,7 @@ import org.cassandraunit.dataset.cql.FileCQLDataSet
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
 import org.mockito.Mockito.when
 import org.mockito.{ArgumentMatchers, Mockito}
+import org.scalatest.DoNotDiscover
 import org.sunbird.collectioncert.domain.Event
 import org.sunbird.job.cache.RedisConnect
 import org.sunbird.job.cert.task.{CollectionCertPreProcessorConfig, CollectionCertPreProcessorTask}
@@ -26,6 +27,7 @@ import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 import redis.clients.jedis.Jedis
 import redis.embedded.RedisServer
 
+@DoNotDiscover
 class CollectionCertPreProcessorTaskSpec extends BaseTestSpec {
     implicit val mapTypeInfo: TypeInformation[java.util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[java.util.Map[String, AnyRef]])
     implicit val eventTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
@@ -43,7 +45,7 @@ class CollectionCertPreProcessorTaskSpec extends BaseTestSpec {
     var jedis: Jedis = _
 
     val mockKafkaUtil: FlinkKafkaConnector = mock[FlinkKafkaConnector](Mockito.withSettings().serializable())
-    val mockHttpUtil: HttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
+    implicit val mockHttpUtil: HttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
     val gson = new Gson()
     val config: Config = ConfigFactory.load("test.conf")
     val jobConfig: CollectionCertPreProcessorConfig = new CollectionCertPreProcessorConfig(config)
