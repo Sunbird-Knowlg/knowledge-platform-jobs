@@ -9,13 +9,13 @@ import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
 import org.apache.flink.streaming.api.functions.source.SourceFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext
 import org.apache.flink.test.util.MiniClusterWithClientResource
-import org.sunbird.job.util.{ElasticSearchUtil, JSONUtil}
 import org.mockito.Mockito
-import org.mockito.Mockito.{doNothing, when}
+import org.mockito.Mockito.when
 import org.sunbird.job.audithistory.domain.Event
+import org.sunbird.job.audithistory.task.{AuditHistoryIndexerConfig, AuditHistoryIndexerStreamTask}
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.fixture.EventFixture
-import org.sunbird.job.task.{AuditHistoryIndexerConfig, AuditHistoryIndexerStreamTask}
+import org.sunbird.job.util.{ElasticSearchUtil, JSONUtil}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 
 import java.util
