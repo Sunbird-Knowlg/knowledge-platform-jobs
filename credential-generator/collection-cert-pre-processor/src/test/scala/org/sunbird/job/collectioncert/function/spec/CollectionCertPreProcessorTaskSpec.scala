@@ -83,7 +83,6 @@ class CollectionCertPreProcessorTaskSpec extends BaseTestSpec {
     def initialize() {
         when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic))
           .thenReturn(new CollectionCertPreProcessorEventSource)
-        when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaFailedEventTopic)).thenReturn(new FailedEventSink)
         when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaOutputTopic)).thenReturn(new GenerateCertificateSink)
 
         when(mockHttpUtil.get(ArgumentMatchers.contains(jobConfig.userReadApi), ArgumentMatchers.any[Map[String, String]]())).thenReturn(HTTPResponse(200, EventFixture.USER_1))
@@ -106,22 +105,10 @@ class CollectionCertPreProcessorEventSource extends SourceFunction[Event] {
     override def cancel(): Unit = {}
 }
 
-class FailedEventSink extends SinkFunction[String] {
-
-    override def invoke(value: String): Unit = {
-        synchronized {
-            FailedEventSink.values.add(value)
-        }
-    }
-}
-
-object FailedEventSink {
-    val values: util.List[String] = new util.ArrayList()
-}
-
 class GenerateCertificateSink extends SinkFunction[String] {
     override def invoke(value: String): Unit = {
         synchronized {
+            println(value)
             GenerateCertificateSink.values.add(value)
         }
     }

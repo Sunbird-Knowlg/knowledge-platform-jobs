@@ -11,7 +11,7 @@ import org.sunbird.job.cache.{DataCache, RedisConnect}
 import org.sunbird.job.collectioncert.domain.Event
 import org.sunbird.job.collectioncert.task.CollectionCertPreProcessorConfig
 import org.sunbird.job.exception.InvalidEventException
-import org.sunbird.job.util.{CassandraUtil, HttpUtil, ScalaJsonUtil}
+import org.sunbird.job.util.{CassandraUtil, HttpUtil}
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import scala.collection.JavaConverters._
@@ -53,8 +53,10 @@ class CollectionCertPreProcessorFn(config: CollectionCertPreProcessorConfig, htt
                 if(!certTemplates.isEmpty) {
                     certTemplates.map(template => {
                         val certEvent = issueCertificate(event, template._2)(cassandraUtil, cache, metrics, config, httpUtil)
-                        context.output(config.generateCertificateOutputTag, certEvent)
-                        metrics.incCounter(config.successEventCount)
+                        Option(certEvent).map(e => {
+                            context.output(config.generateCertificateOutputTag, certEvent)
+                            metrics.incCounter(config.successEventCount)}
+                        ).getOrElse({metrics.incCounter(config.skippedEventCount)})
                     })
                 } else {
                     logger.info(s"No certTemplates available for batchId :${event.batchId}")

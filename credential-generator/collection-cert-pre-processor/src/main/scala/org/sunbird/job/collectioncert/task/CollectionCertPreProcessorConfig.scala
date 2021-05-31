@@ -19,16 +19,12 @@ class CollectionCertPreProcessorConfig(override val config: Config) extends Base
     val kafkaOutputTopic: String = config.getString("kafka.output.topic")
     val certificatePreProcessorConsumer: String = "collection-cert-pre-processor-consumer"
     val generateCertificateProducer = "generate-certificate-sink"
-    val generateCertificateFailedEventProducer = "generate-certificate-failed-sink"
     override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
     val generateCertificateParallelism:Int = config.getInt("task.generate_certificate.parallelism")
-    val kafkaFailedEventTopic: String = config.getString("kafka.output.failed.topic")
     
     //Tags
     val generateCertificateOutputTagName = "generate-certificate-request"
     val generateCertificateOutputTag: OutputTag[String] = OutputTag[String](generateCertificateOutputTagName)
-    val failedEventOutputTagName = "failed-events"
-    val failedEventOutputTag: OutputTag[String] = OutputTag[String](failedEventOutputTagName)
 
     //Cassandra config
     val dbHost: String = config.getString("lms-cassandra.host")
