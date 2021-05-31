@@ -19,7 +19,7 @@ trait FrameworkDataEnrichment {
 	//private val fwMetaMap = Map(("se_boardIds", "se_boards") -> List("boardIds", "targetBoardIds"), ("se_subjectIds", "se_subjects") -> List("subjectIds", "targetSubjectIds"), ("se_mediumIds", "se_mediums") -> List("mediumIds", "targetMediumIds"), ("se_topicIds", "se_topics") -> List("topicsIds", "targetTopicIds"), ("se_gradeLevelIds", "se_gradeLevels") -> List("gradeLevelIds", "targetGradeLevelIds"))
 
 	def enrichFrameworkData(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil): ObjectData = {
-		val (fwMetaFields, fwMetaMap) : (List[String], Map[(String, String), List[String]]) = getFrameworkCategoryMetadata("domain", "category")
+		val (fwMetaFields, fwMetaMap) : (List[String], Map[(String, String), List[String]]) = getFrameworkCategoryMetadata("domain", "Category")
 		val enMetadata = enrichFwData(obj.identifier, obj.metadata, fwMetaFields, fwMetaMap)
 		logger.info("Enriched Framework Metadata for " + obj.identifier + " are : " + enMetadata)
 		val finalMeta = if(enMetadata.nonEmpty) obj.metadata ++ enMetadata else obj.metadata
