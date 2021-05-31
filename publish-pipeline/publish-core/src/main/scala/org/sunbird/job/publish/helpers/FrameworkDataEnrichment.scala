@@ -69,6 +69,8 @@ trait FrameworkDataEnrichment {
 		val fwMetaMap: Map[(String, String), List[String]] = masterCategories.map(category =>
 			(category.getOrElse("searchIdFieldName", "").asInstanceOf[String], category.getOrElse("searchLabelFieldName", "").asInstanceOf[String]) ->
 				List(category.getOrElse("orgIdFieldName", "").asInstanceOf[String], category.getOrElse("targetIdFieldName", "").asInstanceOf[String])).toMap
+		logger.info("Final fwMetaFields: " + fwMetaFields)
+		logger.info("Final fwMetaMap: " + fwMetaMap)
 		(fwMetaFields, fwMetaMap)
 	}
 
@@ -76,9 +78,12 @@ trait FrameworkDataEnrichment {
 	def getMasterCategory(graphId: String, objectType: String)(implicit neo4JUtil: Neo4JUtil): List[Map[String, AnyRef]] = {
 		if (FrameworkMasterCategoryMap.containsKey("masterCategories") && null != FrameworkMasterCategoryMap.get("masterCategories")) {
 			val masterCategories: Map[String, AnyRef] = FrameworkMasterCategoryMap.get("masterCategories")
+			logger.info("masterCategories from local cache: " + masterCategories)
 			masterCategories.map(obj => obj._2.asInstanceOf[Map[String, AnyRef]]).toList
 		}else{
 			val nodes: util.List[util.Map[String, AnyRef]] = neo4JUtil.getNodePropertiesWithObjectType(objectType)
+			logger.info("nodes from DB: " + nodes)
+			logger.info("nodes from DB: " + nodes.get(0))
 			if(CollectionUtils.isEmpty(nodes)){
 				logger.info("No Framework Master Category found.")
 				List()
@@ -90,6 +95,7 @@ trait FrameworkDataEnrichment {
 						"searchIdFieldName" -> node.getOrDefault("searchIdFieldName", "").asInstanceOf[String],
 						"searchLabelFieldName" -> node.getOrDefault("searchLabelFieldName", "").asInstanceOf[String])
 				).toList
+				logger.info("Final masterCategories: " + masterCategories)
 				masterCategories
 			}
 
