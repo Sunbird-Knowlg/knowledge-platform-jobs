@@ -90,7 +90,18 @@ trait FrameworkDataEnrichment {
 				logger.info("No Framework Master Category found.")
 				List()
 			}else{
-				val masterCategories: List[Map[String, AnyRef]] = nodes.asScala.map(node =>
+				val masterCategories: Map[String, AnyRef] = nodes.asScala.map(node => node.getOrDefault("code", "").asInstanceOf[String] ->
+					Map("code" -> node.getOrDefault("code", "").asInstanceOf[String],
+						"orgIdFieldName" -> node.getOrDefault("orgIdFieldName", "").asInstanceOf[String],
+						"targetIdFieldName" -> node.getOrDefault("targetIdFieldName", "").asInstanceOf[String],
+						"searchIdFieldName" -> node.getOrDefault("searchIdFieldName", "").asInstanceOf[String],
+						"searchLabelFieldName" -> node.getOrDefault("searchLabelFieldName", "").asInstanceOf[String])
+				).toMap
+				FrameworkMasterCategoryMap.put("masterCategories", masterCategories)
+				logger.info("Final masterCategories: " + masterCategories)
+				masterCategories.map(obj => obj._2.asInstanceOf[Map[String, AnyRef]]).toList
+
+				/*val masterCategories: List[Map[String, AnyRef]] = nodes.asScala.map(node =>
 					Map("code" -> node.getOrDefault("code", "").asInstanceOf[String],
 						"orgIdFieldName" -> node.getOrDefault("orgIdFieldName", "").asInstanceOf[String],
 						"targetIdFieldName" -> node.getOrDefault("targetIdFieldName", "").asInstanceOf[String],
@@ -98,7 +109,7 @@ trait FrameworkDataEnrichment {
 						"searchLabelFieldName" -> node.getOrDefault("searchLabelFieldName", "").asInstanceOf[String])
 				).toList
 				logger.info("Final masterCategories: " + masterCategories)
-				masterCategories
+				masterCategories*/
 			}
 
 		}
