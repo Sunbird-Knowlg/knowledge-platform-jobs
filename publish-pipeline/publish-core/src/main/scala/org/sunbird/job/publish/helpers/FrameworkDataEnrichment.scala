@@ -83,7 +83,9 @@ trait FrameworkDataEnrichment {
 		}else{
 			val nodes: util.List[util.Map[String, AnyRef]] = neo4JUtil.getNodePropertiesWithObjectType(objectType)
 			logger.info("nodes from DB: " + nodes)
+			logger.info("nodes from DB: " + nodes.get(0))
 			logger.info("nodes from DB: " + nodes.get(0).keySet())
+			logger.info("nodes from DB: " + nodes.get(0).get("code"))
 			if(CollectionUtils.isEmpty(nodes)){
 				logger.info("No Framework Master Category found.")
 				List()

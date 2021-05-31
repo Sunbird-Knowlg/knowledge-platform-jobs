@@ -45,7 +45,7 @@ class Neo4JUtil(routePath: String, graphId: String) {
     val query = s"""MATCH (n:${graphId}) where n.IL_FUNC_OBJECT_TYPE = "${objectType}" AND n.IL_SYS_NODE_TYPE="DATA_NODE" return n;"""
     val statementResult = session.run(query)
     if (statementResult.hasNext)
-      statementResult.list().asScala.toList.map(record => record.asMap()).asJava
+      statementResult.list().asScala.toList.map(record => record.get("n").asMap()).asJava
     else null
   }
 
