@@ -13,9 +13,9 @@ import org.sunbird.job.util.JSONUtil
 import org.mockito.Mockito
 import org.mockito.Mockito.when
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.domain.Event
+import org.sunbird.job.auditevent.domain.Event
 import org.sunbird.job.fixture.EventFixture
-import org.sunbird.job.task.{AuditEventGeneratorConfig, AuditEventGeneratorStreamTask}
+import org.sunbird.job.auditevent.task.{AuditEventGeneratorConfig, AuditEventGeneratorStreamTask}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 
 class AuditEventGeneratorTaskTestSpec extends BaseTestSpec {
@@ -49,6 +49,10 @@ class AuditEventGeneratorTaskTestSpec extends BaseTestSpec {
 
     new AuditEventGeneratorStreamTask(jobConfig, mockKafkaUtil).process()
 
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(2)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skippedEventCount}").getValue() should be(1)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.successEventCount}").getValue() should be(1)
+
     AuditEventSink.values.size() should be(1)
     AuditEventSink.values.forEach(event => {
       val eventMap = JSONUtil.deserialize[Map[String, AnyRef]](event)
@@ -62,8 +66,8 @@ class AuditEventGeneratorTaskTestSpec extends BaseTestSpec {
 class AuditEventGeneratorMapSource extends SourceFunction[Event] {
 
   override def run(ctx: SourceContext[Event]) {
-    ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_1)))
-    ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_5)))
+    ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_1), 0, 10))
+    ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_5), 0, 11))
   }
 
   override def cancel(): Unit = {}

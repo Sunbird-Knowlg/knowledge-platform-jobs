@@ -10,6 +10,7 @@ import org.sunbird.telemetry.TelemetryGenerator
 import org.sunbird.telemetry.TelemetryParams
 import org.sunbird.job.auditevent.domain.Event
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
+import com.google.gson.Gson
 
 import java.util
 import java.text.SimpleDateFormat
@@ -20,6 +21,7 @@ trait AuditEventGeneratorService {
   private val OBJECT_TYPE_IMAGE_SUFFIX = "Image"
   private val SKIP_AUDIT = "{\"object\": {\"type\":null}}"
   private lazy val definitionCache = new DefinitionCache
+  private lazy val gson = new Gson
 
   private val systemPropsList = List("IL_SYS_NODE_TYPE", "IL_FUNC_OBJECT_TYPE", "IL_UNIQUE_ID", "IL_TAG_NAME", "IL_ATTRIBUTE_NAME", "IL_INDEXABLE_METADATA_KEY", "IL_NON_INDEXABLE_METADATA_KEY",
     "IL_IN_RELATIONS_KEY", "IL_OUT_RELATIONS_KEY", "IL_REQUIRED_PROPERTIES", "IL_SYSTEM_TAGS_KEY", "IL_SEQUENCE_INDEX", "SYS_INTERNAL_LAST_UPDATED_ON", "lastUpdatedOn", "versionKey", "lastStatusChangedOn")
@@ -117,15 +119,16 @@ trait AuditEventGeneratorService {
     if (StringUtils.isNotBlank(pkgVersion)) context ++= Map("pkgVersion" -> pkgVersion)
     if (StringUtils.isNotBlank(userId)) context ++= Map(TelemetryParams.ACTOR.name -> userId)
     if (propsExceptSystemProps.nonEmpty) {
+      val cdataList = gson.fromJson(JSONUtil.serialize(cdata), classOf[java.util.List[java.util.Map[String, Object]]])
+
       TelemetryGenerator.setComponent("audit-event-generator")
-      val auditMessage = TelemetryGenerator.audit(
+      auditMap = TelemetryGenerator.audit(
         JSONUtil.deserialize[util.Map[String, String]](JSONUtil.serialize(context)),
         JSONUtil.deserialize[util.List[String]](JSONUtil.serialize(propsExceptSystemProps)),
         currStatus,
         prevStatus,
-        JSONUtil.deserialize[util.List[util.Map[String, Object]]](JSONUtil.serialize(cdata)))
-      logger.info("Audit Message for Content Id [" + objectId + "] : " + auditMessage);
-      auditMap = auditMessage
+        cdataList)
+      logger.info("Audit Message for Content Id [" + objectId + "] : " + auditMap);
     }
     else {
       logger.info("Skipping Audit log as props is null or empty")

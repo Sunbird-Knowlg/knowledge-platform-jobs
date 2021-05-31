@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory
 import org.sunbird.job.auditevent.domain.Event
 import org.sunbird.job.auditevent.service.AuditEventGeneratorService
 import org.sunbird.job.auditevent.task.AuditEventGeneratorConfig
+import org.sunbird.job.exception.InvalidEventException
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 class AuditEventGenerator(config: AuditEventGeneratorConfig)
@@ -44,7 +45,5 @@ class AuditEventGenerator(config: AuditEventGeneratorConfig)
                 metrics.incCounter(config.failedEventCount)
                 throw new InvalidEventException(ex.getMessage, Map("partition" -> event.partition, "offset" -> event.offset), ex)
         }
-    }
-
     }
 }
