@@ -1,5 +1,7 @@
 package org.sunbird.job.util
 
+import java.util
+
 import org.neo4j.driver.v1.{Config, GraphDatabase}
 import org.slf4j.LoggerFactory
 import scala.collection.JavaConverters._
@@ -35,6 +37,15 @@ class Neo4JUtil(routePath: String, graphId: String) {
     val statementResult = session.run(query)
     if (statementResult.hasNext)
       statementResult.single().get("n").asMap()
+    else null
+  }
+
+  def getNodePropertiesWithObjectType(objectType: String): util.List[util.Map[String, AnyRef]] = {
+    val session = driver.session()
+    val query = s"""MATCH (n:${graphId} where n.IL_FUNC_OBJECT_TYPE = "${objectType}" AND n.IL_SYS_NODE_TYPE="DATA_NODE" return n;"""
+    val statementResult = session.run(query)
+    if (statementResult.hasNext)
+      statementResult.list().asScala.toList.map(record => record.asMap()).asJava
     else null
   }
 
