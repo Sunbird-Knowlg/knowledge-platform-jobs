@@ -1,4 +1,4 @@
-package org.sunbird.job.cert.task
+package org.sunbird.job.collectioncert.task
 
 import com.typesafe.config.Config
 import org.apache.flink.api.common.typeinfo.TypeInformation

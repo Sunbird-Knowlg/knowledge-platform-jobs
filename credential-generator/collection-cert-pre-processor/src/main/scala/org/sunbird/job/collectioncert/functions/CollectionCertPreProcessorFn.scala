@@ -1,4 +1,4 @@
-package org.sunbird.job.functions
+package org.sunbird.job.collectioncert.functions
 
 import com.datastax.driver.core.querybuilder.QueryBuilder
 import com.datastax.driver.core.{Row, TypeTokens}
@@ -7,9 +7,10 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
-import org.sunbird.collectioncert.domain.Event
 import org.sunbird.job.cache.{DataCache, RedisConnect}
-import org.sunbird.job.cert.task.CollectionCertPreProcessorConfig
+import org.sunbird.job.collectioncert.domain.Event
+import org.sunbird.job.collectioncert.task.CollectionCertPreProcessorConfig
+import org.sunbird.job.exception.InvalidEventException
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, ScalaJsonUtil}
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
@@ -47,7 +48,7 @@ class CollectionCertPreProcessorFn(config: CollectionCertPreProcessorConfig, htt
                                 metrics: Metrics): Unit = {
         try {
             metrics.incCounter(config.totalEventsCount)
-            if(isValidEvent(event)) {
+            if(event.isValid()(config)) {
                 val certTemplates = fetchTemplates(event)(metrics)
                 if(!certTemplates.isEmpty) {
                     certTemplates.map(template => {
@@ -66,20 +67,14 @@ class CollectionCertPreProcessorFn(config: CollectionCertPreProcessorConfig, htt
             }
         } catch {
             case ex: Exception => {
-                logger.error(s"Certificate generate event failed sent to next topic for event : ${event}", ex)
                 metrics.incCounter(config.failedEventCount)
-                context.output(config.failedEventOutputTag, ScalaJsonUtil.serialize(event.eData))
+                throw new InvalidEventException(ex.getMessage, Map("partition" -> event.partition, "offset" -> event.offset), ex)
             }
         }
         
         
     }
-
-    def isValidEvent(event: Event): Boolean = {
-        config.issueCertificate.equalsIgnoreCase(event.action) && !event.batchId.isEmpty && !event.courseId.isEmpty && 
-          !event.userId.isEmpty
-    }
-
+    
     def fetchTemplates(event: Event)(implicit metrics: Metrics): Map[String, Map[String, String]] = {
         val query = QueryBuilder.select(config.certTemplates).from(config.keyspace, config.courseTable)
           .where(QueryBuilder.eq(config.dbCourseId, event.courseId)).and(QueryBuilder.eq(config.dbBatchId, event.batchId))

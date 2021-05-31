@@ -1,4 +1,4 @@
-package org.sunbird.job.function.spec
+package org.sunbird.job.collectioncert.function.spec
 
 import java.util
 
@@ -17,11 +17,11 @@ import org.cassandraunit.utils.EmbeddedCassandraServerHelper
 import org.mockito.Mockito.when
 import org.mockito.{ArgumentMatchers, Mockito}
 import org.scalatest.DoNotDiscover
-import org.sunbird.collectioncert.domain.Event
 import org.sunbird.job.cache.RedisConnect
-import org.sunbird.job.cert.task.{CollectionCertPreProcessorConfig, CollectionCertPreProcessorTask}
+import org.sunbird.job.collectioncert.domain.Event
+import org.sunbird.job.collectioncert.fixture.EventFixture
+import org.sunbird.job.collectioncert.task.{CollectionCertPreProcessorConfig, CollectionCertPreProcessorTask}
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.fixture.EvenFixture
 import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, JSONUtil}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 import redis.clients.jedis.Jedis
@@ -86,8 +86,8 @@ class CollectionCertPreProcessorTaskSpec extends BaseTestSpec {
         when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaFailedEventTopic)).thenReturn(new FailedEventSink)
         when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaOutputTopic)).thenReturn(new GenerateCertificateSink)
 
-        when(mockHttpUtil.get(ArgumentMatchers.contains(jobConfig.userReadApi), ArgumentMatchers.any[Map[String, String]]())).thenReturn(HTTPResponse(200, EvenFixture.USER_1))
-        when(mockHttpUtil.get(ArgumentMatchers.contains(jobConfig.contentReadApi), ArgumentMatchers.any[Map[String, String]]())).thenReturn(HTTPResponse(200, EvenFixture.CONTENT_1))
+        when(mockHttpUtil.get(ArgumentMatchers.contains(jobConfig.userReadApi), ArgumentMatchers.any[Map[String, String]]())).thenReturn(HTTPResponse(200, EventFixture.USER_1))
+        when(mockHttpUtil.get(ArgumentMatchers.contains(jobConfig.contentReadApi), ArgumentMatchers.any[Map[String, String]]())).thenReturn(HTTPResponse(200, EventFixture.CONTENT_1))
     }
     "CollectionCertPreProcessor " should "validate metrics " in {
         initialize()
@@ -101,7 +101,7 @@ class CollectionCertPreProcessorTaskSpec extends BaseTestSpec {
 
 class CollectionCertPreProcessorEventSource extends SourceFunction[Event] {
     override def run(ctx: SourceContext[Event]): Unit = {
-        ctx.collect(new Event(JSONUtil.deserialize[java.util.Map[String, Any]](EvenFixture.EVENT_1), 0, 0))
+        ctx.collect(new Event(JSONUtil.deserialize[java.util.Map[String, Any]](EventFixture.EVENT_1), 0, 0))
     }
     override def cancel(): Unit = {}
 }

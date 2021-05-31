@@ -1,4 +1,4 @@
-package org.sunbird.job.cert.task
+package org.sunbird.job.collectioncert.task
 
 import java.io.File
 
@@ -7,9 +7,9 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
-import org.sunbird.collectioncert.domain.Event
+import org.sunbird.job.collectioncert.domain.Event
+import org.sunbird.job.collectioncert.functions.CollectionCertPreProcessorFn
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.functions.CollectionCertPreProcessorFn
 import org.sunbird.job.util.{FlinkUtil, HttpUtil}
 
 class CollectionCertPreProcessorTask(config: CollectionCertPreProcessorConfig, kafkaConnector: FlinkKafkaConnector, httpUtil: HttpUtil) {

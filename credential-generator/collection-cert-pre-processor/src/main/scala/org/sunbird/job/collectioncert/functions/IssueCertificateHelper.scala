@@ -1,12 +1,11 @@
-package org.sunbird.job.functions
+package org.sunbird.job.collectioncert.functions
 
 import com.datastax.driver.core.querybuilder.QueryBuilder
 import com.datastax.driver.core.{Row, TypeTokens}
-import org.sunbird.collectioncert.domain.Event
 import org.sunbird.job.Metrics
 import org.sunbird.job.cache.DataCache
-import org.sunbird.job.cert.task.CollectionCertPreProcessorConfig
-import org.sunbird.job.domain.{BEJobRequestEvent, EnrolledUser, EventObject}
+import org.sunbird.job.collectioncert.domain.{BEJobRequestEvent, EnrolledUser, Event, EventObject}
+import org.sunbird.job.collectioncert.task.CollectionCertPreProcessorConfig
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, ScalaJsonUtil}
 
 import scala.collection.JavaConverters._

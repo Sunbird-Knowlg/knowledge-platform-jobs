@@ -1,4 +1,4 @@
-package org.sunbird.job.function.spec
+package org.sunbird.job.collectioncert.function.spec
 
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.flink.api.common.typeinfo.TypeInformation
@@ -6,16 +6,16 @@ import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.cassandraunit.CQLDataLoader
 import org.cassandraunit.dataset.cql.FileCQLDataSet
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
-import org.mockito.{ArgumentMatchers, Mockito}
 import org.mockito.Mockito.when
-import org.sunbird.collectioncert.domain.Event
+import org.mockito.{ArgumentMatchers, Mockito}
 import org.sunbird.job.Metrics
 import org.sunbird.job.cache.{DataCache, RedisConnect}
-import org.sunbird.job.cert.task.CollectionCertPreProcessorConfig
-import org.sunbird.job.fixture.EvenFixture
-import org.sunbird.job.functions.CollectionCertPreProcessorFn
-import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, JSONUtil, ScalaJsonUtil}
-import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
+import org.sunbird.job.collectioncert.domain.Event
+import org.sunbird.job.collectioncert.fixture.EventFixture
+import org.sunbird.job.collectioncert.functions.CollectionCertPreProcessorFn
+import org.sunbird.job.collectioncert.task.CollectionCertPreProcessorConfig
+import org.sunbird.job.util._
+import org.sunbird.spec.BaseTestSpec
 import redis.clients.jedis.Jedis
 import redis.embedded.RedisServer
 
@@ -59,10 +59,10 @@ class CollectionCertPreProcessFnTestSpec extends BaseTestSpec {
     }
     
     "CertPreProcess " should " issue certificate to valid request" in {
-        val event = new Event(JSONUtil.deserialize[java.util.Map[String, Any]](EvenFixture.EVENT_1), 0, 0)
-        val template = ScalaJsonUtil.deserialize[Map[String, String]](EvenFixture.TEMPLATE_1)
-        when(mockHttpUtil.get(ArgumentMatchers.contains(jobConfig.userReadApi), ArgumentMatchers.any[Map[String, String]]())).thenReturn(HTTPResponse(200, EvenFixture.USER_1))
-        when(mockHttpUtil.get(ArgumentMatchers.contains(jobConfig.contentReadApi), ArgumentMatchers.any[Map[String, String]]())).thenReturn(HTTPResponse(200, EvenFixture.CONTENT_1))
+        val event = new Event(JSONUtil.deserialize[java.util.Map[String, Any]](EventFixture.EVENT_1), 0, 0)
+        val template = ScalaJsonUtil.deserialize[Map[String, String]](EventFixture.TEMPLATE_1)
+        when(mockHttpUtil.get(ArgumentMatchers.contains(jobConfig.userReadApi), ArgumentMatchers.any[Map[String, String]]())).thenReturn(HTTPResponse(200, EventFixture.USER_1))
+        when(mockHttpUtil.get(ArgumentMatchers.contains(jobConfig.contentReadApi), ArgumentMatchers.any[Map[String, String]]())).thenReturn(HTTPResponse(200, EventFixture.CONTENT_1))
         val certEvent = new CollectionCertPreProcessorFn(jobConfig, mockHttpUtil)(stringTypeInfo, cassandraUtil).issueCertificate(event, template)(cassandraUtil, cache, mockMetrics, jobConfig, mockHttpUtil)
         certEvent shouldNot be(null)        
     }
