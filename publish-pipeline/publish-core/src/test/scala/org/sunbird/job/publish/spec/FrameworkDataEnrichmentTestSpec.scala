@@ -77,34 +77,21 @@ class FrameworkDataEnrichmentTestSpec extends FlatSpec with BeforeAndAfterAll wi
 
 	def getNeo4jData(): util.List[util.Map[String, AnyRef]] = {
 		util.Arrays.asList(
-			new util.HashMap[String, AnyRef]{{
-				put("IL_UNIQUE_ID", "board")
-				put("IL_FUNC_OBJECT_TYPE", "Category")
-				put("code", "board")
-				put("orgIdFieldName", "boardIds")
-				put("targetIdFieldName", "targetBoardIds")
-				put("searchIdFieldName", "se_boardIds")
-				put("searchLabelFieldName", "se_boards")
-			}},
-			new util.HashMap[String, AnyRef]{{
-				put("IL_UNIQUE_ID", "subject")
-				put("IL_FUNC_OBJECT_TYPE", "Category")
-				put("code", "subject")
-				put("orgIdFieldName", "subjectIds")
-				put("targetIdFieldName", "targetSubjectIds")
-				put("searchIdFieldName", "se_subjectIds")
-				put("searchLabelFieldName", "se_subjects")
-			}},
-			new util.HashMap[String, AnyRef]{{
-				put("IL_UNIQUE_ID", "medium")
-				put("IL_FUNC_OBJECT_TYPE", "Category")
-				put("code", "medium")
-				put("orgIdFieldName", "mediumIds")
-				put("targetIdFieldName", "targetMediumIds")
-				put("searchIdFieldName", "se_mediumIds")
-				put("searchLabelFieldName", "se_mediums")
-			}}
+			getCategoryNodeMap("board", "Category", "boardIds", "targetBoardIds", "se_boardIds", "se_boards"),
+			getCategoryNodeMap("subject", "Category", "subjectIds", "targetSubjectIds", "se_subjectIds", "se_subjects"),
+			getCategoryNodeMap("medium", "Category", "mediumIds", "targetMediumIds", "se_mediumIds", "se_mediums")
 		)
+	}
+	def getCategoryNodeMap(identifier: String, objectType: String, orgIdFieldName: String, targetIdFieldName: String, searchIdFieldName: String, searchLabelFieldName: String): util.Map[String, AnyRef] = {
+		new util.HashMap[String, AnyRef]{{
+			put("IL_UNIQUE_ID", identifier)
+			put("IL_FUNC_OBJECT_TYPE", objectType)
+			put("code", identifier)
+			put("orgIdFieldName", orgIdFieldName)
+			put("targetIdFieldName", targetIdFieldName)
+			put("searchIdFieldName", searchIdFieldName)
+			put("searchLabelFieldName", searchLabelFieldName)
+		}}
 	}
 
 	def enrichFrameworkMasterCategoryMap() = {

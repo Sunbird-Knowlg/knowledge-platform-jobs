@@ -69,8 +69,6 @@ trait FrameworkDataEnrichment {
 		val fwMetaMap: Map[(String, String), List[String]] = masterCategories.map(category =>
 			(category.getOrElse("searchIdFieldName", "").asInstanceOf[String], category.getOrElse("searchLabelFieldName", "").asInstanceOf[String]) ->
 				List(category.getOrElse("orgIdFieldName", "").asInstanceOf[String], category.getOrElse("targetIdFieldName", "").asInstanceOf[String])).toMap
-		logger.info("Final fwMetaFields: " + fwMetaFields)
-		logger.info("Final fwMetaMap: " + fwMetaMap)
 		(fwMetaFields, fwMetaMap)
 	}
 
@@ -78,14 +76,9 @@ trait FrameworkDataEnrichment {
 	def getMasterCategory(graphId: String, objectType: String)(implicit neo4JUtil: Neo4JUtil): List[Map[String, AnyRef]] = {
 		if (FrameworkMasterCategoryMap.containsKey("masterCategories") && null != FrameworkMasterCategoryMap.get("masterCategories")) {
 			val masterCategories: Map[String, AnyRef] = FrameworkMasterCategoryMap.get("masterCategories")
-			logger.info("masterCategories from local cache: " + masterCategories)
 			masterCategories.map(obj => obj._2.asInstanceOf[Map[String, AnyRef]]).toList
 		}else{
 			val nodes: util.List[util.Map[String, AnyRef]] = neo4JUtil.getNodePropertiesWithObjectType(objectType)
-			logger.info("nodes from DB: " + nodes)
-			logger.info("nodes from DB: " + nodes.get(0))
-			logger.info("nodes from DB: " + nodes.get(0).keySet())
-			logger.info("nodes from DB: " + nodes.get(0).get("code"))
 			if(CollectionUtils.isEmpty(nodes)){
 				logger.info("No Framework Master Category found.")
 				List()
@@ -98,38 +91,8 @@ trait FrameworkDataEnrichment {
 						"searchLabelFieldName" -> node.getOrDefault("searchLabelFieldName", "").asInstanceOf[String])
 				).toMap
 				FrameworkMasterCategoryMap.put("masterCategories", masterCategories)
-				logger.info("Final masterCategories: " + masterCategories)
 				masterCategories.map(obj => obj._2.asInstanceOf[Map[String, AnyRef]]).toList
-
-				/*val masterCategories: List[Map[String, AnyRef]] = nodes.asScala.map(node =>
-					Map("code" -> node.getOrDefault("code", "").asInstanceOf[String],
-						"orgIdFieldName" -> node.getOrDefault("orgIdFieldName", "").asInstanceOf[String],
-						"targetIdFieldName" -> node.getOrDefault("targetIdFieldName", "").asInstanceOf[String],
-						"searchIdFieldName" -> node.getOrDefault("searchIdFieldName", "").asInstanceOf[String],
-						"searchLabelFieldName" -> node.getOrDefault("searchLabelFieldName", "").asInstanceOf[String])
-				).toList
-				logger.info("Final masterCategories: " + masterCategories)
-				masterCategories*/
 			}
-
 		}
 	}
-
-
-	/*def getMasterCategory(graphId: String, objectType: String)(implicit neo4JUtil: Neo4JUtil): (List[String], Map[(String, String), List[String]]) = {
-		val nodes: util.List[util.Map[String, AnyRef]] = neo4JUtil.getNodePropertiesWithObjectType(objectType)
-		nodes.forEach(node => println("node: " + node.get("code")))
-		if(CollectionUtils.isEmpty(nodes)){
-			(List(), Map())
-		}
-
-		val fwMetaFields: List[String] = nodes.asScala.flatMap(node =>
-			List(node.get("orgIdFieldName").asInstanceOf[String],
-				node.get("targetIdFieldName").asInstanceOf[String])).toList
-
-		val fwMetaMap: Map[(String, String), List[String]] = nodes.asScala.map(node =>
-			(node.get("searchIdFieldName").asInstanceOf[String], node.get("searchLabelFieldName").asInstanceOf[String]) ->
-				List(node.get("orgIdFieldName").asInstanceOf[String], node.get("targetIdFieldName").asInstanceOf[String])).toMap
-		(fwMetaFields, fwMetaMap)
-	}*/
 }
