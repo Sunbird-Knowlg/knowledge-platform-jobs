@@ -25,17 +25,6 @@
 			<version>${flink.version}</version>
 			<scope>provided</scope>
 		</dependency>
-        <dependency>
-            <groupId>org.sunbird</groupId>
-            <artifactId>jobs-common</artifactId>
-            <version>1.0.0</version>
-			<exclusions>
-				<exclusion>
-					<artifactId>jackson-databind</artifactId>
-					<groupId>com.fasterxml.jackson.core</groupId>
-				</exclusion>
-			</exclusions>
-        </dependency>
 		<dependency>
 			<groupId>org.sunbird</groupId>
 			<artifactId>jobs-core</artifactId>
