@@ -12,6 +12,8 @@
 
   <modules>
     <module>collection-cert-pre-processor</module>
+    <module>certificate-processor</module>
+    <module>collection-certificate-generator</module>
   </modules>
 
   <build>
