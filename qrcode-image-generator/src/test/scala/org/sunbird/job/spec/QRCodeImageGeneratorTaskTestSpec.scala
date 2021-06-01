@@ -59,14 +59,10 @@ class QRCodeImageGeneratorTaskTestSpec extends BaseTestSpec {
   "QRCodeImageGeneratorTask" should "generate event" in {
     when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new QRCodeImageGeneratorMapSource)
 
-//    new QRCodeImageGeneratorTask(jobConfig, mockKafkaUtil).process()
     assertThrows[JobExecutionException] {
       new QRCodeImageGeneratorTask(jobConfig, mockKafkaUtil).process()
     }
-//    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(2)
-//    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.successEventCount}").getValue() should be(1)
-//    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.failedEventCount}").getValue() should be(0)
-//    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skippedEventCount}").getValue() should be(1)
+    
   }
 }
 
