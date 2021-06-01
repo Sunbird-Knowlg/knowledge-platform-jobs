@@ -43,6 +43,7 @@ class FrameworkDataEnrichmentTestSpec extends FlatSpec with BeforeAndAfterAll wi
 		result.metadata.getOrElse("se_mediums", List()).asInstanceOf[List[String]].contains("English") should be (true)
 		result.metadata.getOrElse("se_boards", List()).asInstanceOf[List[String]] should have length(2)
 		result.metadata.getOrElse("se_boards", List()).asInstanceOf[List[String]].contains("CBSE") should be (true)
+		FrameworkMasterCategoryMap.put("masterCategories", null)
 	}
 
 	"enrichFrameworkData with only targetFramework" should "enrich only se_FWIds" in {
@@ -73,6 +74,7 @@ class FrameworkDataEnrichmentTestSpec extends FlatSpec with BeforeAndAfterAll wi
 		val node : (List[String], Map[(String, String), List[String]]) = new TestFrameworkDataEnrichment().getFrameworkCategoryMetadata("domain", "Category")
 		node._1.asInstanceOf[List[String]] should have length(6)
 		node._2.asInstanceOf[Map[(String, String), List[String]]].size.equals(3) should be (true)
+		FrameworkMasterCategoryMap.put("masterCategories", null)
 	}
 
 	def getNeo4jData(): util.List[util.Map[String, AnyRef]] = {
