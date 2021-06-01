@@ -15,8 +15,9 @@ import org.sunbird.job.qrimagegenerator.domain.Event
 import org.sunbird.job.qrimagegenerator.task.QRCodeImageGeneratorConfig
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 import org.sunbird.job.qrimagegenerator.model.QRCodeGenerationRequest
-import org.sunbird.job.util.CassandraUtil
-import org.sunbird.job.qrimagegenerator.util._
+import org.sunbird.job.util.{ CassandraUtil, CloudStorageUtil }
+import org.sunbird.job.qrimagegenerator.util.{ ZipEditorUtil, QRCodeImageGeneratorUtil }
+import org.sunbird.job.exception.InvalidEventException
 
 case class DialCodes(data: String, text: String, id: String, location: Option[String])
 case class StorageConfig(container: String, path: String, fileName: String)
@@ -41,7 +42,7 @@ class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig,
     }
 
     override def open(parameters: Configuration): Unit = {
-        cloudStorageUtil = new CloudStorageUtil(config)
+        cloudStorageUtil = new CloudStorageUtil(config.cloudStorageType, Option(config.storageKey), Option(config.storageSecret))
         cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort)
         qRCodeImageGeneratorUtil = new QRCodeImageGeneratorUtil(config, cassandraUtil, cloudStorageUtil)
         super.open(parameters)
@@ -52,6 +53,7 @@ class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig,
         super.close()
     }
 
+    @throws(classOf[InvalidEventException])
     override def processElement(event: Event,
                                 context: ProcessFunction[Event, String]#Context,
                                 metrics: Metrics): Unit = {
@@ -82,7 +84,7 @@ class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig,
                           cloudStorageUtil.downloadFile(f.get("location").get.asInstanceOf[String], fileToSave)
                           availableImages.add(fileToSave)
                       } catch {
-                          case e: Exception => throw InvalidEventGenerator
+                          case e: Exception => throw new InvalidEventException(e.getMessage, Map("partition" -> event.partition, "offset" -> event.offset), e)
                       }
                 }
 
@@ -115,7 +117,7 @@ class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig,
         } catch {
             case e: Exception => updateCassandra(config.cassandraDialCodeBatchTable, 3, "", "processid", event.processId)
                 LOGGER.info("QRCodeImageGeneratorService:CassandraUpdateFailure: " + e.getMessage)
-                throw e
+                throw new InvalidEventException(e.getMessage, Map("partition" -> event.partition, "offset" -> event.offset), e)
         } finally {
             if (null != zipFile)
                 {

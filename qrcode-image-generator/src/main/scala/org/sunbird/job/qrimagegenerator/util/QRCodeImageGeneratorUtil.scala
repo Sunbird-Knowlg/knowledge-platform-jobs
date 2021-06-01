@@ -6,19 +6,18 @@ import java.awt.image.BufferedImage
 import java.io.{File, IOException}
 import java.util
 
-import com.google.zxing.{BarcodeFormat, EncodeHintType, NotFoundException, WriterException}
 import com.google.zxing.client.j2se.BufferedImageLuminanceSource
 import com.google.zxing.common.{BitMatrix, HybridBinarizer}
 import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
+import com.google.zxing.{BarcodeFormat, EncodeHintType, NotFoundException, WriterException}
 import javax.imageio.ImageIO
 import org.slf4j.LoggerFactory
 import org.sunbird.job.qrimagegenerator.model.QRCodeGenerationRequest
 import org.sunbird.job.qrimagegenerator.task.QRCodeImageGeneratorConfig
 import org.sunbird.job.util.CassandraUtil
 
-
-class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil: CassandraUtil, cloudStorageUtil: CloudStorageUtil) {
+class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil: CassandraUtil, cloudStorageUtil: org.sunbird.job.util.CloudStorageUtil) {
   private val qrCodeWriter = new QRCodeWriter()
   private val fontStore: util.HashMap[String, Font] = new util.HashMap[String, Font]()
   private val LOGGER = LoggerFactory.getLogger(classOf[QRCodeImageGeneratorUtil])
@@ -65,9 +64,7 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
         val updateDownloadUrlQuery = "update dialcodes.dialcode_images set status=2, url='" + imageDownloadUrl + "' where filename='" + fileName + "'"
         cassandraUtil.executeQuery(updateDownloadUrlQuery)
       } catch {
-        case e: Exception =>
-
-        //ignore exception and proceed
+        case e: Exception => LOGGER.info("QRCodeImageGeneratorUtil: Failure while uploading download URL Query:: " + e.getMessage)
       }
     }
     fileList

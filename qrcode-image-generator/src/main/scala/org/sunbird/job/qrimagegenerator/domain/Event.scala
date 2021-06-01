@@ -25,8 +25,6 @@ class Event (eventMap: java.util.Map[String, Any], partition: Int, offset: Long)
 
   def imageFormat = imageConfig.imageFormat.getOrElse("png")
 
-  println(imageFormat)
-
   def isValid(): Boolean = {
     ( null != eid ) && ( !eid.isEmpty ) && ( StringUtils.equals("BE_QR_IMAGE_GENERATOR", eid))
   }

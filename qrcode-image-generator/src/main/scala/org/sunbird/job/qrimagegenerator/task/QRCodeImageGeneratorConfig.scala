@@ -1,7 +1,9 @@
 package org.sunbird.job.qrimagegenerator.task
 
 import java.util
+
 import com.typesafe.config.Config
+import org.apache.commons.lang3.StringUtils
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.sunbird.job.BaseJobConfig
@@ -41,6 +43,8 @@ class QRCodeImageGeneratorConfig(override val config: Config) extends BaseJobCon
   val azureStorageSecret= config.getString("azure.storage.secret")
   val awsStorageKey= config.getString("aws.storage.key")
   val awsStorageSecret= config.getString("aws.storage.secret")
+  val storageKey = if (StringUtils.equalsIgnoreCase(cloudStorageType, "azure")) azureStorageKey else awsStorageKey
+  val storageSecret = if (StringUtils.equalsIgnoreCase(cloudStorageType, "azure")) azureStorageSecret else awsStorageSecret
 
   //image Margings
   val qrImageBottomMargin= config.getInt("qr.image.bottom.margin")
