@@ -1,4 +1,4 @@
-package org.sunbird.job.model
+package org.sunbird.job.qrimagegenerator.model
 
 import java.util
 

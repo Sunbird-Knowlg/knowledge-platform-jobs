@@ -1,4 +1,4 @@
-package org.sunbird.job.util
+package org.sunbird.job.qrimagegenerator.util
 
 import org.apache.commons.lang3.StringUtils
 import org.sunbird.cloud.storage.BaseStorageService
@@ -9,7 +9,7 @@ import java.io.IOException
 import java.net.URL
 import java.nio.channels.Channels
 
-import org.sunbird.job.task.QRCodeImageGeneratorConfig
+import org.sunbird.job.qrimagegenerator.task.QRCodeImageGeneratorConfig
 
 
 class CloudStorageUtil(config: QRCodeImageGeneratorConfig) extends Serializable {

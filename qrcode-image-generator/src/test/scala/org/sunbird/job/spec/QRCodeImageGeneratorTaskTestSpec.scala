@@ -15,11 +15,12 @@ import org.cassandraunit.dataset.cql.FileCQLDataSet
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
 import org.mockito.Mockito
 import org.mockito.Mockito.when
-import org.sunbird.job.domain.Event
+import org.sunbird.job.qrimagegenerator.domain.Event
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.fixture.EventFixture
-import org.sunbird.job.task.{QRCodeImageGeneratorConfig, QRCodeImageGeneratorTask}
-import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, JSONUtil}
+import org.sunbird.job.qrimagegenerator.task.{QRCodeImageGeneratorConfig, QRCodeImageGeneratorTask}
+import org.sunbird.job.qrimagegenerator.util.CloudStorageUtil
+import org.sunbird.job.util.{CassandraUtil, JSONUtil}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 
 class QRCodeImageGeneratorTaskTestSpec extends BaseTestSpec {

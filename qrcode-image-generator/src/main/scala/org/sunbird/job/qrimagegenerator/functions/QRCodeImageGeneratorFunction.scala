@@ -1,4 +1,4 @@
-package org.sunbird.job.functions
+package org.sunbird.job.qrimagegenerator.functions
 
 import java.io.File
 import java.util
@@ -9,12 +9,14 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
+
 import scala.collection.JavaConversions._
-import org.sunbird.job.domain.Event
-import org.sunbird.job.task.QRCodeImageGeneratorConfig
-import org.sunbird.job.util._
+import org.sunbird.job.qrimagegenerator.domain.Event
+import org.sunbird.job.qrimagegenerator.task.QRCodeImageGeneratorConfig
 import org.sunbird.job.{BaseProcessFunction, Metrics}
-import org.sunbird.job.model.QRCodeGenerationRequest
+import org.sunbird.job.qrimagegenerator.model.QRCodeGenerationRequest
+import org.sunbird.job.util.CassandraUtil
+import org.sunbird.job.qrimagegenerator.util._
 
 case class DialCodes(data: String, text: String, id: String, location: Option[String])
 case class StorageConfig(container: String, path: String, fileName: String)
@@ -80,7 +82,7 @@ class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig,
                           cloudStorageUtil.downloadFile(f.get("location").get.asInstanceOf[String], fileToSave)
                           availableImages.add(fileToSave)
                       } catch {
-                          case e: Exception => LOGGER.error("QRCodeImageGeneratorService:processMessage: Error while downloading image: " + f.get("location").get.asInstanceOf[String] + " With exception: " + e)
+                          case e: Exception => throw InvalidEventGenerator
                       }
                 }
 
@@ -93,7 +95,6 @@ class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig,
 //
                 val qrGenRequest: QRCodeGenerationRequest = getQRCodeGenerationRequest(event.imageConfig, dialCodeDataList.dataList, dialCodeDataList.textList, dialCodeDataList.fileNameList)
                 val generatedImages = qRCodeImageGeneratorUtil.createQRImages(qrGenRequest, config, event.storageContainer, event.storagePath)
-                println("generated ImaGES: " + generatedImages)
                 if (!StringUtils.isBlank(event.processId)) {
                     var zipFileName = event.storageFileName
                     LOGGER.info("QRCodeImageGeneratorService:processMessage: Generating zip for QR codes with processId " + event.processId)

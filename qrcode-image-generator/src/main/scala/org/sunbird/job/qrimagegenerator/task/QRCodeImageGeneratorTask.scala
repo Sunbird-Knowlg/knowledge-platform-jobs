@@ -1,4 +1,4 @@
-package org.sunbird.job.task
+package org.sunbird.job.qrimagegenerator.task
 
 import java.io.File
 
@@ -8,8 +8,8 @@ import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.domain.Event
-import org.sunbird.job.functions.QRCodeImageGeneratorFunction
+import org.sunbird.job.qrimagegenerator.domain.Event
+import org.sunbird.job.qrimagegenerator.functions.QRCodeImageGeneratorFunction
 import org.sunbird.job.util.{ElasticSearchUtil, FlinkUtil}
 
 

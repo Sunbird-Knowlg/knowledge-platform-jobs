@@ -1,4 +1,4 @@
-package org.sunbird.job.util
+package org.sunbird.job.qrimagegenerator.util
 
 import java.io.{File, FileInputStream, FileOutputStream, IOException}
 import java.util

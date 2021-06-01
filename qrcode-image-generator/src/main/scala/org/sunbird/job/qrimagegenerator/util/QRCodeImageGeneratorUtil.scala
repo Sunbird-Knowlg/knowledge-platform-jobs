@@ -1,4 +1,4 @@
-package org.sunbird.job.util
+package org.sunbird.job.qrimagegenerator.util
 
 import java.awt._
 import java.awt.font.TextAttribute
@@ -13,8 +13,9 @@ import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import javax.imageio.ImageIO
 import org.slf4j.LoggerFactory
-import org.sunbird.job.model.QRCodeGenerationRequest
-import org.sunbird.job.task.QRCodeImageGeneratorConfig
+import org.sunbird.job.qrimagegenerator.model.QRCodeGenerationRequest
+import org.sunbird.job.qrimagegenerator.task.QRCodeImageGeneratorConfig
+import org.sunbird.job.util.CassandraUtil
 
 
 class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil: CassandraUtil, cloudStorageUtil: CloudStorageUtil) {
