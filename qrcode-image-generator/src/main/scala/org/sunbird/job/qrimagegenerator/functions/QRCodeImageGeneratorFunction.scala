@@ -14,7 +14,6 @@ import scala.collection.JavaConversions._
 import org.sunbird.job.qrimagegenerator.domain.Event
 import org.sunbird.job.qrimagegenerator.task.QRCodeImageGeneratorConfig
 import org.sunbird.job.{BaseProcessFunction, Metrics}
-import org.sunbird.job.qrimagegenerator.model.QRCodeGenerationRequest
 import org.sunbird.job.util.{ CassandraUtil, CloudStorageUtil }
 import org.sunbird.job.qrimagegenerator.util.{ ZipEditorUtil, QRCodeImageGeneratorUtil }
 import org.sunbird.job.exception.InvalidEventException
@@ -25,6 +24,8 @@ case class Config(errorCorrectionLevel: Option[String] = Option(""), pixelsPerBl
                   textFontName: Option[String] = Option(""), textFontSize: Option[Int]= Option(0), textCharacterSpacing: Option[Double]= Option(0),
                   imageFormat: Option[String]= Option("png"), colourModel: Option[String]= Option(""),imageBorderSize: Option[Int]= Option(0),
                   qrCodeMarginBottom: Option[Int] = Option(0), imageMargin: Option[Int]= Option(0))
+
+case class QRCodeImageGenerator( data: util.List[String] = null, errorCorrectionLevel: String = null,pixelsPerBlock: Int = 0,qrCodeMargin: Int = 0,text: util.List[String] = null,textFontName: String = null,textFontSize: Int = 0,textCharacterSpacing: Double = .0,imageBorderSize: Int = 0,colorModel: String = null,fileName: util.List[String] = null,fileFormat: String = null,qrCodeMarginBottom: Int = 0,imageMargin: Int = 0,tempFilePath: String = null)
 
 case class DialCodesData(dataList: util.ArrayList[String], textList: util.ArrayList[String], fileNameList: util.ArrayList[String])
 
@@ -94,8 +95,8 @@ class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig,
                     fileNameList.add(f.get("id").get.asInstanceOf[String])
                 }
                 val dialCodeDataList = DialCodesData(dataList, textList, fileNameList)
-//
-                val qrGenRequest: QRCodeGenerationRequest = getQRCodeGenerationRequest(event.imageConfig, dialCodeDataList.dataList, dialCodeDataList.textList, dialCodeDataList.fileNameList)
+
+                val qrGenRequest: QRCodeImageGenerator = getQRCodeGenerationRequest(event.imageConfig, dialCodeDataList.dataList, dialCodeDataList.textList, dialCodeDataList.fileNameList)
                 val generatedImages = qRCodeImageGeneratorUtil.createQRImages(qrGenRequest, config, event.storageContainer, event.storagePath)
                 if (!StringUtils.isBlank(event.processId)) {
                     var zipFileName = event.storageFileName
@@ -127,24 +128,11 @@ class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig,
         }
     }
 
-    def getQRCodeGenerationRequest(qrImageconfig: Config, dataList: util.List[String], textList: util.List[String], fileNameList: util.List[String]) = {
-        val qrGenRequest = new QRCodeGenerationRequest
-        qrGenRequest.setData(dataList)
-        qrGenRequest.setText(textList)
-        qrGenRequest.setFileName(fileNameList)
-        qrGenRequest.setErrorCorrectionLevel(qrImageconfig.errorCorrectionLevel.get.asInstanceOf[String])
-        qrGenRequest.setPixelsPerBlock(qrImageconfig.pixelsPerBlock.get.asInstanceOf[Integer])
-        qrGenRequest.setQrCodeMargin(qrImageconfig.qrCodeMargin.get.asInstanceOf[Integer])
-        qrGenRequest.setTextFontName(qrImageconfig.textFontName.get.asInstanceOf[String])
-        qrGenRequest.setTextFontSize(qrImageconfig.textFontSize.get.asInstanceOf[Integer])
-        qrGenRequest.setTextCharacterSpacing(qrImageconfig.textCharacterSpacing.get.asInstanceOf[Double])
-        qrGenRequest.setFileFormat(qrImageconfig.imageFormat.get.asInstanceOf[String])
-        qrGenRequest.setColorModel(qrImageconfig.colourModel.get)
-        qrGenRequest.setImageBorderSize(qrImageconfig.imageBorderSize.get.asInstanceOf[Integer])
-        qrGenRequest.setQrCodeMarginBottom(qrImageconfig.qrCodeMarginBottom.getOrElse(config.qrImageBottomMargin))
-        qrGenRequest.setImageMargin(qrImageconfig.imageMargin.getOrElse(config.qrImageMargin))
-        qrGenRequest.setTempFilePath(config.lpTempfileLocation)
-        qrGenRequest
+    def getQRCodeGenerationRequest(qrImageconfig: Config, dataList: util.List[String], textList: util.List[String], fileNameList: util.List[String]): QRCodeImageGenerator = {
+        QRCodeImageGenerator(dataList, qrImageconfig.errorCorrectionLevel.get, qrImageconfig.pixelsPerBlock.get.asInstanceOf[Integer],
+            qrImageconfig.qrCodeMargin.get.asInstanceOf[Integer], textList, qrImageconfig.textFontName.get, qrImageconfig.textFontSize.get,
+            qrImageconfig.textCharacterSpacing.get, qrImageconfig.imageBorderSize.get, qrImageconfig.colourModel.get, fileNameList, qrImageconfig.imageFormat.get,
+            qrImageconfig.qrCodeMarginBottom.get, qrImageconfig.imageMargin.get, config.lpTempfileLocation)
     }
 
     def updateCassandra(table: String, status: Int, downloadURL: String, whereClauseKey: String, whereClauseValue: String): Unit = {

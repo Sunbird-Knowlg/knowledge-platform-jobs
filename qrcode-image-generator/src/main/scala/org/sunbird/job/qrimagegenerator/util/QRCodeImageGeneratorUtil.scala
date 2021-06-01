@@ -13,7 +13,7 @@ import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import com.google.zxing.{BarcodeFormat, EncodeHintType, NotFoundException, WriterException}
 import javax.imageio.ImageIO
 import org.slf4j.LoggerFactory
-import org.sunbird.job.qrimagegenerator.model.QRCodeGenerationRequest
+import org.sunbird.job.qrimagegenerator.functions.QRCodeImageGenerator
 import org.sunbird.job.qrimagegenerator.task.QRCodeImageGeneratorConfig
 import org.sunbird.job.util.CassandraUtil
 
@@ -26,23 +26,24 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
   @throws[IOException]
   @throws[NotFoundException]
   @throws[FontFormatException]
-  def createQRImages(qrGenRequest: QRCodeGenerationRequest, appConfig: QRCodeImageGeneratorConfig, container: String, path: String): util.List[File] = {
+  def createQRImages(qrGenRequest: QRCodeImageGenerator, appConfig: QRCodeImageGeneratorConfig, container: String, path: String): util.List[File] = {
     val fileList = new util.ArrayList[File]
-    val dataList = qrGenRequest.getData
-    val textList = qrGenRequest.getText
-    val fileNameList = qrGenRequest.getFileName
-    val errorCorrectionLevel = qrGenRequest.getErrorCorrectionLevel
-    val pixelsPerBlock = qrGenRequest.getPixelsPerBlock
-    val qrMargin = qrGenRequest.getQrCodeMargin
-    val fontName = qrGenRequest.getTextFontName
-    val fontSize = qrGenRequest.getTextFontSize
-    val tracking = qrGenRequest.getTextCharacterSpacing
-    val imageFormat = qrGenRequest.getFileFormat
-    val colorModel = qrGenRequest.getColorModel
-    val borderSize = qrGenRequest.getImageBorderSize
-    val qrMarginBottom = qrGenRequest.getQrCodeMarginBottom
-    val imageMargin = qrGenRequest.getImageMargin
-    val tempFilePath = qrGenRequest.getTempFilePath
+    val dataList = qrGenRequest.data
+    val textList = qrGenRequest.text
+    val fileNameList = qrGenRequest.fileName
+    val errorCorrectionLevel = qrGenRequest.errorCorrectionLevel
+    val pixelsPerBlock = qrGenRequest.pixelsPerBlock
+    val qrMargin = qrGenRequest.qrCodeMargin
+    val fontName = qrGenRequest.textFontName
+    val fontSize = qrGenRequest.textFontSize
+    val tracking = qrGenRequest.textCharacterSpacing
+    val imageFormat = qrGenRequest.fileFormat
+    val colorModel = qrGenRequest.colorModel
+    val borderSize = qrGenRequest.imageBorderSize
+    val qrMarginBottom = qrGenRequest.qrCodeMarginBottom
+    val imageMargin = qrGenRequest.imageMargin
+    val tempFilePath = qrGenRequest.tempFilePath
+
     for(i <- 0 to dataList.size()) {
       val data = dataList.get(i)
       val text = textList.get(i)
