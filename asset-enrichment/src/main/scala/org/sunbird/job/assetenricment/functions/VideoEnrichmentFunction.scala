@@ -8,6 +8,7 @@ import org.sunbird.job.assetenricment.helpers.{OptimizerHelper, VideoEnrichmentH
 import org.sunbird.job.assetenricment.models.Asset
 import org.sunbird.job.assetenricment.task.AssetEnrichmentConfig
 import org.sunbird.job.assetenricment.util.{CloudStorageUtil, YouTubeUtil}
+import org.sunbird.job.exception.InvalidEventException
 import org.sunbird.job.util.Neo4JUtil
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
@@ -30,7 +31,7 @@ class VideoEnrichmentFunction(config: AssetEnrichmentConfig,
   override def close(): Unit = {
     super.close()
   }
-
+  @throws(classOf[InvalidEventException])
   override def processElement(event: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
     logger.info(s"Received message for Video Enrichment for identifier : ${event.id}.")
     metrics.incCounter(config.videoEnrichmentEventCount)
@@ -45,7 +46,7 @@ class VideoEnrichmentFunction(config: AssetEnrichmentConfig,
       case ex: Exception =>
         logger.error(s"Error while processing message for Video Enrichment for identifier : ${asset.identifier}.", ex)
         metrics.incCounter(config.failedVideoEnrichmentEventCount)
-        throw ex
+        throw new InvalidEventException(ex.getMessage, Map("partition" -> event.partition, "offset" -> event.offset), ex)
     }
   }
 

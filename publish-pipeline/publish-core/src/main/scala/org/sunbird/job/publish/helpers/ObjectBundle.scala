@@ -1,5 +1,11 @@
 package org.sunbird.job.publish.helpers
 
+import java.io.{BufferedOutputStream, ByteArrayOutputStream, File, FileInputStream, FileOutputStream}
+import java.text.SimpleDateFormat
+import java.util
+import java.util.{Date, Optional}
+import java.util.zip.{ZipEntry, ZipOutputStream}
+import java.net.{HttpURLConnection, URL}
 import org.apache.commons.io.{FileUtils, FilenameUtils, IOUtils}
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
@@ -7,12 +13,6 @@ import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.publish.core.{DefinitionConfig, ObjectData, Slug}
 import org.sunbird.job.util.{JSONUtil, ScalaJsonUtil}
 
-import java.io._
-import java.net.{HttpURLConnection, URL}
-import java.text.SimpleDateFormat
-import java.util
-import java.util.Date
-import java.util.zip.{ZipEntry, ZipOutputStream}
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
 
@@ -39,7 +39,25 @@ trait ObjectBundle {
 			val objectType = data.getOrElse("objectType", "").asInstanceOf[String].replaceAll("Image", "")
 			val contentDisposition = data.getOrElse("contentDisposition", "").asInstanceOf[String]
 			val dUrlMap: Map[AnyRef, String] = getDownloadUrls(identifier, pkgType, isOnline(mimeType, contentDisposition), data)
-			val updatedObj: Map[String, AnyRef] = data.map(entry => if (dUrlMap.contains(entry._2)) (entry._1.asInstanceOf[String], dUrlMap.getOrElse(entry._2.asInstanceOf[String], "").asInstanceOf[AnyRef]) else entry)
+			val updatedObj: Map[String, AnyRef] = data.map(entry =>
+				if (dUrlMap.contains(entry._2)) {
+					(entry._1.asInstanceOf[String], dUrlMap.getOrElse(entry._2.asInstanceOf[String], "").asInstanceOf[AnyRef])
+				} else if(StringUtils.equalsIgnoreCase("FULL", pkgType) && StringUtils.equalsIgnoreCase(entry._1, "media")) {
+					val media: List[Map[String, AnyRef]] = Optional.ofNullable(ScalaJsonUtil.deserialize[List[Map[String, AnyRef]]](entry._2.asInstanceOf[String])).orElse(List[Map[String, AnyRef]]())
+					val newMedia = media.map( m => {
+						m.map(entry => {
+							entry._1 match {
+								case "baseUrl" => (entry._1, "")
+								case "src" => (entry._1, getRelativePath(identifier, entry._2.asInstanceOf[String]))
+								case _ => entry
+							}
+						})
+					})
+					(entry._1, ScalaJsonUtil.serialize(newMedia))
+				} else {
+					entry
+				}
+			)
 			val downloadUrl: String = updatedObj.getOrElse("downloadUrl", "").asInstanceOf[String]
 			val dUrl: String = if(StringUtils.isNotBlank(downloadUrl)) downloadUrl else updatedObj.getOrElse("artifactUrl", "").asInstanceOf[String]
 			val dMap = if (StringUtils.equalsIgnoreCase(contentDisposition, "online-only")) Map("downloadUrl" -> null)

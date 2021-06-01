@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory
 import org.sunbird.job.Metrics
 import org.sunbird.job.audithistory.domain.{AuditHistoryRecord, Event}
 import org.sunbird.job.audithistory.task.AuditHistoryIndexerConfig
+import org.sunbird.job.exception.InvalidEventException
 import org.sunbird.job.util.{ElasticSearchUtil, JSONUtil}
 
 import java.io.IOException
@@ -13,6 +14,7 @@ import java.util.{Calendar, Date, TimeZone}
 trait AuditHistoryIndexerService {
   private[this] lazy val logger = LoggerFactory.getLogger(classOf[AuditHistoryIndexerService])
 
+  @throws(classOf[InvalidEventException])
   def processEvent(event: Event, metrics: Metrics)(implicit esUtil: ElasticSearchUtil, config: AuditHistoryIndexerConfig): Unit = {
     if (event.isValid) {
       val identifier = event.nodeUniqueId
@@ -29,7 +31,7 @@ trait AuditHistoryIndexerService {
           logger.error("Error while indexing message :: " + event.getJson + " :: " + ex.getMessage)
           ex.printStackTrace()
           metrics.incCounter(config.esFailedEventCount)
-          throw ex
+          throw new InvalidEventException(ex.getMessage, Map("partition" -> event.partition, "offset" -> event.offset), ex)
         case ex: Exception =>
           logger.error("Error while processing message :: " + event.getJson + " :: ", ex)
           metrics.incCounter(config.failedEventCount)

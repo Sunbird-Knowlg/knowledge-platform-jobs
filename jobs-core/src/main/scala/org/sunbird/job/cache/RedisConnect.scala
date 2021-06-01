@@ -21,7 +21,7 @@ class RedisConnect(jobConfig: BaseJobConfig, host: Option[String] = None, port: 
       case e: InterruptedException =>
         e.printStackTrace()
     }
-    logger.info("Obtaining new Redis connection...")
+    logger.info("Obtaining new Redis connection... : for host :" + redisHost + " and  port: " + redisPort)
     new Jedis(redisHost, redisPort, defaultTimeOut)
   }
 
