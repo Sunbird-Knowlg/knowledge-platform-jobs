@@ -26,8 +26,6 @@ import org.sunbird.job.certgen.task.CertificateGeneratorConfig
 import org.sunbird.job.exception.InvalidEventException
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, ScalaJsonUtil}
 import org.sunbird.job.{BaseProcessFunction, Metrics}
-import org.sunbird.notifier.NotificationMetaData
-import org.sunbird.user.feeds.UserFeedMetaData
 
 import scala.collection.JavaConverters._
 
@@ -53,7 +51,7 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
   }
 
   override def metricsList(): List[String] = {
-    List(config.successEventCount, config.failedEventCount, config.skippedEventCount, config.totalEventsCount, config.dbUpdateCount, config.enrollmentDbReadCount, config.totalEventsCount, config.skipNotifyUserCount, config.notifiedUserCount)
+    List(config.successEventCount, config.failedEventCount, config.skippedEventCount, config.totalEventsCount, config.dbUpdateCount, config.enrollmentDbReadCount, config.totalEventsCount)
   }
 
 
@@ -87,27 +85,14 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
         certificateExtension.printUri = Option(printUri)
         val jsonUrl = uploadJson(certificateExtension, directory.concat(uuid).concat(".json"), event.tag.concat("/"))
         //adding certificate to registry
-        val addReq = new java.util.HashMap[String, AnyRef]() {
-          {
-            put(JsonKeys.REQUEST, new java.util.HashMap[String, AnyRef]() {
-              {
-                put(JsonKeys.ID, uuid)
-                put(JsonKeys.JSON_URL, certificateConfig.basePath.concat(jsonUrl))
-                put(JsonKeys.JSON_DATA, certificateExtension)
-                put(JsonKeys.ACCESS_CODE, qrMap.accessCode)
-                put(JsonKeys.RECIPIENT_NAME, certModel.recipientName)
-                put(JsonKeys.RECIPIENT_ID, certModel.identifier)
-                put(config.RELATED, event.related)
-                val oldId = event.oldId
-                if (StringUtils.isNotBlank(oldId))
-                  put(config.OLD_ID, oldId)
-              }
-            })
-          }
-        }
+        val addReq = Map[String, AnyRef](JsonKeys.REQUEST -> Map[String, AnyRef](
+          JsonKeys.ID -> uuid, JsonKeys.JSON_URL -> certificateConfig.basePath.concat(jsonUrl),
+          JsonKeys.JSON_DATA -> certificateExtension, JsonKeys.ACCESS_CODE -> qrMap.accessCode,
+          JsonKeys.RECIPIENT_NAME -> certModel.recipientName, JsonKeys.RECIPIENT_ID -> certModel.identifier,
+          config.RELATED -> event.related
+        )) ++ {if (!event.oldId.isEmpty) Map[String, AnyRef](config.OLD_ID -> event.oldId) else Map[String, AnyRef]()}
         addCertToRegistry(event, addReq, context)(metrics)
         //cert-registry end
-
         val related = event.related
         val userEnrollmentData = UserEnrollmentData(related.getOrElse(config.BATCH_ID, "").asInstanceOf[String], certModel.identifier,
           related.getOrElse(config.COURSE_ID, "").asInstanceOf[String], event.courseName, event.templateId,
@@ -121,7 +106,7 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
   }
 
   @throws[ServerException]
-  def addCertToRegistry(certReq: Event, request: java.util.HashMap[String, AnyRef], context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
+  def addCertToRegistry(certReq: Event, request: Map[String, AnyRef], context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
     logger.info("adding certificate to the registry")
     val httpRequest = ScalaModuleJsonUtils.serialize(request)
     val httpResponse = httpUtil.post(config.certRegistryBaseUrl + config.addCertRegApi, httpRequest)
@@ -176,15 +161,13 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
           certificatesList = new util.ArrayList[util.Map[String, String]]()
         }
         val updatedCerts: util.List[util.Map[String, String]] = certificatesList.stream().filter(cert => !StringUtils.equalsIgnoreCase(certMetaData.certificate.name, cert.get("name"))).collect(Collectors.toList())
-        updatedCerts.add(new java.util.HashMap[String, String]() {
-          {
-            put(config.name, certMetaData.certificate.name)
-            put(config.identifier, certMetaData.certificate.id)
-            put(config.token, certMetaData.certificate.token)
-            if (StringUtils.isNotBlank(certMetaData.certificate.lastIssuedOn))
-              put(config.lastIssuedOn, certMetaData.certificate.lastIssuedOn)
-          }
-        })
+        updatedCerts.add(mapAsJavaMap(Map[String, String](
+          config.name -> certMetaData.certificate.name,
+          config.identifier -> certMetaData.certificate.id,
+          config.token -> certMetaData.certificate.token,
+        ) ++ {if(!certMetaData.certificate.lastIssuedOn.isEmpty) Map[String, String](config.lastIssuedOn -> certMetaData.certificate.lastIssuedOn)
+        else Map[String, String]()}))
+        
         val query = getUpdateIssuedCertQuery(updatedCerts, certMetaData.userId, certMetaData.courseId, certMetaData.batchId, config)
         logger.info("update query {}", query.toString)
         val result = cassandraUtil.update(query)
@@ -201,9 +184,7 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
           context.output(config.userFeedOutputTag, UserFeedMetaData(certMetaData.userId, certMetaData.courseName, issuedOn, certMetaData.courseId))
         } else {
           metrics.incCounter(config.failedEventCount)
-          val edata = event.eData + "failInfo" -> FailedEvent("ERR_DB_UPDATION_FAILED", "db update failed")
-          context.output(config.failedEventOutputTag, ScalaJsonUtil.serialize(edata))
-          logger.info("Database update has failed {}", query)
+          throw new Exception(s"Update certificates to enrolments failed: ${event}")
         }
 
       })

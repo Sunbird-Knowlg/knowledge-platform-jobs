@@ -2,7 +2,6 @@ package org.sunbird.job.certgen.functions
 
 import java.net.{MalformedURLException, URI, URISyntaxException, URL}
 import java.text.MessageFormat
-import java.util
 import java.util.regex.Pattern
 
 import org.apache.commons.lang3.StringUtils

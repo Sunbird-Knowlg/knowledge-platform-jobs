@@ -7,8 +7,7 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.streaming.api.scala.OutputTag
 import org.sunbird.job.BaseJobConfig
-import org.sunbird.notifier.NotificationMetaData
-import org.sunbird.user.feeds.UserFeedMetaData
+import org.sunbird.job.certgen.functions.{NotificationMetaData, UserFeedMetaData}
 
 class CertificateGeneratorConfig(override val config: Config) extends BaseJobConfig(config, "collection-certificate-generator") {
 
@@ -21,12 +20,10 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
 
   // Kafka Topics Configuration
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
-  val kafkaFailedEventTopic: String = config.getString("kafka.output.failed.topic")
   val kafkaAuditEventTopic: String = config.getString("kafka.output.audit.topic")
 
 
   // Producers
-  val certificateGeneratorFailedEventProducer = "certificate-generate-failed-sink"
   val certificateGeneratorAuditProducer = "collection-certificate-generator-audit-events-sink"
 
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
@@ -39,6 +36,7 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   val dbKeyspace: String = config.getString("lms-cassandra.keyspace")
   val dbHost: String = config.getString("lms-cassandra.host")
   val dbPort: Int = config.getInt("lms-cassandra.port")
+  val dbCourseBatchTable: String = config.getString("lms-cassandra.course_batch.table")
 
   // Metric List
   val totalEventsCount = "total-events-count"
@@ -49,6 +47,7 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   val dbUpdateCount = "db-update-user-enrollment-count"
   val notifiedUserCount = "notified-user-count"
   val skipNotifyUserCount = "skipped-notify-user-count"
+  val courseBatchdbReadCount = "db-course-batch-read-count"
 
   // Consumers
   val certificateGeneratorConsumer = "certificate"
@@ -61,10 +60,13 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   val domainUrl: String = config.getString("cert_domain_url")
   val encServiceUrl: String = config.getString("service.enc.basePath")
   val certRegistryBaseUrl: String = config.getString("service.certreg.basePath")
+  val learnerServiceBaseUrl: String = config.getString("service.learner.basePath")
   val basePath: String = domainUrl.concat("/").concat("certs")
   val awsStorageSecret: String = ""
   val awsStorageKey: String = ""
   val addCertRegApi = "/certs/v2/registry/add"
+  val userFeedCreateEndPoint:String = "/private/user/feed/v1/create"
+  val notificationEndPoint: String = "/v2/notification"
 
   //constant
   val DATA: String = "data"
@@ -122,9 +124,13 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   // Tags
   val auditEventOutputTagName = "audit-events"
   val auditEventOutputTag: OutputTag[String] = OutputTag[String](auditEventOutputTagName)
-  val failedEventOutputTagName = "failed-events"
-  val failedEventOutputTag: OutputTag[String] = OutputTag[String](failedEventOutputTagName)
   val notifierOutputTag: OutputTag[NotificationMetaData] = OutputTag[NotificationMetaData]("notifier")
   val userFeedOutputTag: OutputTag[UserFeedMetaData] = OutputTag[UserFeedMetaData]("user-feed")
-
+  
+  //UserFeed constants
+  val priority: String = "priority"
+  val userFeedMsg: String = "You have earned a certificate! Download it from your profile page."
+  val priorityValue = 1
+  val userFeedCount = "user-feed-count"
+  
 }

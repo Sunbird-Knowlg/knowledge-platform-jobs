@@ -52,9 +52,4 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 
   def related: Map[String, AnyRef] = readOrDefault[Map[String, AnyRef]]("edata.related", Map[String, AnyRef]())
 
-  def validEvent(): Boolean = {
-    true
-  }
-
-
 }

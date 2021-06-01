@@ -11,13 +11,11 @@ import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.incredible.StorageParams
 import org.sunbird.incredible.processor.store.StorageService
 import org.sunbird.job.certgen.domain.Event
-import org.sunbird.job.certgen.functions.CertificateGeneratorFunction
+import org.sunbird.job.certgen.functions.{CertificateGeneratorFunction, CreateUserFeedFunction, NotificationMetaData, NotifierFunction, UserFeedMetaData}
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.util.{FlinkUtil, HttpUtil}
-import org.sunbird.notifier.{NotificationMetaData, NotifierConfig, NotifierFunction}
-import org.sunbird.user.feeds.{CreateUserFeedFunction, UserFeedConfig, UserFeedMetaData}
 
-class CertificateGeneratorStreamTask(config: CertificateGeneratorConfig, notifierConfig: NotifierConfig, userFeedConfig: UserFeedConfig, kafkaConnector: FlinkKafkaConnector, httpUtil: HttpUtil, storageService: StorageService) {
+class CertificateGeneratorStreamTask(config: CertificateGeneratorConfig, kafkaConnector: FlinkKafkaConnector, httpUtil: HttpUtil, storageService: StorageService) {
 
   def process(): Unit = {
     implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
@@ -38,24 +36,19 @@ class CertificateGeneratorStreamTask(config: CertificateGeneratorConfig, notifie
       .uid("collection-certificate-generator")
       .setParallelism(config.parallelism)
 
-    processStreamTask.getSideOutput(config.failedEventOutputTag)
-      .addSink(kafkaConnector.kafkaStringSink(config.kafkaFailedEventTopic))
-      .name(config.certificateGeneratorFailedEventProducer)
-      .uid(config.certificateGeneratorFailedEventProducer)
-
     processStreamTask.getSideOutput(config.auditEventOutputTag)
       .addSink(kafkaConnector.kafkaStringSink(config.kafkaAuditEventTopic))
       .name(config.certificateGeneratorAuditProducer)
       .uid(config.certificateGeneratorAuditProducer)
 
     processStreamTask.getSideOutput(config.notifierOutputTag)
-      .process(new NotifierFunction(notifierConfig, httpUtil))
+      .process(new NotifierFunction(config, httpUtil))
       .name("notifier")
       .uid("notifier")
       .setParallelism(1)
 
     processStreamTask.getSideOutput(config.userFeedOutputTag)
-      .process(new CreateUserFeedFunction(userFeedConfig, httpUtil))
+      .process(new CreateUserFeedFunction(config, httpUtil))
       .name("user-feed")
       .uid("user-feed")
       .setParallelism(1)
@@ -75,13 +68,11 @@ object CertificateGeneratorStreamTask {
       path => ConfigFactory.parseFile(new File(path)).resolve()
     }.getOrElse(ConfigFactory.load("collection-certificate-generator.conf").withFallback(ConfigFactory.systemEnvironment()))
     val ccgConfig = new CertificateGeneratorConfig(config)
-    val notifierConfig = new NotifierConfig(config)
-    val userFeedConfig = new UserFeedConfig(config)
     val kafkaUtil = new FlinkKafkaConnector(ccgConfig)
     val httpUtil = new HttpUtil
     val storageParams: StorageParams = StorageParams(ccgConfig.storageType, ccgConfig.azureStorageKey, ccgConfig.azureStorageSecret, ccgConfig.containerName)
     val storageService: StorageService = new StorageService(storageParams)
-    val task = new CertificateGeneratorStreamTask(ccgConfig, notifierConfig, userFeedConfig, kafkaUtil, httpUtil, storageService)
+    val task = new CertificateGeneratorStreamTask(ccgConfig, kafkaUtil, httpUtil, storageService)
     task.process()
   }
 }

@@ -1,6 +1,6 @@
 package org.sunbird.incredible.pojos.valuator
 
-import java.text.{ParseException, SimpleDateFormat}
+import java.text.SimpleDateFormat
 import java.util.regex.{Matcher, Pattern}
 import java.util.{Calendar, Date}
 
@@ -16,13 +16,13 @@ class ExpiryDateValuator(var issuedDate: String) extends IEvaluator {
     if (expiryDate.matches(pattern)) {
       expiryDate
     } else {
-      try if (issuedDate == null) {
+      if (issuedDate == null) {
         throw new InvalidDateFormatException("Issued date is null, please provide valid issued date ")
       } else {
 
         /**
-          * to split expiry dates of form (2m 2y)
-          */
+         * to split expiry dates of form (2m 2y)
+         */
         val splitExpiry: Array[String] = expiryDate.split(" ")
         val cal: Calendar = Calendar.getInstance
         val simpleDateFormat: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'")
@@ -39,9 +39,6 @@ class ExpiryDateValuator(var issuedDate: String) extends IEvaluator {
           }
         }
         simpleDateFormat.format(cal.getTime)
-      } catch {
-        case e: ParseException => null
-
       }
     }
   }
