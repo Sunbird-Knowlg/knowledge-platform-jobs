@@ -1,16 +1,15 @@
 package org.sunbird.job.postpublish.helpers
 
-import java.util
-
 import com.google.gson.Gson
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.Metrics
-import org.sunbird.job.models.ExtDataConfig
 import org.sunbird.job.postpublish.domain.Event
-import org.sunbird.job.task.PostPublishProcessorConfig
+import org.sunbird.job.postpublish.models.ExtDataConfig
+import org.sunbird.job.postpublish.task.PostPublishProcessorConfig
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, JSONUtil, Neo4JUtil}
 
+import java.util
 import scala.collection.JavaConverters._
 
 trait DialHelper {
@@ -108,7 +107,7 @@ trait DialHelper {
 
     if (validatePrimaryCategory(metadata)(config)) {
       logger.info(s"Primary Category match found. Starting the process for Dial Code Generation.")
-      Map[String, AnyRef]("identifier" -> metadata.get("identifier"),
+      Map[String, AnyRef]("identifier" -> identifier,
         "primaryCategory" -> metadata.getOrDefault("primaryCategory", ""),
         "contentType" -> metadata.getOrDefault("contentType", ""),
         "channel" -> metadata.getOrDefault("channel", ""),

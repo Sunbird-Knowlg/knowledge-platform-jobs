@@ -130,7 +130,7 @@
                             <transformers>
                                 <transformer
                                         implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>org.sunbird.job.task.PostPublishProcessorStreamTask</mainClass>
+                                    <mainClass>org.sunbird.job.postpublish.task.PostPublishProcessorStreamTask</mainClass>
                                 </transformer>
                                 <!-- append default configs -->
                                 <transformer

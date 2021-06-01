@@ -1,9 +1,9 @@
 package org.sunbird.job.spec
 
-import java.io.File
-
-import org.sunbird.job.util.Slug
+import org.sunbird.job.assetenricment.util.Slug
 import org.sunbird.spec.BaseTestSpec
+
+import java.io.File
 
 class SlugSpec extends BaseTestSpec{
 
