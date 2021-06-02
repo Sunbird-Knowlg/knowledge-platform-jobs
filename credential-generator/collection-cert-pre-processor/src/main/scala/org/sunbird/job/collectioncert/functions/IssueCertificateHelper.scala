@@ -1,5 +1,7 @@
 package org.sunbird.job.collectioncert.functions
 
+import java.text.SimpleDateFormat
+
 import com.datastax.driver.core.querybuilder.QueryBuilder
 import com.datastax.driver.core.{Row, TypeTokens}
 import org.slf4j.LoggerFactory
@@ -152,8 +154,9 @@ trait IssueCertificateHelper {
         def nullStringCheck(name:String) = {if(!"null".equalsIgnoreCase(name)) name  else ""}
         val recipientName = (nullStringCheck(firstName) + " " + nullStringCheck(lastName)).trim
         val courseName = getCourseName(event.courseId)(metrics, config, cache, httpUtil)
+        val dateFormatter = new SimpleDateFormat("yyyy-MM-dd")
         val eData = Map[String, AnyRef] (
-            "issuedDate" -> enrolledUser.issuedOn,
+            "issuedDate" -> dateFormatter.format(enrolledUser.issuedOn),
             "data" -> List(Map[String, AnyRef]("recipientName" -> recipientName, "recipientId" -> event.userId)),
             "criteria" -> Map[String, String]("narrative" -> certName),
             "svgTemplate" -> template.getOrElse("url", ""),
