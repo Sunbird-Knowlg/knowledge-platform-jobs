@@ -41,12 +41,11 @@ trait ObjectUpdater {
     val prevState = obj.metadata.getOrElse("status", "Live").asInstanceOf[String]
     val identifier = obj.identifier
     val metadataUpdateQuery = metaDataQuery(obj)(definitionCache, config)
-    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$identifier"}) SET n.status="$status",n.prevState=$prevState,$metadataUpdateQuery,$auditPropsUpdateQuery;"""
+    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$identifier"}) SET n.status="$status",n.prevState="$prevState",$metadataUpdateQuery,$auditPropsUpdateQuery;"""
     logger.info("Query: " + query)
     val result: StatementResult = neo4JUtil.executeQuery(query)
     if (null != result && result.hasNext)
       logger.info(s"statement result : ${result.next().asMap()}")
-    saveExternalData(obj, readerConfig)
   }
 
   def saveExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil)

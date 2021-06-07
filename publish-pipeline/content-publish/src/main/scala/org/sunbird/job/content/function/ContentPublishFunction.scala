@@ -25,7 +25,7 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
 														 @transient var definitionCache: DefinitionCache = null,
 														 @transient var definitionConfig: DefinitionConfig = null)
 														(implicit val stringTypeInfo: TypeInformation[String])
-  extends BaseProcessFunction[PublishMetadata, String](config) with ContentPublisher {
+	extends BaseProcessFunction[PublishMetadata, String](config) with ContentPublisher {
 
 	private[this] val logger = LoggerFactory.getLogger(classOf[ContentPublishFunction])
 	val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
@@ -58,11 +58,8 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
 		metrics.incCounter(config.contentPublishEventCount)
 		val obj = getObject(data.identifier, data.pkgVersion, readerConfig)(neo4JUtil, cassandraUtil)
 		val messages:List[String] = validate(obj, obj.identifier, validateMetadata)
-		if(obj.pkgVersion > data.pkgVersion) {
-			//TODO: Prepublish validation - How to append the value in existing list
-			// messages += s"""pkgVersion should be greater than or equal to the obj.pkgVersion for : $obj.identifier"""
-		}
-		if (messages.isEmpty) {
+		val validationMsg = if (obj.pkgVersion > data.pkgVersion) messages ++ List(s"""pkgVersion should be greater than or equal to the obj.pkgVersion for : $obj.identifier""") else messages
+		if (validationMsg.isEmpty) {
 			// Prepublish update
 			updateNode(obj)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
 			// Clear redis cache
@@ -73,7 +70,7 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
 			metrics.incCounter(config.contentPublishSuccessEventCount)
 			logger.info("Content publishing completed successfully for : " + data.identifier)
 		} else {
-			saveOnFailure(obj, messages)(neo4JUtil)
+			saveOnFailure(obj, validationMsg)(neo4JUtil)
 			metrics.incCounter(config.contentPublishFailedEventCount)
 			logger.info("Content publishing failed for : " + data.identifier)
 		}
