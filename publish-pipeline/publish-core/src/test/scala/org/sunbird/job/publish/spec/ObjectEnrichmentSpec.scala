@@ -45,7 +45,7 @@ class ObjectEnrichmentSpec extends FlatSpec with BeforeAndAfterAll with Matchers
 
     resultMetadata.getOrElse("se_FWIds", List()).asInstanceOf[List[String]].isEmpty should be(false)
     resultMetadata.getOrElse("se_FWIds", List()).asInstanceOf[List[String]].contains("NCERT") should be(true)
-    resultMetadata.getOrElse("se_boardIds", List()).asInstanceOf[List[String]].isEmpty should be(false)
+    resultMetadata.getOrElse("se_boardIds", List()).asInstanceOf[List[String]].isEmpty should be(true)
 
     resultMetadata.getOrElse("posterImage", "").asInstanceOf[String].isEmpty should be(false)
     resultMetadata.getOrElse("appIcon", "").asInstanceOf[String].isEmpty should be(false)
