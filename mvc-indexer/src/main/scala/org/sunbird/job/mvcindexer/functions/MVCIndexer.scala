@@ -5,15 +5,15 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.sunbird.job.mvcindexer.domain.Event
-import org.sunbird.job.mvcindexer.service.MVCProcessorIndexerService
-import org.sunbird.job.mvcindexer.task.MVCProcessorIndexerConfig
+import org.sunbird.job.mvcindexer.service.MVCIndexerService
+import org.sunbird.job.mvcindexer.task.MVCIndexerConfig
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 import org.sunbird.job.util.{CassandraUtil, ElasticSearchUtil}
 
-class MVCProcessorIndexer(config: MVCProcessorIndexerConfig, var esUtil: ElasticSearchUtil)
+class MVCIndexer(config: MVCIndexerConfig, var esUtil: ElasticSearchUtil)
                           (implicit mapTypeInfo: TypeInformation[util.Map[String, Any]],
                            stringTypeInfo: TypeInformation[String])
-                          extends BaseProcessFunction[Event, String](config) with MVCProcessorIndexerService{
+                          extends BaseProcessFunction[Event, String](config) with MVCIndexerService{
 
     var cassandraUtil: CassandraUtil = _
 
@@ -39,7 +39,7 @@ class MVCProcessorIndexer(config: MVCProcessorIndexerConfig, var esUtil: Elastic
                                 metrics: Metrics): Unit = {
         metrics.incCounter(config.totalEventsCount)
         if(event.isValid) {
-            processEvent(event, metrics)(esUtil, config)
+            processMessage(event, metrics, context)(esUtil, config)
         } else metrics.incCounter(config.skippedEventCount)
     }
 }

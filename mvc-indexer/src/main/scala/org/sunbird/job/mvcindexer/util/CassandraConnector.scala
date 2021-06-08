@@ -6,9 +6,7 @@ import com.datastax.driver.core.Cluster
 import com.datastax.driver.core.PreparedStatement
 import com.datastax.driver.core.Session
 import org.apache.commons.lang3.StringUtils
-import org.sunbird.common.Platform
-import org.sunbird.jobs.samza.util.JobLogger
-import java.net.InetSocketAddress
+import com.datastax.driver.core.querybuilder.QueryBuilder
 //import java.util._
 
 
@@ -37,16 +35,16 @@ object CassandraConnector {
   def updateContentProperties(contentId: String, map: Map[String, AnyRef]): Unit = {
     val session = getSession
     if (null == map || map.isEmpty) return
-    val query = getUpdateQuery(map.keySet)
-    if (query == null) return
-    val ps = session.prepare(query)
-    val values = new Array[AnyRef](map.size + 1)
+//    val query = getUpdateQuery(map.keySet)
+//    if (query == null) return
+//    val ps = session.prepare(query)
+//    val values = new Array[AnyRef](map.size + 1)
     try {
       var i = 0
-      import scala.collection.JavaConversions._
-      for (entry <- map.entrySet) {
-        if (null != entry.getValue) {
-          values(i) = entry.getValue
+
+      for (entry <- map.toList) {
+        if (null != entry._2) {
+          values(i) = entry._1
           i += 1
         }
       }

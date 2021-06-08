@@ -9,11 +9,11 @@ import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.mvcindexer.domain.Event
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.mvcindexer.functions.MVCProcessorIndexer
+import org.sunbird.job.mvcindexer.functions.MVCIndexer
 import org.sunbird.job.util.{ElasticSearchUtil, FlinkUtil}
 
 
-class MVCProcessorIndexerStreamTask(config: MVCProcessorIndexerConfig, kafkaConnector: FlinkKafkaConnector, esUtil: ElasticSearchUtil) {
+class MVCIndexerStreamTask(config: MVCIndexerConfig, kafkaConnector: FlinkKafkaConnector, esUtil: ElasticSearchUtil) {
   def process(): Unit = {
     implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
     implicit val eventTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
@@ -23,9 +23,9 @@ class MVCProcessorIndexerStreamTask(config: MVCProcessorIndexerConfig, kafkaConn
     val processStreamTask = env.addSource(kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)).name(config.eventConsumer)
       .uid(config.eventConsumer).setParallelism(config.kafkaConsumerParallelism)
       .rebalance
-      .process(new MVCProcessorIndexer(config, esUtil))
-      .name(config.mvcProcessorIndexerFunction)
-      .uid(config.mvcProcessorIndexerFunction)
+      .process(new MVCIndexer(config, esUtil))
+      .name(config.mvcIndexerFunction)
+      .uid(config.mvcIndexerFunction)
       .setParallelism(config.parallelism)
 
     processStreamTask.getSideOutput(config.failedOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaFailedTopic))
@@ -36,17 +36,17 @@ class MVCProcessorIndexerStreamTask(config: MVCProcessorIndexerConfig, kafkaConn
 }
 
 // $COVERAGE-OFF$ Disabling scoverage as the below code can only be invoked within flink cluster
-object MVCProcessorIndexerStreamTask {
+object MVCIndexerStreamTask {
 
   def main(args: Array[String]): Unit = {
     val configFilePath = Option(ParameterTool.fromArgs(args).get("config.file.path"))
     val config = configFilePath.map {
       path => ConfigFactory.parseFile(new File(path)).resolve()
-    }.getOrElse(ConfigFactory.load("mvc-processor-indexer.conf").withFallback(ConfigFactory.systemEnvironment()))
-    val mvcProcessorIndexerConfig = new MVCProcessorIndexerConfig(config)
-    val kafkaUtil = new FlinkKafkaConnector(mvcProcessorIndexerConfig)
+    }.getOrElse(ConfigFactory.load("mvc-indexer.conf").withFallback(ConfigFactory.systemEnvironment()))
+    val MVCIndexerConfig = new MVCIndexerConfig(config)
+    val kafkaUtil = new FlinkKafkaConnector(MVCIndexerConfig)
     val esUtil:ElasticSearchUtil = null
-    val task = new MVCProcessorIndexerStreamTask(mvcProcessorIndexerConfig, kafkaUtil, esUtil)
+    val task = new MVCIndexerStreamTask(MVCIndexerConfig, kafkaUtil, esUtil)
     task.process()
   }
 }

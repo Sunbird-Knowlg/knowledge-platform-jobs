@@ -7,7 +7,7 @@ import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.streaming.api.scala.OutputTag
 import org.sunbird.job.BaseJobConfig
 
-class MVCProcessorIndexerConfig(override val config: Config) extends BaseJobConfig(config, "mvc-processor-indexer") {
+class MVCIndexerConfig(override val config: Config) extends BaseJobConfig(config, "mvc-indexer") {
 
   private val serialVersionUID = 2905979434303791379L
 
@@ -31,9 +31,9 @@ class MVCProcessorIndexerConfig(override val config: Config) extends BaseJobConf
   val contentApiFailedEventCount = "content-api-failed-events-count"
 
   // Consumers
-  val eventConsumer = "mvc-processor-indexer-consumer"
-  val mvcProcessorIndexerFunction = "mvc-processor-indexer-function"
-  val mvcFailedEventProducer = "mvc-processor-indexer-producer"
+  val eventConsumer = "mvc-indexer-consumer"
+  val mvcIndexerFunction = "mvc-indexer-function"
+  val mvcFailedEventProducer = "mvc-indexer-producer"
 
   val failedOutputTag: OutputTag[String] = OutputTag[String]("failed-event-tag")
 
@@ -49,6 +49,10 @@ class MVCProcessorIndexerConfig(override val config: Config) extends BaseJobConf
   val contentServiceBase = config.getString("")
   val mlVectorAPI = config.getString("ml.vector.api")
   val mlKeywordAPI = config.getString("ml.keyword.api")
+
+  // Cassandra Configurations
+  val dbTable: String = config.getString("lms-cassandra.table")
+  val dbKeyspace: String = config.getString("lms-cassandra.keyspace")
 
   val timeZone =  if(config.hasPath("timezone")) config.getString("timezone") else "IST"
 }
