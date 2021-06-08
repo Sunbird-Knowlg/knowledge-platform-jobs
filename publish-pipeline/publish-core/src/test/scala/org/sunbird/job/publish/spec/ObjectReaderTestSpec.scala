@@ -4,7 +4,7 @@ import org.mockito.Mockito
 import org.mockito.Mockito._
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
-import org.sunbird.job.publish.core.ExtDataConfig
+import org.sunbird.job.publish.core.{ExtDataConfig, ObjectExtData}
 import org.sunbird.job.publish.helpers.ObjectReader
 import org.sunbird.job.util.{CassandraUtil, Neo4JUtil}
 
@@ -37,7 +37,7 @@ class ObjectReaderTestSpec extends FlatSpec with BeforeAndAfterAll with Matchers
 
 class TestObjectReader extends ObjectReader {
 
-  override def getExtData(identifier: String, pkgVersion: Double, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = None
+  override def getExtData(identifier: String, pkgVersion: Double, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[ObjectExtData] = None
 
   override def getHierarchy(identifier: String, pkgVersion: Double, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = None
 
