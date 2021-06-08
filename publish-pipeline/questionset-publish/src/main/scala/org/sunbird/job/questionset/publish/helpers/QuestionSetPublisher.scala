@@ -55,7 +55,21 @@ trait QuestionSetPublisher extends ObjectReader with ObjectValidator with Object
 		messages.toList
 	}
 
-	override def getHierarchy(identifier: String, pkgVersion: Double, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = None
+	override def getHierarchy(identifier: String, pkgVersion: Double, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = {
+		val row: Row = Option(getQuestionSetHierarchy(getEditableObjId(identifier, pkgVersion), readerConfig)).getOrElse(getQuestionSetHierarchy(identifier, readerConfig))
+		if (null != row) {
+			val data: Map[String, AnyRef] = ScalaJsonUtil.deserialize[Map[String, AnyRef]](row.getString("hierarchy"))
+			Option(data)
+		} else Option(Map())
+	}
+
+	def getQuestionSetHierarchy(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil) = {
+		val selectWhere: Select.Where = QueryBuilder.select().all()
+		  .from(readerConfig.keyspace, readerConfig.table).
+		  where()
+		selectWhere.and(QueryBuilder.eq("identifier", identifier))
+		cassandraUtil.findOne(selectWhere.toString)
+	}
 
 	override def getExtDatas(identifiers: List[String], readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = {
 		val rows = getQuestionsExtData(identifiers, readerConfig)(cassandraUtil).asScala
@@ -161,8 +175,7 @@ trait QuestionSetPublisher extends ObjectReader with ObjectValidator with Object
 		val newMetadata: Map[String, AnyRef] = obj.metadata ++ Map("identifier"-> obj.identifier, "pkgVersion" -> (obj.pkgVersion + 1).asInstanceOf[AnyRef], "lastPublishedOn" -> getTimeStamp,
 			"publishError" -> null, "variants" -> null, "downloadUrl" -> null, "compatibilityLevel" -> 5.asInstanceOf[AnyRef], "status" -> "Live")
 		val children: List[Map[String, AnyRef]] = obj.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
-		//TODO: Pass external data from obj
-		Some(new ObjectData(obj.identifier, newMetadata, hierarchy = Some(Map("identifier" -> obj.identifier, "children" -> enrichChildren(children)))))
+		Some(new ObjectData(obj.identifier, newMetadata, obj.extData, hierarchy = Some(Map("identifier" -> obj.identifier, "children" -> enrichChildren(children)))))
 	}
 
 	def enrichChildren(children: List[Map[String, AnyRef]])(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): List[Map[String, AnyRef]] = {
