@@ -22,6 +22,17 @@
 		<scoverage.plugin.version>1.4.0</scoverage.plugin.version>
 	</properties>
 
+    <repositories>
+        <repository>
+            <id>platform-telemetry</id>
+            <url>https://oss.sonatype.org/content/repositories/orgsunbird-1106</url>
+        </repository>
+        <repository>
+            <id>platform-common</id>
+            <url>https://oss.sonatype.org/content/repositories/orgsunbird-1105</url>
+        </repository>
+    </repositories>
+
     <dependencies>
         <dependency>
             <groupId>org.apache.flink</groupId>
@@ -80,8 +91,13 @@
         </dependency>
         <dependency>
             <groupId>org.sunbird</groupId>
+            <artifactId>platform-common</artifactId>
+            <version>1.0-beta</version>
+        </dependency>
+        <dependency>
+            <groupId>org.sunbird</groupId>
             <artifactId>platform-telemetry</artifactId>
-            <version>1.0-SNAPSHOT</version>
+            <version>1.0-beta</version>
         </dependency>
     </dependencies>
 
