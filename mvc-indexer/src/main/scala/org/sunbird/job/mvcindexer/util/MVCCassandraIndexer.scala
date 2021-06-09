@@ -5,7 +5,6 @@ import com.datastax.driver.core.querybuilder.Update.Assignments
 import com.datastax.driver.core.querybuilder.{QueryBuilder, Update}
 import org.apache.commons.lang3.StringUtils
 import org.sunbird.job.mvcindexer.domain.Event
-import org.sunbird.job.mvcindexer.util.CassandraConnector.logger
 import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, JSONUtil}
 //import org.json.JSONArray
 //import org.json.JSONObject
@@ -78,11 +77,12 @@ class MVCCassandraIndexer(config: MVCIndexerConfig, httpUtil: HttpUtil) {
     val input = req.get("input").asInstanceOf[MutableMap[String, AnyRef]]
     var content = input.get("content").asInstanceOf[List[Map[String, AnyRef]]]
     content :+= contentdef
-    val requestBody = JSONUtil.serialize(obj)
     req.put("job", jobname)
+
+    val requestBody = JSONUtil.serialize(obj)
     logger.info("getMLKeywords ::: The ML workbench URL is " + "http://" + config.mlKeywordAPI + ":3579/daggit/submit")
     try {
-      val resp:HTTPResponse = httpUtil.post("http://" + config.mlKeywordAPI + ":3579/daggit/submit", obj.toString)
+      val resp:HTTPResponse = httpUtil.post("http://" + config.mlKeywordAPI + ":3579/daggit/submit", requestBody)
       logger.info("getMLKeywords ::: The ML workbench response is " + resp)
     } catch {
       case e: Exception =>
@@ -98,9 +98,10 @@ class MVCCassandraIndexer(config: MVCIndexerConfig, httpUtil: HttpUtil) {
     var text = req.get("text").asInstanceOf[List[String]]
     req.put("cid", identifier)
     text :+= contentText
+    val requestBody = JSONUtil.serialize(obj)
     logger.info("getMLVectors ::: The ML vector URL is " + "http://" + config.mlVectorAPI + ":1729/ml/vector/ContentText")
     try {
-      val resp:HTTPResponse = httpUtil.post("http://" + config.mlVectorAPI + ":1729/ml/vector/ContentText", obj.toString)
+      val resp:HTTPResponse = httpUtil.post("http://" + config.mlVectorAPI + ":1729/ml/vector/ContentText", requestBody)
       logger.info("getMLVectors ::: ML vector api request response is " + resp)
     } catch {
       case e: Exception =>
