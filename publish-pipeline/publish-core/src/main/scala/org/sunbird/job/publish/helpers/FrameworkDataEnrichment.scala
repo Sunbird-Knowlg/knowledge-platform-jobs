@@ -8,6 +8,7 @@ import java.util
 
 import org.apache.commons.collections.CollectionUtils
 import org.sunbird.job.cache.local.FrameworkMasterCategoryMap
+import org.sunbird.job.publish.config.PublishConfig
 
 import scala.collection.JavaConverters._
 
@@ -18,8 +19,11 @@ trait FrameworkDataEnrichment {
 	//private val fwMetaFields = List("boardIds", "subjectIds", "mediumIds", "topicsIds", "gradeLevelIds", "targetBoardIds", "targetSubjectIds", "targetMediumIds", "targetTopicIds", "targetGradeLevelIds")
 	//private val fwMetaMap = Map(("se_boardIds", "se_boards") -> List("boardIds", "targetBoardIds"), ("se_subjectIds", "se_subjects") -> List("subjectIds", "targetSubjectIds"), ("se_mediumIds", "se_mediums") -> List("mediumIds", "targetMediumIds"), ("se_topicIds", "se_topics") -> List("topicsIds", "targetTopicIds"), ("se_gradeLevelIds", "se_gradeLevels") -> List("gradeLevelIds", "targetGradeLevelIds"))
 
-	def enrichFrameworkData(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil): ObjectData = {
-		val (fwMetaFields, fwMetaMap) : (List[String], Map[(String, String), List[String]]) = getFrameworkCategoryMetadata("domain", "Category")
+	def enrichFrameworkData(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, config: PublishConfig): ObjectData = {
+		val (fwMetaFields, fwMetaMap) : (List[String], Map[(String, String), List[String]]) =
+			if(config.getBoolean("master.category.validation.enabled", true))
+				getFrameworkCategoryMetadata("domain", "Category")
+			else (List(), Map())
 		val enMetadata = enrichFwData(obj.identifier, obj.metadata, fwMetaFields, fwMetaMap)
 		logger.info("Enriched Framework Metadata for " + obj.identifier + " are : " + enMetadata)
 		val finalMeta = if(enMetadata.nonEmpty) obj.metadata ++ enMetadata else obj.metadata
