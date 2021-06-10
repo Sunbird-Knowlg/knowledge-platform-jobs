@@ -60,8 +60,13 @@ class ElasticSearchUtil(connectionInfo: String, indexName: String, indexType: St
     val client = esClient
     if (!isIndexExists()) {
       val createRequest = new CreateIndexRequest(indexName)
-      if (StringUtils.isNotBlank(settings)) createRequest.settings(Settings.builder.loadFromSource(settings, XContentType.JSON))
-      if (StringUtils.isNotBlank(indexType) && StringUtils.isNotBlank(mappings)) createRequest.mapping(indexType, mappings, XContentType.JSON)
+      if (StringUtils.isNotBlank(esValues)) {
+        createRequest.source(esValues, XContentType.JSON)
+      } else {
+        if (StringUtils.isNotBlank(alias)) createRequest.alias(new Alias(alias))
+        if (StringUtils.isNotBlank(settings)) createRequest.settings(Settings.builder.loadFromSource(settings, XContentType.JSON))
+        if (StringUtils.isNotBlank(indexType) && StringUtils.isNotBlank(mappings)) createRequest.mapping(indexType, mappings, XContentType.JSON)
+      }
       val createIndexResponse = client.indices.create(createRequest)
       response = createIndexResponse.isAcknowledged
     }

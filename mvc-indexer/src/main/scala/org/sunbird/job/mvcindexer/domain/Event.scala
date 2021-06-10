@@ -21,9 +21,7 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 
   def identifier: String = readOrDefault("object.id", "")
 
-  def eventData: Map[String, AnyRef] = {
-    readOrDefault("eventData", new util.HashMap[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
-  }
+  var eventData: Map[String, AnyRef] = readOrDefault("eventData", new util.HashMap[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
 
   def action: String = readOrDefault("eventData.action", "")
 

@@ -13,14 +13,13 @@ import org.sunbird.job.mvcindexer.service.MVCIndexerService
 import org.sunbird.job.mvcindexer.task.MVCIndexerConfig
 import scala.collection.mutable.{Map => MutableMap}
 
-class MVCCassandraIndexer(config: MVCIndexerConfig, httpUtil: HttpUtil) {
+class MVCCassandraIndexer(config: MVCIndexerConfig, cassandraUtil: CassandraUtil, httpUtil: HttpUtil) {
   val mlworkbenchapirequest = "{\"request\":{ \"input\" :{ \"content\" : [] } } }"
   val mlvectorListRequest = "{\"request\":{\"text\":[],\"cid\": \"\",\"language\":\"en\",\"method\":\"BERT\",\"params\":{\"dim\":768,\"seq_len\":25}}}"
   jobname = "vidyadaan_content_keyword_tagging"
   private[util] var jobname = ""
   val mapStage1:MutableMap[String, AnyRef] = MutableMap[String, AnyRef]()
   private[this] lazy val logger = LoggerFactory.getLogger(classOf[MVCCassandraIndexer])
-  val cassandraUtil:CassandraUtil = null
 
   // Insert to cassandra
   @throws[Exception]
@@ -41,15 +40,15 @@ class MVCCassandraIndexer(config: MVCIndexerConfig, httpUtil: HttpUtil) {
 
       getMLVectors(message.mlContentText, identifier)
       val mapForStage2 = MutableMap[String, AnyRef]()
-      mapForStage2 += ("ml_keywords", message.mlKeywords)
-      mapForStage2 += ("ml_content_text", message.mlContentText)
-      updateContentProperties(identifier, mapForStage2.asInstanceOf[Map[String, AnyRef])
+      mapForStage2 += ("ml_keywords" -> message.mlKeywords)
+      mapForStage2 += ("ml_content_text"-> message.mlContentText)
+      updateContentProperties(identifier, mapForStage2.asInstanceOf[Map[String, AnyRef]])
     }
     else if (action.equalsIgnoreCase("update-ml-contenttextvector")) {
       logger.info("insertIntoCassandra ::: update-ml-contenttextvector event")
       val mapForStage3 = MutableMap[String, AnyRef]()
-      mapForStage3 += ("ml_content_text_vector", message.mlContentTextVector)
-      updateContentProperties(identifier, mapForStage3.asInstanceOf[Map[String, AnyRef])
+      mapForStage3 += ("ml_content_text_vector"-> message.mlContentTextVector)
+      updateContentProperties(identifier, mapForStage3.asInstanceOf[Map[String, AnyRef]])
     }
   }
 

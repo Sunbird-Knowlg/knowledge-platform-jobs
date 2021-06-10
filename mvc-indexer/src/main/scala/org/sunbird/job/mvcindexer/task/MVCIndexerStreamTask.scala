@@ -10,10 +10,10 @@ import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.mvcindexer.domain.Event
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.mvcindexer.functions.MVCIndexer
-import org.sunbird.job.util.{ElasticSearchUtil, FlinkUtil}
+import org.sunbird.job.util.{ElasticSearchUtil, FlinkUtil, HttpUtil}
 
 
-class MVCIndexerStreamTask(config: MVCIndexerConfig, kafkaConnector: FlinkKafkaConnector, esUtil: ElasticSearchUtil) {
+class MVCIndexerStreamTask(config: MVCIndexerConfig, kafkaConnector: FlinkKafkaConnector, esUtil: ElasticSearchUtil, httpUtil: HttpUtil) {
   def process(): Unit = {
     implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
     implicit val eventTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
@@ -23,7 +23,7 @@ class MVCIndexerStreamTask(config: MVCIndexerConfig, kafkaConnector: FlinkKafkaC
     val processStreamTask = env.addSource(kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)).name(config.eventConsumer)
       .uid(config.eventConsumer).setParallelism(config.kafkaConsumerParallelism)
       .rebalance
-      .process(new MVCIndexer(config, esUtil))
+      .process(new MVCIndexer(config, esUtil, httpUtil))
       .name(config.mvcIndexerFunction)
       .uid(config.mvcIndexerFunction)
       .setParallelism(config.parallelism)
@@ -46,7 +46,8 @@ object MVCIndexerStreamTask {
     val MVCIndexerConfig = new MVCIndexerConfig(config)
     val kafkaUtil = new FlinkKafkaConnector(MVCIndexerConfig)
     val esUtil:ElasticSearchUtil = null
-    val task = new MVCIndexerStreamTask(MVCIndexerConfig, kafkaUtil, esUtil)
+    val httpUtil = new HttpUtil
+    val task = new MVCIndexerStreamTask(MVCIndexerConfig, kafkaUtil, esUtil, httpUtil)
     task.process()
   }
 }

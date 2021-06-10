@@ -4,6 +4,7 @@ import org.slf4j.LoggerFactory
 import org.sunbird.job.mvcindexer.domain.Event
 import org.sunbird.job.mvcindexer.task.MVCIndexerConfig
 import org.sunbird.job.util.{ElasticSearchUtil, JSONUtil}
+import scala.collection.mutable.{ Map => MutableMap}
 
 import java.io.IOException
 import java.util.concurrent.CompletableFuture
@@ -33,7 +34,7 @@ class MVCESIndexer(config: MVCIndexerConfig, esUtil: ElasticSearchUtil) {
   @throws[Exception]
   def upsertDocument(uniqueId: String, message: Event): Unit = {
     // Remove params which should not be inserted into ES
-    var jsonIndexDocument:Map[String, AnyRef] = removeExtraParams(message.eventData)
+    var jsonIndexDocument:MutableMap[String, AnyRef] = removeExtraParams(message.eventData.asInstanceOf[MutableMap[String, AnyRef]])
     proocessNestedProps(jsonIndexDocument)
     var jsonAsString = JSONUtil.serialize(jsonIndexDocument)
     message.action match {
@@ -55,7 +56,7 @@ class MVCESIndexer(config: MVCIndexerConfig, esUtil: ElasticSearchUtil) {
         else logger.info("ES Document Not Found With Identifier " + uniqueId + " | Skipped Updating Content Rating.")
 
       case "update-ml-contenttextvector" =>
-        jsonIndexDocument += ("ml_contentTextVector", message.mlContentTextVector)
+        jsonIndexDocument += ("ml_contentTextVector" -> message.mlContentTextVector)
         jsonAsString = JSONUtil.serialize(jsonIndexDocument)
 
       case "update-ml-keywords" =>
@@ -69,19 +70,19 @@ class MVCESIndexer(config: MVCIndexerConfig, esUtil: ElasticSearchUtil) {
   }
 
   @throws[IOException]
-  private def proocessNestedProps(jsonIndexDocument: Map[String, AnyRef]): Unit = {
+  private def proocessNestedProps(jsonIndexDocument: MutableMap[String, AnyRef]): Unit = {
     if (!jsonIndexDocument.isEmpty) {
       for (propertyName <- jsonIndexDocument.keySet) {
         if (NESTED_FIELDS.contains(propertyName)) {
-          val propertyNewValue = Map[String, AnyRef](jsonIndexDocument.get(propertyName).asInstanceOf[String], null)
-          jsonIndexDocument += (propertyName, propertyNewValue)
+          val propertyNewValue = Map[String, AnyRef](jsonIndexDocument.get(propertyName).asInstanceOf[String] -> null)
+          jsonIndexDocument += (propertyName-> propertyNewValue)
         }
       }
     }
   }
 
   // Remove params which should not be inserted into ES
-  def removeExtraParams(obj: Map[String, AnyRef]): Map[String, AnyRef] = {
+  def removeExtraParams(obj: MutableMap[String, AnyRef]): MutableMap[String, AnyRef] = {
     obj.-("action", "stage")
   }
 }

@@ -8,14 +8,15 @@ import org.sunbird.job.mvcindexer.domain.Event
 import org.sunbird.job.mvcindexer.service.MVCIndexerService
 import org.sunbird.job.mvcindexer.task.MVCIndexerConfig
 import org.sunbird.job.{BaseProcessFunction, Metrics}
-import org.sunbird.job.util.{CassandraUtil, ElasticSearchUtil}
+import org.sunbird.job.util.{CassandraUtil, ElasticSearchUtil, HttpUtil}
 
-class MVCIndexer(config: MVCIndexerConfig, var esUtil: ElasticSearchUtil)
+class MVCIndexer(config: MVCIndexerConfig, var esUtil: ElasticSearchUtil, httpUtil: HttpUtil)
                           (implicit mapTypeInfo: TypeInformation[util.Map[String, Any]],
                            stringTypeInfo: TypeInformation[String])
-                          extends BaseProcessFunction[Event, String](config) with MVCIndexerService{
+                          extends BaseProcessFunction[Event, String](config){
 
     var cassandraUtil: CassandraUtil = _
+    var mvcIndexerService: MVCIndexerService = _
 
     override def metricsList(): List[String] = {
         List(config.totalEventsCount, config.successEventCount, config.failedEventCount, config.esFailedEventCount, config.skippedEventCount, config.csFailedEventCount, config.contentApiFailedEventCount)
@@ -26,11 +27,12 @@ class MVCIndexer(config: MVCIndexerConfig, var esUtil: ElasticSearchUtil)
         if (esUtil == null) {
             esUtil = new ElasticSearchUtil(config.esConnectionInfo, config.mvcProcessorIndex, config.mvcProcessorIndexType)
         }
-        var cassandraUtil: CassandraUtil = new CassandraUtil(config.dbHost, config.dbPort)
+        mvcIndexerService = new MVCIndexerService(config, esUtil, httpUtil)
     }
 
     override def close(): Unit = {
         esUtil.close()
+        mvcIndexerService.closeConnection()
         super.close()
     }
 
@@ -39,7 +41,7 @@ class MVCIndexer(config: MVCIndexerConfig, var esUtil: ElasticSearchUtil)
                                 metrics: Metrics): Unit = {
         metrics.incCounter(config.totalEventsCount)
         if(event.isValid) {
-            processMessage(event, metrics, context)(esUtil, config)
+            mvcIndexerService.processMessage(event, metrics, context)
         } else metrics.incCounter(config.skippedEventCount)
     }
 }
