@@ -45,13 +45,13 @@ class CertificateGeneratorStreamTask(config: CertificateGeneratorConfig, kafkaCo
       .process(new NotifierFunction(config, httpUtil))
       .name("notifier")
       .uid("notifier")
-      .setParallelism(1)
+      .setParallelism(config.notifierParallelism)
 
     processStreamTask.getSideOutput(config.userFeedOutputTag)
       .process(new CreateUserFeedFunction(config, httpUtil))
       .name("user-feed")
       .uid("user-feed")
-      .setParallelism(1)
+      .setParallelism(config.userFeedParallelism)
 
 
     env.execute(config.jobName)
