@@ -21,7 +21,7 @@ trait FrameworkDataEnrichment {
 
 	def enrichFrameworkData(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, config: PublishConfig): ObjectData = {
 		val (fwMetaFields, fwMetaMap) : (List[String], Map[(String, String), List[String]]) =
-			if(config.getBoolean("master.category.validation.enabled", true))
+			if(StringUtils.equalsIgnoreCase(config.getString("master.category.validation.enabled", "Yes"), "Yes"))
 				getFrameworkCategoryMetadata("domain", "Category")
 			else (List(), Map())
 		val enMetadata = enrichFwData(obj.identifier, obj.metadata, fwMetaFields, fwMetaMap)
