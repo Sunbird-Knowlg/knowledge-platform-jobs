@@ -20,7 +20,7 @@ trait QuestionSetPublisher extends ObjectReader with ObjectValidator with Object
 	override def getExtData(identifier: String, pkgVersion: Double, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[ObjectExtData] = {
 		val row: Row = Option(getQuestionSetData(getEditableObjId(identifier, pkgVersion), readerConfig)).getOrElse(getQuestionSetData(identifier, readerConfig))
 		val data: Map[String, AnyRef] = if (null != row) readerConfig.propsMapping.keySet.map(prop => prop -> row.getString(prop.toLowerCase())).toMap.filter(p => StringUtils.isNotBlank(p._2.asInstanceOf[String])) else Map[String, AnyRef]()
-		val hierarchy: Map[String, AnyRef] = if(data.contains("hierarchy")) ScalaJsonUtil.deserialize[Map[String, AnyRef]](data.getOrElse("hierarchy", "").asInstanceOf[String]) else Map[String, AnyRef]()
+		val hierarchy: Map[String, AnyRef] = if(data.contains("hierarchy")) ScalaJsonUtil.deserialize[Map[String, AnyRef]](data.getOrElse("hierarchy", "{}").asInstanceOf[String]) else Map[String, AnyRef]()
 		val extData:Map[String, AnyRef] = data.filter(p => !StringUtils.equals("hierarchy", p._1))
 		Option(ObjectExtData(Option(extData), Option(hierarchy)))
 	}
