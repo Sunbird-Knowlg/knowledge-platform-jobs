@@ -75,11 +75,11 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 			//TODO: Remove below statement
 			childQuestions.foreach(ch => logger.info("child questions visibility parent identifier : " + ch.identifier))
 			// Publish Child Questions
-			QuestionPublishUtil.publishQuestions(obj.identifier, childQuestions)(ec, neo4JUtil, cassandraUtil, qReaderConfig, cloudStorageUtil, definitionCache, definitionConfig)
+			QuestionPublishUtil.publishQuestions(obj.identifier, childQuestions)(ec, neo4JUtil, cassandraUtil, qReaderConfig, cloudStorageUtil, definitionCache, definitionConfig, config)
 			val pubMsgs: List[String] = isChildrenPublished(childQuestions)
 			if(pubMsgs.isEmpty) {
 				// Enrich Object as well as hierarchy
-				val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil)
+				val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config)
 				logger.info(s"processElement ::: object enrichment done for ${obj.identifier}")
 				logger.info("processElement :::  obj metadata post enrichment :: " + ScalaJsonUtil.serialize(enrichedObj.metadata))
 				logger.info("processElement :::  obj hierarchy post enrichment :: " + ScalaJsonUtil.serialize(enrichedObj.hierarchy.get))

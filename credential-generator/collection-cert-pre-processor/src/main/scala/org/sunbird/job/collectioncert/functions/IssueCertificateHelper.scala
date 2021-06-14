@@ -18,7 +18,7 @@ trait IssueCertificateHelper {
 
     def issueCertificate(event:Event, template: Map[String, String])(cassandraUtil: CassandraUtil, cache:DataCache, metrics: Metrics, config: CollectionCertPreProcessorConfig, httpUtil: HttpUtil): String = {
         //validCriteria
-        val criteria = validateTemplate(template)(config)
+        val criteria = validateTemplate(template, event.batchId)(config)
         //validateEnrolmentCriteria
         val certName = template.getOrElse(config.name, "")
         val enrolledUser: EnrolledUser = validateEnrolmentCriteria(event, criteria.getOrElse(config.enrollment, Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]], certName)(metrics, cassandraUtil, config)
@@ -36,12 +36,12 @@ trait IssueCertificateHelper {
         }
     }
     
-    def validateTemplate(template: Map[String, String])(config: CollectionCertPreProcessorConfig):Map[String, AnyRef] = {
+    def validateTemplate(template: Map[String, String], batchId: String)(config: CollectionCertPreProcessorConfig):Map[String, AnyRef] = {
         val criteria = ScalaJsonUtil.deserialize[Map[String, AnyRef]](template.getOrElse(config.criteria, "{}"))
         if(!template.getOrElse("url", "").isEmpty && !criteria.isEmpty && !criteria.keySet.intersect(Set(config.enrollment, config.assessment, config.users)).isEmpty) {
             criteria
         } else {
-            throw new Exception("Invalid template")
+            throw new Exception(s"Invalid template for batch : ${batchId}")
         }
     }
 
