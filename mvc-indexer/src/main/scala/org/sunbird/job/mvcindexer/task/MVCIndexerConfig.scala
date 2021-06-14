@@ -18,7 +18,7 @@ class MVCIndexerConfig(override val config: Config) extends BaseJobConfig(config
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
   override val parallelism: Int = config.getInt("task.parallelism")
-  val kafkaFailedTopic: String = config.getString("output.failed.topic")
+  val kafkaFailedTopic: String = config.getString("kafka.output.failed.topic")
 
   // Metric List
   val totalEventsCount = "total-events-count"
@@ -46,7 +46,7 @@ class MVCIndexerConfig(override val config: Config) extends BaseJobConfig(config
   val mvcProcessorIndexType = "_doc"
   val operationCreate = "CREATE"
 
-  val contentServiceBase = config.getString("")
+  val contentServiceBase = config.getString("learning_service.basePath")
   val mlVectorAPI = config.getString("ml.vector.api")
   val mlKeywordAPI = config.getString("ml.keyword.api")
 

@@ -14,11 +14,12 @@ object ContentUtil {
     try {
       val contentReadURL = config.contentServiceBase
       logger.info("getContentMetaData :::  Making API call to read content " + contentReadURL + "/content/v3/read/")
-      val content:HTTPResponse = httpUtil.get(contentReadURL + "/content/v3/read/" + identifer)
+//      val content:HTTPResponse = httpUtil.get(contentReadURL + "/content/v3/read/" + identifer)
+      val content:HTTPResponse = httpUtil.get("https://diksha.gov.in/api/content/v1/read/" + identifer)
       logger.info("getContentMetaData ::: retrieved content meta " + content)
       val obj = JSONUtil.deserialize[Map[String, AnyRef]](content.body)
-      val contentobj = obj.get("result").asInstanceOf[Map[String, AnyRef]].get("content").asInstanceOf[Map[String, AnyRef]]
-      filterData(newmap.asInstanceOf[MutableMap[String, AnyRef]], contentobj).asInstanceOf[Map[String, AnyRef]]
+      val contentobj = obj("result").asInstanceOf[Map[String, AnyRef]]("content").asInstanceOf[Map[String, AnyRef]]
+      filterData(newmap, contentobj)
     } catch {
       case e: Exception =>
         logger.error("Error in getContentMetaData ", e)
@@ -26,7 +27,8 @@ object ContentUtil {
     }
   }
 
-  def filterData(obj: MutableMap[String, AnyRef], content: Map[String, AnyRef]): MutableMap[String, AnyRef] = {
+  def filterData(obj: Map[String, AnyRef], content: Map[String, AnyRef]): Map[String, AnyRef] = {
+    val mutableMap = JSONUtil.deserialize[MutableMap[String, AnyRef]](JSONUtil.serialize(obj))
     val elasticSearchParamSet = Set("organisation", "channel", "framework", "board", "medium", "subject", "gradeLevel", "name", "description", "language", "appId", "appIcon", "appIconLabel", "contentEncoding", "identifier", "node_id", "nodeType", "mimeType", "resourceType", "contentType", "allowedContentTypes", "objectType", "posterImage", "artifactUrl", "launchUrl", "previewUrl", "streamingUrl", "downloadUrl", "status", "pkgVersion", "source", "lastUpdatedOn", "ml_contentText", "ml_contentTextVector", "ml_Keywords", "level1Name", "level1Concept", "level2Name", "level2Concept", "level3Name", "level3Concept", "textbook_name", "sourceURL", "label", "all_fields")
     var key:String = null
     var value:AnyRef = null
@@ -34,10 +36,10 @@ object ContentUtil {
       value = if (content.contains(param)) content.get(param)
       else null
       if (value != null) {
-        obj += (param -> value)
+        mutableMap += (param -> value)
 //        obj ++= Map(param -> value)
       }
     }
-    obj
+    JSONUtil.deserialize[Map[String, AnyRef]](JSONUtil.serialize(mutableMap))
   }
 }

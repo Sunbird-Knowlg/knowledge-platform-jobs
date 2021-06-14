@@ -33,7 +33,7 @@ class MVCCassandraIndexer(config: MVCIndexerConfig, cassandraUtil: CassandraUtil
       getMLKeywords(obj)
       logger.info("insertIntoCassandra ::: update-es-index-1 event")
       logger.info("insertIntoCassandra ::: Inserting into cassandra stage-1")
-      updateContentProperties(identifier, mapStage1.asInstanceOf[Map[String, AnyRef]])
+      updateContentProperties(identifier, mapStage1)
     }
     else if (action.equalsIgnoreCase("update-ml-keywords")) {
       logger.info("insertIntoCassandra ::: update-ml-keywords")
@@ -42,13 +42,13 @@ class MVCCassandraIndexer(config: MVCIndexerConfig, cassandraUtil: CassandraUtil
       val mapForStage2 = MutableMap[String, AnyRef]()
       mapForStage2 += ("ml_keywords" -> message.mlKeywords)
       mapForStage2 += ("ml_content_text"-> message.mlContentText)
-      updateContentProperties(identifier, mapForStage2.asInstanceOf[Map[String, AnyRef]])
+      updateContentProperties(identifier, mapForStage2)
     }
     else if (action.equalsIgnoreCase("update-ml-contenttextvector")) {
       logger.info("insertIntoCassandra ::: update-ml-contenttextvector event")
       val mapForStage3 = MutableMap[String, AnyRef]()
       mapForStage3 += ("ml_content_text_vector"-> message.mlContentTextVector)
-      updateContentProperties(identifier, mapForStage3.asInstanceOf[Map[String, AnyRef]])
+      updateContentProperties(identifier, mapForStage3)
     }
   }
 
@@ -59,7 +59,7 @@ class MVCCassandraIndexer(config: MVCIndexerConfig, cassandraUtil: CassandraUtil
       "level2Name"->  "level2_name", "level3Name"-> "level3_name")
     for ((fieldKey: String,fieldValue: String) <- fields) {
       if (contentobj.contains(fieldKey)) {
-        mapStage1.put(fieldValue, contentobj.get(fieldKey).asInstanceOf[List[String]])
+        mapStage1.put(fieldValue, contentobj(fieldKey).asInstanceOf[List[String]])
       }
     }
 
@@ -71,12 +71,12 @@ class MVCCassandraIndexer(config: MVCIndexerConfig, cassandraUtil: CassandraUtil
   // POST reqeuest for ml keywords api
   @throws[Exception]
   private[util] def getMLKeywords(contentdef: Map[String, AnyRef]): Unit = {
-    val obj = JSONUtil.deserialize[MutableMap[String, AnyRef]](mlworkbenchapirequest)
-    val req = (obj.get("request")).asInstanceOf[MutableMap[String, AnyRef]]
-    val input = req.get("input").asInstanceOf[MutableMap[String, AnyRef]]
-    var content = input.get("content").asInstanceOf[List[Map[String, AnyRef]]]
+    val obj = JSONUtil.deserialize[Map[String, AnyRef]](mlworkbenchapirequest)
+    val req = obj("request").asInstanceOf[Map[String, AnyRef]]
+    val input = req("input").asInstanceOf[Map[String, AnyRef]]
+    var content = input("content").asInstanceOf[List[Map[String, AnyRef]]]
     content :+= contentdef
-    req.put("job", jobname)
+//    req.put("job", jobname)
 
     val requestBody = JSONUtil.serialize(obj)
     logger.info("getMLKeywords ::: The ML workbench URL is " + "http://" + config.mlKeywordAPI + ":3579/daggit/submit")
@@ -108,19 +108,19 @@ class MVCCassandraIndexer(config: MVCIndexerConfig, cassandraUtil: CassandraUtil
     }
   }
 
-  def updateContentProperties(contentId: String, map: Map[String, AnyRef]): Unit = {
+  def updateContentProperties(contentId: String, map: MutableMap[String, AnyRef]): Unit = {
     if (null == map || map.isEmpty) return
 
     try {
       val query:Update = QueryBuilder.update(config.dbKeyspace, config.dbTable)
       var queryAssignments:Assignments = null
       var i = 0
-      for (entry <- map.toList) {
-        if (null != entry._2 && null != entry._1) {
+      for ((key, value:Some[AnyRef]) <- map.toList) {
+        if (null != value && null != key) {
           if (i==0) {
-            queryAssignments = query.`with`(QueryBuilder.set(entry._1, entry._2))
+            queryAssignments = query.`with`(QueryBuilder.set(key, value.get))
           } else {
-            queryAssignments = queryAssignments.and(QueryBuilder.set(entry._1, entry._2))
+            queryAssignments = queryAssignments.and(QueryBuilder.set(key, value.get))
           }
         } else {
           return
@@ -131,7 +131,7 @@ class MVCCassandraIndexer(config: MVCIndexerConfig, cassandraUtil: CassandraUtil
       queryAssignments.and(QueryBuilder.set("last_updated_on", "dateOf(now())"))
       val finalQuery = queryAssignments.where(QueryBuilder.eq("content_id", contentId))
       logger.info("Executing the statement to insert into cassandra for identifier  " + contentId)
-      cassandraUtil.session.execute(finalQuery.toString)
+      cassandraUtil.session.execute(finalQuery)
     } catch {
       case e: Exception =>
         logger.error("Exception while inserting data into cassandra for " + contentId, e)

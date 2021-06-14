@@ -84,6 +84,12 @@
             <version>4.9.1</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.cassandraunit</groupId>
+            <artifactId>cassandra-unit</artifactId>
+            <version>3.11.2.0</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>

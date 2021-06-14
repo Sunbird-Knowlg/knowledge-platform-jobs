@@ -13,7 +13,7 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 
   private val jobName = "MVCIndexer"
 
-  def index: AnyRef = readOrDefault("index", "")
+  def index: AnyRef = readOrDefault("index", null)
 
   def ets: Long = readOrDefault("ets", 0L)
 
@@ -21,7 +21,7 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 
   def identifier: String = readOrDefault("object.id", "")
 
-  var eventData: Map[String, AnyRef] = readOrDefault("eventData", new util.HashMap[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
+  var eventData: Map[String, AnyRef] = readOrDefault[Map[String, AnyRef]]("eventData", Map[String, AnyRef]())
 
   def action: String = readOrDefault("eventData.action", "")
 

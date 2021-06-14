@@ -9,13 +9,13 @@ import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
 import org.apache.flink.streaming.api.functions.source.SourceFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext
 import org.apache.flink.test.util.MiniClusterWithClientResource
-import org.sunbird.job.util.{ElasticSearchUtil, JSONUtil}
+import org.sunbird.job.util.{ElasticSearchUtil, HttpUtil, JSONUtil}
 import org.mockito.Mockito
 import org.mockito.Mockito.{doNothing, when}
 import org.sunbird.job.mvcindexer.domain.Event
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.fixture.EventFixture
-import org.sunbird.job.task.{MVCProcessorIndexerConfig, MVCProcessorIndexerStreamTask}
+import org.sunbird.job.mvcindexer.task.{MVCIndexerConfig, MVCIndexerStreamTask}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 
 import java.util
@@ -31,8 +31,9 @@ class MVCProcessorIndexerTaskTestSpec extends BaseTestSpec {
     .build)
   val mockKafkaUtil: FlinkKafkaConnector = mock[FlinkKafkaConnector](Mockito.withSettings().serializable())
   val config: Config = ConfigFactory.load("test.conf")
-  val jobConfig: MVCProcessorIndexerConfig = new MVCProcessorIndexerConfig(config)
+  val jobConfig: MVCIndexerConfig = new MVCIndexerConfig(config)
   val esUtil: ElasticSearchUtil = null
+  val httpUtil: HttpUtil = null
   val server = new MockWebServer()
 
   var currentMilliSecond = 1605816926271L
@@ -51,7 +52,7 @@ class MVCProcessorIndexerTaskTestSpec extends BaseTestSpec {
 
     when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new MVCProcessorIndexerMapSource)
 
-    new MVCProcessorIndexerStreamTask(jobConfig, mockKafkaUtil, esUtil).process()
+    new MVCIndexerStreamTask(jobConfig, mockKafkaUtil, esUtil, httpUtil).process()
 
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(2)
     server.close()
@@ -61,7 +62,7 @@ class MVCProcessorIndexerTaskTestSpec extends BaseTestSpec {
     when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new MVCProcessorIndexerMapSource)
 
     try {
-      new MVCProcessorIndexerStreamTask(jobConfig, mockKafkaUtil, esUtil).process()
+      new MVCIndexerStreamTask(jobConfig, mockKafkaUtil, esUtil, httpUtil).process()
     } catch {
       case ex: JobExecutionException =>
         BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(1)
@@ -76,7 +77,7 @@ class MVCProcessorIndexerMapSource extends SourceFunction[Event] {
     // Valid event
     ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_1), 0, 10))
     // Invalid event
-    ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_4), 0, 11))
+//    ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_4), 0, 11))
   }
 
   override def cancel(): Unit = {}
