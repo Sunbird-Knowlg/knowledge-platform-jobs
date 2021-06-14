@@ -38,7 +38,7 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
     logger.info("Validating Content metadata for : " + obj.identifier)
     val messages = ListBuffer[String]()
 
-    if(StringUtils.isBlank(obj.metadata.getOrElse("artifactUrl", "").asInstanceOf[String])) messages += s"""There is no artifactUrl available for : $identifier"""
+    if (StringUtils.isBlank(obj.metadata.getOrElse("artifactUrl", "").asInstanceOf[String])) messages += s"""There is no artifactUrl available for : $identifier"""
     messages.toList
   }
 
@@ -50,6 +50,5 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
     val meta: Map[String, AnyRef] = Map("downloadUrl" -> ecarMap.getOrElse("FULL", ""), "variants" -> variants)
     new ObjectData(data.identifier, data.metadata ++ meta, data.extData, data.hierarchy)
   }
-
 
 }
