@@ -54,7 +54,7 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
   val collectionPublishOutTag: OutputTag[PublishMetadata] = OutputTag[PublishMetadata]("collection-publish")
 
   // Service Urls
-  val printServiceBaseUrl: String = config.getString("service.print.base_url")
+  val printServiceBaseUrl: String = config.getString("service.print.basePath")
 
   val definitionBasePath: String = if (config.hasPath("schema.basePath")) config.getString("schema.basePath") else "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local"
   val schemaSupportVersionMap = if (config.hasPath("schema.supportedVersion")) config.getObject("schema.supportedVersion").unwrapped().asScala.toMap else Map[String, AnyRef]()
