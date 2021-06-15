@@ -64,7 +64,7 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
     } else {
       if (messages.isEmpty) {
         // Prepublish update
-        updateNode(obj)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
+        updateProcessingNode(obj)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
         // Clear redis cache
         val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config)
         val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, cloudStorageUtil, definitionCache, definitionConfig)
