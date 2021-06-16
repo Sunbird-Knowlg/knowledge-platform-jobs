@@ -1,13 +1,10 @@
 package org.sunbird.job.mvcindexer.util
 
-import com.datastax.driver.core.BoundStatement
 import com.datastax.driver.core.querybuilder.Update.Assignments
 import com.datastax.driver.core.querybuilder.{QueryBuilder, Update}
 import org.apache.commons.lang3.StringUtils
 import org.sunbird.job.mvcindexer.domain.Event
 import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, JSONUtil}
-//import org.json.JSONArray
-//import org.json.JSONObject
 import org.slf4j.LoggerFactory
 import org.sunbird.job.mvcindexer.service.MVCIndexerService
 import org.sunbird.job.mvcindexer.task.MVCIndexerConfig
@@ -63,8 +60,13 @@ class MVCCassandraIndexer(config: MVCIndexerConfig, cassandraUtil: CassandraUtil
       }
     }
 
-    if (contentobj.contains("source")) mapStage1.put("source", contentobj.get("source"))
-    if (contentobj.contains("sourceURL")) mapStage1.put("sourceurl", contentobj.get("sourceURL"))
+    if (contentobj.contains("source") && contentobj("source").isInstanceOf[List[String]]) {
+      mapStage1.put("source", contentobj("source").asInstanceOf[List[String]].head)
+    }
+    else if(contentobj.contains("source") && contentobj("source").isInstanceOf[String]) {
+      mapStage1.put("source", contentobj("source"))
+    }
+    if (contentobj.contains("sourceURL")) mapStage1.put("sourceurl", contentobj("sourceURL"))
     logger.info("extractedmetadata")
   }
 
@@ -110,17 +112,24 @@ class MVCCassandraIndexer(config: MVCIndexerConfig, cassandraUtil: CassandraUtil
 
   def updateContentProperties(contentId: String, map: MutableMap[String, AnyRef]): Unit = {
     if (null == map || map.isEmpty) return
+    import scala.collection.JavaConverters._
 
     try {
       val query:Update = QueryBuilder.update(config.dbKeyspace, config.dbTable)
       var queryAssignments:Assignments = null
       var i = 0
-      for ((key, value:Some[AnyRef]) <- map.toList) {
+      for ((key, value) <- map.toList) {
         if (null != value && null != key) {
-          if (i==0) {
-            queryAssignments = query.`with`(QueryBuilder.set(key, value.get))
+          val querySet = if (value.isInstanceOf[List[String]]) {
+            QueryBuilder.set(key, value.asInstanceOf[List[String]].asJava)
           } else {
-            queryAssignments = queryAssignments.and(QueryBuilder.set(key, value.get))
+            QueryBuilder.set(key, value)
+          }
+
+          queryAssignments = if (i==0) {
+            query.`with`(querySet)
+          } else {
+            queryAssignments.and(querySet)
           }
         } else {
           return
@@ -128,10 +137,10 @@ class MVCCassandraIndexer(config: MVCIndexerConfig, cassandraUtil: CassandraUtil
         i += 1
       }
 
-      queryAssignments.and(QueryBuilder.set("last_updated_on", "dateOf(now())"))
+      queryAssignments.and(QueryBuilder.set("last_updated_on",  System.currentTimeMillis))
       val finalQuery = queryAssignments.where(QueryBuilder.eq("content_id", contentId))
       logger.info("Executing the statement to insert into cassandra for identifier  " + contentId)
-      cassandraUtil.session.execute(finalQuery)
+      cassandraUtil.session.execute(finalQuery.toString)
     } catch {
       case e: Exception =>
         logger.error("Exception while inserting data into cassandra for " + contentId, e)

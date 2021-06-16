@@ -34,7 +34,9 @@ class MVCESIndexer(config: MVCIndexerConfig, esUtil: ElasticSearchUtil) {
   @throws[Exception]
   def upsertDocument(uniqueId: String, message: Event): Unit = {
     // Remove params which should not be inserted into ES
-    var jsonIndexDocument:MutableMap[String, AnyRef] = removeExtraParams(message.eventData.asInstanceOf[MutableMap[String, AnyRef]])
+    var jsonIndexDocument:MutableMap[String, AnyRef] = removeExtraParams(
+      JSONUtil.deserialize[MutableMap[String, AnyRef]](JSONUtil.serialize(message.eventData))
+    )
     proocessNestedProps(jsonIndexDocument)
     var jsonAsString = JSONUtil.serialize(jsonIndexDocument)
     message.action match {
@@ -49,9 +51,9 @@ class MVCESIndexer(config: MVCIndexerConfig, esUtil: ElasticSearchUtil) {
           logger.info("ES Document Found With Identifier " + uniqueId + " | Updating Content Rating.")
           val metadata = jsonIndexDocument.get("metadata").asInstanceOf[Nothing]
           val finalJsonindexasString = JSONUtil.serialize(metadata)
-          CompletableFuture.runAsync(() => {
-            esUtil.updateDocument(uniqueId, finalJsonindexasString)
-          })
+//          CompletableFuture.runAsync(() => {
+          esUtil.updateDocument(uniqueId, finalJsonindexasString)
+//          })
         }
         else logger.info("ES Document Not Found With Identifier " + uniqueId + " | Skipped Updating Content Rating.")
 

@@ -3,7 +3,7 @@ CREATE KEYSPACE IF NOT EXISTS local_content_store WITH replication = {
   'replication_factor': '1'
 };
 
-CREATE TABLE preprod_content_store.content_data (
+CREATE TABLE local_content_store.content_data (
     content_id text PRIMARY KEY,
     body blob,
     externallink text,
