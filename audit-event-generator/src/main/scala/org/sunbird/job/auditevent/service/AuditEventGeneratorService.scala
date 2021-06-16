@@ -17,9 +17,8 @@ import java.text.SimpleDateFormat
 
 trait AuditEventGeneratorService {
   private[this] lazy val logger = LoggerFactory.getLogger(classOf[AuditEventGeneratorService])
-  private val IMAGE_SUFFIX = ".img"
   private val OBJECT_TYPE_IMAGE_SUFFIX = "Image"
-  private val SKIP_AUDIT = "{\"object\": {\"type\":null}}"
+  private val SKIP_AUDIT = """{"object": {"type":null}}"""
   private lazy val definitionCache = new DefinitionCache
   private lazy val gson = new Gson
 
@@ -37,9 +36,9 @@ trait AuditEventGeneratorService {
 
   def processEvent(message: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics)(implicit config: AuditEventGeneratorConfig): Unit = {
     logger.info("AUDIT Event::" + JSONUtil.serialize(message))
-    logger.info("Input Message Received for : [" + message.nodeUniqueId + "], Txn Event createdOn:" + message.read("createdOn") + ", Operation Type:" + message.operationType)
+    logger.info("Input Message Received for : [" + message.nodeUniqueId + "], Txn Event createdOn:" + message.createdOn + ", Operation Type:" + message.operationType)
     try {
-      val auditEventStr = getAuditMessage(message)
+      val auditEventStr = getAuditMessage(message)(config, metrics)
       val auditMap = JSONUtil.deserialize[Map[String, AnyRef]](auditEventStr)
       val objectType = auditMap.getOrElse("object", null).asInstanceOf[Map[String, AnyRef]].getOrElse("type", null).asInstanceOf[String]
       if (null != objectType) {
@@ -49,7 +48,7 @@ trait AuditEventGeneratorService {
       }
       else {
         logger.info("Skipped event as the objectype is not available, event =" + auditEventStr)
-        metrics.incCounter(config.skippedEventCount)
+        metrics.incCounter(config.emptyPropsEventCount)
       }
     } catch {
       case e: Exception =>
@@ -58,42 +57,38 @@ trait AuditEventGeneratorService {
     }
   }
 
-  def getDefinition(graphId: String, objectType: String)(implicit config: AuditEventGeneratorConfig): ObjectDefinition = {
+  def getDefinition(objectType: String)(implicit config: AuditEventGeneratorConfig, metrics: Metrics): ObjectDefinition = {
     try {
       definitionCache.getDefinition(objectType, config.configVersion, config.basePath)
     } catch {
       case ex: Exception => {
+        metrics.incCounter(config.emptySchemaEventCount)
         new ObjectDefinition(objectType, config.configVersion, Map[String, AnyRef](), Map[String, AnyRef]())
       }
     }
   }
 
 
-  def getAuditMessage(message: Event)(implicit config: AuditEventGeneratorConfig): String = {
+  def getAuditMessage(message: Event)(implicit config: AuditEventGeneratorConfig, metrics: Metrics): String = {
     var auditMap: String = null
-    var objectId = message.nodeUniqueId
     var objectType = message.objectType
     val env = if (null != objectType) objectType.toLowerCase.replace("image", "") else "system"
-    val graphId = message.readOrDefault("graphId", "")
-    val userId = message.readOrDefault("userId", "")
-    val definitionNode: ObjectDefinition = getDefinition(graphId, objectType)
 
-    var channelId = config.defaultChannel
-    val channel = message.readOrDefault("channel", null).asInstanceOf[String]
-    if (null != channel) channelId = channel
+    val definitionNode: ObjectDefinition = getDefinition(objectType)
 
-    val transactionData = message.readOrDefault("transactionData", Map[String, AnyRef]())
-    val propertyMap = transactionData("properties").asInstanceOf[Map[String, AnyRef]]
+    val propertyMap = message.transactionData("properties").asInstanceOf[Map[String, AnyRef]]
     val statusMap = propertyMap.getOrElse("status", null).asInstanceOf[Map[String, AnyRef]]
     val lastStatusChangedOn = propertyMap.getOrElse("lastStatusChangedOn", null).asInstanceOf[Map[String, AnyRef]]
-    val addedRelations = transactionData.getOrElse("addedRelations", List[Map[String, AnyRef]]()).asInstanceOf[List[Map[String, AnyRef]]]
-    val removedRelations = transactionData.getOrElse("removedRelations", List[Map[String, AnyRef]]()).asInstanceOf[List[Map[String, AnyRef]]]
+    val addedRelations = message.transactionData.getOrElse("addedRelations", List[Map[String, AnyRef]]()).asInstanceOf[List[Map[String, AnyRef]]]
+    val removedRelations = message.transactionData.getOrElse("removedRelations", List[Map[String, AnyRef]]()).asInstanceOf[List[Map[String, AnyRef]]]
+
     var pkgVersion = ""
-    val pkgVerMap = propertyMap.getOrElse("pkgVersion", null).asInstanceOf[Map[String, AnyRef]]
-    if (null != pkgVerMap) pkgVersion = s"${pkgVerMap.get("nv")}"
     var prevStatus = ""
     var currStatus = ""
     var duration = ""
+    val pkgVerMap = propertyMap.getOrElse("pkgVersion", null).asInstanceOf[Map[String, AnyRef]]
+    if (null != pkgVerMap) pkgVersion = s"${pkgVerMap.get("nv")}"
+
     if (null != statusMap) {
       prevStatus = statusMap.getOrElse("ov", null).asInstanceOf[String]
       currStatus = statusMap.getOrElse("nv", null).asInstanceOf[String]
@@ -105,19 +100,21 @@ trait AuditEventGeneratorService {
         if (null != ov && null != nv) duration = String.valueOf(computeDuration(ov, nv))
       }
     }
+
     var props: List[String] = propertyMap.keys.toList
     props ++= getRelationProps(addedRelations, definitionNode)
     props ++= getRelationProps(removedRelations, definitionNode)
     val propsExceptSystemProps = props.filter(prop => !systemPropsList.contains(prop))
     val cdata = getCData(addedRelations, removedRelations, propertyMap)
-    var context: Map[String, String] = getContext(channelId, env)
-    objectId = if (null != objectId) objectId.replaceAll(IMAGE_SUFFIX, "") else objectId
+
+    var context: Map[String, String] = getContext(message.channelId(config.defaultChannel), env)
+
     objectType = if (null != objectType) objectType.replaceAll(OBJECT_TYPE_IMAGE_SUFFIX, "") else objectType
-    context ++= Map("objectId" -> objectId)
-    context ++= Map("objectType" -> objectType)
+    context ++= Map("objectId" -> message.objectId, "objectType" -> objectType)
+
     if (StringUtils.isNotBlank(duration)) context ++= Map("duration" -> duration)
     if (StringUtils.isNotBlank(pkgVersion)) context ++= Map("pkgVersion" -> pkgVersion)
-    if (StringUtils.isNotBlank(userId)) context ++= Map(TelemetryParams.ACTOR.name -> userId)
+    if (StringUtils.isNotBlank(message.userId)) context ++= Map(TelemetryParams.ACTOR.name -> message.userId)
     if (propsExceptSystemProps.nonEmpty) {
       val cdataList = gson.fromJson(JSONUtil.serialize(cdata), classOf[java.util.List[java.util.Map[String, Object]]])
 
@@ -128,7 +125,7 @@ trait AuditEventGeneratorService {
         currStatus,
         prevStatus,
         cdataList)
-      logger.info("Audit Message for Content Id [" + objectId + "] : " + auditMap);
+      logger.info("Audit Message for Content Id [" + message.objectId + "] : " + auditMap);
     }
     else {
       logger.info("Skipping Audit log as props is null or empty")

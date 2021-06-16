@@ -19,7 +19,7 @@ class AuditEventGenerator(config: AuditEventGeneratorConfig)
     private[this] lazy val logger = LoggerFactory.getLogger(classOf[AuditEventGenerator])
 
     override def metricsList(): List[String] = {
-        List(config.totalEventsCount, config.successEventCount, config.failedEventCount, config.skippedEventCount)
+        List(config.totalEventsCount, config.successEventCount, config.failedEventCount, config.skippedEventCount, config.emptySchemaEventCount, config.emptyPropsEventCount)
     }
 
     override def open(parameters: Configuration): Unit = {

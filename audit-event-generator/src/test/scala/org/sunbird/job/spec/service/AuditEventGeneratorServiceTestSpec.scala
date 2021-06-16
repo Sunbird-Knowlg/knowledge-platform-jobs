@@ -3,6 +3,8 @@ package org.sunbird.job.spec.service
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
+import org.mockito.Mockito
+import org.sunbird.job.Metrics
 import org.sunbird.job.auditevent.domain.Event
 import org.sunbird.job.fixture.EventFixture
 import org.sunbird.job.auditevent.functions.AuditEventGenerator
@@ -19,6 +21,7 @@ class AuditEventGeneratorServiceTestSpec extends BaseTestSpec {
   val config: Config = ConfigFactory.load("test.conf")
   lazy val jobConfig: AuditEventGeneratorConfig = new AuditEventGeneratorConfig(config)
   lazy val auditEventGenerator:AuditEventGenerator = new AuditEventGenerator(jobConfig)
+  lazy val mockMetrics = mock[Metrics](Mockito.withSettings().serializable())
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
@@ -31,7 +34,7 @@ class AuditEventGeneratorServiceTestSpec extends BaseTestSpec {
   "AuditEventGeneratorService" should "generate audit event" in {
     val inputEvent:util.Map[String, Any] = JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_1)
 
-    val eventStr = auditEventGenerator.getAuditMessage(new Event(inputEvent, 0, 10))(jobConfig)
+    val eventStr = auditEventGenerator.getAuditMessage(new Event(inputEvent, 0, 10))(jobConfig, mockMetrics)
     val eventMap = JSONUtil.deserialize[Map[String, AnyRef]](eventStr)
 
     eventMap("eid") should be("AUDIT")
@@ -42,7 +45,7 @@ class AuditEventGeneratorServiceTestSpec extends BaseTestSpec {
   "AuditEventGeneratorService" should "add duration of status change" in {
     val inputEvent:util.Map[String, Any] = JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_2)
 
-    val eventStr = auditEventGenerator.getAuditMessage(new Event(inputEvent, 0, 10))(jobConfig);
+    val eventStr = auditEventGenerator.getAuditMessage(new Event(inputEvent, 0, 10))(jobConfig, mockMetrics)
     val eventMap = JSONUtil.deserialize[Map[String, AnyRef]](eventStr)
 
     eventMap("eid") should be("AUDIT")
@@ -55,7 +58,7 @@ class AuditEventGeneratorServiceTestSpec extends BaseTestSpec {
   "AuditEventGeneratorService" should "add Duration as null" in {
     val inputEvent:util.Map[String, Any] = JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_3)
 
-    val eventStr = auditEventGenerator.getAuditMessage(new Event(inputEvent, 0, 10))(jobConfig);
+    val eventStr = auditEventGenerator.getAuditMessage(new Event(inputEvent, 0, 10))(jobConfig, mockMetrics)
     val eventMap = JSONUtil.deserialize[Map[String, AnyRef]](eventStr)
 
     eventMap("eid") should be("AUDIT")
@@ -68,7 +71,7 @@ class AuditEventGeneratorServiceTestSpec extends BaseTestSpec {
   "AuditEventGeneratorService" should "generate audit for content creation" in {
     val inputEvent:util.Map[String, Any] = JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_4)
 
-    val eventStr = auditEventGenerator.getAuditMessage(new Event(inputEvent, 0, 10))(jobConfig);
+    val eventStr = auditEventGenerator.getAuditMessage(new Event(inputEvent, 0, 10))(jobConfig, mockMetrics)
     val eventMap = JSONUtil.deserialize[Map[String, AnyRef]](eventStr)
 
     eventMap("eid") should be("AUDIT")
@@ -81,7 +84,7 @@ class AuditEventGeneratorServiceTestSpec extends BaseTestSpec {
   "AuditEventGeneratorService" should "skip audit for objectType is null" in {
     val inputEvent:util.Map[String, Any] = JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_5)
 
-    val eventStr = auditEventGenerator.getAuditMessage(new Event(inputEvent, 0, 10))(jobConfig);
+    val eventStr = auditEventGenerator.getAuditMessage(new Event(inputEvent, 0, 10))(jobConfig, mockMetrics)
 
     eventStr should be("{\"object\": {\"type\":null}}")
   }
@@ -89,7 +92,7 @@ class AuditEventGeneratorServiceTestSpec extends BaseTestSpec {
   "AuditEventGeneratorService" should "event for addedRelations" in {
     val inputEvent:util.Map[String, Any] = JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_6)
 
-    val eventStr = auditEventGenerator.getAuditMessage(new Event(inputEvent, 0, 10))(jobConfig);
+    val eventStr = auditEventGenerator.getAuditMessage(new Event(inputEvent, 0, 10))(jobConfig, mockMetrics)
     val eventMap = JSONUtil.deserialize[Map[String, AnyRef]](eventStr)
 
     eventMap("eid") should be("AUDIT")
@@ -103,7 +106,7 @@ class AuditEventGeneratorServiceTestSpec extends BaseTestSpec {
   "AuditEventGeneratorService" should "generate audit for update dialcode" in {
     val inputEvent:util.Map[String, Any] = JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_7)
 
-    val eventStr = auditEventGenerator.getAuditMessage(new Event(inputEvent, 0, 10))(jobConfig);
+    val eventStr = auditEventGenerator.getAuditMessage(new Event(inputEvent, 0, 10))(jobConfig, mockMetrics)
     val eventMap = JSONUtil.deserialize[Map[String, AnyRef]](eventStr)
 
     eventMap("eid") should be("AUDIT")

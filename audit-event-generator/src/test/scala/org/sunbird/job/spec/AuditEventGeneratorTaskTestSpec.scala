@@ -61,6 +61,18 @@ class AuditEventGeneratorTaskTestSpec extends BaseTestSpec {
       eventMap("edata") shouldNot be(null)
     })
   }
+
+  "AuditEventGeneratorStreamTask" should "increase metric for unknown schema" in {
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new RandomObjectTypeAuditEventGeneratorMapSource)
+    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaOutputTopic)).thenReturn(new AuditEventSink)
+
+    new AuditEventGeneratorStreamTask(jobConfig, mockKafkaUtil).process()
+
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(1)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.emptySchemaEventCount}").getValue() should be(1)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.emptyPropsEventCount}").getValue() should be(1)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.successEventCount}").getValue() should be(0)
+  }
 }
 
 class AuditEventGeneratorMapSource extends SourceFunction[Event] {
@@ -68,6 +80,15 @@ class AuditEventGeneratorMapSource extends SourceFunction[Event] {
   override def run(ctx: SourceContext[Event]) {
     ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_1), 0, 10))
     ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_5), 0, 11))
+  }
+
+  override def cancel(): Unit = {}
+}
+
+class RandomObjectTypeAuditEventGeneratorMapSource extends SourceFunction[Event] {
+
+  override def run(ctx: SourceContext[Event]) {
+    ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_8), 0, 10))
   }
 
   override def cancel(): Unit = {}

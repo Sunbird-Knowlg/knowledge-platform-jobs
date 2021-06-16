@@ -30,6 +30,8 @@ class AuditEventGeneratorConfig(override val config: Config) extends BaseJobConf
   val successEventCount = "success-events-count"
   val failedEventCount = "failed-events-count"
   val skippedEventCount = "skipped-events-count"
+  val emptySchemaEventCount = "empty-schema-events-count"
+  val emptyPropsEventCount = "empty-props-events-count"
 
   // Consumers
   val auditEventConsumer = "audit-event-generator-consumer"
@@ -42,8 +44,4 @@ class AuditEventGeneratorConfig(override val config: Config) extends BaseJobConf
 
   val basePath = config.getString("schema.basePath")
   val configVersion = "1.0"
-
-  // Redis Configurations
-  val relationCacheStore: Int = config.getInt("redis.database.relationCache.id")
-  val collectionCacheStore: Int = config.getInt("redis.database.collectionCache.id")
 }
