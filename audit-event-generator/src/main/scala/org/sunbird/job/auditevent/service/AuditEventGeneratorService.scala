@@ -11,6 +11,7 @@ import org.sunbird.telemetry.TelemetryParams
 import org.sunbird.job.auditevent.domain.Event
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import com.google.gson.Gson
+import org.sunbird.job.exception.InvalidEventException
 
 import java.util
 import java.text.SimpleDateFormat
@@ -34,16 +35,15 @@ trait AuditEventGeneratorService {
     context
   }
 
+  @throws(classOf[InvalidEventException])
   def processEvent(message: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics)(implicit config: AuditEventGeneratorConfig): Unit = {
     logger.info("AUDIT Event::" + JSONUtil.serialize(message))
     logger.info("Input Message Received for : [" + message.nodeUniqueId + "], Txn Event createdOn:" + message.createdOn + ", Operation Type:" + message.operationType)
     try {
-      val auditEventStr = getAuditMessage(message)(config, metrics)
-      val auditMap = JSONUtil.deserialize[Map[String, AnyRef]](auditEventStr)
-      val objectType = auditMap.getOrElse("object", null).asInstanceOf[Map[String, AnyRef]].getOrElse("type", null).asInstanceOf[String]
-      if (null != objectType) {
+      val (auditEventStr, objectType) = getAuditMessage(message)(config, metrics)
+      if (StringUtils.isNotBlank(objectType)) {
         context.output(config.auditOutputTag, auditEventStr)
-        logger.info("Telemetry Audit Message Successfully Sent for : " + auditMap.getOrElse("object", null).asInstanceOf[Map[String, AnyRef]].getOrElse("id", "").asInstanceOf[String] + " :: event ::" + auditEventStr)
+        logger.info("Telemetry Audit Message Successfully Sent for : " + message.objectId + " :: event ::" + auditEventStr)
         metrics.incCounter(config.successEventCount)
       }
       else {
@@ -53,7 +53,7 @@ trait AuditEventGeneratorService {
     } catch {
       case e: Exception =>
         logger.error("Failed to process message :: " + JSONUtil.serialize(message), e)
-        metrics.incCounter(config.failedEventCount)
+        throw e
     }
   }
 
@@ -69,7 +69,7 @@ trait AuditEventGeneratorService {
   }
 
 
-  def getAuditMessage(message: Event)(implicit config: AuditEventGeneratorConfig, metrics: Metrics): String = {
+  def getAuditMessage(message: Event)(implicit config: AuditEventGeneratorConfig, metrics: Metrics): (String, String) = {
     var auditMap: String = null
     var objectType = message.objectType
     val env = if (null != objectType) objectType.toLowerCase.replace("image", "") else "system"
@@ -115,6 +115,7 @@ trait AuditEventGeneratorService {
     if (StringUtils.isNotBlank(duration)) context ++= Map("duration" -> duration)
     if (StringUtils.isNotBlank(pkgVersion)) context ++= Map("pkgVersion" -> pkgVersion)
     if (StringUtils.isNotBlank(message.userId)) context ++= Map(TelemetryParams.ACTOR.name -> message.userId)
+
     if (propsExceptSystemProps.nonEmpty) {
       val cdataList = gson.fromJson(JSONUtil.serialize(cdata), classOf[java.util.List[java.util.Map[String, Object]]])
 
@@ -126,12 +127,13 @@ trait AuditEventGeneratorService {
         prevStatus,
         cdataList)
       logger.info("Audit Message for Content Id [" + message.objectId + "] : " + auditMap);
+
+      (auditMap, message.objectType)
     }
     else {
       logger.info("Skipping Audit log as props is null or empty")
-      auditMap = SKIP_AUDIT
+      (SKIP_AUDIT, "")
     }
-    auditMap
   }
 
   /**
