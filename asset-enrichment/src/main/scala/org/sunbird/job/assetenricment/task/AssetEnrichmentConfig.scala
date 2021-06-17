@@ -36,6 +36,7 @@ class AssetEnrichmentConfig(override val config: Config) extends BaseJobConfig(c
   val skippedEventCount = "skipped-event-count"
   val imageEnrichmentEventCount = "image-enrichment-event-count"
   val successImageEnrichmentEventCount = "success-image-enrichment-event-count"
+  val ignoredImageEnrichmentEventCount = "skipped-image-enrichment-event-count"
   val failedImageEnrichmentEventCount = "failed-image-enrichment-event-count"
   val successVideoEnrichmentEventCount = "success-video-enrichment-event-count"
   val failedVideoEnrichmentEventCount = "failed-video-enrichment-event-count"

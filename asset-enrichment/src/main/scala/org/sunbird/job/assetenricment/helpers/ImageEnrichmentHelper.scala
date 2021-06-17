@@ -20,14 +20,9 @@ trait ImageEnrichmentHelper {
 
   def enrichImage(asset: Asset)(implicit config: AssetEnrichmentConfig, definitionCache: DefinitionCache, cloudStorageUtil: CloudStorageUtil, neo4JUtil: Neo4JUtil): Unit = {
     val downloadUrl = asset.get("artifactUrl", "").asInstanceOf[String]
-    val mimeType = asset.get("mimeType", "").asInstanceOf[String]
     try {
-      if (config.unsupportedMimeTypes.contains(mimeType)) {
-        saveImageVariants(Map(), asset)(neo4JUtil)
-      } else {
-        val variantsMap = optimizeImage(asset.identifier, downloadUrl)(config, definitionCache, cloudStorageUtil)
-        saveImageVariants(variantsMap, asset)(neo4JUtil)
-      }
+      val variantsMap = optimizeImage(asset.identifier, downloadUrl)(config, definitionCache, cloudStorageUtil)
+      saveImageVariants(variantsMap, asset)(neo4JUtil)
     } catch {
       case e: Exception =>
         logger.error(s"Something Went Wrong While Performing Asset Enrichment operation.Content Id: ${asset.identifier}", e)
@@ -103,7 +98,7 @@ trait ImageEnrichmentHelper {
     } else 0.toDouble
   }
 
-  private def saveImageVariants(variantsMap: Map[String, String], asset: Asset)(implicit neo4JUtil: Neo4JUtil): Unit = {
+  def saveImageVariants(variantsMap: Map[String, String], asset: Asset)(implicit neo4JUtil: Neo4JUtil): Unit = {
     if(variantsMap.nonEmpty) asset.put("variants", ScalaJsonUtil.serialize(variantsMap))
     asset.put("status", "Live")
     logger.info(s"Processed Image for identifier: ${asset.identifier}. Updating metadata.")
