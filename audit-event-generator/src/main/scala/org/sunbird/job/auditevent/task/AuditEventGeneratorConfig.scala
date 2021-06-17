@@ -38,10 +38,6 @@ class AuditEventGeneratorConfig(override val config: Config) extends BaseJobConf
   val auditEventGeneratorFunction = "audit-event-generator-function"
   val auditEventProducer = "audit-event-generator-producer"
 
-  // Neo4J Configurations
-  val graphRoutePath = config.getString("neo4j.routePath")
-  val graphName = config.getString("neo4j.graph")
-
   val basePath = config.getString("schema.basePath")
   val configVersion = "1.0"
 }
