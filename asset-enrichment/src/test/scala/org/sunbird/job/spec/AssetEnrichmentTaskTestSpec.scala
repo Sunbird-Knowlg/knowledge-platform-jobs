@@ -96,7 +96,7 @@ class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
   "ImageEnrichmentHelper" should "return Exception if the image url is wrong" in {
     val metadata = getMetadataForImageAsset
     val asset = getAsset(EventFixture.IMAGE_ASSET, metadata)
-    asset.put("downloadUrl", "https://unknownurl123.com")
+    asset.put("artifactUrl", "https://unknownurl123.com")
     assertThrows[Exception] {
       new ImageEnrichmentFunction(jobConfig).enrichImage(asset)(jobConfig, definitionUtil, cloudUtil, mockNeo4JUtil)
     }
