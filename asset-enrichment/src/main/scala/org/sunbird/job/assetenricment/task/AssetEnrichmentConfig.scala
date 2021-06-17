@@ -36,6 +36,7 @@ class AssetEnrichmentConfig(override val config: Config) extends BaseJobConfig(c
   val skippedEventCount = "skipped-event-count"
   val imageEnrichmentEventCount = "image-enrichment-event-count"
   val successImageEnrichmentEventCount = "success-image-enrichment-event-count"
+  val ignoredImageEnrichmentEventCount = "skipped-image-enrichment-event-count"
   val failedImageEnrichmentEventCount = "failed-image-enrichment-event-count"
   val successVideoEnrichmentEventCount = "success-video-enrichment-event-count"
   val failedVideoEnrichmentEventCount = "failed-video-enrichment-event-count"
@@ -67,6 +68,7 @@ class AssetEnrichmentConfig(override val config: Config) extends BaseJobConfig(c
   val definitionBasePath: String = if (config.hasPath("schema.base_path")) config.getString("schema.base_path") else "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local"
   val schemaSupportVersionMap: Map[String, String] = if (config.hasPath("schema.supported_version")) config.getAnyRef("schema.supported_version").asInstanceOf[util.Map[String, String]].asScala.toMap else Map[String, String]()
 
+  val unsupportedMimeTypes: util.List[String] = if (config.hasPath("unsupported.mimetypes")) config.getStringList("unsupported.mimetypes") else util.Arrays.asList[String]("image/svg+xml")
   def getString(key: String, default: String): String = {
     if (config.hasPath(key)) config.getString(key) else default
   }

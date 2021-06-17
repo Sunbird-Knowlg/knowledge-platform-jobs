@@ -40,8 +40,14 @@ class ImageEnrichmentFunction(config: AssetEnrichmentConfig,
     try {
       if (asset.validate(config.contentUploadContextDriven)) replaceArtifactUrl(asset)(cloudStorageUtil)
       asset.putAll(getMetadata(event.id)(neo4JUtil))
-      enrichImage(asset)(config, definitionCache, cloudStorageUtil, neo4JUtil)
-      metrics.incCounter(config.successImageEnrichmentEventCount)
+      val mimeType = asset.get("mimeType", "").asInstanceOf[String]
+      if(config.unsupportedMimeTypes.contains(mimeType)){
+        saveImageVariants(Map(), asset)(neo4JUtil)
+        metrics.incCounter(config.ignoredImageEnrichmentEventCount)
+      }else{
+        enrichImage(asset)(config, definitionCache, cloudStorageUtil, neo4JUtil)
+        metrics.incCounter(config.successImageEnrichmentEventCount)
+      }
     } catch {
       case ex: Exception =>
         logger.error(s"Error while processing message for Image Enrichment for identifier : ${asset.identifier}.", ex)
@@ -51,7 +57,7 @@ class ImageEnrichmentFunction(config: AssetEnrichmentConfig,
   }
 
   override def metricsList(): List[String] = {
-    List(config.successImageEnrichmentEventCount, config.failedImageEnrichmentEventCount, config.imageEnrichmentEventCount)
+    List(config.successImageEnrichmentEventCount, config.failedImageEnrichmentEventCount, config.imageEnrichmentEventCount, config.ignoredImageEnrichmentEventCount)
   }
 
   def getMetadata(identifier: String)(neo4JUtil: Neo4JUtil): Map[String, AnyRef] = {
