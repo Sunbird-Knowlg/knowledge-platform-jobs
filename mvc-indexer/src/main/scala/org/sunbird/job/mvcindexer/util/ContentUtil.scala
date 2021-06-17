@@ -14,8 +14,7 @@ object ContentUtil {
     try {
       val contentReadURL = config.contentServiceBase
       logger.info("getContentMetaData :::  Making API call to read content " + contentReadURL + "/content/v3/read/")
-//      val content:HTTPResponse = httpUtil.get(contentReadURL + "/content/v3/read/" + identifer)
-      val content:HTTPResponse = httpUtil.get("https://dev.sunbirded.org/api/content/v1/read/" + identifer)
+      val content:HTTPResponse = httpUtil.get(contentReadURL + "/content/v3/read/" + identifer)
       logger.info("getContentMetaData ::: retrieved content meta " + content)
       val obj = JSONUtil.deserialize[Map[String, AnyRef]](content.body)
       val contentobj = obj("result").asInstanceOf[Map[String, AnyRef]]("content").asInstanceOf[Map[String, AnyRef]]
@@ -37,7 +36,6 @@ object ContentUtil {
       else null
       if (value != null) {
         mutableMap += (param -> value)
-//        obj ++= Map(param -> value)
       }
     }
     JSONUtil.deserialize[Map[String, AnyRef]](JSONUtil.serialize(mutableMap))

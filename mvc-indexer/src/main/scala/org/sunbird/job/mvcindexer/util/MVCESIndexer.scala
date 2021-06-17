@@ -44,7 +44,6 @@ class MVCESIndexer(config: MVCIndexerConfig, esUtil: ElasticSearchUtil) {
         // Insert a new doc
         esUtil.addDocumentWithIndex(jsonAsString, config.mvcProcessorIndex, uniqueId)
 
-
       case "update-content-rating" =>
         val resp = esUtil.getDocumentAsString(uniqueId)
         if (null != resp && resp.contains(uniqueId)) {
@@ -60,6 +59,7 @@ class MVCESIndexer(config: MVCIndexerConfig, esUtil: ElasticSearchUtil) {
       case "update-ml-contenttextvector" =>
         jsonIndexDocument += ("ml_contentTextVector" -> message.mlContentTextVector)
         jsonAsString = JSONUtil.serialize(jsonIndexDocument)
+        esUtil.updateDocument(uniqueId, jsonAsString)
 
       case "update-ml-keywords" =>
         // Update a doc

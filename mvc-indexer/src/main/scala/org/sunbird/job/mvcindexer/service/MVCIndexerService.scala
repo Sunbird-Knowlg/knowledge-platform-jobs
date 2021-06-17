@@ -33,32 +33,21 @@ class MVCIndexerService {
   }
 
   def processMessage(message: Event, metrics: Metrics, context: ProcessFunction[Event, String]#Context): Unit = {
-    if (message.isValid) {
-      logger.debug("Indexing event into ES")
-      try {
-        processMessage(message)
-        logger.debug("Record Added/Updated into mvc index for " + message.identifier)
-        metrics.incCounter(config.successEventCount)
-      } catch {
-
-        case ex: RuntimeException => {
-          logger.error("Error while processing message: " + PlatformErrorCodes.SYSTEM_ERROR.toString + " " + JSONUtil.serialize(message), ex)
-          metrics.incCounter(config.runtimeFailedEventCount)
-          metrics.incCounter(config.failedEventCount)
-//          pushEventForRetry(message, context, ex, PlatformErrorCodes.SYSTEM_ERROR.toString)
-        }
-
-        case ex: Exception => {
-          logger.error("Error while processing message: " + JSONUtil.serialize(message), ex)
-          metrics.incCounter(config.failedEventCount)
-          if (null != message) {
-            val errorCode: String = if (ex.isInstanceOf[NoNodeAvailableException]) PlatformErrorCodes.SYSTEM_ERROR.toString else PlatformErrorCodes.PROCESSING_ERROR.toString
-//            pushEventForRetry(message, context, ex, errorCode)
-          }
-        }
+    logger.debug("Indexing event into ES")
+    try {
+      processMessage(message)
+      logger.debug("Record Added/Updated into mvc index for " + message.identifier)
+      metrics.incCounter(config.successEventCount)
+    } catch {
+      case ex: RuntimeException => {
+        metrics.incCounter(config.runtimeFailedEventCount)
+        pushFailedEventForRetry(message, context, ex, PlatformErrorCodes.SYSTEM_ERROR.toString)
       }
-    } else {
-      logger.info("Learning event not qualified for indexing")
+
+      case ex: Exception => {
+        metrics.incCounter(config.failedEventCount)
+        pushFailedEventForRetry(message, context, ex, PlatformErrorCodes.PROCESSING_ERROR.toString)
+      }
     }
   }
 
@@ -77,19 +66,21 @@ class MVCIndexerService {
     }
   }
 
-//  def pushEventForRetry(eventMessage: Event, context: ProcessFunction[Event, String]#Context, error: Exception, errorCode: String): Unit = {
-//    val failedEventMap = eventMessage.map
-//    val errorString = ExceptionUtils.getStackTrace(error).split("\\n\\t")
-//    var stackTrace = null
-//    if (errorString.length > 21) stackTrace = Arrays.asList(errorString).subList(errorString.length - 21, errorString.length - 1)
-//    else stackTrace = Arrays.asList(errorString)
-//    failedEventMap.put("errorCode", errorCode)
-//    failedEventMap.put("error", error.getMessage + " : : " + stackTrace)
-//    eventMessage.put("jobName", metrics.getJobName)
-//    eventMessage.put("failInfo", failedEventMap)
-//    collector.send(new Nothing(sysStream, eventMessage))
-//    LOGGER.debug("Event sent to fail topic for job : " + metrics.getJobName)
-//  }
+  def pushFailedEventForRetry(eventMessage: Event, context: ProcessFunction[Event, String]#Context, error: Exception, errorCode: String): Unit = {
+    logger.error("Error while processing message: " + errorCode + " " + JSONUtil.serialize(eventMessage), error)
+
+    val failedEventMap = eventMessage.map
+    val errorString = ExceptionUtils.getStackTrace(error).split("\\n\\t")
+    val stackTrace =  if (errorString.length > 21)  java.util.Arrays.asList(errorString).subList(errorString.length - 21, errorString.length - 1)
+    else java.util.Arrays.asList(errorString)
+
+    failedEventMap.put("errorCode", errorCode)
+    failedEventMap.put("error", error.getMessage + " : : " + JSONUtil.serialize(stackTrace))
+    failedEventMap.put("jobName", config.jobName)
+    failedEventMap.put("failInfo", failedEventMap)
+
+    context.output(config.failedOutputTag, JSONUtil.serialize(failedEventMap))
+  }
 
   def closeConnection(): Unit = {
     cassandraUtil.close()
