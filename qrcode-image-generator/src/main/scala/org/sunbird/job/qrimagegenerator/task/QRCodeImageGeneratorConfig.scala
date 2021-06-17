@@ -1,23 +1,17 @@
 package org.sunbird.job.qrimagegenerator.task
 
-import java.util
-
 import com.typesafe.config.Config
 import org.apache.commons.lang3.StringUtils
-import org.apache.flink.api.common.typeinfo.TypeInformation
-import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.sunbird.job.BaseJobConfig
 
 class QRCodeImageGeneratorConfig(override val config: Config) extends BaseJobConfig(config, "qrcode-image-generator") {
 
   private val serialVersionUID = 2905979434303791378L
 
-  implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
-  implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
-
   // Kafka Topics Configuration
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
+  override val parallelism: Int = config.getInt("task.parallelism")
 
   // Metric List
   val totalEventsCount = "total-events-count"
@@ -26,6 +20,8 @@ class QRCodeImageGeneratorConfig(override val config: Config) extends BaseJobCon
   val dbHitEventCount = "db-hit-events-count"
   val dbFailureEventCount = "db-failure-events-count"
   val skippedEventCount = "skipped-events-count"
+  val cloudDbHitCount = "cloud-db-hit-events-count"
+  val cloudDbFailCount = "cloud-db-hit-failure-count"
 
   // Consumers
   val eventConsumer = "qrcode-image-generator-consumer"
@@ -34,7 +30,7 @@ class QRCodeImageGeneratorConfig(override val config: Config) extends BaseJobCon
   val configVersion = "1.0"
 
   val eid = "BE_QR_IMAGE_GENERATOR"
-  val lpTempfileLocation = "/tmp"
+  val lpTempfileLocation = config.getString("lp.tmp.file.location")
 
   //Cloud store details
   val cloudStorageType= config.getString("cloud.storage.type")

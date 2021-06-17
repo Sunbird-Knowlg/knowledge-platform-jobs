@@ -10,7 +10,7 @@ import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.qrimagegenerator.domain.Event
 import org.sunbird.job.qrimagegenerator.functions.QRCodeImageGeneratorFunction
-import org.sunbird.job.util.{ElasticSearchUtil, FlinkUtil}
+import org.sunbird.job.util.FlinkUtil
 
 
 class QRCodeImageGeneratorTask(config: QRCodeImageGeneratorConfig, kafkaConnector: FlinkKafkaConnector) {
@@ -28,6 +28,7 @@ class QRCodeImageGeneratorTask(config: QRCodeImageGeneratorConfig, kafkaConnecto
       .setParallelism(config.kafkaConsumerParallelism)
       .name(config.qrCodeImageGeneratorFunction)
       .uid(config.qrCodeImageGeneratorFunction)
+      .setParallelism(config.parallelism)
 
     env.execute(config.jobName)
   }
@@ -43,7 +44,6 @@ object QRCodeImageGeneratorTask {
     }.getOrElse(ConfigFactory.load("qrcode-image-generator.conf").withFallback(ConfigFactory.systemEnvironment()))
     val qrCodeImageGeneratorConfig = new QRCodeImageGeneratorConfig(config)
     val kafkaUtil = new FlinkKafkaConnector(qrCodeImageGeneratorConfig)
-    val esUtil:ElasticSearchUtil = null
     val task = new QRCodeImageGeneratorTask(qrCodeImageGeneratorConfig, kafkaUtil)
     task.process()
   }

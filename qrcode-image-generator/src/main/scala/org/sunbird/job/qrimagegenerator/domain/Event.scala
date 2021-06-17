@@ -13,6 +13,8 @@ class Event (eventMap: java.util.Map[String, Any], partition: Int, offset: Long)
 
   def processId = readOrDefault[String]("processId", "")
 
+  def objectId = readOrDefault[String]("objectId", "")
+
   def storageContainer = readOrDefault[String]("storage.container", "")
 
   def storagePath = readOrDefault[String]("storage.path", "")
