@@ -148,10 +148,7 @@ trait AuditEventGeneratorService {
       val dialcodeMap = propertyMap("dialcodes").asInstanceOf[Map[String, AnyRef]]
       val dialcodes = dialcodeMap("nv").asInstanceOf[List[String]]
       if (null != dialcodes) {
-        var map = Map[String, AnyRef]()
-        map ++= Map("id" -> dialcodes)
-        map ++= Map("type" -> "DialCode")
-        cdata :+= map
+        cdata :+= Map[String, AnyRef]("id" -> dialcodes, "type" -> "DialCode")
       }
     }
     if (null != addedRelations && addedRelations.nonEmpty) cdata ++= prepareCMap(addedRelations)
@@ -164,10 +161,7 @@ trait AuditEventGeneratorService {
    */
   private def prepareCMap(relations: List[Map[String, AnyRef]]): List[Map[String, AnyRef]] = {
     relations.map(relation => {
-      var cMap = Map[String, AnyRef]()
-      cMap ++= Map("id" -> relation("id"))
-      cMap ++= Map("type" -> relation("type"))
-      cMap
+      Map[String, AnyRef]("id" -> relation("id"), "type" -> relation("type"))
     })
   }
 
