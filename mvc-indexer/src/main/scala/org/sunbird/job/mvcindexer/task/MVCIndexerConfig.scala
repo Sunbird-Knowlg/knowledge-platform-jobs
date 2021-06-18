@@ -19,6 +19,7 @@ class MVCIndexerConfig(override val config: Config) extends BaseJobConfig(config
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
   override val parallelism: Int = config.getInt("task.parallelism")
   val kafkaFailedTopic: String = config.getString("kafka.output.failed.topic")
+  val kafkaProducerParallelism: Int = config.getInt("task.producer.parallelism")
 
   // Metric List
   val totalEventsCount = "total-events-count"

@@ -28,8 +28,8 @@ class MVCIndexerStreamTask(config: MVCIndexerConfig, kafkaConnector: FlinkKafkaC
       .uid(config.mvcIndexerFunction)
       .setParallelism(config.parallelism)
 
-    processStreamTask.getSideOutput(config.failedOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaFailedTopic))
-      .name(config.mvcFailedEventProducer).uid(config.mvcFailedEventProducer)
+//    processStreamTask.getSideOutput(config.failedOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaFailedTopic))
+//      .name(config.mvcFailedEventProducer).uid(config.mvcFailedEventProducer).setParallelism(config.kafkaProducerParallelism)
 
     env.execute(config.jobName)
   }

@@ -21,7 +21,7 @@ object ContentUtil {
       filterData(newmap, contentobj)
     } catch {
       case e: Exception =>
-        logger.error("Error in getContentMetaData ", e)
+        logger.error("Error in getContentMetaData for " + identifer, e)
         throw e
     }
   }

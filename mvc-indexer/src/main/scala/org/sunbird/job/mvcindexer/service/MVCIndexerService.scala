@@ -8,7 +8,7 @@ import org.sunbird.job.mvcindexer.domain.Event
 import org.elasticsearch.client.transport.NoNodeAvailableException
 import org.sunbird.job.Metrics
 import org.sunbird.job.mvcindexer.task.MVCIndexerConfig
-import org.sunbird.job.mvcindexer.util.{ContentUtil, MVCCassandraIndexer, MVCESIndexer, PlatformErrorCodes}
+import org.sunbird.job.mvcindexer.util.{ContentUtil, MVCCassandraIndexer, MVCESIndexer}
 import org.sunbird.job.util.{CassandraUtil, ElasticSearchUtil, HttpUtil, JSONUtil}
 
 
@@ -32,25 +32,30 @@ class MVCIndexerService {
     this.cassandraManager = new MVCCassandraIndexer(config, cassandraUtil, httpUtil)
   }
 
+  @throws[Exception]
   def processMessage(message: Event, metrics: Metrics, context: ProcessFunction[Event, String]#Context): Unit = {
-    logger.debug("Indexing event into ES")
+    logger.info("Indexing event into ES")
     try {
       processMessage(message)
-      logger.debug("Record Added/Updated into mvc index for " + message.identifier)
+      logger.info("Record Added/Updated into mvc index for " + message.identifier)
       metrics.incCounter(config.successEventCount)
     } catch {
-      case ex: RuntimeException => {
-        metrics.incCounter(config.runtimeFailedEventCount)
-        pushFailedEventForRetry(message, context, ex, PlatformErrorCodes.SYSTEM_ERROR.toString)
-      }
+//      case ex: RuntimeException => {
+//        metrics.incCounter(config.runtimeFailedEventCount)
+//        pushFailedEventForRetry(message, context, ex, PlatformErrorCodes.SYSTEM_ERROR.toString)
+//        throw ex
+//      }
 
       case ex: Exception => {
-        metrics.incCounter(config.failedEventCount)
-        pushFailedEventForRetry(message, context, ex, PlatformErrorCodes.PROCESSING_ERROR.toString)
+        ex.printStackTrace()
+//        metrics.incCounter(config.failedEventCount)
+//        pushFailedEventForRetry(message, context, ex, PlatformErrorCodes.PROCESSING_ERROR.toString)
+        throw ex
       }
     }
   }
 
+  @throws[Exception]
   def processMessage(message: Event): Unit = {
     if (message != null && message.eventData != null) {
       val objectId: String = message.identifier
@@ -66,21 +71,21 @@ class MVCIndexerService {
     }
   }
 
-  def pushFailedEventForRetry(eventMessage: Event, context: ProcessFunction[Event, String]#Context, error: Exception, errorCode: String): Unit = {
-    logger.error("Error while processing message: " + errorCode + " " + JSONUtil.serialize(eventMessage), error)
-
-    val failedEventMap = eventMessage.map
-    val errorString = ExceptionUtils.getStackTrace(error).split("\\n\\t")
-    val stackTrace =  if (errorString.length > 21)  java.util.Arrays.asList(errorString).subList(errorString.length - 21, errorString.length - 1)
-    else java.util.Arrays.asList(errorString)
-
-    failedEventMap.put("errorCode", errorCode)
-    failedEventMap.put("error", error.getMessage + " : : " + JSONUtil.serialize(stackTrace))
-    failedEventMap.put("jobName", config.jobName)
-    failedEventMap.put("failInfo", failedEventMap)
-
-    context.output(config.failedOutputTag, JSONUtil.serialize(failedEventMap))
-  }
+//  def pushFailedEventForRetry(eventMessage: Event, context: ProcessFunction[Event, String]#Context, error: Exception, errorCode: String): Unit = {
+//    logger.error("Error while processing message: " + errorCode + " " + JSONUtil.serialize(eventMessage), error)
+//
+//    val failedEventMap = eventMessage.map
+//    val errorString = ExceptionUtils.getStackTrace(error).split("\\n\\t")
+//    val stackTrace =  if (errorString.length > 21)  java.util.Arrays.asList(errorString).subList(errorString.length - 21, errorString.length - 1)
+//    else java.util.Arrays.asList(errorString)
+//
+//    failedEventMap.put("errorCode", errorCode)
+//    failedEventMap.put("error", error.getMessage + " : : " + JSONUtil.serialize(stackTrace))
+//    failedEventMap.put("jobName", config.jobName)
+//    failedEventMap.put("failInfo", failedEventMap)
+//
+//    context.output(config.failedOutputTag, JSONUtil.serialize(failedEventMap))
+//  }
 
   def closeConnection(): Unit = {
     cassandraUtil.close()

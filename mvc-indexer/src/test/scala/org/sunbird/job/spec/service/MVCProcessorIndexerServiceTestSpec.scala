@@ -14,8 +14,8 @@ import org.sunbird.spec.BaseTestSpec
 import org.cassandraunit.CQLDataLoader
 import org.cassandraunit.dataset.cql.FileCQLDataSet
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
-import org.mockito.ArgumentMatchers.{any, anyString, endsWith}
-import org.mockito.Mockito.{doNothing, times, verify, when}
+import org.mockito.ArgumentMatchers.{any, endsWith}
+import org.mockito.Mockito.{times, verify, when}
 
 import java.util
 
@@ -40,12 +40,17 @@ class MVCProcessorIndexerServiceTestSpec extends BaseTestSpec {
     val dataLoader = new CQLDataLoader(session);
     dataLoader.load(new FileCQLDataSet(getClass.getResource("/test.cql").getPath, true, true));
     testCassandraUtil(cassandraUtil)
-
     super.beforeAll()
   }
 
   override protected def afterAll(): Unit = {
     super.afterAll()
+    try {
+      EmbeddedCassandraServerHelper.cleanEmbeddedCassandra()
+      println("EmbeddedCassandraServerHelper.cleanEmbeddedCassandra() called")
+    } catch {
+      case ex: Exception => ex.printStackTrace()
+    }
   }
 
   "MVCProcessorIndexerService" should "generate es log" in {
@@ -73,31 +78,17 @@ class MVCProcessorIndexerServiceTestSpec extends BaseTestSpec {
     esRecordMap("pkgVersion") should be(1)
     esRecordMap("previewUrl") should be("https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/ecml/do_112806963140329472124-latest")
     esRecordMap("level1Name").asInstanceOf[List[String]] should contain("Math-Magic")
-    esRecordMap("framework") should be("NCF")
-    esRecordMap("mediaType") should be("content")
     esRecordMap("identifier") should be("do_112806963140329472124")
-    esRecordMap("source").asInstanceOf[List[String]] should contain("Sunbird 1")
-    esRecordMap("osId") should be("org.sunbird.quiz.app")
     esRecordMap("appId") should be("dev.sunbird.portal")
     esRecordMap("objectType") should be("Content")
-    esRecordMap("s3Key") should be("ecar_files/do_112806963140329472124/ecml-bundle-test_1563350022377_do_112806963140329472124_1.0.ecar")
     esRecordMap("name") should be("Ecml bundle Test")
-    esRecordMap("code") should be("test.res.1")
-    esRecordMap("ownershipType").asInstanceOf[List[String]] should contain("createdBy")
-    esRecordMap("createdBy") should be("95e4942d-cbe8-477d-aebd-ad8e6de4bfc8")
     esRecordMap("lastUpdatedOn") should be("2019-07-17T07:53:25.618+0000")
-    esRecordMap("streamingUrl") should be("https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/ecml/do_112806963140329472124-latest")
-    esRecordMap("idealScreenDensity") should be("hdpi")
     esRecordMap("status") should be("Live")
-    esRecordMap("compatibilityLevel") should be(1)
+    esRecordMap("source").asInstanceOf[List[String]] should contain("Sunbird 1")
     esRecordMap("contentEncoding") should be("gzip")
-    esRecordMap("versionKey") should be("1591949601174")
-    esRecordMap("languageCode").asInstanceOf[List[String]] should contain("en")
     esRecordMap("contentType") should be("Resource")
-    esRecordMap("license") should be("CC BY 4.0")
     esRecordMap("channel") should be("in.ekstep")
     esRecordMap("textbook_name").asInstanceOf[List[String]] should contain("How Many Times?")
-    esRecordMap("version") should be(2)
     esRecordMap("mimeType") should be("application/vnd.ekstep.ecml-archive")
     esRecordMap("language").asInstanceOf[List[String]] should contain("English")
     esRecordMap("sourceURL") should be("https://dev.sunbirded.org/play/content/do_112806963140329472124")
