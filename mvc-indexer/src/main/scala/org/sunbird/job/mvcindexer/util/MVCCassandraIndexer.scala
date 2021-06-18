@@ -8,6 +8,8 @@ import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, JSONUtil}
 import org.slf4j.LoggerFactory
 import org.sunbird.job.mvcindexer.service.MVCIndexerService
 import org.sunbird.job.mvcindexer.task.MVCIndexerConfig
+
+import scala.collection.mutable
 import scala.collection.mutable.{Map => MutableMap}
 
 class MVCCassandraIndexer(config: MVCIndexerConfig, cassandraUtil: CassandraUtil, httpUtil: HttpUtil) {
@@ -34,17 +36,15 @@ class MVCCassandraIndexer(config: MVCIndexerConfig, cassandraUtil: CassandraUtil
     }
     else if (action.equalsIgnoreCase("update-ml-keywords")) {
       logger.info("insertIntoCassandra ::: update-ml-keywords")
-
       getMLVectors(message.mlContentText, identifier)
-      val mapForStage2 = MutableMap[String, AnyRef]()
-      mapForStage2 += ("ml_keywords" -> message.mlKeywords)
-      mapForStage2 += ("ml_content_text"-> message.mlContentText)
+      val mapForStage2 = MutableMap[String, AnyRef]("ml_keywords" -> message.mlKeywords, "ml_content_text"-> message.mlContentText)
       updateContentProperties(identifier, mapForStage2)
     }
     else if (action.equalsIgnoreCase("update-ml-contenttextvector")) {
       logger.info("insertIntoCassandra ::: update-ml-contenttextvector event")
-      val mapForStage3 = MutableMap[String, AnyRef]()
-      mapForStage3 += ("ml_content_text_vector"-> message.mlContentTextVector)
+      val vectorSet = JSONUtil.deserialize[java.util.HashSet[java.lang.Double]](JSONUtil.serialize(message.mlContentTextVector))
+      val mapForStage3 = MutableMap[String, AnyRef]("ml_content_text_vector"-> vectorSet)
+//      mapForStage3 += ("ml_content_text_vector"-> vectorSet)
       updateContentProperties(identifier, mapForStage3)
     }
   }
@@ -73,21 +73,24 @@ class MVCCassandraIndexer(config: MVCIndexerConfig, cassandraUtil: CassandraUtil
   // POST reqeuest for ml keywords api
   @throws[Exception]
   private[util] def getMLKeywords(contentdef: Map[String, AnyRef]): Unit = {
-    val obj = JSONUtil.deserialize[Map[String, AnyRef]](mlworkbenchapirequest)
-    val req = obj("request").asInstanceOf[Map[String, AnyRef]]
-    val input = req("input").asInstanceOf[Map[String, AnyRef]]
+    var obj = JSONUtil.deserialize[Map[String, AnyRef]](mlworkbenchapirequest)
+    var req = obj("request").asInstanceOf[Map[String, AnyRef]]
+    var input = req("input").asInstanceOf[Map[String, AnyRef]]
     var content = input("content").asInstanceOf[List[Map[String, AnyRef]]]
     content :+= contentdef
-//    req.put("job", jobname)
+    input ++= Map("content"-> content)
+    req ++= Map("input"-> input)
+    obj ++= Map("request"-> req)
 
     val requestBody = JSONUtil.serialize(obj)
-    logger.info("getMLKeywords ::: The ML workbench URL is " + "http://" + config.mlKeywordAPI + ":3579/daggit/submit")
+    logger.info(s"getMLKeywords ::: The ML workbench URL is  http://${config.mlKeywordAPIHost}:${config.mlKeywordAPIPort}/daggit/submit")
     try {
-      val resp:HTTPResponse = httpUtil.post("http://" + config.mlKeywordAPI + ":3579/daggit/submit", requestBody)
-      logger.info("getMLKeywords ::: The ML workbench response is " + resp)
+      val resp:HTTPResponse = httpUtil.post(s"http://${config.mlKeywordAPIHost}:${config.mlKeywordAPIPort}/daggit/submit", requestBody)
+      logger.info("getMLKeywords ::: The ML workbench response is " + resp.body)
     } catch {
       case e: Exception =>
         logger.info("getMLKeywords ::: ML workbench api request failed ")
+        throw e
     }
   }
 
@@ -95,18 +98,21 @@ class MVCCassandraIndexer(config: MVCIndexerConfig, cassandraUtil: CassandraUtil
   @throws[Exception]
   def getMLVectors(contentText: String, identifier: String): Unit = {
     val obj = JSONUtil.deserialize[MutableMap[String, AnyRef]](mlvectorListRequest)
-    val req = obj.get("request").asInstanceOf[MutableMap[String, AnyRef]]
-    var text = req.get("text").asInstanceOf[List[String]]
-    req.put("cid", identifier)
+    var req:Map[String, AnyRef] = obj("request").asInstanceOf[Map[String, AnyRef]]
+    var text = req("text").asInstanceOf[List[String]]
     text :+= contentText
+    req ++= Map("cid"-> identifier)
+    req ++= Map("text"-> text)
+    obj ++= Map("request"-> req)
     val requestBody = JSONUtil.serialize(obj)
-    logger.info("getMLVectors ::: The ML vector URL is " + "http://" + config.mlVectorAPI + ":1729/ml/vector/ContentText")
+    logger.info(s"getMLVectors ::: The ML vector URL is http://${config.mlVectorAPIHost}:${config.mlVectorAPIPort}/ml/vector/ContentText")
     try {
-      val resp:HTTPResponse = httpUtil.post("http://" + config.mlVectorAPI + ":1729/ml/vector/ContentText", requestBody)
-      logger.info("getMLVectors ::: ML vector api request response is " + resp)
+      val resp:HTTPResponse = httpUtil.post(s"http://${config.mlVectorAPIHost}:${config.mlVectorAPIPort}/ml/vector/ContentText", requestBody)
+      logger.info("getMLVectors ::: ML vector api request response is " + resp.body)
     } catch {
       case e: Exception =>
         logger.info("getMLVectors ::: ML vector api request failed ")
+        throw e
     }
   }
 

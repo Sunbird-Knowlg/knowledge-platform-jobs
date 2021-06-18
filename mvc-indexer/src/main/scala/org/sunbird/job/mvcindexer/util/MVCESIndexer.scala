@@ -48,11 +48,7 @@ class MVCESIndexer(config: MVCIndexerConfig, esUtil: ElasticSearchUtil) {
         val resp = esUtil.getDocumentAsString(uniqueId)
         if (null != resp && resp.contains(uniqueId)) {
           logger.info("ES Document Found With Identifier " + uniqueId + " | Updating Content Rating.")
-          val metadata = jsonIndexDocument.get("metadata").asInstanceOf[Nothing]
-          val finalJsonindexasString = JSONUtil.serialize(metadata)
-//          CompletableFuture.runAsync(() => {
-          esUtil.updateDocument(uniqueId, finalJsonindexasString)
-//          })
+          esUtil.updateDocument(uniqueId, JSONUtil.serialize(message.metadata))
         }
         else logger.info("ES Document Not Found With Identifier " + uniqueId + " | Skipped Updating Content Rating.")
 

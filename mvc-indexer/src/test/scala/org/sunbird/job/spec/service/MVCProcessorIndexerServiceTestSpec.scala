@@ -26,12 +26,12 @@ class MVCProcessorIndexerServiceTestSpec extends BaseTestSpec {
   val config: Config = ConfigFactory.load("test.conf")
   lazy val jobConfig: MVCIndexerConfig = new MVCIndexerConfig(config)
   var cassandraUtil: CassandraUtil = _
-  val mockElasticUtil:ElasticSearchUtil = mock[ElasticSearchUtil](Mockito.withSettings().serializable())
-  val mockHttpUtil:HttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
+  var mockElasticUtil:ElasticSearchUtil = _
+  var mockHttpUtil:HttpUtil = _
 //  val mockHttpUtil:HttpUtil = new HttpUtil
-  lazy val mvcProcessorIndexer: MVCIndexerService = new MVCIndexerService(jobConfig, mockElasticUtil, mockHttpUtil)
+  var mvcProcessorIndexer: MVCIndexerService = _
 
-  val updateEsIndexResponse = """{"responseCode":"OK","result":{"content":{"channel":"in.ekstep","framework":"NCF","name":"Ecml bundle Test","language":["English"],"appId":"dev.sunbird.portal","contentEncoding":"gzip","identifier":"do_112806963140329472124","mimeType":"application/vnd.ekstep.ecml-archive","contentType":"Resource","objectType":"Content","artifactUrl":"https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_112806963140329472124/artifact/1563350021721_do_112806963140329472124.zip","previewUrl":"https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/ecml/do_112806963140329472124-latest","streamingUrl":"https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/ecml/do_112806963140329472124-latest","downloadUrl":"https://sunbirddev.blob.core.windows.net/sunbird-content-dev/ecar_files/do_112806963140329472124/ecml-bundle-test_1563350022377_do_112806963140329472124_1.0.ecar","status":"Live","pkgVersion":1,"lastUpdatedOn":"2019-07-17T07:53:25.618+0000"}}}"""
+  val contentResponse = """{"responseCode":"OK","result":{"content":{"channel":"in.ekstep","framework":"NCF","name":"Ecml bundle Test","language":["English"],"appId":"dev.sunbird.portal","contentEncoding":"gzip","identifier":"do_112806963140329472124","mimeType":"application/vnd.ekstep.ecml-archive","contentType":"Resource","objectType":"Content","artifactUrl":"https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_112806963140329472124/artifact/1563350021721_do_112806963140329472124.zip","previewUrl":"https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/ecml/do_112806963140329472124-latest","streamingUrl":"https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/ecml/do_112806963140329472124-latest","downloadUrl":"https://sunbirddev.blob.core.windows.net/sunbird-content-dev/ecar_files/do_112806963140329472124/ecml-bundle-test_1563350022377_do_112806963140329472124_1.0.ecar","status":"Live","pkgVersion":1,"lastUpdatedOn":"2019-07-17T07:53:25.618+0000"}}}"""
 
   override protected def beforeAll(): Unit = {
     EmbeddedCassandraServerHelper.startEmbeddedCassandra(80000L)
@@ -43,11 +43,17 @@ class MVCProcessorIndexerServiceTestSpec extends BaseTestSpec {
     super.beforeAll()
   }
 
+  override def beforeEach(): Unit = {
+    super.beforeEach()
+    mockElasticUtil = mock[ElasticSearchUtil](Mockito.withSettings().serializable())
+    mockHttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
+    mvcProcessorIndexer = new MVCIndexerService(jobConfig, mockElasticUtil, mockHttpUtil)
+  }
+
   override protected def afterAll(): Unit = {
     super.afterAll()
     try {
       EmbeddedCassandraServerHelper.cleanEmbeddedCassandra()
-      println("EmbeddedCassandraServerHelper.cleanEmbeddedCassandra() called")
     } catch {
       case ex: Exception => ex.printStackTrace()
     }
@@ -56,7 +62,9 @@ class MVCProcessorIndexerServiceTestSpec extends BaseTestSpec {
   "MVCProcessorIndexerService" should "generate es log" in {
     val argumentCaptor = ArgumentCaptor.forClass(classOf[ElasticSearchUtil]).asInstanceOf[ArgumentCaptor[String]]
     val inputEvent:Event = new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_1),0, 10)
-    when(mockHttpUtil.get(endsWith("content/v3/read/do_112806963140329472124"), any())).thenReturn(HTTPResponse(200, updateEsIndexResponse))
+
+    when(mockHttpUtil.get(endsWith("content/v3/read/do_112806963140329472124"), any())).thenReturn(HTTPResponse(200, contentResponse))
+    when(mockHttpUtil.post(endsWith("/daggit/submit"), any(), any())).thenReturn(HTTPResponse(200, """{}"""))
 
     mvcProcessorIndexer.processMessage(inputEvent)
 
@@ -95,8 +103,67 @@ class MVCProcessorIndexerServiceTestSpec extends BaseTestSpec {
     argumentCaptor.getAllValues.get(2) should be(inputEvent.identifier)
   }
 
-  "MVCProcessorIndexerService" should "update content rating" in {
-    val inputEvent:Event = new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_1), 0, 11)
+  "MVCProcessorIndexerService" should "update ml-keywords" in {
+    val argumentCaptor = ArgumentCaptor.forClass(classOf[ElasticSearchUtil]).asInstanceOf[ArgumentCaptor[String]]
+    val inputEvent:Event = new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_3), 0, 11)
+
+    when(mockHttpUtil.get(endsWith("content/v3/read/do_112806963140329472124"), any())).thenReturn(HTTPResponse(200, contentResponse))
+    when(mockHttpUtil.post(endsWith("/ml/vector/ContentText"), any(), any())).thenReturn(HTTPResponse(200, """{}"""))
+
+    mvcProcessorIndexer.processMessage(inputEvent)
+
+    verify(mockHttpUtil, times(1)).post(argumentCaptor.capture(), argumentCaptor.capture(), any());
+    val esRecordMap = JSONUtil.deserialize[Map[String, AnyRef]](argumentCaptor.getAllValues.get(1))
+
+    esRecordMap("request").asInstanceOf[Map[String, AnyRef]]("text").asInstanceOf[List[String]] should contain(inputEvent.mlContentText)
+    esRecordMap("request").asInstanceOf[Map[String, AnyRef]]("cid") should be(inputEvent.identifier)
+
+    val insertedRecord = readFromCassandra(inputEvent.identifier)
+    insertedRecord.forEach(col => {
+      val mlKeywords = col.getObject("ml_keywords").asInstanceOf[util.ArrayList[String]]
+      mlKeywords should contain(inputEvent.mlKeywords(0))
+      mlKeywords should contain(inputEvent.mlKeywords(1))
+      mlKeywords should contain(inputEvent.mlKeywords(2))
+      col.getObject("ml_content_text") should be(inputEvent.mlContentText)
+    })
+  }
+
+  "MVCProcessorIndexerService" should "update ml-contenttextvector" in {
+    val inputEvent:Event = new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_4), 0, 11)
+
+    when(mockHttpUtil.get(endsWith("content/v3/read/do_112806963140329472124"), any())).thenReturn(HTTPResponse(200, contentResponse))
+
+    mvcProcessorIndexer.processMessage(inputEvent)
+
+    val insertedRecord = readFromCassandra(inputEvent.identifier)
+    insertedRecord.forEach(col => {
+      val mlContentTextVector = col.getObject("ml_content_text_vector").asInstanceOf[util.LinkedHashSet[Double]]
+      mlContentTextVector should contain(inputEvent.mlContentTextVector(0))
+      mlContentTextVector should contain(inputEvent.mlContentTextVector(1))
+      mlContentTextVector should contain(inputEvent.mlContentTextVector(2))
+      mlContentTextVector should contain(inputEvent.mlContentTextVector(3))
+    })
+  }
+
+  "MVCProcessorIndexerService" should "update content-ratings" in {
+    val argumentCaptor = ArgumentCaptor.forClass(classOf[ElasticSearchUtil]).asInstanceOf[ArgumentCaptor[String]]
+    val inputEvent:Event = new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_5), 0, 11)
+
+    when(mockHttpUtil.get(endsWith("content/v3/read/do_112806963140329472124"), any())).thenReturn(HTTPResponse(200, contentResponse))
+    when(mockElasticUtil.getDocumentAsString(any())).thenReturn("""{"_id":"do_112806963140329472124"}""")
+
+    mvcProcessorIndexer.processMessage(inputEvent)
+
+    verify(mockElasticUtil, times(1)).updateDocument(argumentCaptor.capture(), argumentCaptor.capture());
+    val esRecordMap = JSONUtil.deserialize[Map[String, AnyRef]](argumentCaptor.getAllValues.get(1))
+
+    esRecordMap("me_total_time_spent_in_portal") should be(inputEvent.metadata("me_total_time_spent_in_portal"))
+    esRecordMap("me_averageRating") should be(inputEvent.metadata("me_averageRating"))
+    esRecordMap("me_total_time_spent_in_app") should be(inputEvent.metadata("me_total_time_spent_in_app"))
+    esRecordMap("me_total_play_sessions_in_portal") should be(inputEvent.metadata("me_total_play_sessions_in_portal"))
+    esRecordMap("me_total_play_sessions_in_desktop") should be(inputEvent.metadata("me_total_play_sessions_in_desktop"))
+    esRecordMap("me_total_play_sessions_in_app") should be(inputEvent.metadata("me_total_play_sessions_in_app"))
+    esRecordMap("me_total_time_spent_in_desktop") should be(inputEvent.metadata("me_total_time_spent_in_desktop"))
   }
 
   def testCassandraUtil(cassandraUtil: CassandraUtil): Unit = {

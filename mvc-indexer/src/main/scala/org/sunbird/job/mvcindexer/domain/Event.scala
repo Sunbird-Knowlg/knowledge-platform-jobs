@@ -29,6 +29,8 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 
   def mlKeywords:List[String] = readOrDefault("eventData.ml_Keywords", null)
 
+  def metadata: Map[String, AnyRef] = readOrDefault[Map[String, AnyRef]]("eventData.metadata", Map[String, AnyRef]())
+
   def mlContentTextVector:List[Double] = {
     val mlContentTextVectorList = readOrDefault[List[List[Double]]]("eventData.ml_contentTextVector", null)
 

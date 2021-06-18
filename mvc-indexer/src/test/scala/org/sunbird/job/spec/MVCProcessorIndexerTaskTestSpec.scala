@@ -94,6 +94,13 @@ class MVCProcessorIndexerTaskTestSpec extends BaseTestSpec {
       "Content-Type", "application/json"
     ).setBody("""{"responseCode":"OK","result":{"content":{"channel":"in.ekstep","framework":"NCF","name":"Ecml bundle Test","language":["English"],"appId":"dev.sunbird.portal","contentEncoding":"gzip","identifier":"do_112806963140329472124","mimeType":"application/vnd.ekstep.ecml-archive","contentType":"Resource","objectType":"Content","artifactUrl":"https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_112806963140329472124/artifact/1563350021721_do_112806963140329472124.zip","previewUrl":"https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/ecml/do_112806963140329472124-latest","streamingUrl":"https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/ecml/do_112806963140329472124-latest","downloadUrl":"https://sunbirddev.blob.core.windows.net/sunbird-content-dev/ecar_files/do_112806963140329472124/ecml-bundle-test_1563350022377_do_112806963140329472124_1.0.ecar","status":"Live","pkgVersion":1,"lastUpdatedOn":"2019-07-17T07:53:25.618+0000"}}}"""))
 
+    val mlVectorServer = new MockWebServer()
+    mlVectorServer.start(3579)
+
+    mlVectorServer.enqueue(new MockResponse().setHeader(
+      "Content-Type", "application/json"
+    ).setBody("""{"responseCode":"OK"}"""))
+
     when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new MVCProcessorIndexerMapSource)
 
     new MVCIndexerStreamTask(jobConfig, mockKafkaUtil, esUtil, httpUtil).process()

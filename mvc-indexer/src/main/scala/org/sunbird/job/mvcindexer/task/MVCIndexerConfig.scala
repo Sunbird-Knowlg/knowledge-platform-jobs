@@ -48,8 +48,10 @@ class MVCIndexerConfig(override val config: Config) extends BaseJobConfig(config
   val operationCreate = "CREATE"
 
   val contentServiceBase = config.getString("learning_service.basePath")
-  val mlVectorAPI = config.getString("ml.vector.api")
-  val mlKeywordAPI = config.getString("ml.keyword.api")
+  val mlVectorAPIHost = config.getString("ml.vector.api")
+  val mlVectorAPIPort = config.getString("ml.vector.api_port")
+  val mlKeywordAPIHost = config.getString("ml.keyword.api")
+  val mlKeywordAPIPort = config.getString("ml.keyword.api_port")
 
   // Cassandra Configurations
   val dbTable: String = config.getString("lms-cassandra.table")
