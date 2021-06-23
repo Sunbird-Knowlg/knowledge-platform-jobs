@@ -2,6 +2,7 @@ CREATE KEYSPACE IF NOT EXISTS dev_hierarchy_store with replication = {'class':'S
 CREATE TABLE IF NOT EXISTS dev_hierarchy_store.questionset_hierarchy (
   identifier text,
   hierarchy text,
+  instructions text,
   PRIMARY KEY (identifier)
 );
 
