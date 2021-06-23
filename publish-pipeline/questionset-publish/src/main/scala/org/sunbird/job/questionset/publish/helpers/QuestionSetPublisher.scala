@@ -22,6 +22,8 @@ trait QuestionSetPublisher extends ObjectReader with ObjectValidator with Object
 		val data: Map[String, AnyRef] = if (null != row) readerConfig.propsMapping.keySet.map(prop => prop -> row.getString(prop.toLowerCase())).toMap.filter(p => StringUtils.isNotBlank(p._2.asInstanceOf[String])) else Map[String, AnyRef]()
 		val hierarchy: Map[String, AnyRef] = if(data.contains("hierarchy")) ScalaJsonUtil.deserialize[Map[String, AnyRef]](data.getOrElse("hierarchy", "{}").asInstanceOf[String]) else Map[String, AnyRef]()
 		val extData:Map[String, AnyRef] = data.filter(p => !StringUtils.equals("hierarchy", p._1))
+		logger.info("get ext data ::: data ::: "+ data)
+		logger.info("get ext data ::: extData ::: "+ extData)
 		Option(ObjectExtData(Option(extData), Option(hierarchy)))
 	}
 
@@ -98,6 +100,7 @@ trait QuestionSetPublisher extends ObjectReader with ObjectValidator with Object
 		val children: List[Map[String, AnyRef]] = obj.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
 		val hierarchy: Map[String, AnyRef] = obj.metadata ++ Map("children" -> children)
 		val data = Map("hierarchy" -> hierarchy) ++ obj.extData.getOrElse(Map())
+		logger.info("save ext data ::: data map ::: "+data)
 		val query: Insert = QueryBuilder.insertInto(readerConfig.keyspace, readerConfig.table)
 		query.value(readerConfig.primaryKey(0), identifier)
 		data.map(d => {
@@ -110,7 +113,7 @@ trait QuestionSetPublisher extends ObjectReader with ObjectValidator with Object
 				case _ => query.value(d._1, d._2)
 			}
 		})
-		logger.debug(s"Saving object external data for $identifier | Query : ${query.toString}")
+		logger.info(s"Saving object external data for $identifier | Query : ${query.toString}")
 		val result = cassandraUtil.upsert(query.toString)
 		if (result) {
 			logger.info(s"Object external data saved successfully for ${identifier}")

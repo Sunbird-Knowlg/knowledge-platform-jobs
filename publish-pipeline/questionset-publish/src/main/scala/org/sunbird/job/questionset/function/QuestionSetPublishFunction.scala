@@ -66,6 +66,7 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 		val obj = getObject(data.identifier, data.pkgVersion, readerConfig)(neo4JUtil, cassandraUtil)
 		logger.info("processElement ::: obj metadata before publish ::: " + ScalaJsonUtil.serialize(obj.metadata))
 		logger.info("processElement ::: obj hierarchy before publish ::: " + ScalaJsonUtil.serialize(obj.hierarchy.getOrElse(Map())))
+		logger.info("processElement ::: obj ext data before publish ::: " + ScalaJsonUtil.serialize(obj.extData.getOrElse(Map())) )
 		val messages: List[String] = validate(obj, obj.identifier, validateQuestionSet)
 		if (messages.isEmpty) {
 			// Get all the questions from hierarchy
@@ -84,10 +85,14 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 				logger.info(s"processElement ::: object enrichment done for ${obj.identifier}")
 				logger.info("processElement :::  obj metadata post enrichment :: " + ScalaJsonUtil.serialize(enrichedObj.metadata))
 				logger.info("processElement :::  obj hierarchy post enrichment :: " + ScalaJsonUtil.serialize(enrichedObj.hierarchy.get))
+				logger.info("processElement ::: obj ext data post enrichment ::: " + ScalaJsonUtil.serialize(obj.extData.getOrElse(Map())) )
 				// Generate ECAR
 				val objWithEcar = generateECAR(enrichedObj, pkgTypes)(ec, cloudStorageUtil, definitionCache, definitionConfig)
 				// Generate PDF URL
 				val updatedObj = generatePreviewUrl(objWithEcar, qList)(httpUtil, cloudStorageUtil)
+				logger.info("processElement :::  obj metadata before saveOnSuccess :: " + ScalaJsonUtil.serialize(enrichedObj.metadata))
+				logger.info("processElement :::  obj hierarchy before saveOnSuccess :: " + ScalaJsonUtil.serialize(enrichedObj.hierarchy.get))
+				logger.info("processElement ::: ext data ::: before saveOnSuccess ::: " + ScalaJsonUtil.serialize(obj.extData.getOrElse(Map())) )
 				saveOnSuccess(updatedObj)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
 				logger.info("QuestionSet publishing completed successfully for : " + data.identifier)
 				metrics.incCounter(config.questionSetPublishSuccessEventCount)
