@@ -10,6 +10,8 @@ class ObjectData(val identifier: String, val metadata: Map[String, AnyRef], val 
 
 }
 
-case class ExtDataConfig(keyspace: String, table: String)
+case class ExtDataConfig(keyspace: String, table: String, primaryKey:List[String] = List(), propsMapping: Map[String, AnyRef] = Map())
 
 case class DefinitionConfig(supportedVersion: Map[String, AnyRef], basePath: String)
+
+case class ObjectExtData(data:Option[Map[String, AnyRef]] = None, hierarchy: Option[Map[String, AnyRef]] = None)
