@@ -64,16 +64,4 @@ class ObjectDefinition(val objectType: String, val version: String, val schema: 
       }).keys.toList
     }
   }
-
-  def getExternalProps(): Map[String, AnyRef] = {
-    val external = config.getOrElse("external", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
-    val properties = external.getOrElse("properties", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
-    val prop: Map[String, AnyRef] = properties.map(p => (p._1, p._2.asInstanceOf[Map[String, AnyRef]].getOrElse("type", "").asInstanceOf[String]))
-    prop
-  }
-
-  def getExternalPrimaryKey(): List[String] = {
-    val external = config.getOrElse("external", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
-    external.getOrElse("primaryKey", List()).asInstanceOf[List[String]]
-  }
 }
