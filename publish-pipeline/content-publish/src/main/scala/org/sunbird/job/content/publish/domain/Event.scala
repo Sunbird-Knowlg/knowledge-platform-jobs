@@ -7,7 +7,7 @@ import org.sunbird.job.domain.reader.JobRequest
 import java.util
 import scala.collection.JavaConverters._
 
-class Event(config: ContentPublishConfig, eventMap: java.util.Map[String, Any], partition: Int, offset: Long) extends JobRequest(eventMap, partition, offset) {
+class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) extends JobRequest(eventMap, partition, offset) {
 
   private val jobName = "content-publish"
 
@@ -26,7 +26,7 @@ class Event(config: ContentPublishConfig, eventMap: java.util.Map[String, Any], 
     pkgVersion.toDouble
   }
 
-  def validEvent(): Boolean = {
+  def validEvent(config: ContentPublishConfig): Boolean = {
     (StringUtils.equals("publish", action) && StringUtils.isNotBlank(objectId)) && (config.supportedObjectType.contains(objectType) && config.supportedMimeType.contains(mimeType))
   }
 }

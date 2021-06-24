@@ -31,7 +31,7 @@ class PublishEventRouter(config: ContentPublishConfig) extends BaseProcessFuncti
   override def processElement(event: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
     metrics.incCounter(config.totalEventsCount)
     // Event validation
-    if (event.validEvent()) {
+    if (event.validEvent(config)) {
       logger.info("PublishEventRouter :: Event: " + event)
       event.objectType match {
         case "Content" | "ContentImage" => {
