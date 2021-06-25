@@ -60,7 +60,6 @@ class MVCProcessorIndexerTaskTestSpec extends BaseTestSpec {
   }
 
   override protected def beforeAll(): Unit = {
-    println("MVCProcessorIndexerTaskTestSpec::no of times")
     super.beforeAll()
     esServer.setDispatcher(esDispatcher)
     esServer.start(9200)

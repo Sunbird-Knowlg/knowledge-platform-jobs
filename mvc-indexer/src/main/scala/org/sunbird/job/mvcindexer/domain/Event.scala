@@ -4,8 +4,6 @@ import org.apache.commons.lang3.BooleanUtils
 import org.sunbird.job.domain.reader.JobRequest
 
 import java.text.{DateFormat, SimpleDateFormat}
-import java.util
-import java.util.Date
 
 class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) extends JobRequest(eventMap, partition, offset) {
 
@@ -40,9 +38,7 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
   def audit: Boolean = readOrDefault("audit", true)
 
   def isValid: Boolean = {
-    BooleanUtils.toBoolean(if (null == index) "true" else index.toString)
+    BooleanUtils.toBoolean(if (null == index) "true" else index.toString) && !eventMap.containsKey("edata") && eventData.nonEmpty
   }
-
-
 
 }
