@@ -11,7 +11,7 @@ import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.util.{FlinkUtil, HttpUtil}
 import org.slf4j.LoggerFactory
 import org.sunbird.job.autocreatorv2.domain.Event
-import org.sunbird.job.autocreatorv2.functions.{AutoCreatorFunction, LinkCollectionFunction}
+import org.sunbird.job.autocreatorv2.functions.{AutoCreatorFunction, AutoCreatorV2Function, LinkCollectionFunction}
 import org.sunbird.job.autocreatorv2.model.ObjectParent
 
 
@@ -28,7 +28,7 @@ class AutoCreatorV2StreamTask(config: AutoCreatorV2Config, kafkaConnector: Flink
     val autoCreatorStream = env.addSource(kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)).name(config.eventConsumer)
       .uid(config.eventConsumer).setParallelism(config.kafkaConsumerParallelism)
       .rebalance
-      .process(new AutoCreatorFunction(config, httpUtil))
+      .process(new AutoCreatorV2Function(config, httpUtil))
       .name(config.autoCreatorV2Function)
       .uid(config.autoCreatorV2Function)
       .setParallelism(config.parallelism)
