@@ -63,16 +63,11 @@ class ContentPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers
     val result: ObjectData = new TestContentPublisher().enrichObjectMetadata(data).getOrElse(data)
     result.metadata.getOrElse("pkgVersion", 0.0.asInstanceOf[Number]).asInstanceOf[Number] should be(1.0.asInstanceOf[Number])
   }
-  "validateMetadata with invalid external data" should "return exception messages" in {
-    val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef]), Some(Map[String, AnyRef]("body" -> "body")))
-    val result: List[String] = new TestContentPublisher().validateMetadata(data, data.identifier)
-    result.size should be(2)
-  }
 
-  "validateMetadata with external data having interaction" should "validate the Content external data" in {
-    val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "interactionTypes" -> new util.ArrayList[String]() {add("choice")}), Some(Map[String, AnyRef]("body" -> "body", "answer" -> "answer")))
+  "validateMetadata with invalid external data" should "return exception messages" in {
+    val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef]), Some(Map[String, AnyRef]("artifactUrl" -> "artifactUrl")))
     val result: List[String] = new TestContentPublisher().validateMetadata(data, data.identifier)
-    result.size should be(3)
+    result.size should be(1)
   }
 
   "saveExternalData " should "save external data to cassandra table" in {
@@ -80,30 +75,23 @@ class ContentPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers
     new TestContentPublisher().saveExternalData(data, readerConfig)
   }
 
-  "getExtData " should "return the external data for the identifier " in {
-    val identifier = "do_113188615625731";
+  "getExtData " should "do nothing " in {
+    val identifier = "do_11329603741667328018";
     val result: Option[Map[String, AnyRef]] = new TestContentPublisher().getExtData(identifier, 0.0, readerConfig)
-    result.getOrElse(Map()).size should be(6)
-  }
-
-  "getExtData " should "return the external data for the image identifier " in {
-    val identifier = "do_113188615625731";
-    val result: Option[Map[String, AnyRef]] = new TestContentPublisher().getExtData(identifier, 1.0, readerConfig)
-    result.getOrElse(Map()).size should be(7)
   }
 
   "getHierarchy " should "do nothing " in {
-    val identifier = "do_113188615625731";
+    val identifier = "do_11329603741667328018";
     new TestContentPublisher().getExtData(identifier, 1.0, readerConfig)
   }
 
   "getExtDatas " should "do nothing " in {
-    val identifier = "do_113188615625731";
+    val identifier = "do_11329603741667328018";
     new TestContentPublisher().getExtDatas(List(identifier), readerConfig)
   }
 
   "getHierarchies " should "do nothing " in {
-    val identifier = "do_113188615625731";
+    val identifier = "do_11329603741667328018";
     new TestContentPublisher().getHierarchies(List(identifier), readerConfig)
   }
 
