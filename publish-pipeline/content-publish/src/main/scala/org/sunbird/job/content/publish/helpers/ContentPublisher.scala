@@ -15,6 +15,8 @@ import scala.collection.JavaConverters._
 trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnrichment with EcarGenerator with ObjectUpdater {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[ContentPublisher])
+  private val level4MimeTypes = List("video/x-youtube", "application/pdf", "application/msword", "application/epub", "application/vnd.ekstep.h5p-archive", "text/x-url")
+  private val level4ContentTypes = List("Course", "CourseUnit", "LessonPlan", "LessonPlanUnit")
 
   override def getExtData(identifier: String, pkgVersion: Double, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = None
 
@@ -25,9 +27,11 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
   override def getHierarchies(identifiers: List[String], readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = None
 
   override def enrichObjectMetadata(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): Option[ObjectData] = {
-    val pkgVersion = obj.metadata.getOrElse("pkgVersion", 0.0.asInstanceOf[Number]).asInstanceOf[Number].intValue() + 1
-    val updatedMeta = obj.metadata ++ Map("pkgVersion" -> pkgVersion.asInstanceOf[AnyRef])
-    Some(new ObjectData(obj.identifier, updatedMeta, obj.extData, obj.hierarchy))
+    val updatedMeta: Map[String, AnyRef] = obj.metadata ++ Map("pkgVersion" -> (obj.pkgVersion + 1).asInstanceOf[AnyRef],
+      "lastPublishedOn" -> getTimeStamp, "flagReasons" -> null, "body" -> null, "publishError" -> null,
+      "variants" -> null, "downloadUrl" -> null)
+    val finalUpdatedMetadata = setCompatibilityLevel(obj, updatedMeta).getOrElse(updatedMeta)
+    Some(new ObjectData(obj.identifier, finalUpdatedMetadata, obj.extData, obj.hierarchy))
   }
 
   override def getDataForEcar(obj: ObjectData): Option[List[Map[String, AnyRef]]] = {
@@ -55,4 +59,11 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
     new ObjectData(data.identifier, data.metadata ++ meta, data.extData, data.hierarchy)
   }
 
+  private def setCompatibilityLevel(obj: ObjectData, updatedMeta: Map[String, AnyRef]): Option[Map[String, AnyRef]] = {
+    if (level4MimeTypes.contains(obj.metadata.getOrElse("mimeType", "").asInstanceOf[String])
+      || level4ContentTypes.contains(obj.metadata.getOrElse("contentType", "").asInstanceOf[String])) {
+      logger.info("setting compatibility level for content id : " + obj.identifier + " as 4.")
+      Some(updatedMeta ++ Map("compatibilityLevel" -> 4.asInstanceOf[AnyRef]))
+    }
+  }
 }
