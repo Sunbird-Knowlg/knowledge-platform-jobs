@@ -3,17 +3,18 @@ package org.sunbird.job.autocreatorv2.helpers
 import org.apache.commons.io.FilenameUtils
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
+import org.sunbird.job.autocreatorv2.model.{ExtDataConfig, ObjectData}
 import org.sunbird.job.autocreatorv2.util.{CloudStorageUtil, FileUtils}
-import org.sunbird.job.domain.`object`.ObjectDefinition
+import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.task.AutoCreatorV2Config
-import org.sunbird.job.util.{HttpUtil, JSONUtil}
+import org.sunbird.job.util.{CassandraUtil, HttpUtil, JSONUtil, Neo4JUtil}
 
 import java.io.File
 
 class LearningObject(identifier: String, objectType: String, metaUrl: String, downloadUrl: String)
                     (implicit config: AutoCreatorV2Config,
                      httpUtil: HttpUtil,
-                     objDef: ObjectDefinition) {
+                     objDef: ObjectDefinition) extends AutoCreator {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[LearningObject])
 
@@ -21,6 +22,8 @@ class LearningObject(identifier: String, objectType: String, metaUrl: String, do
     logger.info("Extracting the ECAR file.")
     extractDataZip(identifier, downloadUrl)
   }
+
+  private val hierarchy = getHierarchy(extractPath, objectType)(config)
 
   private val rawData = {
     logger.info("Preparing raw data.")
@@ -36,16 +39,29 @@ class LearningObject(identifier: String, objectType: String, metaUrl: String, do
   val externalData = {
     logger.info("Defining external data.")
     val extData = rawData.filterKeys(k => objDef.externalProperties.contains(k))
-    val hierarchy = getHierarchy(extractPath, objectType)(config)
     if (hierarchy.nonEmpty) extData ++ Map("hierarchy" -> hierarchy) else extData
   }
 
   def process()(implicit cloudStorageUtil: CloudStorageUtil): Unit = {
     metadata = processCloudStore()
-
   }
 
+  def processChildObj()(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, cloudStorageUtil: CloudStorageUtil, defCache: DefinitionCache) = {
+    val enrObj = {
+      val obj = new ObjectData(identifier, objectType, metadata, Some(externalData), Some(hierarchy))
+      val chMap: Map[String, AnyRef] = getChildren(obj)(config)
+      val childrenObj: Map[String, ObjectData] = processChildren(chMap)(config, neo4JUtil, cassandraUtil, cloudStorageUtil, defCache, httpUtil)
+      enrichHierarchy(obj, childrenObj)(config)
+    }
+    metadata = enrObj.metadata
+  }
 
+  def save()(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil): Unit = {
+    val obj = new ObjectData(identifier, objectType, metadata, Some(externalData), Some(hierarchy))
+    val extConfig = ExtDataConfig(config.getString(obj.objectType.toLowerCase + ".keyspace", ""), objDef.getExternalTable, objDef.getExternalPrimaryKey, objDef.getExternalProps)
+    saveExternalData(obj.identifier, obj.extData.getOrElse(Map()), extConfig)(cassandraUtil)
+    saveGraphData(obj.identifier, obj.metadata, objDef)(neo4JUtil)
+  }
 
   // Update methods START
 
@@ -62,10 +78,6 @@ class LearningObject(identifier: String, objectType: String, metaUrl: String, do
     })
     logger.info("processCloudMeta :: updatedUrls : " + updatedUrls)
     metadata ++ updatedUrls.filterKeys(k => !List("spine", "online").contains(k)) ++ Map("variants" -> getVariantMap(updatedUrls))
-  }
-
-  def getVariantMap(map: Map[String, AnyRef]): Map[String, AnyRef] = {
-    List("full", "online", "spine").filter(x => map.contains(x)).map(m => (m, map.getOrElse(m, "").asInstanceOf[String])).toMap
   }
 
   // Update methods END

@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 import org.sunbird.job.autocreatorv2.domain.Event
 import org.sunbird.job.autocreatorv2.helpers.LearningObject
+import org.sunbird.job.autocreatorv2.model.ObjectParent
 import org.sunbird.job.autocreatorv2.util.CloudStorageUtil
 import org.sunbird.job.task.AutoCreatorV2Config
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
@@ -56,6 +57,13 @@ class AutoCreatorV2Function(config: AutoCreatorV2Config, httpUtil: HttpUtil,
       val learningObject = new LearningObject(event.objectId, event.objectType, event.repository.get, event.downloadUrl)(config, httpUtil, definition)
       learningObject.process()(cloudStorageUtil)
       logger.info(s"Learning object constructed...")
+      if (config.expandableObjects.contains(event.objectType)) {
+        learningObject.processChildObj()(neo4JUtil, cassandraUtil, cloudStorageUtil, defCache)
+      }
+      learningObject.save()(neo4JUtil, cassandraUtil)
+      context.output(config.linkCollectionOutputTag, ObjectParent(event.objectId, event.collection))
+      logger.info("Bulk approval operation completed for : " + event.objectId)
+      metrics.incCounter(config.successEventCount)
     } else {
       logger.info(s"Event is not qualified for auto-creation with identifier : ${event.objectId} | objectType : ${event.objectType} | source : ${event.repository}")
       metrics.incCounter(config.skippedEventCount)
