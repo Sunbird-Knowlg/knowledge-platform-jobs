@@ -51,7 +51,7 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
   }
 
   override def metricsList(): List[String] = {
-    List(config.contentPublishEventCount, config.contentPublishSuccessEventCount, config.contentPublishFailedEventCount)
+    List(config.contentPublishEventCount, config.contentPublishSuccessEventCount, config.contentPublishFailedEventCount, config.videoStreamingGeneratorEventCount)
   }
 
   override def processElement(data: PublishMetadata, context: ProcessFunction[PublishMetadata, String]#Context, metrics: Metrics): Unit = {

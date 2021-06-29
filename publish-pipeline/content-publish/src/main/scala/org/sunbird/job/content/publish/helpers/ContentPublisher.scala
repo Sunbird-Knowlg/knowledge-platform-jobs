@@ -56,10 +56,10 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
   }
 
   def getObjectWithEcar(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil, defCache: DefinitionCache, defConfig: DefinitionConfig): ObjectData = {
-    logger.info("QuestionPublishFunction:generateECAR: Ecar generation done for Question: " + data.identifier)
+    logger.info("ContentPublisher:getObjectWithEcar: Ecar generation done for Content: " + data.identifier)
     val ecarMap: Map[String, String] = generateEcar(data, pkgTypes)
     val variants: java.util.Map[String, String] = ecarMap.map { case (key, value) => key.toLowerCase -> value }.asJava
-    logger.info("QuestionSetPublishFunction ::: generateECAR ::: ecar map ::: " + ecarMap)
+    logger.info("ContentPublisher ::: getObjectWithEcar ::: ecar map ::: " + ecarMap)
     val meta: Map[String, AnyRef] = Map("downloadUrl" -> ecarMap.getOrElse("FULL", ""), "variants" -> variants)
     new ObjectData(data.identifier, data.metadata ++ meta, data.extData, data.hierarchy)
   }
