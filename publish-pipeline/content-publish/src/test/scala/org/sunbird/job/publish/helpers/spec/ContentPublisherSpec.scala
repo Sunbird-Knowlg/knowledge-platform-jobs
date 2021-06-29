@@ -12,6 +12,7 @@ import org.scalatestplus.mockito.MockitoSugar
 import org.sunbird.job.content.publish.helpers.ContentPublisher
 import org.sunbird.job.content.task.ContentPublishConfig
 import org.sunbird.job.domain.`object`.DefinitionCache
+import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
 import org.sunbird.job.publish.util.CloudStorageUtil
 import org.sunbird.job.util.{CassandraUtil, Neo4JUtil}
@@ -29,6 +30,7 @@ class ContentPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers
   implicit val ec = ExecutionContexts.global
   implicit val defCache = new DefinitionCache()
   implicit val defConfig = DefinitionConfig(jobConfig.schemaSupportVersionMap, jobConfig.definitionBasePath)
+  implicit val publishConfig: PublishConfig = new PublishConfig(config, "")
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()

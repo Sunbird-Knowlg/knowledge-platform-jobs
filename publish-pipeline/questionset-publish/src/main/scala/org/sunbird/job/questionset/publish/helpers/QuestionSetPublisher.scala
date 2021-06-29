@@ -5,6 +5,7 @@ import com.datastax.driver.core.querybuilder.{QueryBuilder, Select}
 import org.apache.commons.lang3
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
+import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{ExtDataConfig, ObjectData}
 import org.sunbird.job.publish.helpers._
 import org.sunbird.job.util.{CassandraUtil, Neo4JUtil, ScalaJsonUtil}
@@ -135,7 +136,7 @@ trait QuestionSetPublisher extends ObjectReader with ObjectValidator with Object
 		  .map(ch => ch.filterKeys(key => metaList.contains(key)))
 	}
 
-	override def enrichObjectMetadata(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): Option[ObjectData] = {
+	override def enrichObjectMetadata(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, config: PublishConfig): Option[ObjectData] = {
 		val newMetadata: Map[String, AnyRef] = obj.metadata ++ Map("pkgVersion" -> (obj.pkgVersion + 1).asInstanceOf[AnyRef], "lastPublishedOn" -> getTimeStamp,
 			"publishError" -> null, "variants" -> null, "downloadUrl" -> null, "compatibilityLevel" -> 5.asInstanceOf[AnyRef], "status" -> "Live")
 		val children: List[Map[String, AnyRef]] = obj.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]

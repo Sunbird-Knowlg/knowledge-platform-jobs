@@ -34,6 +34,7 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
   val contentPublishEventCount = "content-publish-count"
   val contentPublishSuccessEventCount = "content-publish-success-count"
   val contentPublishFailedEventCount = "content-publish-failed-count"
+  val videoStreamingGeneratorEventCount = "video-streaming-event-count"
   //	val collectionPublishEventCount = "collection-publish-count"
   //	val collectionPublishSuccessEventCount = "collection-publish-success-count"
   //	val collectionPublishFailedEventCount = "collection-publish-failed-count"
@@ -52,6 +53,7 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
   // Out Tags
   val contentPublishOutTag: OutputTag[PublishMetadata] = OutputTag[PublishMetadata]("content-publish")
   val collectionPublishOutTag: OutputTag[PublishMetadata] = OutputTag[PublishMetadata]("collection-publish")
+  val generateVideoStreamingOutTag: OutputTag[String] = OutputTag[String]("video-streaming-generator-request")
 
   // Service Urls
   val printServiceBaseUrl: String = config.getString("service.print.basePath")
@@ -61,4 +63,6 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
 
   val supportedObjectType: util.List[String] = if (config.hasPath("content.objectType")) config.getStringList("content.objectType") else util.Arrays.asList[String]("Content", "ContentImage")
   val supportedMimeType: util.List[String] = if (config.hasPath("content.mimeType")) config.getStringList("content.mimeType") else util.Arrays.asList[String]("application/pdf")
+  val streamableMimeType: util.List[String] = if (config.hasPath("content.stream.mimeType")) config.getStringList("content.stream.mimeType") else util.Arrays.asList[String]("video/mp4")
+  val isStreamingEnabled: Boolean = if (config.hasPath("content.stream.enabled")) config.getBoolean("content.stream.enabled") else false
 }
