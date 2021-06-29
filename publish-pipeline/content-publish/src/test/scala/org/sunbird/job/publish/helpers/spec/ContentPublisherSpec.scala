@@ -30,7 +30,7 @@ class ContentPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers
   implicit val ec = ExecutionContexts.global
   implicit val defCache = new DefinitionCache()
   implicit val defConfig = DefinitionConfig(jobConfig.schemaSupportVersionMap, jobConfig.definitionBasePath)
-  implicit val publishConfig: PublishConfig = new PublishConfig(config, "")
+  implicit val publishConfig = jobConfig.asInstanceOf[PublishConfig]
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
