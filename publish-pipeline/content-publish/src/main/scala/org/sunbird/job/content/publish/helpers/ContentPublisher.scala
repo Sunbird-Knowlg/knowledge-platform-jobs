@@ -65,15 +65,15 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
   }
 
   private def setCompatibilityLevel(obj: ObjectData, updatedMeta: Map[String, AnyRef]): Option[Map[String, AnyRef]] = {
-    if (level4MimeTypes.contains(obj.metadata.getOrElse("mimeType", "").asInstanceOf[String])
-      || level4ContentTypes.contains(obj.metadata.getOrElse("contentType", "").asInstanceOf[String])) {
+    if (level4MimeTypes.contains(obj.mimeType)
+      || level4ContentTypes.contains(obj.getString("contentType", ""))) {
       logger.info("setting compatibility level for content id : " + obj.identifier + " as 4.")
       Some(updatedMeta ++ Map("compatibilityLevel" -> 4.asInstanceOf[AnyRef]))
     } else None
   }
 
   private def setPragma(obj: ObjectData, updatedMeta: Map[String, AnyRef]): Option[Map[String, AnyRef]] = {
-    if (pragmaMimeTypes.contains(obj.metadata.getOrElse("mimeType", "").asInstanceOf[String])) {
+    if (pragmaMimeTypes.contains(obj.mimeType)) {
       val pragma:List[String] = obj.metadata.getOrElse("pragma", List()).asInstanceOf[List[String]]
       val value = "external"
       if(!pragma.contains(value)) {
@@ -83,10 +83,9 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
   }
 
   private def updatePreviewUrl(obj: ObjectData, updatedMeta: Map[String, AnyRef], config: ContentPublishConfig): Option[Map[String, AnyRef]] = {
-    val mimeType = obj.metadata.getOrElse("mimeType", "").asInstanceOf[String]
-    if (StringUtils.isNotBlank(mimeType)) {
-      logger.debug("Checking Required Fields For: " + mimeType)
-      mimeType match {
+    if (StringUtils.isNotBlank(obj.mimeType)) {
+      logger.debug("Checking Required Fields For: " + obj.mimeType)
+      obj.mimeType match {
         case "application/vnd.ekstep.content-collection" | "application/vnd.ekstep.plugin-archive"
              | "application/vnd.android.package-archive" | "assets" =>
         None
@@ -94,9 +93,9 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
 //          copyLatestS3Url(obj)
           None
         case _ =>
-          val artifactUrl = obj.metadata.getOrElse("artifactUrl", null).asInstanceOf[String]
+          val artifactUrl = obj.getString("artifactUrl", null)
           val updatedPreviewUrl = updatedMeta ++ Map("previewUrl" -> artifactUrl)
-          if (config.streamableMimeType.contains(mimeType)) Some(updatedPreviewUrl ++ Map("streamingUrl"-> artifactUrl)) else Some(updatedPreviewUrl)
+          if (config.streamableMimeType.contains(obj.mimeType)) Some(updatedPreviewUrl ++ Map("streamingUrl"-> artifactUrl)) else Some(updatedPreviewUrl)
       }
     } else None
   }

@@ -83,7 +83,7 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
   }
 
   private def pushStreamingUrlEvent(obj: ObjectData, context: ProcessFunction[PublishMetadata, String]#Context)(implicit metrics: Metrics): Unit = {
-    if (config.isStreamingEnabled && config.streamableMimeType.contains(obj.metadata.getOrElse("mimeType", "").asInstanceOf[String])) {
+    if (config.isStreamingEnabled && config.streamableMimeType.contains(obj.mimeType)) {
       val event = getStreamingEvent(obj)
       context.output(config.generateVideoStreamingOutTag, event)
       metrics.incCounter(config.videoStreamingGeneratorEventCount)
@@ -93,13 +93,11 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
   def getStreamingEvent(obj: ObjectData) : String = {
     val ets = System.currentTimeMillis
     val mid = s"""LP.${ets}.${UUID.randomUUID}"""
-    val metadata = obj.metadata
-    val channelId = metadata.get("channel").get.asInstanceOf[String]
-    val ver = metadata.get("versionKey").get.asInstanceOf[String]
-    val mimeType = metadata.get("mimeType").get.asInstanceOf[String]
-    val artifactUrl = metadata.get("artifactUrl").get.asInstanceOf[String]
+    val channelId = obj.getString("channel", "")
+    val ver = obj.getString("versionKey", "")
+    val artifactUrl = obj.getString("artifactUrl", "")
     // TODO: deprecate using contentType in the event.
-    val event = s"""{"eid":"BE_JOB_REQUEST", "ets": ${ets}, "mid": "${mid}", "actor": {"id": "Post Publish Processor", "type": "System"}, "context":{"pdata":{"ver":"1.0","id":"org.ekstep.platform"}, "channel":"${channelId}","env":"${config.jobEnv}"},"object":{"ver":"${ver}","id":"${obj.identifier}"},"edata": {"action":"post-publish-process","iteration":1,"identifier":"${obj.identifier}","channel":"${channelId}","artifactUrl":"${artifactUrl}","mimeType":"${mimeType}","contentType":"Resource","pkgVersion":1,"status":"Live"}}""".stripMargin
+    val event = s"""{"eid":"BE_JOB_REQUEST", "ets": ${ets}, "mid": "${mid}", "actor": {"id": "Post Publish Processor", "type": "System"}, "context":{"pdata":{"ver":"1.0","id":"org.ekstep.platform"}, "channel":"${channelId}","env":"${config.jobEnv}"},"object":{"ver":"${ver}","id":"${obj.identifier}"},"edata": {"action":"post-publish-process","iteration":1,"identifier":"${obj.identifier}","channel":"${channelId}","artifactUrl":"${artifactUrl}","mimeType":"${obj.mimeType}","contentType":"Resource","pkgVersion":1,"status":"Live"}}""".stripMargin
     logger.info(s"Video Streaming Event for identifier ${obj.identifier}  is  : ${event}")
     event
   }
