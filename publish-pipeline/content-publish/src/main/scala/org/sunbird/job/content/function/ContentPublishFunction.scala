@@ -94,9 +94,12 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
     val ets = System.currentTimeMillis
     val mid = s"""LP.${ets}.${UUID.randomUUID}"""
     val metadata = obj.metadata
-    val channelId = metadata.getOrElse("channel", "").asInstanceOf[String]
-    val ver = metadata.getOrElse("versionKey", "").asInstanceOf[String]
-    val event = s"""{"eid":"BE_JOB_REQUEST", "ets": ${ets}, "mid": "${mid}", "actor": {"id": "Post Publish Processor", "type": "System"}, "context":{"pdata":{"ver":"1.0","id":"org.ekstep.platform"}, "channel":"${channelId}","env":"${config.jobEnv}"},"object":{"ver":"${ver}","id":"${obj.identifier}"},"edata": {"action":"post-publish-process","iteration":1,"identifier":"${obj.identifier}","channel":"${channelId}","artifactUrl":"${obj.metadata.getOrElse("artifactUrl", "").asInstanceOf[String]}","mimeType":"video/mp4","contentType":"Resource","pkgVersion":1,"status":"Live"}}""".stripMargin
+    val channelId = metadata.get("channel").get.asInstanceOf[String]
+    val ver = metadata.get("versionKey").get.asInstanceOf[String]
+    val mimeType = metadata.get("mimeType").get.asInstanceOf[String]
+    val artifactUrl = metadata.get("artifactUrl").get.asInstanceOf[String]
+    // TODO: deprecate using contentType in the event.
+    val event = s"""{"eid":"BE_JOB_REQUEST", "ets": ${ets}, "mid": "${mid}", "actor": {"id": "Post Publish Processor", "type": "System"}, "context":{"pdata":{"ver":"1.0","id":"org.ekstep.platform"}, "channel":"${channelId}","env":"${config.jobEnv}"},"object":{"ver":"${ver}","id":"${obj.identifier}"},"edata": {"action":"post-publish-process","iteration":1,"identifier":"${obj.identifier}","channel":"${channelId}","artifactUrl":"${artifactUrl}","mimeType":"${mimeType}","contentType":"Resource","pkgVersion":1,"status":"Live"}}""".stripMargin
     logger.info(s"Video Streaming Event for identifier ${obj.identifier}  is  : ${event}")
     event
   }
