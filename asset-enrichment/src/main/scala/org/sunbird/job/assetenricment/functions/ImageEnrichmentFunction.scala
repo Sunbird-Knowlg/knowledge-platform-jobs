@@ -42,7 +42,7 @@ class ImageEnrichmentFunction(config: AssetEnrichmentConfig,
       if (asset.validate(config.contentUploadContextDriven)) replaceArtifactUrl(asset)(cloudStorageUtil)
       asset.putAll(getMetadata(event.id)(neo4JUtil))
       val mimeType = asset.get("mimeType", "").asInstanceOf[String]
-      if(config.unsupportedMimeTypes.contains(mimeType) && StringUtils.startsWithIgnoreCase(mimeType, "image")) {
+      if(config.unsupportedMimeTypes.contains(mimeType) || !StringUtils.startsWithIgnoreCase(mimeType, "image")) {
         saveImageVariants(Map(), asset)(neo4JUtil)
         metrics.incCounter(config.ignoredImageEnrichmentEventCount)
       } else {
