@@ -19,18 +19,23 @@ class QRCodeImageGeneratorTask(config: QRCodeImageGeneratorConfig, kafkaConnecto
     implicit val eventTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
 
-    val source = kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)
-    env.addSource(source)
-      .name(config.eventConsumer)
-      .uid(config.eventConsumer)
-      .rebalance
-      .process(new QRCodeImageGeneratorFunction(config))
-      .setParallelism(config.kafkaConsumerParallelism)
-      .name(config.qrCodeImageGeneratorFunction)
-      .uid(config.qrCodeImageGeneratorFunction)
-      .setParallelism(config.parallelism)
+   try {
+     val source = kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)
+     env.addSource(source)
+       .name(config.eventConsumer)
+       .uid(config.eventConsumer)
+       .rebalance
+       .process(new QRCodeImageGeneratorFunction(config))
+       .setParallelism(config.kafkaConsumerParallelism)
+       .name(config.qrCodeImageGeneratorFunction)
+       .uid(config.qrCodeImageGeneratorFunction)
+       .setParallelism(config.parallelism)
 
-    env.execute(config.jobName)
+     env.execute(config.jobName)
+   } catch {
+     case e => println("Exception in task:  " + e.getMessage())
+       e.printStackTrace()
+   }
   }
 }
 

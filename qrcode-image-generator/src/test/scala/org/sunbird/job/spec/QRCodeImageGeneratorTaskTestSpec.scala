@@ -5,7 +5,6 @@ import java.util
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
-import org.apache.flink.runtime.client.JobExecutionException
 import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
 import org.apache.flink.streaming.api.functions.source.SourceFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext
@@ -15,9 +14,9 @@ import org.cassandraunit.dataset.cql.FileCQLDataSet
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
 import org.mockito.Mockito
 import org.mockito.Mockito.when
-import org.sunbird.job.qrimagegenerator.domain.Event
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.fixture.EventFixture
+import org.sunbird.job.qrimagegenerator.domain.Event
 import org.sunbird.job.qrimagegenerator.task.{QRCodeImageGeneratorConfig, QRCodeImageGeneratorTask}
 import org.sunbird.job.util.CloudStorageUtil
 import org.sunbird.job.util.{CassandraUtil, JSONUtil}
@@ -35,7 +34,7 @@ class QRCodeImageGeneratorTaskTestSpec extends BaseTestSpec {
   val mockKafkaUtil: FlinkKafkaConnector = mock[FlinkKafkaConnector](Mockito.withSettings().serializable())
   val config: Config = ConfigFactory.load("test.conf")
   val jobConfig: QRCodeImageGeneratorConfig = new QRCodeImageGeneratorConfig(config)
-  val cloudStorageUtil:CloudStorageUtil = new CloudStorageUtil(jobConfig.cloudStorageType, Option(jobConfig.storageKey), Option(jobConfig.storageSecret))
+  val cloudStorageUtil:CloudStorageUtil = new CloudStorageUtil(jobConfig.cloudStorageType, jobConfig.storageKey, jobConfig.storageSecret)
   var cassandraUtils: CassandraUtil = _
 
   var currentMilliSecond = 1605816926271L
@@ -58,10 +57,10 @@ class QRCodeImageGeneratorTaskTestSpec extends BaseTestSpec {
 
   "QRCodeImageGeneratorTask" should "generate event" in {
     when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new QRCodeImageGeneratorMapSource)
-
-    assertThrows[JobExecutionException] {
-      new QRCodeImageGeneratorTask(jobConfig, mockKafkaUtil).process()
-    }
+    new QRCodeImageGeneratorTask(jobConfig, mockKafkaUtil).process()
+//    assertThrows[JobExecutionException] {
+//      new QRCodeImageGeneratorTask(jobConfig, mockKafkaUtil).process()
+//    }
     
   }
 }
