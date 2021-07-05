@@ -13,7 +13,7 @@ import org.sunbird.job.content.publish.helpers.ContentPublisher
 import org.sunbird.job.content.task.ContentPublishConfig
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.publish.config.PublishConfig
-import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
+import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData, ObjectExtData}
 import org.sunbird.job.publish.util.CloudStorageUtil
 import org.sunbird.job.util.{CassandraUtil, Neo4JUtil}
 
@@ -79,7 +79,7 @@ class ContentPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers
 
   "getExtData " should "do nothing " in {
     val identifier = "do_11329603741667328018";
-    val result: Option[Map[String, AnyRef]] = new TestContentPublisher().getExtData(identifier, 0.0, readerConfig)
+    val result: Option[ObjectExtData] = new TestContentPublisher().getExtData(identifier, 0.0, readerConfig)
   }
 
   "getHierarchy " should "do nothing " in {

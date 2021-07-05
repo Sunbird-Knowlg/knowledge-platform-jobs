@@ -5,7 +5,7 @@ import org.slf4j.LoggerFactory
 import org.sunbird.job.content.task.ContentPublishConfig
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.publish.config.PublishConfig
-import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
+import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData, ObjectExtData}
 import org.sunbird.job.publish.helpers._
 import org.sunbird.job.publish.util.CloudStorageUtil
 import org.sunbird.job.util.{CassandraUtil, Neo4JUtil}
@@ -21,7 +21,7 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
   private val level4ContentTypes = List("Course", "CourseUnit", "LessonPlan", "LessonPlanUnit")
   private val pragmaMimeTypes = List("video/x-youtube", "application/pdf")
 
-  override def getExtData(identifier: String, pkgVersion: Double, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = None
+  override def getExtData(identifier: String, pkgVersion: Double, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[ObjectExtData] = None
 
   override def getHierarchy(identifier: String, pkgVersion: Double, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = None
 
