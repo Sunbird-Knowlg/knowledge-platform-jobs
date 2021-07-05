@@ -7,15 +7,16 @@ import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.domain.`object`.DefinitionCache
-import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig}
+import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
 import org.sunbird.job.publish.util.CloudStorageUtil
-import org.sunbird.job.content.publish.domain.PublishMetadata
+import org.sunbird.job.content.publish.domain.{Event, PublishMetadata}
 import org.sunbird.job.content.publish.helpers.ContentPublisher
 import org.sunbird.job.content.task.ContentPublishConfig
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import java.lang.reflect.Type
+import java.util.UUID
 import scala.concurrent.ExecutionContext
 
 class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
@@ -50,7 +51,7 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
   }
 
   override def metricsList(): List[String] = {
-    List(config.contentPublishEventCount, config.contentPublishSuccessEventCount, config.contentPublishFailedEventCount)
+    List(config.contentPublishEventCount, config.contentPublishSuccessEventCount, config.contentPublishFailedEventCount, config.videoStreamingGeneratorEventCount)
   }
 
   override def processElement(data: PublishMetadata, context: ProcessFunction[PublishMetadata, String]#Context, metrics: Metrics): Unit = {
@@ -70,6 +71,7 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
         val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, cloudStorageUtil, definitionCache, definitionConfig)
         logger.info("Ecar generation done for Content: " + objWithEcar.identifier)
         saveOnSuccess(objWithEcar)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
+        pushStreamingUrlEvent(enrichedObj, context)(metrics)
         metrics.incCounter(config.contentPublishSuccessEventCount)
         logger.info("Content publishing completed successfully for : " + data.identifier)
       } else {
@@ -78,5 +80,25 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
         logger.info("Content publishing failed for : " + data.identifier)
       }
     }
+  }
+
+  private def pushStreamingUrlEvent(obj: ObjectData, context: ProcessFunction[PublishMetadata, String]#Context)(implicit metrics: Metrics): Unit = {
+    if (config.isStreamingEnabled && config.streamableMimeType.contains(obj.mimeType)) {
+      val event = getStreamingEvent(obj)
+      context.output(config.generateVideoStreamingOutTag, event)
+      metrics.incCounter(config.videoStreamingGeneratorEventCount)
+    }
+  }
+
+  def getStreamingEvent(obj: ObjectData) : String = {
+    val ets = System.currentTimeMillis
+    val mid = s"""LP.${ets}.${UUID.randomUUID}"""
+    val channelId = obj.getString("channel", "")
+    val ver = obj.getString("versionKey", "")
+    val artifactUrl = obj.getString("artifactUrl", "")
+    // TODO: deprecate using contentType in the event.
+    val event = s"""{"eid":"BE_JOB_REQUEST", "ets": ${ets}, "mid": "${mid}", "actor": {"id": "Post Publish Processor", "type": "System"}, "context":{"pdata":{"ver":"1.0","id":"org.ekstep.platform"}, "channel":"${channelId}","env":"${config.jobEnv}"},"object":{"ver":"${ver}","id":"${obj.identifier}"},"edata": {"action":"post-publish-process","iteration":1,"identifier":"${obj.identifier}","channel":"${channelId}","artifactUrl":"${artifactUrl}","mimeType":"${obj.mimeType}","contentType":"Resource","pkgVersion":1,"status":"Live"}}""".stripMargin
+    logger.info(s"Video Streaming Event for identifier ${obj.identifier}  is  : ${event}")
+    event
   }
 }

@@ -14,6 +14,6 @@ trait ObjectEnrichment extends FrameworkDataEnrichment with ThumbnailGenerator {
     generateThumbnail(enObj).getOrElse(enObj)
   }
 
-  def enrichObjectMetadata(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): Option[ObjectData]
+  def enrichObjectMetadata(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, config: PublishConfig): Option[ObjectData]
 
 }
