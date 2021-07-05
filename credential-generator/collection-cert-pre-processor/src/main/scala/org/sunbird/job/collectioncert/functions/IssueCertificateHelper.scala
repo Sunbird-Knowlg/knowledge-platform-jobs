@@ -1,5 +1,7 @@
 package org.sunbird.job.collectioncert.functions
 
+import java.text.SimpleDateFormat
+
 import com.datastax.driver.core.querybuilder.QueryBuilder
 import com.datastax.driver.core.{Row, TypeTokens}
 import org.slf4j.LoggerFactory
@@ -16,7 +18,7 @@ trait IssueCertificateHelper {
 
     def issueCertificate(event:Event, template: Map[String, String])(cassandraUtil: CassandraUtil, cache:DataCache, metrics: Metrics, config: CollectionCertPreProcessorConfig, httpUtil: HttpUtil): String = {
         //validCriteria
-        val criteria = validateTemplate(template)(config)
+        val criteria = validateTemplate(template, event.batchId)(config)
         //validateEnrolmentCriteria
         val certName = template.getOrElse(config.name, "")
         val enrolledUser: EnrolledUser = validateEnrolmentCriteria(event, criteria.getOrElse(config.enrollment, Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]], certName)(metrics, cassandraUtil, config)
@@ -34,12 +36,12 @@ trait IssueCertificateHelper {
         }
     }
     
-    def validateTemplate(template: Map[String, String])(config: CollectionCertPreProcessorConfig):Map[String, AnyRef] = {
+    def validateTemplate(template: Map[String, String], batchId: String)(config: CollectionCertPreProcessorConfig):Map[String, AnyRef] = {
         val criteria = ScalaJsonUtil.deserialize[Map[String, AnyRef]](template.getOrElse(config.criteria, "{}"))
         if(!template.getOrElse("url", "").isEmpty && !criteria.isEmpty && !criteria.keySet.intersect(Set(config.enrollment, config.assessment, config.users)).isEmpty) {
             criteria
         } else {
-            throw new Exception("Invalid template")
+            throw new Exception(s"Invalid template for batch : ${batchId}")
         }
     }
 
@@ -152,8 +154,9 @@ trait IssueCertificateHelper {
         def nullStringCheck(name:String) = {if(!"null".equalsIgnoreCase(name)) name  else ""}
         val recipientName = (nullStringCheck(firstName) + " " + nullStringCheck(lastName)).trim
         val courseName = getCourseName(event.courseId)(metrics, config, cache, httpUtil)
+        val dateFormatter = new SimpleDateFormat("yyyy-MM-dd")
         val eData = Map[String, AnyRef] (
-            "issuedDate" -> enrolledUser.issuedOn,
+            "issuedDate" -> dateFormatter.format(enrolledUser.issuedOn),
             "data" -> List(Map[String, AnyRef]("recipientName" -> recipientName, "recipientId" -> event.userId)),
             "criteria" -> Map[String, String]("narrative" -> certName),
             "svgTemplate" -> template.getOrElse("url", ""),

@@ -70,6 +70,12 @@
         </dependency>
         <dependency>
             <groupId>org.sunbird</groupId>
+            <artifactId>collection-certificate-generator</artifactId>
+            <version>1.0.0</version>
+            <type>jar</type>
+        </dependency>
+        <dependency>
+            <groupId>org.sunbird</groupId>
             <artifactId>asset-enrichment</artifactId>
             <version>1.0.0</version>
             <type>jar</type>
@@ -87,6 +93,12 @@
             <type>jar</type>
         </dependency>
         <dependency>
+            <groupId>org.sunbird</groupId>
+            <artifactId>audit-event-generator</artifactId>
+            <version>1.0.0</version>
+            <type>jar</type>
+        </dependency>
+  <dependency>
             <groupId>org.sunbird</groupId>
             <artifactId>mvc-indexer</artifactId>
             <version>1.0.0</version>

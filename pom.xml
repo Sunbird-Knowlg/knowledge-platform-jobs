@@ -33,6 +33,7 @@
 		<module>asset-enrichment</module>
 		<module>audit-history-indexer</module>
 		<module>mvc-indexer</module>
+		<module>audit-event-generator</module>
   </modules>
 
 	<properties>

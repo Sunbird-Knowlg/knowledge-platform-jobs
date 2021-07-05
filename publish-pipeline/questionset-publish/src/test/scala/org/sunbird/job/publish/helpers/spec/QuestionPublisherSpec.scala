@@ -10,12 +10,11 @@ import org.mockito.Mockito
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
 import org.sunbird.job.domain.`object`.DefinitionCache
-import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
+import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData, ObjectExtData}
 import org.sunbird.job.publish.util.CloudStorageUtil
 import org.sunbird.job.questionset.publish.helpers.QuestionPublisher
 import org.sunbird.job.questionset.task.QuestionSetPublishConfig
 import org.sunbird.job.util.{CassandraUtil, Neo4JUtil}
-
 import java.util
 
 
@@ -75,21 +74,23 @@ class QuestionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matcher
 		new TestQuestionPublisher().saveExternalData(data, readerConfig)
 	}
 
-  "getExtData " should "return the external data for the identifier " in {
-    val identifier = "do_113188615625731";
-    val result: Option[Map[String, AnyRef]] = new TestQuestionPublisher().getExtData(identifier, 0.0, readerConfig)
+	"getExtData " should "return the external data for the identifier " in {
+		val identifier = "do_113188615625731";
+		val res: Option[ObjectExtData] = new TestQuestionPublisher().getExtData(identifier, 0.0, readerConfig)
+		val result: Option[Map[String, AnyRef]] = res.getOrElse(new ObjectExtData).data
 		result.getOrElse(Map()).size should be(6)
-  }
+	}
 
 	"getExtData " should "return the external data for the image identifier " in {
 		val identifier = "do_113188615625731";
-		val result: Option[Map[String, AnyRef]] = new TestQuestionPublisher().getExtData(identifier, 1.0, readerConfig)
+		val res: Option[ObjectExtData] = new TestQuestionPublisher().getExtData(identifier, 1.0, readerConfig)
+		val result: Option[Map[String, AnyRef]] = res.getOrElse(new ObjectExtData).data
 		result.getOrElse(Map()).size should be(7)
 	}
 
 	"getHierarchy " should "do nothing " in {
 		val identifier = "do_113188615625731";
-		new TestQuestionPublisher().getExtData(identifier, 1.0, readerConfig)
+		new TestQuestionPublisher().getHierarchy(identifier, 1.0, readerConfig)
 	}
 
 	"getExtDatas " should "do nothing " in {
