@@ -3,19 +3,11 @@ package org.sunbird.job.mvcindexer.domain
 import org.apache.commons.lang3.BooleanUtils
 import org.sunbird.job.domain.reader.JobRequest
 
-import java.text.{DateFormat, SimpleDateFormat}
-
 class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) extends JobRequest(eventMap, partition, offset) {
-
-  private val df:DateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
 
   private val jobName = "MVCIndexer"
 
   def index: AnyRef = readOrDefault("index", null)
-
-  def ets: Long = readOrDefault("ets", 0L)
-
-  def userId: String = readOrDefault("userId", "")
 
   def identifier: String = readOrDefault("object.id", "")
 
@@ -23,19 +15,17 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 
   def action: String = readOrDefault("eventData.action", "")
 
-  def mlContentText:String = readOrDefault("eventData.ml_contentText", null)
+  def mlContentText: String = readOrDefault("eventData.ml_contentText", null)
 
-  def mlKeywords:List[String] = readOrDefault("eventData.ml_Keywords", null)
+  def mlKeywords: List[String] = readOrDefault("eventData.ml_Keywords", null)
 
   def metadata: Map[String, AnyRef] = readOrDefault[Map[String, AnyRef]]("eventData.metadata", Map[String, AnyRef]())
 
-  def mlContentTextVector:List[Double] = {
+  def mlContentTextVector: List[Double] = {
     val mlContentTextVectorList = readOrDefault[List[List[Double]]]("eventData.ml_contentTextVector", null)
 
     if (mlContentTextVectorList != null) mlContentTextVectorList.head else null
   }
-
-  def audit: Boolean = readOrDefault("audit", true)
 
   def isValid: Boolean = {
     BooleanUtils.toBoolean(if (null == index) "true" else index.toString) && !eventMap.containsKey("edata") && eventData.nonEmpty

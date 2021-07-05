@@ -15,7 +15,8 @@ import org.cassandraunit.CQLDataLoader
 import org.cassandraunit.dataset.cql.FileCQLDataSet
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
 import org.mockito.ArgumentMatchers.{any, endsWith}
-import org.mockito.Mockito.{times, verify, when}
+import org.mockito.Mockito.{doNothing, times, verify, when}
+import org.sunbird.job.Metrics
 
 import java.util
 
@@ -28,8 +29,10 @@ class MVCProcessorIndexerServiceTestSpec extends BaseTestSpec {
   var cassandraUtil: CassandraUtil = _
   var mockElasticUtil:ElasticSearchUtil = _
   var mockHttpUtil:HttpUtil = _
+  val mockMetrics = mock[Metrics](Mockito.withSettings().serializable())
 //  val mockHttpUtil:HttpUtil = new HttpUtil
   var mvcProcessorIndexer: MVCIndexerService = _
+  doNothing().when(mockMetrics).incCounter(any())
 
   val contentResponse = """{"responseCode":"OK","result":{"content":{"channel":"in.ekstep","framework":"NCF","name":"Ecml bundle Test","language":["English"],"appId":"dev.sunbird.portal","contentEncoding":"gzip","identifier":"do_112806963140329472124","mimeType":"application/vnd.ekstep.ecml-archive","contentType":"Resource","objectType":"Content","artifactUrl":"https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_112806963140329472124/artifact/1563350021721_do_112806963140329472124.zip","previewUrl":"https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/ecml/do_112806963140329472124-latest","streamingUrl":"https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/ecml/do_112806963140329472124-latest","downloadUrl":"https://sunbirddev.blob.core.windows.net/sunbird-content-dev/ecar_files/do_112806963140329472124/ecml-bundle-test_1563350022377_do_112806963140329472124_1.0.ecar","status":"Live","pkgVersion":1,"lastUpdatedOn":"2019-07-17T07:53:25.618+0000"}}}"""
 
@@ -47,7 +50,7 @@ class MVCProcessorIndexerServiceTestSpec extends BaseTestSpec {
     super.beforeEach()
     mockElasticUtil = mock[ElasticSearchUtil](Mockito.withSettings().serializable())
     mockHttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
-    mvcProcessorIndexer = new MVCIndexerService(jobConfig, mockElasticUtil, mockHttpUtil)
+    mvcProcessorIndexer = new MVCIndexerService(jobConfig, mockElasticUtil, mockHttpUtil, cassandraUtil)
   }
 
   override protected def afterAll(): Unit = {
@@ -66,7 +69,7 @@ class MVCProcessorIndexerServiceTestSpec extends BaseTestSpec {
     when(mockHttpUtil.get(endsWith("content/v3/read/do_112806963140329472124"), any())).thenReturn(HTTPResponse(200, contentResponse))
     when(mockHttpUtil.post(endsWith("/daggit/submit"), any(), any())).thenReturn(HTTPResponse(200, """{}"""))
 
-    mvcProcessorIndexer.processMessage(inputEvent)
+    mvcProcessorIndexer.processMessage(inputEvent)(mockMetrics)
 
     val insertedRecord = readFromCassandra(inputEvent.identifier)
     insertedRecord.forEach(col => {
@@ -110,7 +113,7 @@ class MVCProcessorIndexerServiceTestSpec extends BaseTestSpec {
     when(mockHttpUtil.get(endsWith("content/v3/read/do_112806963140329472124"), any())).thenReturn(HTTPResponse(200, contentResponse))
     when(mockHttpUtil.post(endsWith("/ml/vector/ContentText"), any(), any())).thenReturn(HTTPResponse(200, """{}"""))
 
-    mvcProcessorIndexer.processMessage(inputEvent)
+    mvcProcessorIndexer.processMessage(inputEvent)(mockMetrics)
 
     verify(mockHttpUtil, times(1)).post(argumentCaptor.capture(), argumentCaptor.capture(), any());
     val esRecordMap = JSONUtil.deserialize[Map[String, AnyRef]](argumentCaptor.getAllValues.get(1))
@@ -133,7 +136,7 @@ class MVCProcessorIndexerServiceTestSpec extends BaseTestSpec {
 
     when(mockHttpUtil.get(endsWith("content/v3/read/do_112806963140329472124"), any())).thenReturn(HTTPResponse(200, contentResponse))
 
-    mvcProcessorIndexer.processMessage(inputEvent)
+    mvcProcessorIndexer.processMessage(inputEvent)(mockMetrics)
 
     val insertedRecord = readFromCassandra(inputEvent.identifier)
     insertedRecord.forEach(col => {
@@ -152,7 +155,7 @@ class MVCProcessorIndexerServiceTestSpec extends BaseTestSpec {
     when(mockHttpUtil.get(endsWith("content/v3/read/do_112806963140329472124"), any())).thenReturn(HTTPResponse(200, contentResponse))
     when(mockElasticUtil.getDocumentAsString(any())).thenReturn("""{"_id":"do_112806963140329472124"}""")
 
-    mvcProcessorIndexer.processMessage(inputEvent)
+    mvcProcessorIndexer.processMessage(inputEvent)(mockMetrics)
 
     verify(mockElasticUtil, times(1)).updateDocument(argumentCaptor.capture(), argumentCaptor.capture());
     val esRecordMap = JSONUtil.deserialize[Map[String, AnyRef]](argumentCaptor.getAllValues.get(1))

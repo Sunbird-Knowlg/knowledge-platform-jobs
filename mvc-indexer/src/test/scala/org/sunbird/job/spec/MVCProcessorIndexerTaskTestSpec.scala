@@ -47,13 +47,13 @@ class MVCProcessorIndexerTaskTestSpec extends BaseTestSpec {
     override def dispatch(request: RecordedRequest): MockResponse = {
       (request.getPath, request.getMethod) match {
         case ("/mvc-content-v1", "HEAD") =>
-          return new MockResponse().setResponseCode(200)
+          new MockResponse().setResponseCode(200)
         case ("/mvc-content-v1?master_timeout=30s&timeout=30s", "PUT") =>
-          return new MockResponse().setHeader("Content-Type", "application/json").setResponseCode(200).setBody("""{"acknowledged":true,"shards_acknowledged":true,"index":"mvc-content-v1"}""")
+          new MockResponse().setHeader("Content-Type", "application/json").setResponseCode(200).setBody("""{"acknowledged":true,"shards_acknowledged":true,"index":"mvc-content-v1"}""")
         case ("/mvc-content-v1/_doc/do_112806963140329472124?timeout=1m", "PUT") =>
-          return new MockResponse().setHeader("Content-Type", "application/json").setResponseCode(200).setBody("""{"_index":"mvc-content-v1","_type":"_doc","_id":"do_112806963140329472124","_version":1,"result":"created","_shards":{"total":2,"successful":1,"failed":0},"_seq_no":0,"_primary_term":1}""")
+          new MockResponse().setHeader("Content-Type", "application/json").setResponseCode(200).setBody("""{"_index":"mvc-content-v1","_type":"_doc","_id":"do_112806963140329472124","_version":1,"result":"created","_shards":{"total":2,"successful":1,"failed":0},"_seq_no":0,"_primary_term":1}""")
         case _ => {
-          return new MockResponse().setResponseCode(200)
+          new MockResponse().setResponseCode(200)
         }
       }
     }
@@ -105,8 +105,10 @@ class MVCProcessorIndexerTaskTestSpec extends BaseTestSpec {
     new MVCIndexerStreamTask(jobConfig, mockKafkaUtil, esUtil, httpUtil).process()
 
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(2)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.dbUpdateCount}").getValue() should be(1)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.successEventCount}").getValue() should be(1)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skippedEventCount}").getValue() should be(1)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.failedEventCount}").getValue() should be(0)
     contentServer.close()
   }
 
@@ -125,6 +127,10 @@ class MVCProcessorIndexerTaskTestSpec extends BaseTestSpec {
       case ex: JobExecutionException =>
         BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(1)
         BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.failedEventCount}").getValue() should be(1)
+        BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.apiFailedEventCount}").getValue() should be(1)
+        BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.esFailedEventCount}").getValue() should be(0)
+        BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.dbUpdateFailedCount}").getValue() should be(0)
+        BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skippedEventCount}").getValue() should be(0)
     }
     contentServer.close()
   }
