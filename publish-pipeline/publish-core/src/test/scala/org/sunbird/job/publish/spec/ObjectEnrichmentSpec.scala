@@ -53,6 +53,6 @@ class ObjectEnrichmentSpec extends FlatSpec with BeforeAndAfterAll with Matchers
 }
 
 class TestObjectEnrichment extends ObjectEnrichment {
-  override def enrichObjectMetadata(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): Option[ObjectData] = None
+  override def enrichObjectMetadata(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, config: PublishConfig): Option[ObjectData] = None
 }
 

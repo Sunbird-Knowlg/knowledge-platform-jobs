@@ -10,6 +10,7 @@ import org.mockito.Mockito
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
 import org.sunbird.job.domain.`object`.DefinitionCache
+import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData, ObjectExtData}
 import org.sunbird.job.publish.util.CloudStorageUtil
 import org.sunbird.job.questionset.publish.helpers.QuestionPublisher
@@ -31,6 +32,7 @@ class QuestionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matcher
 	implicit val ec = ExecutionContexts.global
 	implicit val defCache = new DefinitionCache()
 	implicit val defConfig = DefinitionConfig(jobConfig.schemaSupportVersionMap, jobConfig.definitionBasePath)
+	implicit val publishConfig: PublishConfig = new PublishConfig(config, "")
 
 	override protected def beforeAll(): Unit = {
 		super.beforeAll()

@@ -27,12 +27,25 @@ trait ObjectUpdater {
     if (!StringUtils.equalsIgnoreCase(editId, identifier)) {
       val imgNodeDelQuery = s"""MATCH (n:domain{IL_UNIQUE_ID:"$editId"}) DETACH DELETE n;"""
       neo4JUtil.executeQuery(imgNodeDelQuery)
-      deleteExternalData(obj, readerConfig);
+      deleteExternalData(obj, readerConfig)
     }
     val result: StatementResult = neo4JUtil.executeQuery(query)
     if (null != result && result.hasNext)
       logger.info(s"statement result : ${result.next().asMap()}")
     saveExternalData(obj, readerConfig)
+  }
+
+  @throws[Exception]
+  def updateProcessingNode(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, definitionCache: DefinitionCache, config: DefinitionConfig): Unit = {
+    val status = "Processing"
+    val prevState = obj.metadata.getOrElse("status", "Draft").asInstanceOf[String]
+    val identifier = obj.identifier
+    val metadataUpdateQuery = metaDataQuery(obj)(definitionCache, config)
+    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$identifier"}) SET n.status="$status",n.prevState="$prevState",$metadataUpdateQuery,$auditPropsUpdateQuery;"""
+    logger.info("Query: " + query)
+    val result: StatementResult = neo4JUtil.executeQuery(query)
+    if (null != result && result.hasNext)
+      logger.info(s"statement result : ${result.next().asMap()}")
   }
 
   def saveExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil)
