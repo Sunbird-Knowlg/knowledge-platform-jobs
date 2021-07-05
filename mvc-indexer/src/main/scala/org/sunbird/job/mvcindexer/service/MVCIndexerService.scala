@@ -25,11 +25,11 @@ class MVCIndexerService(config: MVCIndexerConfig, esUtil: ElasticSearchUtil, htt
         if (message.action.equalsIgnoreCase("update-es-index")) {
           message.eventData = ContentUtil.getContentMetaData(message.eventData, objectId, httpUtil, config)
         }
-        logger.info("processMessage  ::: Calling cassandra insertion for " + objectId)
+        logger.info("Upsert cassandra document for " + objectId)
         cassandraManager.insertIntoCassandra(message, objectId)
         metrics.incCounter(config.dbUpdateCount)
       }
-      logger.info("processMessage  ::: Calling elasticsearch insertion for " + objectId)
+      logger.info("Elasticsearch document updation for " + objectId)
       mvcEsIndexer.upsertDocument(objectId, message)
 
       metrics.incCounter(config.successEventCount)
