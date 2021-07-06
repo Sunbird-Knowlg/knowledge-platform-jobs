@@ -6,6 +6,14 @@ import org.sunbird.job.util.{HTTPResponse, HttpUtil, JSONUtil}
 
 object ContentUtil {
 
+  /**
+   * Get the Content Metadata and return the parsed metadata map
+   * @param newmap Content metadata from event envelope
+   * @param identifer Content ID
+   * @param httpUtil HttpUil instance
+   * @param config Config instance
+   * @return parsed metadata map
+   */
   @throws[Exception]
   def getContentMetaData(newmap: Map[String, AnyRef], identifer: String, httpUtil: HttpUtil, config: MVCIndexerConfig): Map[String, AnyRef] = {
     try {

@@ -98,7 +98,7 @@
             <version>1.0.0</version>
             <type>jar</type>
         </dependency>
-  <dependency>
+        <dependency>
             <groupId>org.sunbird</groupId>
             <artifactId>mvc-indexer</artifactId>
             <version>1.0.0</version>

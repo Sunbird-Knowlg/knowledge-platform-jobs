@@ -11,7 +11,11 @@ import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, JSONUtil}
 class MVCCassandraIndexer(config: MVCIndexerConfig, cassandraUtil: CassandraUtil, httpUtil: HttpUtil) {
   private[this] lazy val logger = LoggerFactory.getLogger(classOf[MVCCassandraIndexer])
 
-  // Insert to cassandra
+  /**
+   * Based on action update content metadata in cassandra and post the keywords and vector data to ML Service
+   * @param message Event envelope
+   * @param identifier Content ID
+   */
   def insertIntoCassandra(message: Event, identifier: String): Unit = {
     val obj: Map[String, AnyRef] = message.eventData
     message.action match {
@@ -30,7 +34,10 @@ class MVCCassandraIndexer(config: MVCIndexerConfig, cassandraUtil: CassandraUtil
     }
   }
 
-  //Getting Fields to be inserted into cassandra
+  /**
+   * Parse the selected fields from eventData to update in cassandra
+   * @param contentobj Content metadata
+   */
   private def extractFieldsToBeInserted(contentobj: Map[String, AnyRef]): Map[String, AnyRef] = {
     var esCassandraMap = Map[String, AnyRef]()
     val fields = Map[String, String]("level1Concept" -> "level1_concept", "level2Concept" -> "level2_concept",
@@ -53,7 +60,10 @@ class MVCCassandraIndexer(config: MVCIndexerConfig, cassandraUtil: CassandraUtil
     esCassandraMap
   }
 
-  // POST reqeuest for ml keywords api
+  /**
+   * Post the keywords to ML Workbench service
+   * @param contentdef Content Metadata
+   */
   @throws[APIException]
   private def getMLKeywords(contentdef: Map[String, AnyRef]): Unit = {
     val bodyObj = Map("request" -> Map("job" -> config.keywordAPIJobname, "input" -> Map("content" -> List(contentdef))))
@@ -68,7 +78,11 @@ class MVCCassandraIndexer(config: MVCIndexerConfig, cassandraUtil: CassandraUtil
     }
   }
 
-  // Post reqeuest for vector api
+  /**
+   * Post the content text vector to ML Workbench service
+   * @param contentText ContentText from event envelope
+   * @param identifier Content ID
+   */
   @throws[APIException]
   def getMLVectors(contentText: String, identifier: String): Unit = {
     val bodyObj = Map("request" -> Map("language" -> "en", "method" -> "BERT", "params" -> Map("dim" -> 768, "seq_len" -> 25), "cid" -> identifier, "text" -> List(contentText)))

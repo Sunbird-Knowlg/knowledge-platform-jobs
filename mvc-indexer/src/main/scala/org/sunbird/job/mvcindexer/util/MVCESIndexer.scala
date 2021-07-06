@@ -14,7 +14,7 @@ class MVCESIndexer(config: MVCIndexerConfig, esUtil: ElasticSearchUtil) {
   private val NESTED_FIELDS = config.nestedFields
 
   /**
-   * @return
+   * Create mvc index in Elasticsearch if not available
    */
   @throws[ElasticSearchException]
   def createMVCSearchIndex(): Unit = {
@@ -30,7 +30,11 @@ class MVCESIndexer(config: MVCIndexerConfig, esUtil: ElasticSearchUtil) {
 
   }
 
-  //  @SuppressWarnings(Array("rawtypes", "unchecked"))
+  /**
+   * Insert or update the document in ES based on the action. content id
+   * @param uniqueId Content ID
+   * @param message Event envelope
+   */
   @throws[ElasticSearchException]
   def upsertDocument(uniqueId: String, message: Event): Unit = {
     try {
@@ -63,6 +67,11 @@ class MVCESIndexer(config: MVCIndexerConfig, esUtil: ElasticSearchUtil) {
     }
   }
 
+  /**
+   * Updating nested type props as null in ES
+   * @param jsonIndexDocument Content metadata
+   * @return New map with available nested props as null
+   */
   @throws[IOException]
   private def proocessNestedProps(jsonIndexDocument: Map[String, AnyRef]): Map[String, AnyRef] = {
     var nestedProps = Map[String, AnyRef]()
@@ -75,7 +84,9 @@ class MVCESIndexer(config: MVCIndexerConfig, esUtil: ElasticSearchUtil) {
     nestedProps
   }
 
-  // Remove params which should not be inserted into ES
+  /**
+   * Remove params which should not be inserted into ES from content metadata
+   */
   def removeExtraParams(obj: Map[String, AnyRef]): Map[String, AnyRef] = {
     obj.-("action", "stage")
   }
