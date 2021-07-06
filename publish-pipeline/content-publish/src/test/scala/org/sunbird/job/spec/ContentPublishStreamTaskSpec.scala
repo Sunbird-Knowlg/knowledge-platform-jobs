@@ -69,7 +69,7 @@ class ContentPublishStreamTaskSpec extends BaseTestSpec {
     when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new ContentPublishEventSource)
   }
 
-  ignore should " publish the question " in {
+  "ContentPublish" should " publish the content " in {
     initialize
     new ContentPublishStreamTask(jobConfig, mockKafkaUtil, mockHttpUtil).process()
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(1)
