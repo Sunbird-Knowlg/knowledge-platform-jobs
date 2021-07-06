@@ -65,10 +65,11 @@ trait AutoCreator extends ObjectUpdater with CollectionUpdater with HierarchyEnr
     else Map[String, AnyRef]()
   }
 
-	def enrichMetadata(obj: ObjectData, eventMeta: Map[String, AnyRef])(implicit config: AutoCreatorV2Config): ObjectData = {
+	def enrichMetadata(obj: ObjectData, eventMeta: Map[String, AnyRef], overrideCloudProps: Boolean = false)(implicit config: AutoCreatorV2Config): ObjectData = {
 		val sysMeta = Map("IL_UNIQUE_ID" -> obj.identifier, "IL_FUNC_OBJECT_TYPE" -> obj.objectType, "IL_SYS_NODE_TYPE" -> "DATA_NODE")
-//		val oProps: Map[String, AnyRef] = config.overrideManifestProps.map(prop => (prop, eventMeta.getOrElse(prop, ""))).toMap
-		new ObjectData(obj.identifier, obj.objectType, obj.metadata ++ sysMeta, obj.extData, obj.hierarchy)
+		val oProps: Map[String, AnyRef] = config.overrideManifestProps.map(prop => (prop, eventMeta.getOrElse(prop, ""))).toMap
+		val enMetadata = if(overrideCloudProps) obj.metadata ++ sysMeta ++ oProps else obj.metadata ++ sysMeta
+		new ObjectData(obj.identifier, obj.objectType, enMetadata, obj.extData, obj.hierarchy)
 	}
 
 	def processCloudMeta(obj: ObjectData)(implicit config: AutoCreatorV2Config, cloudStorageUtil: CloudStorageUtil): ObjectData = {
@@ -99,10 +100,10 @@ trait AutoCreator extends ObjectUpdater with CollectionUpdater with HierarchyEnr
 			val downloadUrl = ch._2.asInstanceOf[Map[String, AnyRef]].getOrElse("downloadUrl", "").asInstanceOf[String]
 			val obj: ObjectData = getObject(ch._1, objType, downloadUrl)(config, httpUtil, definition)
 			logger.debug("Graph metadata for " + obj.identifier + " : " + obj.metadata)
-			val enObj = enrichMetadata(obj, ch._2.asInstanceOf[Map[String, AnyRef]])(config)
+			val enObj = enrichMetadata(obj, ch._2.asInstanceOf[Map[String, AnyRef]], true)(config)
 			logger.debug("Enriched metadata for " + enObj.identifier + " : " + enObj.metadata)
 			val updatedObj = processCloudMeta(enObj)
-			logger.debug("Final updated metadata for " + updatedObj.identifier + " : " + JSONUtil.serialize(updatedObj.metadata))
+			logger.info("Final updated metadata for " + updatedObj.identifier + " : " + JSONUtil.serialize(updatedObj.metadata))
 			val extConfig = ExtDataConfig(config.getString(updatedObj.objectType.toLowerCase + ".keyspace", ""), definition.getExternalTable, definition.getExternalPrimaryKey, definition.getExternalProps)
 			saveExternalData(updatedObj.identifier, updatedObj.extData.getOrElse(Map()), extConfig)(cassandraUtil)
 			saveGraphData(updatedObj.identifier, updatedObj.metadata, definition)(neo4JUtil)
