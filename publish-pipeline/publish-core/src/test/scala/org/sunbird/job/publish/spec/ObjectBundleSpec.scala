@@ -5,8 +5,11 @@ import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
 import org.sunbird.job.publish.core.ObjectData
 import org.sunbird.job.publish.helpers.ObjectBundle
+import org.sunbird.job.util.HttpUtil
 
 class ObjectBundleSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
+
+	implicit val httpUtil = new HttpUtil
 
 	"validUrl" should "return true for valid url input" in {
 		val obj = new TestObjectBundle
@@ -53,6 +56,14 @@ class ObjectBundleSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
 		null!=file should be(true)
 		file.exists() should be(true)
 		StringUtils.endsWith(file.getName, "manifest.json") should be(true)
+	}
+
+	"getBundleSize with invalid url" should "throw client exception" in {
+		val exception = intercept[Exception] {
+			val obj = new TestObjectBundle
+			obj.getBundleSize("http://abc.com/pdf.pdf")(httpUtil)
+		}
+		assert(exception.getMessage ==  "Unable to get metadata for : http://abc.com/pdf.pdf | status : 404, body: ")
 	}
 }
 
