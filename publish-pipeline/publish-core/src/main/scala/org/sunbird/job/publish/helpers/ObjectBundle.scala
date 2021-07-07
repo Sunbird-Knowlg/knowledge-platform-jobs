@@ -150,7 +150,7 @@ trait ObjectBundle {
 			stream.close()
 			new File(bundleFileName)
 		} catch {
-			case ex: Exception => throw new Exception(s"Error While Generating ${pkgType} ECAR Bundle For : " + identifier)
+			case ex: Exception => throw new Exception(s"Error While Generating ${pkgType} ECAR Bundle For : " + identifier, ex)
 		} finally {
 			FileUtils.deleteDirectory(new File(bundlePath))
 		}
@@ -178,7 +178,7 @@ trait ObjectBundle {
 			IOUtils.closeQuietly(byteArrayOutputStream)
 			byteArrayOutputStream.toByteArray
 		} catch {
-			case e: Exception => throw new Exception("Error While Generating Byte Stream Of Bundle For : " + identifier)
+			case e: Exception => throw new Exception("Error While Generating Byte Stream Of Bundle For : " + identifier, e)
 		}
 	}
 
@@ -248,7 +248,7 @@ trait ObjectBundle {
 			FileUtils.writeStringToFile(file, mJson)
 			file
 		} catch {
-			case e: Exception => throw new Exception("Exception occurred while writing manifest file for : " + identifier)
+			case e: Exception => throw new Exception("Exception occurred while writing manifest file for : " + identifier, e)
 		}
 	}
 
@@ -266,7 +266,7 @@ trait ObjectBundle {
 				Option(file)
 			} else None
 		} catch {
-			case e: Exception => throw new Exception("Exception occurred while writing hierarchy file for : " + obj.identifier)
+			case e: Exception => throw new Exception("Exception occurred while writing hierarchy file for : " + obj.identifier, e)
 		}
 	}
 
