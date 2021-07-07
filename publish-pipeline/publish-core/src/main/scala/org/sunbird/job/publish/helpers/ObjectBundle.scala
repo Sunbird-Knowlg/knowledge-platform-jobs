@@ -153,7 +153,10 @@ trait ObjectBundle {
 			stream.close()
 			new File(bundleFileName)
 		} catch {
-			case ex: Exception => throw new Exception(s"Error While Generating ${pkgType} ECAR Bundle For : " + identifier, ex)
+			case ex: Exception => {
+        ex.printStackTrace()
+        throw new Exception(s"Error While Generating ${pkgType} ECAR Bundle For : " + identifier, ex)
+      }
 		} finally {
 			FileUtils.deleteDirectory(new File(bundlePath))
 		}
@@ -181,7 +184,7 @@ trait ObjectBundle {
 			IOUtils.closeQuietly(byteArrayOutputStream)
 			byteArrayOutputStream.toByteArray
 		} catch {
-			case e: Exception => throw new Exception("Error While Generating Byte Stream Of Bundle For : " + identifier, e)
+			case ex: Exception => throw new Exception("Error While Generating Byte Stream Of Bundle For : " + identifier, ex)
 		}
 	}
 

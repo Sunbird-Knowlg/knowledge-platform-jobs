@@ -55,7 +55,7 @@ trait AutoCreator extends ObjectUpdater with CollectionUpdater with HierarchyEnr
     if (response.status == 200) {
       JSONUtil.deserialize[Map[String, AnyRef]](response.body).getOrElse("result", Map()).asInstanceOf[Map[String, AnyRef]]
         .getOrElse(objectType.toLowerCase, Map()).asInstanceOf[Map[String, AnyRef]]
-    } else throw new Exception("Invalid object read url for fetching metadata.")
+    } else throw new Exception("Invalid object read url for fetching metadata: " + metaUrl)
   }
 
   private def getHierarchy(extractPath: String, objectType: String)(implicit config: AutoCreatorV2Config): Map[String, AnyRef] = {
