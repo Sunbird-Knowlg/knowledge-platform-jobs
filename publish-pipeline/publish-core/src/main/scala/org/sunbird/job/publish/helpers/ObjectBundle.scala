@@ -6,12 +6,15 @@ import java.util
 import java.util.{Date, Optional}
 import java.util.zip.{ZipEntry, ZipOutputStream}
 import java.net.{HttpURLConnection, URL}
+
+import kong.unirest.HttpResponse
+import org.apache.commons.collections.CollectionUtils
 import org.apache.commons.io.{FileUtils, FilenameUtils, IOUtils}
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.publish.core.{DefinitionConfig, ObjectData, Slug}
-import org.sunbird.job.util.{JSONUtil, ScalaJsonUtil}
+import org.sunbird.job.util.{HttpUtil, JSONUtil, ScalaJsonUtil}
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
@@ -300,5 +303,17 @@ trait ObjectBundle {
 			catch { case e: Exception => entry._2 }
 		}
 		else entry._2
+	}
+
+	def getBundleSize(url: String)(implicit httpUtil: HttpUtil): Int = {
+		val resp: HttpResponse[String] = httpUtil.head(url)
+		if (null != resp && resp.getStatus == 200) {
+			val contentLength = if (CollectionUtils.isNotEmpty(resp.getHeaders.get("Content-Length"))) resp.getHeaders.get("Content-Length") else resp.getHeaders.get("content-length")
+			if (CollectionUtils.isNotEmpty(contentLength)) contentLength.get(0).toInt else 0
+		} else {
+			val msg = s"Unable to get metadata for : $url | status : ${resp.getStatus}, body: ${resp.getBody}"
+			logger.error(msg)
+			throw new Exception(msg)
+		}
 	}
 }
