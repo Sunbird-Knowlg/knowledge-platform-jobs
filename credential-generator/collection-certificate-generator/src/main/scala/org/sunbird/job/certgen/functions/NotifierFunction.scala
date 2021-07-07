@@ -135,7 +135,7 @@ class NotifierFunction(config: CertificateGeneratorConfig, httpUtil: HttpUtil, @
       val result = response.getOrElse("result", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]].getOrElse("response", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
       result
     } else if((400 == httpResponse.status) && httpResponse.body.contains("USER_ACCOUNT_BLOCKED")){
-      logger.error("Error while fetching user details: " + httpResponse.status + " :: " + httpResponse.body)
+      logger.error(s"Error while fetching user details for ${userId}: " + httpResponse.status + " :: " + httpResponse.body)
       metrics.incCounter(config.skipNotifyUserCount)
       Map[String, AnyRef]()
     } else throw new Exception(s"Error while reading user for notification for userId: ${userId}")
