@@ -55,7 +55,7 @@ class AutoCreatorFunction(config: AutoCreatorV2Config, httpUtil: HttpUtil,
       logger.debug("Constructed the ObjectData for " + obj.identifier)
       val enObj = enrichMetadata(obj, event.metadata)(config)
       logger.info("Enriched metadata for " + enObj.identifier)
-      val updatedObj = processCloudMeta(enObj)(config, cloudStorageUtil)
+      val updatedObj = processCloudMeta(enObj)(config, cloudStorageUtil, httpUtil)
       logger.info("Final updated metadata |with cloud-store updates| for " + updatedObj.identifier)
       val enrObj = if (config.expandableObjects.contains(updatedObj.objectType)) {
         val chMap: Map[String, AnyRef] = getChildren(updatedObj)(config)

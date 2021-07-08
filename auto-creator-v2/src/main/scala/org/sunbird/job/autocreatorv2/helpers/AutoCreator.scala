@@ -3,14 +3,16 @@ package org.sunbird.job.autocreatorv2.helpers
 import org.apache.commons.io.FilenameUtils
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
-import org.sunbird.job.autocreatorv2.model.{ExtDataConfig}
+import org.sunbird.job.autocreatorv2.model.ExtDataConfig
 import org.sunbird.job.autocreatorv2.util.{CloudStorageUtil, FileUtils}
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.autocreatorv2.model.ObjectData
 import org.sunbird.job.task.AutoCreatorV2Config
 import org.sunbird.job.util._
-
 import java.io.File
+
+import kong.unirest.HttpResponse
+import org.apache.commons.collections.CollectionUtils
 
 trait AutoCreator extends ObjectUpdater with CollectionUpdater with HierarchyEnricher {
 
@@ -74,10 +76,11 @@ trait AutoCreator extends ObjectUpdater with CollectionUpdater with HierarchyEnr
 		new ObjectData(obj.identifier, obj.objectType, enMetadata, obj.extData, obj.hierarchy)
 	}
 
-	def processCloudMeta(obj: ObjectData)(implicit config: AutoCreatorV2Config, cloudStorageUtil: CloudStorageUtil): ObjectData = {
+	def processCloudMeta(obj: ObjectData)(implicit config: AutoCreatorV2Config, cloudStorageUtil: CloudStorageUtil, httpUtil: HttpUtil): ObjectData = {
 		val data = config.cloudProps.filter(x => obj.metadata.get(x).nonEmpty).flatMap(prop => {
-			if (StringUtils.equalsIgnoreCase("variants", prop)) obj.metadata.getOrElse("variants", Map()).asInstanceOf[Map[String, AnyRef]].toList
-			else List((prop, obj.metadata.getOrElse(prop, "")))
+			if (StringUtils.equalsIgnoreCase("variants", prop)) {
+				obj.metadata.getOrElse("variants", Map()).asInstanceOf[Map[String, AnyRef]].toList.map(entry => (entry._1 -> entry._2.asInstanceOf[Map[String, AnyRef]].getOrElse("ecarUrl", "").asInstanceOf[String]))
+			} else List((prop, obj.metadata.getOrElse(prop, "")))
 		}).toMap
 		val updatedUrls: Map[String, AnyRef] = data.map(en => {
 			logger.info("processCloudMeta :: key : " + en._1 + " | url : " + en._2)
@@ -86,12 +89,12 @@ trait AutoCreator extends ObjectUpdater with CollectionUpdater with HierarchyEnr
 			(en._1, url.getOrElse(""))
 		})
 		logger.info("processCloudMeta :: updatedUrls : " + updatedUrls)
-		val updatedMeta = obj.metadata ++ updatedUrls.filterKeys(k => !List("spine", "online").contains(k)) ++ Map("variants" -> getVariantMap(updatedUrls))
+		val updatedMeta = obj.metadata ++ updatedUrls.filterKeys(k => !List("spine", "online","full").contains(k)) ++ Map("variants" -> getVariantMap(updatedUrls))
 		new ObjectData(obj.identifier, obj.objectType, updatedMeta, obj.extData, obj.hierarchy)
 	}
 
-	def getVariantMap(map: Map[String, AnyRef]): Map[String, AnyRef] = {
-		List("full", "online", "spine").filter(x => map.contains(x)).map(m => (m, map.getOrElse(m, "").asInstanceOf[String])).toMap
+	def getVariantMap(map: Map[String, AnyRef])(implicit httpUtil: HttpUtil): Map[String, AnyRef] = {
+		List("full", "online", "spine").filter(x => map.contains(x)).map(m => (m, Map("ecarUrl"->map.getOrElse(m, "").asInstanceOf[String], "size" -> getSize(map.getOrElse(m, "").asInstanceOf[String])))).toMap
 	}
 
 	def processChildren(children: Map[String, AnyRef])(implicit config: AutoCreatorV2Config, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, cloudStorageUtil: CloudStorageUtil, defCache: DefinitionCache, httpUtil: HttpUtil): Map[String, ObjectData] = {
@@ -111,6 +114,18 @@ trait AutoCreator extends ObjectUpdater with CollectionUpdater with HierarchyEnr
 			saveGraphData(updatedObj.identifier, updatedObj.metadata, definition)(neo4JUtil)
 			Map(updatedObj.identifier-> updatedObj)
 		})
+	}
+
+	def getSize(url: String)(implicit httpUtil: HttpUtil): Int = {
+		val resp: HttpResponse[String] = httpUtil.head(url)
+		if (null != resp && resp.getStatus == 200) {
+			val contentLength = if (CollectionUtils.isNotEmpty(resp.getHeaders.get("Content-Length"))) resp.getHeaders.get("Content-Length") else resp.getHeaders.get("content-length")
+			if (CollectionUtils.isNotEmpty(contentLength)) contentLength.get(0).toInt else 0
+		} else {
+			val msg = s"Unable to get metadata for : $url | status : ${resp.getStatus}, body: ${resp.getBody}"
+			logger.error(msg)
+			throw new Exception(msg)
+		}
 	}
 
 }

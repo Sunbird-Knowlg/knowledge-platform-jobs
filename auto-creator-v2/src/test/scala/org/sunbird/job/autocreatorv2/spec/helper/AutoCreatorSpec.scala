@@ -77,7 +77,7 @@ class AutoCreatorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with
 	"processCloudMeta" should "return object with updated cloud urls" in {
 		val downloadUrl = "https://dockstorage.blob.core.windows.net/sunbird-content-dock/questionset/do_113244425048121344131/added1_1616751462043_do_113244425048121344131_1_SPINE.ecar"
 		val data = new ObjectData("do_123", "QuestionSet", Map("downloadUrl" -> downloadUrl, "variants" -> Map("spine"->downloadUrl, "online"->downloadUrl)), Some(Map()), Some(Map()))
-		val result = new TestAutoCreator().processCloudMeta(data)(jobConfig, cloudUtil)
+		val result = new TestAutoCreator().processCloudMeta(data)(jobConfig, cloudUtil, httpUtil)
 		result.metadata.getOrElse("downloadUrl", "").asInstanceOf[String].nonEmpty shouldBe(true)
 	}
 
