@@ -11,9 +11,6 @@ import org.sunbird.job.task.AutoCreatorV2Config
 import org.sunbird.job.util._
 import java.io.File
 
-import kong.unirest.HttpResponse
-import org.apache.commons.collections.CollectionUtils
-
 trait AutoCreator extends ObjectUpdater with CollectionUpdater with HierarchyEnricher {
 
 	private[this] val logger = LoggerFactory.getLogger(classOf[AutoCreator])
@@ -94,7 +91,7 @@ trait AutoCreator extends ObjectUpdater with CollectionUpdater with HierarchyEnr
 	}
 
 	def getVariantMap(map: Map[String, AnyRef])(implicit httpUtil: HttpUtil): Map[String, AnyRef] = {
-		List("full", "online", "spine").filter(x => map.contains(x)).map(m => (m, Map("ecarUrl"->map.getOrElse(m, "").asInstanceOf[String], "size" -> getSize(map.getOrElse(m, "").asInstanceOf[String])))).toMap
+		List("full", "online", "spine").filter(x => map.contains(x)).map(m => (m, Map("ecarUrl"->map.getOrElse(m, "").asInstanceOf[String], "size" -> httpUtil.getSize(map.getOrElse(m, "").asInstanceOf[String])))).toMap
 	}
 
 	def processChildren(children: Map[String, AnyRef])(implicit config: AutoCreatorV2Config, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, cloudStorageUtil: CloudStorageUtil, defCache: DefinitionCache, httpUtil: HttpUtil): Map[String, ObjectData] = {
@@ -114,18 +111,6 @@ trait AutoCreator extends ObjectUpdater with CollectionUpdater with HierarchyEnr
 			saveGraphData(updatedObj.identifier, updatedObj.metadata, definition)(neo4JUtil)
 			Map(updatedObj.identifier-> updatedObj)
 		})
-	}
-
-	def getSize(url: String)(implicit httpUtil: HttpUtil): Int = {
-		val resp: HttpResponse[String] = httpUtil.head(url)
-		if (null != resp && resp.getStatus == 200) {
-			val contentLength = if (CollectionUtils.isNotEmpty(resp.getHeaders.get("Content-Length"))) resp.getHeaders.get("Content-Length") else resp.getHeaders.get("content-length")
-			if (CollectionUtils.isNotEmpty(contentLength)) contentLength.get(0).toInt else 0
-		} else {
-			val msg = s"Unable to get metadata for : $url | status : ${resp.getStatus}, body: ${resp.getBody}"
-			logger.error(msg)
-			throw new Exception(msg)
-		}
 	}
 
 }
