@@ -68,7 +68,9 @@ trait AutoCreator extends ObjectUpdater with CollectionUpdater with HierarchyEnr
 	def enrichMetadata(obj: ObjectData, eventMeta: Map[String, AnyRef], overrideCloudProps: Boolean = false)(implicit config: AutoCreatorV2Config): ObjectData = {
 		val sysMeta = Map("IL_UNIQUE_ID" -> obj.identifier, "IL_FUNC_OBJECT_TYPE" -> obj.objectType, "IL_SYS_NODE_TYPE" -> "DATA_NODE")
 		val oProps: Map[String, AnyRef] = config.overrideManifestProps.map(prop => (prop, eventMeta.getOrElse(prop, ""))).toMap
-		val enMetadata = if(overrideCloudProps) obj.metadata ++ sysMeta ++ oProps else obj.metadata ++ sysMeta
+		val processId = eventMeta.getOrElse("processId", "").asInstanceOf[String]
+		val pIdMap = if (StringUtils.isNotBlank(processId)) Map("processId" -> processId) else Map()
+		val enMetadata = if(overrideCloudProps) obj.metadata ++ sysMeta ++ oProps ++ pIdMap  else obj.metadata ++ sysMeta ++ pIdMap
 		new ObjectData(obj.identifier, obj.objectType, enMetadata, obj.extData, obj.hierarchy)
 	}
 

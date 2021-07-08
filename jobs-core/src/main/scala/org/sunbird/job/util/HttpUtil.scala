@@ -32,4 +32,8 @@ class HttpUtil extends Serializable {
     HTTPResponse(response.getStatus, response.getBody)
   }
 
+  def head(url: String, headers: Map[String, String] = Map[String, String]("Content-Type"->"application/json")) = {
+    Unirest.head(url).headers(headers.asJava).asString()
+  }
 }
+
