@@ -309,15 +309,4 @@ trait ObjectBundle {
 		else entry._2
 	}
 
-	def getBundleSize(url: String)(implicit httpUtil: HttpUtil): Int = {
-		val resp: HttpResponse[String] = httpUtil.head(url)
-		if (null != resp && resp.getStatus == 200) {
-			val contentLength = if (CollectionUtils.isNotEmpty(resp.getHeaders.get("Content-Length"))) resp.getHeaders.get("Content-Length") else resp.getHeaders.get("content-length")
-			if (CollectionUtils.isNotEmpty(contentLength)) contentLength.get(0).toInt else 0
-		} else {
-			val msg = s"Unable to get metadata for : $url | status : ${resp.getStatus}, body: ${resp.getBody}"
-			logger.error(msg)
-			throw new Exception(msg)
-		}
-	}
 }

@@ -57,14 +57,6 @@ class ObjectBundleSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
 		file.exists() should be(true)
 		StringUtils.endsWith(file.getName, "manifest.json") should be(true)
 	}
-
-	"getBundleSize with invalid url" should "throw client exception" in {
-		val exception = intercept[Exception] {
-			val obj = new TestObjectBundle
-			obj.getBundleSize("http://abc.com/pdf.pdf")(httpUtil)
-		}
-		assert(exception.getMessage ==  "Unable to get metadata for : http://abc.com/pdf.pdf | status : 404, body: ")
-	}
 }
 
 class TestObjectBundle extends ObjectBundle {
