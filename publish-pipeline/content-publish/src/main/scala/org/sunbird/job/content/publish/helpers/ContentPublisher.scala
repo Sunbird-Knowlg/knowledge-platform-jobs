@@ -74,7 +74,8 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
 
   private def setPragma(obj: ObjectData, updatedMeta: Map[String, AnyRef]): Option[Map[String, AnyRef]] = {
     if (pragmaMimeTypes.contains(obj.mimeType)) {
-      val pragma:List[String] = obj.metadata.getOrElse("pragma", List()).asInstanceOf[List[String]]
+      val pgm: java.util.List[String] = obj.metadata.getOrElse("pragma", new java.util.ArrayList[String]()).asInstanceOf[java.util.List[String]]
+      val pragma:List[String] = pgm.asScala.toList
       val value = "external"
       if(!pragma.contains(value)) {
         Some(updatedMeta ++ Map("pragma" -> (pragma ++ List(value))))
