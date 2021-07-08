@@ -141,7 +141,8 @@ trait ObjectBundle {
 		IOUtils.copy(inputStream, outputStream)
 		val file = new File(saveFilePath)
 		logger.info(System.currentTimeMillis() + " ::: Downloaded file: " + file.getAbsolutePath)
-		Slug.createSlugFile(file)
+		//Slug.createSlugFile(file)
+		file
 	}
 
 
