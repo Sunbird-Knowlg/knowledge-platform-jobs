@@ -63,7 +63,7 @@ class MVCESIndexer(config: MVCIndexerConfig, esUtil: ElasticSearchUtil) {
       }
     } catch {
       case e: Exception =>
-        throw new ElasticSearchException(s"Exception while inserting data into cassandra for $uniqueId :: ${e.getMessage}", e)
+        throw new ElasticSearchException(s"Exception while inserting data into ES for $uniqueId :: ${e.getMessage}", e)
     }
   }
 

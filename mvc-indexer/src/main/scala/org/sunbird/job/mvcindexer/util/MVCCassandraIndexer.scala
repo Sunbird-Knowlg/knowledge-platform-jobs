@@ -72,6 +72,7 @@ class MVCCassandraIndexer(config: MVCIndexerConfig, cassandraUtil: CassandraUtil
     try {
       val resp: HTTPResponse = httpUtil.post(config.mlKeywordAPIUrl, requestBody)
       logger.info("getMLKeywords ::: The ML workbench response is " + resp.body)
+      if(!resp.isSuccess) throw new Exception("")
     } catch {
       case e: Exception =>
         throw new APIException(s"getMLKeywords ::: ML workbench api request failed :: ${e.getMessage}", e)
@@ -91,6 +92,7 @@ class MVCCassandraIndexer(config: MVCIndexerConfig, cassandraUtil: CassandraUtil
     try {
       val resp: HTTPResponse = httpUtil.post(config.mlVectorAPIUrl, requestBody)
       logger.info("getMLVectors ::: ML vector api request response is " + resp.body)
+      if(!resp.isSuccess) throw new Exception("")
     } catch {
       case e: Exception =>
         throw new APIException(s"getMLVectors ::: ML vector api failed for $identifier :: ${e.getMessage}", e)
