@@ -12,6 +12,7 @@ import org.sunbird.job.publish.util.CloudStorageUtil
 import org.sunbird.job.content.publish.domain.{Event, PublishMetadata}
 import org.sunbird.job.content.publish.helpers.ContentPublisher
 import org.sunbird.job.content.task.ContentPublishConfig
+import org.sunbird.job.publish.helpers.EcarPackageType
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
@@ -33,7 +34,7 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
   private val readerConfig = ExtDataConfig(config.contentKeyspaceName, config.contentTableName)
 
   @transient var ec: ExecutionContext = _
-  private val pkgTypes = List("FULL", "SPINE", "ONLINE")
+  private val pkgTypes = List(EcarPackageType.FULL.toString, EcarPackageType.SPINE.toString, EcarPackageType.ONLINE.toString)
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)

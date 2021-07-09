@@ -12,10 +12,12 @@ import org.scalatestplus.mockito.MockitoSugar
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData, ObjectExtData}
+import org.sunbird.job.publish.helpers.EcarPackageType
 import org.sunbird.job.publish.util.CloudStorageUtil
 import org.sunbird.job.questionset.publish.helpers.QuestionPublisher
 import org.sunbird.job.questionset.task.QuestionSetPublishConfig
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
+
 import java.util
 
 
@@ -115,7 +117,7 @@ class QuestionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matcher
 	"getObjectWithEcar" should "return object with ecar url" in {
 		//val media = List(Map("id"->"do_1127129497561497601326", "type"->"image","src"->"/content/do_1127129497561497601326.img/artifact/sunbird_1551961194254.jpeg","baseUrl"->"https://sunbirddev.blob.core.windows.net/sunbird-content-dev"))
 		val data = new ObjectData("do_123", Map("objectType" -> "Question", "identifier"->"do_123", "name"->"Test Question"), Some(Map("responseDeclaration" -> "test", "media"->"[{\"id\":\"do_1127129497561497601326\",\"type\":\"image\",\"src\":\"/content/do_1127129497561497601326.img/artifact/sunbird_1551961194254.jpeg\",\"baseUrl\":\"https://sunbirddev.blob.core.windows.net/sunbird-content-dev\"}]")), Some(Map()))
-		val result = new TestQuestionPublisher().getObjectWithEcar(data, List("FULL", "ONLINE"))(ec, cloudStorageUtil, defCache, defConfig, httpUtil)
+		val result = new TestQuestionPublisher().getObjectWithEcar(data, List(EcarPackageType.FULL.toString, EcarPackageType.ONLINE.toString))(ec, cloudStorageUtil, defCache, defConfig, httpUtil)
 		StringUtils.isNotBlank(result.metadata.getOrElse("downloadUrl", "").asInstanceOf[String])
 
 	}

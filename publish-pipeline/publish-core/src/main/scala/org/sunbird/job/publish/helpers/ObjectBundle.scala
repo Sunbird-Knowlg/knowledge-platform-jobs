@@ -32,7 +32,7 @@ trait ObjectBundle {
 	val excludeBundleMeta = List("screenshots", "posterImage", "index", "depth")
 
 	def getBundleFileName(identifier: String, metadata: Map[String, AnyRef], pkgType: String) = {
-		Slug.makeSlug(metadata.getOrElse("name", "").asInstanceOf[String], true) + "_" + System.currentTimeMillis() + "_" + identifier + "_" + metadata.getOrElse("pkgVersion", "") + (if (StringUtils.equals("FULL", pkgType)) ".ecar" else "_" + pkgType + ".ecar")
+		Slug.makeSlug(metadata.getOrElse("name", "").asInstanceOf[String], true) + "_" + System.currentTimeMillis() + "_" + identifier + "_" + metadata.getOrElse("pkgVersion", "") + (if (StringUtils.equals(EcarPackageType.FULL.toString, pkgType)) ".ecar" else "_" + pkgType + ".ecar")
 	}
 
 	def getManifestData(identifier: String, pkgType: String, objList: List[Map[String, AnyRef]])(implicit defCache: DefinitionCache, defConfig: DefinitionConfig): (List[Map[String, AnyRef]], List[Map[AnyRef, String]]) = {
@@ -45,7 +45,7 @@ trait ObjectBundle {
 			val updatedObj: Map[String, AnyRef] = data.map(entry =>
 				if (dUrlMap.contains(entry._2)) {
 					(entry._1.asInstanceOf[String], dUrlMap.getOrElse(entry._2.asInstanceOf[String], "").asInstanceOf[AnyRef])
-				} else if(StringUtils.equalsIgnoreCase("FULL", pkgType) && StringUtils.equalsIgnoreCase(entry._1, "media")) {
+				} else if(StringUtils.equalsIgnoreCase(EcarPackageType.FULL.toString, pkgType) && StringUtils.equalsIgnoreCase(entry._1, "media")) {
 					val media: List[Map[String, AnyRef]] = Optional.ofNullable(ScalaJsonUtil.deserialize[List[Map[String, AnyRef]]](entry._2.asInstanceOf[String])).orElse(List[Map[String, AnyRef]]())
 					val newMedia = media.map( m => {
 						m.map(entry => {
@@ -76,7 +76,7 @@ trait ObjectBundle {
 	def getObjectBundle(obj: ObjectData, objList: List[Map[String, AnyRef]], pkgType: String)(implicit ec: ExecutionContext, defCache: DefinitionCache, defConfig: DefinitionConfig): File = {
 		val bundleFileName = bundleLocation + File.separator + getBundleFileName(obj.identifier, obj.metadata, pkgType)
 		val bundlePath = bundleLocation + File.separator + System.currentTimeMillis + "_temp"
-		val objType = obj.metadata.getOrElse("objectType", "").asInstanceOf[String]
+		val objType = obj.getString("objectType", "")
 		// create manifest data
 		val (updatedObjList, dUrls) = getManifestData(obj.identifier, pkgType, objList)
 		logger.info("ObjectBundle ::: getObjectBundle ::: updatedObjList :::: " + updatedObjList)
@@ -232,7 +232,7 @@ trait ObjectBundle {
 
 	def getUrlMap(identifier: String, pkgType: String, key: String, value: AnyRef): Map[AnyRef, String] = {
 		val pkgKeys = List("artifactUrl", "downloadUrl")
-		if (!pkgKeys.contains(key) || StringUtils.equalsIgnoreCase("FULL", pkgType)) {
+		if (!pkgKeys.contains(key) || StringUtils.equalsIgnoreCase(EcarPackageType.FULL.toString, pkgType)) {
 			val fileName = if (value.isInstanceOf[File]) value.asInstanceOf[File].getName else value.asInstanceOf[String]
 			Map[AnyRef, String](value -> getRelativePath(identifier, fileName.asInstanceOf[String]))
 		} else Map[AnyRef, String]()
@@ -264,7 +264,7 @@ trait ObjectBundle {
 		try {
 			if (obj.hierarchy.getOrElse(Map()).nonEmpty) {
 				val file: File = new File(bundlePath + File.separator + hierarchyFileName)
-				val objType: String = obj.metadata.getOrElse("objectType", "").asInstanceOf[String]
+				val objType: String = obj.getString("objectType", "")
 				val metadata = obj.metadata - ("IL_UNIQUE_ID", "IL_FUNC_OBJECT_TYPE", "IL_SYS_NODE_TYPE")
 				val children = obj.hierarchy.get.getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
 				val hMap: Map[String, AnyRef] = metadata ++ Map("identifier" -> obj.identifier.replace(".img", ""), "objectType" -> objType, "children" -> children)

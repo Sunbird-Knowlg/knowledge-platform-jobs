@@ -8,6 +8,7 @@ import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig}
+import org.sunbird.job.publish.helpers.EcarPackageType
 import org.sunbird.job.publish.util.CloudStorageUtil
 import org.sunbird.job.questionset.publish.domain.PublishMetadata
 import org.sunbird.job.questionset.publish.helpers.QuestionPublisher
@@ -32,7 +33,7 @@ class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUt
 	private val readerConfig = ExtDataConfig(config.questionKeyspaceName, config.questionTableName)
 
 	@transient var ec: ExecutionContext = _
-	private val pkgTypes = List("FULL", "ONLINE")
+	private val pkgTypes = List(EcarPackageType.FULL.toString, EcarPackageType.ONLINE.toString)
 
 	override def open(parameters: Configuration): Unit = {
 		super.open(parameters)
