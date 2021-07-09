@@ -81,7 +81,7 @@ trait IssueCertificateHelper {
     def validateUser(userId: String, userCriteria: Map[String, AnyRef])(metrics:Metrics, config:CollectionCertPreProcessorConfig, httpUtil: HttpUtil) = {
         if(!userId.isEmpty) {
             val url = config.learnerBasePath + config.userReadApi + "/" + userId
-            val result = getAPICall(url, "response")(config, httpUtil)
+            val result = getAPICall(url, "response")(config, httpUtil, metrics)
             if(userCriteria.isEmpty || userCriteria.size == userCriteria.filter(uc => uc._2 == result.getOrElse(uc._1, null)).size) {
                 result
             } else Map[String, AnyRef]()
@@ -126,12 +126,16 @@ trait IssueCertificateHelper {
         }
     }
     
-    def getAPICall(url: String, responseParam: String)(config:CollectionCertPreProcessorConfig, httpUtil: HttpUtil): Map[String,AnyRef] = {
+    def getAPICall(url: String, responseParam: String)(config:CollectionCertPreProcessorConfig, httpUtil: HttpUtil, metrics: Metrics): Map[String,AnyRef] = {
         val response = httpUtil.get(url, config.defaultHeaders)
         if(200 == response.status) {
             ScalaJsonUtil.deserialize[Map[String, AnyRef]](response.body)
               .getOrElse("result", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
               .getOrElse(responseParam, Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
+        } else if(400 == response.status && response.body.contains("USER_ACCOUNT_BLOCKED")) {
+            metrics.incCounter(config.skippedEventCount)
+            logger.error(s"Error while fetching user details for ${url}: " + response.status + " :: " + response.body)
+            Map[String, AnyRef]()
         } else {
             throw new Exception(s"Error from get API : ${url}, with response: ${response}")
         }
@@ -141,7 +145,7 @@ trait IssueCertificateHelper {
         val courseMetadata = cache.getWithRetry(courseId)
         if(null == courseMetadata || courseMetadata.isEmpty) {
             val url = config.contentBasePath + config.contentReadApi + "/" + courseId + "?fields=name"
-            val response = getAPICall(url, "content")(config, httpUtil)
+            val response = getAPICall(url, "content")(config, httpUtil, metrics)
             response.getOrElse(config.name, "")
         } else {
             courseMetadata.getOrElse(config.name, "")

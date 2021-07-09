@@ -59,8 +59,8 @@ class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUt
 		val obj = getObject(data.identifier, data.pkgVersion, readerConfig)(neo4JUtil, cassandraUtil)
 		val messages:List[String] = validate(obj, obj.identifier, validateQuestion)
 		if (messages.isEmpty) {
-			val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config)
-			val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, cloudStorageUtil, definitionCache, definitionConfig)
+			val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
+			val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, cloudStorageUtil, definitionCache, definitionConfig, httpUtil)
 			logger.info("Ecar generation done for Question: " + objWithEcar.identifier)
 			saveOnSuccess(objWithEcar)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
 			metrics.incCounter(config.questionPublishSuccessEventCount)

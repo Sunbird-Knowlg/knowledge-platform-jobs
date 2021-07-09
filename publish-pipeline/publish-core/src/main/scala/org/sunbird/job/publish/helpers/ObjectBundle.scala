@@ -6,12 +6,15 @@ import java.util
 import java.util.{Date, Optional}
 import java.util.zip.{ZipEntry, ZipOutputStream}
 import java.net.{HttpURLConnection, URL}
+
+import kong.unirest.HttpResponse
+import org.apache.commons.collections.CollectionUtils
 import org.apache.commons.io.{FileUtils, FilenameUtils, IOUtils}
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.publish.core.{DefinitionConfig, ObjectData, Slug}
-import org.sunbird.job.util.{JSONUtil, ScalaJsonUtil}
+import org.sunbird.job.util.{HttpUtil, JSONUtil, ScalaJsonUtil}
 
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
@@ -138,7 +141,8 @@ trait ObjectBundle {
 		IOUtils.copy(inputStream, outputStream)
 		val file = new File(saveFilePath)
 		logger.info(System.currentTimeMillis() + " ::: Downloaded file: " + file.getAbsolutePath)
-		Slug.createSlugFile(file)
+		//Slug.createSlugFile(file)
+		file
 	}
 
 
@@ -150,7 +154,10 @@ trait ObjectBundle {
 			stream.close()
 			new File(bundleFileName)
 		} catch {
-			case ex: Exception => throw new Exception(s"Error While Generating ${pkgType} ECAR Bundle For : " + identifier)
+			case ex: Exception => {
+        ex.printStackTrace()
+        throw new Exception(s"Error While Generating ${pkgType} ECAR Bundle For : " + identifier, ex)
+      }
 		} finally {
 			FileUtils.deleteDirectory(new File(bundlePath))
 		}
@@ -178,7 +185,7 @@ trait ObjectBundle {
 			IOUtils.closeQuietly(byteArrayOutputStream)
 			byteArrayOutputStream.toByteArray
 		} catch {
-			case e: Exception => throw new Exception("Error While Generating Byte Stream Of Bundle For : " + identifier)
+			case ex: Exception => throw new Exception("Error While Generating Byte Stream Of Bundle For : " + identifier, ex)
 		}
 	}
 
@@ -248,7 +255,7 @@ trait ObjectBundle {
 			FileUtils.writeStringToFile(file, mJson)
 			file
 		} catch {
-			case e: Exception => throw new Exception("Exception occurred while writing manifest file for : " + identifier)
+			case e: Exception => throw new Exception("Exception occurred while writing manifest file for : " + identifier, e)
 		}
 	}
 
@@ -266,7 +273,7 @@ trait ObjectBundle {
 				Option(file)
 			} else None
 		} catch {
-			case e: Exception => throw new Exception("Exception occurred while writing hierarchy file for : " + obj.identifier)
+			case e: Exception => throw new Exception("Exception occurred while writing hierarchy file for : " + obj.identifier, e)
 		}
 	}
 
@@ -301,4 +308,5 @@ trait ObjectBundle {
 		}
 		else entry._2
 	}
+
 }

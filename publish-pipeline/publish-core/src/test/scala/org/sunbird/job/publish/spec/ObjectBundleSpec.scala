@@ -5,8 +5,11 @@ import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
 import org.sunbird.job.publish.core.ObjectData
 import org.sunbird.job.publish.helpers.ObjectBundle
+import org.sunbird.job.util.HttpUtil
 
 class ObjectBundleSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
+
+	implicit val httpUtil = new HttpUtil
 
 	"validUrl" should "return true for valid url input" in {
 		val obj = new TestObjectBundle

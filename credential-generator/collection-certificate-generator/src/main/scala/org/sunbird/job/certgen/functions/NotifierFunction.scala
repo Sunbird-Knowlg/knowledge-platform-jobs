@@ -45,10 +45,10 @@ class NotifierFunction(config: CertificateGeneratorConfig, httpUtil: HttpUtil, @
                               context: ProcessFunction[NotificationMetaData, String]#Context,
                               metrics: Metrics): Unit = {
 
-    val userResponse: Map[String, AnyRef] = getUserDetails(metaData.userId) // call user Service
-    val primaryFields = Map(config.courseId.toLowerCase() -> metaData.courseId, config.batchId.toLowerCase -> metaData.batchId)
-    val row = getNotificationTemplates(primaryFields, metrics)
+    val userResponse: Map[String, AnyRef] = getUserDetails(metaData.userId)(metrics) // call user Service
     if (null != userResponse && userResponse.nonEmpty) {
+      val primaryFields = Map(config.courseId.toLowerCase() -> metaData.courseId, config.batchId.toLowerCase -> metaData.batchId)
+      val row = getNotificationTemplates(primaryFields, metrics)
       val certTemplate = row.getMap(config.cert_templates, com.google.common.reflect.TypeToken.of(classOf[String]),
         TypeTokens.mapOf(classOf[String], classOf[String]))
       val url = config.learnerServiceBaseUrl + config.notificationEndPoint
@@ -126,14 +126,18 @@ class NotifierFunction(config: CertificateGeneratorConfig, httpUtil: HttpUtil, @
   }
 
 
-  private def getUserDetails(userId: String): Map[String, AnyRef] = {
+  private def getUserDetails(userId: String)(metrics: Metrics): Map[String, AnyRef] = {
     logger.info("getting user info for id {}", userId)
     val httpResponse = httpUtil.get(config.learnerServiceBaseUrl + "/private/user/v1/read/" + userId)
-    if (httpResponse.status == 200) {
+    if (200 == httpResponse.status) {
       logger.info("user search response status {} :: {} ", httpResponse.status, httpResponse.body)
       val response = ScalaJsonUtil.deserialize[Map[String, AnyRef]](httpResponse.body)
       val result = response.getOrElse("result", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]].getOrElse("response", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
       result
+    } else if((400 == httpResponse.status) && httpResponse.body.contains("USER_ACCOUNT_BLOCKED")){
+      logger.error(s"Error while fetching user details for ${userId}: " + httpResponse.status + " :: " + httpResponse.body)
+      metrics.incCounter(config.skipNotifyUserCount)
+      Map[String, AnyRef]()
     } else throw new Exception(s"Error while reading user for notification for userId: ${userId}")
   }
 
