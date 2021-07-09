@@ -61,7 +61,7 @@ class ContentPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers
   }
 
   "enrichObjectMetadata" should "enrich the Content pkgVersion metadata" in {
-    val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef]))
+    val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/pdf"))
     val result: ObjectData = new TestContentPublisher().enrichObjectMetadata(data).getOrElse(data)
     result.metadata.getOrElse("pkgVersion", 0.0.asInstanceOf[Number]).asInstanceOf[Number] should be(1.0.asInstanceOf[Number])
   }
