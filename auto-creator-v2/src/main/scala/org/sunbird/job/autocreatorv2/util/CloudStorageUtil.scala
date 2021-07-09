@@ -25,7 +25,7 @@ class CloudStorageUtil(config: AutoCreatorV2Config) extends Serializable {
 				val awsStorageKey = config.getString("aws_storage_key", "")
 				val awsStorageSecret = config.getString("aws_storage_secret", "")
 				storageService = StorageServiceFactory.getStorageService(StorageConfig(cloudStorageType, awsStorageKey, awsStorageSecret))
-			} else throw new Exception("Error while initialising cloud storage")
+			} else throw new Exception("Error while initialising cloud storage: " + cloudStorageType)
 		}
 		storageService
 	}

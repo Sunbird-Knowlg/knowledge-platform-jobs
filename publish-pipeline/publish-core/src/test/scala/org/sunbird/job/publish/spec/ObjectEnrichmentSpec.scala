@@ -5,8 +5,9 @@ import org.mockito.Mockito
 import org.mockito.Mockito.when
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
+import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.publish.config.PublishConfig
-import org.sunbird.job.publish.core.{ExtDataConfig, ObjectData}
+import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
 import org.sunbird.job.publish.helpers.ObjectEnrichment
 import org.sunbird.job.publish.util.CloudStorageUtil
 import org.sunbird.job.util.{CassandraUtil, Neo4JUtil}
@@ -28,6 +29,8 @@ class ObjectEnrichmentSpec extends FlatSpec with BeforeAndAfterAll with Matchers
   implicit val mockNeo4JUtil: Neo4JUtil = mock[Neo4JUtil](Mockito.withSettings().serializable())
   implicit val mockCassandraUtil: CassandraUtil = mock[CassandraUtil](Mockito.withSettings().serializable())
   implicit val readerConfig = ExtDataConfig("test", "test")
+  implicit lazy val defCache: DefinitionCache = new DefinitionCache()
+  implicit lazy val definitionConfig: DefinitionConfig = DefinitionConfig(Map("questionset" -> "1.0"), "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local")
 
   "ObjectEnrichment enrichObject" should " enrich the object with Framework data and thumbnail " in {
 
@@ -53,6 +56,6 @@ class ObjectEnrichmentSpec extends FlatSpec with BeforeAndAfterAll with Matchers
 }
 
 class TestObjectEnrichment extends ObjectEnrichment {
-  override def enrichObjectMetadata(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, config: PublishConfig): Option[ObjectData] = None
+  override def enrichObjectMetadata(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, config: PublishConfig, definitionCache: DefinitionCache, definitionConfig: DefinitionConfig): Option[ObjectData] = None
 }
 
