@@ -69,7 +69,7 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
         updateProcessingNode(obj)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
         // Clear redis cache
         val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
-        val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, cloudStorageUtil, definitionCache, definitionConfig)
+        val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, cloudStorageUtil, definitionCache, definitionConfig, httpUtil)
         logger.info("Ecar generation done for Content: " + objWithEcar.identifier)
         saveOnSuccess(objWithEcar)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
         pushStreamingUrlEvent(enrichedObj, context)(metrics)
