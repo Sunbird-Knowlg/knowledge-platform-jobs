@@ -26,7 +26,7 @@ trait QuestionPdfGenerator extends ObjectTemplateGenerator {
     }
 
     def getPreviewFileUrl(objList: List[ObjectData], obj: ObjectData, templateName: String, fileNameSuffix: String)(implicit cloudStorageUtil: CloudStorageUtil): Option[String] = {
-        val fileContent: String = getFileString(objList, obj.metadata.getOrElse("name", "").asInstanceOf[String], templateName).getOrElse("")
+        val fileContent: String = getFileString(objList, obj.getString("name", ""), templateName).getOrElse("")
         val fileName: String = s"/tmp/${obj.identifier}_${getHtmlFileSuffix(fileNameSuffix)}"
         val file: Option[File] = writeFile(fileName, fileContent)
         uploadFile(file, obj)
