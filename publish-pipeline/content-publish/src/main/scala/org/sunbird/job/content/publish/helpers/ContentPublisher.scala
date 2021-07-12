@@ -8,7 +8,7 @@ import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData, ObjectExtData}
 import org.sunbird.job.publish.helpers._
 import org.sunbird.job.publish.util.CloudStorageUtil
-import org.sunbird.job.util.{CassandraUtil, Neo4JUtil}
+import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
 
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext
@@ -55,10 +55,10 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
     messages.toList
   }
 
-  def getObjectWithEcar(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil, defCache: DefinitionCache, defConfig: DefinitionConfig): ObjectData = {
+  def getObjectWithEcar(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
     logger.info("ContentPublisher:getObjectWithEcar: Ecar generation done for Content: " + data.identifier)
     val ecarMap: Map[String, String] = generateEcar(data, pkgTypes)
-    val variants: java.util.Map[String, String] = ecarMap.map { case (key, value) => key.toLowerCase -> value }.asJava
+    val variants: java.util.Map[String, java.util.Map[String, String]] = ecarMap.map { case (key, value) => key.toLowerCase -> Map[String, String]("ecarUrl"-> value, "size"-> httpUtil.getSize(value).toString).asJava }.asJava
     logger.info("ContentPublisher ::: getObjectWithEcar ::: ecar map ::: " + ecarMap)
     val meta: Map[String, AnyRef] = Map("downloadUrl" -> ecarMap.getOrElse(EcarPackageType.FULL.toString, ""), "variants" -> variants)
     new ObjectData(data.identifier, data.metadata ++ meta, data.extData, data.hierarchy)
