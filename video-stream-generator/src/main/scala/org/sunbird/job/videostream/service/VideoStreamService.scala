@@ -78,11 +78,13 @@ class VideoStreamService(implicit config: VideoStreamGeneratorConfig, httpUtil: 
         StreamingStage(jobRequest.request_id, jobRequest.client_key, null, stageName, "FAILED", "FAILED", iteration + 1, jobRequest.err_message.getOrElse(""));
       }
 
-      val counter = if (streamStage.status.equals("FINISHED")) config.successEventCount else {
-        if (streamStage.iteration <= config.maxRetries) config.retryEventCount else config.failedEventCount
+      if (streamStage != null) {
+        val counter = if (streamStage.status.equals("FINISHED")) config.successEventCount else {
+          if (streamStage.iteration <= config.maxRetries) config.retryEventCount else config.failedEventCount
+        }
+        metrics.incCounter(counter)
+        updateJobRequestStage(streamStage)
       }
-      metrics.incCounter(counter)
-      updateJobRequestStage(streamStage)
     }
   }
 
