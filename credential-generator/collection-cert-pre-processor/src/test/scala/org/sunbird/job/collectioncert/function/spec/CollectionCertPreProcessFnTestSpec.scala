@@ -98,8 +98,7 @@ class CollectionCertPreProcessFnTestSpec extends BaseTestSpec {
         val certMapEvent = gson.fromJson(certEvent, new java.util.LinkedHashMap[String, Any]().getClass)
         val certEdata = certMapEvent.getOrDefault("edata", new util.LinkedHashMap[String, Any]()).asInstanceOf[LinkedTreeMap[String, Any]]
         val certUserData = certEdata.getOrDefault("data", new util.LinkedList[util.LinkedHashMap[String, Any]]()).asInstanceOf[util.ArrayList[LinkedTreeMap[String, Any]]]
-        val recipiendName = certUserData.get(0).get("recipientName").asInstanceOf[String]
-        println("recipiendName" + recipiendName)
+        certUserData.get(0).get("recipientName").asInstanceOf[String]
         recipiendName
     }
 
