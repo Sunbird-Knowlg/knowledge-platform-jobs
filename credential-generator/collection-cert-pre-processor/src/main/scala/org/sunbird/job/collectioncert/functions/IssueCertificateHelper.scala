@@ -155,8 +155,7 @@ trait IssueCertificateHelper {
     def generateCertificateEvent(event: Event, template: Map[String, String], userDetails: Map[String, AnyRef], enrolledUser: EnrolledUser, certName: String)(metrics:Metrics, config:CollectionCertPreProcessorConfig, cache:DataCache, httpUtil: HttpUtil) = {
         val firstName = userDetails.getOrElse("firstName", "").asInstanceOf[String]
         val lastName = userDetails.getOrElse("lastName", "").asInstanceOf[String]
-        def nullStringCheck(name:String) = {if(!"null".equalsIgnoreCase(name)) name  else ""}
-        val recipientName = (nullStringCheck(firstName) + " " + nullStringCheck(lastName)).trim
+        val recipientName = Option(firstName).getOrElse("").concat(" ").concat(Option(lastName).getOrElse("")).trim
         val courseName = getCourseName(event.courseId)(metrics, config, cache, httpUtil)
         val dateFormatter = new SimpleDateFormat("yyyy-MM-dd")
         val eData = Map[String, AnyRef] (
