@@ -9,6 +9,7 @@ object EventFixture {
 
     val USER_2_EMPTY_LASTNAME: String = """{"id":".private.user.v1.read.c4cc494f-04c3-49f3-b3d5-7b1a1984abad","ver":"private","ts":"2021-05-27 10:25:05:836+0000","params":{"resmsgid":null,"msgid":"8e27cbf5-e299-43b0-bca7-8347f7e5abcf","err":null,"status":"success","errmsg":null},"responseCode":"OK","result":{"response":{"firstName":"Rajesh","lastName":"","rootOrgId": "Org001","rootOrg":{"keys":{}}}}}"""
     val USER_3_NULL_VALUE_LASTNAME: String = """{"id":".private.user.v1.read.c4cc494f-04c3-49f3-b3d5-7b1a1984abad","ver":"private","ts":"2021-05-27 10:25:05:836+0000","params":{"resmsgid":null,"msgid":"8e27cbf5-e299-43b0-bca7-8347f7e5abcf","err":null,"status":"success","errmsg":null},"responseCode":"OK","result":{"response":{"firstName":"Suresh","lastName":null,"rootOrgId": "Org001","rootOrg":{"keys":{}}}}}"""
+    val USER_4_NULL_STRING_VALUE_LASTNAME: String = """{"id":".private.user.v1.read.c4cc494f-04c3-49f3-b3d5-7b1a1984abad","ver":"private","ts":"2021-05-27 10:25:05:836+0000","params":{"resmsgid":null,"msgid":"8e27cbf5-e299-43b0-bca7-8347f7e5abcf","err":null,"status":"success","errmsg":null},"responseCode":"OK","result":{"response":{"firstName":"Manju","lastName":"null","rootOrgId": "Org001","rootOrg":{"keys":{}}}}}"""
 
 
 }
