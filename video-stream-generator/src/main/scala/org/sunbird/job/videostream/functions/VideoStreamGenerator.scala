@@ -62,7 +62,6 @@ class VideoStreamGenerator(config: VideoStreamGeneratorConfig, httpUtil:HttpUtil
           logger.info("Requests in queue to validate update the status: " + processing.size)
           videoStreamService.processJobRequest(metrics)
           registerTimer(ctx)
-          logger.info("Timer registered to execute at " + nextTimerTimestamp)
         } else {
           logger.info("There are no video streaming requests in queue to validate update the status.")
         }
