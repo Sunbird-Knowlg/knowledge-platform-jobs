@@ -1,7 +1,6 @@
 package org.sunbird.job.spec
 
 import java.util
-
 import com.google.gson.Gson
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.flink.api.common.typeinfo.TypeInformation
@@ -18,8 +17,9 @@ import org.mockito.Mockito._
 import org.sunbird.job.cache.RedisConnect
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.fixture.EventFixture
-import org.sunbird.job.task.{RelationCacheUpdaterConfig, RelationCacheUpdaterStreamTask}
-import org.sunbird.job.util.CassandraUtil
+import org.sunbird.job.relationcache.domain.Event
+import org.sunbird.job.relationcache.task.{RelationCacheUpdaterConfig, RelationCacheUpdaterStreamTask}
+import org.sunbird.job.util.{CassandraUtil, JSONUtil}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 import redis.clients.jedis.Jedis
 import redis.embedded.RedisServer
@@ -82,7 +82,7 @@ class RelationCacheUpdaterTaskTestSpec extends BaseTestSpec {
 
 
   "RelationCacheUpdater " should "generate cache" in {
-    when(mockKafkaUtil.kafkaMapSource(jobConfig.kafkaInputTopic)).thenReturn(new RelationCacheUpdaterMapSource)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new RelationCacheUpdaterEventSource)
     new RelationCacheUpdaterStreamTask(jobConfig, mockKafkaUtil).process()
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(2)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.successEventCount}").getValue() should be(2)
@@ -144,13 +144,10 @@ class RelationCacheUpdaterTaskTestSpec extends BaseTestSpec {
 
 }
 
-class RelationCacheUpdaterMapSource extends SourceFunction[java.util.Map[String, AnyRef]] {
-  override def run(ctx: SourceContext[util.Map[String, AnyRef]]): Unit = {
-    val gson = new Gson()
-    val eventMap1 = gson.fromJson(EventFixture.EVENT_1, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]].asScala
-    val eventMap2 = gson.fromJson(EventFixture.EVENT_2, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[util.Map[String, AnyRef]].asScala
-    ctx.collect(eventMap1.asJava)
-    ctx.collect(eventMap2.asJava)
+class RelationCacheUpdaterEventSource extends SourceFunction[Event] {
+  override def run(ctx: SourceContext[Event]): Unit = {
+    ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_1), 0, 10))
+    ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_2), 0, 11))
   }
 
   override def cancel() = {}

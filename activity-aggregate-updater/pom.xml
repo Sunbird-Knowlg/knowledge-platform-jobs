@@ -40,6 +40,11 @@
             <version>2.10.6</version>
         </dependency>
         <dependency>
+            <groupId>com.twitter</groupId>
+            <artifactId>storehaus-cache_${scala.version}</artifactId>
+            <version>0.15.0</version>
+        </dependency>
+        <dependency>
             <groupId>org.sunbird</groupId>
             <artifactId>jobs-core</artifactId>
             <version>1.0.0</version>
@@ -49,13 +54,13 @@
         <dependency>
             <groupId>org.apache.flink</groupId>
             <artifactId>flink-test-utils_2.12</artifactId>
-            <version>1.10.0</version>
+            <version>${flink.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.flink</groupId>
             <artifactId>flink-runtime_2.12</artifactId>
-            <version>1.10.0</version>
+            <version>${flink.version}</version>
             <scope>test</scope>
             <classifier>tests</classifier>
         </dependency>
@@ -68,7 +73,7 @@
         <dependency>
             <groupId>org.apache.flink</groupId>
             <artifactId>flink-streaming-java_2.12</artifactId>
-            <version>1.10.0</version>
+            <version>${flink.version}</version>
             <scope>test</scope>
             <classifier>tests</classifier>
         </dependency>
@@ -116,6 +121,15 @@
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.8.1</version>
+                <configuration>
+                    <release>11</release>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
                 <version>3.2.1</version>
                 <executions>
@@ -146,7 +160,7 @@
                             <transformers>
                                 <transformer
                                         implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>org.sunbird.job.task.ActivityAggregateUpdaterStreamTask</mainClass>
+                                    <mainClass>org.sunbird.job.aggregate.task.ActivityAggregateUpdaterStreamTask</mainClass>
                                 </transformer>
                                 <!-- append default configs -->
                                 <transformer
@@ -162,10 +176,11 @@
             <plugin>
                 <groupId>net.alchim31.maven</groupId>
                 <artifactId>scala-maven-plugin</artifactId>
-                <version>3.2.2</version>
+                <version>4.4.0</version>
                 <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
+                    <source>11</source>
+                    <target>11</target>
+                    <scalaVersion>${scala.maj.version}</scalaVersion>
                     <checkMultipleScalaVersions>false</checkMultipleScalaVersions>
                 </configuration>
                 <executions>

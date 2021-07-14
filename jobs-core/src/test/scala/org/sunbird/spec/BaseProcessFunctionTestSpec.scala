@@ -5,12 +5,13 @@ import com.typesafe.config.{Config, ConfigFactory}
 import net.manub.embeddedkafka.EmbeddedKafka._
 import net.manub.embeddedkafka.{EmbeddedKafka, EmbeddedKafkaConfig}
 import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
-import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
+import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.test.util.MiniClusterWithClientResource
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.scalatest.Matchers
 import org.sunbird.job.connector.FlinkKafkaConnector
+import org.sunbird.job.domain.reader.JobRequest
 import org.sunbird.job.util.FlinkUtil
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -66,6 +67,17 @@ class BaseProcessFunctionTestSpec extends BaseSpec with Matchers {
       |"mid":"LP.1586994119534.4bfe9b31-216d-46ea-8e60-d7ea1b1a103c","type":"events"}
     """.stripMargin
 
+  val JOB_REQUEST_EVENT: String =
+    """
+      |{"eid":"BE_JOB_REQUEST","ets":1608027159,"mid":"LP.1608027159.e8545bbd-20e6-43d8-85f5-a854680ad373",
+      |"actor":{"id":"Post Publish Processor","type":"System"},"context":{"pdata":{"ver":"1.0","id":"org.ekstep.platform"},
+      |"channel":"01246376237871104093","env":"prod"},"object":{"ver":"1604925386745","id":"do_31314751443052134413666"},
+      |"edata":{"trackable":{"enabled":"Yes","autoBatch":"No"},"identifier":"do_31314751443052134413666","createdFor":["01246376237871104093"],
+      |"createdBy":"f633f462-1b78-4a9f-bdfb-3b7c57808f89","name":"Physical Education",
+      |"action":"post-publish-process","iteration":1,"id":"do_31314751443052134413666","mimeType":"application/vnd.ekstep.content-collection",
+      |"contentType":"Course","pkgVersion":1,"status":"Live"}}
+      |""".stripMargin
+
   val customKafkaConsumerProperties: Map[String, String] =
     Map[String, String]("auto.offset.reset" -> "earliest", "group.id" -> "test-event-schema-group")
   implicit val embeddedKafkaConfig: EmbeddedKafkaConfig =
@@ -84,6 +96,7 @@ class BaseProcessFunctionTestSpec extends BaseSpec with Matchers {
 
     publishStringMessageToKafka(bsConfig.kafkaMapInputTopic, EVENT_WITH_MESSAGE_ID)
     publishStringMessageToKafka(bsConfig.kafkaStringInputTopic, SHARE_EVENT)
+    publishStringMessageToKafka(bsConfig.kafkaJobReqInputTopic, JOB_REQUEST_EVENT)
 
     flinkCluster.before()
   }
@@ -104,7 +117,7 @@ class BaseProcessFunctionTestSpec extends BaseSpec with Matchers {
 
 
     val mapStream =
-      env.addSource(kafkaConnector.kafkaMapSource(bsConfig.kafkaMapInputTopic), "map-event-consumer")
+      env.addSource(kafkaConnector.kafkaMapSource(bsConfig.kafkaMapInputTopic)).name("map-event-consumer")
         .process(new TestMapStreamFunc(bsConfig)).name("TestMapEventStream")
 
     mapStream.getSideOutput(bsConfig.mapOutputTag)
@@ -112,12 +125,20 @@ class BaseProcessFunctionTestSpec extends BaseSpec with Matchers {
       .name("Map-Event-Producer")
 
     val stringStream =
-      env.addSource(kafkaConnector.kafkaStringSource(bsConfig.kafkaStringInputTopic), "string-event-consumer")
+      env.addSource(kafkaConnector.kafkaStringSource(bsConfig.kafkaStringInputTopic)).name("string-event-consumer")
       .process(new TestStringStreamFunc(bsConfig)).name("TestStringEventStream")
 
     stringStream.getSideOutput(bsConfig.stringOutputTag)
       .addSink(kafkaConnector.kafkaStringSink(bsConfig.kafkaStringOutputTopic))
       .name("String-Producer")
+
+    val jobReqStream =
+      env.addSource(kafkaConnector.kafkaJobRequestSource[TestJobRequest](bsConfig.kafkaJobReqInputTopic)).name("job-request-event-consumer")
+        .process(new TestJobRequestStreamFunc(bsConfig)).name("TestJobRequestEventStream")
+
+    jobReqStream.getSideOutput(bsConfig.jobRequestOutputTag)
+      .addSink(kafkaConnector.kafkaJobRequestSink[TestJobRequest](bsConfig.kafkaJobReqOutputTopic))
+      .name("JobRequest-Event-Producer")
 
     Future {
       env.execute("TestSerDeFunctionality")
@@ -125,9 +146,11 @@ class BaseProcessFunctionTestSpec extends BaseSpec with Matchers {
 
     val mapSchemaMessages = consumeNumberMessagesFrom[String](bsConfig.kafkaMapOutputTopic, 1)
     val stringSchemaMessages = consumeNumberMessagesFrom[String](bsConfig.kafkaStringOutputTopic, 1)
+    val jobRequestSchemaMessages = consumeNumberMessagesFrom[String](bsConfig.kafkaJobReqOutputTopic, 1)
 
     mapSchemaMessages.size should be (1)
     stringSchemaMessages.size should be (1)
+    jobRequestSchemaMessages.size should be (1)
   }
 
 }

@@ -18,8 +18,14 @@ class CassandraUtil(host: String, port: Int) {
   var session = cluster.connect()
 
   def findOne(query: String): Row = {
-    val rs: ResultSet = session.execute(query)
-    rs.one
+    try {
+      val rs: ResultSet = session.execute(query)
+      rs.one
+    } catch {
+      case ex: DriverException =>
+        this.reconnect()
+        this.findOne(query)
+    }
   }
 
   def find(query: String): util.List[Row] = {
@@ -48,6 +54,16 @@ class CassandraUtil(host: String, port: Int) {
 
   def close(): Unit = {
     this.session.close()
+  }
+
+  def update(query: Statement): Boolean = {
+    val rs: ResultSet = session.execute(query)
+    rs.wasApplied
+  }
+
+  def executePreparedStatement(query: String, params: Object*): util.List[Row] = {
+    val rs: ResultSet = session.execute(session.prepare(query).bind(params : _*))
+    rs.all()
   }
 
 }
