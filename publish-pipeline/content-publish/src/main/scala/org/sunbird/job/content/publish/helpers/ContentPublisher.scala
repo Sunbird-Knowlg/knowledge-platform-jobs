@@ -30,9 +30,16 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
   override def getHierarchies(identifiers: List[String], readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = None
 
   override def enrichObjectMetadata(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, config: PublishConfig, definitionCache: DefinitionCache, definitionConfig: DefinitionConfig): Option[ObjectData] = {
-    val updatedMeta: Map[String, AnyRef] = obj.metadata ++ Map("pkgVersion" -> (obj.pkgVersion + 1).asInstanceOf[AnyRef],
-      "lastPublishedOn" -> getTimeStamp, "flagReasons" -> null, "body" -> null, "publishError" -> null,
-      "variants" -> null, "downloadUrl" -> null)
+    val updatedMeta: Map[String, AnyRef] =
+      if(obj.metadata.getOrElse("size", 0).toString.toDouble > config.asInstanceOf[ContentPublishConfig].artifactSizeForOnline)
+        obj.metadata ++ Map("pkgVersion" -> (obj.pkgVersion + 1).asInstanceOf[AnyRef],
+          "lastPublishedOn" -> getTimeStamp, "flagReasons" -> null, "body" -> null, "publishError" -> null,
+          "variants" -> null, "downloadUrl" -> null, "contentDisposition" -> "online-only")
+      else
+        obj.metadata ++ Map("pkgVersion" -> (obj.pkgVersion + 1).asInstanceOf[AnyRef],
+          "lastPublishedOn" -> getTimeStamp, "flagReasons" -> null, "body" -> null, "publishError" -> null,
+          "variants" -> null, "downloadUrl" -> null)
+
     val updatedCompatibilityLevel = setCompatibilityLevel(obj, updatedMeta).getOrElse(updatedMeta)
     val updatedPragma = setPragma(obj, updatedCompatibilityLevel).getOrElse(updatedCompatibilityLevel)
     val updatedPreviewUrl = updatePreviewUrl(obj, updatedPragma, config.asInstanceOf[ContentPublishConfig]).getOrElse(updatedPragma)

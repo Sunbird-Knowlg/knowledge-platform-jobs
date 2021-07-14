@@ -65,4 +65,6 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
   val supportedMimeType: util.List[String] = if (config.hasPath("content.mimeType")) config.getStringList("content.mimeType") else util.Arrays.asList[String]("application/pdf")
   val streamableMimeType: util.List[String] = if (config.hasPath("content.stream.mimeType")) config.getStringList("content.stream.mimeType") else util.Arrays.asList[String]("video/mp4")
   val isStreamingEnabled: Boolean = if (config.hasPath("content.stream.enabled")) config.getBoolean("content.stream.enabled") else false
+
+  val artifactSizeForOnline: Double = if(config.hasPath("content.artifact.size.for_online")) config.getDouble("content.artifact.size.for_online") else 209715200
 }
