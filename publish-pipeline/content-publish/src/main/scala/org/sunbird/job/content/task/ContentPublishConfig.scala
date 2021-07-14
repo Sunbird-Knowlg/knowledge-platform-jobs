@@ -50,6 +50,9 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
   val graphRoutePath = config.getString("neo4j.routePath")
   val graphName = config.getString("neo4j.graph")
 
+  // Redis Configurations
+  val nodeStore: Int = config.getInt("redis.database.contentCache.id")
+
   // Out Tags
   val contentPublishOutTag: OutputTag[PublishMetadata] = OutputTag[PublishMetadata]("content-publish")
   val collectionPublishOutTag: OutputTag[PublishMetadata] = OutputTag[PublishMetadata]("collection-publish")
