@@ -178,6 +178,10 @@ class DataCache(val config: BaseJobConfig, val redisConnect: RedisConnect, val d
     }
   }
 
+  def del(key: String): Unit = {
+    this.redisConnection.del(key)
+  }
+
 }
 
 // $COVERAGE-ON$

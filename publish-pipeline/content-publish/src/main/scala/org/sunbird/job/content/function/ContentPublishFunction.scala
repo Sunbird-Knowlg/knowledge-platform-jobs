@@ -6,6 +6,7 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
+import org.sunbird.job.cache.{DataCache, RedisConnect}
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
 import org.sunbird.job.publish.util.CloudStorageUtil
@@ -31,10 +32,11 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
 
   private[this] val logger = LoggerFactory.getLogger(classOf[ContentPublishFunction])
   val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
+  private var cache: DataCache = _
   private val readerConfig = ExtDataConfig(config.contentKeyspaceName, config.contentTableName)
 
   @transient var ec: ExecutionContext = _
-  private val pkgTypes = List(EcarPackageType.FULL.toString, EcarPackageType.SPINE.toString, EcarPackageType.ONLINE.toString)
+  private val pkgTypes = List(EcarPackageType.FULL.toString, EcarPackageType.SPINE.toString)
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
@@ -44,11 +46,14 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
     ec = ExecutionContexts.global
     definitionCache = new DefinitionCache()
     definitionConfig = DefinitionConfig(config.schemaSupportVersionMap, config.definitionBasePath)
+    cache = new DataCache(config, new RedisConnect(config), config.nodeStore, List())
+    cache.init()
   }
 
   override def close(): Unit = {
     super.close()
     cassandraUtil.close()
+    cache.close()
   }
 
   override def metricsList(): List[String] = {
@@ -68,6 +73,7 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
         // Prepublish update
         updateProcessingNode(obj)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
         // Clear redis cache
+        cache.del(data.identifier)
         val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
         val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, cloudStorageUtil, definitionCache, definitionConfig, httpUtil)
         logger.info("Ecar generation done for Content: " + objWithEcar.identifier)
