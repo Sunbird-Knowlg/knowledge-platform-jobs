@@ -5,17 +5,16 @@ import org.slf4j.LoggerFactory
 import org.sunbird.job.content.task.ContentPublishConfig
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.publish.config.PublishConfig
-import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData, ObjectExtData, Slug}
+import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData, ObjectExtData}
 import org.sunbird.job.publish.helpers._
 import org.sunbird.job.publish.util.CloudStorageUtil
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
 
 import java.io.File
-import java.nio.file.{Files, Paths}
-import java.util.zip.ZipFile
+import java.nio.file.Files
+import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext
-import scala.collection.JavaConverters._
 
 trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnrichment with EcarGenerator with ObjectUpdater {
 
@@ -48,8 +47,8 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
     //delete basePath if exists
     Files.deleteIfExists(new File(getBasePath(obj.identifier)).toPath)
 
-    val contentConfig =  config.asInstanceOf[ContentPublishConfig]
-    if(contentConfig.isECARExtractionEnabled && extractableMimeTypes.contains(obj.mimeType)){
+    val contentConfig = config.asInstanceOf[ContentPublishConfig]
+    if (contentConfig.isECARExtractionEnabled && extractableMimeTypes.contains(obj.mimeType)) {
       copyExtractedContentPackage(obj, contentConfig, "version", cloudStorageUtil)
       copyExtractedContentPackage(obj, contentConfig, "latest", cloudStorageUtil)
     }
@@ -70,7 +69,7 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
     val messages = ListBuffer[String]()
     if (obj.mimeType.equalsIgnoreCase("application/vnd.ekstep.ecml-archive") && (obj.extData.getOrElse("body", "") == null || obj.extData.getOrElse("body", "").asInstanceOf[Map[String, AnyRef]].isEmpty))
       messages += s"""There is no body available for : $identifier"""
-    else if(StringUtils.isBlank(obj.metadata.getOrElse("artifactUrl", "").asInstanceOf[String]))
+    else if (StringUtils.isBlank(obj.metadata.getOrElse("artifactUrl", "").asInstanceOf[String]))
       messages += s"""There is no artifactUrl available for : $identifier"""
 
     messages.toList
@@ -124,14 +123,14 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
   }
 
 
-  def getS3URL(obj: ObjectData, cloudStorageUtil: CloudStorageUtil, config: ContentPublishConfig): String = {
+  private def getS3URL(obj: ObjectData, cloudStorageUtil: CloudStorageUtil, config: ContentPublishConfig): String = {
     val path = getExtractionPath(obj, config, "latest")
     var isDirectory = false
     if (extractableMimeTypes.contains(obj.mimeType)) isDirectory = true
     cloudStorageUtil.getURI(path, Option.apply(isDirectory))
   }
 
-  private def getExtractionPath(obj: ObjectData, config: ContentPublishConfig, prefix: String):String = {
+  private def getExtractionPath(obj: ObjectData, config: ContentPublishConfig, prefix: String): String = {
     obj.mimeType match {
       case "application/vnd.ekstep.ecml-archive" => config.contentFolder + File.separator + "ecml" + File.separator + obj.identifier + "-" + prefix
       case "application/vnd.ekstep.html-archive" => config.contentFolder + File.separator + "html" + File.separator + obj.identifier + "-" + prefix
@@ -140,11 +139,11 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
     }
   }
 
-  def getBasePath(objectId: String): String = {
+  private def getBasePath(objectId: String): String = {
     if (!StringUtils.isBlank(objectId)) tempFileLocation + File.separator + System.currentTimeMillis + "_temp" + File.separator + objectId else ""
   }
 
-  def copyExtractedContentPackage(obj: ObjectData, contentConfig: ContentPublishConfig, extractionType: String, cloudStorageUtil: CloudStorageUtil): Unit = {
+  private def copyExtractedContentPackage(obj: ObjectData, contentConfig: ContentPublishConfig, extractionType: String, cloudStorageUtil: CloudStorageUtil): Unit = {
     if (!isExtractedSnapshotExist(obj)) throw new Exception("Error! Snapshot Type Extraction doesn't Exists.")
     val sourcePrefix = getExtractionPath(obj, contentConfig, "snapshot")
     val destinationPrefix = getExtractionPath(obj, contentConfig, extractionType)
