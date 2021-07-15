@@ -50,6 +50,9 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
   val graphRoutePath = config.getString("neo4j.routePath")
   val graphName = config.getString("neo4j.graph")
 
+  // Redis Configurations
+  val nodeStore: Int = config.getInt("redis.database.contentCache.id")
+
   // Out Tags
   val contentPublishOutTag: OutputTag[PublishMetadata] = OutputTag[PublishMetadata]("content-publish")
   val collectionPublishOutTag: OutputTag[PublishMetadata] = OutputTag[PublishMetadata]("collection-publish")
@@ -68,5 +71,5 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
 
   val isECARExtractionEnabled: Boolean = if(config.hasPath("content.isECARExtractionEnabled")) config.getBoolean("content.isECARExtractionEnabled") else true
   val contentFolder: String = if(config.hasPath("cloud_storage.folder.content")) config.getString("cloud_storage.folder.content") else "content"
-
+  val artifactSizeForOnline: Double = if(config.hasPath("content.artifact.size.for_online")) config.getDouble("content.artifact.size.for_online") else 209715200
 }

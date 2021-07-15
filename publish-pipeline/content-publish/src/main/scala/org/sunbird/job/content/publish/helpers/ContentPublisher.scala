@@ -35,10 +35,13 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
 
   override def getHierarchies(identifiers: List[String], readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = None
 
-  override def enrichObjectMetadata(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig, definitionCache: DefinitionCache, definitionConfig: DefinitionConfig): Option[ObjectData] = {
-    val updatedMeta: Map[String, AnyRef] = obj.metadata ++ Map("pkgVersion" -> (obj.pkgVersion + 1).asInstanceOf[AnyRef],
-      "lastPublishedOn" -> getTimeStamp, "flagReasons" -> null, "body" -> null, "publishError" -> null,
-      "variants" -> null, "downloadUrl" -> null)
+  override def enrichObjectMetadata(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, config: PublishConfig, definitionCache: DefinitionCache, definitionConfig: DefinitionConfig): Option[ObjectData] = {
+    val extraMeta = Map("pkgVersion" -> (obj.pkgVersion + 1).asInstanceOf[AnyRef], "lastPublishedOn" -> getTimeStamp,
+      "flagReasons" -> null, "body" -> null, "publishError" -> null, "variants" -> null, "downloadUrl" -> null)
+    val contentSize = obj.metadata.getOrElse("size", 0).toString.toDouble
+    val configSize = config.asInstanceOf[ContentPublishConfig].artifactSizeForOnline
+    val updatedMeta: Map[String, AnyRef] = if (contentSize > configSize) obj.metadata ++ extraMeta ++ Map("contentDisposition" -> "online-only") else obj.metadata ++ extraMeta
+
     val updatedCompatibilityLevel = setCompatibilityLevel(obj, updatedMeta).getOrElse(updatedMeta)
     val updatedPragma = setPragma(obj, updatedCompatibilityLevel).getOrElse(updatedCompatibilityLevel)
 
@@ -76,7 +79,7 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
   def getObjectWithEcar(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
     logger.info("ContentPublisher:getObjectWithEcar: Ecar generation done for Content: " + data.identifier)
     val ecarMap: Map[String, String] = generateEcar(data, pkgTypes)
-    val variants: java.util.Map[String, java.util.Map[String, String]] = ecarMap.map { case (key, value) => key.toLowerCase -> Map[String, String]("ecarUrl"-> value, "size"-> httpUtil.getSize(value).toString).asJava }.asJava
+    val variants: java.util.Map[String, java.util.Map[String, String]] = ecarMap.map { case (key, value) => key.toLowerCase -> Map[String, String]("ecarUrl" -> value, "size" -> httpUtil.getSize(value).toString).asJava }.asJava
     logger.info("ContentPublisher ::: getObjectWithEcar ::: ecar map ::: " + ecarMap)
     val meta: Map[String, AnyRef] = Map("downloadUrl" -> ecarMap.getOrElse(EcarPackageType.FULL.toString, ""), "variants" -> variants)
     new ObjectData(data.identifier, data.metadata ++ meta, data.extData, data.hierarchy)
@@ -93,9 +96,9 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
   private def setPragma(obj: ObjectData, updatedMeta: Map[String, AnyRef]): Option[Map[String, AnyRef]] = {
     if (pragmaMimeTypes.contains(obj.mimeType)) {
       val pgm: java.util.List[String] = obj.metadata.getOrElse("pragma", new java.util.ArrayList[String]()).asInstanceOf[java.util.List[String]]
-      val pragma:List[String] = pgm.asScala.toList
+      val pragma: List[String] = pgm.asScala.toList
       val value = "external"
-      if(!pragma.contains(value)) {
+      if (!pragma.contains(value)) {
         Some(updatedMeta ++ Map("pragma" -> (pragma ++ List(value))))
       } else None
     } else None
@@ -107,7 +110,7 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
       obj.mimeType match {
         case "application/vnd.ekstep.content-collection" | "application/vnd.ekstep.plugin-archive"
              | "application/vnd.android.package-archive" | "assets" =>
-        None
+          None
         case "application/vnd.ekstep.ecml-archive" | "application/vnd.ekstep.html-archive" | "application/vnd.ekstep.h5p-archive" =>
           val latestFolderS3Url = getS3URL(obj, cloudStorageUtil, config)
           val updatedPreviewUrl = updatedMeta ++ Map("previewUrl" -> latestFolderS3Url, "streamingUrl" -> latestFolderS3Url)
@@ -115,7 +118,7 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
         case _ =>
           val artifactUrl = obj.getString("artifactUrl", null)
           val updatedPreviewUrl = updatedMeta ++ Map("previewUrl" -> artifactUrl)
-          if (config.streamableMimeType.contains(obj.mimeType)) Some(updatedPreviewUrl ++ Map("streamingUrl"-> artifactUrl)) else Some(updatedPreviewUrl)
+          if (config.streamableMimeType.contains(obj.mimeType)) Some(updatedPreviewUrl ++ Map("streamingUrl" -> artifactUrl)) else Some(updatedPreviewUrl)
       }
     } else None
   }
