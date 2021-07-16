@@ -44,8 +44,9 @@ class VideoStreamGenerator(config: VideoStreamGeneratorConfig, httpUtil:HttpUtil
       try {
         metrics.incCounter(config.totalEventsCount)
         if (event.isValid) {
-          videoStreamService.submitJobRequest(event.eData)
-          logger.info("Streaming job submitted for " + event.identifier() + " with url: " + event.artifactUrl)
+          val eData = event.eData ++ Map("channel"-> event.channel)
+          videoStreamService.submitJobRequest(eData)
+          logger.info("Streaming job submitted for " + event.identifier + " with url: " + event.artifactUrl)
           registerTimer(context)
         } else metrics.incCounter(config.skippedEventCount)
       } catch {
