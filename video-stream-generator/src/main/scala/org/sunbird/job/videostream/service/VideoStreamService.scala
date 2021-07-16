@@ -119,7 +119,7 @@ class VideoStreamService(implicit config: VideoStreamGeneratorConfig, httpUtil: 
   private def updatePreviewUrl(contentId: String, streamingUrl: String, channel: String): Boolean = {
     if(streamingUrl.nonEmpty && contentId.nonEmpty) {
       val requestBody = "{\"request\": {\"content\": {\"streamingUrl\":\""+ streamingUrl +"\"}}}"
-      val url = config.lpURL + config.contentV3Update + contentId
+      val url = config.lpURL + config.contentV4Update + contentId
       val headers = Map[String, String]("X-Channel-Id" -> channel, "Content-Type"->"application/json")
       val response:HTTPResponse = httpUtil.patch(url, requestBody, headers)
 

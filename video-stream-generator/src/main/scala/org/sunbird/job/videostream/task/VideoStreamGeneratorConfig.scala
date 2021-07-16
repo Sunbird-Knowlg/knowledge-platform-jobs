@@ -40,8 +40,8 @@ class VideoStreamGeneratorConfig(override val config: Config) extends BaseJobCon
   val hierarchyPrimaryKey: List[String] = List("identifier")
 
   // LP Configurations
-  val lpURL: String = config.getString("service.learning.basePath")
-  val contentV3Update = "/system/v3/content/update/"
+  val lpURL: String = config.getString("service.content.basePath")
+  val contentV4Update = "/content/v4/system/update/"
 
   def getConfig(key: String): String = {
     if (config.hasPath(key))
