@@ -8,14 +8,6 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 
   def nodeUniqueId: String = readOrDefault("nodeUniqueId", "")
 
-//  def transactionData: Map[String, AnyRef] = readOrDefault("transactionData", Map())
-
   def transactionData: Map[String, AnyRef] = readOrDefault("transactionData", Map())
 
-//  def props: Map[String, AnyRef] = readOrDefault("transactionData", Map())
-
-  def isValid: Boolean = {
-//    event.contains(props)
-    true
-  }
 }
