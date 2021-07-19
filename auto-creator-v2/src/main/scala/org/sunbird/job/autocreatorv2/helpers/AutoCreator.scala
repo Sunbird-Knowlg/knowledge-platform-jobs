@@ -100,7 +100,9 @@ trait AutoCreator extends ObjectUpdater with CollectionUpdater with HierarchyEnr
 			val objType = ch._2.asInstanceOf[Map[String, AnyRef]].getOrElse("objectType", "").asInstanceOf[String]
 			val definition: ObjectDefinition = defCache.getDefinition(objType, config.schemaSupportVersionMap.getOrElse(objType.toLowerCase(), "1.0").asInstanceOf[String], config.definitionBasePath)
 			val downloadUrl = ch._2.asInstanceOf[Map[String, AnyRef]].getOrElse("downloadUrl", "").asInstanceOf[String]
-			val obj: ObjectData = getObject(ch._1, objType, downloadUrl)(config, httpUtil, definition)
+			val props = definition.getSchemaProps() ++ definition.getExternalProps().keySet.toList
+			val repository = s"""${config.sourceBaseUrl}/${objType.toLowerCase}/v1/read/${ch._1}?fields=${props.mkString(",")}"""
+			val obj: ObjectData = getObject(ch._1, objType, downloadUrl, Some(repository))(config, httpUtil, definition)
 			logger.debug("Graph metadata for " + obj.identifier + " : " + obj.metadata)
 			val enObj = enrichMetadata(obj, ch._2.asInstanceOf[Map[String, AnyRef]], true)(config)
 			logger.debug("Enriched metadata for " + enObj.identifier + " : " + enObj.metadata)
