@@ -15,7 +15,7 @@ import org.sunbird.job.autocreatorv2.model.ObjectData
 import org.sunbird.job.autocreatorv2.util.CloudStorageUtil
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.task.AutoCreatorV2Config
-import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, Neo4JUtil}
+import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, Neo4JUtil, ScalaJsonUtil}
 
 class AutoCreatorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
 
@@ -84,6 +84,9 @@ class AutoCreatorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with
 
 	"processChildren" should "create and return the children object" in {
 		when(httpUtil.getSize(ArgumentMatchers.anyString(), ArgumentMatchers.any())).thenReturn(110)
+		val resultMap = Map("result"-> Map("content"->Map("name"->"Test Data")))
+		val response = HTTPResponse(200, ScalaJsonUtil.serialize(resultMap))
+		when(httpUtil.get(ArgumentMatchers.anyString(),ArgumentMatchers.any[Map[String, String]]())).thenReturn(response)
 		val mockResult = mock[StatementResult](Mockito.withSettings().serializable())
 		when(mockNeo4JUtil.executeQuery(anyString())).thenReturn(mockResult)
 		val child: Map[String, AnyRef] = Map("do_113264104174723072120" -> Map("objectType" -> "Question", "downloadUrl" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/question/do_113264104174723072120/test-1_1619640554144_do_113264104174723072120_15.ecar", "variants"-> Map("full" -> Map("ecarUrl" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/question/do_113264104174723072120/test-1_1619640554144_do_113264104174723072120_15.ecar", "size"->2321), "online"->Map("ecarUrl" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/question/do_113264104174723072120/test-1_1619640555385_do_113264104174723072120_15_ONLINE.ecar", "size"-> 2322))))
