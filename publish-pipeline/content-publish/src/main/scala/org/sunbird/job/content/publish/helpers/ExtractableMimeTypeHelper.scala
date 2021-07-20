@@ -27,9 +27,7 @@ object ExtractableMimeTypeHelper {
 
   def getS3URL(obj: ObjectData, cloudStorageUtil: CloudStorageUtil, config: ContentPublishConfig): String = {
     val path = getExtractionPath(obj, config, "latest")
-    var isDirectory = false
-    if (extractableMimeTypes.contains(obj.mimeType)) isDirectory = true
-    cloudStorageUtil.getURI(path, Option.apply(isDirectory))
+    cloudStorageUtil.getURI(path, Option.apply(extractableMimeTypes.contains(obj.mimeType)))
   }
 
   private def getExtractionPath(obj: ObjectData, config: ContentPublishConfig, prefix: String):String = {
@@ -58,14 +56,8 @@ object ExtractableMimeTypeHelper {
   }
 
   private def isValidSnapshotFile(artifactUrl: String): Boolean = {
-    var isValid = false
-    if (StringUtils.isNotBlank(artifactUrl))
-        for (key <- extractablePackageExtensions)
-          if (StringUtils.endsWithIgnoreCase(artifactUrl, key)) {
-            isValid = true
-            break()
-          }
-    isValid
+    val isValidSnapshot = extractablePackageExtensions.filter(key => StringUtils.endsWithIgnoreCase(artifactUrl, key))
+    isValidSnapshot.nonEmpty
   }
 
   def getContentBody(identifier: String, readerConfig: ExtDataConfig) (implicit cassandraUtil: CassandraUtil): String = {
@@ -222,15 +214,16 @@ object ExtractableMimeTypeHelper {
   }
 
   private def uploadArtifactToCloud(uploadedFile: File, identifier: String, filePath: Option[String] = None, config: ContentPublishConfig)(implicit cloudStorageUtil: CloudStorageUtil): Array[String] = {
-    var urlArray = new Array[String](2)
-    try {
-      val folder = if(filePath.isDefined) filePath.get + File.separator + config.contentFolder + File.separator + Slug.makeSlug(identifier, isTransliterate = true) + File.separator + config.artifactFolder else config.contentFolder + File.separator + Slug.makeSlug(identifier, isTransliterate = true) + File.separator + config.artifactFolder
-      urlArray = cloudStorageUtil.uploadFile(folder, uploadedFile)
-    } catch {
-      case e: Exception =>
-        cloudStorageUtil.deleteFile(uploadedFile.getAbsolutePath, Option(false))
-        logger.error("Error while uploading the Artifact file.", e)
-        throw new Exception("Error while uploading the Artifact File.", e)
+    val urlArray = {
+      try {
+        val folder = if (filePath.isDefined) filePath.get + File.separator + config.contentFolder + File.separator + Slug.makeSlug(identifier, isTransliterate = true) + File.separator + config.artifactFolder else config.contentFolder + File.separator + Slug.makeSlug(identifier, isTransliterate = true) + File.separator + config.artifactFolder
+        cloudStorageUtil.uploadFile(folder, uploadedFile)
+      } catch {
+        case e: Exception =>
+          cloudStorageUtil.deleteFile(uploadedFile.getAbsolutePath, Option(false))
+          logger.error("Error while uploading the Artifact file.", e)
+          throw new Exception("Error while uploading the Artifact File.", e)
+      }
     }
     urlArray
   }
