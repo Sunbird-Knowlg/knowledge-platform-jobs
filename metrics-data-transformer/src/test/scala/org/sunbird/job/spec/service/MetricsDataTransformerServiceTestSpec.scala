@@ -3,12 +3,13 @@ package org.sunbird.job.spec.service
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
+import org.apache.flink.runtime.client.JobExecutionException
 import org.mockito.ArgumentMatchers.{any, anyString}
 import org.mockito.Mockito
 import org.mockito.Mockito.when
 import org.sunbird.job.fixture.EventFixture
 import org.sunbird.job.util.{ElasticSearchUtil, HTTPResponse, HttpUtil, JSONUtil}
-import org.sunbird.spec.BaseTestSpec
+import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 import org.sunbird.job.metricstransformer.domain.Event
 import org.sunbird.job.metricstransformer.functions.MetricsDataTransformer
 import org.sunbird.job.metricstransformer.task.MetricsDataTransformerConfig
@@ -29,6 +30,7 @@ class MetricsDataTransformerServiceTestSpec extends BaseTestSpec {
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
+    BaseMetricsReporter.gaugeMetrics.clear()
   }
 
   override protected def afterAll(): Unit = {
@@ -37,7 +39,9 @@ class MetricsDataTransformerServiceTestSpec extends BaseTestSpec {
 
   "MetricsDataTransformerService" should "execute" in {
     val inputEvent: Event = new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_1),0, 10)
-    val metrics: Metrics = Metrics(new ConcurrentHashMap[String, AtomicLong]())
+    val map = new ConcurrentHashMap[String, AtomicLong]()
+    map.put("success-events-count", new AtomicLong(0))
+    val metrics: Metrics = Metrics(map)
 
     val metricList = Array("me_totalRatingsCount")
     implicit val mockHttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
@@ -45,7 +49,15 @@ class MetricsDataTransformerServiceTestSpec extends BaseTestSpec {
     when(mockHttpUtil.patch(anyString(), any(), any())).thenReturn(HTTPResponse(200, """{"id":"api.content.hierarchy.get","ver":"3.0","ts":"2020-08-07T15:56:47ZZ","params":{"resmsgid":"bbd98348-c70b-47bc-b9f1-396c5e803436","msgid":null,"err":null,"status":"successful","errmsg":null},"responseCode":"OK","result":{"content":{"rootId":"do_123"}}}"""))
 
     implicit val config = jobConfig
-    metricsDataTransformer.processEvent(inputEvent, metrics, metricList)
+    try {
+      metricsDataTransformer.processEvent(inputEvent, metrics, metricList)
+    } catch {
+      case ex: JobExecutionException =>
+      BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(1)
+      BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.successEventCount}").getValue() should be(1)
+      BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.failedEventCount}").getValue() should be(0)
+      BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skippedEventCount}").getValue() should be(0)
+    }
   }
 
 }
