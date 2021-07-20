@@ -15,6 +15,7 @@ import java.nio.file.Files
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext
+import scala.util.control.Breaks.break
 
 trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnrichment with EcarGenerator with ObjectUpdater {
 
@@ -24,7 +25,7 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
   private val pragmaMimeTypes = List("video/x-youtube", "application/pdf")
   private val extractableMimeTypes = List("application/vnd.ekstep.ecml-archive", "application/vnd.ekstep.html-archive", "application/vnd.ekstep.plugin-archive", "application/vnd.ekstep.h5p-archive")
   private val tempFileLocation = "/data/contentBundle/"
-  protected val extractablePackageExtensions = List(".zip", ".h5p", ".epub")
+  private val extractablePackageExtensions = List(".zip", ".h5p", ".epub")
 
   override def getExtData(identifier: String, pkgVersion: Double, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[ObjectExtData] = None
 
@@ -69,7 +70,7 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
     val messages = ListBuffer[String]()
     if (obj.mimeType.equalsIgnoreCase("application/vnd.ekstep.ecml-archive") && (obj.extData.getOrElse("body", "") == null || obj.extData.getOrElse("body", "").asInstanceOf[Map[String, AnyRef]].isEmpty))
       messages += s"""There is no body available for : $identifier"""
-    else if (StringUtils.isBlank(obj.metadata.getOrElse("artifactUrl", "").asInstanceOf[String]))
+    else if (StringUtils.isBlank(obj.getString("artifactUrl", "")))
       messages += s"""There is no artifactUrl available for : $identifier"""
 
     messages.toList
@@ -125,9 +126,7 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
 
   private def getS3URL(obj: ObjectData, cloudStorageUtil: CloudStorageUtil, config: ContentPublishConfig): String = {
     val path = getExtractionPath(obj, config, "latest")
-    var isDirectory = false
-    if (extractableMimeTypes.contains(obj.mimeType)) isDirectory = true
-    cloudStorageUtil.getURI(path, Option.apply(isDirectory))
+    cloudStorageUtil.getURI(path, Option.apply(extractableMimeTypes.contains(obj.mimeType)))
   }
 
   private def getExtractionPath(obj: ObjectData, config: ContentPublishConfig, prefix: String): String = {
@@ -151,16 +150,13 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
   }
 
   private def isExtractedSnapshotExist(obj: ObjectData): Boolean = {
-    val artifactUrl = obj.getString("artifactUrl", null)
+    val artifactUrl = obj.getString("artifactUrl", "")
     isValidSnapshotFile(artifactUrl)
   }
 
   private def isValidSnapshotFile(artifactUrl: String): Boolean = {
-    var isValid = false
-    if (StringUtils.isNotBlank(artifactUrl))
-      for (key <- extractablePackageExtensions)
-        if (StringUtils.endsWithIgnoreCase(artifactUrl, key)) isValid = true
-    isValid
+    val isValidSnapshot = extractablePackageExtensions.filter(key => StringUtils.endsWithIgnoreCase(artifactUrl, key))
+    isValidSnapshot.nonEmpty
   }
 
 }
