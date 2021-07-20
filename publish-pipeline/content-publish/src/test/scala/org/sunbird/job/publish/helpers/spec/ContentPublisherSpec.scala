@@ -18,8 +18,6 @@ import org.sunbird.job.publish.helpers.EcarPackageType
 import org.sunbird.job.publish.util.CloudStorageUtil
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
 
-import java.util
-
 class ContentPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
 
   implicit val mockNeo4JUtil: Neo4JUtil = mock[Neo4JUtil](Mockito.withSettings().serializable())
@@ -68,6 +66,18 @@ class ContentPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers
     result.metadata.getOrElse("pkgVersion", 0.0.asInstanceOf[Number]).asInstanceOf[Number] should be(1.0.asInstanceOf[Number])
   }
 
+    ignore should "enrich the Content metadata for application/vnd.ekstep.html-archive should through exception in artifactUrl is not available" in {
+      val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/vnd.ekstep.html-archive"))
+      val result: ObjectData = new TestContentPublisher().enrichObjectMetadata(data).getOrElse(data)
+      result.metadata.getOrElse("pkgVersion", 0.0.asInstanceOf[Number]).asInstanceOf[Number] should be(1.0.asInstanceOf[Number])
+    }
+
+  "enrichObjectMetadata" should "enrich the Content metadata for application/vnd.ekstep.html-archive" in {
+    val data = new ObjectData("do_1132167819505500161297", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_1132167819505500161297", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/vnd.ekstep.html-archive", "artifactUrl" -> "artifactUrl.zip"))
+    val result: ObjectData = new TestContentPublisher().enrichObjectMetadata(data).getOrElse(data)
+    result.metadata.getOrElse("pkgVersion", 0.0.asInstanceOf[Number]).asInstanceOf[Number] should be(1.0.asInstanceOf[Number])
+  }
+
   "validateMetadata with invalid external data" should "return exception messages" in {
     val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef]), Some(Map[String, AnyRef]("artifactUrl" -> "artifactUrl")))
     val result: List[String] = new TestContentPublisher().validateMetadata(data, data.identifier)
@@ -100,14 +110,13 @@ class ContentPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers
   }
 
   "getDataForEcar" should "return one element in list" in {
-    val data = new ObjectData("do_123", Map("objectType"->"Content"), Some(Map("responseDeclaration"->"test")), Some(Map()))
+    val data = new ObjectData("do_123", Map("objectType" -> "Content"), Some(Map("responseDeclaration" -> "test")), Some(Map()))
     val result: Option[List[Map[String, AnyRef]]] = new TestContentPublisher().getDataForEcar(data)
-    result.size should be (1)
+    result.size should be(1)
   }
 
   "getObjectWithEcar" should "return object with ecar url" in {
-    //val media = List(Map("id"->"do_1127129497561497601326", "type"->"image","src"->"/content/do_1127129497561497601326.img/artifact/sunbird_1551961194254.jpeg","baseUrl"->"https://sunbirddev.blob.core.windows.net/sunbird-content-dev"))
-    val data = new ObjectData("do_123", Map("objectType" -> "Content", "identifier"->"do_123", "name"->"Test PDF Content"), Some(Map("responseDeclaration" -> "test", "media"->"[{\"id\":\"do_1127129497561497601326\",\"type\":\"image\",\"src\":\"/content/do_1127129497561497601326.img/artifact/sunbird_1551961194254.jpeg\",\"baseUrl\":\"https://sunbirddev.blob.core.windows.net/sunbird-content-dev\"}]")), Some(Map()))
+    val data = new ObjectData("do_123", Map("objectType" -> "Content", "identifier" -> "do_123", "name" -> "Test PDF Content"), Some(Map("responseDeclaration" -> "test", "media" -> "[{\"id\":\"do_1127129497561497601326\",\"type\":\"image\",\"src\":\"/content/do_1127129497561497601326.img/artifact/sunbird_1551961194254.jpeg\",\"baseUrl\":\"https://sunbirddev.blob.core.windows.net/sunbird-content-dev\"}]")), Some(Map()))
     val result = new TestContentPublisher().getObjectWithEcar(data, List(EcarPackageType.FULL.toString, EcarPackageType.ONLINE.toString))(ec, cloudStorageUtil, defCache, defConfig, httpUtil)
     StringUtils.isNotBlank(result.metadata.getOrElse("downloadUrl", "").asInstanceOf[String])
   }

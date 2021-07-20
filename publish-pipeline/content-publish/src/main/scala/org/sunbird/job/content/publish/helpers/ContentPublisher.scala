@@ -10,9 +10,12 @@ import org.sunbird.job.publish.helpers._
 import org.sunbird.job.publish.util.CloudStorageUtil
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
 
+import java.io.File
+import java.nio.file.Files
+import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext
-import scala.collection.JavaConverters._
+import scala.util.control.Breaks.break
 
 trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnrichment with EcarGenerator with ObjectUpdater {
 
@@ -20,6 +23,9 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
   private val level4MimeTypes = List("video/x-youtube", "application/pdf", "application/msword", "application/epub", "application/vnd.ekstep.h5p-archive", "text/x-url")
   private val level4ContentTypes = List("Course", "CourseUnit", "LessonPlan", "LessonPlanUnit")
   private val pragmaMimeTypes = List("video/x-youtube", "application/pdf")
+  private val extractableMimeTypes = List("application/vnd.ekstep.ecml-archive", "application/vnd.ekstep.html-archive", "application/vnd.ekstep.plugin-archive", "application/vnd.ekstep.h5p-archive")
+  private val tempFileLocation = "/data/contentBundle/"
+  private val extractablePackageExtensions = List(".zip", ".h5p", ".epub")
 
   override def getExtData(identifier: String, pkgVersion: Double, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[ObjectExtData] = None
 
@@ -29,7 +35,7 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
 
   override def getHierarchies(identifiers: List[String], readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = None
 
-  override def enrichObjectMetadata(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, config: PublishConfig, definitionCache: DefinitionCache, definitionConfig: DefinitionConfig): Option[ObjectData] = {
+  override def enrichObjectMetadata(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig, definitionCache: DefinitionCache, definitionConfig: DefinitionConfig): Option[ObjectData] = {
     val extraMeta = Map("pkgVersion" -> (obj.pkgVersion + 1).asInstanceOf[AnyRef], "lastPublishedOn" -> getTimeStamp,
       "flagReasons" -> null, "body" -> null, "publishError" -> null, "variants" -> null, "downloadUrl" -> null)
     val contentSize = obj.metadata.getOrElse("size", 0).toString.toDouble
@@ -38,7 +44,16 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
 
     val updatedCompatibilityLevel = setCompatibilityLevel(obj, updatedMeta).getOrElse(updatedMeta)
     val updatedPragma = setPragma(obj, updatedCompatibilityLevel).getOrElse(updatedCompatibilityLevel)
-    val updatedPreviewUrl = updatePreviewUrl(obj, updatedPragma, config.asInstanceOf[ContentPublishConfig]).getOrElse(updatedPragma)
+
+    //delete basePath if exists
+    Files.deleteIfExists(new File(getBasePath(obj.identifier)).toPath)
+
+    val contentConfig = config.asInstanceOf[ContentPublishConfig]
+    if (contentConfig.isECARExtractionEnabled && extractableMimeTypes.contains(obj.mimeType)) {
+      copyExtractedContentPackage(obj, contentConfig, "version", cloudStorageUtil)
+      copyExtractedContentPackage(obj, contentConfig, "latest", cloudStorageUtil)
+    }
+    val updatedPreviewUrl = updatePreviewUrl(obj, updatedPragma, cloudStorageUtil, contentConfig).getOrElse(updatedPragma)
     Some(new ObjectData(obj.identifier, updatedPreviewUrl, obj.extData, obj.hierarchy))
   }
 
@@ -53,8 +68,11 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
   def validateMetadata(obj: ObjectData, identifier: String): List[String] = {
     logger.info("Validating Content metadata for : " + obj.identifier)
     val messages = ListBuffer[String]()
+    if (obj.mimeType.equalsIgnoreCase("application/vnd.ekstep.ecml-archive") && (obj.extData.getOrElse("body", "") == null || obj.extData.getOrElse("body", "").asInstanceOf[Map[String, AnyRef]].isEmpty))
+      messages += s"""There is no body available for : $identifier"""
+    else if (StringUtils.isBlank(obj.getString("artifactUrl", "")))
+      messages += s"""There is no artifactUrl available for : $identifier"""
 
-    if (StringUtils.isBlank(obj.getString("artifactUrl", ""))) messages += s"""There is no artifactUrl available for : $identifier"""
     messages.toList
   }
 
@@ -86,7 +104,7 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
     } else None
   }
 
-  private def updatePreviewUrl(obj: ObjectData, updatedMeta: Map[String, AnyRef], config: ContentPublishConfig): Option[Map[String, AnyRef]] = {
+  private def updatePreviewUrl(obj: ObjectData, updatedMeta: Map[String, AnyRef], cloudStorageUtil: CloudStorageUtil, config: ContentPublishConfig): Option[Map[String, AnyRef]] = {
     if (StringUtils.isNotBlank(obj.mimeType)) {
       logger.debug("Checking Required Fields For: " + obj.mimeType)
       obj.mimeType match {
@@ -94,8 +112,9 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
              | "application/vnd.android.package-archive" | "assets" =>
           None
         case "application/vnd.ekstep.ecml-archive" | "application/vnd.ekstep.html-archive" | "application/vnd.ekstep.h5p-archive" =>
-          //          copyLatestS3Url(obj)
-          None
+          val latestFolderS3Url = getS3URL(obj, cloudStorageUtil, config)
+          val updatedPreviewUrl = updatedMeta ++ Map("previewUrl" -> latestFolderS3Url, "streamingUrl" -> latestFolderS3Url)
+          Some(updatedPreviewUrl)
         case _ =>
           val artifactUrl = obj.getString("artifactUrl", null)
           val updatedPreviewUrl = updatedMeta ++ Map("previewUrl" -> artifactUrl)
@@ -103,4 +122,41 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
       }
     } else None
   }
+
+
+  private def getS3URL(obj: ObjectData, cloudStorageUtil: CloudStorageUtil, config: ContentPublishConfig): String = {
+    val path = getExtractionPath(obj, config, "latest")
+    cloudStorageUtil.getURI(path, Option.apply(extractableMimeTypes.contains(obj.mimeType)))
+  }
+
+  private def getExtractionPath(obj: ObjectData, config: ContentPublishConfig, prefix: String): String = {
+    obj.mimeType match {
+      case "application/vnd.ekstep.ecml-archive" => config.contentFolder + File.separator + "ecml" + File.separator + obj.identifier + "-" + prefix
+      case "application/vnd.ekstep.html-archive" => config.contentFolder + File.separator + "html" + File.separator + obj.identifier + "-" + prefix
+      case "application/vnd.ekstep.h5p-archive" => config.contentFolder + File.separator + "h5p" + File.separator + obj.identifier + "-" + prefix
+      case _ => ""
+    }
+  }
+
+  private def getBasePath(objectId: String): String = {
+    if (!StringUtils.isBlank(objectId)) tempFileLocation + File.separator + System.currentTimeMillis + "_temp" + File.separator + objectId else ""
+  }
+
+  private def copyExtractedContentPackage(obj: ObjectData, contentConfig: ContentPublishConfig, extractionType: String, cloudStorageUtil: CloudStorageUtil): Unit = {
+    if (!isExtractedSnapshotExist(obj)) throw new Exception("Error! Snapshot Type Extraction doesn't Exists.")
+    val sourcePrefix = getExtractionPath(obj, contentConfig, "snapshot")
+    val destinationPrefix = getExtractionPath(obj, contentConfig, extractionType)
+    cloudStorageUtil.copyObjectsByPrefix(sourcePrefix, destinationPrefix)
+  }
+
+  private def isExtractedSnapshotExist(obj: ObjectData): Boolean = {
+    val artifactUrl = obj.getString("artifactUrl", "")
+    isValidSnapshotFile(artifactUrl)
+  }
+
+  private def isValidSnapshotFile(artifactUrl: String): Boolean = {
+    val isValidSnapshot = extractablePackageExtensions.filter(key => StringUtils.endsWithIgnoreCase(artifactUrl, key))
+    isValidSnapshot.nonEmpty
+  }
+
 }
