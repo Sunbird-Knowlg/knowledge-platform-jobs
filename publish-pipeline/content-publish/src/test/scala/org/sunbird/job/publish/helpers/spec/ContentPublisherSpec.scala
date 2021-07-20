@@ -6,7 +6,9 @@ import org.apache.commons.lang3.StringUtils
 import org.cassandraunit.CQLDataLoader
 import org.cassandraunit.dataset.cql.FileCQLDataSet
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
+import org.mockito.ArgumentMatchers.{any, anyString}
 import org.mockito.Mockito
+import org.mockito.Mockito.when
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
 import org.sunbird.job.content.publish.helpers.ContentPublisher
@@ -18,7 +20,9 @@ import org.sunbird.job.publish.helpers.EcarPackageType
 import org.sunbird.job.publish.util.CloudStorageUtil
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
 
+import java.io.File
 import java.util
+import scala.concurrent.ExecutionContextExecutor
 
 class ContentPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
 
@@ -27,12 +31,12 @@ class ContentPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers
   val config: Config = ConfigFactory.load("test.conf").withFallback(ConfigFactory.systemEnvironment())
   val jobConfig: ContentPublishConfig = new ContentPublishConfig(config)
   implicit val readerConfig: ExtDataConfig = ExtDataConfig(jobConfig.contentKeyspaceName, jobConfig.contentTableName)
-  implicit val cloudStorageUtil = new CloudStorageUtil(jobConfig)
-  implicit val ec = ExecutionContexts.global
-  implicit val defCache = new DefinitionCache()
-  implicit val defConfig = DefinitionConfig(jobConfig.schemaSupportVersionMap, jobConfig.definitionBasePath)
-  implicit val publishConfig = jobConfig.asInstanceOf[PublishConfig]
-  implicit val httpUtil = new HttpUtil
+  implicit val cloudStorageUtil: CloudStorageUtil =  mock[CloudStorageUtil](Mockito.withSettings().serializable())
+  implicit val ec: ExecutionContextExecutor = ExecutionContexts.global
+  implicit val defCache: DefinitionCache = new DefinitionCache()
+  implicit val defConfig: DefinitionConfig = DefinitionConfig(jobConfig.schemaSupportVersionMap, jobConfig.definitionBasePath)
+  implicit val publishConfig: PublishConfig = jobConfig.asInstanceOf[PublishConfig]
+  implicit val httpUtil: HttpUtil = new HttpUtil
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
@@ -81,12 +85,12 @@ class ContentPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers
 
   "getExtData " should "do nothing " in {
     val identifier = "do_11329603741667328018";
-    val result: Option[ObjectExtData] = new TestContentPublisher().getExtData(identifier, 0.0, readerConfig)
+    val result: Option[ObjectExtData] = new TestContentPublisher().getExtData(identifier, 0.0, "", readerConfig)
   }
 
   "getHierarchy " should "do nothing " in {
     val identifier = "do_11329603741667328018";
-    new TestContentPublisher().getExtData(identifier, 1.0, readerConfig)
+    new TestContentPublisher().getExtData(identifier, 1.0, "", readerConfig)
   }
 
   "getExtDatas " should "do nothing " in {
@@ -106,6 +110,7 @@ class ContentPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers
   }
 
   "getObjectWithEcar" should "return object with ecar url" in {
+    when(cloudStorageUtil.uploadFile(anyString(), any[File](), Some(false)))thenReturn Array[String]("/content/textbook/toc/do_11329104609801011211_testcsvuploaddemo_1622453851546.ecar", "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/textbook/toc/do_11329104609801011211_testcsvuploaddemo_1622453851546.ecar")
     //val media = List(Map("id"->"do_1127129497561497601326", "type"->"image","src"->"/content/do_1127129497561497601326.img/artifact/sunbird_1551961194254.jpeg","baseUrl"->"https://sunbirddev.blob.core.windows.net/sunbird-content-dev"))
     val data = new ObjectData("do_123", Map("objectType" -> "Content", "identifier"->"do_123", "name"->"Test PDF Content"), Some(Map("responseDeclaration" -> "test", "media"->"[{\"id\":\"do_1127129497561497601326\",\"type\":\"image\",\"src\":\"/content/do_1127129497561497601326.img/artifact/sunbird_1551961194254.jpeg\",\"baseUrl\":\"https://sunbirddev.blob.core.windows.net/sunbird-content-dev\"}]")), Some(Map()))
     val result = new TestContentPublisher().getObjectWithEcar(data, List(EcarPackageType.FULL.toString, EcarPackageType.ONLINE.toString))(ec, cloudStorageUtil, defCache, defConfig, httpUtil)

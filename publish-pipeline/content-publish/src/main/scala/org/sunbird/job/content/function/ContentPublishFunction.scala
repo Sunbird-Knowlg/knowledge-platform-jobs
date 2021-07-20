@@ -12,6 +12,8 @@ import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData
 import org.sunbird.job.publish.util.CloudStorageUtil
 import org.sunbird.job.content.publish.domain.{Event, PublishMetadata}
 import org.sunbird.job.content.publish.helpers.ContentPublisher
+import org.sunbird.job.content.publish.helpers.ExtractableMimeTypeHelper.processECMLBody
+import org.sunbird.job.content.publish.processor.Plugin
 import org.sunbird.job.content.task.ContentPublishConfig
 import org.sunbird.job.publish.helpers.EcarPackageType
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
@@ -63,7 +65,7 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
   override def processElement(data: PublishMetadata, context: ProcessFunction[PublishMetadata, String]#Context, metrics: Metrics): Unit = {
     logger.info("Content publishing started for : " + data.identifier)
     metrics.incCounter(config.contentPublishEventCount)
-    val obj = getObject(data.identifier, data.pkgVersion, readerConfig)(neo4JUtil, cassandraUtil)
+    val obj = getObject(data.identifier, data.pkgVersion, data.mimeType, readerConfig)(neo4JUtil, cassandraUtil)
     val messages: List[String] = validate(obj, obj.identifier, validateMetadata)
     if (obj.pkgVersion > data.pkgVersion) {
       metrics.incCounter(config.skippedEventCount)
@@ -72,9 +74,15 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
       if (messages.isEmpty) {
         // Prepublish update
         updateProcessingNode(obj)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
+
+        val ecmlVerifiedObj = if(obj.metadata.getOrElse("mimeType", "").asInstanceOf[String].equalsIgnoreCase("application/vnd.ekstep.ecml-archive")){
+          val ecarEnhancedObj = processECMLBody(obj,config)(ec, cloudStorageUtil)
+          new ObjectData(obj.identifier, ecarEnhancedObj, obj.extData, obj.hierarchy)
+        } else obj
+
         // Clear redis cache
         cache.del(data.identifier)
-        val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
+        val enrichedObj = enrichObject(ecmlVerifiedObj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
         val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, cloudStorageUtil, definitionCache, definitionConfig, httpUtil)
         logger.info("Ecar generation done for Content: " + objWithEcar.identifier)
         saveOnSuccess(objWithEcar)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)

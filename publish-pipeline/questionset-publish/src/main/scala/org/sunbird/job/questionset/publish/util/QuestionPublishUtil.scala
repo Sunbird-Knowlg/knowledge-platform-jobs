@@ -20,7 +20,7 @@ object QuestionPublishUtil extends QuestionPublisher {
 	def publishQuestions(identifier: String, objList: List[ObjectData])(implicit ec: ExecutionContext, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, definitionCache: DefinitionCache, definitionConfig: DefinitionConfig, config: PublishConfig, httpUtil: HttpUtil): Unit = {
 		objList.foreach(qData => {
 			logger.info("QuestionPublishUtil :::: publishing child question  for : " + qData.identifier)
-			val obj = getObject(qData.identifier, qData.pkgVersion, readerConfig)(neo4JUtil, cassandraUtil)
+			val obj = getObject(qData.identifier, qData.pkgVersion, "", readerConfig)(neo4JUtil, cassandraUtil)
 			val messages: List[String] = validate(obj, obj.identifier, validateQuestion)
 			if (messages.isEmpty) {
 				val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)

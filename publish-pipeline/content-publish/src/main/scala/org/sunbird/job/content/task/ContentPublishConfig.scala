@@ -43,12 +43,12 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
   val cassandraHost: String = config.getString("lms-cassandra.host")
   val cassandraPort: Int = config.getInt("lms-cassandra.port")
   // TODO: Need to check respective changes for content
-  val contentKeyspaceName = config.getString("content.keyspace")
-  val contentTableName = config.getString("content.table")
+  val contentKeyspaceName: String = config.getString("content.keyspace")
+  val contentTableName: String = config.getString("content.table")
 
   // Neo4J Configurations
-  val graphRoutePath = config.getString("neo4j.routePath")
-  val graphName = config.getString("neo4j.graph")
+  val graphRoutePath: String = config.getString("neo4j.routePath")
+  val graphName: String = config.getString("neo4j.graph")
 
   // Redis Configurations
   val nodeStore: Int = config.getInt("redis.database.contentCache.id")
@@ -62,7 +62,7 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
   val printServiceBaseUrl: String = config.getString("service.print.basePath")
 
   val definitionBasePath: String = if (config.hasPath("schema.basePath")) config.getString("schema.basePath") else "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local"
-  val schemaSupportVersionMap = if (config.hasPath("schema.supportedVersion")) config.getObject("schema.supportedVersion").unwrapped().asScala.toMap else Map[String, AnyRef]()
+  val schemaSupportVersionMap: Map[String, AnyRef] = if (config.hasPath("schema.supportedVersion")) config.getObject("schema.supportedVersion").unwrapped().asScala.toMap else Map[String, AnyRef]()
 
   val supportedObjectType: util.List[String] = if (config.hasPath("content.objectType")) config.getStringList("content.objectType") else util.Arrays.asList[String]("Content", "ContentImage")
   val supportedMimeType: util.List[String] = if (config.hasPath("content.mimeType")) config.getStringList("content.mimeType") else util.Arrays.asList[String]("application/pdf")
@@ -71,5 +71,9 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
 
   val isECARExtractionEnabled: Boolean = if(config.hasPath("content.isECARExtractionEnabled")) config.getBoolean("content.isECARExtractionEnabled") else true
   val contentFolder: String = if(config.hasPath("cloud_storage.folder.content")) config.getString("cloud_storage.folder.content") else "content"
+  val artifactFolder: String = if(config.hasPath("cloud_storage.folder.artifact")) config.getString("cloud_storage.folder.artifact") else "artifact"
+  val retryAssetDownloadsCount: Integer = if(config.hasPath("content.retry_asset_download_count")) config.getInt("content.retry_asset_download_count") else 1
   val artifactSizeForOnline: Double = if(config.hasPath("content.artifact.size.for_online")) config.getDouble("content.artifact.size.for_online") else 209715200
+  val bundleLocation: String = if(config.hasPath("content.bundleLocation")) config.getString("content.bundleLocation") else "/data/contentBundle/"
+
 }
