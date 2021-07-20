@@ -111,7 +111,7 @@ class QuestionSetPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matc
 
   "getExtData " should " return ObjectExtData having hierarchy" in {
     val identifier = "do_321"
-    val result =  new TestQuestionSetPublisher().getExtData(identifier, 1.0, readerConfig)
+    val result =  new TestQuestionSetPublisher().getExtData(identifier, 1.0,"", readerConfig)
     result.getOrElse(new ObjectExtData).asInstanceOf[ObjectExtData].hierarchy.getOrElse(Map()).contains("do_321")
     result.getOrElse(new ObjectExtData).asInstanceOf[ObjectExtData].hierarchy.getOrElse(Map()).getOrElse("children", List(Map())).asInstanceOf[List[Map[String, AnyRef]]].size should be (1)
   }

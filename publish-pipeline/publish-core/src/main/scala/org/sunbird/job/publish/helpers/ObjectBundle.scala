@@ -63,8 +63,7 @@ trait ObjectBundle {
 			)
 			val downloadUrl: String = updatedObj.getOrElse("downloadUrl", "").asInstanceOf[String]
 			val dUrl: String = if(StringUtils.isNotBlank(downloadUrl)) downloadUrl else updatedObj.getOrElse("artifactUrl", "").asInstanceOf[String]
-			val dMap = if (StringUtils.equalsIgnoreCase(contentDisposition, "online-only")) Map("downloadUrl" -> null)
-			else Map("downloadUrl" -> dUrl)
+			val dMap = if (StringUtils.equalsIgnoreCase(contentDisposition, "online-only")) Map("downloadUrl" -> null) else Map("downloadUrl" -> dUrl)
 			val downloadUrls: Map[AnyRef, String] = dUrlMap.keys.flatMap(key => Map(key -> identifier)).toMap
 			val mergedMeta = updatedObj ++ dMap
 			val definition: ObjectDefinition = defCache.getDefinition(objectType, defConfig.supportedVersion.getOrElse(objectType.toLowerCase, "1.0").asInstanceOf[String], defConfig.basePath)

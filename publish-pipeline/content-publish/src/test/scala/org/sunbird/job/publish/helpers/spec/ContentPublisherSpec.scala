@@ -18,6 +18,8 @@ import org.sunbird.job.publish.helpers.EcarPackageType
 import org.sunbird.job.publish.util.CloudStorageUtil
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
 
+import java.util
+
 class ContentPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
 
   implicit val mockNeo4JUtil: Neo4JUtil = mock[Neo4JUtil](Mockito.withSettings().serializable())
@@ -91,12 +93,12 @@ class ContentPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers
 
   "getExtData " should "do nothing " in {
     val identifier = "do_11329603741667328018";
-    val result: Option[ObjectExtData] = new TestContentPublisher().getExtData(identifier, 0.0, readerConfig)
+    val result: Option[ObjectExtData] = new TestContentPublisher().getExtData(identifier, 0.0, "", readerConfig)
   }
 
   "getHierarchy " should "do nothing " in {
     val identifier = "do_11329603741667328018";
-    new TestContentPublisher().getExtData(identifier, 1.0, readerConfig)
+    new TestContentPublisher().getExtData(identifier, 1.0, "", readerConfig)
   }
 
   "getExtDatas " should "do nothing " in {

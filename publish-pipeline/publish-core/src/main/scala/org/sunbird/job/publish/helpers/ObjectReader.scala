@@ -10,10 +10,10 @@ trait ObjectReader {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[ObjectReader])
 
-  def getObject(identifier: String, pkgVersion: Double, readerConfig: ExtDataConfig)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil): ObjectData = {
+  def getObject(identifier: String, pkgVersion: Double, mimeType: String, readerConfig: ExtDataConfig)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil): ObjectData = {
     logger.info("Reading editable object data for: " + identifier + " with pkgVersion: " + pkgVersion)
     val metadata = getMetadata(identifier, pkgVersion)
-    val extData = getExtData(identifier, pkgVersion, readerConfig)
+    val extData = getExtData(identifier, pkgVersion, mimeType, readerConfig)
     new ObjectData(identifier, metadata, extData.getOrElse(ObjectExtData()).data, extData.getOrElse(ObjectExtData()).hierarchy)
   }
 
@@ -25,7 +25,7 @@ trait ObjectReader {
     metaData ++ Map[String, AnyRef]("identifier" -> id, "objectType" -> objType) - ("IL_UNIQUE_ID", "IL_FUNC_OBJECT_TYPE", "IL_SYS_NODE_TYPE")
   }
 
-  def getExtData(identifier: String, pkgVersion: Double, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[ObjectExtData]
+  def getExtData(identifier: String, pkgVersion: Double, mimeType: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[ObjectExtData]
 
   def getHierarchy(identifier: String, pkgVersion: Double, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]]
 

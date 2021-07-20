@@ -57,7 +57,7 @@ class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUt
 	override def processElement(data: PublishMetadata, context: ProcessFunction[PublishMetadata, String]#Context, metrics: Metrics): Unit = {
 		logger.info("Question publishing started for : " + data.identifier)
 		metrics.incCounter(config.questionPublishEventCount)
-		val obj = getObject(data.identifier, data.pkgVersion, readerConfig)(neo4JUtil, cassandraUtil)
+		val obj = getObject(data.identifier, data.pkgVersion, "", readerConfig)(neo4JUtil, cassandraUtil)
 		val messages:List[String] = validate(obj, obj.identifier, validateQuestion)
 		if (messages.isEmpty) {
 			val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
