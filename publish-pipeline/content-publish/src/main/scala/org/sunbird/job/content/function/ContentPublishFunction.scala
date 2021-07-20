@@ -7,15 +7,14 @@ import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cache.{DataCache, RedisConnect}
-import org.sunbird.job.domain.`object`.DefinitionCache
-import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
-import org.sunbird.job.publish.util.CloudStorageUtil
-import org.sunbird.job.content.publish.domain.{Event, PublishMetadata}
+import org.sunbird.job.content.publish.domain.PublishMetadata
 import org.sunbird.job.content.publish.helpers.ContentPublisher
 import org.sunbird.job.content.publish.helpers.ExtractableMimeTypeHelper.processECMLBody
-import org.sunbird.job.content.publish.processor.Plugin
 import org.sunbird.job.content.task.ContentPublishConfig
+import org.sunbird.job.domain.`object`.DefinitionCache
+import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
 import org.sunbird.job.publish.helpers.EcarPackageType
+import org.sunbird.job.publish.util.CloudStorageUtil
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
@@ -107,13 +106,13 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
 
   def getStreamingEvent(obj: ObjectData) : String = {
     val ets = System.currentTimeMillis
-    val mid = s"""LP.${ets}.${UUID.randomUUID}"""
+    val mid = s"""LP.$ets.${UUID.randomUUID}"""
     val channelId = obj.getString("channel", "")
     val ver = obj.getString("versionKey", "")
     val artifactUrl = obj.getString("artifactUrl", "")
     // TODO: deprecate using contentType in the event.
-    val event = s"""{"eid":"BE_JOB_REQUEST", "ets": ${ets}, "mid": "${mid}", "actor": {"id": "Post Publish Processor", "type": "System"}, "context":{"pdata":{"ver":"1.0","id":"org.ekstep.platform"}, "channel":"${channelId}","env":"${config.jobEnv}"},"object":{"ver":"${ver}","id":"${obj.identifier}"},"edata": {"action":"post-publish-process","iteration":1,"identifier":"${obj.identifier}","channel":"${channelId}","artifactUrl":"${artifactUrl}","mimeType":"${obj.mimeType}","contentType":"Resource","pkgVersion":1,"status":"Live"}}""".stripMargin
-    logger.info(s"Video Streaming Event for identifier ${obj.identifier}  is  : ${event}")
+    val event = s"""{"eid":"BE_JOB_REQUEST", "ets": $ets, "mid": "$mid", "actor": {"id": "Post Publish Processor", "type": "System"}, "context":{"pdata":{"ver":"1.0","id":"org.ekstep.platform"}, "channel":"${channelId}","env":"${config.jobEnv}"},"object":{"ver":"$ver","id":"${obj.identifier}"},"edata": {"action":"post-publish-process","iteration":1,"identifier":"${obj.identifier}","channel":"$channelId","artifactUrl":"${artifactUrl}","mimeType":"${obj.mimeType}","contentType":"Resource","pkgVersion":1,"status":"Live"}}""".stripMargin
+    logger.info(s"Video Streaming Event for identifier ${obj.identifier}  is  : $event")
     event
   }
 }

@@ -1,23 +1,22 @@
 package org.sunbird.job.content.publish.helpers
 
+import com.datastax.driver.core.querybuilder.{QueryBuilder, Select}
+import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper}
+import org.apache.commons.io.{FileUtils, FilenameUtils}
 import org.apache.commons.lang3.StringUtils
+import org.slf4j.LoggerFactory
+import org.sunbird.job.content.publish.processor.{JsonParser, Plugin, XmlParser}
 import org.sunbird.job.content.task.ContentPublishConfig
 import org.sunbird.job.publish.core.{ExtDataConfig, ObjectData, Slug}
 import org.sunbird.job.publish.util.CloudStorageUtil
 import org.sunbird.job.util.CassandraUtil
-
-import java.io.{File, FileInputStream, FileOutputStream, IOException, StringReader}
-import scala.concurrent.ExecutionContext
-import com.datastax.driver.core.querybuilder.{QueryBuilder, Select}
-import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper}
-import org.apache.commons.io.{FileUtils, FilenameUtils}
-import org.slf4j.LoggerFactory
-import org.sunbird.job.content.publish.processor.{JsonParser, Plugin, XmlParser}
 import org.xml.sax.{InputSource, SAXException}
-import scala.util.control.Breaks._
+
+import java.io._
 import java.nio.file.{Files, Path, Paths}
 import java.util.zip.{ZipEntry, ZipOutputStream}
 import javax.xml.parsers.{DocumentBuilderFactory, ParserConfigurationException}
+import scala.concurrent.ExecutionContext
 
 object ExtractableMimeTypeHelper {
 
