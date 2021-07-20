@@ -30,26 +30,22 @@ trait MetricsDataTransformerService {
           contentMetrics = contentMetrics + s"""$f: ${property.nv},""".stripMargin
         }
       })
-
     val sourcingId = response.getOrElse("origin","").asInstanceOf[String]
-    updateContentMetrics(contentMetrics, sourcingId)(config, httpUtil)
 
-    logger.info("Updated content metrics: " + identifier)
     try {
-      logger.info("Successfully updated content " + identifier)
+      updateContentMetrics(contentMetrics, sourcingId)(config, httpUtil)
+      logger.info("Updated content metrics: " + identifier)
       metrics.incCounter(config.successEventCount)
     } catch {
-      case ex: IOException =>
-        logger.error("Error while indexing message :: " + event.getJson + " :: " + ex.getMessage)
-        ex.printStackTrace()
-        throw new InvalidEventException(ex.getMessage, Map("partition" -> event.partition, "offset" -> event.offset), ex)
       case ex: Exception =>
-        logger.error("Error while processing message :: " + event.getJson + " :: ", ex)
+        logger.error("Error while writing content metrics :: " + event.getJson + " :: ", ex)
         metrics.incCounter(config.failedEventCount)
+        ex.printStackTrace()
+        throw new Exception(s"Error writing metrics for sourcing id: $sourcingId")
     }
   }
   else {
-      logger.info("Learning event not qualified for audit")
+      logger.info("Learning event skipped, no sourcing identifier found")
       metrics.incCounter(config.skippedEventCount)
     }
 
@@ -64,7 +60,7 @@ trait MetricsDataTransformerService {
     } else if(404 == response.status) {
       Map()
     } else {
-      throw new Exception(s"Error from get API : ${url}, with response: ${response}")
+      throw new Exception(s"Error from get API with response: $response")
     }
   }
 
