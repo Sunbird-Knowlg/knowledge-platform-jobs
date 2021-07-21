@@ -2,7 +2,6 @@ package org.sunbird.job.content.publish.helpers
 
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
-import org.sunbird.job.content.publish.helpers.ExtractableMimeTypeHelper.{copyExtractedContentPackage, extractableMimeTypes, getBasePath, getContentBody, getS3URL}
 import org.sunbird.job.content.task.ContentPublishConfig
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.publish.config.PublishConfig
@@ -13,9 +12,9 @@ import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
 
 import java.io.File
 import java.nio.file.Files
+import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext
-import scala.collection.JavaConverters._
 
 trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnrichment with EcarGenerator with ObjectUpdater {
 
@@ -25,8 +24,8 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
   private val pragmaMimeTypes = List("video/x-youtube", "application/pdf")
 
   override def getExtData(identifier: String, pkgVersion: Double, mimeType: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[ObjectExtData] = {
-    if(mimeType.equalsIgnoreCase("application/vnd.ekstep.ecml-archive")){
-      val ecmlBody = getContentBody(identifier, readerConfig)
+    if (mimeType.equalsIgnoreCase("application/vnd.ekstep.ecml-archive")) {
+      val ecmlBody = ExtractableMimeTypeHelper.getContentBody(identifier, readerConfig)
       Some(ObjectExtData(Some(Map[String, AnyRef]("body" -> ecmlBody))))
     } else None
   }
@@ -38,7 +37,7 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
   override def getHierarchies(identifiers: List[String], readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = None
 
   override def enrichObjectMetadata(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig, definitionCache: DefinitionCache, definitionConfig: DefinitionConfig): Option[ObjectData] = {
-    val contentConfig =  config.asInstanceOf[ContentPublishConfig]
+    val contentConfig = config.asInstanceOf[ContentPublishConfig]
     val extraMeta = Map("pkgVersion" -> (obj.pkgVersion + 1).asInstanceOf[AnyRef], "lastPublishedOn" -> getTimeStamp,
       "flagReasons" -> null, "body" -> null, "publishError" -> null, "variants" -> null, "downloadUrl" -> null)
     val contentSize = obj.metadata.getOrElse("size", 0).toString.toDouble
@@ -49,11 +48,11 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
     val updatedPragma = setPragma(obj, updatedCompatibilityLevel).getOrElse(updatedCompatibilityLevel)
 
     //delete basePath if exists
-    Files.deleteIfExists(new File(getBasePath(obj.identifier, contentConfig.bundleLocation)).toPath)
+    Files.deleteIfExists(new File(ExtractableMimeTypeHelper.getBasePath(obj.identifier, contentConfig.bundleLocation)).toPath)
 
-    if(contentConfig.isECARExtractionEnabled && extractableMimeTypes.contains(obj.mimeType)){
-      copyExtractedContentPackage(obj, contentConfig, "version", cloudStorageUtil)
-      copyExtractedContentPackage(obj, contentConfig, "latest", cloudStorageUtil)
+    if (contentConfig.isECARExtractionEnabled && contentConfig.extractableMimeTypes.contains(obj.mimeType)) {
+      ExtractableMimeTypeHelper.copyExtractedContentPackage(obj, contentConfig, "version", cloudStorageUtil)
+      ExtractableMimeTypeHelper.copyExtractedContentPackage(obj, contentConfig, "latest", cloudStorageUtil)
     }
     val updatedPreviewUrl = updatePreviewUrl(obj, updatedPragma, cloudStorageUtil, contentConfig).getOrElse(updatedPragma)
     Some(new ObjectData(obj.identifier, updatedPreviewUrl, obj.extData, obj.hierarchy))
@@ -70,9 +69,9 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
   def validateMetadata(obj: ObjectData, identifier: String): List[String] = {
     logger.info("Validating Content metadata for : " + obj.identifier)
     val messages = ListBuffer[String]()
-    if (obj.mimeType.equalsIgnoreCase("application/vnd.ekstep.ecml-archive") && (StringUtils.isBlank(obj.extData.getOrElse("body", "").asInstanceOf[String]) || obj.extData.getOrElse("body", "").asInstanceOf[Map[String, AnyRef]].isEmpty))
+    if (obj.mimeType.equalsIgnoreCase("application/vnd.ekstep.ecml-archive") && (obj.extData.getOrElse("body", "") == null || obj.extData.getOrElse("body", "").asInstanceOf[Map[String, AnyRef]].isEmpty))
       messages += s"""There is no body available for : $identifier"""
-    else if(!obj.mimeType.equalsIgnoreCase("application/vnd.ekstep.ecml-archive") && StringUtils.isBlank(obj.metadata.getOrElse("artifactUrl", "").asInstanceOf[String]))
+    else if (!obj.mimeType.equalsIgnoreCase("application/vnd.ekstep.ecml-archive") && StringUtils.isBlank(obj.getString("artifactUrl", "")))
       messages += s"""There is no artifactUrl available for : $identifier"""
 
     messages.toList
@@ -114,7 +113,7 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
              | "application/vnd.android.package-archive" | "assets" =>
           None
         case "application/vnd.ekstep.ecml-archive" | "application/vnd.ekstep.html-archive" | "application/vnd.ekstep.h5p-archive" =>
-          val latestFolderS3Url = getS3URL(obj, cloudStorageUtil, config)
+          val latestFolderS3Url = ExtractableMimeTypeHelper.getS3URL(obj, cloudStorageUtil, config)
           val updatedPreviewUrl = updatedMeta ++ Map("previewUrl" -> latestFolderS3Url, "streamingUrl" -> latestFolderS3Url)
           Some(updatedPreviewUrl)
         case _ =>
