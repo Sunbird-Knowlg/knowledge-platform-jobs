@@ -28,7 +28,7 @@ class CreateUserFeedFunction(config: CertificateGeneratorConfig, httpUtil: HttpU
   override def processElement(metaData: UserFeedMetaData,
                               context: ProcessFunction[UserFeedMetaData, String]#Context,
                               metrics: Metrics): Unit = {
-    val req = s"""{"request":{"userId":"${metaData.userId}","category":"Notification","priority":1,"data":{"type":1,"actionDtata":{"actionType":"certificateUpdate","title":"${metaData.courseName}","description":"${config.userFeedMsg}","identifier":"${metaData.courseId}"}}}}"""
+    val req = s"""{"request":{"userId":"${metaData.userId}","category":"Notification","priority":1,"data":{"type":1,"actionData":{"actionType":"certificateUpdate","title":"${metaData.courseName}","description":"${config.userFeedMsg}","identifier":"${metaData.courseId}"}}}}"""
     val url = config.learnerServiceBaseUrl + config.userFeedCreateEndPoint
     val response: HTTPResponse = httpUtil.post(url, req)
     if (response.status == 200) {

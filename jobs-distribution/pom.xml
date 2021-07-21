@@ -52,6 +52,12 @@
         </dependency>
         <dependency>
             <groupId>org.sunbird</groupId>
+            <artifactId>content-publish</artifactId>
+            <version>1.0.0</version>
+            <type>jar</type>
+        </dependency>
+        <dependency>
+            <groupId>org.sunbird</groupId>
             <artifactId>search-indexer</artifactId>
             <version>1.0.0</version>
             <type>jar</type>
@@ -89,6 +95,12 @@
         <dependency>
             <groupId>org.sunbird</groupId>
             <artifactId>auto-creator-v2</artifactId>
+            <version>1.0.0</version>
+            <type>jar</type>
+        </dependency>
+        <dependency>
+            <groupId>org.sunbird</groupId>
+            <artifactId>audit-event-generator</artifactId>
             <version>1.0.0</version>
             <type>jar</type>
         </dependency>

@@ -49,7 +49,7 @@ class CollectionCertPreProcessorFn(config: CollectionCertPreProcessorConfig, htt
         try {
             metrics.incCounter(config.totalEventsCount)
             if(event.isValid()(config)) {
-                val certTemplates = fetchTemplates(event)(metrics)
+                val certTemplates = fetchTemplates(event)(metrics).filter(template => template._2.getOrElse("url", "").asInstanceOf[String].contains(".svg"))
                 if(!certTemplates.isEmpty) {
                     certTemplates.map(template => {
                         val certEvent = issueCertificate(event, template._2)(cassandraUtil, cache, metrics, config, httpUtil)

@@ -108,7 +108,7 @@ trait VideoEnrichmentHelper extends ThumbnailUtil {
       } catch {
         case e: Throwable =>
           logger.error(s"Exception while generating thumbnail for identifier: ${identifier}.", e)
-          throw new Exception(s"Exception while generating thumbnail for identifier: ${identifier}. Error : ${e.getMessage}")
+          throw new Exception(s"Exception while generating thumbnail for identifier: ${identifier}. Error : ${e.getMessage}", e)
       }
     }
     thumbnail

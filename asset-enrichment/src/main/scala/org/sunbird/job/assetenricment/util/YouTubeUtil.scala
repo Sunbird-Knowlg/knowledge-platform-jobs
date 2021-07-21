@@ -76,7 +76,7 @@ class YouTubeUtil(config: AssetEnrichmentConfig) {
         val reason = error.get("reason").asInstanceOf[String]
         limitExceeded = true
         logger.error(s"Youtube API Limit Exceeded while processing for videoId = ${videoId}. Reason is:  ${reason}", ex)
-        throw new Exception(s"Unable to Check License for videoId = ${videoId}. Please Try Again After Sometime!")
+        throw new Exception(s"Unable to Check License for videoId = ${videoId}. Please Try Again After Sometime!", ex)
       case e: Exception =>
         logger.error("Error Occurred While Calling Youtube API. Error Details : ", e)
         throw e
