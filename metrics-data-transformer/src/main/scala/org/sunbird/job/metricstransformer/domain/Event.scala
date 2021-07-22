@@ -8,6 +8,8 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 
   def nodeUniqueId: String = readOrDefault("nodeUniqueId", "")
 
+  def channel: String = readOrDefault("channel","")
+
   def transactionData: Map[String, AnyRef] = readOrDefault("transactionData", Map())
 
 }

@@ -21,7 +21,7 @@ class MetricsDataTransformerConfig(override val config: Config) extends BaseJobC
   val contentReadApi : String = config.getString("content_read_api")
 
   val lpURL: String = config.getString("service.learner.basePath")
-  val contentV3Update = config.getString("content_update_api")
+  val contentUpdate = config.getString("content_update_api")
 
   val defaultHeaders = Map[String, String] ("Content-Type" -> "application/json")
 

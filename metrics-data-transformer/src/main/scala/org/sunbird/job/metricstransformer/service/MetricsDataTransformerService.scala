@@ -1,13 +1,11 @@
 package org.sunbird.job.metricstransformer.service
 
-import java.io.IOException
-
 import org.slf4j.LoggerFactory
 import org.sunbird.job.Metrics
 import org.sunbird.job.exception.InvalidEventException
 import org.sunbird.job.metricstransformer.domain.Event
 import org.sunbird.job.metricstransformer.task.MetricsDataTransformerConfig
-import org.sunbird.job.util.{ElasticSearchUtil, HTTPResponse, HttpUtil, JSONUtil, ScalaJsonUtil}
+import org.sunbird.job.util.{HTTPResponse, HttpUtil, ScalaJsonUtil}
 
 case class ContentProps(nv: AnyRef, ov: AnyRef)
 
@@ -18,7 +16,7 @@ trait MetricsDataTransformerService {
   def processEvent(event: Event, metrics: Metrics, keys: Array[String])(implicit config: MetricsDataTransformerConfig, httpUtil: HttpUtil): Unit = {
     val identifier = event.nodeUniqueId
     val url = config.contentServiceBaseUrl + config.contentReadApi + "/" + identifier
-    val response = getSourcingId(url)(config, httpUtil)
+    val response = getContent(url)(config, httpUtil)
 
     if (!response.isEmpty) {
       val propertyMap = event.transactionData("properties").asInstanceOf[Map[String, AnyRef]]
@@ -33,7 +31,8 @@ trait MetricsDataTransformerService {
     val sourcingId = response.getOrElse("origin","").asInstanceOf[String]
 
     try {
-      updateContentMetrics(contentMetrics, sourcingId)(config, httpUtil)
+      val channel = event.channel
+      updateContentMetrics(contentMetrics, sourcingId, channel)(config, httpUtil)
       logger.info("Updated content metrics: " + identifier)
       metrics.incCounter(config.successEventCount)
     } catch {
@@ -41,7 +40,7 @@ trait MetricsDataTransformerService {
         logger.error("Error while writing content metrics :: " + event.getJson + " :: ", ex)
         metrics.incCounter(config.failedEventCount)
         ex.printStackTrace()
-        throw new Exception(s"Error writing metrics for sourcing id: $sourcingId")
+        throw new InvalidEventException(s"Error writing metrics for sourcing id: $sourcingId")
     }
   }
   else {
@@ -51,7 +50,7 @@ trait MetricsDataTransformerService {
 
   }
 
-  def getSourcingId(url: String)(config: MetricsDataTransformerConfig, httpUtil: HttpUtil) : Map[String,AnyRef] = {
+  def getContent(url: String)(config: MetricsDataTransformerConfig, httpUtil: HttpUtil) : Map[String,AnyRef] = {
     val response = httpUtil.get(url, config.defaultHeaders)
     if(200 == response.status) {
       ScalaJsonUtil.deserialize[Map[String, AnyRef]](response.body)
@@ -60,12 +59,12 @@ trait MetricsDataTransformerService {
     } else if(404 == response.status) {
       Map()
     } else {
-      throw new Exception(s"Error from get API with response: $response")
+      throw new InvalidEventException(s"Error from get API with response: $response")
     }
   }
 
-  def updateContentMetrics(contentProperty: String, sourcingId: String)(config: MetricsDataTransformerConfig, httpUtil: HttpUtil): Boolean = {
-    val updateUrl = config.lpURL + config.contentV3Update + "/" + sourcingId
+  def updateContentMetrics(contentProperty: String, sourcingId: String, channel: String)(config: MetricsDataTransformerConfig, httpUtil: HttpUtil): Boolean = {
+    val updateUrl = config.lpURL + config.contentUpdate + "/" + sourcingId
     val contentMetrics = if(contentProperty.nonEmpty) contentProperty.substring(0,contentProperty.length-1) else contentProperty
 
     val request =
@@ -78,12 +77,13 @@ trait MetricsDataTransformerService {
          |  }
          |}""".stripMargin
 
-    val response:HTTPResponse = httpUtil.patch(updateUrl, request,  config.defaultHeaders)
-    if(response.status == 200){
+    val headers = config.defaultHeaders ++ Map("X-Channel-Id" -> channel)
+    val response:HTTPResponse = httpUtil.patch(updateUrl, request,  headers)
+    if(response.status == 200) {
       true
     } else {
       logger.error("Error while updating metrics for content : " + sourcingId + " :: " + response.body)
-      throw new Exception("Error while updating metrics for content : " + sourcingId + " :: " + response.body)
+      throw new InvalidEventException("Error while updating metrics for content : " + sourcingId + " :: " + response.body)
     }
   }
 
