@@ -50,7 +50,7 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
 		messages.toList
 	}
 
-	override def getExtData(identifier: String,pkgVersion: Double, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[ObjectExtData] = {
+	override def getExtData(identifier: String,pkgVersion: Double, mimeType: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[ObjectExtData] = {
 		val row: Row = Option(getQuestionData(getEditableObjId(identifier, pkgVersion), readerConfig)).getOrElse(getQuestionData(identifier, readerConfig))
 		//TODO: covert below code in scala. entire props should be in scala.
 		val data = if (null != row) Option(extProps.map(prop => prop -> row.getString(prop.toLowerCase())).toMap.filter(p => StringUtils.isNotBlank(p._2.asInstanceOf[String]))) else Option(Map[String, AnyRef]())
