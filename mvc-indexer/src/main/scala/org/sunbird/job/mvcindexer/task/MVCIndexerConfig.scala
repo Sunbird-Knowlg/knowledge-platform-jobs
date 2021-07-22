@@ -41,7 +41,7 @@ class MVCIndexerConfig(override val config: Config) extends BaseJobConfig(config
   val operationCreate = "CREATE"
 
   // API Configs
-  val contentServiceBase = config.getString("learning_service.basePath")
+  val contentServiceBase = config.getString("service.learning.basePath")
   val mlVectorAPIUrl = s"http://${config.getString("ml.vector.host")}:${config.getString("ml.vector.port")}/ml/vector/ContentText"
   val mlKeywordAPIUrl = s"http://${config.getString("ml.keyword.host")}:${config.getString("ml.keyword.port")}/daggit/submit"
   val keywordAPIJobname = "vidyadaan_content_keyword_tagging"

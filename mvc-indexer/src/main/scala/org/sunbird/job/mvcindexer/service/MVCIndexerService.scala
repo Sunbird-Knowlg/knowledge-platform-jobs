@@ -18,7 +18,6 @@ class MVCIndexerService(config: MVCIndexerConfig, esUtil: ElasticSearchUtil, htt
 
   @throws[Exception]
   def processMessage(message: Event)(implicit metrics: Metrics): Unit = {
-    logger.info("Indexing event into ES")
     try {
       val objectId: String = message.identifier
       if (!message.action.equalsIgnoreCase("update-content-rating")) {
