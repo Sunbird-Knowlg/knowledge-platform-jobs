@@ -20,7 +20,7 @@ trait ThumbnailGenerator {
 	def generateThumbnail(obj: ObjectData)(implicit cloudStorageUtil: CloudStorageUtil): Option[ObjectData] = {
 		val appIcon: String = obj.metadata.getOrElse("appIcon", "").asInstanceOf[String]
 		if (StringUtils.isBlank(appIcon)) None
-		val suffix = FilenameUtils.getName(appIcon)
+		val suffix = Slug.makeSlug(FilenameUtils.getName(appIcon), true)
 		try {
 			FileUtils.copyURLToFile(obj.identifier, appIcon, suffix) match {
 				case Some(file: File) => {
@@ -28,7 +28,7 @@ trait ThumbnailGenerator {
 					val outFile: Option[File] = generateOutFile(file)
 					outFile match {
 						case Some(file: File) => {
-							val urlArray: Array[String] = cloudStorageUtil.uploadFile(getUploadFolderName(obj.identifier, ARTIFACT_FOLDER), file, Some(true))
+							val urlArray: Array[String] = cloudStorageUtil.uploadFile(getUploadFolderName(obj.identifier, ARTIFACT_FOLDER, obj.getString("objectType", "")), file, Some(true))
 							Some(new ObjectData(obj.identifier, obj.metadata ++ Map("appIcon" -> urlArray(1), "posterImage" -> appIcon), obj.extData, obj.hierarchy))
 						}
 						case _ => {
@@ -74,8 +74,8 @@ trait ThumbnailGenerator {
 		outputFolder + "/" + outputFileName
 	}
 
-	protected def getUploadFolderName(identifier: String, folder: String): String = {
-		"questionset/" + Slug.makeSlug(identifier, true) + "/" + folder
+	protected def getUploadFolderName(identifier: String, folder: String, objectType: String): String = {
+		objectType.toLowerCase() + File.separator + Slug.makeSlug(identifier, true) + "/" + folder
 	}
 
 }
