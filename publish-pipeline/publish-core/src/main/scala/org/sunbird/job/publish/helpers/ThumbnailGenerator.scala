@@ -6,9 +6,10 @@ import org.imgscalr.Scalr
 import org.slf4j.LoggerFactory
 import org.sunbird.job.publish.core.{ObjectData, Slug}
 import org.sunbird.job.publish.util.{CloudStorageUtil, FileUtils}
-
 import java.awt.image.BufferedImage
 import java.io.File
+import java.net.{HttpURLConnection, URL}
+
 import javax.imageio.ImageIO
 
 trait ThumbnailGenerator {
@@ -19,8 +20,9 @@ trait ThumbnailGenerator {
 
 	def generateThumbnail(obj: ObjectData)(implicit cloudStorageUtil: CloudStorageUtil): Option[ObjectData] = {
 		val appIcon: String = obj.metadata.getOrElse("appIcon", "").asInstanceOf[String]
-		if (StringUtils.isBlank(appIcon)) None
-		val suffix = Slug.makeSlug(FilenameUtils.getName(appIcon), true)
+		if (StringUtils.isBlank(appIcon)) return None
+		val fileName = getFileName(appIcon)
+		val suffix = if(StringUtils.isNotBlank(fileName)) fileName else Slug.makeSlug(FilenameUtils.getName(appIcon), false)
 		try {
 			FileUtils.copyURLToFile(obj.identifier, appIcon, suffix) match {
 				case Some(file: File) => {
@@ -28,7 +30,7 @@ trait ThumbnailGenerator {
 					val outFile: Option[File] = generateOutFile(file)
 					outFile match {
 						case Some(file: File) => {
-							val urlArray: Array[String] = cloudStorageUtil.uploadFile(getUploadFolderName(obj.identifier, ARTIFACT_FOLDER, obj.getString("objectType", "")), file, Some(true))
+							val urlArray: Array[String] = cloudStorageUtil.uploadFile(getUploadFolderName(obj.identifier, ARTIFACT_FOLDER, obj.dbObjType.toLowerCase.replaceAll("image", "")), file, Some(true))
 							Some(new ObjectData(obj.identifier, obj.metadata ++ Map("appIcon" -> urlArray(1), "posterImage" -> appIcon), obj.extData, obj.hierarchy))
 						}
 						case _ => {
@@ -76,6 +78,27 @@ trait ThumbnailGenerator {
 
 	protected def getUploadFolderName(identifier: String, folder: String, objectType: String): String = {
 		objectType.toLowerCase() + File.separator + Slug.makeSlug(identifier, true) + "/" + folder
+	}
+
+	def getFileName(fileUrl: String): String = {
+		try {
+			val url: URL = new URL(fileUrl)
+			val httpConn: HttpURLConnection = url.openConnection.asInstanceOf[HttpURLConnection]
+			if (null != httpConn && httpConn.getResponseCode == HttpURLConnection.HTTP_OK) {
+				val disposition = httpConn.getHeaderField("Content-Disposition")
+				if (null != httpConn)
+					httpConn.disconnect()
+				if (StringUtils.isNotBlank(disposition)) {
+					val index = disposition.indexOf("filename=")
+					if (index > 0) disposition.substring(index + 10, disposition.indexOf("\"", index + 10)) else ""
+				} else ""
+			} else ""
+		} catch {
+			case e: Exception => {
+				e.printStackTrace()
+				""
+			}
+		}
 	}
 
 }
