@@ -61,4 +61,9 @@ class CassandraUtil(host: String, port: Int) {
     rs.wasApplied
   }
 
+  def executePreparedStatement(query: String, params: Object*): util.List[Row] = {
+    val rs: ResultSet = session.execute(session.prepare(query).bind(params : _*))
+    rs.all()
+  }
+
 }

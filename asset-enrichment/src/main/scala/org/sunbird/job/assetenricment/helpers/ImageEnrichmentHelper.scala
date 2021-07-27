@@ -19,7 +19,7 @@ trait ImageEnrichmentHelper {
   private val ARTIFACT_FOLDER = "artifact"
 
   def enrichImage(asset: Asset)(implicit config: AssetEnrichmentConfig, definitionCache: DefinitionCache, cloudStorageUtil: CloudStorageUtil, neo4JUtil: Neo4JUtil): Unit = {
-    val downloadUrl = asset.get("downloadUrl", "").asInstanceOf[String]
+    val downloadUrl = asset.get("artifactUrl", "").asInstanceOf[String]
     try {
       val variantsMap = optimizeImage(asset.identifier, downloadUrl)(config, definitionCache, cloudStorageUtil)
       saveImageVariants(variantsMap, asset)(neo4JUtil)
@@ -98,9 +98,9 @@ trait ImageEnrichmentHelper {
     } else 0.toDouble
   }
 
-  private def saveImageVariants(variantsMap: Map[String, String], asset: Asset)(implicit neo4JUtil: Neo4JUtil): Unit = {
+  def saveImageVariants(variantsMap: Map[String, String], asset: Asset)(implicit neo4JUtil: Neo4JUtil): Unit = {
+    if(variantsMap.nonEmpty) asset.put("variants", ScalaJsonUtil.serialize(variantsMap))
     asset.put("status", "Live")
-    asset.put("variants", ScalaJsonUtil.serialize(variantsMap))
     logger.info(s"Processed Image for identifier: ${asset.identifier}. Updating metadata.")
     neo4JUtil.updateNode(asset.identifier, asset.getMetadata)
   }

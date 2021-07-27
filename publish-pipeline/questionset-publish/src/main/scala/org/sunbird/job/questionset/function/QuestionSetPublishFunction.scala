@@ -7,8 +7,9 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
-import org.sunbird.job.domain.`object`.DefinitionCache
+import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
+import org.sunbird.job.publish.helpers.EcarPackageType
 import org.sunbird.job.publish.util.CloudStorageUtil
 import org.sunbird.job.questionset.publish.domain.PublishMetadata
 import org.sunbird.job.questionset.publish.helpers.QuestionSetPublisher
@@ -33,11 +34,9 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 
 	private[this] val logger = LoggerFactory.getLogger(classOf[QuestionSetPublishFunction])
 	val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
-	private val readerConfig = ExtDataConfig(config.questionSetKeyspaceName, config.questionSetTableName)
-	private val qReaderConfig = ExtDataConfig(config.questionKeyspaceName, config.questionTableName)
 
 	@transient var ec: ExecutionContext = _
-	private val pkgTypes = List("SPINE", "ONLINE")
+	private val pkgTypes = List(EcarPackageType.SPINE.toString, EcarPackageType.ONLINE.toString)
 
 
 	override def open(parameters: Configuration): Unit = {
@@ -62,6 +61,10 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 	override def processElement(data: PublishMetadata, context: ProcessFunction[PublishMetadata, String]#Context, metrics: Metrics): Unit = {
 		logger.info("QuestionSet publishing started for : " + data.identifier)
 		metrics.incCounter(config.questionSetPublishEventCount)
+		val definition: ObjectDefinition = definitionCache.getDefinition(data.objectType, config.schemaSupportVersionMap.getOrElse(data.objectType.toLowerCase(), "1.0").asInstanceOf[String], config.definitionBasePath)
+		val readerConfig = ExtDataConfig(config.questionSetKeyspaceName, config.questionSetTableName, definition.getExternalPrimaryKey, definition.getExternalProps)
+		val qDef: ObjectDefinition = definitionCache.getDefinition("Question", config.schemaSupportVersionMap.getOrElse("question", "1.0").asInstanceOf[String], config.definitionBasePath)
+		val qReaderConfig = ExtDataConfig(config.questionKeyspaceName, qDef.getExternalTable, qDef.getExternalPrimaryKey, qDef.getExternalProps)
 		val obj = getObject(data.identifier, data.pkgVersion, readerConfig)(neo4JUtil, cassandraUtil)
 		logger.info("processElement ::: obj metadata before publish ::: " + ScalaJsonUtil.serialize(obj.metadata))
 		logger.info("processElement ::: obj hierarchy before publish ::: " + ScalaJsonUtil.serialize(obj.hierarchy.getOrElse(Map())))
@@ -75,16 +78,16 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 			//TODO: Remove below statement
 			childQuestions.foreach(ch => logger.info("child questions visibility parent identifier : " + ch.identifier))
 			// Publish Child Questions
-			QuestionPublishUtil.publishQuestions(obj.identifier, childQuestions)(ec, neo4JUtil, cassandraUtil, qReaderConfig, cloudStorageUtil, definitionCache, definitionConfig)
-			val pubMsgs: List[String] = isChildrenPublished(childQuestions)
+			QuestionPublishUtil.publishQuestions(obj.identifier, childQuestions)(ec, neo4JUtil, cassandraUtil, qReaderConfig, cloudStorageUtil, definitionCache, definitionConfig, config, httpUtil)
+			val pubMsgs: List[String] = isChildrenPublished(childQuestions, qReaderConfig)
 			if(pubMsgs.isEmpty) {
 				// Enrich Object as well as hierarchy
-				val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil)
+				val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
 				logger.info(s"processElement ::: object enrichment done for ${obj.identifier}")
 				logger.info("processElement :::  obj metadata post enrichment :: " + ScalaJsonUtil.serialize(enrichedObj.metadata))
 				logger.info("processElement :::  obj hierarchy post enrichment :: " + ScalaJsonUtil.serialize(enrichedObj.hierarchy.get))
 				// Generate ECAR
-				val objWithEcar = generateECAR(enrichedObj, pkgTypes)(ec, cloudStorageUtil, definitionCache, definitionConfig)
+				val objWithEcar = generateECAR(enrichedObj, pkgTypes)(ec, cloudStorageUtil, definitionCache, definitionConfig, httpUtil)
 				// Generate PDF URL
 				val updatedObj = generatePreviewUrl(objWithEcar, qList)(httpUtil, cloudStorageUtil)
 				saveOnSuccess(updatedObj)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
@@ -103,7 +106,7 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 	}
 
 	//TODO: Implement Multiple Data Read From Neo4j and Use it here.
-	def isChildrenPublished(children: List[ObjectData]): List[String] = {
+	def isChildrenPublished(children: List[ObjectData], readerConfig: ExtDataConfig): List[String] = {
 		val messages = ListBuffer[String]()
 		children.foreach(q => {
 			val id = q.identifier.replace(".img", "")
@@ -118,9 +121,9 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 	}
 
 
-	def generateECAR(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil, defCache: DefinitionCache, defConfig: DefinitionConfig): ObjectData = {
+	def generateECAR(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
 		val ecarMap: Map[String, String] = generateEcar(data, pkgTypes)
-		val variants: java.util.Map[String, String] = ecarMap.map { case (key, value) => key.toLowerCase -> value }.asJava
+		val variants: java.util.Map[String, java.util.Map[String, String]] = ecarMap.map { case (key, value) => key.toLowerCase -> Map[String, String]("ecarUrl"-> value, "size"-> httpUtil.getSize(value).toString).asJava }.asJava
 		logger.info("QuestionSetPublishFunction ::: generateECAR ::: ecar map ::: " + ecarMap)
 		val meta: Map[String, AnyRef] = Map("downloadUrl" -> ecarMap.getOrElse("SPINE", ""), "variants" -> variants)
 		new ObjectData(data.identifier, data.metadata ++ meta, data.extData, data.hierarchy)

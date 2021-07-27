@@ -19,6 +19,7 @@ class BaseJobConfig(val config: Config, val jobName: String) extends Serializabl
   val restartAttempts: Int = config.getInt("task.restart-strategy.attempts")
   val delayBetweenAttempts: Long = config.getLong("task.restart-strategy.delay")
   val parallelism: Int = config.getInt("task.parallelism")
+  
 
   val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
   // Only for Tests
@@ -30,6 +31,8 @@ class BaseJobConfig(val config: Config, val jobName: String) extends Serializabl
   val checkpointingPauseSeconds: Int = config.getInt("task.checkpointing.pause.between.seconds")
   val enableDistributedCheckpointing: Option[Boolean] = if (config.hasPath("job.enable.distributed.checkpointing")) Option(config.getBoolean("job.enable.distributed.checkpointing")) else None
   val checkpointingBaseUrl: Option[String] = if (config.hasPath("job.statebackend.base.url")) Option(config.getString("job.statebackend.base.url")) else None
+  // By default checkpointing timeout is 10 mins
+  val checkpointingTimeout: Long = if(config.hasPath("task.checkpointing.timeout")) config.getLong("task.checkpointing.timeout") else 600000L
 
   // LMS Cassandra DB Config
   val lmsDbHost: String = config.getString("lms-cassandra.host")
