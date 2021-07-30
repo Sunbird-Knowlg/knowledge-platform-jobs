@@ -11,7 +11,7 @@ import org.sunbird.job.fixture.EventFixture
 import org.sunbird.job.util.{ElasticSearchUtil, HTTPResponse, HttpUtil, JSONUtil}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 import org.sunbird.job.metricstransformer.domain.Event
-import org.sunbird.job.metricstransformer.functions.MetricsDataTransformer
+import org.sunbird.job.metricstransformer.function.MetricsDataTransformerFunction
 import org.sunbird.job.metricstransformer.task.MetricsDataTransformerConfig
 
 import java.util
@@ -26,7 +26,7 @@ class MetricsDataTransformerServiceTestSpec extends BaseTestSpec {
   val config: Config = ConfigFactory.load("test.conf")
   lazy val jobConfig: MetricsDataTransformerConfig = new MetricsDataTransformerConfig(config)
   val mockElasticUtil:ElasticSearchUtil = mock[ElasticSearchUtil](Mockito.withSettings().serializable())
-  lazy val metricsDataTransformer: MetricsDataTransformer = new MetricsDataTransformer(jobConfig, new HttpUtil())
+  lazy val metricsDataTransformer: MetricsDataTransformerFunction = new MetricsDataTransformerFunction(jobConfig, new HttpUtil())
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()

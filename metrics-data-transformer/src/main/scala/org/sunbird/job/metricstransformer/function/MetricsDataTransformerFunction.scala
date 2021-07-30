@@ -1,4 +1,4 @@
-package org.sunbird.job.metricstransformer.functions
+package org.sunbird.job.metricstransformer.function
 
 import java.util
 
@@ -11,7 +11,7 @@ import org.sunbird.job.metricstransformer.service.MetricsDataTransformerService
 import org.sunbird.job.metricstransformer.task.MetricsDataTransformerConfig
 import org.sunbird.job.util.{ElasticSearchUtil, HttpUtil}
 
-class MetricsDataTransformer(config: MetricsDataTransformerConfig, httpUtil: HttpUtil)
+class MetricsDataTransformerFunction(config: MetricsDataTransformerConfig, httpUtil: HttpUtil)
                             (implicit mapTypeInfo: TypeInformation[util.Map[String, Any]],
                              stringTypeInfo: TypeInformation[String])
                             extends BaseProcessFunction[Event, String](config) with MetricsDataTransformerService {

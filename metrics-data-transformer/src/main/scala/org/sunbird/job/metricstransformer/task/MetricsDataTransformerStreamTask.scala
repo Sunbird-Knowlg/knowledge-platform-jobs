@@ -9,7 +9,7 @@ import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.metricstransformer.domain.Event
-import org.sunbird.job.metricstransformer.functions.MetricsDataTransformer
+import org.sunbird.job.metricstransformer.function.MetricsDataTransformerFunction
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.util.{ElasticSearchUtil, FlinkUtil, HttpUtil}
 
@@ -24,7 +24,7 @@ class MetricsDataTransformerStreamTask(config: MetricsDataTransformerConfig, kaf
     env.addSource(kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)).name(config.eventConsumer)
       .uid(config.eventConsumer).setParallelism(config.kafkaConsumerParallelism)
       .rebalance
-      .process(new MetricsDataTransformer(config, httpUtil))
+      .process(new MetricsDataTransformerFunction(config, httpUtil))
       .name(config.metricsDataTransformerFunction)
       .uid(config.metricsDataTransformerFunction)
       .setParallelism(config.parallelism)
