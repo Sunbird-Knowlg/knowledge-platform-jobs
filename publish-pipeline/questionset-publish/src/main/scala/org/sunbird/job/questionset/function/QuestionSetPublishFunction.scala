@@ -36,7 +36,7 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 	val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
 
 	@transient var ec: ExecutionContext = _
-	private val pkgTypes = List(EcarPackageType.SPINE.toString, EcarPackageType.ONLINE.toString)
+	private val pkgTypes = List(EcarPackageType.SPINE.toString, EcarPackageType.ONLINE.toString, EcarPackageType.FULL.toString)
 
 
 	override def open(parameters: Configuration): Unit = {

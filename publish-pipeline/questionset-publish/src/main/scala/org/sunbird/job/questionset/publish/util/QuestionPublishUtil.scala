@@ -24,7 +24,11 @@ object QuestionPublishUtil extends QuestionPublisher {
 			val messages: List[String] = validate(obj, obj.identifier, validateQuestion)
 			if (messages.isEmpty) {
 				val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
-				val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, cloudStorageUtil, definitionCache, definitionConfig, httpUtil)
+				val objWithArtifactUrl = if(enrichedObj.metadata.getOrElse("artifactUrl","").asInstanceOf[String].isEmpty) {
+					//create artifact zip locally, upload to cloud and update the artifact URL
+					updateArtifactUrl(enrichedObj, "FULL")(ec, cloudStorageUtil, definitionCache, definitionConfig, httpUtil)
+				} else enrichedObj
+				val objWithEcar = getObjectWithEcar(objWithArtifactUrl, pkgTypes)(ec, cloudStorageUtil, definitionCache, definitionConfig, httpUtil)
 				logger.info("Ecar generation done for Question: " + objWithEcar.identifier)
 				saveOnSuccess(objWithEcar)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
 				logger.info("Question publishing completed successfully for : " + qData.identifier)
