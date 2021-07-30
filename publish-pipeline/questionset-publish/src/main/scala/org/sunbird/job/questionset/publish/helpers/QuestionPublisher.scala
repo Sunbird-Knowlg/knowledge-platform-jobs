@@ -6,21 +6,21 @@ import org.apache.commons.io.FileUtils
 import org.apache.commons.lang3
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
-import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
+import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.publish.config.PublishConfig
-import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData, ObjectExtData, Slug}
+import org.sunbird.job.publish.core._
 import org.sunbird.job.publish.helpers._
 import org.sunbird.job.publish.util.CloudStorageUtil
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil, ScalaJsonUtil}
 
-import java.io.{File, FileInputStream, FileOutputStream, IOException, StringReader}
+import java.io.{File, FileInputStream, FileOutputStream, IOException}
 import java.nio.file.{Files, Path, Paths}
-import java.util.zip.{ZipEntry, ZipFile, ZipOutputStream}
 import java.util
+import java.util.zip.{ZipEntry, ZipOutputStream}
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.{Await, ExecutionContext}
 
 trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnrichment with EcarGenerator with ObjectUpdater {
 	private val bundleLocation: String = "/tmp"
@@ -47,12 +47,11 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
 		if (obj.extData.getOrElse(Map()).getOrElse("body", "").asInstanceOf[String].isEmpty) messages += s"""There is no body available for : $identifier"""
 		if (obj.extData.getOrElse(Map()).getOrElse("editorState", "").asInstanceOf[String].isEmpty) messages += s"""There is no editorState available for : $identifier"""
 		val interactionTypes = obj.metadata.getOrElse("interactionTypes", new util.ArrayList[String]()).asInstanceOf[util.List[String]].asScala.toList
-		interactionTypes.nonEmpty match {
-			case true => {
-				if (obj.extData.get.getOrElse("responseDeclaration", "").asInstanceOf[String].isEmpty) messages += s"""There is no responseDeclaration available for : $identifier"""
-				if (obj.extData.get.getOrElse("interactions", "").asInstanceOf[String].isEmpty) messages += s"""There is no interactions available for : $identifier"""
-			}
-			case false => if (obj.extData.getOrElse(Map()).getOrElse("answer", "").asInstanceOf[String].isEmpty) messages += s"""There is no answer available for : $identifier"""
+		if (interactionTypes.nonEmpty) {
+			if (obj.extData.get.getOrElse("responseDeclaration", "").asInstanceOf[String].isEmpty) messages += s"""There is no responseDeclaration available for : $identifier"""
+			if (obj.extData.get.getOrElse("interactions", "").asInstanceOf[String].isEmpty) messages += s"""There is no interactions available for : $identifier"""
+		} else {
+			if (obj.extData.getOrElse(Map()).getOrElse("answer", "").asInstanceOf[String].isEmpty) messages += s"""There is no answer available for : $identifier"""
 		}
 		messages.toList
 	}
@@ -60,7 +59,7 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
 	override def getExtData(identifier: String,pkgVersion: Double, mimeType: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[ObjectExtData] = {
 		val row: Row = Option(getQuestionData(getEditableObjId(identifier, pkgVersion), readerConfig)).getOrElse(getQuestionData(identifier, readerConfig))
 		//TODO: covert below code in scala. entire props should be in scala.
-		val data = if (null != row) Option(extProps.map(prop => prop -> row.getString(prop.toLowerCase())).toMap.filter(p => StringUtils.isNotBlank(p._2.asInstanceOf[String]))) else Option(Map[String, AnyRef]())
+		val data = if (null != row) Option(extProps.map(prop => prop -> row.getString(prop.toLowerCase())).toMap.filter(p => StringUtils.isNotBlank(p._2))) else Option(Map[String, AnyRef]())
 		Option(ObjectExtData(data))
 	}
 
@@ -73,7 +72,7 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
 		cassandraUtil.findOne(selectWhere.toString)
 	}
 
-	def dummyFunc = (obj: ObjectData, readerConfig: ExtDataConfig) => {}
+	def dummyFunc: (ObjectData, ExtDataConfig) => Unit = (obj: ObjectData, readerConfig: ExtDataConfig) => {}
 
 	override def getExtDatas(identifiers: List[String], readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = {
 		None
@@ -83,7 +82,7 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
 		None
 	}
 
-	override def saveExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil) = {
+	override def saveExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Unit = {
 		val extData = obj.extData.getOrElse(Map())
 		val identifier = obj.identifier.replace(".img", "")
 		val query = QueryBuilder.update(readerConfig.keyspace, readerConfig.table)
@@ -98,12 +97,12 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
 			.and(QueryBuilder.set("responsedeclaration", extData.getOrElse("responseDeclaration", null)))
 			.and(QueryBuilder.set("interactions", extData.getOrElse("interactions", null)))
 
-		logger.info(s"Updating Question in Cassandra For ${identifier} : ${query.toString}")
+		logger.info(s"Updating Question in Cassandra For $identifier : ${query.toString}")
 		val result = cassandraUtil.upsert(query.toString)
 		if (result) {
-			logger.info(s"Question Updated Successfully For ${identifier}")
+			logger.info(s"Question Updated Successfully For $identifier")
 		} else {
-			val msg = s"Question Update Failed For ${identifier}"
+			val msg = s"Question Update Failed For $identifier"
 			logger.error(msg)
 			throw new Exception(msg)
 		}
@@ -117,7 +116,7 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
 	}
 
 	override def getDataForEcar(obj: ObjectData): Option[List[Map[String, AnyRef]]] = {
-		Some(List(obj.metadata ++ obj.extData.getOrElse(Map()).filter(p => !excludeBundleMeta.contains(p._1.asInstanceOf[String]))))
+		Some(List(obj.metadata ++ obj.extData.getOrElse(Map()).filter(p => !excludeBundleMeta.contains(p._1))))
 	}
 
 	def getObjectWithEcar(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
@@ -153,10 +152,9 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
 			val updatedMeta = obj.metadata ++ Map("artifactUrl"->result(1))
 			new ObjectData(obj.identifier, updatedMeta, obj.extData, obj.hierarchy)
 		} catch {
-			case ex: Exception => {
+			case ex: Exception =>
 				ex.printStackTrace()
-				throw new Exception(s"Error While Generating ${pkgType} ECAR Bundle For : " + obj.identifier, ex)
-			}
+				throw new Exception(s"Error While Generating $pkgType ECAR Bundle For : " + obj.identifier, ex)
 		} finally {
 			FileUtils.deleteDirectory(new File(bundlePath))
 		}
@@ -166,7 +164,7 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
 	def getIndexFile(identifier: String, objType: String, bundlePath: String, objList: List[Map[String, AnyRef]]): File = {
 		try {
 			val file: File = new File(bundlePath + File.separator + indexFileName)
-			val header: String = s"""{"id": "sunbird.${objType.toLowerCase()}.archive", "ver": "$defaultManifestVersion" ,"ts":"$getTimeStamp", "params":{"resmsgid": "$getUUID"}, "archive":{ "count": ${objList.size}, "ttl":24, "items": """
+			val header: String = s"""{"id": "sunbird.${objType.toLowerCase()}.archive", "ver": "$defaultManifestVersion" ,"ts":"${getTimeStamp()}", "params":{"resmsgid": "${getUUID()}"}, "archive":{ "count": ${objList.size}, "ttl":24, "items": """
 			val mJson = header + ScalaJsonUtil.serialize(objList) + "}}"
 			FileUtils.writeStringToFile(file, mJson)
 			file
@@ -219,7 +217,7 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
 		var urlArray = new Array[String](2)
 		// Check the cloud folder convention to store artifact.zip file with Mahesh
 		try {
-			val folder = "question" + File.separator + Slug.makeSlug(identifier, true)
+			val folder = "question" + File.separator + Slug.makeSlug(identifier, isTransliterate = true)
 			urlArray = cloudStorageUtil.uploadFile(folder, uploadFile)
 		} catch {
 			case e: Exception =>
