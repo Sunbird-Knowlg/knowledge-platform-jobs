@@ -2,23 +2,30 @@ package org.sunbird.job.questionset.publish.helpers
 
 import com.datastax.driver.core.Row
 import com.datastax.driver.core.querybuilder.{QueryBuilder, Select}
+import org.apache.commons.io.FileUtils
 import org.apache.commons.lang3
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
-import org.sunbird.job.domain.`object`.DefinitionCache
+import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.publish.config.PublishConfig
-import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData, ObjectExtData}
+import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData, ObjectExtData, Slug}
 import org.sunbird.job.publish.helpers._
 import org.sunbird.job.publish.util.CloudStorageUtil
-import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
-import java.util
+import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil, ScalaJsonUtil}
 
+import java.io.{File, FileInputStream, FileOutputStream, IOException, StringReader}
+import java.nio.file.{Files, Path, Paths}
+import java.util.zip.{ZipEntry, ZipFile, ZipOutputStream}
+import java.util
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.ExecutionContext
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, ExecutionContext, Future}
 
 trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnrichment with EcarGenerator with ObjectUpdater {
-
+	private val bundleLocation: String = "/tmp"
+	private val indexFileName = "index.json"
+	private val defaultManifestVersion = "1.2"
 	private[this] val logger = LoggerFactory.getLogger(classOf[QuestionPublisher])
 	val extProps = List("body", "editorState", "answer", "solutions", "instructions", "hints", "media", "responseDeclaration", "interactions")
 
@@ -121,4 +128,106 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
 		val meta: Map[String, AnyRef] = Map("downloadUrl" -> ecarMap.getOrElse(EcarPackageType.FULL.toString, ""), "variants" -> variants)
 		new ObjectData(data.identifier, data.metadata ++ meta, data.extData, data.hierarchy)
 	}
+
+	def updateArtifactUrl(obj: ObjectData, pkgType: String)(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
+		val bundlePath = bundleLocation + File.separator + obj.identifier + File.separator + System.currentTimeMillis + "_temp"
+		try {
+			val objType = obj.getString("objectType", "")
+			val objList = getDataForEcar(obj).getOrElse(List())
+			val (updatedObjList, dUrls)  = getManifestData(obj.identifier, pkgType, objList)
+			val downloadUrls: Map[AnyRef, List[String]] = dUrls.flatten.groupBy(_._1).map { case (k, v) => k -> v.map(_._2) }
+			logger.info("QuestionPublisher ::: updateArtifactUrl ::: downloadUrls :::: " + downloadUrls)
+			val downloadedMedias: List[File] = Await.result(downloadFiles(obj.identifier, downloadUrls, bundlePath), Duration.apply("60 seconds"))
+			if (downloadUrls.nonEmpty && downloadedMedias.isEmpty)
+				throw new Exception("Error Occurred While Downloading Bundle Media Files For : " + obj.identifier)
+
+			getIndexFile(obj.identifier, objType, bundlePath, updatedObjList)
+
+			// create zip package
+			val zipFileName: String = bundlePath + File.separator + obj.identifier + "_" + System.currentTimeMillis + ".zip"
+			createZipPackage(bundlePath,zipFileName)
+
+			// upload zip file to blob and set artifactUrl
+			val result: Array[String] = uploadArtifactToCloud(new File(zipFileName), obj.identifier)
+
+			val updatedMeta = obj.metadata ++ Map("artifactUrl"->result(1))
+			new ObjectData(obj.identifier, updatedMeta, obj.extData, obj.hierarchy)
+		} catch {
+			case ex: Exception => {
+				ex.printStackTrace()
+				throw new Exception(s"Error While Generating ${pkgType} ECAR Bundle For : " + obj.identifier, ex)
+			}
+		} finally {
+			FileUtils.deleteDirectory(new File(bundlePath))
+		}
+	}
+
+	@throws[Exception]
+	def getIndexFile(identifier: String, objType: String, bundlePath: String, objList: List[Map[String, AnyRef]]): File = {
+		try {
+			val file: File = new File(bundlePath + File.separator + indexFileName)
+			val header: String = s"""{"id": "sunbird.${objType.toLowerCase()}.archive", "ver": "$defaultManifestVersion" ,"ts":"$getTimeStamp", "params":{"resmsgid": "$getUUID"}, "archive":{ "count": ${objList.size}, "ttl":24, "items": """
+			val mJson = header + ScalaJsonUtil.serialize(objList) + "}}"
+			FileUtils.writeStringToFile(file, mJson)
+			file
+		} catch {
+			case e: Exception => throw new Exception("Exception occurred while writing manifest file for : " + identifier, e)
+		}
+	}
+
+	private def createZipPackage(basePath: String, zipFileName: String): Unit =
+		if (!StringUtils.isBlank(zipFileName)) {
+			logger.info("Creating Zip File: " + zipFileName)
+			val fileList: List[String] = generateFileList(basePath)
+			zipIt(zipFileName, fileList, basePath)
+		}
+
+	private def generateFileList(sourceFolder: String): List[String] =
+		Files.walk(Paths.get(new File(sourceFolder).getPath)).toArray()
+			.map(path => path.asInstanceOf[Path])
+			.filter(path => Files.isRegularFile(path))
+			.map(path => generateZipEntry(path.toString, sourceFolder)).toList
+
+
+	private def generateZipEntry(file: String, sourceFolder: String): String = file.substring(sourceFolder.length, file.length)
+
+	private def zipIt(zipFile: String, fileList: List[String], sourceFolder: String): Unit = {
+		val buffer = new Array[Byte](1024)
+		var zos: ZipOutputStream = null
+		try {
+			zos = new ZipOutputStream(new FileOutputStream(zipFile))
+			logger.info("Creating Zip File: " + zipFile)
+			fileList.foreach(file => {
+				val ze = new ZipEntry(file)
+				zos.putNextEntry(ze)
+				val in = new FileInputStream(sourceFolder + File.separator + file)
+				try {
+					var len = in.read(buffer)
+					while (len > 0) {
+						zos.write(buffer, 0, len)
+						len = in.read(buffer)
+					}
+				} finally if (in != null) in.close()
+				zos.closeEntry()
+			})
+		} catch {
+			case e: IOException => logger.error("Error! Something Went Wrong While Creating the ZIP File: " + e.getMessage, e)
+		} finally if (zos != null) zos.close()
+	}
+
+	private def uploadArtifactToCloud(uploadFile: File, identifier: String)(implicit cloudStorageUtil: CloudStorageUtil): Array[String] = {
+		var urlArray = new Array[String](2)
+		// Check the cloud folder convention to store artifact.zip file with Mahesh
+		try {
+			val folder = "question" + File.separator + Slug.makeSlug(identifier, true)
+			urlArray = cloudStorageUtil.uploadFile(folder, uploadFile)
+		} catch {
+			case e: Exception =>
+				cloudStorageUtil.deleteFile(uploadFile.getAbsolutePath, Option(false))
+				logger.error("Error while uploading the Artifact file.", e)
+				throw new Exception("Error while uploading the Artifact File.", e)
+		}
+		urlArray
+	}
+
 }
