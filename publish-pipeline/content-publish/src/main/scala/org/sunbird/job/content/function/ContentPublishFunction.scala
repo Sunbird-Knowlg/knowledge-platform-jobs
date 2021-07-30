@@ -9,7 +9,7 @@ import org.slf4j.LoggerFactory
 import org.sunbird.job.cache.{DataCache, RedisConnect}
 import org.sunbird.job.content.publish.domain.PublishMetadata
 import org.sunbird.job.content.publish.helpers.ContentPublisher
-import org.sunbird.job.content.publish.helpers.ExtractableMimeTypeHelper.processECMLBody
+import org.sunbird.job.content.publish.helpers.ExtractableMimeTypeHelper
 import org.sunbird.job.content.task.ContentPublishConfig
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
@@ -74,8 +74,8 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
         // Prepublish update
         updateProcessingNode(obj)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
 
-        val ecmlVerifiedObj = if(obj.metadata.getOrElse("mimeType", "").asInstanceOf[String].equalsIgnoreCase("application/vnd.ekstep.ecml-archive")){
-          val ecarEnhancedObj = processECMLBody(obj,config)(ec, cloudStorageUtil)
+        val ecmlVerifiedObj = if (obj.mimeType.equalsIgnoreCase("application/vnd.ekstep.ecml-archive")) {
+          val ecarEnhancedObj = ExtractableMimeTypeHelper.processECMLBody(obj, config)(ec, cloudStorageUtil)
           new ObjectData(obj.identifier, ecarEnhancedObj, obj.extData, obj.hierarchy)
         } else obj
 
@@ -104,7 +104,7 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
     }
   }
 
-  def getStreamingEvent(obj: ObjectData) : String = {
+  def getStreamingEvent(obj: ObjectData): String = {
     val ets = System.currentTimeMillis
     val mid = s"""LP.$ets.${UUID.randomUUID}"""
     val channelId = obj.getString("channel", "")

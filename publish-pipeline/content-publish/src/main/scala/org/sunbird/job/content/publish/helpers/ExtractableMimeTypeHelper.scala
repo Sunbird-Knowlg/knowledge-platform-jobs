@@ -21,15 +21,14 @@ import scala.concurrent.ExecutionContext
 object ExtractableMimeTypeHelper {
 
   private[this] val logger = LoggerFactory.getLogger("ExtractableMimeTypeHelper")
-  val extractableMimeTypes = List("application/vnd.ekstep.ecml-archive", "application/vnd.ekstep.html-archive", "application/vnd.ekstep.plugin-archive", "application/vnd.ekstep.h5p-archive")
   private val extractablePackageExtensions = List(".zip", ".h5p", ".epub")
 
   def getS3URL(obj: ObjectData, cloudStorageUtil: CloudStorageUtil, config: ContentPublishConfig): String = {
     val path = getExtractionPath(obj, config, "latest")
-    cloudStorageUtil.getURI(path, Option.apply(extractableMimeTypes.contains(obj.mimeType)))
+    cloudStorageUtil.getURI(path, Option.apply(config.extractableMimeTypes.contains(obj.mimeType)))
   }
 
-  private def getExtractionPath(obj: ObjectData, config: ContentPublishConfig, prefix: String):String = {
+  private def getExtractionPath(obj: ObjectData, config: ContentPublishConfig, prefix: String): String = {
     obj.mimeType match {
       case "application/vnd.ekstep.ecml-archive" => config.contentFolder + File.separator + "ecml" + File.separator + obj.identifier + "-" + prefix
       case "application/vnd.ekstep.html-archive" => config.contentFolder + File.separator + "html" + File.separator + obj.identifier + "-" + prefix
@@ -59,25 +58,24 @@ object ExtractableMimeTypeHelper {
     isValidSnapshot.nonEmpty
   }
 
-  def getContentBody(identifier: String, readerConfig: ExtDataConfig) (implicit cassandraUtil: CassandraUtil): String = {
+  def getContentBody(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): String = {
     // fetch content body from cassandra
     val select = QueryBuilder.select()
     select.fcall("blobAsText", QueryBuilder.column("body")).as("body")
     val selectWhere: Select.Where = select.from(readerConfig.keyspace, readerConfig.table).where().and(QueryBuilder.eq("content_id", identifier))
-    logger.info("Cassandra Fetch Query :: "+ selectWhere.toString)
+    logger.info("Cassandra Fetch Query :: " + selectWhere.toString)
     val row = cassandraUtil.findOne(selectWhere.toString)
-    if(null != row) row.getString("body") else ""
+    if (null != row) row.getString("body") else ""
   }
 
   def processECMLBody(obj: ObjectData, config: ContentPublishConfig)(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil): Map[String, AnyRef] = {
     val basePath = config.bundleLocation + "/" + System.currentTimeMillis + "_tmp" + "/" + obj.identifier
-    val contentId = obj.metadata.getOrElse("identifier","").asInstanceOf[String]
     val ecmlBody = obj.extData.get.getOrElse("body", "").toString
     val ecmlType: String = getECMLType(ecmlBody)
     val ecrfObj: Plugin = getEcrfObject(ecmlType, ecmlBody)
 
     // validate assets
-    val processedEcrf: Plugin = new ECMLExtractor(basePath, contentId).process(ecrfObj)
+    val processedEcrf: Plugin = new ECMLExtractor(basePath, obj.identifier).process(ecrfObj)
 
     // getECMLString
     val processedEcml: String = getEcmlStringFromEcrf(processedEcrf, ecmlType)
@@ -86,11 +84,11 @@ object ExtractableMimeTypeHelper {
     writeECMLFile(basePath, processedEcml, ecmlType)
 
     // create zip package
-    val zipFileName: String = basePath + File.separator + System.currentTimeMillis + "_" + Slug.makeSlug(contentId) + ".zip"
-    createZipPackage(basePath,zipFileName)
+    val zipFileName: String = basePath + File.separator + System.currentTimeMillis + "_" + Slug.makeSlug(obj.identifier) + ".zip"
+    createZipPackage(basePath, zipFileName)
 
     // upload zip file to blob and set artifactUrl
-    val result: Array[String] = uploadArtifactToCloud(new File(zipFileName), contentId, None, config)
+    val result: Array[String] = uploadArtifactToCloud(new File(zipFileName), obj.identifier, None, config)
 
     // upload local extracted directory to blob
     extractPackageInCloud(new File(zipFileName), obj, "snapshot", slugFile = true, basePath, config)
@@ -114,7 +112,6 @@ object ExtractableMimeTypeHelper {
     }
   }
 
-
   private def getECMLType(contentBody: String): String = {
     if (!StringUtils.isBlank(contentBody)) {
       if (isValidJSON(contentBody)) "json"
@@ -131,7 +128,7 @@ object ExtractableMimeTypeHelper {
       objectMapper.readTree(contentBody)
       true
     } catch {
-      case _: IOException =>  false
+      case _: IOException => false
     }
     else false
   }
@@ -149,7 +146,7 @@ object ExtractableMimeTypeHelper {
 
   private def writeECMLFile(basePath: String, ecml: String, ecmlType: String): Unit = {
     try {
-      if (StringUtils.isBlank(ecml)) throw new Exception( "[Unable to write Empty ECML File.]")
+      if (StringUtils.isBlank(ecml)) throw new Exception("[Unable to write Empty ECML File.]")
       if (StringUtils.isBlank(ecmlType)) throw new Exception("[System is in a fix between (XML & JSON) ECML Type.]")
       val file = new File(basePath + "/" + "index." + ecmlType)
       FileUtils.writeStringToFile(file, ecml, "UTF-8")
@@ -202,12 +199,12 @@ object ExtractableMimeTypeHelper {
   private def extractPackageInCloud(uploadFile: File, obj: ObjectData, extractionType: String, slugFile: Boolean, basePath: String, config: ContentPublishConfig)(implicit cloudStorageUtil: CloudStorageUtil) = {
     val file = Slug.createSlugFile(uploadFile)
     val mimeType = obj.mimeType
-    validationForCloudExtraction(file, extractionType, mimeType)
-    if(extractableMimeTypes.contains(mimeType)){
+    validationForCloudExtraction(file, extractionType, mimeType, config)
+    if (config.extractableMimeTypes.contains(mimeType)) {
       try {
         cloudStorageUtil.uploadDirectory(getExtractionPath(obj, config, extractionType), new File(basePath), Option(slugFile))
       } catch {
-        case _:Exception => println("Remove try catch")
+        case _: Exception => println("Remove try catch")
       }
     }
   }
@@ -227,10 +224,10 @@ object ExtractableMimeTypeHelper {
     urlArray
   }
 
-  private def validationForCloudExtraction(file: File, extractionType: String, mimeType: String): Unit = {
-    if(!file.exists() || (!extractablePackageExtensions.contains("." + FilenameUtils.getExtension(file.getName)) && extractableMimeTypes.contains(mimeType)))
+  private def validationForCloudExtraction(file: File, extractionType: String, mimeType: String, config: ContentPublishConfig): Unit = {
+    if (!file.exists() || (!extractablePackageExtensions.contains("." + FilenameUtils.getExtension(file.getName)) && config.extractableMimeTypes.contains(mimeType)))
       throw new Exception("Error! File doesn't Exist.")
-    if(null == extractionType)
+    if (extractionType == null)
       throw new Exception("Error! Invalid Content Extraction Type.")
   }
 
