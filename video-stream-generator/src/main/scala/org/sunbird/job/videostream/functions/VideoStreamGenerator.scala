@@ -44,8 +44,9 @@ class VideoStreamGenerator(config: VideoStreamGeneratorConfig, httpUtil:HttpUtil
       try {
         metrics.incCounter(config.totalEventsCount)
         if (event.isValid) {
-          videoStreamService.submitJobRequest(event.eData)
-          logger.info("Streaming job submitted for " + event.identifier() + " with url: " + event.artifactUrl)
+          val eData = event.eData ++ Map("channel"-> event.channel)
+          videoStreamService.submitJobRequest(eData)
+          logger.info("Streaming job submitted for " + event.identifier + " with url: " + event.artifactUrl)
           registerTimer(context)
         } else metrics.incCounter(config.skippedEventCount)
       } catch {
@@ -68,18 +69,18 @@ class VideoStreamGenerator(config: VideoStreamGeneratorConfig, httpUtil:HttpUtil
     }
 
     private def registerTimer(context: KeyedProcessFunction[String, Event, Event]#Context): Unit = {
-      if (nextTimerTimestamp == 0l) {
-        val nextTrigger = context.timestamp() + timerDurationInMS
-        context.timerService().registerProcessingTimeTimer(nextTrigger)
-        nextTimerTimestamp = nextTrigger
-        logger.info("Timer registered to execute at " + nextTimerTimestamp)
-      } else {
-        logger.info("Timer already exists at: " + nextTimerTimestamp)
-      }
+        if (nextTimerTimestamp == 0l) {
+          val nextTrigger = context.timestamp() + timerDurationInMS
+          context.timerService().registerProcessingTimeTimer(nextTrigger)
+          nextTimerTimestamp = nextTrigger
+          logger.info("Timer registered to execute at " + nextTimerTimestamp)
+        } else {
+          logger.info("Timer already exists at: " + nextTimerTimestamp)
+        }
     }
 
     private def unregisterTimer(): Unit = {
-      nextTimerTimestamp = 0l
+        nextTimerTimestamp = 0l
     }
 
 }

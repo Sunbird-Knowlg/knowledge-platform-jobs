@@ -13,11 +13,13 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 
   def mimeType: String = readOrDefault[String]("edata.mimeType", "")
 
+  def channel: String = readOrDefault[String]("context.channel", "")
+
   def eid: String = readOrDefault[String]("eid", "")
 
   def artifactUrl: String = readOrDefault[String]("edata.artifactUrl", "")
 
-  def identifier(): String = readOrDefault[String]("edata.identifier", "")
+  def identifier: String = readOrDefault[String]("edata.identifier", "")
 
   def eData: Map[String, AnyRef] = readOrDefault("edata", new util.HashMap[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
 
@@ -28,7 +30,8 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
         StringUtils.equalsIgnoreCase(mimeType, "video/mp4") ||
           StringUtils.equalsIgnoreCase(mimeType, "video/webm")
         ) &&
-      StringUtils.isNotBlank(identifier)
+      StringUtils.isNotBlank(identifier) &&
+      StringUtils.isNotBlank(channel)
   }
 
 }
