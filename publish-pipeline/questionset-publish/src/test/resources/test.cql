@@ -28,7 +28,7 @@ textAsBlob('<div class="question-body"><div class="mcq-title"><p>Color of Sky is
 '{"question":"<p>Capital of india is?</p>","answer":"<p>New Delhi</p>"}',
 textAsBlob('1'),
 '[{"id": "c012a8a9-f78b-6ddb-3ac2-bd1f38c7850b", "type": "html", "value": "<p>Color of sky is blue&nbsp;</p><figure class=\"image\"><img src=\"https://dockstorage.blob.core.windows.net/sunbird-content-dock/content/do_11310507846892748812026/artifact/icon.png\" alt=\"do_11310507846892748812026\" data-asset-variable=\"do_11310507846892748812026\"></figure>"}]',
-'[{"id": "do_11318931140144332811620", "type": "image", "src": "https://dockstorage.blob.core.windows.net/sunbird-content-dock/content/do_11318931140144332811620/artifact/i.png", baseUrl": "https://dock.sunbirded.org"}]',
+'[{"id":"do_1127129497561497601326","type":"image","src":"/content/do_1127129497561497601326.img/artifact/sunbird_1551961194254.jpeg","baseUrl":"https://sunbirddev.blob.core.windows.net/sunbird-content-dev"}]',
 '{"response1": {"maxScore": 1, "cardinality": "single", "type": "integer", "correctResponse": { "value": "1", "outcomes": {"SCORE": 1}}}}'
 );
 

@@ -18,15 +18,16 @@ object QuestionPublishUtil extends QuestionPublisher {
 	private[this] val logger = LoggerFactory.getLogger(classOf[QuestionPublishUtil])
 
 	def publishQuestions(identifier: String, objList: List[ObjectData])(implicit ec: ExecutionContext, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, definitionCache: DefinitionCache, definitionConfig: DefinitionConfig, config: PublishConfig, httpUtil: HttpUtil): Unit = {
+		logger.info("QuestionPublishUtil :::: publishing child question for questionset : " + identifier)
 		objList.foreach(qData => {
-			logger.info("QuestionPublishUtil :::: publishing child question  for : " + qData.identifier)
+			logger.info("QuestionPublishUtil :::: publishing child question : " + qData.identifier)
 			val obj = getObject(qData.identifier, qData.pkgVersion, readerConfig)(neo4JUtil, cassandraUtil)
 			val messages: List[String] = validate(obj, obj.identifier, validateQuestion)
 			if (messages.isEmpty) {
 				val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
-				val objWithArtifactUrl = if(enrichedObj.metadata.getOrElse("artifactUrl","").asInstanceOf[String].isEmpty) {
+				val objWithArtifactUrl = if(enrichedObj.getString("artifactUrl","").isEmpty) {
 					//create artifact zip locally, upload to cloud and update the artifact URL
-					updateArtifactUrl(enrichedObj, "FULL")(ec, cloudStorageUtil, definitionCache, definitionConfig, httpUtil)
+					updateArtifactUrl(enrichedObj, EcarPackageType.FULL.toString)(ec, cloudStorageUtil, definitionCache, definitionConfig, httpUtil)
 				} else enrichedObj
 				val objWithEcar = getObjectWithEcar(objWithArtifactUrl, pkgTypes)(ec, cloudStorageUtil, definitionCache, definitionConfig, httpUtil)
 				logger.info("Ecar generation done for Question: " + objWithEcar.identifier)
