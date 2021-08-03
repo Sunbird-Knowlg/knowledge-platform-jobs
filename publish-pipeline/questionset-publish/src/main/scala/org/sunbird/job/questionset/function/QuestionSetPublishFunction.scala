@@ -38,7 +38,6 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 	@transient var ec: ExecutionContext = _
 	private val pkgTypes = List(EcarPackageType.SPINE.toString, EcarPackageType.ONLINE.toString, EcarPackageType.FULL.toString)
 
-
 	override def open(parameters: Configuration): Unit = {
 		super.open(parameters)
 		cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort)
@@ -112,14 +111,13 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 			val id = q.identifier.replace(".img", "")
 			val obj = getObject(id, 0, readerConfig)(neo4JUtil, cassandraUtil)
 			logger.info(s"question metadata for $id : ${obj.metadata}")
-			if (!List("Live", "Unlisted").contains(obj.metadata.getOrElse("status", "").asInstanceOf[String])) {
+			if (!List("Live", "Unlisted").contains(obj.getString("status", ""))) {
 				logger.info("Question publishing failed for : " + id)
 				messages += s"""Question publishing failed for : $id"""
 			}
 		})
 		messages.toList
 	}
-
 
 	def generateECAR(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
 		val ecarMap: Map[String, String] = generateEcar(data, pkgTypes)
@@ -137,7 +135,7 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 	}
 
 	def isValidChildQuestion(obj: ObjectData): Boolean = {
-		StringUtils.equalsIgnoreCase("Parent", obj.metadata.getOrElse("visibility", "").asInstanceOf[String])
+		StringUtils.equalsIgnoreCase("Parent", obj.getString("visibility", ""))
 	}
 
 }

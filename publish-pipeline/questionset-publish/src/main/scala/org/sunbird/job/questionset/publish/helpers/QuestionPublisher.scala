@@ -34,7 +34,7 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
 
 	override def enrichObjectMetadata(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig, definitionCache: DefinitionCache, definitionConfig: DefinitionConfig): Option[ObjectData] = {
 		val pkgVersion = obj.metadata.getOrElse("pkgVersion", 0.0.asInstanceOf[Number]).asInstanceOf[Number].intValue() + 1
-		val publishType = obj.metadata.getOrElse("publish_type", "Public").asInstanceOf[String]
+		val publishType = obj.getString("publish_type", "Public")
 		val status = if (StringUtils.equals("Private", publishType)) "Unlisted" else "Live"
 		val updatedMeta = obj.metadata ++ Map("identifier"->obj.identifier, "pkgVersion" -> pkgVersion.asInstanceOf[AnyRef], "status"->status)
 		Some(new ObjectData(obj.identifier, updatedMeta, obj.extData, obj.hierarchy))

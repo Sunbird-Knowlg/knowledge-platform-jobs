@@ -63,12 +63,12 @@ class QuestionPublishUtilSpec extends FlatSpec with BeforeAndAfterAll with Match
   }
 
   "publishQuestions " should " publish questions in questionset " in {
-    when(mockNeo4JUtil.getNodeProperties("do_113188615625731")).thenReturn(Map[String, AnyRef]("identifier" -> "do_113188615625731", "objectType" -> "Question", "IL_FUNC_OBJECT_TYPE" -> "Question", "visibility"-> "Parent", "mimeType" -> "application/vnd.sunbird.question", "primaryCategory" -> "some category", "name" -> "Some Question", "code" -> "some code").asJava)
+    when(mockNeo4JUtil.getNodeProperties("do_113188615625731")).thenReturn(Map[String, AnyRef]("identifier" -> "do_113188615625731", "objectType" -> "Question", "IL_FUNC_OBJECT_TYPE" -> "Question", "visibility" -> "Parent", "mimeType" -> "application/vnd.sunbird.question", "primaryCategory" -> "some category", "name" -> "Some Question", "code" -> "some code").asJava)
 
     val identifier = "do_123";
-    val obj1: ObjectData = new ObjectData("do_113188615625731", Map[String, AnyRef]("identifier" -> "do_113188615625731", "objectType"->"Question", "visibility"-> "Parent", "mimeType" -> "application/vnd.sunbird.question", "primaryCategory" -> "some category", "name" -> "Some Question", "code" -> "some code"))
+    val obj1: ObjectData = new ObjectData("do_113188615625731", Map[String, AnyRef]("identifier" -> "do_113188615625731", "objectType" -> "Question", "visibility" -> "Parent", "mimeType" -> "application/vnd.sunbird.question", "primaryCategory" -> "some category", "name" -> "Some Question", "code" -> "some code"))
     val objList: List[ObjectData] = List(obj1)
-    QuestionPublishUtil.publishQuestions(identifier, objList)(ec, mockNeo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, defCache, defConfig, publishConfig, httpUtil)
+    QuestionPublishUtil.publishQuestions(identifier, objList)(ec, mockNeo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, defCache, defConfig, jobConfig, httpUtil)
   }
 
 }
