@@ -17,13 +17,13 @@ class MetricsDataTransformerConfig(override val config: Config) extends BaseJobC
   val failedEventCount = "failed-events-count"
   val skippedEventCount = "skipped-events-count"
 
-  val contentServiceBaseUrl : String = config.getString("service.content.basePath")
-  val contentReadApi : String = config.getString("content_read_api")
+  val contentServiceBaseUrl: String = config.getString("service.content.basePath")
+  val contentReadApi: String = config.getString("content_read_api")
 
   val lpURL: String = config.getString("service.learner.basePath")
   val contentUpdate = config.getString("content_update_api")
 
-  val defaultHeaders = Map[String, String] ("Content-Type" -> "application/json")
+  val defaultHeaders = Map[String, String]("Content-Type" -> "application/json")
 
   // Consumers
   val eventConsumer = "metrics-data-transformer-consumer"

@@ -25,40 +25,40 @@ trait MetricsDataTransformerService {
 
       keys.foreach(f => {
         val property = JSONUtil.deserialize[ContentProps](JSONUtil.serialize(propertyMap(f)))
-        if(null != property.nv) {
+        if (null != property.nv) {
           contentMetrics = contentMetrics + s"""$f: ${property.nv},""".stripMargin
         }
       })
-    val sourcingId = response.getOrElse("origin","").asInstanceOf[String]
+      val sourcingId = response.getOrElse("origin", "").asInstanceOf[String]
 
-    try {
-      val channel = event.channel
-      updateContentMetrics(contentMetrics, sourcingId, channel, event)(config, httpUtil)
-      logger.info("Updated content metrics: " + identifier)
-      metrics.incCounter(config.successEventCount)
-    } catch {
-      case ex: Exception =>
-        logger.error("Error while writing content metrics :: " + event.getJson + " :: ", ex)
-        metrics.incCounter(config.failedEventCount)
-        ex.printStackTrace()
-        throw new InvalidEventException(s"Error writing metrics for sourcing id: $sourcingId", Map("partition" -> event.partition, "offset" -> event.offset), ex)
+      try {
+        val channel = event.channel
+        updateContentMetrics(contentMetrics, sourcingId, channel, event)(config, httpUtil)
+        logger.info("Updated content metrics: " + identifier)
+        metrics.incCounter(config.successEventCount)
+      } catch {
+        case ex: Exception =>
+          logger.error("Error while writing content metrics :: " + event.getJson + " :: ", ex)
+          metrics.incCounter(config.failedEventCount)
+          ex.printStackTrace()
+          throw new InvalidEventException(s"Error writing metrics for sourcing id: $sourcingId", Map("partition" -> event.partition, "offset" -> event.offset), ex)
+      }
     }
-  }
-  else {
+    else {
       logger.info("Learning event skipped, no sourcing identifier found")
       metrics.incCounter(config.skippedEventCount)
     }
 
   }
 
-  def getContent(url: String, event: Event)(config: MetricsDataTransformerConfig, httpUtil: HttpUtil) : Map[String,AnyRef] = {
+  def getContent(url: String, event: Event)(config: MetricsDataTransformerConfig, httpUtil: HttpUtil): Map[String, AnyRef] = {
     val response = httpUtil.get(url, config.defaultHeaders)
 
-    if(HttpStatus.OK.value() == response.status) {
+    if (HttpStatus.OK.value() == response.status) {
       JSONUtil.deserialize[Map[String, AnyRef]](response.body)
         .getOrElse("result", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
         .getOrElse("content", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
-    } else if(HttpStatus.NOT_FOUND.value() == response.status) {
+    } else if (HttpStatus.NOT_FOUND.value() == response.status) {
       Map()
     } else {
       throw new InvalidEventException(s"Error from get API with response: $response; partition -> ${event.partition}, offset -> ${event.offset}")
@@ -67,8 +67,8 @@ trait MetricsDataTransformerService {
 
   def updateContentMetrics(contentProperty: String, sourcingId: String, channel: String, event: Event)(config: MetricsDataTransformerConfig, httpUtil: HttpUtil): Unit = {
     val updateUrl = config.lpURL + config.contentUpdate + "/" + sourcingId
-    if(contentProperty.nonEmpty) {
-      val contentMetrics = contentProperty.substring(0,contentProperty.length-1)
+    if (contentProperty.nonEmpty) {
+      val contentMetrics = contentProperty.substring(0, contentProperty.length - 1)
       val request =
         s"""
            |{
@@ -80,8 +80,8 @@ trait MetricsDataTransformerService {
            |}""".stripMargin
 
       val headers = config.defaultHeaders ++ Map("X-Channel-Id" -> channel)
-      val response:HTTPResponse = httpUtil.patch(updateUrl, request,  headers)
-      if(HttpStatus.OK.value() == response.status) {
+      val response: HTTPResponse = httpUtil.patch(updateUrl, request, headers)
+      if (HttpStatus.OK.value() == response.status) {
         logger.info(s"Updated metrics for $sourcingId")
       } else {
         logger.error("Error while updating metrics for content : " + sourcingId + " :: " + response.body)

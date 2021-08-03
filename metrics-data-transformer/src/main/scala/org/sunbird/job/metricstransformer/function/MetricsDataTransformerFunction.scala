@@ -12,9 +12,9 @@ import org.sunbird.job.metricstransformer.task.MetricsDataTransformerConfig
 import org.sunbird.job.util.{ElasticSearchUtil, HttpUtil}
 
 class MetricsDataTransformerFunction(config: MetricsDataTransformerConfig, httpUtil: HttpUtil)
-                            (implicit mapTypeInfo: TypeInformation[util.Map[String, Any]],
-                             stringTypeInfo: TypeInformation[String])
-                            extends BaseProcessFunction[Event, String](config) with MetricsDataTransformerService {
+                                    (implicit mapTypeInfo: TypeInformation[util.Map[String, Any]],
+                                     stringTypeInfo: TypeInformation[String])
+  extends BaseProcessFunction[Event, String](config) with MetricsDataTransformerService {
 
   override def metricsList(): List[String] = {
     List(config.totalEventsCount, config.successEventCount, config.failedEventCount, config.skippedEventCount)
@@ -38,7 +38,7 @@ class MetricsDataTransformerFunction(config: MetricsDataTransformerConfig, httpU
     val eventMetrics = config.metrics.stream().toArray.map(_.asInstanceOf[String])
     val filteredKeys = eventMetrics.intersect(mapKeys)
 
-    if(filteredKeys.length > 0) {
+    if (filteredKeys.length > 0) {
       processEvent(event, metrics, filteredKeys)(config, httpUtil)
     } else metrics.incCounter(config.skippedEventCount)
 

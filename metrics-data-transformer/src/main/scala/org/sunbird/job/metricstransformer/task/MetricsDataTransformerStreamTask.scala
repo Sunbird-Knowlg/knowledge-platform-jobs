@@ -33,20 +33,20 @@ class MetricsDataTransformerStreamTask(config: MetricsDataTransformerConfig, kaf
   }
 }
 
-  // $COVERAGE-OFF$ Disabling scoverage as the below code can only be invoked within flink cluster
-  object MetricsDataTransformerStreamTask {
+// $COVERAGE-OFF$ Disabling scoverage as the below code can only be invoked within flink cluster
+object MetricsDataTransformerStreamTask {
 
-    def main(args: Array[String]): Unit = {
-      val configFilePath = Option(ParameterTool.fromArgs(args).get("config.file.path"))
-      val config = configFilePath.map {
-        path => ConfigFactory.parseFile(new File(path)).resolve()
-      }.getOrElse(ConfigFactory.load("metrics-data-transformer.conf").withFallback(ConfigFactory.systemEnvironment()))
-      val metricsDataTransformerConfig = new MetricsDataTransformerConfig(config)
-      val kafkaUtil = new FlinkKafkaConnector(metricsDataTransformerConfig)
-      val httpUtil = new HttpUtil()
-      val task = new MetricsDataTransformerStreamTask(metricsDataTransformerConfig, kafkaUtil, httpUtil)
-      task.process()
-    }
+  def main(args: Array[String]): Unit = {
+    val configFilePath = Option(ParameterTool.fromArgs(args).get("config.file.path"))
+    val config = configFilePath.map {
+      path => ConfigFactory.parseFile(new File(path)).resolve()
+    }.getOrElse(ConfigFactory.load("metrics-data-transformer.conf").withFallback(ConfigFactory.systemEnvironment()))
+    val metricsDataTransformerConfig = new MetricsDataTransformerConfig(config)
+    val kafkaUtil = new FlinkKafkaConnector(metricsDataTransformerConfig)
+    val httpUtil = new HttpUtil()
+    val task = new MetricsDataTransformerStreamTask(metricsDataTransformerConfig, kafkaUtil, httpUtil)
+    task.process()
+  }
 
 }
 
