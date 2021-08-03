@@ -27,7 +27,7 @@ object QuestionPublishUtil extends QuestionPublisher {
 				val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
 				val objWithArtifactUrl = if(enrichedObj.getString("artifactUrl","").isEmpty) {
 					//create artifact zip locally, upload to cloud and update the artifact URL
-					updateArtifactUrl(enrichedObj, EcarPackageType.FULL.toString)(ec, cloudStorageUtil, definitionCache, definitionConfig, httpUtil)
+					updateArtifactUrl(enrichedObj, EcarPackageType.FULL.toString)(ec, cloudStorageUtil, definitionCache, definitionConfig, config, httpUtil)
 				} else enrichedObj
 				val objWithEcar = getObjectWithEcar(objWithArtifactUrl, pkgTypes)(ec, cloudStorageUtil, definitionCache, definitionConfig, httpUtil)
 				logger.info("Ecar generation done for Question: " + objWithEcar.identifier)

@@ -11,6 +11,7 @@ import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core._
 import org.sunbird.job.publish.helpers._
 import org.sunbird.job.publish.util.CloudStorageUtil
+import org.sunbird.job.questionset.task.QuestionSetPublishConfig
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil, ScalaJsonUtil}
 
 import java.io.{File, FileInputStream, FileOutputStream, IOException}
@@ -123,7 +124,7 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
 		new ObjectData(data.identifier, data.metadata ++ meta, data.extData, data.hierarchy)
 	}
 
-	def updateArtifactUrl(obj: ObjectData, pkgType: String)(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
+	def updateArtifactUrl(obj: ObjectData, pkgType: String)(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil, defCache: DefinitionCache, defConfig: DefinitionConfig, config: PublishConfig, httpUtil: HttpUtil): ObjectData = {
 		val bundlePath = bundleLocation + File.separator + obj.identifier + File.separator + System.currentTimeMillis + "_temp"
 		try {
 			val objType = obj.getString("objectType", "")
@@ -131,7 +132,7 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
 			val (updatedObjList, dUrls)  = getManifestData(obj.identifier, pkgType, objList)
 			val downloadUrls: Map[AnyRef, List[String]] = dUrls.flatten.groupBy(_._1).map { case (k, v) => k -> v.map(_._2) }
 			logger.info("QuestionPublisher ::: updateArtifactUrl ::: downloadUrls :::: " + downloadUrls)
-			val downloadedMedias: List[File] = Await.result(downloadFiles(obj.identifier, downloadUrls, bundlePath), Duration.apply("60 seconds"))
+			val downloadedMedias: List[File] = Await.result(downloadFiles(obj.identifier, downloadUrls, bundlePath), Duration.apply(config.asInstanceOf[QuestionSetPublishConfig].mediaDownloadDuration))
 			if (downloadUrls.nonEmpty && downloadedMedias.isEmpty)
 				throw new Exception("Error Occurred While Downloading Bundle Media Files For : " + obj.identifier)
 
