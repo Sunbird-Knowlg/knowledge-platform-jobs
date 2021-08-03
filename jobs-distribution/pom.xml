@@ -52,6 +52,12 @@
         </dependency>
         <dependency>
             <groupId>org.sunbird</groupId>
+            <artifactId>content-publish</artifactId>
+            <version>1.0.0</version>
+            <type>jar</type>
+        </dependency>
+        <dependency>
+            <groupId>org.sunbird</groupId>
             <artifactId>search-indexer</artifactId>
             <version>1.0.0</version>
             <type>jar</type>

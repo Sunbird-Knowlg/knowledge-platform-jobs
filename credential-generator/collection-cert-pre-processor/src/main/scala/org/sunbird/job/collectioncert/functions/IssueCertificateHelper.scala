@@ -1,9 +1,9 @@
 package org.sunbird.job.collectioncert.functions
 
 import java.text.SimpleDateFormat
-
 import com.datastax.driver.core.querybuilder.QueryBuilder
 import com.datastax.driver.core.{Row, TypeTokens}
+import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.Metrics
 import org.sunbird.job.cache.DataCache
@@ -81,7 +81,7 @@ trait IssueCertificateHelper {
     def validateUser(userId: String, userCriteria: Map[String, AnyRef])(metrics:Metrics, config:CollectionCertPreProcessorConfig, httpUtil: HttpUtil) = {
         if(!userId.isEmpty) {
             val url = config.learnerBasePath + config.userReadApi + "/" + userId
-            val result = getAPICall(url, "response")(config, httpUtil)
+            val result = getAPICall(url, "response")(config, httpUtil, metrics)
             if(userCriteria.isEmpty || userCriteria.size == userCriteria.filter(uc => uc._2 == result.getOrElse(uc._1, null)).size) {
                 result
             } else Map[String, AnyRef]()
@@ -126,12 +126,16 @@ trait IssueCertificateHelper {
         }
     }
     
-    def getAPICall(url: String, responseParam: String)(config:CollectionCertPreProcessorConfig, httpUtil: HttpUtil): Map[String,AnyRef] = {
+    def getAPICall(url: String, responseParam: String)(config:CollectionCertPreProcessorConfig, httpUtil: HttpUtil, metrics: Metrics): Map[String,AnyRef] = {
         val response = httpUtil.get(url, config.defaultHeaders)
         if(200 == response.status) {
             ScalaJsonUtil.deserialize[Map[String, AnyRef]](response.body)
               .getOrElse("result", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
               .getOrElse(responseParam, Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
+        } else if(400 == response.status && response.body.contains("USER_ACCOUNT_BLOCKED")) {
+            metrics.incCounter(config.skippedEventCount)
+            logger.error(s"Error while fetching user details for ${url}: " + response.status + " :: " + response.body)
+            Map[String, AnyRef]()
         } else {
             throw new Exception(s"Error from get API : ${url}, with response: ${response}")
         }
@@ -141,7 +145,7 @@ trait IssueCertificateHelper {
         val courseMetadata = cache.getWithRetry(courseId)
         if(null == courseMetadata || courseMetadata.isEmpty) {
             val url = config.contentBasePath + config.contentReadApi + "/" + courseId + "?fields=name"
-            val response = getAPICall(url, "content")(config, httpUtil)
+            val response = getAPICall(url, "content")(config, httpUtil, metrics)
             response.getOrElse(config.name, "")
         } else {
             courseMetadata.getOrElse(config.name, "")
@@ -149,10 +153,10 @@ trait IssueCertificateHelper {
     }
 
     def generateCertificateEvent(event: Event, template: Map[String, String], userDetails: Map[String, AnyRef], enrolledUser: EnrolledUser, certName: String)(metrics:Metrics, config:CollectionCertPreProcessorConfig, cache:DataCache, httpUtil: HttpUtil) = {
-        val firstName = userDetails.getOrElse("firstName", "").asInstanceOf[String]
-        val lastName = userDetails.getOrElse("lastName", "").asInstanceOf[String]
-        def nullStringCheck(name:String) = {if(!"null".equalsIgnoreCase(name)) name  else ""}
-        val recipientName = (nullStringCheck(firstName) + " " + nullStringCheck(lastName)).trim
+        val firstName = Option(userDetails.getOrElse("firstName", "").asInstanceOf[String]).getOrElse("")
+        val lastName = Option(userDetails.getOrElse("lastName", "").asInstanceOf[String]).getOrElse("")
+        def nullStringCheck(name:String):String = {if(StringUtils.equalsIgnoreCase("null", name)) ""  else name}
+        val recipientName = nullStringCheck(firstName).concat(" ").concat(nullStringCheck(lastName)).trim
         val courseName = getCourseName(event.courseId)(metrics, config, cache, httpUtil)
         val dateFormatter = new SimpleDateFormat("yyyy-MM-dd")
         val eData = Map[String, AnyRef] (

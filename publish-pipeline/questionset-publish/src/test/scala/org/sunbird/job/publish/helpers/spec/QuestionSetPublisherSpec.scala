@@ -7,7 +7,9 @@ import org.cassandraunit.utils.EmbeddedCassandraServerHelper
 import org.mockito.Mockito
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
-import org.sunbird.job.publish.core.{ExtDataConfig, ObjectData, ObjectExtData}
+import org.sunbird.job.domain.`object`.DefinitionCache
+import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData, ObjectExtData}
+import org.sunbird.job.publish.util.CloudStorageUtil
 import org.sunbird.job.questionset.publish.helpers.QuestionSetPublisher
 import org.sunbird.job.questionset.task.QuestionSetPublishConfig
 import org.sunbird.job.util.{CassandraUtil, Neo4JUtil}
@@ -18,8 +20,11 @@ class QuestionSetPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matc
   implicit var cassandraUtil: CassandraUtil = _
   val config: Config = ConfigFactory.load("test.conf").withFallback(ConfigFactory.systemEnvironment())
   implicit val jobConfig: QuestionSetPublishConfig = new QuestionSetPublishConfig(config)
+  implicit val cloudStorageUtil = new CloudStorageUtil(jobConfig)
   implicit val readerConfig: ExtDataConfig = ExtDataConfig(jobConfig.questionSetKeyspaceName, jobConfig.questionSetTableName, List("identifier"), Map("hierarchy"->"string","instructions"->"string"))
   val questionReaderConfig: ExtDataConfig = ExtDataConfig(jobConfig.questionKeyspaceName, jobConfig.questionTableName)
+  implicit val defCache = new DefinitionCache()
+  implicit val defConfig = DefinitionConfig(jobConfig.schemaSupportVersionMap, jobConfig.definitionBasePath)
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()

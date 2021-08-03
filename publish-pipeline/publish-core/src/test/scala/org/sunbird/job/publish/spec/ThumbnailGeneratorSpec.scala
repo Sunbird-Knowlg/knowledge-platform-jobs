@@ -25,7 +25,7 @@ class ThumbnailGeneratorSpec extends FlatSpec with BeforeAndAfterAll with Matche
   "Object Thumbnail Generator generateThumbnail" should "add the thumbnail to ObjectData" in {
 
     val hierarchy = Map("identifier" -> "do_123", "children" -> List(Map("identifier" -> "do_234", "name" -> "Children-1"), Map("identifier" -> "do_345", "name" -> "Children-2")))
-    val metadata = Map("identifier" -> "do_123", "appIcon" -> "https://dev.sunbirded.org/assets/images/sunbird_logo.png", "IL_UNIQUE_ID" -> "do_123", "IL_FUNC_OBJECT_TYPE" -> "QuestionSet", "name" -> "Test QuestionSet", "status" -> "Live")
+    val metadata = Map("identifier" -> "do_123", "appIcon" -> "https://dev.sunbirded.org/assets/images/sunbird_logo.png", "IL_UNIQUE_ID" -> "do_123", "objectType" -> "QuestionSet", "name" -> "Test QuestionSet", "status" -> "Live")
     val objData = new ObjectData("do_123", metadata, None, Some(hierarchy))
 
     val thumbnailGenerator = new TestThumbnailGenerator()
@@ -35,6 +35,23 @@ class ThumbnailGeneratorSpec extends FlatSpec with BeforeAndAfterAll with Matche
     resultMetadata.isEmpty should be(false)
     resultMetadata.getOrElse("posterImage", "").asInstanceOf[String].isEmpty should be(false)
     resultMetadata.getOrElse("appIcon", "").asInstanceOf[String].isEmpty should be(false)
+    resultMetadata.getOrElse("posterImage", "").asInstanceOf[String] shouldBe "https://dev.sunbirded.org/assets/images/sunbird_logo.png"
+    resultMetadata.getOrElse("appIcon", "").asInstanceOf[String] shouldBe "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/questionset/do_123/artifact/sunbird_logo.thumb.png"
+  }
+
+  "Object Thumbnail Generator generateThumbnail with google drive link" should "add the thumbnail to ObjectData" in {
+    val hierarchy = Map("identifier" -> "do_123", "children" -> List(Map("identifier" -> "do_234", "name" -> "Children-1"), Map("identifier" -> "do_345", "name" -> "Children-2")))
+    val metadata = Map("identifier" -> "do_123", "appIcon" -> "https://drive.google.com/uc?export=download&id=1-dFzAeSNmx1ZRn77CEntyQA-VcBE0PKg", "IL_UNIQUE_ID" -> "do_123", "objectType" -> "QuestionSet", "name" -> "Test QuestionSet", "status" -> "Live")
+    val objData = new ObjectData("do_123", metadata, None, Some(hierarchy))
+    val thumbnailGenerator = new TestThumbnailGenerator()
+    val obj = thumbnailGenerator.generateThumbnail(objData)
+    val result = obj.getOrElse(objData)
+    val resultMetadata = result.metadata
+    resultMetadata.isEmpty should be(false)
+    resultMetadata.getOrElse("posterImage", "").asInstanceOf[String].isEmpty should be(false)
+    resultMetadata.getOrElse("appIcon", "").asInstanceOf[String].isEmpty should be(false)
+    resultMetadata.getOrElse("posterImage", "").asInstanceOf[String] shouldBe "https://drive.google.com/uc?export=download&id=1-dFzAeSNmx1ZRn77CEntyQA-VcBE0PKg"
+    resultMetadata.getOrElse("appIcon", "").asInstanceOf[String] shouldBe "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/questionset/do_123/artifact/book.thumb.jpg"
   }
 
 }
