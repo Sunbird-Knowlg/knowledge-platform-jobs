@@ -49,14 +49,9 @@ object ExtractableMimeTypeHelper {
   }
 
   private def isExtractedSnapshotExist(obj: ObjectData): Boolean = {
-    val artifactUrl = obj.getString("artifactUrl", null)
-    isValidSnapshotFile(artifactUrl)
+    extractablePackageExtensions.exists(key => StringUtils.endsWithIgnoreCase(obj.getString("artifactUrl", null), key))
   }
 
-  private def isValidSnapshotFile(artifactUrl: String): Boolean = {
-    val isValidSnapshot = extractablePackageExtensions.filter(key => StringUtils.endsWithIgnoreCase(artifactUrl, key))
-    isValidSnapshot.nonEmpty
-  }
 
   def getContentBody(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): String = {
     // fetch content body from cassandra
