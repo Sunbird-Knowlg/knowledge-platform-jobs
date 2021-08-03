@@ -63,6 +63,12 @@ class MetricsDataTransformerMapSource extends SourceFunction[Event] {
   override def run(ctx: SourceContext[Event]) {
     // Valid event
     ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_1), 0, 10))
+
+    // Invalid event
+    ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.FAILEVENT), 0, 11))
+
+    //Event to be skipped
+    ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.SKIPEVENT), 0, 12))
   }
 
   override def cancel(): Unit = {}
