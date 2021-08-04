@@ -1,21 +1,19 @@
 package org.sunbird.job.publish.helpers
 
-import java.io.{BufferedOutputStream, ByteArrayOutputStream, File, FileInputStream, FileOutputStream}
-import java.text.SimpleDateFormat
-import java.util
-import java.util.{Date, Optional}
-import java.util.zip.{ZipEntry, ZipOutputStream}
-import java.net.{HttpURLConnection, URL}
-
-import kong.unirest.HttpResponse
-import org.apache.commons.collections.CollectionUtils
 import org.apache.commons.io.{FileUtils, FilenameUtils, IOUtils}
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
+import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ObjectData, Slug}
-import org.sunbird.job.util.{HttpUtil, JSONUtil, ScalaJsonUtil}
+import org.sunbird.job.util.{JSONUtil, ScalaJsonUtil}
 
+import java.io._
+import java.net.{HttpURLConnection, URL}
+import java.text.SimpleDateFormat
+import java.util
+import java.util.zip.{ZipEntry, ZipOutputStream}
+import java.util.{Date, Optional}
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
 
@@ -73,7 +71,7 @@ trait ObjectBundle {
 		}).unzip
 	}
 
-	def getObjectBundle(obj: ObjectData, objList: List[Map[String, AnyRef]], pkgType: String)(implicit ec: ExecutionContext, defCache: DefinitionCache, defConfig: DefinitionConfig): File = {
+	def getObjectBundle(obj: ObjectData, objList: List[Map[String, AnyRef]], pkgType: String)(implicit ec: ExecutionContext, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig): File = {
 		val bundleFileName = bundleLocation + File.separator + getBundleFileName(obj.identifier, obj.metadata, pkgType)
 		val bundlePath = bundleLocation + File.separator + System.currentTimeMillis + "_temp"
 		val objType = obj.getString("objectType", "")
@@ -82,7 +80,8 @@ trait ObjectBundle {
 		logger.info("ObjectBundle ::: getObjectBundle ::: updatedObjList :::: " + updatedObjList)
 		val downloadUrls: Map[AnyRef, List[String]] = dUrls.flatten.groupBy(_._1).map { case (k, v) => k -> v.map(_._2) }
 		logger.info("ObjectBundle ::: getObjectBundle ::: downloadUrls :::: " + downloadUrls)
-		val downloadedMedias: List[File] = Await.result(downloadFiles(obj.identifier, downloadUrls, bundlePath), Duration.apply("60 seconds"))
+		val duration: String = config.getString("media_download_duration", "60 seconds")
+		val downloadedMedias: List[File] = Await.result(downloadFiles(obj.identifier, downloadUrls, bundlePath), Duration.apply(duration))
 		if (downloadUrls.nonEmpty && downloadedMedias.isEmpty)
 			throw new Exception("Error Occurred While Downloading Bundle Media Files For : " + obj.identifier)
 		val manifestFile: File = getManifestFile(obj.identifier, objType, bundlePath, updatedObjList)

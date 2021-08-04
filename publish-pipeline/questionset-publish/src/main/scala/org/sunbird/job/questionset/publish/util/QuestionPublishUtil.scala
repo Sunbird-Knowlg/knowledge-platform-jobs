@@ -24,7 +24,7 @@ object QuestionPublishUtil extends QuestionPublisher {
 			val messages: List[String] = validate(obj, obj.identifier, validateQuestion)
 			if (messages.isEmpty) {
 				val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
-				val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, cloudStorageUtil, definitionCache, definitionConfig, httpUtil)
+				val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
 				logger.info("Ecar generation done for Question: " + objWithEcar.identifier)
 				saveOnSuccess(objWithEcar)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
 				logger.info("Question publishing completed successfully for : " + qData.identifier)
