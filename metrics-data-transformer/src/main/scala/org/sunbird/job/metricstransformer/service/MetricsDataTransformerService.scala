@@ -44,7 +44,7 @@ trait MetricsDataTransformerService {
     }
   }
   else {
-      logger.info("Learning event skipped, no sourcing identifier found")
+      logger.info(s"Learning event skipped, no sourcing identifier found: $identifier")
       metrics.incCounter(config.skippedEventCount)
     }
 
