@@ -80,7 +80,7 @@ trait ObjectBundle {
 		logger.info("ObjectBundle ::: getObjectBundle ::: updatedObjList :::: " + updatedObjList)
 		val downloadUrls: Map[AnyRef, List[String]] = dUrls.flatten.groupBy(_._1).map { case (k, v) => k -> v.map(_._2) }
 		logger.info("ObjectBundle ::: getObjectBundle ::: downloadUrls :::: " + downloadUrls)
-		val duration: String = config.getString("media_download_duration", "60 seconds")
+		val duration: String = config.getString("media_download_duration", "300 seconds")
 		val downloadedMedias: List[File] = Await.result(downloadFiles(obj.identifier, downloadUrls, bundlePath), Duration.apply(duration))
 		if (downloadUrls.nonEmpty && downloadedMedias.isEmpty)
 			throw new Exception("Error Occurred While Downloading Bundle Media Files For : " + obj.identifier)
