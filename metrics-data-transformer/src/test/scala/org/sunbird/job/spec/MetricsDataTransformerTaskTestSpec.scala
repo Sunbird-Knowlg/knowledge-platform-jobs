@@ -52,7 +52,7 @@ class MetricsDataTransformerTaskTestSpec extends BaseTestSpec {
 
     when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new MetricsDataTransformerMapSource)
 
-    new MetricsDataTransformerStreamTask(jobConfig, mockKafkaUtil, httpUtil).process()
+    new MetricsDataTransformerStreamTask(jobConfig, mockKafkaUtil, mockHttpUtil).process()
 
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(1)
     server.close()
