@@ -7,43 +7,55 @@ import org.sunbird.job.exception.{APIException, CassandraException}
 import org.sunbird.job.mvcindexer.domain.Event
 import org.sunbird.job.mvcindexer.task.MVCIndexerConfig
 import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, JSONUtil}
+import org.apache.commons.lang3.StringUtils
 
 class MVCCassandraIndexer(config: MVCIndexerConfig, cassandraUtil: CassandraUtil, httpUtil: HttpUtil) {
   private[this] lazy val logger = LoggerFactory.getLogger(classOf[MVCCassandraIndexer])
 
   /**
    * Based on action update content metadata in cassandra and post the keywords and vector data to ML Service
-   * @param message Event envelope
+   *
+   * @param message    Event envelope
    * @param identifier Content ID
    */
   def insertIntoCassandra(message: Event, identifier: String): Unit = {
     val obj: Map[String, AnyRef] = message.eventData
     message.action match {
-      case "update-es-index" =>
-        val esCassandraMap = extractFieldsToBeInserted(obj)
-        getMLKeywords(obj)
-        updateContentProperties(identifier, esCassandraMap)
-      case "update-ml-keywords" =>
-        getMLVectors(message.mlContentText, identifier)
-        val csTableCols = Map[String, AnyRef]("ml_keywords" -> message.mlKeywords, "ml_content_text" -> message.mlContentText)
-        updateContentProperties(identifier, csTableCols)
-      case "update-ml-contenttextvector" =>
-        val vectorSet = JSONUtil.deserialize[java.util.HashSet[java.lang.Double]](JSONUtil.serialize(message.mlContentTextVector))
-        val csTableCols = Map[String, AnyRef]("ml_content_text_vector" -> vectorSet)
-        updateContentProperties(identifier, csTableCols)
+      case config.esIndexAction =>
+        upsertWithEsIndex(obj, identifier)
+      case config.mlKeywordAction =>
+        updateWithMLKeyword(message, identifier)
+      case config.mlVectorAction =>
+        updateWithMLVector(message, identifier)
     }
+  }
+
+  def upsertWithEsIndex(obj: Map[String, AnyRef], identifier: String) = {
+    val esCassandraMap = extractFieldsToBeInserted(obj)
+    getMLKeywords(obj)
+    updateContentProperties(identifier, esCassandraMap)
+  }
+
+  def updateWithMLKeyword(message: Event, identifier: String) = {
+    getMLVectors(message.mlContentText, identifier)
+    val csTableCols = Map[String, AnyRef]("ml_keywords" -> message.mlKeywords, "ml_content_text" -> message.mlContentText)
+    updateContentProperties(identifier, csTableCols)
+  }
+
+  def updateWithMLVector(message: Event, identifier: String) = {
+    val vectorSet = JSONUtil.deserialize[java.util.HashSet[java.lang.Double]](JSONUtil.serialize(message.mlContentTextVector))
+    val csTableCols = Map[String, AnyRef]("ml_content_text_vector" -> vectorSet)
+    updateContentProperties(identifier, csTableCols)
   }
 
   /**
    * Parse the selected fields from eventData to update in cassandra
+   *
    * @param contentobj Content metadata
    */
   private def extractFieldsToBeInserted(contentobj: Map[String, AnyRef]): Map[String, AnyRef] = {
     var esCassandraMap = Map[String, AnyRef]()
-    val fields = Map[String, String]("level1Concept" -> "level1_concept", "level2Concept" -> "level2_concept",
-      "level3Concept" -> "level3_concept", "textbook_name" -> "textbook_name", "level1Name" -> "level1_name",
-      "level2Name" -> "level2_name", "level3Name" -> "level3_name")
-    for ((fieldKey: String, fieldValue: String) <- fields) {
+    for ((fieldKey: String, fieldValue: String) <- config.csFieldMap) {
       if (contentobj.contains(fieldKey)) {
         esCassandraMap += (fieldValue -> contentobj(fieldKey).asInstanceOf[List[String]])
       }
@@ -62,6 +74,7 @@ class MVCCassandraIndexer(config: MVCIndexerConfig, cassandraUtil: CassandraUtil
 
   /**
    * Post the keywords to ML Workbench service
+   *
    * @param contentdef Content Metadata
    */
   @throws[APIException]
@@ -71,18 +84,19 @@ class MVCCassandraIndexer(config: MVCIndexerConfig, cassandraUtil: CassandraUtil
     val requestBody = JSONUtil.serialize(bodyObj)
     try {
       val resp: HTTPResponse = httpUtil.post(config.mlKeywordAPIUrl, requestBody)
-      logger.info("getMLKeywords ::: The ML workbench response is " + resp.body)
-      if(!resp.isSuccess) throw new Exception("")
+      logger.info("ML keyword api response - " + resp.body)
+      if (!resp.isSuccess) throw new Exception("")
     } catch {
       case e: Exception =>
-        throw new APIException(s"getMLKeywords ::: ML workbench api request failed :: ${e.getMessage}", e)
+        throw new APIException(s"ML keyword api request failed - ${e.getMessage}", e)
     }
   }
 
   /**
    * Post the content text vector to ML Workbench service
+   *
    * @param contentText ContentText from event envelope
-   * @param identifier Content ID
+   * @param identifier  Content ID
    */
   @throws[APIException]
   def getMLVectors(contentText: String, identifier: String): Unit = {
@@ -91,17 +105,34 @@ class MVCCassandraIndexer(config: MVCIndexerConfig, cassandraUtil: CassandraUtil
     val requestBody = JSONUtil.serialize(bodyObj)
     try {
       val resp: HTTPResponse = httpUtil.post(config.mlVectorAPIUrl, requestBody)
-      logger.info("getMLVectors ::: ML vector api request response is " + resp.body)
-      if(!resp.isSuccess) throw new Exception("")
+      logger.info("ML vector api response - " + resp.body)
+      if (!resp.isSuccess) throw new Exception("")
     } catch {
       case e: Exception =>
-        throw new APIException(s"getMLVectors ::: ML vector api failed for $identifier :: ${e.getMessage}", e)
+        throw new APIException(s"ML vector api failed for $identifier - ${e.getMessage}", e)
+    }
+  }
+
+  /**
+   * Update cassandra record
+   *
+   * @param contentId Content ID
+   * @param map       Content object
+   */
+  @throws[CassandraException]
+  def updateContentProperties(contentId: String, map: Map[String, AnyRef]): Unit = {
+    try {
+      val updateQuery = constructUpdateQuery(contentId, map)
+      if (StringUtils.isNotBlank(updateQuery)) cassandraUtil.session.execute(updateQuery)
+    } catch {
+      case e: Exception =>
+        throw new CassandraException(s"Exception while inserting data into cassandra for $contentId - ${e.getMessage}", e)
     }
   }
 
   @throws[CassandraException]
-  def updateContentProperties(contentId: String, map: Map[String, AnyRef]): Unit = {
-    if (Option(map).forall(_.isEmpty)) return
+  def constructUpdateQuery(contentId: String, map: Map[String, AnyRef]): String = {
+    if (Option(map).forall(_.isEmpty)) return ""
     import scala.collection.JavaConverters._
 
     try {
@@ -123,17 +154,18 @@ class MVCCassandraIndexer(config: MVCIndexerConfig, cassandraUtil: CassandraUtil
             queryAssignments.and(querySet)
           }
         } else {
-          return
+          return ""
         }
         i += 1
       }
 
       queryAssignments.and(QueryBuilder.set("last_updated_on", System.currentTimeMillis))
       val finalQuery = queryAssignments.where(QueryBuilder.eq("content_id", contentId))
-      cassandraUtil.session.execute(finalQuery.toString)
+
+      finalQuery.toString
     } catch {
       case e: Exception =>
-        throw new CassandraException(s"Exception while inserting data into cassandra for $contentId :: ${e.getMessage}", e)
+        throw new CassandraException(s"Exception while constructing query to cassandra for $contentId - ${e.getMessage}", e)
     }
   }
 }

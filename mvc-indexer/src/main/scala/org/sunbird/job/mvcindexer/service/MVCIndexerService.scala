@@ -20,8 +20,8 @@ class MVCIndexerService(config: MVCIndexerConfig, esUtil: ElasticSearchUtil, htt
   def processMessage(message: Event)(implicit metrics: Metrics): Unit = {
     try {
       val objectId: String = message.identifier
-      if (!message.action.equalsIgnoreCase("update-content-rating")) {
-        if (message.action.equalsIgnoreCase("update-es-index")) {
+      if (config.csUpdateAcions.contains(message.action)) {
+        if (message.action.equalsIgnoreCase(config.esIndexAction)) {
           message.eventData = ContentUtil.getContentMetaData(message.eventData, objectId, httpUtil, config)
         }
         logger.info("Upsert cassandra document for " + objectId)

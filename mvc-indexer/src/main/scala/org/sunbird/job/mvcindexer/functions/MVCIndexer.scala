@@ -42,9 +42,8 @@ class MVCIndexer(config: MVCIndexerConfig, var esUtil: ElasticSearchUtil, httpUt
                               metrics: Metrics): Unit = {
     try {
       metrics.incCounter(config.totalEventsCount)
-      if (event.isValid) {
-        mvcIndexerService.processMessage(event)(metrics)
-      } else metrics.incCounter(config.skippedEventCount)
+      if (event.isValid) mvcIndexerService.processMessage(event)(metrics)
+      else metrics.incCounter(config.skippedEventCount)
     } catch {
       case ex: Exception =>
         metrics.incCounter(config.failedEventCount)
