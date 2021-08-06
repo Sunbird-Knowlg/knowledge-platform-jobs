@@ -65,4 +65,8 @@ class CloudStorageUtil(config: PublishConfig) extends Serializable {
 		getService.deleteObject(getContainerName, key, isDirectory)
 	}
 
+	def downloadFile(downloadPath: String, file: String, slug: Option[Boolean] = Option(false)): Unit = {
+		getService.download(getContainerName, file, downloadPath, slug)
+	}
+
 }
