@@ -12,7 +12,7 @@ import org.sunbird.job.util.{CassandraUtil, ElasticSearchUtil, HttpUtil}
 class MVCIndexerService(config: MVCIndexerConfig, esUtil: ElasticSearchUtil, httpUtil: HttpUtil, cassandraUtil: CassandraUtil) {
 
   private[this] lazy val logger = LoggerFactory.getLogger(classOf[MVCIndexerService])
-  private val mvcEsIndexer: MVCESIndexer = if (mvcEsIndexer == null) new MVCESIndexer(config, esUtil) else mvcEsIndexer
+  private val mvcEsIndexer: MVCESIndexer = Option(mvcEsIndexer).getOrElse(new MVCESIndexer(config, esUtil))
   mvcEsIndexer.createMVCSearchIndex()
   private val cassandraManager: MVCCassandraIndexer = new MVCCassandraIndexer(config, cassandraUtil, httpUtil)
 
