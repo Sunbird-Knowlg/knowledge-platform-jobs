@@ -68,7 +68,8 @@ class QuestionPublishUtilSpec extends FlatSpec with BeforeAndAfterAll with Match
     val identifier = "do_123";
     val obj1: ObjectData = new ObjectData("do_113188615625731", Map[String, AnyRef]("identifier" -> "do_113188615625731", "objectType" -> "Question", "visibility" -> "Parent", "mimeType" -> "application/vnd.sunbird.question", "primaryCategory" -> "some category", "name" -> "Some Question", "code" -> "some code"))
     val objList: List[ObjectData] = List(obj1)
-    QuestionPublishUtil.publishQuestions(identifier, objList)(ec, mockNeo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, defCache, defConfig, jobConfig, httpUtil)
+    val publishedQuestions = QuestionPublishUtil.publishQuestions(identifier, objList)(ec, mockNeo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, defCache, defConfig, jobConfig, httpUtil)
+    publishedQuestions.map(record => record.getString("artifactUrl","") shouldNot be(null))
   }
 
 }
