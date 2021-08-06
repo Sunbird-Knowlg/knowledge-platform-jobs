@@ -1,37 +1,25 @@
 <?xml version="1.0" encoding="UTF-8"?>
-
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
-        <groupId>org.sunbird</groupId>
         <artifactId>knowledge-platform-jobs</artifactId>
+        <groupId>org.sunbird</groupId>
         <version>1.0</version>
     </parent>
-    <artifactId>audit-event-generator</artifactId>
+    <artifactId>metrics-data-transformer</artifactId>
     <version>1.0.0</version>
     <packaging>jar</packaging>
-    <name>audit-event-generator</name>
+    <name>metrics-data-transformer</name>
     <description>
-        Audit Event Generator Flink Job
+        Metrics data transformer Job
     </description>
-    
-    <properties>
-		<encoding>UTF-8</encoding>
-		<scoverage.plugin.version>1.4.0</scoverage.plugin.version>
-	</properties>
 
-    <repositories>
-        <repository>
-            <id>platform-telemetry</id>
-            <url>https://oss.sonatype.org/content/repositories/orgsunbird-1138</url>
-        </repository>
-        <repository>
-            <id>platform-common</id>
-            <url>https://oss.sonatype.org/content/repositories/orgsunbird-1137</url>
-        </repository>
-    </repositories>
+    <properties>
+        <encoding>UTF-8</encoding>
+        <scoverage.plugin.version>1.4.0</scoverage.plugin.version>
+    </properties>
 
     <dependencies>
         <dependency>
@@ -90,32 +78,10 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.sunbird</groupId>
-            <artifactId>platform-common</artifactId>
-            <version>1.0-beta</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>com.fasterxml.jackson.core</groupId>
-                    <artifactId>jackson-databind</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.fasterxml.jackson.core</groupId>
-                    <artifactId>jackson-core</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.apache.logging.log4j</groupId>
-                    <artifactId>log4j-core</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.apache.logging.log4j</groupId>
-                    <artifactId>log4j-api</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.sunbird</groupId>
-            <artifactId>platform-telemetry</artifactId>
-            <version>1.0-beta</version>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>mockwebserver</artifactId>
+            <version>4.9.1</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
@@ -163,7 +129,7 @@
                             <transformers>
                                 <transformer
                                         implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>org.sunbird.job.auditevent.task.AuditEventGeneratorStreamTask</mainClass>
+                                    <mainClass>org.sunbird.job.metricstransformer.task.MetricsDataTransformerStreamTask</mainClass>
                                 </transformer>
                                 <!-- append default configs -->
                                 <transformer
@@ -220,7 +186,7 @@
                 <configuration>
                     <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
                     <junitxml>.</junitxml>
-                    <filereports>audit-event-generator-testsuite.txt</filereports>
+                    <filereports>metrics-data-transformer-testsuite.txt</filereports>
                 </configuration>
                 <executions>
                     <execution>
@@ -231,17 +197,18 @@
                     </execution>
                 </executions>
             </plugin>
-			<plugin>
-				<groupId>org.scoverage</groupId>
-				<artifactId>scoverage-maven-plugin</artifactId>
-				<version>${scoverage.plugin.version}</version>
-				<configuration>
-					<scalaVersion>${scala.version}</scalaVersion>
-					<aggregate>true</aggregate>
-					<highlighting>true</highlighting>
-				</configuration>
-			</plugin>
+            <plugin>
+                <groupId>org.scoverage</groupId>
+                <artifactId>scoverage-maven-plugin</artifactId>
+                <version>${scoverage.plugin.version}</version>
+                <configuration>
+                    <scalaVersion>${scala.version}</scalaVersion>
+                    <aggregate>true</aggregate>
+                    <highlighting>true</highlighting>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
+
 
 </project>
