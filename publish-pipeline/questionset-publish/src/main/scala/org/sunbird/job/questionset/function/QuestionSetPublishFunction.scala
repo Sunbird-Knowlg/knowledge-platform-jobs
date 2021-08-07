@@ -36,8 +36,7 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 	val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
 
 	@transient var ec: ExecutionContext = _
-	private val pkgTypes = List(EcarPackageType.SPINE.toString, EcarPackageType.ONLINE.toString)
-
+	private val pkgTypes = List(EcarPackageType.SPINE.toString, EcarPackageType.ONLINE.toString, EcarPackageType.FULL.toString)
 
 	override def open(parameters: Configuration): Unit = {
 		super.open(parameters)
@@ -112,7 +111,7 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 			val id = q.identifier.replace(".img", "")
 			val obj = getObject(id, 0, readerConfig)(neo4JUtil, cassandraUtil)
 			logger.info(s"question metadata for $id : ${obj.metadata}")
-			if (!List("Live", "Unlisted").contains(obj.metadata.getOrElse("status", "").asInstanceOf[String])) {
+			if (!List("Live", "Unlisted").contains(obj.getString("status", ""))) {
 				logger.info("Question publishing failed for : " + id)
 				messages += s"""Question publishing failed for : $id"""
 			}
@@ -120,12 +119,11 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 		messages.toList
 	}
 
-
 	def generateECAR(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
 		val ecarMap: Map[String, String] = generateEcar(data, pkgTypes)
 		val variants: java.util.Map[String, java.util.Map[String, String]] = ecarMap.map { case (key, value) => key.toLowerCase -> Map[String, String]("ecarUrl"-> value, "size"-> httpUtil.getSize(value).toString).asJava }.asJava
 		logger.info("QuestionSetPublishFunction ::: generateECAR ::: ecar map ::: " + ecarMap)
-		val meta: Map[String, AnyRef] = Map("downloadUrl" -> ecarMap.getOrElse("SPINE", ""), "variants" -> variants)
+		val meta: Map[String, AnyRef] = Map("downloadUrl" -> ecarMap.getOrElse(EcarPackageType.FULL.toString, ""), "variants" -> variants)
 		new ObjectData(data.identifier, data.metadata ++ meta, data.extData, data.hierarchy)
 	}
 
@@ -137,7 +135,7 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 	}
 
 	def isValidChildQuestion(obj: ObjectData): Boolean = {
-		StringUtils.equalsIgnoreCase("Parent", obj.metadata.getOrElse("visibility", "").asInstanceOf[String])
+		StringUtils.equalsIgnoreCase("Parent", obj.getString("visibility", ""))
 	}
 
 }

@@ -51,9 +51,9 @@ trait QuestionSetPublisher extends ObjectReader with ObjectValidator with Object
 	def validateQuestionSet(obj: ObjectData, identifier: String): List[String] = {
 		val messages = ListBuffer[String]()
 		if (obj.hierarchy.getOrElse(Map()).isEmpty) messages += s"""There is no hierarchy available for : $identifier"""
-		if (!StringUtils.equalsIgnoreCase(obj.metadata.getOrElse("mimeType", "").asInstanceOf[String], "application/vnd.sunbird.questionset"))
+		if (!StringUtils.equalsIgnoreCase(obj.getString("mimeType", ""), "application/vnd.sunbird.questionset"))
 			messages += s"""mimeType is invalid for : $identifier"""
-		if (obj.metadata.getOrElse("visibility", "").asInstanceOf[String].isEmpty) messages += s"""There is no visibility available for : $identifier"""
+		if (obj.getString("visibility", "").isEmpty) messages += s"""There is no visibility available for : $identifier"""
 		//TODO: Add any more check, if required.
 		messages.toList
 	}
