@@ -25,7 +25,7 @@ trait MetricsDataTransformerService {
       keys.foreach(f => {
         val property = ScalaJsonUtil.deserialize[ContentProps](ScalaJsonUtil.serialize(propertyMap(f)))
         if(null != property.nv) {
-          contentMetrics = contentMetrics + s"""$f: ${property.nv},""".stripMargin
+          contentMetrics = contentMetrics + s""""$f": ${property.nv},""".stripMargin
         }
       })
     val sourcingId = response.getOrElse("origin","").asInstanceOf[String]
