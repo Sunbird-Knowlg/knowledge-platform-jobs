@@ -244,7 +244,7 @@ object ExtractableMimeTypeHelper {
     private def downloadAssetFiles(identifier: String, mediaFiles: List[Media], basePath: String, config: ContentPublishConfig)(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil): Future[List[Map[String, String]]] = {
       val futures = mediaFiles.map(mediaFile => {
         Future {
-          logger.info(s"ObjectBundle ::: downloadFiles ::: Processing file: ${mediaFile.id} for : " + identifier)
+          logger.info(s"ExtractableMimeTypeHelper ::: downloadAssetFiles ::: Processing file: ${mediaFile.id} for : " + identifier)
           if (!StringUtils.equals("youtube", mediaFile.`type`) && !StringUtils.isBlank(mediaFile.src) && !StringUtils.isBlank(mediaFile.`type`)) {
             val downloadPath = if (isWidgetTypeAsset(mediaFile.`type`)) basePath + "/" + "widgets"  else basePath + "/" + "assets"
             val subFolder = {
@@ -256,6 +256,7 @@ object ExtractableMimeTypeHelper {
             }
             val fDownloadPath = if (StringUtils.isNotBlank(subFolder)) downloadPath + File.separator + subFolder + File.separator else downloadPath + File.separator
             createDirectoryIfNeeded(fDownloadPath)
+            logger.info(s"ExtractableMimeTypeHelper ::: downloadAssetFiles ::: fDownloadPath: $fDownloadPath & src : ${mediaFile.src}")
             if(mediaFile.src.startsWith(File.separator)) cloudStorageUtil.downloadFile(fDownloadPath, mediaFile.src.substring(1)) else cloudStorageUtil.downloadFile(fDownloadPath, mediaFile.src)
             val downloadedFile = new File(fDownloadPath+mediaFile.src.split("/").last)
             logger.info("Downloaded file : " + mediaFile.src + " - " + downloadedFile + " | [Content Id '" + identifier + "']")
