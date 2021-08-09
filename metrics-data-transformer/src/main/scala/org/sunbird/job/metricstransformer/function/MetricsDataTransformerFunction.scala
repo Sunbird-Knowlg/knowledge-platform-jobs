@@ -2,7 +2,6 @@ package org.sunbird.job.metricstransformer.function
 
 import java.util
 
-import org.slf4j.LoggerFactory
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
@@ -38,7 +37,6 @@ class MetricsDataTransformerFunction(config: MetricsDataTransformerConfig, httpU
 
     val eventMetrics = config.metrics.stream().toArray.map(_.asInstanceOf[String])
     val filteredKeys = eventMetrics.intersect(mapKeys)
-    logger.info("Event keys ::" + filteredKeys)
 
     if(filteredKeys.length > 0) {
       processEvent(event, metrics, filteredKeys)(config, httpUtil)
