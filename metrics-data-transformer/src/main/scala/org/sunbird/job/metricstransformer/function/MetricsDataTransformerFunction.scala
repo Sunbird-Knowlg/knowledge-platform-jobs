@@ -37,7 +37,6 @@ class MetricsDataTransformerFunction(config: MetricsDataTransformerConfig, httpU
 
     val eventMetrics = config.metrics.stream().toArray.map(_.asInstanceOf[String])
     val filteredKeys = eventMetrics.intersect(mapKeys)
-    logger.info("Event keys ::" + filteredKeys)
 
     if(filteredKeys.length > 0) {
       processEvent(event, metrics, filteredKeys)(config, httpUtil)
