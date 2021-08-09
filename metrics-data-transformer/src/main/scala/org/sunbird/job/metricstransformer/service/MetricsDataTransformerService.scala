@@ -25,39 +25,39 @@ trait MetricsDataTransformerService {
 
       keys.foreach(f => {
         val property = ScalaJsonUtil.deserialize[ContentProps](ScalaJsonUtil.serialize(propertyMap(f)))
-        if(null != property.nv) {
+        if (null != property.nv) {
           contentMetrics = contentMetrics + s""""$f": ${property.nv},""".stripMargin
         }
       })
-    val sourcingId = response.getOrElse("origin","").asInstanceOf[String]
+      val sourcingId = response.getOrElse("origin", "").asInstanceOf[String]
 
-    try {
-      val channel = event.channel
-      updateContentMetrics(contentMetrics, sourcingId, channel)(config, httpUtil)
-      logger.info("Updated content metrics: " + identifier)
-      metrics.incCounter(config.successEventCount)
-    } catch {
-      case ex: Exception =>
-        logger.error("Error while writing content metrics :: " + event.getJson + " :: ", ex)
-        metrics.incCounter(config.failedEventCount)
-        ex.printStackTrace()
-        throw new InvalidEventException(s"Error writing metrics for sourcing id: $sourcingId")
+      try {
+        val channel = event.channel
+        updateContentMetrics(contentMetrics, sourcingId, channel)(config, httpUtil)
+        logger.info("Updated content metrics: " + identifier)
+        metrics.incCounter(config.successEventCount)
+      } catch {
+        case ex: Exception =>
+          logger.error("Error while writing content metrics :: " + event.getJson + " :: ", ex)
+          metrics.incCounter(config.failedEventCount)
+          ex.printStackTrace()
+          throw new InvalidEventException(s"Error writing metrics for sourcing id: $sourcingId")
+      }
     }
-  }
-  else {
+    else {
       logger.info(s"Learning event skipped, no sourcing identifier found: $identifier")
       metrics.incCounter(config.skippedEventCount)
     }
 
   }
 
-  def getContent(url: String)(config: MetricsDataTransformerConfig, httpUtil: HttpUtil) : Map[String,AnyRef] = {
+  def getContent(url: String)(config: MetricsDataTransformerConfig, httpUtil: HttpUtil): Map[String, AnyRef] = {
     val response = httpUtil.get(url, config.defaultHeaders)
-    if(200 == response.status) {
+    if (200 == response.status) {
       ScalaJsonUtil.deserialize[Map[String, AnyRef]](response.body)
         .getOrElse("result", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
         .getOrElse("content", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
-    } else if(404 == response.status) {
+    } else if (404 == response.status) {
       Map()
     } else {
       throw new InvalidEventException(s"Error from get API with response: $response")
@@ -66,7 +66,7 @@ trait MetricsDataTransformerService {
 
   def updateContentMetrics(contentProperty: String, sourcingId: String, channel: String)(config: MetricsDataTransformerConfig, httpUtil: HttpUtil): Boolean = {
     val updateUrl = config.lpURL + config.contentUpdate + "/" + sourcingId
-    val contentMetrics = if(contentProperty.nonEmpty) contentProperty.substring(0,contentProperty.length-1) else contentProperty
+    val contentMetrics = if (contentProperty.nonEmpty) contentProperty.substring(0, contentProperty.length - 1) else contentProperty
 
     val request =
       s"""
@@ -79,8 +79,8 @@ trait MetricsDataTransformerService {
          |}""".stripMargin
 
     val headers = config.defaultHeaders ++ Map("X-Channel-Id" -> channel)
-    val response:HTTPResponse = httpUtil.patch(updateUrl, request,  headers)
-    if(response.status == 200) {
+    val response: HTTPResponse = httpUtil.patch(updateUrl, request, headers)
+    if (response.status == 200) {
       true
     } else {
       logger.error("Error while updating metrics for content : " + sourcingId + " :: " + response.body)
