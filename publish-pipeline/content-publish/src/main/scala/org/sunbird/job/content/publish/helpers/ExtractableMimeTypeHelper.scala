@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper}
 import org.apache.commons.io.{FileUtils, FilenameUtils}
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
-import org.sunbird.job.content.publish.processor.{JsonParser, Plugin, XmlParser}
+import org.sunbird.job.content.publish.processor.{JsonParser, Media, Plugin, XmlParser}
 import org.sunbird.job.content.task.ContentPublishConfig
 import org.sunbird.job.publish.core.{ExtDataConfig, ObjectData, Slug}
 import org.sunbird.job.publish.util.CloudStorageUtil
@@ -16,7 +16,8 @@ import java.io._
 import java.nio.file.{Files, Path, Paths}
 import java.util.zip.{ZipEntry, ZipOutputStream}
 import javax.xml.parsers.{DocumentBuilderFactory, ParserConfigurationException}
-import scala.concurrent.ExecutionContext
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, ExecutionContext, Future}
 
 object ExtractableMimeTypeHelper {
 
@@ -49,14 +50,9 @@ object ExtractableMimeTypeHelper {
   }
 
   private def isExtractedSnapshotExist(obj: ObjectData): Boolean = {
-    val artifactUrl = obj.getString("artifactUrl", null)
-    isValidSnapshotFile(artifactUrl)
+    extractablePackageExtensions.exists(key => StringUtils.endsWithIgnoreCase(obj.getString("artifactUrl", null), key))
   }
 
-  private def isValidSnapshotFile(artifactUrl: String): Boolean = {
-    val isValidSnapshot = extractablePackageExtensions.filter(key => StringUtils.endsWithIgnoreCase(artifactUrl, key))
-    isValidSnapshot.nonEmpty
-  }
 
   def getContentBody(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): String = {
     // fetch content body from cassandra
@@ -73,6 +69,9 @@ object ExtractableMimeTypeHelper {
     val ecmlBody = obj.extData.get.getOrElse("body", "").toString
     val ecmlType: String = getECMLType(ecmlBody)
     val ecrfObj: Plugin = getEcrfObject(ecmlType, ecmlBody)
+
+    // localize assets - download assets to local base path (tmp folder) for validation
+    localizeAssets(obj.metadata.getOrElse("identifier","").asInstanceOf[String], ecrfObj, basePath, config)
 
     // validate assets
     val processedEcrf: Plugin = new ECMLExtractor(basePath, obj.identifier).process(ecrfObj)
@@ -230,5 +229,51 @@ object ExtractableMimeTypeHelper {
     if (extractionType == null)
       throw new Exception("Error! Invalid Content Extraction Type.")
   }
+
+
+    private def localizeAssets(contentId: String, ecrfObj: Plugin, basePath: String, config: ContentPublishConfig)(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil): Unit = {
+      val medias: List[Media] = if (null != ecrfObj && null != ecrfObj.manifest) ecrfObj.manifest.medias else List.empty
+      if(null != medias && medias.nonEmpty) processAssetsDownload(contentId, medias, basePath, config)
+    }
+
+    private def processAssetsDownload(contentId: String, medias: List[Media], basePath: String, config: ContentPublishConfig)(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil): Map[String, String] = {
+      val downloadResultMap = Await.result(downloadAssetFiles(contentId, medias, basePath, config), Duration.apply("60 seconds"))
+      downloadResultMap.filter(record => record.nonEmpty).flatten.toMap
+    }
+
+    private def downloadAssetFiles(identifier: String, mediaFiles: List[Media], basePath: String, config: ContentPublishConfig)(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil): Future[List[Map[String, String]]] = {
+      val futures = mediaFiles.map(mediaFile => {
+        Future {
+          logger.info(s"ExtractableMimeTypeHelper ::: downloadAssetFiles ::: Processing file: ${mediaFile.id} for : " + identifier)
+          if (!StringUtils.equals("youtube", mediaFile.`type`) && !StringUtils.isBlank(mediaFile.src) && !StringUtils.isBlank(mediaFile.`type`)) {
+            val downloadPath = if (isWidgetTypeAsset(mediaFile.`type`)) basePath + "/" + "widgets"  else basePath + "/" + "assets"
+            val subFolder = {
+              if (!mediaFile.src.startsWith("http")) {
+                val f = new File(mediaFile.src)
+                if (f.exists) f.delete
+                StringUtils.stripStart(f.getParent, "/")
+              } else ""
+            }
+            val fDownloadPath = if (StringUtils.isNotBlank(subFolder)) downloadPath + File.separator + subFolder + File.separator else downloadPath + File.separator
+            createDirectoryIfNeeded(fDownloadPath)
+            logger.info(s"ExtractableMimeTypeHelper ::: downloadAssetFiles ::: fDownloadPath: $fDownloadPath & src : ${mediaFile.src}")
+            if(mediaFile.src.startsWith(File.separator)) cloudStorageUtil.downloadFile(fDownloadPath, mediaFile.src.substring(1)) else cloudStorageUtil.downloadFile(fDownloadPath, mediaFile.src)
+            val downloadedFile = new File(fDownloadPath+mediaFile.src.split("/").last)
+            logger.info("Downloaded file : " + mediaFile.src + " - " + downloadedFile + " | [Content Id '" + identifier + "']")
+
+            Map(mediaFile.id -> downloadedFile.getName)
+          } else Map.empty[String, String]
+        }
+      })
+      Future.sequence(futures)
+    }
+
+
+    private def isWidgetTypeAsset(assetType: String): Boolean = StringUtils.equalsIgnoreCase(assetType, "js") || StringUtils.equalsIgnoreCase(assetType, "css") || StringUtils.equalsIgnoreCase(assetType, "json") || StringUtils.equalsIgnoreCase(assetType, "plugin")
+
+    private def createDirectoryIfNeeded(directoryName: String): Unit = {
+      val theDir = new File(directoryName)
+      if (!theDir.exists) theDir.mkdirs
+    }
 
 }
