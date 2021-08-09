@@ -17,6 +17,7 @@ trait MetricsDataTransformerService {
     val identifier = event.nodeUniqueId
     val url = config.contentServiceBaseUrl + config.contentReadApi + "/" + identifier
     val response = getContent(url)(config, httpUtil)
+    logger.info(s"Response for content $identifier ::" + response)
 
     if (!response.isEmpty) {
       val propertyMap = event.transactionData("properties").asInstanceOf[Map[String, AnyRef]]
@@ -25,7 +26,7 @@ trait MetricsDataTransformerService {
       keys.foreach(f => {
         val property = ScalaJsonUtil.deserialize[ContentProps](ScalaJsonUtil.serialize(propertyMap(f)))
         if(null != property.nv) {
-          contentMetrics = contentMetrics + s"""$f: ${property.nv},""".stripMargin
+          contentMetrics = contentMetrics + s""""$f": ${property.nv},""".stripMargin
         }
       })
     val sourcingId = response.getOrElse("origin","").asInstanceOf[String]
