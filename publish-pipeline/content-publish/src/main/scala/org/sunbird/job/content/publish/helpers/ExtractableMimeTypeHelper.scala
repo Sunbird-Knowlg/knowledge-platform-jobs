@@ -71,7 +71,7 @@ object ExtractableMimeTypeHelper {
     val ecrfObj: Plugin = getEcrfObject(ecmlType, ecmlBody)
 
     // localize assets - download assets to local base path (tmp folder) for validation
-    localizeAssets(obj.metadata.getOrElse("identifier","").asInstanceOf[String], ecrfObj, basePath, config)
+    localizeAssets(obj.identifier, ecrfObj, basePath, config)
 
     // validate assets
     val processedEcrf: Plugin = new ECMLExtractor(basePath, obj.identifier).process(ecrfObj)
