@@ -24,16 +24,16 @@ object ExtractableMimeTypeHelper {
   private[this] val logger = LoggerFactory.getLogger("ExtractableMimeTypeHelper")
   private val extractablePackageExtensions = List(".zip", ".h5p", ".epub")
 
-  def getS3URL(obj: ObjectData, cloudStorageUtil: CloudStorageUtil, config: ContentPublishConfig): String = {
+  def getCloudStoreURL(obj: ObjectData, cloudStorageUtil: CloudStorageUtil, config: ContentPublishConfig): String = {
     val path = getExtractionPath(obj, config, "latest")
     cloudStorageUtil.getURI(path, Option.apply(config.extractableMimeTypes.contains(obj.mimeType)))
   }
 
-  private def getExtractionPath(obj: ObjectData, config: ContentPublishConfig, prefix: String): String = {
+  private def getExtractionPath(obj: ObjectData, config: ContentPublishConfig, suffix: String): String = {
     obj.mimeType match {
-      case "application/vnd.ekstep.ecml-archive" => config.contentFolder + File.separator + "ecml" + File.separator + obj.identifier + "-" + prefix
-      case "application/vnd.ekstep.html-archive" => config.contentFolder + File.separator + "html" + File.separator + obj.identifier + "-" + prefix
-      case "application/vnd.ekstep.h5p-archive" => config.contentFolder + File.separator + "h5p" + File.separator + obj.identifier + "-" + prefix
+      case "application/vnd.ekstep.ecml-archive" => config.contentFolder + File.separator + "ecml" + File.separator + obj.identifier + "-" + suffix
+      case "application/vnd.ekstep.html-archive" => config.contentFolder + File.separator + "html" + File.separator + obj.identifier + "-" + suffix
+      case "application/vnd.ekstep.h5p-archive" => config.contentFolder + File.separator + "h5p" + File.separator + obj.identifier + "-" + suffix
       case _ => ""
     }
   }
@@ -200,11 +200,7 @@ object ExtractableMimeTypeHelper {
     val mimeType = obj.mimeType
     validationForCloudExtraction(file, extractionType, mimeType, config)
     if (config.extractableMimeTypes.contains(mimeType)) {
-      try {
-        cloudStorageUtil.uploadDirectory(getExtractionPath(obj, config, extractionType), new File(basePath), Option(slugFile))
-      } catch {
-        case _: Exception => println("Remove try catch")
-      }
+      cloudStorageUtil.uploadDirectory(getExtractionPath(obj, config, extractionType), new File(basePath), Option(slugFile))
     }
   }
 

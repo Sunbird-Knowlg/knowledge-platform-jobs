@@ -113,7 +113,7 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
              | "application/vnd.android.package-archive" | "assets" =>
           None
         case "application/vnd.ekstep.ecml-archive" | "application/vnd.ekstep.html-archive" | "application/vnd.ekstep.h5p-archive" =>
-          val latestFolderS3Url = ExtractableMimeTypeHelper.getS3URL(obj, cloudStorageUtil, config)
+          val latestFolderS3Url = ExtractableMimeTypeHelper.getCloudStoreURL(obj, cloudStorageUtil, config)
           val updatedPreviewUrl = updatedMeta ++ Map("previewUrl" -> latestFolderS3Url, "streamingUrl" -> latestFolderS3Url)
           Some(updatedPreviewUrl)
         case _ =>
