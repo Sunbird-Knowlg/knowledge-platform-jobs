@@ -59,6 +59,4 @@ class QuestionSetPublishConfig(override val config: Config) extends PublishConfi
 
 	val definitionBasePath: String = if (config.hasPath("schema.basePath")) config.getString("schema.basePath") else "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local"
 	val schemaSupportVersionMap = if (config.hasPath("schema.supportedVersion")) config.getObject("schema.supportedVersion").unwrapped().asScala.toMap else Map[String, AnyRef]()
-
-	val mediaDownloadDuration: String = if (config.hasPath("questionset.media_download_duration")) config.getString("questionset.media_download_duration") else "60 seconds"
 }
