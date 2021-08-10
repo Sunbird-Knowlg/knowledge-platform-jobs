@@ -66,11 +66,11 @@ class ContentPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers
     result.metadata.getOrElse("pkgVersion", 0.0.asInstanceOf[Number]).asInstanceOf[Number] should be(1.0.asInstanceOf[Number])
   }
 
-    ignore should "enrich the Content metadata for application/vnd.ekstep.html-archive should through exception in artifactUrl is not available" in {
-      val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/vnd.ekstep.html-archive"))
-      val result: ObjectData = new TestContentPublisher().enrichObjectMetadata(data).getOrElse(data)
-      result.metadata.getOrElse("pkgVersion", 0.0.asInstanceOf[Number]).asInstanceOf[Number] should be(1.0.asInstanceOf[Number])
-    }
+  ignore should "enrich the Content metadata for application/vnd.ekstep.html-archive should through exception in artifactUrl is not available" in {
+    val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/vnd.ekstep.html-archive"))
+    val result: ObjectData = new TestContentPublisher().enrichObjectMetadata(data).getOrElse(data)
+    result.metadata.getOrElse("pkgVersion", 0.0.asInstanceOf[Number]).asInstanceOf[Number] should be(1.0.asInstanceOf[Number])
+  }
 
   "enrichObjectMetadata" should "enrich the Content metadata for application/vnd.ekstep.html-archive" in {
     val data = new ObjectData("do_1132167819505500161297", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_1132167819505500161297", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/vnd.ekstep.html-archive", "artifactUrl" -> "artifactUrl.zip"))
@@ -117,7 +117,7 @@ class ContentPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers
 
   "getObjectWithEcar" should "return object with ecar url" in {
     val data = new ObjectData("do_123", Map("objectType" -> "Content", "identifier" -> "do_123", "name" -> "Test PDF Content"), Some(Map("responseDeclaration" -> "test", "media" -> "[{\"id\":\"do_1127129497561497601326\",\"type\":\"image\",\"src\":\"/content/do_1127129497561497601326.img/artifact/sunbird_1551961194254.jpeg\",\"baseUrl\":\"https://sunbirddev.blob.core.windows.net/sunbird-content-dev\"}]")), Some(Map()))
-    val result = new TestContentPublisher().getObjectWithEcar(data, List(EcarPackageType.FULL.toString, EcarPackageType.ONLINE.toString))(ec, cloudStorageUtil, defCache, defConfig, httpUtil)
+    val result = new TestContentPublisher().getObjectWithEcar(data, List(EcarPackageType.FULL.toString, EcarPackageType.ONLINE.toString))(ec, cloudStorageUtil, jobConfig, defCache, defConfig, httpUtil)
     StringUtils.isNotBlank(result.metadata.getOrElse("downloadUrl", "").asInstanceOf[String])
   }
 }
