@@ -93,6 +93,7 @@ class ContentPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers
   "getExtData " should " get content body for application/vnd.ekstep.ecml-archive mimeType " in {
     val identifier = "do_11321328578759884811663"
     val result: Option[ObjectExtData] = new TestContentPublisher().getExtData(identifier, 0.0, "application/vnd.ekstep.ecml-archive", readerConfig)
+    result.getOrElse(new ObjectExtData).data.getOrElse(Map()).contains("body") shouldBe(true)
   }
 
   "getHierarchy " should "do nothing " in {

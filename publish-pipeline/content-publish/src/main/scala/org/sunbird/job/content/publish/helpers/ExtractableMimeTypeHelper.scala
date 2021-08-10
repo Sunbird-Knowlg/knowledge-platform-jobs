@@ -92,7 +92,7 @@ object ExtractableMimeTypeHelper {
     // upload local extracted directory to blob
     extractPackageInCloud(new File(zipFileName), obj, "snapshot", slugFile = true, basePath, config)
 
-    obj.metadata ++ Map("artifactUrl" -> result(1), "cloudStorageKey" -> result(0), "s3Key" -> result(0))
+    obj.metadata ++ Map("artifactUrl" -> result(1), "cloudStorageKey" -> result(0))
   }
 
   private def getEcrfObject(ecmlType: String, ecmlBody: String): Plugin = {
