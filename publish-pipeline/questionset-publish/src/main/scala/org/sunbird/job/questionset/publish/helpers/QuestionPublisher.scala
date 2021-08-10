@@ -115,11 +115,11 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
 		Some(List(obj.metadata ++ obj.extData.getOrElse(Map()).filter(p => !excludeBundleMeta.contains(p._1))))
 	}
 
-	def getObjectWithEcar(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
-		logger.info("QuestionPublishFunction:generateECAR: Ecar generation done for Question: " + data.identifier)
+	def getObjectWithEcar(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
+		logger.info("QuestionPublisher:generateECAR: Ecar generation done for Question: " + data.identifier)
 		val ecarMap: Map[String, String] = generateEcar(data, pkgTypes)
 		val variants: java.util.Map[String, java.util.Map[String, String]] = ecarMap.map { case (key, value) => key.toLowerCase -> Map[String, String]("ecarUrl"-> value, "size"-> httpUtil.getSize(value).toString).asJava }.asJava
-		logger.info("QuestionSetPublishFunction ::: generateECAR ::: ecar map ::: " + ecarMap)
+		logger.info("QuestionPublisher ::: generateECAR ::: ecar map ::: " + ecarMap)
 		val meta: Map[String, AnyRef] = Map("downloadUrl" -> ecarMap.getOrElse(EcarPackageType.FULL.toString, ""), "variants" -> variants)
 		new ObjectData(data.identifier, data.metadata ++ meta, data.extData, data.hierarchy)
 	}

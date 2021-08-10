@@ -67,7 +67,7 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
     val messages: List[String] = validate(obj, obj.identifier, validateMetadata)
     if (obj.pkgVersion > data.pkgVersion) {
       metrics.incCounter(config.skippedEventCount)
-      logger.info(s"""pkgVersion should be greater than or equal to the obj.pkgVersion for : $obj.identifier""")
+      logger.info(s"""pkgVersion should be greater than or equal to the obj.pkgVersion for : ${obj.identifier}""")
     } else {
       if (messages.isEmpty) {
         // Prepublish update
@@ -75,7 +75,7 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
         // Clear redis cache
         cache.del(data.identifier)
         val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
-        val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, cloudStorageUtil, definitionCache, definitionConfig, httpUtil)
+        val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
         logger.info("Ecar generation done for Content: " + objWithEcar.identifier)
         saveOnSuccess(objWithEcar)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
         pushStreamingUrlEvent(enrichedObj, context)(metrics)
