@@ -8,8 +8,7 @@ import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cache.{DataCache, RedisConnect}
 import org.sunbird.job.content.publish.domain.PublishMetadata
-import org.sunbird.job.content.publish.helpers.ContentPublisher
-import org.sunbird.job.content.publish.helpers.ExtractableMimeTypeHelper
+import org.sunbird.job.content.publish.helpers.{ContentPublisher, ExtractableMimeTypeHelper}
 import org.sunbird.job.content.task.ContentPublishConfig
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
@@ -68,7 +67,7 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
     val messages: List[String] = validate(obj, obj.identifier, validateMetadata)
     if (obj.pkgVersion > data.pkgVersion) {
       metrics.incCounter(config.skippedEventCount)
-      logger.info(s"""pkgVersion should be greater than or equal to the obj.pkgVersion for : $obj.identifier""")
+      logger.info(s"""pkgVersion should be greater than or equal to the obj.pkgVersion for : ${obj.identifier}""")
     } else {
       if (messages.isEmpty) {
         // Prepublish update
@@ -82,7 +81,7 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
         // Clear redis cache
         cache.del(data.identifier)
         val enrichedObj = enrichObject(ecmlVerifiedObj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
-        val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, cloudStorageUtil, definitionCache, definitionConfig, httpUtil)
+        val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
         logger.info("Ecar generation done for Content: " + objWithEcar.identifier)
         saveOnSuccess(objWithEcar)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
         pushStreamingUrlEvent(enrichedObj, context)(metrics)

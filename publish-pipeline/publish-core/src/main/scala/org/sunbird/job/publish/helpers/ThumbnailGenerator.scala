@@ -22,7 +22,7 @@ trait ThumbnailGenerator {
 		val appIcon: String = obj.metadata.getOrElse("appIcon", "").asInstanceOf[String]
 		if (StringUtils.isBlank(appIcon)) return None
 		val fileName = getFileName(appIcon)
-		val suffix = if(StringUtils.isNotBlank(fileName)) fileName else Slug.makeSlug(FilenameUtils.getName(appIcon), false)
+		val suffix = if(StringUtils.isNotBlank(fileName)) Slug.makeSlug(fileName, true) else Slug.makeSlug(FilenameUtils.getName(appIcon), false)
 		try {
 			FileUtils.copyURLToFile(obj.identifier, appIcon, suffix) match {
 				case Some(file: File) => {
