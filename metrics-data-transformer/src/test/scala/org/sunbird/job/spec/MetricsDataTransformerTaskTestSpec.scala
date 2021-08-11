@@ -9,7 +9,7 @@ import org.apache.flink.streaming.api.functions.source.SourceFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext
 import org.apache.flink.test.util.MiniClusterWithClientResource
 import org.mockito.ArgumentMatchers.{any, anyString}
-import org.mockito.Mockito
+import org.mockito.{ArgumentMatchers, Mockito}
 import org.mockito.Mockito.when
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.fixture.EventFixture
@@ -33,6 +33,7 @@ class MetricsDataTransformerTaskTestSpec extends BaseTestSpec {
   val config: Config = ConfigFactory.load("test.conf")
   val jobConfig: MetricsDataTransformerConfig = new MetricsDataTransformerConfig(config)
   val httpUtil: HttpUtil = new HttpUtil()
+  val server = new MockWebServer()
 
   var currentMilliSecond = 1605816926271L
 
@@ -43,15 +44,18 @@ class MetricsDataTransformerTaskTestSpec extends BaseTestSpec {
   }
 
   "MetricsDataTransformerTaskTestSpec" should "generate event" in {
+    server.start(9200)
+    server.enqueue(new MockResponse().setHeader(
+      "Content-Type", "application/json"
+    ).setBody("""{"_index":"kp_audit_log_2018_7","_type":"ah","_id":"HLZ-1ngBtZ15DPx6ENjU","_version":1,"result":"created","_shards":{"total":2,"successful":1,"failed":0},"_seq_no":1,"_primary_term":1}"""))
 
     when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new MetricsDataTransformerMapSource)
     implicit val mockHttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
-    when(mockHttpUtil.get(anyString(), any())).thenReturn(HTTPResponse(200, """{"id":"api.v3.read.get","ver":"1.0","ts":"2020-08-07T15:56:47ZZ","params":{"resmsgid":"bbd98348-c70b-47bc-b9f1-396c5e803436","msgid":null,"err":null,"status":"successful","errmsg":null},"responseCode":"OK","result":{"content":{"parent":"do_123","origin":"do_119831368202241","mediaType":"content","name":"APSWREIS-TGT2-Day5","identifier":"do_234","description":"Enter description for Collection","resourceType":"Collection","mimeType":"application/vnd.ekstep.content-collection","contentType":"Collection","language":["English"],"objectType":"Content","status":"Live","idealScreenSize":"normal","contentEncoding":"gzip","osId":"org.ekstep.quiz.app","contentDisposition":"inline","childNodes":["do_345"],"visibility":"Default","pkgVersion":2,"idealScreenDensity":"hdpi"}}}"""))
-    when(mockHttpUtil.patch(anyString(), any(), any())).thenReturn(HTTPResponse(200, """{"id":"api.content.hierarchy.get","ver":"3.0","ts":"2020-08-07T15:56:47ZZ","params":{"resmsgid":"bbd98348-c70b-47bc-b9f1-396c5e803436","msgid":null,"err":null,"status":"successful","errmsg":null},"responseCode":"OK","result":{"content":{"rootId":"do_123"}}}"""))
 
-    new MetricsDataTransformerStreamTask(jobConfig, mockKafkaUtil, mockHttpUtil).process()
+    new MetricsDataTransformerStreamTask(jobConfig, mockKafkaUtil, httpUtil).process()
 
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(1)
+    server.close()
   }
 
 }
