@@ -59,8 +59,8 @@ class MetricsDataTransformerTaskTestSpec extends BaseTestSpec {
 class MetricsDataTransformerMapSource extends SourceFunction[Event] {
 
   override def run(ctx: SourceContext[Event]) {
-    // Valid event
-    ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_1), 0, 10))
+    // Event to be skipped
+    ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.SKIP_EVENT), 0, 10))
   }
 
   override def cancel(): Unit = {}
