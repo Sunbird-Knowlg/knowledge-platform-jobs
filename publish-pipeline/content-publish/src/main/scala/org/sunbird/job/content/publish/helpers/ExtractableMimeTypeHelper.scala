@@ -233,7 +233,7 @@ object ExtractableMimeTypeHelper {
     }
 
     private def processAssetsDownload(contentId: String, medias: List[Media], basePath: String, config: ContentPublishConfig)(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil): Map[String, String] = {
-      val downloadResultMap = Await.result(downloadAssetFiles(contentId, medias, basePath, config), Duration.apply("60 seconds"))
+      val downloadResultMap = Await.result(downloadAssetFiles(contentId, medias, basePath, config), Duration.apply(config.assetDownloadDuration))
       downloadResultMap.filter(record => record.nonEmpty).flatten.toMap
     }
 
