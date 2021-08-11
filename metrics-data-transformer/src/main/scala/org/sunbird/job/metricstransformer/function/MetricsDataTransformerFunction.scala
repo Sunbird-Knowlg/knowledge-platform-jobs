@@ -38,7 +38,7 @@ class MetricsDataTransformerFunction(config: MetricsDataTransformerConfig, httpU
     val eventMetrics = config.metrics.stream().toArray.map(_.asInstanceOf[String])
     val filteredKeys = eventMetrics.intersect(mapKeys)
 
-    if(filteredKeys.length > 1) {
+    if(filteredKeys.length > 0) {
       processEvent(event, metrics, filteredKeys)(config, httpUtil)
     } else metrics.incCounter(config.skippedEventCount)
 
