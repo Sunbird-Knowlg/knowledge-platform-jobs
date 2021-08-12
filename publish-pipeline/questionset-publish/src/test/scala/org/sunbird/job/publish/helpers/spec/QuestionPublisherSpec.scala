@@ -80,14 +80,14 @@ class QuestionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matcher
 
   "getExtData " should "return the external data for the identifier " in {
     val identifier = "do_113188615625731";
-    val res: Option[ObjectExtData] = new TestQuestionPublisher().getExtData(identifier, 0.0, readerConfig)
+    val res: Option[ObjectExtData] = new TestQuestionPublisher().getExtData(identifier, 0.0, "", readerConfig)
     val result: Option[Map[String, AnyRef]] = res.getOrElse(new ObjectExtData).data
     result.getOrElse(Map()).size should be(6)
   }
 
   "getExtData " should "return the external data for the image identifier " in {
     val identifier = "do_113188615625731";
-    val res: Option[ObjectExtData] = new TestQuestionPublisher().getExtData(identifier, 1.0, readerConfig)
+    val res: Option[ObjectExtData] = new TestQuestionPublisher().getExtData(identifier, 1.0, "", readerConfig)
     val result: Option[Map[String, AnyRef]] = res.getOrElse(new ObjectExtData).data
     result.getOrElse(Map()).size should be(7)
   }

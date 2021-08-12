@@ -11,9 +11,9 @@ import java.io.File
 class CloudStorageUtil(config: PublishConfig) extends Serializable {
 
 	var storageService: BaseStorageService = null
-	val cloudStorageType = config.getString("cloud_storage_type", "azure")
-	val azureStorageContainer = config.getString("azure_storage_container", "")
-	val awsStorageContainer = config.getString("aws_storage_container", "")
+	val cloudStorageType: String = config.getString("cloud_storage_type", "azure")
+	val azureStorageContainer: String = config.getString("azure_storage_container", "")
+	val awsStorageContainer: String = config.getString("aws_storage_container", "")
 
 	@throws[Exception]
 	def getService: BaseStorageService = {
@@ -31,7 +31,7 @@ class CloudStorageUtil(config: PublishConfig) extends Serializable {
 		storageService
 	}
 
-	def getContainerName(): String = {
+	def getContainerName: String = {
 		cloudStorageType match {
 			case "azure" => azureStorageContainer
 			case "aws" => awsStorageContainer
@@ -46,7 +46,7 @@ class CloudStorageUtil(config: PublishConfig) extends Serializable {
 		Array[String](objectKey, url)
 	}
 
-	def copyObjectsByPrefix(source: String, destination: String) = {
+	def copyObjectsByPrefix(source: String, destination: String): Unit = {
 		getService.copyObjects(getContainerName, source, getContainerName, destination, Option.apply(true))
 	}
 
@@ -57,12 +57,16 @@ class CloudStorageUtil(config: PublishConfig) extends Serializable {
 	def uploadDirectory(folderName: String, directory: File, slug: Option[Boolean] = Option(true)): Array[String] = {
 		val slugFile = if (slug.getOrElse(true)) Slug.createSlugFile(directory) else directory
 		val objectKey = folderName + File.separator
-		val url = getService.upload(getContainerName(), slugFile.getAbsolutePath, objectKey, Option.apply(true), Option.apply(1), Option.apply(5), Option.empty)
+		val url = getService.upload(getContainerName, slugFile.getAbsolutePath, objectKey, Option.apply(true), Option.apply(1), Option.apply(5), Option.empty)
 		Array[String](objectKey, url)
 	}
 
 	def deleteFile(key: String, isDirectory: Option[Boolean] = Option(false)) {
 		getService.deleteObject(getContainerName, key, isDirectory)
+	}
+
+	def downloadFile(downloadPath: String, file: String, slug: Option[Boolean] = Option(false)): Unit = {
+		getService.download(getContainerName, file, downloadPath, slug)
 	}
 
 }

@@ -21,7 +21,7 @@ object QuestionPublishUtil extends QuestionPublisher {
     logger.info("QuestionPublishUtil :::: publishing child question for questionset : " + identifier)
     objList.map(qData => {
       logger.info("QuestionPublishUtil :::: publishing child question : " + qData.identifier)
-      val obj = getObject(qData.identifier, qData.pkgVersion, readerConfig)(neo4JUtil, cassandraUtil)
+      val obj = getObject(qData.identifier, qData.pkgVersion, qData.mimeType, readerConfig)(neo4JUtil, cassandraUtil)
       val messages: List[String] = validate(obj, obj.identifier, validateQuestion)
       if (messages.isEmpty) {
         val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)

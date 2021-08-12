@@ -18,6 +18,8 @@ import org.sunbird.job.publish.helpers.EcarPackageType
 import org.sunbird.job.publish.util.CloudStorageUtil
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
 
+import scala.concurrent.ExecutionContextExecutor
+
 class ContentPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
 
   implicit val mockNeo4JUtil: Neo4JUtil = mock[Neo4JUtil](Mockito.withSettings().serializable())
@@ -25,12 +27,12 @@ class ContentPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers
   val config: Config = ConfigFactory.load("test.conf").withFallback(ConfigFactory.systemEnvironment())
   val jobConfig: ContentPublishConfig = new ContentPublishConfig(config)
   implicit val readerConfig: ExtDataConfig = ExtDataConfig(jobConfig.contentKeyspaceName, jobConfig.contentTableName)
-  implicit val cloudStorageUtil = new CloudStorageUtil(jobConfig)
-  implicit val ec = ExecutionContexts.global
-  implicit val defCache = new DefinitionCache()
-  implicit val defConfig = DefinitionConfig(jobConfig.schemaSupportVersionMap, jobConfig.definitionBasePath)
-  implicit val publishConfig = jobConfig.asInstanceOf[PublishConfig]
-  implicit val httpUtil = new HttpUtil
+  implicit val cloudStorageUtil: CloudStorageUtil = new CloudStorageUtil(jobConfig)
+  implicit val ec: ExecutionContextExecutor = ExecutionContexts.global
+  implicit val defCache: DefinitionCache = new DefinitionCache()
+  implicit val defConfig: DefinitionConfig = DefinitionConfig(jobConfig.schemaSupportVersionMap, jobConfig.definitionBasePath)
+  implicit val publishConfig: PublishConfig = jobConfig.asInstanceOf[PublishConfig]
+  implicit val httpUtil: HttpUtil = new HttpUtil
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
@@ -47,8 +49,7 @@ class ContentPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers
       EmbeddedCassandraServerHelper.cleanEmbeddedCassandra()
       delay(10000)
     } catch {
-      case ex: Exception => {
-      }
+      case ex: Exception =>
     }
   }
 
@@ -89,23 +90,24 @@ class ContentPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers
     new TestContentPublisher().saveExternalData(data, readerConfig)
   }
 
-  "getExtData " should "do nothing " in {
-    val identifier = "do_11329603741667328018";
-    val result: Option[ObjectExtData] = new TestContentPublisher().getExtData(identifier, 0.0, readerConfig)
+  "getExtData " should " get content body for application/vnd.ekstep.ecml-archive mimeType " in {
+    val identifier = "do_11321328578759884811663"
+    val result: Option[ObjectExtData] = new TestContentPublisher().getExtData(identifier, 0.0, "application/vnd.ekstep.ecml-archive", readerConfig)
+    result.getOrElse(new ObjectExtData).data.getOrElse(Map()).contains("body") shouldBe(true)
   }
 
   "getHierarchy " should "do nothing " in {
-    val identifier = "do_11329603741667328018";
-    new TestContentPublisher().getExtData(identifier, 1.0, readerConfig)
+    val identifier = "do_11329603741667328018"
+    new TestContentPublisher().getHierarchy(identifier, 1.0, readerConfig)
   }
 
   "getExtDatas " should "do nothing " in {
-    val identifier = "do_11329603741667328018";
+    val identifier = "do_11329603741667328018"
     new TestContentPublisher().getExtDatas(List(identifier), readerConfig)
   }
 
   "getHierarchies " should "do nothing " in {
-    val identifier = "do_11329603741667328018";
+    val identifier = "do_11329603741667328018"
     new TestContentPublisher().getHierarchies(List(identifier), readerConfig)
   }
 
