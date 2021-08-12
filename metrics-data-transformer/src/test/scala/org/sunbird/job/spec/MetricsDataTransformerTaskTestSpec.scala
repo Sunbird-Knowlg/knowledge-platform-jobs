@@ -8,13 +8,14 @@ import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
 import org.apache.flink.streaming.api.functions.source.SourceFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext
 import org.apache.flink.test.util.MiniClusterWithClientResource
-import org.mockito.Mockito
+import org.mockito.ArgumentMatchers.{any, anyString}
+import org.mockito.{ArgumentMatchers, Mockito}
 import org.mockito.Mockito.when
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.fixture.EventFixture
 import org.sunbird.job.metricstransformer.domain.Event
 import org.sunbird.job.metricstransformer.task.{MetricsDataTransformerConfig, MetricsDataTransformerStreamTask}
-import org.sunbird.job.util.{HttpUtil, JSONUtil}
+import org.sunbird.job.util.{HTTPResponse, HttpUtil, JSONUtil}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 
 import java.util
@@ -49,6 +50,7 @@ class MetricsDataTransformerTaskTestSpec extends BaseTestSpec {
     ).setBody("""{"_index":"kp_audit_log_2018_7","_type":"ah","_id":"HLZ-1ngBtZ15DPx6ENjU","_version":1,"result":"created","_shards":{"total":2,"successful":1,"failed":0},"_seq_no":1,"_primary_term":1}"""))
 
     when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new MetricsDataTransformerMapSource)
+    implicit val mockHttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
 
     new MetricsDataTransformerStreamTask(jobConfig, mockKafkaUtil, httpUtil).process()
 
@@ -61,8 +63,8 @@ class MetricsDataTransformerTaskTestSpec extends BaseTestSpec {
 class MetricsDataTransformerMapSource extends SourceFunction[Event] {
 
   override def run(ctx: SourceContext[Event]) {
-    // Valid event
-    ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_1), 0, 10))
+    // Event to be skipped
+    ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.SKIP_EVENT), 0, 10))
   }
 
   override def cancel(): Unit = {}
