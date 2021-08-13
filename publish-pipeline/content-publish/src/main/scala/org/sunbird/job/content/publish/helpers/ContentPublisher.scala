@@ -99,7 +99,7 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
         case _ =>
           val artifactUrl = obj.getString("artifactUrl", null)
           val updatedPreviewUrl = updatedMeta ++ Map("previewUrl" -> artifactUrl)
-          if (config.streamableMimeType.contains(obj.mimeType)) Some(updatedPreviewUrl ++ Map("streamingUrl" -> artifactUrl)) else Some(updatedPreviewUrl)
+          if (config.isStreamingEnabled && !config.streamableMimeType.contains(obj.mimeType)) Some(updatedPreviewUrl ++ Map("streamingUrl" -> artifactUrl)) else Some(updatedPreviewUrl)
       }
     } else None
   }
