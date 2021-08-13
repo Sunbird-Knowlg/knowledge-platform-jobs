@@ -33,7 +33,7 @@ class MVCIndexerConfig(override val config: Config) extends BaseJobConfig(config
 
   // ES Configs
   val esConnectionInfo: String = config.getString("es.basePath")
-  val nestedFields = List(config.getString("nested.fields").split(","))
+  val nestedFields: Array[String] = config.getString("nested.fields").split(",")
   val mvcProcessorIndex = "mvc-content-v1"
   val mvcProcessorIndexType = "_doc"
   val operationCreate = "CREATE"

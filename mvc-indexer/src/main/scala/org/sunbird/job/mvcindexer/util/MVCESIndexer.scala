@@ -83,7 +83,7 @@ class MVCESIndexer(config: MVCIndexerConfig, esUtil: ElasticSearchUtil) {
     var nestedProps = Map[String, AnyRef]()
     for (propertyName <- jsonIndexDocument.keySet) {
       if (NESTED_FIELDS.contains(propertyName)) {
-        val propertyNewValue = Map[String, AnyRef](jsonIndexDocument.get(propertyName).asInstanceOf[String] -> null)
+        val propertyNewValue = JSONUtil.deserialize[Map[String, AnyRef]](jsonIndexDocument(propertyName).asInstanceOf[String])
         nestedProps += (propertyName -> propertyNewValue)
       }
     }
