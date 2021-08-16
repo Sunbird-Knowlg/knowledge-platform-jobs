@@ -77,7 +77,7 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
     messages.toList
   }
 
-  def getObjectWithEcar(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
+  def getObjectWithEcar(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
     logger.info("ContentPublisher:getObjectWithEcar: Ecar generation done for Content: " + data.identifier)
     val ecarMap: Map[String, String] = generateEcar(data, pkgTypes)
     val variants: java.util.Map[String, java.util.Map[String, String]] = ecarMap.map { case (key, value) => key.toLowerCase -> Map[String, String]("ecarUrl" -> value, "size" -> httpUtil.getSize(value).toString).asJava }.asJava
@@ -113,13 +113,13 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
              | "application/vnd.android.package-archive" | "assets" =>
           None
         case "application/vnd.ekstep.ecml-archive" | "application/vnd.ekstep.html-archive" | "application/vnd.ekstep.h5p-archive" =>
-          val latestFolderS3Url = ExtractableMimeTypeHelper.getS3URL(obj, cloudStorageUtil, config)
+          val latestFolderS3Url = ExtractableMimeTypeHelper.getCloudStoreURL(obj, cloudStorageUtil, config)
           val updatedPreviewUrl = updatedMeta ++ Map("previewUrl" -> latestFolderS3Url, "streamingUrl" -> latestFolderS3Url)
           Some(updatedPreviewUrl)
         case _ =>
           val artifactUrl = obj.getString("artifactUrl", null)
           val updatedPreviewUrl = updatedMeta ++ Map("previewUrl" -> artifactUrl)
-          if (config.streamableMimeType.contains(obj.mimeType)) Some(updatedPreviewUrl ++ Map("streamingUrl" -> artifactUrl)) else Some(updatedPreviewUrl)
+          if (config.isStreamingEnabled && !config.streamableMimeType.contains(obj.mimeType)) Some(updatedPreviewUrl ++ Map("streamingUrl" -> artifactUrl)) else Some(updatedPreviewUrl)
       }
     } else None
   }

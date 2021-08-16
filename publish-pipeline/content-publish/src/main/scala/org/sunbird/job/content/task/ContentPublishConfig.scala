@@ -68,6 +68,7 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
   val supportedMimeType: util.List[String] = if (config.hasPath("content.mimeType")) config.getStringList("content.mimeType") else util.Arrays.asList[String]("application/pdf")
   val streamableMimeType: util.List[String] = if (config.hasPath("content.stream.mimeType")) config.getStringList("content.stream.mimeType") else util.Arrays.asList[String]("video/mp4")
   val isStreamingEnabled: Boolean = if (config.hasPath("content.stream.enabled")) config.getBoolean("content.stream.enabled") else false
+  val assetDownloadDuration: String = if (config.hasPath("content.asset_download_duration")) config.getString("content.asset_download_duration") else "60 seconds"
 
   val isECARExtractionEnabled: Boolean = if (config.hasPath("content.isECARExtractionEnabled")) config.getBoolean("content.isECARExtractionEnabled") else true
   val contentFolder: String = if (config.hasPath("cloud_storage.folder.content")) config.getString("cloud_storage.folder.content") else "content"
