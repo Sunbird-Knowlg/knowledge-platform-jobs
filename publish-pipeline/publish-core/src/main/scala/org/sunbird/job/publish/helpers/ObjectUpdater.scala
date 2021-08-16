@@ -92,7 +92,12 @@ trait ObjectUpdater {
             val strValue = ScalaJsonUtil.serialize(prop._2)
             s"""n.${prop._1}=${strValue}"""
           case _: String =>
-            s"""n.${prop._1}="${prop._2}""""
+            if (StringUtils.startsWith(prop._2.asInstanceOf[String], """{"""") || StringUtils.startsWith(prop._2.asInstanceOf[String], """[{"""")
+              || prop._2.asInstanceOf[String].contains("\"")) {
+              val strValue = JSONUtil.serialize(prop._2)
+              s"""n.${prop._1}=${strValue}"""
+            }
+            else  s"""n.${prop._1}="${prop._2}""""
           case _: util.List[String] =>
             val strValue = JSONUtil.serialize(prop._2)
             s"""n.${prop._1}=$strValue"""
