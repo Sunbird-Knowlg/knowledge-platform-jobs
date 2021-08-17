@@ -61,36 +61,44 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
   }
 
   override def processElement(data: PublishMetadata, context: ProcessFunction[PublishMetadata, String]#Context, metrics: Metrics): Unit = {
-    logger.info("Content publishing started for : " + data.identifier)
-    metrics.incCounter(config.contentPublishEventCount)
-    val obj = getObject(data.identifier, data.pkgVersion, data.mimeType, readerConfig)(neo4JUtil, cassandraUtil)
-    val messages: List[String] = validate(obj, obj.identifier, validateMetadata)
-    if (obj.pkgVersion > data.pkgVersion) {
-      metrics.incCounter(config.skippedEventCount)
-      logger.info(s"""pkgVersion should be greater than or equal to the obj.pkgVersion for : ${obj.identifier}""")
-    } else {
-      if (messages.isEmpty) {
-        // Prepublish update
-        updateProcessingNode(obj)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
-
-        val ecmlVerifiedObj = if (obj.mimeType.equalsIgnoreCase("application/vnd.ekstep.ecml-archive")) {
-          val ecarEnhancedObj = ExtractableMimeTypeHelper.processECMLBody(obj, config)(ec, cloudStorageUtil)
-          new ObjectData(obj.identifier, ecarEnhancedObj, obj.extData, obj.hierarchy)
-        } else obj
-
-        // Clear redis cache
-        cache.del(data.identifier)
-        val enrichedObj = enrichObject(ecmlVerifiedObj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
-        val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
-        logger.info("Ecar generation done for Content: " + objWithEcar.identifier)
-        saveOnSuccess(objWithEcar)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
-        pushStreamingUrlEvent(enrichedObj, context)(metrics)
-        metrics.incCounter(config.contentPublishSuccessEventCount)
-        logger.info("Content publishing completed successfully for : " + data.identifier)
+    try {
+      logger.info("Content publishing started for : " + data.identifier)
+      metrics.incCounter(config.contentPublishEventCount)
+      val obj = getObject(data.identifier, data.pkgVersion, data.mimeType, readerConfig)(neo4JUtil, cassandraUtil)
+      val messages: List[String] = validate(obj, obj.identifier, validateMetadata)
+      if (obj.pkgVersion > data.pkgVersion) {
+        metrics.incCounter(config.skippedEventCount)
+        logger.info(s"""pkgVersion should be greater than or equal to the obj.pkgVersion for : ${obj.identifier}""")
       } else {
-        saveOnFailure(obj, messages)(neo4JUtil)
-        metrics.incCounter(config.contentPublishFailedEventCount)
-        logger.info("Content publishing failed for : " + data.identifier)
+        if (messages.isEmpty) {
+          // Prepublish update
+          updateProcessingNode(obj)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
+
+          val ecmlVerifiedObj = if (obj.mimeType.equalsIgnoreCase("application/vnd.ekstep.ecml-archive")) {
+            val ecarEnhancedObj = ExtractableMimeTypeHelper.processECMLBody(obj, config)(ec, cloudStorageUtil)
+            new ObjectData(obj.identifier, ecarEnhancedObj, obj.extData, obj.hierarchy)
+          } else obj
+
+          // Clear redis cache
+          cache.del(data.identifier)
+          val enrichedObj = enrichObject(ecmlVerifiedObj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
+          val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
+          logger.info("Ecar generation done for Content: " + objWithEcar.identifier)
+          saveOnSuccess(objWithEcar)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
+          pushStreamingUrlEvent(enrichedObj, context)(metrics)
+          metrics.incCounter(config.contentPublishSuccessEventCount)
+          logger.info("Content publishing completed successfully for : " + data.identifier)
+        } else {
+          saveOnFailure(obj, messages)(neo4JUtil)
+          metrics.incCounter(config.contentPublishFailedEventCount)
+          logger.info("Content publishing failed for : " + data.identifier)
+        }
+      }
+    } catch {
+      case exp:Exception => {
+        exp.printStackTrace();
+        logger.info("ContentPublishFunction::processElement::Exception" + exp.getMessage)
+        throw exp
       }
     }
   }
