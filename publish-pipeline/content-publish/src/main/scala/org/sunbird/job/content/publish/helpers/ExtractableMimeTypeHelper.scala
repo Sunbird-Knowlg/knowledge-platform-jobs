@@ -259,7 +259,13 @@ object ExtractableMimeTypeHelper {
           val fDownloadPath = if (StringUtils.isNotBlank(subFolder)) downloadPath + File.separator + subFolder + File.separator else downloadPath + File.separator
           createDirectoryIfNeeded(fDownloadPath)
           logger.info(s"ExtractableMimeTypeHelper ::: downloadAssetFiles ::: fDownloadPath: $fDownloadPath & src : ${mediaFile.src}")
-          if (mediaFile.src.startsWith(File.separator)) cloudStorageUtil.downloadFile(fDownloadPath, mediaFile.src.substring(1)) else cloudStorageUtil.downloadFile(fDownloadPath, mediaFile.src)
+          if (mediaFile.src.startsWith(File.separator)) {
+            if(mediaFile.src.contains("assets/public")) {
+              cloudStorageUtil.downloadFile(fDownloadPath, mediaFile.src.substring(mediaFile.src.indexOf("public")+7))
+            } else cloudStorageUtil.downloadFile(fDownloadPath, mediaFile.src.substring(1))
+          } else {
+            cloudStorageUtil.downloadFile(fDownloadPath, mediaFile.src)
+          }
           val downloadedFile = new File(fDownloadPath + mediaFile.src.split("/").last)
           logger.info("Downloaded file : " + mediaFile.src + " - " + downloadedFile + " | [Content Id '" + identifier + "']")
 
