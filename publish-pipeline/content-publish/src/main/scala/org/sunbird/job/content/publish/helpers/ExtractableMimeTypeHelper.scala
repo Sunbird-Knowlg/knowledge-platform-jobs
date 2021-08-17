@@ -91,6 +91,9 @@ object ExtractableMimeTypeHelper {
     // upload local extracted directory to blob
     extractPackageInCloud(new File(zipFileName), obj, "snapshot", slugFile = true, basePath, config)
 
+    // delete local folder
+    FileUtils.deleteQuietly(FileUtils.getFile(basePath).getParentFile)
+
     obj.metadata ++ Map("artifactUrl" -> result(1), "cloudStorageKey" -> result(0))
   }
 
@@ -261,7 +264,7 @@ object ExtractableMimeTypeHelper {
           logger.info(s"ExtractableMimeTypeHelper ::: downloadAssetFiles ::: fDownloadPath: $fDownloadPath & src : ${mediaFile.src}")
           if (mediaFile.src.startsWith(File.separator)) {
             if(mediaFile.src.contains("assets/public")) {
-              cloudStorageUtil.downloadFile(fDownloadPath, mediaFile.src.substring(mediaFile.src.indexOf("public")+7))
+              cloudStorageUtil.downloadFile(fDownloadPath, mediaFile.src.substring(mediaFile.src.indexOf("assets/public")+14))
             } else cloudStorageUtil.downloadFile(fDownloadPath, mediaFile.src.substring(1))
           } else {
             cloudStorageUtil.downloadFile(fDownloadPath, mediaFile.src)
