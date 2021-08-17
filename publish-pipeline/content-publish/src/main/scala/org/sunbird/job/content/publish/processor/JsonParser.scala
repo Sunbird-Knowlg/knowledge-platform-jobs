@@ -22,10 +22,9 @@ object JsonParser {
 
   private def getDataFromMap(map: Map[String, AnyRef], key: String): String = {
     if (null != map && map.keySet.contains(key)) {
-      try {
-        map(key).asInstanceOf[String]
-      } catch {
-        case _:ClassCastException => map(key).toString
+      map(key) match {
+        case str: String => str
+        case _ => map(key).toString
       }
     } else ""
   }
