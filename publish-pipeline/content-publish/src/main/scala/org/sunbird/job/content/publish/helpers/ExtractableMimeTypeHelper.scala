@@ -264,10 +264,10 @@ object ExtractableMimeTypeHelper {
           logger.info(s"ExtractableMimeTypeHelper ::: downloadAssetFiles ::: fDownloadPath: $fDownloadPath & src : ${mediaFile.src}")
           if (mediaFile.src.startsWith(File.separator)) {
             if(mediaFile.src.contains("assets/public")) {
-              cloudStorageUtil.downloadFile(fDownloadPath, mediaFile.src.substring(mediaFile.src.indexOf("assets/public")+14))
-            } else cloudStorageUtil.downloadFile(fDownloadPath, mediaFile.src.substring(1))
+              cloudStorageUtil.downloadFile(fDownloadPath, StringUtils.replace(mediaFile.src.substring(mediaFile.src.indexOf("assets/public")+14), "//","/"))
+            } else cloudStorageUtil.downloadFile(fDownloadPath, StringUtils.replace(mediaFile.src.substring(1), "//","/"))
           } else {
-            cloudStorageUtil.downloadFile(fDownloadPath, mediaFile.src)
+            cloudStorageUtil.downloadFile(fDownloadPath, StringUtils.replace(mediaFile.src, "//","/"))
           }
           val downloadedFile = new File(fDownloadPath + mediaFile.src.split("/").last)
           logger.info("Downloaded file : " + mediaFile.src + " - " + downloadedFile + " | [Content Id '" + identifier + "']")
