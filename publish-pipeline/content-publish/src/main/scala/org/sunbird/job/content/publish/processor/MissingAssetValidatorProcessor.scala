@@ -32,8 +32,10 @@ trait MissingAssetValidatorProcessor extends IProcessor {
                 nonYoutubeMedias.map(media => {
                     if(widgetTypeAssets.contains(media.`type`) && !new File(getBasePath() + File.separator + "widgets" + File.separator + media.src).exists())
                         throw new Exception("Error! Missing Asset.  | [Asset Id '" + media.id)
-                    else if(!widgetTypeAssets.contains(media.`type`) && !new File(getBasePath() + File.separator + "assets" + File.separator + media.src).exists())
+                    else if(!widgetTypeAssets.contains(media.`type`) && !media.src.startsWith("http") && !media.src.startsWith("https") && !new File(getBasePath() + File.separator + "assets" + File.separator + media.src).exists())
                         throw new Exception("Error! Missing Asset.  | [Asset Id '" + media.id)
+                    else if (!widgetTypeAssets.contains(media.`type`) && (media.src.startsWith("http") || media.src.startsWith("https")) && !new File(getBasePath() + File.separator + "assets" + File.separator + media.src.split("/").last).exists())
+                      throw new Exception("Error! Missing Asset.  | [Asset Id '" + media.id)
                 })
             }
             

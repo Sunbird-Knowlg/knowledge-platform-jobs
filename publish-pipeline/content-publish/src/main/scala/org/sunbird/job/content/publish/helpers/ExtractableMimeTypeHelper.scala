@@ -2,7 +2,7 @@ package org.sunbird.job.content.publish.helpers
 
 import com.datastax.driver.core.querybuilder.{QueryBuilder, Select}
 import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper}
-import org.apache.commons.io.{FileUtils, FilenameUtils}
+import org.apache.commons.io.{FileUtils, FilenameUtils, IOUtils}
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.content.publish.processor.{JsonParser, Media, Plugin, XmlParser}
@@ -13,6 +13,7 @@ import org.sunbird.job.util.CassandraUtil
 import org.xml.sax.{InputSource, SAXException}
 
 import java.io._
+import java.net.{HttpURLConnection, URL}
 import java.nio.file.{Files, Path, Paths}
 import java.util.zip.{ZipEntry, ZipOutputStream}
 import javax.xml.parsers.{DocumentBuilderFactory, ParserConfigurationException}
@@ -253,7 +254,7 @@ object ExtractableMimeTypeHelper {
         if (!StringUtils.equals("youtube", mediaFile.`type`) && !StringUtils.isBlank(mediaFile.src) && !StringUtils.isBlank(mediaFile.`type`)) {
           val downloadPath = if (isWidgetTypeAsset(mediaFile.`type`)) basePath + "/" + "widgets" else basePath + "/" + "assets"
           val subFolder = {
-            if (!mediaFile.src.startsWith("http")) {
+            if (!mediaFile.src.startsWith("http") && !mediaFile.src.startsWith("https")) {
               val f = new File(mediaFile.src)
               if (f.exists) f.delete
               StringUtils.stripStart(f.getParent, "/")
@@ -262,12 +263,18 @@ object ExtractableMimeTypeHelper {
           val fDownloadPath = if (StringUtils.isNotBlank(subFolder)) downloadPath + File.separator + subFolder + File.separator else downloadPath + File.separator
           createDirectoryIfNeeded(fDownloadPath)
           logger.info(s"ExtractableMimeTypeHelper ::: downloadAssetFiles ::: fDownloadPath: $fDownloadPath & src : ${mediaFile.src}")
-          if (mediaFile.src.startsWith(File.separator)) {
-            if(mediaFile.src.contains("assets/public")) {
-              cloudStorageUtil.downloadFile(fDownloadPath, StringUtils.replace(mediaFile.src.substring(mediaFile.src.indexOf("assets/public")+14), "//","/"))
-            } else cloudStorageUtil.downloadFile(fDownloadPath, StringUtils.replace(mediaFile.src.substring(1), "//","/"))
-          } else {
-            cloudStorageUtil.downloadFile(fDownloadPath, StringUtils.replace(mediaFile.src, "//","/"))
+
+          if(mediaFile.src.startsWith("https://") || mediaFile.src.startsWith("http://")) {
+            downloadFile(mediaFile.src, fDownloadPath)
+          }
+          else {
+            if (mediaFile.src.startsWith(File.separator)) {
+              if(mediaFile.src.contains("assets/public")) {
+                cloudStorageUtil.downloadFile(fDownloadPath, StringUtils.replace(mediaFile.src.substring(mediaFile.src.indexOf("assets/public")+14), "//","/"))
+              } else cloudStorageUtil.downloadFile(fDownloadPath, StringUtils.replace(mediaFile.src.substring(1), "//","/"))
+            } else {
+              cloudStorageUtil.downloadFile(fDownloadPath, StringUtils.replace(mediaFile.src, "//","/"))
+            }
           }
           val downloadedFile = new File(fDownloadPath + mediaFile.src.split("/").last)
           logger.info("Downloaded file : " + mediaFile.src + " - " + downloadedFile + " | [Content Id '" + identifier + "']")
@@ -284,6 +291,31 @@ object ExtractableMimeTypeHelper {
   private def createDirectoryIfNeeded(directoryName: String): Unit = {
     val theDir = new File(directoryName)
     if (!theDir.exists) theDir.mkdirs
+  }
+
+  @throws[Exception]
+  def downloadFile(fileUrl: String, basePath: String): File = {
+    val url = new URL(fileUrl)
+    val httpConn = url.openConnection().asInstanceOf[HttpURLConnection]
+    val disposition = httpConn.getHeaderField("Content-Disposition")
+    httpConn.getContentType
+    httpConn.getContentLength
+    val fileName = if (StringUtils.isNotBlank(disposition)) {
+      val index = disposition.indexOf("filename=")
+      if (index > 0)
+        disposition.substring(index + 10, disposition.indexOf("\"", index + 10))
+      else
+        fileUrl.substring(fileUrl.lastIndexOf("/") + 1, fileUrl.length)
+    } else fileUrl.substring(fileUrl.lastIndexOf("/") + 1, fileUrl.length)
+    val saveFile = new File(basePath)
+    if (!saveFile.exists) saveFile.mkdirs
+    val saveFilePath = basePath + File.separator + fileName
+    val inputStream = httpConn.getInputStream
+    val outputStream = new FileOutputStream(saveFilePath)
+    IOUtils.copy(inputStream, outputStream)
+    val file = new File(saveFilePath)
+    logger.info(System.currentTimeMillis() + " ::: Downloaded file: " + file.getAbsolutePath)
+    file
   }
 
 }

@@ -9,6 +9,8 @@ import org.sunbird.job.content.task.ContentPublishConfig
 import org.sunbird.job.publish.core.ObjectData
 import org.sunbird.job.publish.util.CloudStorageUtil
 
+import java.io.File
+
 class ExtractableMimeTypeHelperSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
 
   implicit val ec = ExecutionContexts.global
@@ -39,4 +41,11 @@ class ExtractableMimeTypeHelperSpec extends FlatSpec with BeforeAndAfterAll with
     result.contains("cloudStorageKey") shouldBe(true)
     result.get("cloudStorageKey") shouldNot be(null)
   }
+
+  "downloadFile " should " download the media source file starting with http or https " in {
+    val fileUrl: String = "https://preprodall.blob.core.windows.net/ntp-content-preprod/content/do_21273718766395392014320/artifact/book-image_1554832478631.jpg"
+    val downloadedFile: File = ExtractableMimeTypeHelper.downloadFile(fileUrl, "/tmp/contentBundle")
+    assert(downloadedFile.exists())
+  }
+
 }
