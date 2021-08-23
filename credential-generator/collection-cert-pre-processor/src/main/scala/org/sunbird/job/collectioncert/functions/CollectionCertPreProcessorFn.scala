@@ -23,6 +23,7 @@ class CollectionCertPreProcessorFn(config: CollectionCertPreProcessorConfig, htt
 
     private[this] val logger = LoggerFactory.getLogger(classOf[CollectionCertPreProcessorFn])
     private var cache: DataCache = _
+    private var contentCache: DataCache = _
 
     override def open(parameters: Configuration): Unit = {
         super.open(parameters)

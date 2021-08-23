@@ -30,6 +30,7 @@ class CollectionCertPreProcessFnTestSpec extends BaseTestSpec {
     val mockMetrics = mock[Metrics](Mockito.withSettings().serializable())
     var jedis: Jedis = _
     var cache: DataCache = _
+    var contentCache: DataCache = _
     var redisServer: RedisServer = _
     redisServer = new RedisServer(6340)
     redisServer.start()
@@ -45,7 +46,10 @@ class CollectionCertPreProcessFnTestSpec extends BaseTestSpec {
         dataLoader.load(new FileCQLDataSet(getClass.getResource("/test.cql").getPath, true, true))
         cache = new DataCache(jobConfig, redisConnect, jobConfig.collectionCacheStore, null)
         cache.init()
+        contentCache = new DataCache(jobConfig, redisConnect, jobConfig.contentCacheStore, null)
+        contentCache.init()
         jedis.flushDB()
+
     }
 
     override protected def afterAll(): Unit = {
@@ -63,7 +67,9 @@ class CollectionCertPreProcessFnTestSpec extends BaseTestSpec {
         val template = ScalaJsonUtil.deserialize[Map[String, String]](EventFixture.TEMPLATE_1)
         when(mockHttpUtil.get(ArgumentMatchers.contains(jobConfig.userReadApi), ArgumentMatchers.any[Map[String, String]]())).thenReturn(HTTPResponse(200, EventFixture.USER_1))
         when(mockHttpUtil.get(ArgumentMatchers.contains(jobConfig.contentReadApi), ArgumentMatchers.any[Map[String, String]]())).thenReturn(HTTPResponse(200, EventFixture.CONTENT_1))
-        val certEvent = new CollectionCertPreProcessorFn(jobConfig, mockHttpUtil)(stringTypeInfo, cassandraUtil).issueCertificate(event, template)(cassandraUtil, cache, mockMetrics, jobConfig, mockHttpUtil)
+        jedis.select(jobConfig.contentCacheStore)
+        jedis.set("content_001", """{"identifier":"content_001","contentType": "selfAssess"}""")
+        val certEvent = new CollectionCertPreProcessorFn(jobConfig, mockHttpUtil)(stringTypeInfo, cassandraUtil).issueCertificate(event, template)(cassandraUtil, cache, contentCache, mockMetrics, jobConfig, mockHttpUtil)
         certEvent shouldNot be(null)        
     }
 

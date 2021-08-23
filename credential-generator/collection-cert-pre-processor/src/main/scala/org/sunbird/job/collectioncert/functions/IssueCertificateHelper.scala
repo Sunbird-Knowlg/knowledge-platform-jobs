@@ -16,16 +16,16 @@ import scala.collection.JavaConverters._
 
 trait IssueCertificateHelper {
     private[this] val logger = LoggerFactory.getLogger(classOf[CollectionCertPreProcessorFn])
-    protected var contentCache: DataCache = _
 
-    def issueCertificate(event:Event, template: Map[String, String])(cassandraUtil: CassandraUtil, cache:DataCache, metrics: Metrics, config: CollectionCertPreProcessorConfig, httpUtil: HttpUtil): String = {
+
+    def issueCertificate(event:Event, template: Map[String, String])(cassandraUtil: CassandraUtil, cache:DataCache, contentCache: DataCache, metrics: Metrics, config: CollectionCertPreProcessorConfig, httpUtil: HttpUtil): String = {
         //validCriteria
         val criteria = validateTemplate(template, event.batchId)(config)
         //validateEnrolmentCriteria
         val certName = template.getOrElse(config.name, "")
         val enrolledUser: EnrolledUser = validateEnrolmentCriteria(event, criteria.getOrElse(config.enrollment, Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]], certName)(metrics, cassandraUtil, config)
         //validateAssessmentCriteria
-        val assessedUser = validateAssessmentCriteria(event, criteria.getOrElse(config.assessment, Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]], enrolledUser.userId)(metrics, cassandraUtil, config)
+        val assessedUser = validateAssessmentCriteria(event, criteria.getOrElse(config.assessment, Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]], enrolledUser.userId)(metrics, cassandraUtil, contentCache, config)
         //validateUserCriteria
         val userDetails = validateUser(assessedUser, criteria.getOrElse(config.user, Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]])(metrics, config, httpUtil)
 
@@ -69,11 +69,11 @@ trait IssueCertificateHelper {
         } else EnrolledUser(event.userId, "") 
     }
 
-    def validateAssessmentCriteria(event: Event, assessmentCriteria: Map[String, AnyRef], enrolledUser: String)(metrics:Metrics, cassandraUtil: CassandraUtil, config:CollectionCertPreProcessorConfig):String = {
+    def validateAssessmentCriteria(event: Event, assessmentCriteria: Map[String, AnyRef], enrolledUser: String)(metrics:Metrics, cassandraUtil: CassandraUtil, contentCache: DataCache, config:CollectionCertPreProcessorConfig):String = {
         var assessedUser = enrolledUser
 
         if(!assessmentCriteria.isEmpty && !enrolledUser.isEmpty) {
-            val score:Double = getMaxScore(event)(metrics, cassandraUtil, config)
+            val score:Double = getMaxScore(event)(metrics, cassandraUtil, config, contentCache)
             if(!isValidAssessCriteria(assessmentCriteria, score))
                 assessedUser = ""
         }
@@ -90,7 +90,7 @@ trait IssueCertificateHelper {
         } else Map[String, AnyRef]()
     }
 
-    def getMaxScore(event: Event)(metrics:Metrics, cassandraUtil: CassandraUtil, config:CollectionCertPreProcessorConfig):Double = {
+    def getMaxScore(event: Event)(metrics:Metrics, cassandraUtil: CassandraUtil, config:CollectionCertPreProcessorConfig, contentCache: DataCache):Double = {
         val query = QueryBuilder.select().column("content_id").column("total_max_score").column("total_score").as("score").from(config.keyspace, config.assessmentTable)
           .where(QueryBuilder.eq("course_id", event.courseId)).and(QueryBuilder.eq("batch_id", event.batchId))
           .and(QueryBuilder.eq("user_id", event.userId))
