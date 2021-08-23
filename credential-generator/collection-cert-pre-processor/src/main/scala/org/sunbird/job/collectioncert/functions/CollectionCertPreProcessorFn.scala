@@ -33,6 +33,7 @@ class CollectionCertPreProcessorFn(config: CollectionCertPreProcessorConfig, htt
 
       val metaRedisConn = new RedisConnect(config, Option(config.metaRedisHost), Option(config.metaRedisPort))
       contentCache = new DataCache(config, metaRedisConn, config.contentCacheStore, List())
+      contentCache.init()
     }
 
     override def close(): Unit = {
