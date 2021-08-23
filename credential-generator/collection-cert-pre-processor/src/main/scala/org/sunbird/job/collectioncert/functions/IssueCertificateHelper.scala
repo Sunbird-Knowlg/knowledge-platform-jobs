@@ -102,7 +102,7 @@ trait IssueCertificateHelper {
             .groupBy(f => f.contentId)
           val filteredUserAssessments = userAssessments.filterKeys(key => {
             val metadata = contentCache.getWithRetry(key)
-            val contentType = metadata.getOrElse("contentType", "")
+            val contentType = metadata.getOrElse("contenttype", "")
             config.assessmentContentTypes.contains(contentType)
           })
           // TODO: Here we have an assumption that, we will consider max percentage from all the available attempts of different assessment contents.
