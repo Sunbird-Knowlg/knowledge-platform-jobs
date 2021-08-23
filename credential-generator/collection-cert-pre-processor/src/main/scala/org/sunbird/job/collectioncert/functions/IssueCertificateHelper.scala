@@ -3,11 +3,12 @@ package org.sunbird.job.collectioncert.functions
 import java.text.SimpleDateFormat
 import com.datastax.driver.core.querybuilder.QueryBuilder
 import com.datastax.driver.core.{Row, TypeTokens}
+import org.apache.commons.collections.CollectionUtils
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.Metrics
 import org.sunbird.job.cache.DataCache
-import org.sunbird.job.collectioncert.domain.{BEJobRequestEvent, EnrolledUser, Event, EventObject}
+import org.sunbird.job.collectioncert.domain.{AssessmentUserAttempt, BEJobRequestEvent, EnrolledUser, Event, EventObject}
 import org.sunbird.job.collectioncert.task.CollectionCertPreProcessorConfig
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, ScalaJsonUtil}
 
@@ -15,6 +16,7 @@ import scala.collection.JavaConverters._
 
 trait IssueCertificateHelper {
     private[this] val logger = LoggerFactory.getLogger(classOf[CollectionCertPreProcessorFn])
+    protected var contentCache: DataCache = _
 
     def issueCertificate(event:Event, template: Map[String, String])(cassandraUtil: CassandraUtil, cache:DataCache, metrics: Metrics, config: CollectionCertPreProcessorConfig, httpUtil: HttpUtil): String = {
         //validCriteria
@@ -89,14 +91,22 @@ trait IssueCertificateHelper {
     }
 
     def getMaxScore(event: Event)(metrics:Metrics, cassandraUtil: CassandraUtil, config:CollectionCertPreProcessorConfig):Double = {
-        val query = QueryBuilder.select().column("total_max_score").max("total_score").as("score").from(config.keyspace, config.assessmentTable)
+        val query = QueryBuilder.select().column("content_id").column("total_max_score").column("total_score").as("score").from(config.keyspace, config.assessmentTable)
           .where(QueryBuilder.eq("course_id", event.courseId)).and(QueryBuilder.eq("batch_id", event.batchId))
-          .and(QueryBuilder.eq("user_id", event.userId)).groupBy("user_id", "course_id", "batch_id", "content_id")
+          .and(QueryBuilder.eq("user_id", event.userId))
         
         val rows: java.util.List[Row] = cassandraUtil.find(query.toString)
         metrics.incCounter(config.dbReadCount)
         if(null != rows && !rows.isEmpty) {
-            rows.asScala.toList.map(row => ((row.getDouble("score")*100)/row.getDouble("total_max_score"))).toList.max
+          val userAssessments = rows.asScala.toList.map(row => AssessmentUserAttempt(row.getString("content_id"), row.getDouble("score"), row.getDouble("total_max_score")))
+            .groupBy(f => f.contentId)
+          val filteredUserAssessments = userAssessments.filterKeys(key => {
+            val metadata = contentCache.getWithRetry(key)
+            val contentType = metadata.getOrElse("contentType", "")
+            config.assessmentContentTypes.contains(contentType)
+          })
+          // TODO: Here we have an assumption that, we will consider max percentage from all the available attempts of different assessment contents.
+          if (filteredUserAssessments.nonEmpty) filteredUserAssessments.values.flatten.map(a => (a.score*100/a.totalScore)).max else 0d
         } else 0d
     }
 
