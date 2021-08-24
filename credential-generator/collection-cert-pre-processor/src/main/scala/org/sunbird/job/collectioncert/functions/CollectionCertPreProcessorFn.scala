@@ -23,6 +23,7 @@ class CollectionCertPreProcessorFn(config: CollectionCertPreProcessorConfig, htt
 
     private[this] val logger = LoggerFactory.getLogger(classOf[CollectionCertPreProcessorFn])
     private var cache: DataCache = _
+    private var contentCache: DataCache = _
 
     override def open(parameters: Configuration): Unit = {
         super.open(parameters)
@@ -30,6 +31,10 @@ class CollectionCertPreProcessorFn(config: CollectionCertPreProcessorConfig, htt
         val redisConnect = new RedisConnect(config)
         cache = new DataCache(config, redisConnect, config.collectionCacheStore, List())
         cache.init()
+
+      val metaRedisConn = new RedisConnect(config, Option(config.metaRedisHost), Option(config.metaRedisPort))
+      contentCache = new DataCache(config, metaRedisConn, config.contentCacheStore, List())
+      contentCache.init()
     }
 
     override def close(): Unit = {
@@ -52,7 +57,7 @@ class CollectionCertPreProcessorFn(config: CollectionCertPreProcessorConfig, htt
                 val certTemplates = fetchTemplates(event)(metrics).filter(template => template._2.getOrElse("url", "").asInstanceOf[String].contains(".svg"))
                 if(!certTemplates.isEmpty) {
                     certTemplates.map(template => {
-                        val certEvent = issueCertificate(event, template._2)(cassandraUtil, cache, metrics, config, httpUtil)
+                        val certEvent = issueCertificate(event, template._2)(cassandraUtil, cache, contentCache, metrics, config, httpUtil)
                         Option(certEvent).map(e => {
                             context.output(config.generateCertificateOutputTag, certEvent)
                             metrics.incCounter(config.successEventCount)}

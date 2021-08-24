@@ -75,7 +75,7 @@ class NotifierFunction(config: CertificateGeneratorConfig, httpUtil: HttpUtil, @
           metrics.incCounter(config.notifiedUserCount)
           logger.info("email response status {} :: {}", response.status, response.body)
         }
-        else throw new Exception(s"Error in email response ${response}")
+        else throw new Exception(s"Error in email response ${response} for UserId: ${metaData.userId}")
         if (StringUtils.isNoneBlank(userResponse.getOrElse("maskedPhone", "").asInstanceOf[String])) {
           request.put(config.body, "sms")
           val smsBody = config.notificationSmsBody.replaceAll("@@TRAINING_NAME@@", metaData.courseName)
