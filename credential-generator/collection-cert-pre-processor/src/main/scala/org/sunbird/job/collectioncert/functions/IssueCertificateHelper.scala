@@ -3,7 +3,6 @@ package org.sunbird.job.collectioncert.functions
 import java.text.SimpleDateFormat
 import com.datastax.driver.core.querybuilder.QueryBuilder
 import com.datastax.driver.core.{Row, TypeTokens}
-import org.apache.commons.collections.CollectionUtils
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.Metrics
@@ -102,8 +101,10 @@ trait IssueCertificateHelper {
             .groupBy(f => f.contentId)
           val filteredUserAssessments = userAssessments.filterKeys(key => {
             val metadata = contentCache.getWithRetry(key)
-            val contentType = metadata.getOrElse("contenttype", "")
-            config.assessmentContentTypes.contains(contentType)
+            if (metadata.nonEmpty) {
+              val contentType = metadata.getOrElse("contenttype", "")
+              config.assessmentContentTypes.contains(contentType)
+            } else throw new Exception("Metadata cache not available for: " + key)
           })
           // TODO: Here we have an assumption that, we will consider max percentage from all the available attempts of different assessment contents.
           if (filteredUserAssessments.nonEmpty) filteredUserAssessments.values.flatten.map(a => (a.score*100/a.totalScore)).max else 0d
