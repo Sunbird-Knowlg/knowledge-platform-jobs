@@ -20,3 +20,5 @@ case class BEJobRequestEvent(actor: ActorObject= ActorObject(),
                           mid: String = s"LMS.${UUID.randomUUID().toString}",
                           `object`: EventObject
                          )
+
+case class AssessmentUserAttempt(contentId: String, score: Double, totalScore: Double)
