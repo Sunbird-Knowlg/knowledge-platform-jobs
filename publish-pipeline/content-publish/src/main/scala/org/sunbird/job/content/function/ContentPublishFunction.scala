@@ -63,7 +63,7 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
   override def processElement(data: PublishMetadata, context: ProcessFunction[PublishMetadata, String]#Context, metrics: Metrics): Unit = {
     logger.info("Content publishing started for : " + data.identifier)
     metrics.incCounter(config.contentPublishEventCount)
-    val obj = getObject(data.identifier, data.pkgVersion, readerConfig)(neo4JUtil, cassandraUtil)
+    val obj: ObjectData = getObject(data.identifier, data.pkgVersion, readerConfig)(neo4JUtil, cassandraUtil)
     val messages: List[String] = validate(obj, obj.identifier, validateMetadata)
     if (obj.pkgVersion > data.pkgVersion) {
       metrics.incCounter(config.skippedEventCount)
@@ -71,7 +71,7 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
     } else {
       if (messages.isEmpty) {
         // Prepublish update
-        updateProcessingNode(obj)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
+        updateProcessingNode(new ObjectData(obj.identifier, obj.metadata ++ Map("lastPublishedBy" -> data.lastPublishedBy), obj.extData, obj.hierarchy))(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
         // Clear redis cache
         cache.del(data.identifier)
         val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)

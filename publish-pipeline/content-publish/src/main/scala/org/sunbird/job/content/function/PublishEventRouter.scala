@@ -36,7 +36,7 @@ class PublishEventRouter(config: ContentPublishConfig) extends BaseProcessFuncti
       event.objectType match {
         case "Content" | "ContentImage" => {
           logger.info("PublishEventRouter :: Sending Content For Publish Having Identifier: " + event.objectId)
-          context.output(config.contentPublishOutTag, PublishMetadata(event.objectId, event.objectType, event.mimeType, event.pkgVersion))
+          context.output(config.contentPublishOutTag, PublishMetadata(event.objectId, event.objectType, event.mimeType, event.pkgVersion, event.lastPublishedBy))
         }
         //				case "Collection" | "CollectionImage" => {
         //					logger.info("PublishEventRouter :: Sending Collection For Publish Having Identifier: " + event.objectId)
