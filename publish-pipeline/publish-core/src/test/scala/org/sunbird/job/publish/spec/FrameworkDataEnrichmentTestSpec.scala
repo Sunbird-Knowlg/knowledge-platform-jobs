@@ -63,6 +63,27 @@ class FrameworkDataEnrichmentTestSpec extends FlatSpec with BeforeAndAfterAll wi
 		result.metadata.getOrElse("se_FWIds", List()).asInstanceOf[List[String]].contains("TPD") should be (true)
 	}
 
+	"enrichFrameworkData with board, medium, gradeLevel and subject " should "enrich se_boards, se_mediums, se_gradeLevels and se_subjects" in {
+		val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "IL_UNIQUE_ID" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "framework" -> "NCF", "board" -> "some board", "medium" -> List("some medium 1", "some_medium_2").asJava))
+		when(mockNeo4JUtil.getNodesName(ArgumentMatchers.anyObject())).thenReturn(Map[String, String]("ncf_medium_telugu" -> "Telugu", "ncf_medium_english" -> "English",  "ncf_board_cbse" -> "CBSE", "ncfcopy_board_ncert" -> "NCERT"))
+		val obj = new TestFrameworkDataEnrichment()
+		val result = obj.enrichFrameworkData(data)
+		result.metadata.contains("se_mediumIds") should be (false)
+		result.metadata.contains("se_boardIds") should be (false)
+		result.metadata.contains("se_FWIds") should be (true)
+		result.metadata.contains("se_boards") should be (true)
+		result.metadata.getOrElse("se_boards", List()).asInstanceOf[List[String]] should have length(1)
+		result.metadata.getOrElse("se_boards", List()).asInstanceOf[List[String]].contains("some board") should be (true)
+		result.metadata.contains("se_mediums") should be (true)
+		result.metadata.getOrElse("se_mediums", List()).asInstanceOf[List[String]] should have length(2)
+		result.metadata.getOrElse("se_mediums", List()).asInstanceOf[List[String]].contains("some medium 1") should be (true)
+		result.metadata.contains("se_gradeLevels") should be (false)
+		result.metadata.contains("se_subjects") should be (false)
+		result.metadata.contains("se_topics") should be (false)
+		result.metadata.getOrElse("se_FWIds", List()).asInstanceOf[List[String]] should have length(1)
+		result.metadata.getOrElse("se_FWIds", List()).asInstanceOf[List[String]].contains("NCF") should be (true)
+	}
+
 	"getFrameworkCategoryMetadata from database" should "return touple values" in {
 		when(mockNeo4JUtil.getNodePropertiesWithObjectType(ArgumentMatchers.anyString())).thenReturn(getNeo4jData())
 		//enrichFrameworkMasterCategoryMap()

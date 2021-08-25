@@ -47,15 +47,8 @@ trait FrameworkDataEnrichment {
 
 	private def revalidateFrameworkCategoryMetadata(obj: ObjectData, enMetadata: Map[String, AnyRef]) : Map[String, AnyRef] = {
 		val updatedFwData: immutable.Iterable[(String, AnyRef)] = frameworkCategorySearchMetadataMapping.map(category => {
-			val data: AnyRef = obj.metadata.get(category._2)
-
-			if(data != null && data != None) {
-				val updatedData = data match {
-					case _: String => List(data.asInstanceOf[String])
-					case _ => data
-				}
-				Map(category._1 -> updatedData)
-			} else Map.empty
+			val data: AnyRef = obj.metadata.getOrElse(category._2, null)
+			if(data != null) Map(category._1 -> getList(data)) else Map.empty
 		}).filter(rec => rec.nonEmpty).flatten
 
 		enMetadata ++ updatedFwData
