@@ -102,7 +102,7 @@ trait IssueCertificateHelper {
           val filteredUserAssessments = userAssessments.filterKeys(key => {
             val metadata = contentCache.getWithRetry(key)
             if (metadata.nonEmpty) {
-              val contentType = metadata.getOrElse("contenttype", "")
+              val contentType = metadata.getOrElse("contentType", "")
               config.assessmentContentTypes.contains(contentType)
             } else throw new Exception("Metadata cache not available for: " + key)
           })
