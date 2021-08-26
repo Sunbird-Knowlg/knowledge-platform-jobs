@@ -64,7 +64,7 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
     try {
       logger.info("Content publishing started for : " + data.identifier)
       metrics.incCounter(config.contentPublishEventCount)
-      val obj = getObject(data.identifier, data.pkgVersion, data.mimeType, readerConfig)(neo4JUtil, cassandraUtil)
+      val obj: ObjectData = getObject(data.identifier, data.pkgVersion, data.mimeType, readerConfig)(neo4JUtil, cassandraUtil)
       val messages: List[String] = validate(obj, obj.identifier, validateMetadata)
       if (obj.pkgVersion > data.pkgVersion) {
         metrics.incCounter(config.skippedEventCount)
@@ -72,7 +72,7 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
       } else {
         if (messages.isEmpty) {
           // Prepublish update
-          updateProcessingNode(obj)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
+          updateProcessingNode(new ObjectData(obj.identifier, obj.metadata ++ Map("lastPublishedBy" -> data.lastPublishedBy), obj.extData, obj.hierarchy))(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
 
           val ecmlVerifiedObj = if (obj.mimeType.equalsIgnoreCase("application/vnd.ekstep.ecml-archive")) {
             val ecarEnhancedObj = ExtractableMimeTypeHelper.processECMLBody(obj, config)(ec, cloudStorageUtil)
