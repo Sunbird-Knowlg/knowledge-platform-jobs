@@ -37,11 +37,11 @@ trait FrameworkDataEnrichment {
 	}
 
 	private def enrichFwData(obj: ObjectData, fwMetaFields: List[String], fwMetaMap: Map[(String, String), List[String]])(implicit neo4JUtil: Neo4JUtil): Map[String, AnyRef] = {
-		val mFwId = getList(obj.metadata.getOrElse("framework", "")) ::: getList(obj.metadata.getOrElse("targetFWIds", List()))
+		val mFwId: List[String] = getList(obj.metadata.getOrElse("framework", "")) ::: getList(obj.metadata.getOrElse("targetFWIds", List()))
 		if (mFwId.isEmpty) Map() else {
 			val labels: Map[String, List[String]] = getLabels(obj.identifier, obj.metadata, fwMetaFields)
 			val metaMap = fwMetaMap.flatMap(entry => Map(entry._1._1 -> (getList(obj.metadata.getOrElse(entry._2(0), List())) ::: getList(obj.metadata.getOrElse(entry._2(1), List()))).distinct, entry._1._2 -> (labels.getOrElse(entry._2(0), List()) ::: labels.getOrElse(entry._2(1), List())).distinct))
-			(metaMap ++ Map("se_FWIds" -> mFwId)).filter(entry => entry._2.nonEmpty)
+			(metaMap ++ Map("se_FWIds" -> mFwId.distinct)).filter(entry => entry._2.nonEmpty)
 		}
 	}
 
