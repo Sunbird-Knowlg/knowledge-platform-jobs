@@ -67,6 +67,7 @@ trait ObjectUpdater {
     val definition = definitionCache.getDefinition(obj.dbObjType, version, config.basePath)
     val metadata = obj.metadata - ("IL_UNIQUE_ID", "identifier", "IL_FUNC_OBJECT_TYPE", "IL_SYS_NODE_TYPE", "pkgVersion", "lastStatusChangedOn", "lastUpdatedOn", "status", "objectType")
     metadata.map(prop => {
+      logger.info("ObjectUpdater::metaDataQuery:: prop: " + prop)
       if (null == prop._2) s"n.${prop._1}=${prop._2}"
       else if (definition.objectTypeProperties.contains(prop._1)) {
         prop._2 match {
