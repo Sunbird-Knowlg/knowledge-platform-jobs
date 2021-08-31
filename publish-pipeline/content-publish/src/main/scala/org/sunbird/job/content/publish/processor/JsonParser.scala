@@ -188,7 +188,16 @@ object JsonParser {
   }
 
   def getMediaMap(medias: List[Media]): Map[String, AnyRef] = {
-    val mediasMap = medias.map(media => media.data ++ Map[String, AnyRef]("__text" -> media.innerText, "__cdata" -> media.cData) ++ getChildPluginMap(media.childrenPlugin))
+    val mediasMap = medias.map(media => {
+
+      val updatedMediaData = media.data.map(mediaInfo => {
+        if(mediaInfo._1.equalsIgnoreCase("src"))
+            ("src" -> (StringUtils.stripStart(mediaInfo._2.toString, "/")))
+        else mediaInfo
+      })
+
+      updatedMediaData ++ Map[String, AnyRef]("__text" -> media.innerText, "__cdata" -> media.cData) ++ getChildPluginMap(media.childrenPlugin)
+    })
     Map[String, AnyRef]("media" -> mediasMap)
   }
 
