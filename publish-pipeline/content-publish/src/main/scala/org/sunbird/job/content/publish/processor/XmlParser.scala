@@ -219,7 +219,14 @@ object XmlParser {
     val strBuilder = StringBuilder.newBuilder
     if (null != medias && medias.nonEmpty) {
       medias.map(media => {
-        strBuilder.append(getElementXml(media.data)).append(getInnerTextXml(media.innerText)).append(media.cData).append(getPluginsXml(media.childrenPlugin)).append(getEndTag("media"))
+
+        val updatedMediaData = media.data.map(mediaInfo => {
+          if(mediaInfo._1.equalsIgnoreCase("src"))
+            ("src" -> (StringUtils.stripStart(mediaInfo._2.toString, "/")))
+          else mediaInfo
+        })
+
+        strBuilder.append(getElementXml(updatedMediaData)).append(getInnerTextXml(media.innerText)).append(media.cData).append(getPluginsXml(media.childrenPlugin)).append(getEndTag("media"))
       })
     }
     strBuilder
