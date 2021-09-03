@@ -12,7 +12,6 @@ import java.lang.reflect.Type
 
 class PublishEventRouter(config: ContentPublishConfig) extends BaseProcessFunction[Event, String](config) {
 
-
   private[this] val logger = LoggerFactory.getLogger(classOf[PublishEventRouter])
   val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
 
@@ -34,14 +33,12 @@ class PublishEventRouter(config: ContentPublishConfig) extends BaseProcessFuncti
     // Event validation
     if (event.validEvent(config)) {
       event.objectType match {
-        case "Content" | "ContentImage" => {
+        case "Content" | "ContentImage" =>
           logger.info("PublishEventRouter :: Sending Content For Publish Having Identifier: " + event.objectId)
           context.output(config.contentPublishOutTag, PublishMetadata(event.objectId, event.objectType, event.mimeType, event.pkgVersion, event.lastPublishedBy))
-        }
-        //				case "Collection" | "CollectionImage" => {
-        //					logger.info("PublishEventRouter :: Sending Collection For Publish Having Identifier: " + event.objectId)
-        //					context.output(config.collectionPublishOutTag, PublishMetadata(event.objectId, event.objectType, event.mimeType,event.pkgVersion))
-        //				}
+        case "Collection" | "CollectionImage" =>
+          logger.info("PublishEventRouter :: Sending Collection For Publish Having Identifier: " + event.objectId)
+          context.output(config.collectionPublishOutTag, PublishMetadata(event.objectId, event.objectType, event.mimeType, event.pkgVersion, event.lastPublishedBy))
         case _ => {
           metrics.incCounter(config.skippedEventCount)
           logger.info("Invalid Object Type Received For Publish.| Identifier : " + event.objectId + " , objectType : " + event.objectType)

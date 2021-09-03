@@ -6,7 +6,7 @@ import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.content.function.{PublishEventRouter, ContentPublishFunction}
+import org.sunbird.job.content.function.{CollectionPublishFunction, ContentPublishFunction, PublishEventRouter}
 import org.sunbird.job.content.publish.domain.{Event, PublishMetadata}
 import org.sunbird.job.util.{FlinkUtil, HttpUtil}
 
@@ -33,8 +33,8 @@ class ContentPublishStreamTask(config: ContentPublishConfig, kafkaConnector: Fli
     processStreamTask.getSideOutput(config.contentPublishOutTag).process(new ContentPublishFunction(config, httpUtil))
       .name("content-publish-process").uid("content-publish-process").setParallelism(1)
 
-    //		processStreamTask.getSideOutput(config.collectionPublishOutTag).process(new CollectionPublishFunction(config, httpUtil))
-    //		  .name("collection-publish-process").uid("collection-publish-process").setParallelism(1)
+    processStreamTask.getSideOutput(config.collectionPublishOutTag).process(new CollectionPublishFunction(config, httpUtil))
+      .name("collection-publish-process").uid("collection-publish-process").setParallelism(1)
     env.execute(config.jobName)
   }
 }
