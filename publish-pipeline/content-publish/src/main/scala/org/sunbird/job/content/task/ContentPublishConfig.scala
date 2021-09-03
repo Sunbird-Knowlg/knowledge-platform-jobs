@@ -35,9 +35,9 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
   val contentPublishSuccessEventCount = "content-publish-success-count"
   val contentPublishFailedEventCount = "content-publish-failed-count"
   val videoStreamingGeneratorEventCount = "video-streaming-event-count"
-  //	val collectionPublishEventCount = "collection-publish-count"
-  //	val collectionPublishSuccessEventCount = "collection-publish-success-count"
-  //	val collectionPublishFailedEventCount = "collection-publish-failed-count"
+  	val collectionPublishEventCount = "collection-publish-count"
+  	val collectionPublishSuccessEventCount = "collection-publish-success-count"
+  	val collectionPublishFailedEventCount = "collection-publish-failed-count"
 
   // Cassandra Configurations
   val cassandraHost: String = config.getString("lms-cassandra.host")
@@ -45,6 +45,9 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
   // TODO: Need to check respective changes for content
   val contentKeyspaceName: String = config.getString("content.keyspace")
   val contentTableName: String = config.getString("content.table")
+  val hierarchyKeyspaceName: String = config.getString("hierarchy.keyspace")
+  val hierarchyTableName: String = config.getString("hierarchy.table")
+
 
   // Neo4J Configurations
   val graphRoutePath: String = config.getString("neo4j.routePath")

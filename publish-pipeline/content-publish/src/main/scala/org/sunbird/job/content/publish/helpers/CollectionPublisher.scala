@@ -1,18 +1,23 @@
 package org.sunbird.job.content.publish.helpers
 
+import com.datastax.driver.core.Row
+import com.datastax.driver.core.querybuilder.{QueryBuilder, Select}
+import org.apache.commons.collections.CollectionUtils
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.content.task.ContentPublishConfig
+import org.sunbird.job.content.util.HierarchyConstants
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData, ObjectExtData}
 import org.sunbird.job.publish.helpers._
 import org.sunbird.job.publish.util.CloudStorageUtil
-import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
+import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil, ScalaJsonUtil}
 
+import java.util.concurrent.CompletionException
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
-import scala.concurrent.ExecutionContext
+import scala.concurrent.{ExecutionContext, Future}
 
 trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectEnrichment with EcarGenerator with ObjectUpdater {
 
@@ -21,7 +26,21 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
 
   override def getExtData(identifier: String, pkgVersion: Double, mimeType: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[ObjectExtData] = None
 
-  override def getHierarchy(identifier: String, pkgVersion: Double, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = None
+  override def getHierarchy(identifier: String, pkgVersion: Double, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = {
+    val row: Row = Option(getCollectionHierarchy(getEditableObjId(identifier, pkgVersion), readerConfig)).getOrElse(getCollectionHierarchy(identifier, readerConfig))
+    if (null != row) {
+      val data: Map[String, AnyRef] = ScalaJsonUtil.deserialize[Map[String, AnyRef]](row.getString("hierarchy"))
+      Option(data)
+    } else Option(Map())
+  }
+
+  def getCollectionHierarchy(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil) = {
+    val selectWhere: Select.Where = QueryBuilder.select().all()
+      .from(readerConfig.keyspace, readerConfig.table).
+      where()
+    selectWhere.and(QueryBuilder.eq("identifier", identifier))
+    cassandraUtil.findOne(selectWhere.toString)
+  }
 
   override def getExtDatas(identifiers: List[String], readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = None
 
@@ -37,8 +56,33 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
 
     val updatedCompatibilityLevel = setCompatibilityLevel(obj, updatedMeta).getOrElse(updatedMeta)
 
-    // Collection - Enrich Children - line 345
+    val isCollectionShallowCopy =  isContentShallowCopy(obj)
 
+    // Collection - Enrich Children - line 345
+    val collectionHierarchy: Map[String, AnyRef] = if (isCollectionShallowCopy) {
+      val originData: Map[String, AnyRef] = obj.metadata.getOrElse("originData","").asInstanceOf[Map[String,AnyRef]]
+      getHierarchy(obj.metadata.get("origin").asInstanceOf[String], originData.getOrElse("pkgVersion", 0.0).asInstanceOf[Double], readerConfig).get
+    } else getHierarchy(obj.identifier, obj.pkgVersion, readerConfig).get
+    logger.debug("Hierarchy for content : " + obj.identifier + " : " + collectionHierarchy)
+
+//    if (collectionHierarchy.nonEmpty) {
+//     val children = collectionHierarchy.get("children").asInstanceOf[List[Map[String, AnyRef]]]
+//      if (!isCollectionShallowCopy) {
+//        val collectionResourceChildNodes: Set[String] = new HashSet[String]
+//        enrichChildren(children, collectionResourceChildNodes, node)
+//        if (!(collectionResourceChildNodes.isEmpty)) {
+//          val collectionChildNodes: List[String] = getList(node.getMetadata.get(ContentWorkflowPipelineParams.childNodes.name))
+//          collectionChildNodes.addAll(collectionResourceChildNodes)
+//          node.getMetadata.put(ContentWorkflowPipelineParams.childNodes.name, collectionChildNodes)
+//        }
+//      }
+//    }
+//
+//    logger.info("Collection processing started for content: " + node.getIdentifier)
+//    processCollection(node, children)
+//    logger.info("Collection processing done for content: " + node.getIdentifier)
+//    logger.info("Collection data after processing for : " + node.getIdentifier + " | Metadata : " + node.getMetadata)
+//    logger.info("Collection children data after processing : " + children)
 
 
 
@@ -82,5 +126,24 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
     val metaData = Option(neo4JUtil.getNodeProperties(obj.identifier)).getOrElse(neo4JUtil.getNodeProperties(obj.identifier)).asScala.toMap
     metaData.getOrElse("childNodes",List.empty).asInstanceOf[List[String]]
   }
+
+  def isContentShallowCopy(obj: ObjectData): Boolean = {
+    val originData: Map[String, AnyRef] = obj.metadata.getOrElse("originData","").asInstanceOf[Map[String,AnyRef]]
+    if (originData != null && !originData.isEmpty && StringUtils.isNoneBlank(originData.get("copyType").asInstanceOf[String]) && StringUtils.equalsIgnoreCase(originData.get("copyType").asInstanceOf[String], "shallow")) true
+    else false
+  }
+
+  def updateOriginPkgVersion(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil): ObjectData = {
+    val originId = obj.metadata.getOrElse("origin", "").asInstanceOf[String]
+    val originNodeMetadata = Option(neo4JUtil.getNodeProperties(originId)).getOrElse(neo4JUtil.getNodeProperties(originId))
+    if (null != originNodeMetadata) {
+      val originPkgVer = originNodeMetadata.getOrDefault("pkgVersion", 0.0).asInstanceOf[Double]
+      if (originPkgVer ne 0.0) {
+        val originData = obj.metadata.getOrElse("originData","").asInstanceOf[Map[String, AnyRef]] ++ Map("pkgVersion" -> originPkgVer)
+        new ObjectData(obj.identifier, obj.metadata ++ Map("originData" -> originData) , obj.extData, obj.hierarchy)
+      } else obj
+    } else obj
+  }
+
 
 }

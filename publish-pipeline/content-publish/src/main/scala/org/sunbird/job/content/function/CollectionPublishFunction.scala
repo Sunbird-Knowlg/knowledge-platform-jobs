@@ -2,7 +2,6 @@ package org.sunbird.job.content.function
 
 import akka.dispatch.ExecutionContexts
 import com.google.gson.reflect.TypeToken
-import org.apache.commons.lang3.StringUtils
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
@@ -19,8 +18,6 @@ import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import java.lang.reflect.Type
-import java.util.Map
-import scala.collection.convert.ImplicitConversions.{`map AsJavaMap`, `map AsScala`}
 import scala.concurrent.ExecutionContext
 
 class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
@@ -35,7 +32,7 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
   private[this] val logger = LoggerFactory.getLogger(classOf[CollectionPublishFunction])
   val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
   private var cache: DataCache = _
-  private val readerConfig = ExtDataConfig(config.contentKeyspaceName, config.contentTableName)
+  private val readerConfig = ExtDataConfig(config.hierarchyKeyspaceName, config.hierarchyTableName)
 
   @transient var ec: ExecutionContext = _
   private val pkgTypes = List(EcarPackageType.FULL.toString, EcarPackageType.SPINE.toString)
@@ -76,8 +73,8 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
           // Pre-publish update
           updateProcessingNode(new ObjectData(obj.identifier, obj.metadata ++ Map("lastPublishedBy" -> data.lastPublishedBy), obj.extData, obj.hierarchy))(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
 
-          val isContentShallowCopy =  isContentShallowCopy(obj)
-          val updatedObj = if (isContentShallowCopy) updateOriginPkgVersion(obj) else obj
+          val isCollectionShallowCopy =  isContentShallowCopy(obj)
+          val updatedObj = if (isCollectionShallowCopy) updateOriginPkgVersion(obj)(neo4JUtil) else obj
 
           // Clear redis cache
           cache.del(data.identifier)
@@ -109,24 +106,6 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
         logger.info("CollectionPublishFunction::processElement::Exception" + exp.getMessage)
         throw exp
     }
-  }
-
-  protected def isContentShallowCopy(obj: ObjectData): Boolean = {
-    val originData: Map[String, AnyRef] = obj.metadata.getOrElse("originData","").asInstanceOf[Map[String,AnyRef]]
-    if (originData != null && !originData.isEmpty && StringUtils.isNoneBlank(originData.get("copyType").asInstanceOf[String]) && StringUtils.equalsIgnoreCase(originData.get("copyType").asInstanceOf[String], "shallow")) true
-    else false
-  }
-
-  private def updateOriginPkgVersion(obj: ObjectData): ObjectData = {
-    val originId = obj.metadata.getOrElse("origin", "").asInstanceOf[String]
-    val originNodeMetadata = Option(neo4JUtil.getNodeProperties(originId)).getOrElse(neo4JUtil.getNodeProperties(originId))
-    if (null != originNodeMetadata) {
-      val originPkgVer = originNodeMetadata.getOrDefault("pkgVersion", 0.0).asInstanceOf[Double]
-      if (originPkgVer ne 0.0) {
-        val originData = obj.metadata.getOrElse("originData","").asInstanceOf[Map[String, AnyRef]] ++ Map("pkgVersion" -> originPkgVer)
-        new ObjectData(obj.identifier, obj.metadata ++ Map("originData" -> originData) , obj.extData, obj.hierarchy)
-      } else obj
-    } else obj
   }
 
 }
