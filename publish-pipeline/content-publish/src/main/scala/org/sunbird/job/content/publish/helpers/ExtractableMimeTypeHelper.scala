@@ -58,7 +58,7 @@ object ExtractableMimeTypeHelper {
     // fetch content body from cassandra
     val select = QueryBuilder.select()
     select.fcall("blobAsText", QueryBuilder.column("body")).as("body")
-    val selectWhere: Select.Where = select.from(readerConfig.keyspace, readerConfig.table).where().and(QueryBuilder.eq("content_id", identifier))
+    val selectWhere: Select.Where = select.from(readerConfig.keyspace, readerConfig.table).where().and(QueryBuilder.eq("content_id", identifier+".img"))
     logger.info("Cassandra Fetch Query :: " + selectWhere.toString)
     val row = cassandraUtil.findOne(selectWhere.toString)
     if (null != row) row.getString("body") else ""
