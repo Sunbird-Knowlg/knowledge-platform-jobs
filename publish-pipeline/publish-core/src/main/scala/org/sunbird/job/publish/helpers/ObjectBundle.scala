@@ -96,7 +96,7 @@ trait ObjectBundle {
 				v.map {
 					id => {
 						Future {
-							val destPath = s"""${bundlePath}${File.separator}${id}"""
+							val destPath = s"""${bundlePath}${File.separator}${StringUtils.replace(id,".img","")}"""
 							logger.info(s"ObjectBundle ::: downloadFiles ::: Processing file: $k for : " + identifier)
 							k match {
 								case _: File => {
