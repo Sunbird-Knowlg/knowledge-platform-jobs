@@ -58,10 +58,17 @@ object ExtractableMimeTypeHelper {
     // fetch content body from cassandra
     val select = QueryBuilder.select()
     select.fcall("blobAsText", QueryBuilder.column("body")).as("body")
-    val selectWhere: Select.Where = select.from(readerConfig.keyspace, readerConfig.table).where().and(QueryBuilder.eq("content_id", identifier))
-    logger.info("Cassandra Fetch Query :: " + selectWhere.toString)
+    val selectWhere: Select.Where = select.from(readerConfig.keyspace, readerConfig.table).where().and(QueryBuilder.eq("content_id", identifier+".img"))
+    logger.info("Cassandra Fetch Query for image:: " + selectWhere.toString)
     val row = cassandraUtil.findOne(selectWhere.toString)
-    if (null != row) row.getString("body") else ""
+    if (null != row) row.getString("body") else {
+      val selectId = QueryBuilder.select()
+      selectId.fcall("blobAsText", QueryBuilder.column("body")).as("body")
+      val selectWhereId: Select.Where = selectId.from(readerConfig.keyspace, readerConfig.table).where().and(QueryBuilder.eq("content_id", identifier))
+      logger.info("Cassandra Fetch Query :: " + selectWhere.toString)
+      val rowId = cassandraUtil.findOne(selectWhereId.toString)
+      if (null != rowId) rowId.getString("body") else ""
+    }
   }
 
   def processECMLBody(obj: ObjectData, config: ContentPublishConfig)(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil): Map[String, AnyRef] = {
