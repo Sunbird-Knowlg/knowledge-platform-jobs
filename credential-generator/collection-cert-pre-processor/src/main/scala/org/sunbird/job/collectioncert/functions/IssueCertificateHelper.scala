@@ -157,9 +157,9 @@ trait IssueCertificateHelper {
         if(null == courseMetadata || courseMetadata.isEmpty) {
             val url = config.contentBasePath + config.contentReadApi + "/" + courseId + "?fields=name"
             val response = getAPICall(url, "content")(config, httpUtil, metrics)
-            response.getOrElse(config.name, "")
+            response.getOrElse(config.name, "").asInstanceOf[String].trim.stripLineEnd
         } else {
-            courseMetadata.getOrElse(config.name, "")
+            courseMetadata.getOrElse(config.name, "").asInstanceOf[String].trim.stripLineEnd
         }
     }
 
