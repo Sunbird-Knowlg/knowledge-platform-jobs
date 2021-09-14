@@ -2,9 +2,9 @@ package org.sunbird.job.metricstransformer.task
 
 import java.io.File
 import java.util
-
 import com.typesafe.config.ConfigFactory
 import org.apache.flink.api.common.typeinfo.TypeInformation
+import org.apache.flink.api.java.functions.KeySelector
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
@@ -24,6 +24,7 @@ class MetricsDataTransformerStreamTask(config: MetricsDataTransformerConfig, kaf
     env.addSource(kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)).name(config.eventConsumer)
       .uid(config.eventConsumer).setParallelism(config.kafkaConsumerParallelism)
       .rebalance
+      .keyBy(new MetricsDataTransformerKeySelector)
       .process(new MetricsDataTransformerFunction(config, httpUtil))
       .name(config.metricsDataTransformerFunction)
       .uid(config.metricsDataTransformerFunction)
@@ -51,3 +52,7 @@ class MetricsDataTransformerStreamTask(config: MetricsDataTransformerConfig, kaf
 }
 
 // $COVERAGE-ON$
+
+class MetricsDataTransformerKeySelector extends KeySelector[Event, String] {
+  override def getKey(in: Event): String = in.nodeUniqueId.replace(".img", "")
+}
