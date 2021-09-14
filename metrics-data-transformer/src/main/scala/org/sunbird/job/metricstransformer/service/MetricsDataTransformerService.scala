@@ -38,8 +38,9 @@ trait MetricsDataTransformerService {
         }
       })
       val sourcingId = response.getOrElse("origin", "").asInstanceOf[String]
+      val programId = response.getOrElse("programId", "").asInstanceOf[String]
       val originData = response.getOrElse("originData", Map()).asInstanceOf[Map[String, AnyRef]]
-      if(!sourcingId.equals("") && !originData.isEmpty) {
+      if(event.isValidContent(sourcingId, originData,programId)) {
         try {
           val channel = event.channel
           updateContentMetrics(contentMetrics, sourcingId, channel)(config, httpUtil)
