@@ -257,14 +257,15 @@ object ExtractableMimeTypeHelper {
             downloadFile(mediaFile.src, fDownloadPath)
           }
           else {
-            if (mediaFile.src.startsWith(File.separator)) {
-              if(mediaFile.src.contains("assets/public")) {
-                try {
-                  cloudStorageUtil.downloadFile(fDownloadPath, StringUtils.replace(mediaFile.src.substring(mediaFile.src.indexOf("assets/public") + 14), "//", "/"))
-                } catch {
-                  case _:Exception => cloudStorageUtil.downloadFile(fDownloadPath, mediaFile.src.substring(mediaFile.src.indexOf("assets/public") + 13))
-                }
-              } else cloudStorageUtil.downloadFile(fDownloadPath, StringUtils.replace(mediaFile.src.substring(1), "//","/"))
+            if(mediaFile.src.contains("assets/public")) {
+              try {
+                cloudStorageUtil.downloadFile(fDownloadPath, StringUtils.replace(mediaFile.src.substring(mediaFile.src.indexOf("assets/public") + 14), "//", "/"))
+              } catch {
+                case _:Exception => cloudStorageUtil.downloadFile(fDownloadPath, mediaFile.src.substring(mediaFile.src.indexOf("assets/public") + 13))
+              }
+            }
+            else if (mediaFile.src.startsWith(File.separator)) {
+              cloudStorageUtil.downloadFile(fDownloadPath, StringUtils.replace(mediaFile.src.substring(1), "//","/"))
             } else {
               cloudStorageUtil.downloadFile(fDownloadPath, StringUtils.replace(mediaFile.src, "//","/"))
             }
