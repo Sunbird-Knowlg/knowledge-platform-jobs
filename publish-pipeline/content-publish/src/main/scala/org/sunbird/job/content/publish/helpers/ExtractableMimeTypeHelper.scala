@@ -54,23 +54,6 @@ object ExtractableMimeTypeHelper {
     extractablePackageExtensions.exists(key => StringUtils.endsWithIgnoreCase(obj.getString("artifactUrl", null), key))
   }
 
-  def getContentBody(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): String = {
-    // fetch content body from cassandra
-    val select = QueryBuilder.select()
-    select.fcall("blobAsText", QueryBuilder.column("body")).as("body")
-    val selectWhere: Select.Where = select.from(readerConfig.keyspace, readerConfig.table).where().and(QueryBuilder.eq("content_id", identifier+".img"))
-    logger.info("Cassandra Fetch Query for image:: " + selectWhere.toString)
-    val row = cassandraUtil.findOne(selectWhere.toString)
-    if (null != row) row.getString("body") else {
-      val selectId = QueryBuilder.select()
-      selectId.fcall("blobAsText", QueryBuilder.column("body")).as("body")
-      val selectWhereId: Select.Where = selectId.from(readerConfig.keyspace, readerConfig.table).where().and(QueryBuilder.eq("content_id", identifier))
-      logger.info("Cassandra Fetch Query :: " + selectWhere.toString)
-      val rowId = cassandraUtil.findOne(selectWhereId.toString)
-      if (null != rowId) rowId.getString("body") else ""
-    }
-  }
-
   def processECMLBody(obj: ObjectData, config: ContentPublishConfig)(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil): Map[String, AnyRef] = {
     val basePath = config.bundleLocation + "/" + System.currentTimeMillis + "_tmp" + "/" + obj.identifier
     val ecmlBody = obj.extData.get.getOrElse("body", "").toString
@@ -256,7 +239,6 @@ object ExtractableMimeTypeHelper {
 
   private def downloadAssetFiles(identifier: String, mediaFiles: List[Media], basePath: String, config: ContentPublishConfig)(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil): Future[List[Map[String, String]]] = {
     val futures = mediaFiles.map(mediaFile => {
-      Future {
         logger.info(s"ExtractableMimeTypeHelper ::: downloadAssetFiles ::: Processing file: ${mediaFile.id} for : " + identifier)
         if (!StringUtils.equals("youtube", mediaFile.`type`) && !StringUtils.isBlank(mediaFile.src) && !StringUtils.isBlank(mediaFile.`type`)) {
           val downloadPath = if (isWidgetTypeAsset(mediaFile.`type`)) basePath + "/" + "widgets" else basePath + "/" + "assets"
@@ -292,9 +274,8 @@ object ExtractableMimeTypeHelper {
 
           Map(mediaFile.id -> downloadedFile.getName)
         } else Map.empty[String, String]
-      }
     })
-    Future.sequence(futures)
+    Future(futures)
   }
 
   private def isWidgetTypeAsset(assetType: String): Boolean = StringUtils.equalsIgnoreCase(assetType, "js") || StringUtils.equalsIgnoreCase(assetType, "css") || StringUtils.equalsIgnoreCase(assetType, "json") || StringUtils.equalsIgnoreCase(assetType, "plugin")
