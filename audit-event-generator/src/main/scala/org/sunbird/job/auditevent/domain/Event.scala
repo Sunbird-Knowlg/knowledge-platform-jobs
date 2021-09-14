@@ -8,6 +8,8 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
   private val IMAGE_SUFFIX = ".img"
   private val jobName = "AuditEventGenerator"
 
+  def id: String = readOrDefault("nodeUniqueId", "")
+
   def operationType: String = readOrDefault("operationType", "")
 
   def nodeUniqueId: String = readOrDefault("nodeUniqueId", null)
