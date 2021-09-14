@@ -1,5 +1,6 @@
 package org.sunbird.job.publish.helpers
 
+import com.datastax.driver.core.querybuilder.{QueryBuilder, Select}
 import org.apache.commons.lang3.StringUtils
 import org.neo4j.driver.v1.StatementResult
 import org.slf4j.LoggerFactory
@@ -25,6 +26,12 @@ trait ObjectUpdater {
     val metadataUpdateQuery = metaDataQuery(obj)(definitionCache, config)
     val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$identifier"}) SET n.status="$status",n.pkgVersion=${obj.pkgVersion},n.prevStatus="$prevStatus",$metadataUpdateQuery,$auditPropsUpdateQuery;"""
     logger.info("Query: " + query)
+
+    if (obj.mimeType.equalsIgnoreCase("application/vnd.ekstep.ecml-archive")) {
+      val ecmlBody = getContentBody(identifier, readerConfig)
+      updateContentBody(identifier,ecmlBody,readerConfig)
+    }
+
     if (!StringUtils.equalsIgnoreCase(editId, identifier)) {
       val imgNodeDelQuery = s"""MATCH (n:domain{IL_UNIQUE_ID:"$editId"}) DETACH DELETE n;"""
       neo4JUtil.executeQuery(imgNodeDelQuery)
@@ -116,6 +123,36 @@ trait ObjectUpdater {
     val sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
     val updatedOn = sdf.format(new Date())
     s"""n.lastUpdatedOn="$updatedOn",n.lastStatusChangedOn="$updatedOn""""
+  }
+
+  def getContentBody(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): String = {
+    // fetch content body from cassandra
+    val select = QueryBuilder.select()
+    select.fcall("blobAsText", QueryBuilder.column("body")).as("body")
+    val selectWhere: Select.Where = select.from(readerConfig.keyspace, readerConfig.table).where().and(QueryBuilder.eq("content_id", identifier + ".img"))
+    logger.info("Cassandra Fetch Query for image:: " + selectWhere.toString)
+    val row = cassandraUtil.findOne(selectWhere.toString)
+    if (null != row) row.getString("body") else {
+      val selectId = QueryBuilder.select()
+      selectId.fcall("blobAsText", QueryBuilder.column("body")).as("body")
+      val selectWhereId: Select.Where = selectId.from(readerConfig.keyspace, readerConfig.table).where().and(QueryBuilder.eq("content_id", identifier))
+      logger.info("Cassandra Fetch Query :: " + selectWhere.toString)
+      val rowId = cassandraUtil.findOne(selectWhereId.toString)
+      if (null != rowId) rowId.getString("body") else ""
+    }
+  }
+
+  def updateContentBody(identifier: String, ecmlBody: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil) {
+    val updateQuery = QueryBuilder.update(readerConfig.keyspace, readerConfig.table)
+      .where(QueryBuilder.eq("content_id", identifier))
+      .`with`(QueryBuilder.set("body", QueryBuilder.fcall("textAsBlob", ecmlBody)))
+      logger.info(s"Updating Content Body in Cassandra For $identifier : ${updateQuery.toString}")
+      val result = cassandraUtil.upsert(updateQuery.toString)
+      if (result) logger.info(s"Content Body Updated Successfully For $identifier")
+      else {
+        logger.error(s"Content Body Update Failed For $identifier")
+        throw new Exception(s"Content Body Update Failed For $identifier")
+      }
   }
 
 }

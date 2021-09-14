@@ -12,6 +12,8 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 
   private val jobName = "AuditHistoryIndexer"
 
+  def id: String = readOrDefault("nodeUniqueId", "")
+
   def nodeType: String = readOrDefault("nodeType", "")
 
   def ets: Long = readOrDefault("ets", 0L)
