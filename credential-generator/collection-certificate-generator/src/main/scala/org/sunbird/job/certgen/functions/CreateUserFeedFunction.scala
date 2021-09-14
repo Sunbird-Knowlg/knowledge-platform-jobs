@@ -50,6 +50,6 @@ class CreateUserFeedFunction(config: CertificateGeneratorConfig, httpUtil: HttpU
   }
 
   override def metricsList(): List[String] = {
-    List(config.userFeedCount)
+    List(config.userFeedCount, config.failedEventCount)
   }
 }
