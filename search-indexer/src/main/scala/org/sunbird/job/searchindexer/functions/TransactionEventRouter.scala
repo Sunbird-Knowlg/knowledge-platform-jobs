@@ -2,16 +2,16 @@ package org.sunbird.job.searchindexer.functions
 
 import com.google.gson.reflect.TypeToken
 import org.apache.flink.configuration.Configuration
-import org.apache.flink.streaming.api.functions.ProcessFunction
+import org.apache.flink.streaming.api.functions.{KeyedProcessFunction, ProcessFunction}
 import org.slf4j.LoggerFactory
 import org.sunbird.job.searchindexer.compositesearch.domain.Event
 import org.sunbird.job.searchindexer.task.SearchIndexerConfig
-import org.sunbird.job.{BaseProcessFunction, Metrics}
+import org.sunbird.job.{BaseProcessFunction, BaseProcessKeyedFunction, Metrics}
 
 import java.lang.reflect.Type
 
 class TransactionEventRouter(config: SearchIndexerConfig)
-  extends BaseProcessFunction[Event, String](config) {
+  extends BaseProcessKeyedFunction[String, Event, String](config) {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[TransactionEventRouter])
   val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
@@ -24,7 +24,7 @@ class TransactionEventRouter(config: SearchIndexerConfig)
     super.close()
   }
 
-  override def processElement(event: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
+  override def processElement(event: Event, context: KeyedProcessFunction[String, Event, String]#Context, metrics: Metrics): Unit = {
     metrics.incCounter(config.totalEventsCount)
     if (event.validEvent(config.restrictObjectTypes)) {
       event.nodeType match {
