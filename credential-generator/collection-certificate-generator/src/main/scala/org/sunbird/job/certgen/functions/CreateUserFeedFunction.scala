@@ -28,24 +28,18 @@ class CreateUserFeedFunction(config: CertificateGeneratorConfig, httpUtil: HttpU
   override def processElement(metaData: UserFeedMetaData,
                               context: ProcessFunction[UserFeedMetaData, String]#Context,
                               metrics: Metrics): Unit = {
-    try {
-      val req = s"""{"request":{"userId":"${
-        metaData.userId
-      }","category":"Notification","priority":1,"data":{"type":1,"actionData":{"actionType":"certificateUpdate","title":"${
-        metaData.courseName
-      }","description":"${config.userFeedMsg}","identifier":"${metaData.courseId}"}}}}"""
-      val url = config.learnerServiceBaseUrl + config.userFeedCreateEndPoint
-      val response: HTTPResponse = httpUtil.post(url, req)
-      if (response.status == 200) {
-        metrics.incCounter(config.userFeedCount)
-        logger.info("user feed response status {} :: {}", response.status, response.body)
-      }
-      else
-        throw new Exception(s"Exception is UserFeedResponse: ${response}")
-    } catch {
-      case e: Exception =>
-        metrics.incCounter(config.failedEventCount)
-        throw new InvalidEventException(e.getMessage, Map("partition" -> metaData.partition, "offset" -> metaData.offset), e)
+    val req =
+      s"""{"request":{"userId":"${metaData.userId}","category":"Notification","priority":1,"data":{"type":1,"actionData":{"actionType":"certificateUpdate","title":"${metaData.courseName}","description":"${config.userFeedMsg}","identifier":"${metaData.courseId}"}}}}"""
+    val url = config.learnerServiceBaseUrl + config.userFeedCreateEndPoint
+    val response: HTTPResponse = httpUtil.post(url, req)
+    if (response.status == 200) {
+      metrics.incCounter(config.userFeedCount)
+      logger.info("user feed response status {} :: {}", response.status, response.body)
+    }
+    else {
+      metrics.incCounter(config.failedEventCount)
+      logger.error(s"Error response from createUserFeed API for request :: ${req} :: response is :: ${response.status} ::  ${response.body}")
+      throw new InvalidEventException(s"Error in UserFeed Response: ${response}", Map("partition" -> metaData.partition, "offset" -> metaData.offset), null)
     }
   }
 
