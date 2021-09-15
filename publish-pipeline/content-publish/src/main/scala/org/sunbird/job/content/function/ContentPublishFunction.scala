@@ -80,7 +80,9 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
           } else obj
 
           // Clear redis cache
+          logger.info(s"ContentPublishFunction:: before clearing identifier: ${data.identifier} from cache:: " + cache.isExists(data.identifier))
           cache.del(data.identifier)
+          logger.info(s"ContentPublishFunction:: after clearing identifier: ${data.identifier} from cache:: " + cache.isExists(data.identifier))
           val enrichedObj = enrichObject(ecmlVerifiedObj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
           val objWithEcar = getObjectWithEcar(enrichedObj, if(enrichedObj.metadata.getOrElse("contentDisposition","").asInstanceOf[String].equalsIgnoreCase("online-only")) List(EcarPackageType.SPINE.toString) else pkgTypes)(ec, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
           logger.info("Ecar generation done for Content: " + objWithEcar.identifier)
@@ -88,6 +90,7 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
           pushStreamingUrlEvent(enrichedObj, context)(metrics)
           metrics.incCounter(config.contentPublishSuccessEventCount)
           logger.info("Content publishing completed successfully for : " + data.identifier)
+          logger.info(s"ContentPublishFunction:: verifying identifier: ${data.identifier} from cache:: " + cache.isExists(data.identifier))
         } else {
           saveOnFailure(obj, messages)(neo4JUtil)
           metrics.incCounter(config.contentPublishFailedEventCount)
