@@ -11,3 +11,8 @@ dependency-reduced-pom.xml
 .DS_Store
 *.log
 kubernets/config
+.project
+.classpath
+.factorypath
+bin/
+.settings/

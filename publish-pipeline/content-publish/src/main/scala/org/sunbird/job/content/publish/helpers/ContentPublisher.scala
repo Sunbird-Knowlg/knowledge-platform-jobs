@@ -25,7 +25,7 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
 
   override def getExtData(identifier: String, pkgVersion: Double, mimeType: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[ObjectExtData] = {
     if (mimeType.equalsIgnoreCase("application/vnd.ekstep.ecml-archive")) {
-      val ecmlBody = ExtractableMimeTypeHelper.getContentBody(identifier, readerConfig)
+      val ecmlBody = getContentBody(identifier, readerConfig)
       Some(ObjectExtData(Some(Map[String, AnyRef]("body" -> ecmlBody))))
     } else None
   }

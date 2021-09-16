@@ -16,8 +16,16 @@ trait MetricsDataTransformerService {
   def processEvent(event: Event, metrics: Metrics, keys: Array[String])(implicit config: MetricsDataTransformerConfig, httpUtil: HttpUtil): Unit = {
     val identifier = event.nodeUniqueId
     val url = config.contentServiceBaseUrl + config.contentReadApi + "/" + identifier
-    val response = getContent(url)(config, httpUtil)
-    logger.info(s"Response for content $identifier ::" + response)
+    var response: Map[String, AnyRef] = Map()
+    try {
+      response = getContent(url)(config, httpUtil)
+      logger.info(s"Response for content $identifier ::" + response)
+    } catch {
+      case ex: Exception =>
+        metrics.incCounter(config.failedEventCount)
+        ex.printStackTrace()
+        throw new InvalidEventException(s"Error while getting content data from read API for :: $identifier")
+    }
 
     if (!response.isEmpty) {
       val propertyMap = event.transactionData("properties").asInstanceOf[Map[String, AnyRef]]
@@ -30,18 +38,23 @@ trait MetricsDataTransformerService {
         }
       })
       val sourcingId = response.getOrElse("origin", "").asInstanceOf[String]
-
-      try {
-        val channel = event.channel
-        updateContentMetrics(contentMetrics, sourcingId, channel)(config, httpUtil)
-        logger.info("Updated content metrics: " + identifier)
-        metrics.incCounter(config.successEventCount)
-      } catch {
-        case ex: Exception =>
-          logger.error("Error while writing content metrics :: " + event.getJson + " :: ", ex)
-          metrics.incCounter(config.failedEventCount)
-          ex.printStackTrace()
-          throw new InvalidEventException(s"Error writing metrics for sourcing id: $sourcingId")
+      val originData = response.getOrElse("originData", Map()).asInstanceOf[Map[String, AnyRef]]
+      if(!sourcingId.equals("") && !originData.isEmpty) {
+        try {
+          val channel = event.channel
+          updateContentMetrics(contentMetrics, sourcingId, channel)(config, httpUtil)
+          logger.info("Updated content metrics: " + identifier)
+          metrics.incCounter(config.successEventCount)
+        } catch {
+          case ex: Exception =>
+            logger.error("Error while writing content metrics :: " + event.getJson + " :: ", ex)
+            metrics.incCounter(config.failedEventCount)
+            ex.printStackTrace()
+            throw new InvalidEventException(s"Error writing metrics for sourcing id: $sourcingId")
+        }
+      } else {
+        logger.info("Origin and originData of the content is not present in the response of content-read API for id: " + identifier)
+        metrics.incCounter(config.skippedEventCount)
       }
     }
     else {
@@ -60,7 +73,7 @@ trait MetricsDataTransformerService {
     } else if (404 == response.status) {
       Map()
     } else {
-      throw new InvalidEventException(s"Error from get API with response: $response")
+      throw new InvalidEventException(s"Error from content read API with response: $response")
     }
   }
 

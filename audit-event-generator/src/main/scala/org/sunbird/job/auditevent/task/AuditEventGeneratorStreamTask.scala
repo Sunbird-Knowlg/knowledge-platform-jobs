@@ -4,6 +4,7 @@ import java.io.File
 import java.util
 import com.typesafe.config.ConfigFactory
 import org.apache.flink.api.common.typeinfo.TypeInformation
+import org.apache.flink.api.java.functions.KeySelector
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
@@ -52,3 +53,7 @@ object AuditEventGeneratorStreamTask {
 }
 
 // $COVERAGE-ON$
+
+class AuditEventKeySelector extends KeySelector[Event, String] {
+  override def getKey(in: Event): String = in.id.replace(".img", "")
+}

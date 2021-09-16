@@ -63,7 +63,7 @@ class NotifierFunctionTest extends BaseTestSpec {
 
   "NotifierFunction " should "should send notify user" in {
     implicit val notificationMetaTypeInfo: TypeInformation[NotificationMetaData] = TypeExtractor.getForClass(classOf[NotificationMetaData])
-    new NotifierFunction(notifierConfig, mockHttpUtil,cassandraUtil).processElement(NotificationMetaData("userId", "Course Name", new Date(), "do_11309999837886054415", "0131000245281587206", "template_01_dev_001"), null, metrics)
+    new NotifierFunction(notifierConfig, mockHttpUtil,cassandraUtil).processElement(NotificationMetaData("userId", "Course Name", new Date(), "do_11309999837886054415", "0131000245281587206", "template_01_dev_001",0, 0), null, metrics)
     metrics.get(s"${notifierConfig.courseBatchdbReadCount}") should be(1)
     metrics.get(s"${notifierConfig.notifiedUserCount}") should be(1)
     metrics.get(s"${notifierConfig.skipNotifyUserCount}") should be(0)
