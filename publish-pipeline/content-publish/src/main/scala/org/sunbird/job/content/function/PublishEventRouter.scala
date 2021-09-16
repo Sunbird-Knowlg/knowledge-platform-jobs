@@ -39,10 +39,9 @@ class PublishEventRouter(config: ContentPublishConfig) extends BaseProcessFuncti
         case "Collection" | "CollectionImage" =>
           logger.info("PublishEventRouter :: Sending Collection For Publish Having Identifier: " + event.objectId)
           context.output(config.collectionPublishOutTag, PublishMetadata(event.objectId, event.objectType, event.mimeType, event.pkgVersion, event.lastPublishedBy))
-        case _ => {
+        case _ =>
           metrics.incCounter(config.skippedEventCount)
           logger.info("Invalid Object Type Received For Publish.| Identifier : " + event.objectId + " , objectType : " + event.objectType)
-        }
       }
     } else {
       logger.warn("Event skipped for identifier: " + event.objectId + " objectType: " + event.objectType)

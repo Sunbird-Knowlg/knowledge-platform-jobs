@@ -2,8 +2,9 @@ package org.sunbird.job.exception
 
 import org.slf4j.LoggerFactory
 
-class InvalidEventException(message: String) extends Exception(message) {
-  private[this] val logger = LoggerFactory.getLogger(classOf[InvalidEventException])
+class InvalidContentException(message: String) extends Exception(message) {
+
+  private[this] val logger = LoggerFactory.getLogger(classOf[InvalidContentException])
 
   def this(message: String, event: Map[String, Any], cause: Throwable) = {
     this(message)
