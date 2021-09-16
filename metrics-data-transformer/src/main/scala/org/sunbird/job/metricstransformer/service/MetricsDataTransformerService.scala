@@ -39,18 +39,24 @@ trait MetricsDataTransformerService {
       })
       val sourcingId = response.getOrElse("origin", "").asInstanceOf[String]
       val originData = response.getOrElse("originData", Map()).asInstanceOf[Map[String, AnyRef]]
-      if(!sourcingId.equals("") && !originData.isEmpty) {
-        try {
-          val channel = event.channel
-          updateContentMetrics(contentMetrics, sourcingId, channel)(config, httpUtil)
-          logger.info("Updated content metrics: " + identifier)
-          metrics.incCounter(config.successEventCount)
-        } catch {
-          case ex: Exception =>
-            logger.error("Error while writing content metrics :: " + event.getJson + " :: ", ex)
-            metrics.incCounter(config.failedEventCount)
-            ex.printStackTrace()
-            throw new InvalidEventException(s"Error writing metrics for sourcing id: $sourcingId")
+      if(event.isValidContent(sourcingId, originData)) {
+        val hasOriginContent: Boolean = readOriginContent(sourcingId, metrics, event)(config,httpUtil)
+        if(hasOriginContent) {
+          try {
+            val channel = event.channel
+            updateContentMetrics(contentMetrics, sourcingId, channel)(config, httpUtil)
+            logger.info("Updated content metrics: " + identifier)
+            metrics.incCounter(config.successEventCount)
+          } catch {
+            case ex: Exception =>
+              logger.error("Error while writing content metrics :: " + event.getJson + " :: ", ex)
+              metrics.incCounter(config.failedEventCount)
+              ex.printStackTrace()
+              throw new InvalidEventException(s"Error writing metrics for sourcing id: $sourcingId", Map("partition" -> event.partition, "offset" -> event.offset), ex)
+          }
+        } else {
+          logger.info("Sourcing Read API does not have details for the identifier: " + identifier)
+          metrics.incCounter(config.skippedEventCount)
         }
       } else {
         logger.info("Origin and originData of the content is not present in the response of content-read API for id: " + identifier)
@@ -61,7 +67,19 @@ trait MetricsDataTransformerService {
       logger.info(s"Learning event skipped, no sourcing identifier found: $identifier")
       metrics.incCounter(config.skippedEventCount)
     }
+  }
 
+  def readOriginContent(sourcingId: String, metrics: Metrics, event: Event)(config: MetricsDataTransformerConfig, httpUtil: HttpUtil): Boolean = {
+    val sourcingReadURL = config.lpURL + config.contentReadApi + "/" + sourcingId
+    try {
+      val response = getContent(sourcingReadURL)(config,httpUtil)
+      if (!response.isEmpty) true else false
+    } catch {
+      case ex: Exception =>
+        metrics.incCounter(config.failedEventCount)
+        ex.printStackTrace()
+        throw new InvalidEventException(s"Error while getting content data from sourcing content read API for :: $sourcingId", Map("partition" -> event.partition, "offset" -> event.offset), ex)
+    }
   }
 
   def getContent(url: String)(config: MetricsDataTransformerConfig, httpUtil: HttpUtil): Map[String, AnyRef] = {
