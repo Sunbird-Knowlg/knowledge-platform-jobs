@@ -41,6 +41,7 @@ class NotifierFunctionTest extends BaseTestSpec {
     cassandraUtil = new CassandraUtil(notifierConfig.dbHost, notifierConfig.dbPort)
     val session = cassandraUtil.session
 
+    session.execute(s"DROP KEYSPACE IF EXISTS ${notifierConfig.dbKeyspace}")
     val dataLoader = new CQLDataLoader(session)
     dataLoader.load(new FileCQLDataSet(getClass.getResource("/test.cql").getPath, true, true))
     // Clear the metrics

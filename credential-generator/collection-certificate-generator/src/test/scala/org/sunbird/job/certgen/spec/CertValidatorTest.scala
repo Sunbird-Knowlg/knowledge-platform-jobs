@@ -27,6 +27,7 @@ class CertValidatorTest extends BaseTestSpec{
     EmbeddedCassandraServerHelper.startEmbeddedCassandra(80000L)
     cassandraUtil = new CassandraUtil(jobConfig.dbHost, jobConfig.dbPort)
     val session = cassandraUtil.session
+    session.execute(s"DROP KEYSPACE IF EXISTS ${jobConfig.dbKeyspace}")
     val dataLoader = new CQLDataLoader(session)
     dataLoader.load(new FileCQLDataSet(getClass.getResource("/test.cql").getPath, true, true))
 
