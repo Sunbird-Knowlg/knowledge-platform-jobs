@@ -54,6 +54,16 @@ object ExtractableMimeTypeHelper {
     extractablePackageExtensions.exists(key => StringUtils.endsWithIgnoreCase(obj.getString("artifactUrl", null), key))
   }
 
+  def getContentBody(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): String = {
+    // fetch content body from cassandra
+    val select = QueryBuilder.select()
+    select.fcall("blobAsText", QueryBuilder.column("body")).as("body")
+    val selectWhere: Select.Where = select.from(readerConfig.keyspace, readerConfig.table).where().and(QueryBuilder.eq("content_id", identifier))
+    logger.info("Cassandra Fetch Query :: " + selectWhere.toString)
+    val row = cassandraUtil.findOne(selectWhere.toString)
+    if (null != row) row.getString("body") else ""
+  }
+
   def processECMLBody(obj: ObjectData, config: ContentPublishConfig)(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil): Map[String, AnyRef] = {
     val basePath = config.bundleLocation + "/" + System.currentTimeMillis + "_tmp" + "/" + obj.identifier
     val ecmlBody = obj.extData.get.getOrElse("body", "").toString
@@ -239,6 +249,7 @@ object ExtractableMimeTypeHelper {
 
   private def downloadAssetFiles(identifier: String, mediaFiles: List[Media], basePath: String, config: ContentPublishConfig)(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil): Future[List[Map[String, String]]] = {
     val futures = mediaFiles.map(mediaFile => {
+      Future {
         logger.info(s"ExtractableMimeTypeHelper ::: downloadAssetFiles ::: Processing file: ${mediaFile.id} for : " + identifier)
         if (!StringUtils.equals("youtube", mediaFile.`type`) && !StringUtils.isBlank(mediaFile.src) && !StringUtils.isBlank(mediaFile.`type`)) {
           val downloadPath = if (isWidgetTypeAsset(mediaFile.`type`)) basePath + "/" + "widgets" else basePath + "/" + "assets"
@@ -257,15 +268,14 @@ object ExtractableMimeTypeHelper {
             downloadFile(mediaFile.src, fDownloadPath)
           }
           else {
-            if(mediaFile.src.contains("assets/public")) {
-              try {
-                cloudStorageUtil.downloadFile(fDownloadPath, StringUtils.replace(mediaFile.src.substring(mediaFile.src.indexOf("assets/public") + 14), "//", "/"))
-              } catch {
-                case _:Exception => cloudStorageUtil.downloadFile(fDownloadPath, mediaFile.src.substring(mediaFile.src.indexOf("assets/public") + 13))
-              }
-            }
-            else if (mediaFile.src.startsWith(File.separator)) {
-              cloudStorageUtil.downloadFile(fDownloadPath, StringUtils.replace(mediaFile.src.substring(1), "//","/"))
+            if (mediaFile.src.startsWith(File.separator)) {
+              if(mediaFile.src.contains("assets/public")) {
+                try {
+                  cloudStorageUtil.downloadFile(fDownloadPath, StringUtils.replace(mediaFile.src, "//", "/").substring(mediaFile.src.indexOf("assets/public") + 14))
+                } catch {
+                  case _:Exception => cloudStorageUtil.downloadFile(fDownloadPath, mediaFile.src.substring(mediaFile.src.indexOf("assets/public") + 13))
+                }
+              } else cloudStorageUtil.downloadFile(fDownloadPath, StringUtils.replace(mediaFile.src.substring(1), "//","/"))
             } else {
               cloudStorageUtil.downloadFile(fDownloadPath, StringUtils.replace(mediaFile.src, "//","/"))
             }
@@ -275,8 +285,9 @@ object ExtractableMimeTypeHelper {
 
           Map(mediaFile.id -> downloadedFile.getName)
         } else Map.empty[String, String]
+      }
     })
-    Future(futures)
+    Future.sequence(futures)
   }
 
   private def isWidgetTypeAsset(assetType: String): Boolean = StringUtils.equalsIgnoreCase(assetType, "js") || StringUtils.equalsIgnoreCase(assetType, "css") || StringUtils.equalsIgnoreCase(assetType, "json") || StringUtils.equalsIgnoreCase(assetType, "plugin")
