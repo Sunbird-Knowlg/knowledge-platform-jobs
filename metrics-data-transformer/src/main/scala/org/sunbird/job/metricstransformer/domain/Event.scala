@@ -13,7 +13,7 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 
   def transactionData: Map[String, AnyRef] = readOrDefault("transactionData", Map())
 
-  def isValidContent(originId: String, originData: Map[String,AnyRef], programId: String): Boolean = {
-    StringUtils.isNotBlank(originId) && !originData.isEmpty && StringUtils.isNotBlank(programId)
+  def isValidContent(originId: String, originData: Map[String,AnyRef]): Boolean = {
+    StringUtils.isNotBlank(originId) && !originData.isEmpty
   }
 }
