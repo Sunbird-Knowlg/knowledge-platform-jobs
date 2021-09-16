@@ -74,8 +74,8 @@ class CertificateGeneratorFunctionTaskTestSpec extends BaseTestSpec {
     } catch {
       case ex: Exception => {
       }
-    }
-    flinkCluster.after()
+    } finally 
+      flinkCluster.after()
   }
 
 
@@ -86,11 +86,11 @@ class CertificateGeneratorFunctionTaskTestSpec extends BaseTestSpec {
     when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaAuditEventTopic)).thenReturn(new auditEventSink)
     when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new CertificateGeneratorEventSource)
     intercept[JobExecutionException](new CertificateGeneratorStreamTask(jobConfig, mockKafkaUtil, mockHttpUtil, storageService).process())
-    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(2)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(3)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.successEventCount}").getValue() should be(1)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.failedEventCount}").getValue() should be(1)
-    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skippedEventCount}").getValue() should be(0)
-    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.enrollmentDbReadCount}").getValue() should be(1)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skippedEventCount}").getValue() should be(1)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.enrollmentDbReadCount}").getValue() should be(3)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.courseBatchdbReadCount}").getValue() should be(1)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.dbUpdateCount}").getValue() should be(1)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.notifiedUserCount}").getValue() should be(1)
@@ -104,8 +104,10 @@ class CertificateGeneratorEventSource extends SourceFunction[Event] {
   override def run(ctx: SourceContext[Event]): Unit = {
     val eventMap1: util.Map[String, Any] = JSONUtil.deserialize[java.util.Map[String, Any]](EventFixture.EVENT_1)
     val eventMap2: util.Map[String, Any] = JSONUtil.deserialize[java.util.Map[String, Any]](EventFixture.EVENT_2)
+    val eventMap3: util.Map[String, Any] = JSONUtil.deserialize[java.util.Map[String, Any]](EventFixture.EVENT_3)
     ctx.collect(new Event(eventMap1.asInstanceOf[util.Map[String, Any]],0,0))
-    ctx.collect(new Event(eventMap2.asInstanceOf[util.Map[String, Any]],0, 1))
+    ctx.collect(new Event(eventMap3.asInstanceOf[util.Map[String, Any]],0, 1))
+    ctx.collect(new Event(eventMap2.asInstanceOf[util.Map[String, Any]],0, 2))
   }
 
   override def cancel() = {}
