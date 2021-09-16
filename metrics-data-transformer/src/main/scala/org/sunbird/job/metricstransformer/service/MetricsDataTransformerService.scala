@@ -40,7 +40,7 @@ trait MetricsDataTransformerService {
       val sourcingId = response.getOrElse("origin", "").asInstanceOf[String]
       val originData = response.getOrElse("originData", Map()).asInstanceOf[Map[String, AnyRef]]
       if(event.isValidContent(sourcingId, originData)) {
-        val hasOriginContent: Boolean = readOriginContent(sourcingId, metrics)(config,httpUtil)
+        val hasOriginContent: Boolean = readOriginContent(sourcingId, metrics, event)(config,httpUtil)
         if(hasOriginContent) {
           try {
             val channel = event.channel
@@ -52,7 +52,7 @@ trait MetricsDataTransformerService {
               logger.error("Error while writing content metrics :: " + event.getJson + " :: ", ex)
               metrics.incCounter(config.failedEventCount)
               ex.printStackTrace()
-              throw new InvalidEventException(s"Error writing metrics for sourcing id: $sourcingId")
+              throw new InvalidEventException(s"Error writing metrics for sourcing id: $sourcingId", Map("partition" -> event.partition, "offset" -> event.offset), ex)
           }
         } else {
           logger.info("Sourcing Read API does not have details for the identifier: " + identifier)
@@ -69,7 +69,7 @@ trait MetricsDataTransformerService {
     }
   }
 
-  def readOriginContent(sourcingId: String, metrics: Metrics)(config: MetricsDataTransformerConfig, httpUtil: HttpUtil): Boolean = {
+  def readOriginContent(sourcingId: String, metrics: Metrics, event: Event)(config: MetricsDataTransformerConfig, httpUtil: HttpUtil): Boolean = {
     val sourcingReadURL = config.lpURL + config.contentReadApi + "/" + sourcingId
     try {
       val response = getContent(sourcingReadURL)(config,httpUtil)
@@ -78,7 +78,7 @@ trait MetricsDataTransformerService {
       case ex: Exception =>
         metrics.incCounter(config.failedEventCount)
         ex.printStackTrace()
-        throw new InvalidEventException(s"Error while getting content data from sourcing content read API for :: $sourcingId")
+        throw new InvalidEventException(s"Error while getting content data from sourcing content read API for :: $sourcingId", Map("partition" -> event.partition, "offset" -> event.offset), ex)
     }
   }
 
