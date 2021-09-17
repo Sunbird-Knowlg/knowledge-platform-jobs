@@ -34,7 +34,7 @@ class CreateUserFeedFunctionTest extends BaseTestSpec {
     // Clear the metrics
 
     BaseMetricsReporter.gaugeMetrics.clear()
-    when(mockHttpUtil.post(any[String], any[String], any[Map[String, String]]())).thenReturn(HTTPResponse(200, """{"id":"api.user.feed.create","ver":"v1","ts":"2020-10-30 13:20:54:940+0000","params":{"resmsgid":null,"msgid":"518d3404-cf1f-4001-81a5-0c58647b32fe","err":null,"status":"success","errmsg":null},"responseCode":"OK","result":{"response":"SUCCESS"}}"""))
+    when(mockHttpUtil.post(any[String], any[String], any[Map[String, String]]())).thenReturn(HTTPResponse(200, """{"id":"v2.notification.send","ver":"v1","ts":"2020-10-30 13:20:54:940+0000","params":{"resmsgid":null,"msgid":"518d3404-cf1f-4001-81a5-0c58647b32fe","err":null,"status":"success","errmsg":null},"responseCode":"OK","result":{"response":"SUCCESS"}}"""))
   }
 
 

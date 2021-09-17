@@ -28,9 +28,10 @@ class CreateUserFeedFunction(config: CertificateGeneratorConfig, httpUtil: HttpU
   override def processElement(metaData: UserFeedMetaData,
                               context: ProcessFunction[UserFeedMetaData, String]#Context,
                               metrics: Metrics): Unit = {
-    val req =
-      s"""{"request":{"userId":"${metaData.userId}","category":"Notification","priority":1,"data":{"type":1,"actionData":{"actionType":"certificateUpdate","title":"${metaData.courseName}","description":"${config.userFeedMsg}","identifier":"${metaData.courseId}"}}}}"""
-    val url = config.learnerServiceBaseUrl + config.userFeedCreateEndPoint
+    val req = {
+      s"""{"request":{"notifications":[{"ids":["${metaData.userId}"],"priority":1,"type":"feed","action":{"type":"certificateUpdate","category":"Notification","template":{"type":"JSON","params":{}},"createdBy":{"id":"certificate-generator","type":"System"},"additionalInfo":{"actionType":"certificateUpdate","title":"${metaData.courseName}","description":"${config.userFeedMsg}","identifier":"${metaData.courseId}"}}}]}}"""
+    }
+    val url = config.notificationServiceBaseUrl + config.userFeedCreateEndPoint
     val response: HTTPResponse = httpUtil.post(url, req)
     if (response.status == 200) {
       metrics.incCounter(config.userFeedCount)
