@@ -35,7 +35,7 @@ trait ObjectBundle {
 
 	def getManifestData(objIdentifier: String, pkgType: String, objList: List[Map[String, AnyRef]])(implicit defCache: DefinitionCache, defConfig: DefinitionConfig): (List[Map[String, AnyRef]], List[Map[AnyRef, String]]) = {
 		objList.map(data => {
-			val identifier = data.getOrElse("identifier", "").asInstanceOf[String].replace(".img", "")
+			val identifier = data.getOrElse("identifier", "").asInstanceOf[String].replaceAll(".img", "")
 			val mimeType = data.getOrElse("mimeType", "").asInstanceOf[String]
 			val objectType = data.getOrElse("objectType", "").asInstanceOf[String].replaceAll("Image", "")
 			val contentDisposition = data.getOrElse("contentDisposition", "").asInstanceOf[String]
