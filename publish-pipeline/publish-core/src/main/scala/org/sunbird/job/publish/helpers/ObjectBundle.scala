@@ -33,9 +33,9 @@ trait ObjectBundle {
 		Slug.makeSlug(metadata.getOrElse("name", "").asInstanceOf[String], true) + "_" + System.currentTimeMillis() + "_" + identifier + "_" + metadata.getOrElse("pkgVersion", "") + (if (StringUtils.equals(EcarPackageType.FULL.toString, pkgType)) ".ecar" else "_" + pkgType + ".ecar")
 	}
 
-	def getManifestData(identifier: String, pkgType: String, objList: List[Map[String, AnyRef]])(implicit defCache: DefinitionCache, defConfig: DefinitionConfig): (List[Map[String, AnyRef]], List[Map[AnyRef, String]]) = {
+	def getManifestData(objIdentifier: String, pkgType: String, objList: List[Map[String, AnyRef]])(implicit defCache: DefinitionCache, defConfig: DefinitionConfig): (List[Map[String, AnyRef]], List[Map[AnyRef, String]]) = {
 		objList.map(data => {
-			val identifier = data.getOrElse("identifier", "").asInstanceOf[String]
+			val identifier = data.getOrElse("identifier", "").asInstanceOf[String].replace(".img", "")
 			val mimeType = data.getOrElse("mimeType", "").asInstanceOf[String]
 			val objectType = data.getOrElse("objectType", "").asInstanceOf[String].replaceAll("Image", "")
 			val contentDisposition = data.getOrElse("contentDisposition", "").asInstanceOf[String]
@@ -56,7 +56,9 @@ trait ObjectBundle {
 					})
 					(entry._1, ScalaJsonUtil.serialize(newMedia))
 				} else {
-					entry
+					if(entry._1.equalsIgnoreCase("identifier"))
+						(entry._1 -> entry._2.asInstanceOf[String].replaceAll(".img",""))
+					else entry
 				}
 			)
 			val downloadUrl: String = updatedObj.getOrElse("downloadUrl", "").asInstanceOf[String]
