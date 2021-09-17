@@ -58,8 +58,6 @@ trait ObjectBundle {
 				} else {
 					if(entry._1.equalsIgnoreCase("identifier"))
 						(entry._1 -> entry._2.asInstanceOf[String].replaceAll(".img",""))
-					else if(entry._1.equalsIgnoreCase("id"))
-						(entry._1 -> entry._2.asInstanceOf[String].replaceAll("image",""))
 					else if(entry._1.equalsIgnoreCase("objectType"))
 						(entry._1 -> entry._2.asInstanceOf[String].replaceAll("Image",""))
 					else entry
@@ -79,7 +77,7 @@ trait ObjectBundle {
 	def getObjectBundle(obj: ObjectData, objList: List[Map[String, AnyRef]], pkgType: String)(implicit ec: ExecutionContext, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig): File = {
 		val bundleFileName = bundleLocation + File.separator + getBundleFileName(obj.identifier, obj.metadata, pkgType)
 		val bundlePath = bundleLocation + File.separator + System.currentTimeMillis + "_temp"
-		val objType = obj.getString("objectType", "")
+		val objType = obj.getString("objectType", "").replaceAll("Image","")
 		// create manifest data
 		val (updatedObjList, dUrls) = getManifestData(obj.identifier, pkgType, objList)
 		logger.info("ObjectBundle ::: getObjectBundle ::: updatedObjList :::: " + updatedObjList)
