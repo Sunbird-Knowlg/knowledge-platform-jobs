@@ -61,8 +61,14 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
     println("Certificate data: " + event)
     metrics.incCounter(config.totalEventsCount)
     try {
-      new CertValidator().validateGenerateCertRequest(event)
-      generateCertificate(event, context)(metrics)
+      val certValidator = new CertValidator() 
+      certValidator.validateGenerateCertRequest(event)
+      if(certValidator.isNotIssued(event)(config, metrics, cassandraUtil))
+        generateCertificate(event, context)(metrics)
+      else {
+        metrics.incCounter(config.skippedEventCount)
+        logger.info(s"Certificate already issued for: ${event.eData.getOrElse("userId", "")} ${event.related}")
+      }
     } catch {
       case e: Exception =>
         metrics.incCounter(config.failedEventCount)

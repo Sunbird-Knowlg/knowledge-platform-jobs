@@ -1,13 +1,18 @@
 package org.sunbird.job.certgen.functions
 
+import com.datastax.driver.core.TypeTokens
+import com.datastax.driver.core.querybuilder.QueryBuilder
+
 import java.net.{MalformedURLException, URI, URISyntaxException, URL}
 import java.text.MessageFormat
 import java.util.regex.Pattern
-
 import org.apache.commons.lang3.StringUtils
 import org.sunbird.incredible.JsonKeys
+import org.sunbird.job.Metrics
 import org.sunbird.job.certgen.domain.Event
 import org.sunbird.job.certgen.exceptions.{ErrorCodes, ErrorMessages, ValidationException}
+import org.sunbird.job.certgen.task.CertificateGeneratorConfig
+import org.sunbird.job.util.CassandraUtil
 
 import scala.collection.JavaConverters._
 
@@ -161,6 +166,22 @@ class CertValidator {
         throw ValidationException(ErrorCodes.INVALID_PARAM_VALUE, MessageFormat.format(ErrorMessages.INVALID_PARAM_VALUE, tag, JsonKeys.TAG))
       }
     }
+  }
+  
+  def isNotIssued(event: Event)(config: CertificateGeneratorConfig, metrics: Metrics, cassandraUtil: CassandraUtil):Boolean = {
+    val query = QueryBuilder.select( "issued_certificates").from(config.dbKeyspace, config.dbEnrollmentTable)
+      .where(QueryBuilder.eq(config.dbUserId, event.eData.getOrElse("userId", "")))
+      .and(QueryBuilder.eq(config.dbCourseId, event.related.getOrElse("courseId", "")))
+      .and(QueryBuilder.eq(config.dbBatchId, event.related.getOrElse("batchId", "")))
+    val row = cassandraUtil.findOne(query.toString)
+    metrics.incCounter(config.enrollmentDbReadCount)
+    if (null != row) {
+      val issuedCertificates = row
+        .getList(config.issuedCertificates, TypeTokens.mapOf(classOf[String], classOf[String])).asScala.toList
+      val isCertIssued = !issuedCertificates.isEmpty && !issuedCertificates
+        .filter(cert => event.name.equalsIgnoreCase(cert.getOrDefault(config.name, "").asInstanceOf[String])).isEmpty
+      ((null != event.oldId && !event.oldId.isEmpty) || !isCertIssued)
+    } else false
   }
 
 }
