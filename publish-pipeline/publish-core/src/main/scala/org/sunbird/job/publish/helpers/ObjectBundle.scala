@@ -58,6 +58,10 @@ trait ObjectBundle {
 				} else {
 					if(entry._1.equalsIgnoreCase("identifier"))
 						(entry._1 -> entry._2.asInstanceOf[String].replaceAll(".img",""))
+					else if(entry._1.equalsIgnoreCase("id"))
+						(entry._1 -> entry._2.asInstanceOf[String].replaceAll("image",""))
+					else if(entry._1.equalsIgnoreCase("objectType"))
+						(entry._1 -> entry._2.asInstanceOf[String].replaceAll("Image",""))
 					else entry
 				}
 			)
