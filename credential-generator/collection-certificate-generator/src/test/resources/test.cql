@@ -44,7 +44,7 @@ CREATE TABLE sunbird_courses.course_batch (
 
 INSERT INTO sunbird_courses.course_batch(courseid, batchid,cert_templates) VALUES ('do_11309999837886054415','0131000245281587206',{'template_01_dev_001':{'criteria': '{"enrollment":{"status":2}}', 'identifier': 'template_01_dev_001', 'issuer': '{"name":"Gujarat Council of Educational Research and Training","publicKey":["7","8"],"url":"https://gcert.gujarat.gov.in/gcert/"}', 'name': 'Course merit certificate', 'notifyTemplate': '{"subject":"Completion certificate","stateImgUrl":"https://sunbirddev.blob.core.windows.net/orgemailtemplate/img/File-0128212938260643843.png","regardsperson":"Chairperson","regards":"Minister of Gujarat","emailTemplateType":"defaultCertTemp"}', 'signatoryList': '[{"image":"https://cdn.pixabay.com/photo/2014/11/09/08/06/signature-523237__340.jpg","name":"CEO Gujarat","id":"CEO","designation":"CEO"}]'}}) ;
 
-INSERT INTO sunbird_courses.user_enrolments(userid, courseid, batchid,issued_certificates,completedon) VALUES ('user001','do_11309999837886054415','0131000245281587206',[{'identifier': 'certificateId', 'lastIssuedOn': '2019-08-21', 'name': 'Course merit certificate', 'token': 'P4L3Y9'}], toTimeStamp(toDate(now()))) ;
+INSERT INTO sunbird_courses.user_enrolments(userid, courseid, batchid,issued_certificates,completedon) VALUES ('user001','do_11309999837886054415','0131000245281587206',[{'identifier': 'certificateId', 'lastIssuedOn': '2019-08-21', 'name': '100PercentCompletionCertificate', 'token': 'P4L3Y9'}], toTimeStamp(toDate(now()))) ;
 
 //event 2
 

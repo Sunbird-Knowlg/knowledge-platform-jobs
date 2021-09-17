@@ -38,6 +38,11 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   val dbHost: String = config.getString("lms-cassandra.host")
   val dbPort: Int = config.getInt("lms-cassandra.port")
   val dbCourseBatchTable: String = config.getString("lms-cassandra.course_batch.table")
+  val dbBatchId = "batchid"
+  val dbCourseId = "courseid"
+  val dbUserId = "userid"
+  val active: String = "active"
+  val issuedCertificates: String = "issued_certificates"
 
   // Metric List
   val totalEventsCount = "total-events-count"
