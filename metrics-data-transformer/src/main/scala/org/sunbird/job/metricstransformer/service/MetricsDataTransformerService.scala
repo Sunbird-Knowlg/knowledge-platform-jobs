@@ -114,6 +114,7 @@ trait MetricsDataTransformerService {
       metrics.incCounter(config.successEventCount)
       true
     } else if (config.updateAPIErrorCodeList.contains(response.status.toString)) {
+      logger.error("Skipping The Event As Content Update API Response is: " + response.status + " For sourcing id: " + sourcingId)
       metrics.incCounter(config.skippedEventCount)
       true
     } else {
