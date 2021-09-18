@@ -3,12 +3,13 @@ package org.sunbird.job.autocreatorv2.helpers
 import org.apache.commons.io.FilenameUtils
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
-import org.sunbird.job.autocreatorv2.model.ExtDataConfig
+import org.sunbird.job.autocreatorv2.domain.Event
+import org.sunbird.job.autocreatorv2.model.{ExtDataConfig, ObjectData}
 import org.sunbird.job.autocreatorv2.util.{CloudStorageUtil, FileUtils}
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
-import org.sunbird.job.autocreatorv2.model.ObjectData
 import org.sunbird.job.task.AutoCreatorV2Config
 import org.sunbird.job.util._
+
 import java.io.File
 
 trait AutoCreator extends ObjectUpdater with CollectionUpdater with HierarchyEnricher {
@@ -113,6 +114,29 @@ trait AutoCreator extends ObjectUpdater with CollectionUpdater with HierarchyEnr
 			saveGraphData(updatedObj.identifier, updatedObj.metadata, definition)(neo4JUtil)
 			Map(updatedObj.identifier-> updatedObj)
 		})
+	}
+
+	def filterObject(obj: ObjectData, event: Event)(implicit config: AutoCreatorV2Config, httpUtil: HttpUtil, defCache: DefinitionCache): ObjectData = {
+		val rejectedContributions: List[String] = obj.metadata.getOrElse("rejectedContributions","").asInstanceOf[List[String]]
+		// Remove rejected questions from questionset
+		val url = config.contentServiceBaseUrl + "/questionset/v4/remove"
+		val identifier: String = obj.identifier
+		val children: String = rejectedContributions.mkString("\"","\",\"","\"")
+		val requestBody = s"""{"request":{"rootId": "$identifier", "children": [$children]}}"""
+		logger.debug(s"Remove question from questionset request body:${requestBody}")
+		val resp = httpUtil.delete(url, requestBody)
+		if (null != resp && resp.status == 200) {
+			val respId = getResult(resp).getOrElse("rootId", "").asInstanceOf[String]
+			if (StringUtils.equalsIgnoreCase(identifier, respId))
+				logger.info(s"Removed question from QuestionSet: $identifier")
+		} else {
+			val msg = s"Remove Question Failed For : $identifier. ${resp.body} :: status: ${resp.status}"
+			logger.error(msg)
+			throw new Exception(msg)
+		}
+		val definition: ObjectDefinition = defCache.getDefinition(event.objectType, config.schemaSupportVersionMap.getOrElse(event.objectType.toLowerCase(), "1.0").asInstanceOf[String], config.definitionBasePath)
+		getObject(event.objectId, event.objectType, event.downloadUrl, event.repository)(config, httpUtil, definition)
+
 	}
 
 }

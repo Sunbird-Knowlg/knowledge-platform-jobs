@@ -34,6 +34,11 @@ class HttpUtil extends Serializable {
     HTTPResponse(response.getStatus, response.getBody)
   }
 
+  def delete(url: String, requestBody: String, headers: Map[String, String] = Map[String, String]("Content-Type"->"application/json")): HTTPResponse = {
+    val response = Unirest.delete(url).headers(headers.asJava).body(requestBody).asString()
+    HTTPResponse(response.getStatus, response.getBody)
+  }
+
   def getSize(url: String, headers: Map[String, String] = Map[String, String]("Content-Type"->"application/json")):Int = {
     val resp = Unirest.head(url).headers(headers.asJava).asString()
     if (null != resp && resp.getStatus == 200) {

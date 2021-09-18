@@ -53,7 +53,10 @@ class AutoCreatorFunction(config: AutoCreatorV2Config, httpUtil: HttpUtil,
       val definition: ObjectDefinition = defCache.getDefinition(event.objectType, config.schemaSupportVersionMap.getOrElse(event.objectType.toLowerCase(), "1.0").asInstanceOf[String], config.definitionBasePath)
       val obj: ObjectData = getObject(event.objectId, event.objectType, event.downloadUrl, event.repository)(config, httpUtil, definition)
       logger.debug("Constructed the ObjectData for " + obj.identifier)
-      val enObj = enrichMetadata(obj, event.metadata)(config)
+      val filterObj: ObjectData = if(obj.objectType.equalsIgnoreCase("QuestionSet") && obj.metadata.getOrElse("rejectedContributions","").asInstanceOf[List[String]].nonEmpty){
+        filterObject(obj,event)(config, httpUtil, defCache)
+      } else obj
+      val enObj = enrichMetadata(filterObj, event.metadata)(config)
       logger.info("Enriched metadata for " + enObj.identifier)
       val updatedObj = processCloudMeta(enObj)(config, cloudStorageUtil, httpUtil)
       logger.info("Final updated metadata |with cloud-store updates| for " + updatedObj.identifier)
