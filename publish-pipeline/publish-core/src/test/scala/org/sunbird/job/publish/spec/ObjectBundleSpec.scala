@@ -1,10 +1,12 @@
 package org.sunbird.job.publish.spec
 
+import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.commons.lang3.StringUtils
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
+import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.ObjectData
-import org.sunbird.job.publish.helpers.ObjectBundle
+import org.sunbird.job.publish.helpers.{EcarPackageType, ObjectBundle}
 import org.sunbird.job.util.HttpUtil
 
 class ObjectBundleSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
@@ -36,6 +38,15 @@ class ObjectBundleSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
 	"isOnline" should "return false for invalid input" in {
 		val obj = new TestObjectBundle
 		obj.isOnline("application/vnd", "inline") should be(false)
+	}
+
+	"getBundleFileName" should "return file name with less than 250 characters" in {
+		val config: Config = ConfigFactory.load("test.conf").withFallback(ConfigFactory.systemEnvironment())
+		implicit val publishConfig: PublishConfig = new PublishConfig(config, "")
+		val maxAllowedContentName = publishConfig.getInt("max_allowed_content_name", 120)
+		val obj = new TestObjectBundle
+		val ecarName = obj.getBundleFileName("do_3133687719874150401162",Map("name" -> "6.10_ମାଂସପେଶୀ, ରକ୍ତ ସଂଚାଳନ ଓ ଶ୍ୱସନ ସଂସ୍ଥାନ ଉପରେ ଶାରୀରିକ କାର୍ଯ୍ୟ, ଖେଳ, କ୍ରୀଡା ଓ ଯୋଗର ପ୍ରଭାବ-eng_effects_of_physical_activities_games_sports_and_yoga_on_muscular_circulatory_and_respiratory_systems"), "SPINE")
+		(ecarName.length<(maxAllowedContentName+65)) should be(true)
 	}
 
 	"getHierarchyFile" should "return valid file" in {

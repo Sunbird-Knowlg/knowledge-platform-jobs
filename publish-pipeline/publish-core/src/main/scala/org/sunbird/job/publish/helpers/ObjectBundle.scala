@@ -23,14 +23,15 @@ trait ObjectBundle {
 	private val onlineMimeTypes = List("video/youtube", "video/x-youtube", "text/x-url")
 	private val bundleLocation: String = "/tmp"
 	private val defaultManifestVersion = "1.2"
-	private val cloudBundleFolder = "ecar_files"
 	private val manifestFileName = "manifest.json"
 	private val hierarchyFileName = "hierarchy.json"
 	private val hierarchyVersion = "1.0"
 	val excludeBundleMeta = List("screenshots", "posterImage", "index", "depth")
 
-	def getBundleFileName(identifier: String, metadata: Map[String, AnyRef], pkgType: String) = {
-		Slug.makeSlug(metadata.getOrElse("name", "").asInstanceOf[String], true) + "_" + System.currentTimeMillis() + "_" + identifier + "_" + metadata.getOrElse("pkgVersion", "") + (if (StringUtils.equals(EcarPackageType.FULL.toString, pkgType)) ".ecar" else "_" + pkgType + ".ecar")
+	def getBundleFileName(identifier: String, metadata: Map[String, AnyRef], pkgType: String)(implicit config: PublishConfig): String = {
+		val maxAllowedContentName = config.getInt("max_allowed_content_name", 120)
+		val contentName = if(metadata.getOrElse("name", "").asInstanceOf[String].length>maxAllowedContentName) metadata.getOrElse("name", "").asInstanceOf[String].substring(0,maxAllowedContentName) else metadata.getOrElse("name", "").asInstanceOf[String]
+		Slug.makeSlug(contentName, true) + "_" + System.currentTimeMillis() + "_" + identifier + "_" + metadata.getOrElse("pkgVersion", "") + (if (StringUtils.equals(EcarPackageType.FULL.toString, pkgType)) ".ecar" else "_" + pkgType + ".ecar")
 	}
 
 	def getManifestData(objIdentifier: String, pkgType: String, objList: List[Map[String, AnyRef]])(implicit defCache: DefinitionCache, defConfig: DefinitionConfig): (List[Map[String, AnyRef]], List[Map[AnyRef, String]]) = {
