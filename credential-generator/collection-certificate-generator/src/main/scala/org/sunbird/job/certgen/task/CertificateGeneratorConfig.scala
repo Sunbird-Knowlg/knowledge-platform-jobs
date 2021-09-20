@@ -72,8 +72,8 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   val awsStorageSecret: String = ""
   val awsStorageKey: String = ""
   val addCertRegApi = "/certs/v2/registry/add"
-  val userFeedCreateEndPoint:String = "/v2/notification/send"
-  val notificationEndPoint: String = "/v2/notification"
+  val userFeedCreateEndPoint:String = "/private/user/feed/v1/create"
+  val notificationEndPoint: String = "/v2/notification/send"
 
   //constant
   val DATA: String = "data"
