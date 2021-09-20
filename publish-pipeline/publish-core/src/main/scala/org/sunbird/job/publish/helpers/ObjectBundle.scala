@@ -27,9 +27,9 @@ trait ObjectBundle {
 	private val hierarchyFileName = "hierarchy.json"
 	private val hierarchyVersion = "1.0"
 	val excludeBundleMeta = List("screenshots", "posterImage", "index", "depth")
-	private val maxAllowedContentName = 150
 
-	def getBundleFileName(identifier: String, metadata: Map[String, AnyRef], pkgType: String) = {
+	def getBundleFileName(identifier: String, metadata: Map[String, AnyRef], pkgType: String)(implicit ec: ExecutionContext, config: PublishConfig) = {
+		val maxAllowedContentName = config.getString("max_allowed_content_name", "150").toInt
 		val contentName = if(metadata.getOrElse("name", "").asInstanceOf[String].length>maxAllowedContentName) metadata.getOrElse("name", "").asInstanceOf[String].substring(0,maxAllowedContentName) else metadata.getOrElse("name", "").asInstanceOf[String]
 		Slug.makeSlug(contentName, true) + "_" + System.currentTimeMillis() + "_" + identifier + "_" + metadata.getOrElse("pkgVersion", "") + (if (StringUtils.equals(EcarPackageType.FULL.toString, pkgType)) ".ecar" else "_" + pkgType + ".ecar")
 	}
