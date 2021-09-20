@@ -24,6 +24,7 @@ class MetricsDataTransformerConfig(override val config: Config) extends BaseJobC
   val contentUpdate = config.getString("content_update_api")
 
   val defaultHeaders = Map[String, String] ("Content-Type" -> "application/json")
+  val updateAPIErrorCodeList = if(config.hasPath("sourcing.update.api.response.error.code")) config.getStringList("sourcing.update.api.response.error.code") else List("404").asInstanceOf[java.util.List[String]]
 
   // Consumers
   val eventConsumer = "metrics-data-transformer-consumer"

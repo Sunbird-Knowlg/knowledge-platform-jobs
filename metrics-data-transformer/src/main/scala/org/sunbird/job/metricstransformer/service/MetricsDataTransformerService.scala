@@ -44,9 +44,8 @@ trait MetricsDataTransformerService {
         if(hasOriginContent) {
           try {
             val channel = event.channel
-            updateContentMetrics(contentMetrics, sourcingId, channel)(config, httpUtil)
+            updateContentMetrics(contentMetrics, sourcingId, channel, metrics)(config, httpUtil)
             logger.info("Updated content metrics: " + identifier)
-            metrics.incCounter(config.successEventCount)
           } catch {
             case ex: Exception =>
               logger.error("Error while writing content metrics :: " + event.getJson + " :: ", ex)
@@ -95,7 +94,7 @@ trait MetricsDataTransformerService {
     }
   }
 
-  def updateContentMetrics(contentProperty: String, sourcingId: String, channel: String)(config: MetricsDataTransformerConfig, httpUtil: HttpUtil): Boolean = {
+  def updateContentMetrics(contentProperty: String, sourcingId: String, channel: String, metrics: Metrics)(config: MetricsDataTransformerConfig, httpUtil: HttpUtil): Boolean = {
     val updateUrl = config.lpURL + config.contentUpdate + "/" + sourcingId
     val contentMetrics = if (contentProperty.nonEmpty) contentProperty.substring(0, contentProperty.length - 1) else contentProperty
 
@@ -112,6 +111,11 @@ trait MetricsDataTransformerService {
     val headers = config.defaultHeaders ++ Map("X-Channel-Id" -> channel)
     val response: HTTPResponse = httpUtil.patch(updateUrl, request, headers)
     if (response.status == 200) {
+      metrics.incCounter(config.successEventCount)
+      true
+    } else if (config.updateAPIErrorCodeList.contains(response.status.toString)) {
+      logger.error("Skipping The Event As Content Update API Response is: " + response.status + " For sourcing id: " + sourcingId)
+      metrics.incCounter(config.skippedEventCount)
       true
     } else {
       logger.error("Error while updating metrics for content : " + sourcingId + " :: " + response.body)

@@ -23,19 +23,20 @@ trait ObjectBundle {
 	private val onlineMimeTypes = List("video/youtube", "video/x-youtube", "text/x-url")
 	private val bundleLocation: String = "/tmp"
 	private val defaultManifestVersion = "1.2"
-	private val cloudBundleFolder = "ecar_files"
 	private val manifestFileName = "manifest.json"
 	private val hierarchyFileName = "hierarchy.json"
 	private val hierarchyVersion = "1.0"
 	val excludeBundleMeta = List("screenshots", "posterImage", "index", "depth")
 
-	def getBundleFileName(identifier: String, metadata: Map[String, AnyRef], pkgType: String) = {
-		Slug.makeSlug(metadata.getOrElse("name", "").asInstanceOf[String], true) + "_" + System.currentTimeMillis() + "_" + identifier + "_" + metadata.getOrElse("pkgVersion", "") + (if (StringUtils.equals(EcarPackageType.FULL.toString, pkgType)) ".ecar" else "_" + pkgType + ".ecar")
+	def getBundleFileName(identifier: String, metadata: Map[String, AnyRef], pkgType: String)(implicit config: PublishConfig): String = {
+		val maxAllowedContentName = config.getInt("max_allowed_content_name", 120)
+		val contentName = if(metadata.getOrElse("name", "").asInstanceOf[String].length>maxAllowedContentName) metadata.getOrElse("name", "").asInstanceOf[String].substring(0,maxAllowedContentName) else metadata.getOrElse("name", "").asInstanceOf[String]
+		Slug.makeSlug(contentName, true) + "_" + System.currentTimeMillis() + "_" + identifier + "_" + metadata.getOrElse("pkgVersion", "") + (if (StringUtils.equals(EcarPackageType.FULL.toString, pkgType)) ".ecar" else "_" + pkgType + ".ecar")
 	}
 
-	def getManifestData(identifier: String, pkgType: String, objList: List[Map[String, AnyRef]])(implicit defCache: DefinitionCache, defConfig: DefinitionConfig): (List[Map[String, AnyRef]], List[Map[AnyRef, String]]) = {
+	def getManifestData(objIdentifier: String, pkgType: String, objList: List[Map[String, AnyRef]])(implicit defCache: DefinitionCache, defConfig: DefinitionConfig): (List[Map[String, AnyRef]], List[Map[AnyRef, String]]) = {
 		objList.map(data => {
-			val identifier = data.getOrElse("identifier", "").asInstanceOf[String]
+			val identifier = data.getOrElse("identifier", "").asInstanceOf[String].replaceAll(".img", "")
 			val mimeType = data.getOrElse("mimeType", "").asInstanceOf[String]
 			val objectType = data.getOrElse("objectType", "").asInstanceOf[String].replaceAll("Image", "")
 			val contentDisposition = data.getOrElse("contentDisposition", "").asInstanceOf[String]
@@ -56,7 +57,11 @@ trait ObjectBundle {
 					})
 					(entry._1, ScalaJsonUtil.serialize(newMedia))
 				} else {
-					entry
+					if(entry._1.equalsIgnoreCase("identifier"))
+						(entry._1 -> entry._2.asInstanceOf[String].replaceAll(".img",""))
+					else if(entry._1.equalsIgnoreCase("objectType"))
+						(entry._1 -> entry._2.asInstanceOf[String].replaceAll("Image",""))
+					else entry
 				}
 			)
 			val downloadUrl: String = updatedObj.getOrElse("downloadUrl", "").asInstanceOf[String]
@@ -73,7 +78,7 @@ trait ObjectBundle {
 	def getObjectBundle(obj: ObjectData, objList: List[Map[String, AnyRef]], pkgType: String)(implicit ec: ExecutionContext, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig): File = {
 		val bundleFileName = bundleLocation + File.separator + getBundleFileName(obj.identifier, obj.metadata, pkgType)
 		val bundlePath = bundleLocation + File.separator + System.currentTimeMillis + "_temp"
-		val objType = obj.getString("objectType", "")
+		val objType = obj.getString("objectType", "").replaceAll("Image","")
 		// create manifest data
 		val (updatedObjList, dUrls) = getManifestData(obj.identifier, pkgType, objList)
 		logger.info("ObjectBundle ::: getObjectBundle ::: updatedObjList :::: " + updatedObjList)
