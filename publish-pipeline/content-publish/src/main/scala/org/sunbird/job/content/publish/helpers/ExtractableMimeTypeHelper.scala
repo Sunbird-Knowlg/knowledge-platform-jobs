@@ -54,7 +54,7 @@ object ExtractableMimeTypeHelper {
     extractablePackageExtensions.exists(key => StringUtils.endsWithIgnoreCase(obj.getString("artifactUrl", null), key))
   }
 
-  def processECMLBody(obj: ObjectData, config: ContentPublishConfig)(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil): Map[String, Any] = {
+  def processECMLBody(obj: ObjectData, config: ContentPublishConfig)(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil): Map[String, AnyRef] = {
     val basePath = config.bundleLocation + "/" + System.currentTimeMillis + "_tmp" + "/" + obj.identifier
     val ecmlBody = obj.extData.get.getOrElse("body", "").toString
     val ecmlType: String = getECMLType(ecmlBody)
@@ -87,7 +87,7 @@ object ExtractableMimeTypeHelper {
     // delete local folder
     FileUtils.deleteQuietly(FileUtils.getFile(basePath).getParentFile)
 
-    obj.metadata ++ Map("artifactUrl" -> result(1), "cloudStorageKey" -> result(0), "size" -> contentSize)
+    obj.metadata ++ Map("artifactUrl" -> result(1), "cloudStorageKey" -> result(0), "size" -> contentSize.asInstanceOf[AnyRef])
   }
 
   private def getEcrfObject(ecmlType: String, ecmlBody: String): Plugin = {
