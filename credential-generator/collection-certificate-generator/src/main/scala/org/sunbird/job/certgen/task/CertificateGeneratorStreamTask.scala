@@ -2,9 +2,9 @@ package org.sunbird.job.certgen.task
 
 import java.io.File
 import java.util
-
 import com.typesafe.config.ConfigFactory
 import org.apache.flink.api.common.typeinfo.TypeInformation
+import org.apache.flink.api.java.functions.KeySelector
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
@@ -31,6 +31,7 @@ class CertificateGeneratorStreamTask(config: CertificateGeneratorConfig, kafkaCo
       .name(config.certificateGeneratorConsumer)
       .uid(config.certificateGeneratorConsumer).setParallelism(config.kafkaConsumerParallelism)
       .rebalance
+      .keyBy(new CertificateGeneratorKeySelector)
       .process(new CertificateGeneratorFunction(config, httpUtil, storageService))
       .name("collection-certificate-generator")
       .uid("collection-certificate-generator")
@@ -78,3 +79,7 @@ object CertificateGeneratorStreamTask {
 }
 
 // $COVERAGE-ON$
+
+class CertificateGeneratorKeySelector extends KeySelector[Event, String] {
+  override def getKey(event: Event): String = Set(event.userId, event.courseId, event.batchId).mkString("_")
+}
