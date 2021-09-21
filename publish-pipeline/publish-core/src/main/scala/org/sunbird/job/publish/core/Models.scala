@@ -1,6 +1,6 @@
 package org.sunbird.job.publish.core
 
-class ObjectData(val identifier: String, val metadata: Map[String, Any], val extData: Option[Map[String, AnyRef]] = None, val hierarchy: Option[Map[String, AnyRef]] = None) {
+class ObjectData(val identifier: String, val metadata: Map[String, AnyRef], val extData: Option[Map[String, AnyRef]] = None, val hierarchy: Option[Map[String, AnyRef]] = None) {
 
   val dbId = metadata.getOrElse("identifier", identifier).asInstanceOf[String]
 
