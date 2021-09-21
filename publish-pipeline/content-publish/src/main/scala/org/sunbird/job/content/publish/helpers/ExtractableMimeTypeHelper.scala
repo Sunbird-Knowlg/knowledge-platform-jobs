@@ -54,7 +54,7 @@ object ExtractableMimeTypeHelper {
     extractablePackageExtensions.exists(key => StringUtils.endsWithIgnoreCase(obj.getString("artifactUrl", null), key))
   }
 
-  def processECMLBody(obj: ObjectData, config: ContentPublishConfig)(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil): Map[String, AnyRef] = {
+  def processECMLBody(obj: ObjectData, config: ContentPublishConfig)(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil): Map[String, Any] = {
     val basePath = config.bundleLocation + "/" + System.currentTimeMillis + "_tmp" + "/" + obj.identifier
     val ecmlBody = obj.extData.get.getOrElse("body", "").toString
     val ecmlType: String = getECMLType(ecmlBody)
@@ -82,10 +82,12 @@ object ExtractableMimeTypeHelper {
     // upload local extracted directory to blob
     extractPackageInCloud(new File(zipFileName), obj, "snapshot", slugFile = true, basePath, config)
 
+    val contentSize = (new File(zipFileName)).length
+
     // delete local folder
     FileUtils.deleteQuietly(FileUtils.getFile(basePath).getParentFile)
 
-    obj.metadata ++ Map("artifactUrl" -> result(1), "cloudStorageKey" -> result(0))
+    obj.metadata ++ Map("artifactUrl" -> result(1), "cloudStorageKey" -> result(0), "size" -> contentSize)
   }
 
   private def getEcrfObject(ecmlType: String, ecmlBody: String): Plugin = {
