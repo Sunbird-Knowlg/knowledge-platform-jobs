@@ -5,21 +5,21 @@ import com.datastax.driver.core.{Row, TypeTokens}
 import com.google.common.reflect.TypeToken
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
-import org.apache.flink.streaming.api.functions.ProcessFunction
+import org.apache.flink.streaming.api.functions.KeyedProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cache.{DataCache, RedisConnect}
 import org.sunbird.job.collectioncert.domain.Event
 import org.sunbird.job.collectioncert.task.CollectionCertPreProcessorConfig
 import org.sunbird.job.exception.InvalidEventException
 import org.sunbird.job.util.{CassandraUtil, HttpUtil}
-import org.sunbird.job.{BaseProcessFunction, Metrics}
+import org.sunbird.job.{BaseProcessKeyedFunction, Metrics}
 
 import scala.collection.JavaConverters._
 
 class CollectionCertPreProcessorFn(config: CollectionCertPreProcessorConfig, httpUtil: HttpUtil)
                                   (implicit val stringTypeInfo: TypeInformation[String],
                                    @transient var cassandraUtil: CassandraUtil = null)
-  extends BaseProcessFunction[Event, String](config) with IssueCertificateHelper {
+  extends BaseProcessKeyedFunction[String, Event, String](config) with IssueCertificateHelper {
 
     private[this] val logger = LoggerFactory.getLogger(classOf[CollectionCertPreProcessorFn])
     private var cache: DataCache = _
@@ -49,7 +49,7 @@ class CollectionCertPreProcessorFn(config: CollectionCertPreProcessorConfig, htt
     }
 
     override def processElement(event: Event,
-                                context: ProcessFunction[Event, String]#Context,
+                                context: KeyedProcessFunction[String, Event, String]#Context,
                                 metrics: Metrics): Unit = {
         try {
             metrics.incCounter(config.totalEventsCount)

@@ -1,19 +1,12 @@
 package org.sunbird.job.certgen.functions
 
-import java.io.{File, IOException}
-import java.lang.reflect.Type
-import java.text.SimpleDateFormat
-import java.util
-import java.util.stream.Collectors
-import java.util.{Base64, Date}
-
 import com.datastax.driver.core.querybuilder.{QueryBuilder, Update}
 import com.datastax.driver.core.{Row, TypeTokens}
 import com.google.gson.reflect.TypeToken
 import org.apache.commons.io.FileUtils
 import org.apache.commons.lang.StringUtils
 import org.apache.flink.configuration.Configuration
-import org.apache.flink.streaming.api.functions.ProcessFunction
+import org.apache.flink.streaming.api.functions.KeyedProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.incredible.pojos.ob.CertificateExtension
 import org.sunbird.incredible.processor.CertModel
@@ -25,12 +18,18 @@ import org.sunbird.job.certgen.exceptions.ServerException
 import org.sunbird.job.certgen.task.CertificateGeneratorConfig
 import org.sunbird.job.exception.InvalidEventException
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, ScalaJsonUtil}
-import org.sunbird.job.{BaseProcessFunction, Metrics}
+import org.sunbird.job.{BaseProcessKeyedFunction, Metrics}
 
+import java.io.{File, IOException}
+import java.lang.reflect.Type
+import java.text.SimpleDateFormat
+import java.util
+import java.util.stream.Collectors
+import java.util.{Base64, Date}
 import scala.collection.JavaConverters._
 
 class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil: HttpUtil, storageService: StorageService, @transient var cassandraUtil: CassandraUtil = null)
-  extends BaseProcessFunction[Event, String](config) {
+  extends BaseProcessKeyedFunction[String, Event, String](config) {
 
 
   private[this] val logger = LoggerFactory.getLogger(classOf[CertificateGeneratorFunction])
@@ -56,7 +55,7 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
 
 
   override def processElement(event: Event,
-                              context: ProcessFunction[Event, String]#Context,
+                              context: KeyedProcessFunction[String, Event, String]#Context,
                               metrics: Metrics): Unit = {
     println("Certificate data: " + event)
     metrics.incCounter(config.totalEventsCount)
@@ -77,7 +76,7 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
   }
 
   @throws[Exception]
-  def generateCertificate(event: Event, context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
+  def generateCertificate(event: Event, context: KeyedProcessFunction[String, Event, String]#Context)(implicit metrics: Metrics): Unit = {
     val certModelList: List[CertModel] = new CertMapper(certificateConfig).mapReqToCertModel(event)
     val certificateGenerator = new CertificateGenerator
     certModelList.foreach(certModel => {
@@ -112,7 +111,7 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
   }
 
   @throws[ServerException]
-  def addCertToRegistry(certReq: Event, request: Map[String, AnyRef], context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
+  def addCertToRegistry(certReq: Event, request: Map[String, AnyRef], context: KeyedProcessFunction[String, Event, String]#Context)(implicit metrics: Metrics): Unit = {
     logger.info("adding certificate to the registry")
     val httpRequest = ScalaModuleJsonUtils.serialize(request)
     val httpResponse = httpUtil.post(config.certRegistryBaseUrl + config.addCertRegApi, httpRequest)
@@ -155,7 +154,7 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
   }
 
 
-  def updateUserEnrollmentTable(event: Event, certMetaData: UserEnrollmentData, context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
+  def updateUserEnrollmentTable(event: Event, certMetaData: UserEnrollmentData, context: KeyedProcessFunction[String, Event, String]#Context)(implicit metrics: Metrics): Unit = {
     logger.info("updating user enrollment table {}", certMetaData)
     val primaryFields = Map(config.userId.toLowerCase() -> certMetaData.userId, config.batchId.toLowerCase -> certMetaData.batchId, config.courseId.toLowerCase -> certMetaData.courseId)
     val records = getIssuedCertificatesFromUserEnrollmentTable(primaryFields)
