@@ -43,7 +43,7 @@ class MVCIndexerConfig(override val config: Config) extends BaseJobConfig(config
   val elasticSearchParamSet = Set("organisation", "channel", "framework", "board", "medium", "subject", "gradeLevel", "name", "description", "language", "appId", "appIcon", "appIconLabel", "contentEncoding", "identifier", "node_id", "nodeType", "mimeType", "resourceType", "contentType", "allowedContentTypes", "objectType", "posterImage", "artifactUrl", "launchUrl", "previewUrl", "streamingUrl", "downloadUrl", "status", "pkgVersion", "source", "lastUpdatedOn", "ml_contentText", "ml_contentTextVector", "ml_Keywords", "level1Name", "level1Concept", "level2Name", "level2Concept", "level3Name", "level3Concept", "textbook_name", "sourceURL", "label", "all_fields")
 
   // API Configs
-  val contentServiceBase: String = config.getString("service.learning.basePath")
+  val contentServiceBase: String = config.getString("service.content.basePath")
   val contentReadURL = s"${contentServiceBase}/content/v3/read/"
   val mlVectorAPIUrl = s"http://${config.getString("ml.vector.host")}:${config.getString("ml.vector.port")}/ml/vector/ContentText"
   val mlKeywordAPIUrl = s"http://${config.getString("ml.keyword.host")}:${config.getString("ml.keyword.port")}/daggit/submit"
