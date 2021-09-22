@@ -32,7 +32,6 @@
 		<module>auto-creator-v2</module>
 		<module>asset-enrichment</module>
 		<module>audit-history-indexer</module>
-		<module>mvc-indexer</module>
 		<module>audit-event-generator</module>
 		<module>metrics-data-transformer</module>
 	</modules>
