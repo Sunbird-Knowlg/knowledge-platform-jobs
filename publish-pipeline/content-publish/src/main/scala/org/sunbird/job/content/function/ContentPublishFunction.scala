@@ -64,7 +64,7 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
     try {
       logger.info("Content publishing started for : " + data.identifier)
       metrics.incCounter(config.contentPublishEventCount)
-      val obj: ObjectData = getObject(data.identifier, data.pkgVersion, data.mimeType, readerConfig)(neo4JUtil, cassandraUtil)
+      val obj: ObjectData = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(neo4JUtil, cassandraUtil)
       val messages: List[String] = validate(obj, obj.identifier, validateMetadata)
       if (obj.pkgVersion > data.pkgVersion) {
         metrics.incCounter(config.skippedEventCount)
