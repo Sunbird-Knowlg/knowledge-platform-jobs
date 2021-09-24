@@ -17,6 +17,8 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 
 	def action: String = readOrDefault[String]("edata.action", "")
 
+	def publishType: String = readOrDefault[String]("edata.publish_type", "")
+
 	def mimeType: String = readOrDefault[String]("edata.metadata.mimeType", "")
 
 	def objectId: String = readOrDefault[String]("edata.metadata.identifier", "")
