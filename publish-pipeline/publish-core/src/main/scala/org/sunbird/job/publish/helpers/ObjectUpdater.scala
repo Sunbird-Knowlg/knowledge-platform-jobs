@@ -19,12 +19,12 @@ trait ObjectUpdater {
   @throws[Exception]
   def saveOnSuccess(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, definitionCache: DefinitionCache, config: DefinitionConfig): Unit = {
     val publishType = obj.getString("publish_type", "Public")
-    val status = if (StringUtils.equals("Private", publishType)) "Unlisted" else "Live"
+    val status = if (StringUtils.equalsIgnoreCase("Unlisted", publishType)) "Unlisted" else "Live"
     val prevStatus = obj.metadata.getOrElse("status","Processing").asInstanceOf[String]
     val editId = obj.dbId
     val identifier = obj.identifier
     val metadataUpdateQuery = metaDataQuery(obj)(definitionCache, config)
-    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$identifier"}) SET n.status="$status",n.pkgVersion=${obj.pkgVersion},n.prevStatus="$prevStatus",$metadataUpdateQuery,$auditPropsUpdateQuery;"""
+    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$identifier"}) SET n.status="$status",n.pkgVersion=${obj.pkgVersion},n.prevStatus="$prevStatus",$metadataUpdateQuery,$auditPropsUpdateQuery();"""
     logger.info("Query: " + query)
 
     if (obj.mimeType.equalsIgnoreCase("application/vnd.ekstep.ecml-archive")) {
@@ -49,22 +49,22 @@ trait ObjectUpdater {
     val prevState = obj.getString("status", "Draft")
     val identifier = obj.identifier
     val metadataUpdateQuery = metaDataQuery(obj)(definitionCache, config)
-    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$identifier"}) SET n.status="$status",n.prevState="$prevState",$metadataUpdateQuery,$auditPropsUpdateQuery;"""
+    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$identifier"}) SET n.status="$status",n.prevState="$prevState",$metadataUpdateQuery,$auditPropsUpdateQuery();"""
     logger.info("Query: " + query)
     val result: StatementResult = neo4JUtil.executeQuery(query)
     if (null != result && result.hasNext)
       logger.info(s"statement result : ${result.next().asMap()}")
   }
 
-  def saveExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil)
+  def saveExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Unit
 
-  def deleteExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil)
+  def deleteExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Unit
 
   @throws[Exception]
   def saveOnFailure(obj: ObjectData, messages: List[String])(implicit neo4JUtil: Neo4JUtil): Unit = {
     val errorMessages = messages.mkString("; ")
     val nodeId = obj.dbId
-    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$nodeId"}) SET n.status="Failed", n.publishError="$errorMessages", $auditPropsUpdateQuery;"""
+    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$nodeId"}) SET n.status="Failed", n.publishError="$errorMessages", $auditPropsUpdateQuery();"""
     logger.info("Query: " + query)
     neo4JUtil.executeQuery(query)
   }
@@ -79,13 +79,13 @@ trait ObjectUpdater {
         prop._2 match {
           case _: Map[String, AnyRef] =>
             val strValue = JSONUtil.serialize(ScalaJsonUtil.serialize(prop._2))
-            s"""n.${prop._1}=${strValue}"""
+            s"""n.${prop._1}=$strValue"""
           case _: util.Map[String, AnyRef] =>
             val strValue = JSONUtil.serialize(JSONUtil.serialize(prop._2))
-            s"""n.${prop._1}=${strValue}"""
+            s"""n.${prop._1}=$strValue"""
           case _: String =>
             val strValue = JSONUtil.serialize(prop._2)
-            s"""n.${prop._1}=${strValue}"""
+            s"""n.${prop._1}=$strValue"""
           case _ =>
             val strValue = JSONUtil.serialize(prop._2)
             s"""n.${prop._1}=$strValue"""
@@ -94,18 +94,18 @@ trait ObjectUpdater {
         prop._2 match {
           case _: Map[String, AnyRef] =>
             val strValue = JSONUtil.serialize(ScalaJsonUtil.serialize(prop._2))
-            s"""n.${prop._1}=${strValue}"""
+            s"""n.${prop._1}=$strValue"""
           case _: util.Map[String, AnyRef] =>
             val strValue = JSONUtil.serialize(JSONUtil.serialize(prop._2))
-            s"""n.${prop._1}=${strValue}"""
+            s"""n.${prop._1}=$strValue"""
           case _: List[String] =>
             val strValue = ScalaJsonUtil.serialize(prop._2)
-            s"""n.${prop._1}=${strValue}"""
+            s"""n.${prop._1}=$strValue"""
           case _: String =>
             if (StringUtils.startsWith(prop._2.asInstanceOf[String], """{"""") || StringUtils.startsWith(prop._2.asInstanceOf[String], """[{"""")
               || prop._2.asInstanceOf[String].contains("\"")) {
               val strValue = JSONUtil.serialize(prop._2)
-              s"""n.${prop._1}=${strValue}"""
+              s"""n.${prop._1}=$strValue"""
             }
             else  s"""n.${prop._1}="${prop._2}""""
           case _: util.List[String] =>
@@ -120,7 +120,7 @@ trait ObjectUpdater {
   }
 
   private def auditPropsUpdateQuery(): String = {
-    val sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
+    val sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
     val updatedOn = sdf.format(new Date())
     s"""n.lastUpdatedOn="$updatedOn",n.lastStatusChangedOn="$updatedOn""""
   }
@@ -142,7 +142,7 @@ trait ObjectUpdater {
     }
   }
 
-  def updateContentBody(identifier: String, ecmlBody: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil) {
+  def updateContentBody(identifier: String, ecmlBody: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Unit = {
     val updateQuery = QueryBuilder.update(readerConfig.keyspace, readerConfig.table)
       .where(QueryBuilder.eq("content_id", identifier))
       .`with`(QueryBuilder.set("body", QueryBuilder.fcall("textAsBlob", ecmlBody)))
