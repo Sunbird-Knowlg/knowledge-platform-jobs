@@ -65,7 +65,7 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 		val readerConfig = ExtDataConfig(config.questionSetKeyspaceName, config.questionSetTableName, definition.getExternalPrimaryKey, definition.getExternalProps)
 		val qDef: ObjectDefinition = definitionCache.getDefinition("Question", config.schemaSupportVersionMap.getOrElse("question", "1.0").asInstanceOf[String], config.definitionBasePath)
 		val qReaderConfig = ExtDataConfig(config.questionKeyspaceName, qDef.getExternalTable, qDef.getExternalPrimaryKey, qDef.getExternalProps)
-		val obj = getObject(data.identifier, data.pkgVersion, data.mimeType, readerConfig)(neo4JUtil, cassandraUtil)
+		val obj = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(neo4JUtil, cassandraUtil)
 		logger.info("processElement ::: obj metadata before publish ::: " + ScalaJsonUtil.serialize(obj.metadata))
 		logger.info("processElement ::: obj hierarchy before publish ::: " + ScalaJsonUtil.serialize(obj.hierarchy.getOrElse(Map())))
 		val messages: List[String] = validate(obj, obj.identifier, validateQuestionSet)
@@ -79,7 +79,7 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 			childQuestions.foreach(ch => logger.info("child questions visibility parent identifier : " + ch.identifier))
 			// Publish Child Questions
 			QuestionPublishUtil.publishQuestions(obj.identifier, childQuestions)(ec, neo4JUtil, cassandraUtil, qReaderConfig, cloudStorageUtil, definitionCache, definitionConfig, config, httpUtil)
-			val pubMsgs: List[String] = isChildrenPublished(childQuestions, qReaderConfig)
+			val pubMsgs: List[String] = isChildrenPublished(childQuestions, data.publishType, qReaderConfig)
 			if(pubMsgs.isEmpty) {
 				// Enrich Object as well as hierarchy
 				val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
@@ -106,11 +106,11 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 	}
 
 	//TODO: Implement Multiple Data Read From Neo4j and Use it here.
-	def isChildrenPublished(children: List[ObjectData], readerConfig: ExtDataConfig): List[String] = {
+	def isChildrenPublished(children: List[ObjectData], publishType: String, readerConfig: ExtDataConfig): List[String] = {
 		val messages = ListBuffer[String]()
 		children.foreach(q => {
 			val id = q.identifier.replace(".img", "")
-			val obj = getObject(id, 0, q.mimeType, readerConfig)(neo4JUtil, cassandraUtil)
+			val obj = getObject(id, 0, q.mimeType, publishType, readerConfig)(neo4JUtil, cassandraUtil)
 			logger.info(s"question metadata for $id : ${obj.metadata}")
 			if (!List("Live", "Unlisted").contains(obj.getString("status", ""))) {
 				logger.info("Question publishing failed for : " + id)

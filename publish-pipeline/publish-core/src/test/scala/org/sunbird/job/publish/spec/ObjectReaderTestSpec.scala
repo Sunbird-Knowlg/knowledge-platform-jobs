@@ -27,7 +27,7 @@ class ObjectReaderTestSpec extends FlatSpec with BeforeAndAfterAll with Matchers
     when(mockNeo4JUtil.getNodeProperties("do_123.img")).thenReturn(Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123.img", "IL_UNIQUE_ID" -> "do_123.img", "pkgVersion" -> 2.0.asInstanceOf[AnyRef]).asJava)
     val objectReader = new TestObjectReader()
     val readerConfig = ExtDataConfig("test", "test")
-    val obj = objectReader.getObject("do_123", 2, "", readerConfig)
+    val obj = objectReader.getObject("do_123", 2, "", "Public", readerConfig)
     val metadata = obj.metadata.asJava
     metadata.isEmpty should be(false)
     obj.extData should be(None)
