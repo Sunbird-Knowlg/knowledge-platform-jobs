@@ -24,7 +24,7 @@ trait ObjectUpdater {
     val editId = obj.dbId
     val identifier = obj.identifier
     val metadataUpdateQuery = metaDataQuery(obj)(definitionCache, config)
-    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$identifier"}) SET n.status="$status",n.pkgVersion=${obj.pkgVersion},n.prevStatus="$prevStatus",$metadataUpdateQuery,$auditPropsUpdateQuery();"""
+    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$identifier"}) SET n.status="$status",n.pkgVersion=${obj.pkgVersion},n.prevStatus="$prevStatus",$metadataUpdateQuery,$auditPropsUpdateQuery;"""
     logger.info("Query: " + query)
 
     if (obj.mimeType.equalsIgnoreCase("application/vnd.ekstep.ecml-archive")) {
@@ -49,7 +49,7 @@ trait ObjectUpdater {
     val prevState = obj.getString("status", "Draft")
     val identifier = obj.identifier
     val metadataUpdateQuery = metaDataQuery(obj)(definitionCache, config)
-    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$identifier"}) SET n.status="$status",n.prevState="$prevState",$metadataUpdateQuery,$auditPropsUpdateQuery();"""
+    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$identifier"}) SET n.status="$status",n.prevState="$prevState",$metadataUpdateQuery,$auditPropsUpdateQuery;"""
     logger.info("Query: " + query)
     val result: StatementResult = neo4JUtil.executeQuery(query)
     if (null != result && result.hasNext)
@@ -64,7 +64,7 @@ trait ObjectUpdater {
   def saveOnFailure(obj: ObjectData, messages: List[String])(implicit neo4JUtil: Neo4JUtil): Unit = {
     val errorMessages = messages.mkString("; ")
     val nodeId = obj.dbId
-    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$nodeId"}) SET n.status="Failed", n.publishError="$errorMessages", $auditPropsUpdateQuery();"""
+    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$nodeId"}) SET n.status="Failed", n.publishError="$errorMessages", $auditPropsUpdateQuery;"""
     logger.info("Query: " + query)
     neo4JUtil.executeQuery(query)
   }
@@ -82,9 +82,6 @@ trait ObjectUpdater {
             s"""n.${prop._1}=$strValue"""
           case _: util.Map[String, AnyRef] =>
             val strValue = JSONUtil.serialize(JSONUtil.serialize(prop._2))
-            s"""n.${prop._1}=$strValue"""
-          case _: String =>
-            val strValue = JSONUtil.serialize(prop._2)
             s"""n.${prop._1}=$strValue"""
           case _ =>
             val strValue = JSONUtil.serialize(prop._2)
