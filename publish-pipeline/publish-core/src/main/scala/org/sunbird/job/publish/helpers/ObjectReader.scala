@@ -12,17 +12,20 @@ trait ObjectReader {
 
   def getObject(identifier: String, pkgVersion: Double, mimeType: String, publishType: String, readerConfig: ExtDataConfig)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil): ObjectData = {
     logger.info("Reading editable object data for: " + identifier + " with pkgVersion: " + pkgVersion)
-    val metadata = if(!mimeType.contains("application/vnd.sunbird.question")) getMetadata(identifier, pkgVersion) ++ Map[String, AnyRef]("publish_type" -> publishType) else getMetadata(identifier, pkgVersion)
+    val metadata = getMetadata(identifier, publishType, pkgVersion)
     val extData = getExtData(identifier, pkgVersion, mimeType, readerConfig)
     new ObjectData(identifier, metadata, extData.getOrElse(ObjectExtData()).data, extData.getOrElse(ObjectExtData()).hierarchy)
   }
 
-  private def getMetadata(identifier: String, pkgVersion: Double)(implicit neo4JUtil: Neo4JUtil): Map[String, AnyRef] = {
+  private def getMetadata(identifier: String, publishType: String, pkgVersion: Double)(implicit neo4JUtil: Neo4JUtil): Map[String, AnyRef] = {
     val nodeId = getEditableObjId(identifier, pkgVersion)
     val metaData = Option(neo4JUtil.getNodeProperties(nodeId)).getOrElse(neo4JUtil.getNodeProperties(identifier)).asScala.toMap
     val id = metaData.getOrElse("IL_UNIQUE_ID", identifier).asInstanceOf[String]
     val objType = metaData.getOrElse("IL_FUNC_OBJECT_TYPE", "").asInstanceOf[String]
-    metaData ++ Map[String, AnyRef]("identifier" -> id, "objectType" -> objType) - ("IL_UNIQUE_ID", "IL_FUNC_OBJECT_TYPE", "IL_SYS_NODE_TYPE")
+    if(objType.equalsIgnoreCase("Question") || objType.equalsIgnoreCase("QuestionSet"))
+      metaData ++ Map[String, AnyRef]("identifier" -> id, "objectType" -> objType) - ("IL_UNIQUE_ID", "IL_FUNC_OBJECT_TYPE", "IL_SYS_NODE_TYPE")
+    else
+      metaData ++ Map[String, AnyRef]("identifier" -> id, "objectType" -> objType, "publish_type" -> publishType) - ("IL_UNIQUE_ID", "IL_FUNC_OBJECT_TYPE", "IL_SYS_NODE_TYPE")
   }
 
   def getExtData(identifier: String, pkgVersion: Double, mimeType: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[ObjectExtData]
