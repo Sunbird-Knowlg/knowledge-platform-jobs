@@ -12,7 +12,7 @@ trait ObjectReader {
 
   def getObject(identifier: String, pkgVersion: Double, mimeType: String, publishType: String, readerConfig: ExtDataConfig)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil): ObjectData = {
     logger.info("Reading editable object data for: " + identifier + " with pkgVersion: " + pkgVersion)
-    val metadata = getMetadata(identifier, pkgVersion) ++ Map[String, AnyRef]("publish_type" -> publishType)
+    val metadata = if(!mimeType.contains("application/vnd.sunbird.question")) getMetadata(identifier, pkgVersion) ++ Map[String, AnyRef]("publish_type" -> publishType) else getMetadata(identifier, pkgVersion)
     val extData = getExtData(identifier, pkgVersion, mimeType, readerConfig)
     new ObjectData(identifier, metadata, extData.getOrElse(ObjectExtData()).data, extData.getOrElse(ObjectExtData()).hierarchy)
   }
