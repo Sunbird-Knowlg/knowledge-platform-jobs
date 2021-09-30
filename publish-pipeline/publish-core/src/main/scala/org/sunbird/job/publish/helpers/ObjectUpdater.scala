@@ -100,7 +100,7 @@ trait ObjectUpdater {
             s"""n.${prop._1}=$strValue"""
           case _: String =>
             if (StringUtils.startsWith(prop._2.asInstanceOf[String], """{"""") || StringUtils.startsWith(prop._2.asInstanceOf[String], """[{"""")
-              || prop._2.asInstanceOf[String].contains("\"")) {
+              || prop._2.asInstanceOf[String].contains("\"") || prop._2.asInstanceOf[String].contains("\\")) {
               val strValue = JSONUtil.serialize(prop._2)
               s"""n.${prop._1}=$strValue"""
             }

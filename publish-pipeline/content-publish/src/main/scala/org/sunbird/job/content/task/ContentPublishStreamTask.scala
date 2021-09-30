@@ -30,8 +30,10 @@ class ContentPublishStreamTask(config: ContentPublishConfig, kafkaConnector: Fli
       .name("publish-event-router").uid("publish-event-router")
       .setParallelism(config.eventRouterParallelism)
 
-    processStreamTask.getSideOutput(config.contentPublishOutTag).process(new ContentPublishFunction(config, httpUtil))
+    val contentPublish = processStreamTask.getSideOutput(config.contentPublishOutTag).process(new ContentPublishFunction(config, httpUtil))
       .name("content-publish-process").uid("content-publish-process").setParallelism(1)
+
+    contentPublish.getSideOutput(config.generateVideoStreamingOutTag).addSink(kafkaConnector.kafkaStringSink(config.postPublishTopic))
 
     //		processStreamTask.getSideOutput(config.collectionPublishOutTag).process(new CollectionPublishFunction(config, httpUtil))
     //		  .name("collection-publish-process").uid("collection-publish-process").setParallelism(1)
