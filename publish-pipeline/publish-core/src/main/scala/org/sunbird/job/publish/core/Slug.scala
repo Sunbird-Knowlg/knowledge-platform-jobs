@@ -72,7 +72,7 @@ object Slug {
 		try
 			URLDecoder.decode(input, "UTF-8")
 		catch {
-			case ex: Exception => ""
+			case ex: Exception => input
 		}
 	}
 

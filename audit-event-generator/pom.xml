@@ -25,11 +25,11 @@
     <repositories>
         <repository>
             <id>platform-telemetry</id>
-            <url>https://oss.sonatype.org/content/repositories/orgsunbird-1138</url>
+            <url>https://oss.sonatype.org/content/repositories/orgsunbird-1143</url>
         </repository>
         <repository>
             <id>platform-common</id>
-            <url>https://oss.sonatype.org/content/repositories/orgsunbird-1137</url>
+            <url>https://oss.sonatype.org/content/repositories/orgsunbird-1142</url>
         </repository>
     </repositories>
 

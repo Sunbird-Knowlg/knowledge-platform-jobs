@@ -49,6 +49,16 @@ class ObjectBundleSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
 		(ecarName.length<(maxAllowedContentName+65)) should be(true)
 	}
 
+	"getBundleFileName" should "return file name" in {
+		val config: Config = ConfigFactory.load("test.conf").withFallback(ConfigFactory.systemEnvironment())
+		implicit val publishConfig: PublishConfig = new PublishConfig(config, "")
+		val maxAllowedContentName = publishConfig.getInt("max_allowed_content_name", 120)
+		val obj = new TestObjectBundle
+		val ecarName = obj.getBundleFileName("do_3133687719874150401162",Map("name" -> "Sr.18\\sst\\Grade6%_/@#!-+=()\",?&6.10_ମାଂସପେଶୀ, ରକ୍ତ ସଂଚାଳନ ଓ ଶ୍ୱସନ ସଂସ୍ଥାନ ଉପରେ ଶାରୀରିକ କାର୍ଯ୍ୟ, ଖେଳ, କ୍ରୀଡା ଓ ଯୋଗର ପ୍ରଭାବ-eng_effects_of_physical_activities_games_sports_and_yoga_on_muscular_circulatory_and_respiratory_systems"), "SPINE")
+		(ecarName.length<(maxAllowedContentName+65)) should be(true)
+		(StringUtils.contains(ecarName, "sr.18sstgrade6_-6.10_maanspeshii-rkt-sncaalln-o-shsn-snsthaan-upre-shaariirik-kaaryyy-khell-kriiddaa-o-yogr-prbhaa")) should be(true)
+	}
+
 	"getHierarchyFile" should "return valid file" in {
 		val obj = new TestObjectBundle
 		val hierarchy = Map("identifier" -> "do_123", "children" -> List(Map("identifier" -> "do_234", "name" -> "Children-1"), Map("identifier" -> "do_345", "name" -> "Children-2")))
