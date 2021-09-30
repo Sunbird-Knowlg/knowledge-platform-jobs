@@ -72,7 +72,7 @@ trait ObjectUpdater {
   def metaDataQuery(obj: ObjectData)(definitionCache: DefinitionCache, config: DefinitionConfig): String = {
     val version = config.supportedVersion.getOrElse(obj.dbObjType.toLowerCase(), "1.0").asInstanceOf[String]
     val definition = definitionCache.getDefinition(obj.dbObjType, version, config.basePath)
-    val metadata = obj.metadata - ("IL_UNIQUE_ID", "identifier", "IL_FUNC_OBJECT_TYPE", "IL_SYS_NODE_TYPE", "pkgVersion", "lastStatusChangedOn", "lastUpdatedOn", "status", "objectType")
+    val metadata = obj.metadata - ("IL_UNIQUE_ID", "identifier", "IL_FUNC_OBJECT_TYPE", "IL_SYS_NODE_TYPE", "pkgVersion", "lastStatusChangedOn", "lastUpdatedOn", "status", "objectType", "publish_type")
     metadata.map(prop => {
       if (null == prop._2) s"n.${prop._1}=${prop._2}"
       else if (definition.objectTypeProperties.contains(prop._1)) {
@@ -98,13 +98,6 @@ trait ObjectUpdater {
           case _: List[String] =>
             val strValue = ScalaJsonUtil.serialize(prop._2)
             s"""n.${prop._1}=$strValue"""
-          case _: String =>
-            if (StringUtils.startsWith(prop._2.asInstanceOf[String], """{"""") || StringUtils.startsWith(prop._2.asInstanceOf[String], """[{"""")
-              || prop._2.asInstanceOf[String].contains("\"")) {
-              val strValue = JSONUtil.serialize(prop._2)
-              s"""n.${prop._1}=$strValue"""
-            }
-            else  s"""n.${prop._1}="${prop._2}""""
           case _: util.List[String] =>
             val strValue = JSONUtil.serialize(prop._2)
             s"""n.${prop._1}=$strValue"""
