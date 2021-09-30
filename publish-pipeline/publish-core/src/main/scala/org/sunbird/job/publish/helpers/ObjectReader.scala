@@ -13,6 +13,7 @@ trait ObjectReader {
   def getObject(identifier: String, pkgVersion: Double, mimeType: String, publishType: String, readerConfig: ExtDataConfig)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil): ObjectData = {
     logger.info("Reading editable object data for: " + identifier + " with pkgVersion: " + pkgVersion)
     val metadata = getMetadata(identifier, publishType, pkgVersion)
+    logger.info("Reading metadata for: " + identifier + " with metadata: " + metadata)
     val extData = getExtData(identifier, pkgVersion, mimeType, readerConfig)
     new ObjectData(identifier, metadata, extData.getOrElse(ObjectExtData()).data, extData.getOrElse(ObjectExtData()).hierarchy)
   }
@@ -22,7 +23,8 @@ trait ObjectReader {
     val metaData = Option(neo4JUtil.getNodeProperties(nodeId)).getOrElse(neo4JUtil.getNodeProperties(identifier)).asScala.toMap
     val id = metaData.getOrElse("IL_UNIQUE_ID", identifier).asInstanceOf[String]
     val objType = metaData.getOrElse("IL_FUNC_OBJECT_TYPE", "").asInstanceOf[String]
-    if(objType.equalsIgnoreCase("Question") || objType.equalsIgnoreCase("QuestionSet"))
+    logger.info("ObjectReader:: getMetadata:: identifier: " + identifier + " with objType: " + objType)
+    if(metaData.getOrElse("mimeType", identifier).asInstanceOf[String].contains("application/vnd.sunbird.question") || objType.equalsIgnoreCase("Question") || objType.equalsIgnoreCase("QuestionSet"))
       metaData ++ Map[String, AnyRef]("identifier" -> id, "objectType" -> objType) - ("IL_UNIQUE_ID", "IL_FUNC_OBJECT_TYPE", "IL_SYS_NODE_TYPE")
     else
       metaData ++ Map[String, AnyRef]("identifier" -> id, "objectType" -> objType, "publish_type" -> publishType) - ("IL_UNIQUE_ID", "IL_FUNC_OBJECT_TYPE", "IL_SYS_NODE_TYPE")
