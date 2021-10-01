@@ -84,7 +84,7 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
           cache.del(data.identifier)
           logger.info(s"ContentPublishFunction:: after clearing identifier: ${data.identifier} from cache:: " + cache.isExists(data.identifier))
           val enrichedObj = enrichObject(ecmlVerifiedObj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
-          val objWithEcar = getObjectWithEcar(enrichedObj, if(enrichedObj.metadata.getOrElse("contentDisposition","").asInstanceOf[String].equalsIgnoreCase("online-only")) List(EcarPackageType.SPINE.toString) else pkgTypes)(ec, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
+          val objWithEcar = getObjectWithEcar(enrichedObj, if (enrichedObj.metadata.getOrElse("contentDisposition", "").asInstanceOf[String].equalsIgnoreCase("online-only")) List(EcarPackageType.SPINE.toString) else pkgTypes)(ec, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
           logger.info("Ecar generation done for Content: " + objWithEcar.identifier)
           saveOnSuccess(objWithEcar)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
           pushStreamingUrlEvent(enrichedObj, context)(metrics)
@@ -98,7 +98,7 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
         }
       }
     } catch {
-      case exp:Exception => {
+      case exp: Exception => {
         exp.printStackTrace();
         logger.info("ContentPublishFunction::processElement::Exception" + exp.getMessage)
         throw exp
@@ -120,8 +120,10 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
     val channelId = obj.getString("channel", "")
     val ver = obj.getString("versionKey", "")
     val artifactUrl = obj.getString("artifactUrl", "")
-    // TODO: deprecate using contentType in the event.
-    val event = s"""{"eid":"BE_JOB_REQUEST", "ets": $ets, "mid": "$mid", "actor": {"id": "Post Publish Processor", "type": "System"}, "context":{"pdata":{"ver":"1.0","id":"org.ekstep.platform"}, "channel":"${channelId}","env":"${config.jobEnv}"},"object":{"ver":"$ver","id":"${obj.identifier}"},"edata": {"action":"post-publish-process","iteration":1,"identifier":"${obj.identifier}","channel":"$channelId","artifactUrl":"${artifactUrl}","mimeType":"${obj.mimeType}","contentType":"Resource","pkgVersion":1,"status":"Live"}}""".stripMargin
+    val contentType = obj.getString("contentType", "")
+    val status = obj.getString("status", "")
+    //TODO: deprecate using contentType in the event.
+    val event = s"""{"eid":"BE_JOB_REQUEST", "ets": $ets, "mid": "$mid", "actor": {"id": "Post Publish Processor", "type": "System"}, "context":{"pdata":{"ver":"1.0","id":"org.ekstep.platform"}, "channel":"$channelId","env":"${config.jobEnv}"},"object":{"ver":"$ver","id":"${obj.identifier}"},"edata": {"action":"post-publish-process","iteration":1,"identifier":"${obj.identifier}","channel":"$channelId","artifactUrl":"$artifactUrl","mimeType":"${obj.mimeType}","contentType":"$contentType","pkgVersion":${obj.pkgVersion},"status":"$status"}}""".stripMargin
     logger.info(s"Video Streaming Event for identifier ${obj.identifier}  is  : $event")
     event
   }
