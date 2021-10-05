@@ -45,7 +45,7 @@ class CloudStorageUtil(config: BaseJobConfig) extends Serializable {
   }
 
   def copyObjectsByPrefix(sourcePrefix: String, destinationPrefix: String, isFolder: Boolean): Unit = {
-    storageService.copyObjects(container, sourcePrefix, container, destinationPrefix, Option.apply(isFolder))
+    getService.copyObjects(container, sourcePrefix, container, destinationPrefix, Option.apply(isFolder))
   }
 
   def getURI(prefix: String, isDirectory: Option[Boolean]): String = {
@@ -59,7 +59,7 @@ class CloudStorageUtil(config: BaseJobConfig) extends Serializable {
     Array[String](objectKey, url)
   }
 
-  def deleteFile(key: String, isDirectory: Option[Boolean] = Option(false)) {
+  def deleteFile(key: String, isDirectory: Option[Boolean] = Option(false)): Unit = {
     getService.deleteObject(getContainerName, key, isDirectory)
   }
 
