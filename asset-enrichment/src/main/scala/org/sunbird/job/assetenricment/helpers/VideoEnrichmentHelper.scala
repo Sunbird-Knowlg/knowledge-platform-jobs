@@ -144,7 +144,7 @@ trait VideoEnrichmentHelper extends ThumbnailUtil {
     }
   }
 
-  def getStreamingEvent(asset: Asset)(implicit config: AssetEnrichmentConfig) : String = {
+  def getStreamingEvent(asset: Asset)(implicit config: AssetEnrichmentConfig): String = {
     val ets = System.currentTimeMillis
     val mid = s"""LP.${ets}.${UUID.randomUUID}"""
     val metadata = asset.getMetadata

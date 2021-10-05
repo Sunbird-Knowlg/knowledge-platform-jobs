@@ -1,4 +1,4 @@
-package org.sunbird.job.assetenricment.util
+package org.sunbird.job.util
 
 import net.sf.junidecode.Junidecode
 import org.apache.commons.io.FilenameUtils
@@ -19,7 +19,7 @@ object Slug {
   def createSlugFile(file: File): File = {
     try {
       val name = file.getName
-      val slug = Slug.makeSlug(name, true)
+      val slug = Slug.makeSlug(name, isTransliterate = true)
       if (!StringUtils.equals(name, slug)) {
         val newName = FilenameUtils.getFullPath(file.getAbsolutePath) + File.separator + slug
         new File(newName)
@@ -29,6 +29,10 @@ object Slug {
         e.printStackTrace()
         file
     }
+  }
+
+  def makeSlug(input: String): String = {
+    makeSlug(input, isTransliterate = false)
   }
 
   def makeSlug(input: String, isTransliterate: Boolean): String = {
@@ -57,8 +61,8 @@ object Slug {
     normalizedDashes.toLowerCase(Locale.ENGLISH)
   }
 
-  def validateResult(input: String, origInput: String): Unit = {
-    if (input.length == 0) throw new IllegalArgumentException("Failed to cleanup the input " + origInput)
+  private def validateResult(input: String, origInput: String): Unit = {
+    if (input.isEmpty) throw new IllegalArgumentException("Failed to cleanup the input " + origInput)
   }
 
   def transliterate(input: String): String = Junidecode.unidecode(input)
@@ -67,7 +71,21 @@ object Slug {
     try
       URLDecoder.decode(input, "UTF-8")
     catch {
-      case ex: Exception => ""
+      case ex: Exception => input
+    }
+  }
+
+  def removeDuplicateChars(text: String): String = {
+    val ret = new StringBuilder(text.length)
+    if (text.isEmpty) "" else {
+      // Zip with Index returns a tuple (character, index)
+      ret.append(text.charAt(0))
+      text.toCharArray.zipWithIndex
+        .foreach(zippedChar => {
+          if (zippedChar._2 != 0 && zippedChar._1 != text.charAt(zippedChar._2 - 1))
+            ret.append(zippedChar._1)
+        })
+      ret.toString()
     }
   }
 

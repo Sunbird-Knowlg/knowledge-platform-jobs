@@ -79,6 +79,11 @@
             <version>1.7.5</version>
         </dependency>
         <dependency>
+            <groupId>com.moparisthebest</groupId>
+            <artifactId>junidecode</artifactId>
+            <version>0.1.1</version>
+        </dependency>
+        <dependency>
             <groupId>org.scalatest</groupId>
             <artifactId>scalatest_${scala.version}</artifactId>
             <version>3.0.6</version>

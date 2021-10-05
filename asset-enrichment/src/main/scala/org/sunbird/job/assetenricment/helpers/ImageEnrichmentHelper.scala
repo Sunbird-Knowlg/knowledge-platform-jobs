@@ -4,9 +4,9 @@ import org.im4java.core.Info
 import org.slf4j.LoggerFactory
 import org.sunbird.job.assetenricment.models.Asset
 import org.sunbird.job.assetenricment.task.AssetEnrichmentConfig
-import org.sunbird.job.assetenricment.util.{AssetFileUtils, CloudStorageUtil, ImageResizerUtil, Slug}
+import org.sunbird.job.assetenricment.util.{AssetFileUtils, CloudStorageUtil, ImageResizerUtil}
 import org.sunbird.job.domain.`object`.DefinitionCache
-import org.sunbird.job.util.{Neo4JUtil, ScalaJsonUtil}
+import org.sunbird.job.util.{Neo4JUtil, ScalaJsonUtil, Slug}
 
 import java.io.File
 import scala.collection.mutable
@@ -99,7 +99,7 @@ trait ImageEnrichmentHelper {
   }
 
   def saveImageVariants(variantsMap: Map[String, String], asset: Asset)(implicit neo4JUtil: Neo4JUtil): Unit = {
-    if(variantsMap.nonEmpty) asset.put("variants", ScalaJsonUtil.serialize(variantsMap))
+    if (variantsMap.nonEmpty) asset.put("variants", ScalaJsonUtil.serialize(variantsMap))
     asset.put("status", "Live")
     logger.info(s"Processed Image for identifier: ${asset.identifier}. Updating metadata.")
     neo4JUtil.updateNode(asset.identifier, asset.getMetadata)

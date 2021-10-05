@@ -4,7 +4,7 @@ import org.apache.commons.lang3.StringUtils
 import org.sunbird.cloud.storage.BaseStorageService
 import org.sunbird.cloud.storage.factory.{StorageConfig, StorageServiceFactory}
 import org.sunbird.job.publish.config.PublishConfig
-import org.sunbird.job.publish.core.Slug
+import org.sunbird.job.util.Slug
 
 import java.io.File
 

@@ -4,6 +4,7 @@ import org.apache.commons.lang3.StringUtils
 import org.sunbird.cloud.storage.BaseStorageService
 import org.sunbird.cloud.storage.factory.{StorageConfig, StorageServiceFactory}
 import org.sunbird.job.assetenricment.task.AssetEnrichmentConfig
+import org.sunbird.job.util.Slug
 
 import java.io.File
 
