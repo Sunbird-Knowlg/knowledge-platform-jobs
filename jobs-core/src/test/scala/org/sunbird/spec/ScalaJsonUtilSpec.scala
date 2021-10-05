@@ -1,12 +1,12 @@
 package org.sunbird.spec
 
-import java.util
-
 import com.fasterxml.jackson.databind.exc.{InvalidDefinitionException, MismatchedInputException}
 import org.apache.commons.lang3.StringUtils
 import org.codehaus.jackson.JsonProcessingException
 import org.scalatest.{FlatSpec, Matchers}
 import org.sunbird.job.util.ScalaJsonUtil
+
+import java.util
 
 class ScalaJsonUtilSpec extends FlatSpec with Matchers {
 

@@ -4,7 +4,6 @@ import org.apache.commons.io.FilenameUtils
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.autocreatorv2.model.ExtDataConfig
-import org.sunbird.job.autocreatorv2.util.FileUtils
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.autocreatorv2.model.ObjectData
 import org.sunbird.job.task.AutoCreatorV2Config
@@ -18,7 +17,7 @@ trait AutoCreator extends ObjectUpdater with CollectionUpdater with HierarchyEnr
 	def getObject(identifier: String, objType: String, downloadUrl: String, metaUrl: Option[String] = None)(implicit config: AutoCreatorV2Config, httpUtil: HttpUtil, objDef: ObjectDefinition): ObjectData = {
 		val extractPath = extractDataZip(identifier, downloadUrl)
 		val manifestData = getObjectDetails(identifier, extractPath, objType, metaUrl)
-		val metadata = manifestData.filterKeys(k => !(objDef.getRelationLabels.contains(k) || objDef.externalProperties.contains(k)))
+		val metadata = manifestData.filterKeys(k => !(objDef.getRelationLabels().contains(k) || objDef.externalProperties.contains(k)))
 		val extData = manifestData.filterKeys(k => objDef.externalProperties.contains(k))
 		val hierarchy = getHierarchy(extractPath, objType)(config)
 		val externalData = if (hierarchy.nonEmpty) extData ++ Map("hierarchy" -> hierarchy) else extData
@@ -104,7 +103,7 @@ trait AutoCreator extends ObjectUpdater with CollectionUpdater with HierarchyEnr
 			val repository = s"""${config.sourceBaseUrl}/${objType.toLowerCase}/v1/read/${ch._1}?fields=${props.mkString(",")}"""
 			val obj: ObjectData = getObject(ch._1, objType, downloadUrl, Some(repository))(config, httpUtil, definition)
 			logger.debug("Graph metadata for " + obj.identifier + " : " + obj.metadata)
-			val enObj = enrichMetadata(obj, ch._2.asInstanceOf[Map[String, AnyRef]], true)(config)
+			val enObj = enrichMetadata(obj, ch._2.asInstanceOf[Map[String, AnyRef]], overrideCloudProps = true)(config)
 			logger.debug("Enriched metadata for " + enObj.identifier + " : " + enObj.metadata)
 			val updatedObj = processCloudMeta(enObj)
 			logger.info("Final updated metadata for " + updatedObj.identifier + " : " + JSONUtil.serialize(updatedObj.metadata))

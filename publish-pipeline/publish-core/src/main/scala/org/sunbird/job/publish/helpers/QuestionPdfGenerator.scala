@@ -4,8 +4,7 @@ import com.google.gson.Gson
 import org.slf4j.LoggerFactory
 import org.sunbird.job.publish.core.ObjectData
 import org.sunbird.job.publish.handler.{QuestionHandlerFactory, QuestionTypeHandler}
-import org.sunbird.job.publish.util.FileUtils
-import org.sunbird.job.util.{CloudStorageUtil, HttpUtil, Slug}
+import org.sunbird.job.util.{CloudStorageUtil, FileUtils, HttpUtil, Slug}
 
 import java.io.{BufferedWriter, File, FileWriter}
 
@@ -135,24 +134,22 @@ trait QuestionPdfGenerator extends ObjectTemplateGenerator {
 
   private def uploadFile(fileOption: Option[File], obj: ObjectData)(implicit cloudStorageUtil: CloudStorageUtil): Option[String] = {
     fileOption match {
-      case Some(file: File) => {
+      case Some(file: File) =>
         val folder = "questionset" + File.separator + obj.identifier
         val urlArray: Array[String] = cloudStorageUtil.uploadFile(folder, file, Some(true))
         Some(urlArray(1))
-      }
       case _ => None
     }
   }
 
   private def uploadFileString(fileUrl: String, obj: ObjectData, fileNameSuffix: String)(implicit cloudStorageUtil: CloudStorageUtil): Option[String] = {
     //Todo: Rename Status?
-    val fileName = s"${obj.identifier}_pdf_${fileNameSuffix}.pdf"
+    val fileName = s"${obj.identifier}_pdf_$fileNameSuffix.pdf"
     FileUtils.copyURLToFile(obj.identifier, fileUrl, fileName) match {
-      case Some(file: File) => {
-        val folder = "questionset" + File.separator + Slug.makeSlug(obj.identifier, true)
+      case Some(file: File) =>
+        val folder = "questionset" + File.separator + Slug.makeSlug(obj.identifier, isTransliterate = true)
         val urlArray: Array[String] = cloudStorageUtil.uploadFile(folder, file, Some(true))
         Some(urlArray(1))
-      }
       case _ => logger.error("ERR_INVALID_FILE_URL", "Please Provide Valid File Url!")
         None
     }

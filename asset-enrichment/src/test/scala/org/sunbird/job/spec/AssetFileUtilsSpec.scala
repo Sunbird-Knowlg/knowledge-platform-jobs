@@ -5,12 +5,7 @@ import org.sunbird.spec.BaseTestSpec
 
 import java.io.File
 
-class AssetFileUtilsSpec extends BaseTestSpec{
-
-  "getBasePath" should "return empty string for empty Object ID" in {
-    val path = AssetFileUtils.getBasePath("")
-    path.isEmpty should be(true)
-  }
+class AssetFileUtilsSpec extends BaseTestSpec {
 
   "getFileType" should "return file type for the provided audio file" in {
     val file = new File(getClass.getClassLoader.getResource("test_files/test_audio.mp3").getFile)
