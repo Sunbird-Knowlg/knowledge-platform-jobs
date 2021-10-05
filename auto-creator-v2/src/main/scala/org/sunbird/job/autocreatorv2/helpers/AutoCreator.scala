@@ -4,7 +4,7 @@ import org.apache.commons.io.FilenameUtils
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.autocreatorv2.model.ExtDataConfig
-import org.sunbird.job.autocreatorv2.util.{CloudStorageUtil, FileUtils}
+import org.sunbird.job.autocreatorv2.util.FileUtils
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.autocreatorv2.model.ObjectData
 import org.sunbird.job.task.AutoCreatorV2Config

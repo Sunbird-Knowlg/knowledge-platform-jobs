@@ -16,10 +16,9 @@ import org.mockito.Mockito.when
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.fixture.EventFixture
 import org.sunbird.job.publish.config.PublishConfig
-import org.sunbird.job.publish.util.CloudStorageUtil
 import org.sunbird.job.questionset.publish.domain.Event
 import org.sunbird.job.questionset.task.{QuestionSetPublishConfig, QuestionSetPublishStreamTask}
-import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
+import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, Neo4JUtil}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 
 import java.util

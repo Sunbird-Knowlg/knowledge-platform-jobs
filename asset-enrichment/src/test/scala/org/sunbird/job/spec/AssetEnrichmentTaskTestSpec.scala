@@ -12,11 +12,11 @@ import org.sunbird.job.assetenricment.domain.Event
 import org.sunbird.job.assetenricment.functions.{ImageEnrichmentFunction, VideoEnrichmentFunction}
 import org.sunbird.job.assetenricment.models.Asset
 import org.sunbird.job.assetenricment.task.AssetEnrichmentConfig
-import org.sunbird.job.assetenricment.util.{AssetFileUtils, CloudStorageUtil, ImageResizerUtil, YouTubeUtil}
+import org.sunbird.job.assetenricment.util.{AssetFileUtils, ImageResizerUtil, YouTubeUtil}
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.fixture.EventFixture
-import org.sunbird.job.util.{JSONUtil, Neo4JUtil, ScalaJsonUtil}
+import org.sunbird.job.util.{CloudStorageUtil, JSONUtil, Neo4JUtil, ScalaJsonUtil}
 import org.sunbird.spec.BaseTestSpec
 
 import java.io.File
@@ -181,7 +181,6 @@ class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
     } finally {
       AssetFileUtils.deleteDirectory(new File(s"/tmp/do_113233717480390656195"))
     }
-
   }
 
   def getAsset(event: String, metadata: Map[String, AnyRef]): Asset = {

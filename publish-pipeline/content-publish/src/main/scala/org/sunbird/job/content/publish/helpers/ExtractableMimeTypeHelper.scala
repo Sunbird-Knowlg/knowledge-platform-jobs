@@ -7,8 +7,7 @@ import org.slf4j.LoggerFactory
 import org.sunbird.job.content.publish.processor.{JsonParser, Media, Plugin, XmlParser}
 import org.sunbird.job.content.task.ContentPublishConfig
 import org.sunbird.job.publish.core.ObjectData
-import org.sunbird.job.publish.util.CloudStorageUtil
-import org.sunbird.job.util.Slug
+import org.sunbird.job.util.{CloudStorageUtil, Slug}
 import org.xml.sax.{InputSource, SAXException}
 
 import java.io._
@@ -46,7 +45,7 @@ object ExtractableMimeTypeHelper {
     if (!isExtractedSnapshotExist(obj)) throw new Exception("Error! Snapshot Type Extraction doesn't Exists.")
     val sourcePrefix = getExtractionPath(obj, contentConfig, "snapshot")
     val destinationPrefix = getExtractionPath(obj, contentConfig, extractionType)
-    cloudStorageUtil.copyObjectsByPrefix(sourcePrefix, destinationPrefix)
+    cloudStorageUtil.copyObjectsByPrefix(sourcePrefix, destinationPrefix, isFolder = true)
   }
 
   private def isExtractedSnapshotExist(obj: ObjectData): Boolean = {

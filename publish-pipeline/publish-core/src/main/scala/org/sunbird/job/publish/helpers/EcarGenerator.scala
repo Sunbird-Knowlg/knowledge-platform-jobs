@@ -4,7 +4,7 @@ import org.slf4j.LoggerFactory
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ObjectData}
-import org.sunbird.job.publish.util.CloudStorageUtil
+import org.sunbird.job.util.CloudStorageUtil
 
 import java.io.File
 import scala.concurrent.ExecutionContext

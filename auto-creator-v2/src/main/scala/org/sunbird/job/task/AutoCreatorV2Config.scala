@@ -61,9 +61,5 @@ class AutoCreatorV2Config(override val config: Config) extends BaseJobConfig(con
   val contentServiceBaseUrl : String = config.getString("service.content.basePath")
   val sourceBaseUrl: String = config.getString("source.baseUrl")
 
-  def getString(key: String, default: String): String = {
-    if(config.hasPath(key)) config.getString(key) else default
-  }
-
   def getConfig() = config
 }

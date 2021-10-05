@@ -9,22 +9,21 @@ import org.slf4j.LoggerFactory
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig}
 import org.sunbird.job.publish.helpers.EcarPackageType
-import org.sunbird.job.publish.util.CloudStorageUtil
 import org.sunbird.job.questionset.publish.domain.PublishMetadata
 import org.sunbird.job.questionset.publish.helpers.QuestionPublisher
 import org.sunbird.job.questionset.task.QuestionSetPublishConfig
-import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
+import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, Neo4JUtil}
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import java.lang.reflect.Type
 import scala.concurrent.ExecutionContext
 
 class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUtil,
-                              @transient var neo4JUtil: Neo4JUtil = null,
-                              @transient var cassandraUtil: CassandraUtil = null,
-                              @transient var cloudStorageUtil: CloudStorageUtil = null,
-                              @transient var definitionCache: DefinitionCache = null,
-                              @transient var definitionConfig: DefinitionConfig = null)
+															@transient var neo4JUtil: Neo4JUtil = null,
+															@transient var cassandraUtil: CassandraUtil = null,
+															@transient var cloudStorageUtil: CloudStorageUtil = null,
+															@transient var definitionCache: DefinitionCache = null,
+															@transient var definitionConfig: DefinitionConfig = null)
                              (implicit val stringTypeInfo: TypeInformation[String])
   extends BaseProcessFunction[PublishMetadata, String](config) with QuestionPublisher {
 

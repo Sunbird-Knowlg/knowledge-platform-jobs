@@ -5,8 +5,8 @@ import org.apache.commons.lang3.StringUtils
 import org.imgscalr.Scalr
 import org.slf4j.LoggerFactory
 import org.sunbird.job.publish.core.ObjectData
-import org.sunbird.job.publish.util.{CloudStorageUtil, FileUtils}
-import org.sunbird.job.util.Slug
+import org.sunbird.job.publish.util.FileUtils
+import org.sunbird.job.util.{CloudStorageUtil, Slug}
 
 import java.awt.image.BufferedImage
 import java.io.File

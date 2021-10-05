@@ -11,16 +11,15 @@ import org.apache.flink.test.util.MiniClusterWithClientResource
 import org.cassandraunit.CQLDataLoader
 import org.cassandraunit.dataset.cql.FileCQLDataSet
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
-import org.mockito.ArgumentMatchers.{anyString}
+import org.mockito.ArgumentMatchers.anyString
 import org.mockito.Mockito
-import org.mockito.Mockito.{when}
+import org.mockito.Mockito.when
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.content.publish.domain.Event
 import org.sunbird.job.content.task.{ContentPublishConfig, ContentPublishStreamTask}
 import org.sunbird.job.fixture.EventFixture
 import org.sunbird.job.publish.config.PublishConfig
-import org.sunbird.job.publish.util.CloudStorageUtil
-import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
+import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, Neo4JUtil}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 
 import java.util
@@ -91,7 +90,7 @@ private class ContentPublishEventSource extends SourceFunction[Event] {
     val gson = new Gson()
     val data = gson.fromJson(json, new util.LinkedHashMap[String, Any]().getClass).asInstanceOf[util.Map[String, Any]]
     val metadataMap = data.get("edata").asInstanceOf[util.Map[String, Any]].get("metadata").asInstanceOf[util.Map[String, Any]]
-    metadataMap.put("pkgVersion",metadataMap.get("pkgVersion").asInstanceOf[Double].toInt)
+    metadataMap.put("pkgVersion", metadataMap.get("pkgVersion").asInstanceOf[Double].toInt)
     new Event(data, 0, 10)
   }
 }

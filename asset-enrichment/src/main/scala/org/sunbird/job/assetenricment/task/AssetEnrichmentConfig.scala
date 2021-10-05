@@ -61,15 +61,12 @@ class AssetEnrichmentConfig(override val config: Config) extends BaseJobConfig(c
   val videoIdRegex: util.List[String] = if (config.hasPath("content.youtube.regexPattern")) config.getStringList("content.youtube.regexPattern") else util.Arrays.asList[String]("\\?vi?=([^&]*)", "watch\\?.*v=([^&]*)", "(?:embed|vi?)/([^/?]*)", "^([A-Za-z0-9\\-\\_]*)")
   val streamableMimeType: util.List[String] = if (config.hasPath("content.stream.mimeType")) config.getStringList("content.stream.mimeType") else util.Arrays.asList[String]("video/mp4")
   val isStreamingEnabled: Boolean = if (config.hasPath("content.stream.enabled")) config.getBoolean("content.stream.enabled") else false
-  val sampleThumbnailCount: Int = if(config.hasPath("thumbnail.max.sample")) config.getInt("thumbnail.max.sample") else 5
-  val thumbnailSize: Int = if(config.hasPath("thumbnail.max.size.pixel")) config.getInt("thumbnail.max.size.pixel") else 150
+  val sampleThumbnailCount: Int = if (config.hasPath("thumbnail.max.sample")) config.getInt("thumbnail.max.sample") else 5
+  val thumbnailSize: Int = if (config.hasPath("thumbnail.max.size.pixel")) config.getInt("thumbnail.max.size.pixel") else 150
 
   // Schema Definition Util for Image Enrichment
   val definitionBasePath: String = if (config.hasPath("schema.base_path")) config.getString("schema.base_path") else "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local"
   val schemaSupportVersionMap: Map[String, String] = if (config.hasPath("schema.supported_version")) config.getAnyRef("schema.supported_version").asInstanceOf[util.Map[String, String]].asScala.toMap else Map[String, String]()
 
   val unsupportedMimeTypes: util.List[String] = if (config.hasPath("unsupported.mimetypes")) config.getStringList("unsupported.mimetypes") else util.Arrays.asList[String]("image/svg+xml")
-  def getString(key: String, default: String): String = {
-    if (config.hasPath(key)) config.getString(key) else default
-  }
 }
