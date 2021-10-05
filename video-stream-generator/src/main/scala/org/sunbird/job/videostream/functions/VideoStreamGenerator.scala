@@ -1,11 +1,9 @@
 package org.sunbird.job.videostream.functions
 
-import org.apache.flink.api.common.state.{ValueState, ValueStateDescriptor}
-
 import java.util
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
-import org.apache.flink.streaming.api.functions.{KeyedProcessFunction, ProcessFunction}
+import org.apache.flink.streaming.api.functions.KeyedProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.exception.InvalidEventException
 import org.sunbird.job.videostream.domain.Event
@@ -23,6 +21,7 @@ class VideoStreamGenerator(config: VideoStreamGeneratorConfig, httpUtil:HttpUtil
     private[this] lazy val logger = LoggerFactory.getLogger(classOf[VideoStreamGenerator])
     private var videoStreamService:VideoStreamService = _
     lazy val timerDurationInMS: Long = config.timerDuration * 1000
+    private var nextTimerTimestamp = 0l
 
     override def metricsList(): List[String] = {
         List(config.totalEventsCount, config.skippedEventCount, config.successEventCount, config.failedEventCount, config.retryEventCount)
@@ -45,11 +44,10 @@ class VideoStreamGenerator(config: VideoStreamGeneratorConfig, httpUtil:HttpUtil
       try {
         metrics.incCounter(config.totalEventsCount)
         if (event.isValid) {
-          videoStreamService.submitJobRequest(event.eData)
-          logger.info("Streaming job submitted for " + event.identifier() + " with url: " + event.artifactUrl)
-          val nextTimerTimestamp = context.timestamp() + timerDurationInMS
-          context.timerService().registerProcessingTimeTimer(nextTimerTimestamp)
-          logger.info("Timer registered to execute at " + nextTimerTimestamp)
+          val eData = event.eData ++ Map("channel"-> event.channel)
+          videoStreamService.submitJobRequest(eData)
+          logger.info("Streaming job submitted for " + event.identifier + " with url: " + event.artifactUrl)
+          registerTimer(context)
         } else metrics.incCounter(config.skippedEventCount)
       } catch {
         case ex: Exception =>
@@ -59,16 +57,30 @@ class VideoStreamGenerator(config: VideoStreamGeneratorConfig, httpUtil:HttpUtil
     }
 
     override def onTimer(timestamp: Long, ctx: KeyedProcessFunction[String, Event, Event]#OnTimerContext, metrics: Metrics): Unit = {
+        unregisterTimer()
         val processing = videoStreamService.readFromDB(Map("status" -> "PROCESSING")) ++ videoStreamService.readFromDB(Map("status" -> "FAILED", "iteration" -> Map("type" -> "lte", "value" -> 10)))
         if (processing.nonEmpty) {
           logger.info("Requests in queue to validate update the status: " + processing.size)
           videoStreamService.processJobRequest(metrics)
-          val nextTimerTimestamp = ctx.timestamp() + timerDurationInMS
-          ctx.timerService().registerProcessingTimeTimer(nextTimerTimestamp)
-          logger.info("Timer registered to execute at " + nextTimerTimestamp)
+          registerTimer(ctx)
         } else {
           logger.info("There are no video streaming requests in queue to validate update the status.")
         }
+    }
+
+    private def registerTimer(context: KeyedProcessFunction[String, Event, Event]#Context): Unit = {
+        if (nextTimerTimestamp == 0l) {
+          val nextTrigger = context.timestamp() + timerDurationInMS
+          context.timerService().registerProcessingTimeTimer(nextTrigger)
+          nextTimerTimestamp = nextTrigger
+          logger.info("Timer registered to execute at " + nextTimerTimestamp)
+        } else {
+          logger.info("Timer already exists at: " + nextTimerTimestamp)
+        }
+    }
+
+    private def unregisterTimer(): Unit = {
+        nextTimerTimestamp = 0l
     }
 
 }

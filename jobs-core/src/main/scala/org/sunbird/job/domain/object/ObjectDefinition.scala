@@ -64,4 +64,9 @@ class ObjectDefinition(val objectType: String, val version: String, val schema: 
       }).keys.toList
     }
   }
+
+  def getSchemaProps(): List[String] = {
+    val properties = schema.getOrElse("properties", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
+    properties.keySet.toList
+  }
 }

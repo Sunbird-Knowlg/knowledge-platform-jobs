@@ -59,7 +59,7 @@ class AutoCreatorV2Config(override val config: Config) extends BaseJobConfig(con
   val nonExpandableObjects: List[String] = if (config.hasPath("non_expandable_objects")) config.getStringList("non_expandable_objects").asScala.toList else List("Question")
   val graphEnabledObjects: List[String] = if (config.hasPath("graph_enabled_objecttypes")) config.getStringList("graph_enabled_objecttypes").asScala.toList else List("Question")
   val contentServiceBaseUrl : String = config.getString("service.content.basePath")
-
+  val sourceBaseUrl: String = config.getString("source.baseUrl")
 
   def getString(key: String, default: String): String = {
     if(config.hasPath(key)) config.getString(key) else default
