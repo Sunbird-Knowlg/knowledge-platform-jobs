@@ -6,9 +6,9 @@ import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.content.function.{PublishEventRouter, ContentPublishFunction}
-import org.sunbird.job.content.publish.domain.{Event, PublishMetadata}
-import org.sunbird.job.util.{FlinkUtil, HttpUtil}
+import org.sunbird.job.content.function.{ContentPublishFunction, PublishEventRouter}
+import org.sunbird.job.content.publish.domain.Event
+import org.sunbird.job.util.HttpUtil
 
 import java.io.File
 import java.util
@@ -20,7 +20,6 @@ class ContentPublishStreamTask(config: ContentPublishConfig, kafkaConnector: Fli
     implicit val eventTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
     implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
-    implicit val publishMetaTypeInfo: TypeInformation[PublishMetadata] = TypeExtractor.getForClass(classOf[PublishMetadata])
 
     val source = kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)
     val processStreamTask = env.addSource(source).name(config.inputConsumerName)
@@ -34,6 +33,7 @@ class ContentPublishStreamTask(config: ContentPublishConfig, kafkaConnector: Fli
       .name("content-publish-process").uid("content-publish-process").setParallelism(1)
 
     contentPublish.getSideOutput(config.generateVideoStreamingOutTag).addSink(kafkaConnector.kafkaStringSink(config.postPublishTopic))
+    contentPublish.getSideOutput(config.failedEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
 
     //		processStreamTask.getSideOutput(config.collectionPublishOutTag).process(new CollectionPublishFunction(config, httpUtil))
     //		  .name("collection-publish-process").uid("collection-publish-process").setParallelism(1)
