@@ -8,7 +8,7 @@ import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.content.function.{ContentPublishFunction, PublishEventRouter}
 import org.sunbird.job.content.publish.domain.Event
-import org.sunbird.job.util.HttpUtil
+import org.sunbird.job.util.{FlinkUtil, HttpUtil}
 
 import java.io.File
 import java.util
