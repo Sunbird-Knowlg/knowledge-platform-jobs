@@ -7,14 +7,12 @@ import org.slf4j.LoggerFactory
 import org.sunbird.job.autocreatorv2.domain.Event
 import org.sunbird.job.autocreatorv2.helpers.AutoCreator
 import org.sunbird.job.autocreatorv2.model.{ExtDataConfig, ObjectData, ObjectParent}
-import org.sunbird.job.autocreatorv2.util.CloudStorageUtil
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.task.AutoCreatorV2Config
 import org.sunbird.job.util._
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import java.util
-
 
 class AutoCreatorFunction(config: AutoCreatorV2Config, httpUtil: HttpUtil,
                           @transient var neo4JUtil: Neo4JUtil = null,

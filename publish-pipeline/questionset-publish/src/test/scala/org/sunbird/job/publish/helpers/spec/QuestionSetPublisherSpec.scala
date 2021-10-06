@@ -9,10 +9,9 @@ import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData, ObjectExtData}
-import org.sunbird.job.publish.util.CloudStorageUtil
 import org.sunbird.job.questionset.publish.helpers.QuestionSetPublisher
 import org.sunbird.job.questionset.task.QuestionSetPublishConfig
-import org.sunbird.job.util.{CassandraUtil, Neo4JUtil}
+import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, Neo4JUtil}
 
 class QuestionSetPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
 

@@ -9,8 +9,7 @@ import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData, ObjectExtData}
 import org.sunbird.job.publish.helpers._
-import org.sunbird.job.publish.util.CloudStorageUtil
-import org.sunbird.job.util.{CassandraUtil, JSONUtil, Neo4JUtil, ScalaJsonUtil}
+import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, JSONUtil, Neo4JUtil, ScalaJsonUtil}
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer

@@ -5,8 +5,8 @@ import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.publish.config.PublishConfig
-import org.sunbird.job.publish.core.{DefinitionConfig, ObjectData, Slug}
-import org.sunbird.job.util.{JSONUtil, ScalaJsonUtil}
+import org.sunbird.job.publish.core.{DefinitionConfig, ObjectData}
+import org.sunbird.job.util.{JSONUtil, ScalaJsonUtil, Slug}
 
 import java.io._
 import java.net.{HttpURLConnection, URL}

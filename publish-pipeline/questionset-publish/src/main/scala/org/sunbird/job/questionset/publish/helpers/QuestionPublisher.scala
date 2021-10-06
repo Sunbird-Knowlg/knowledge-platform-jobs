@@ -10,8 +10,7 @@ import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core._
 import org.sunbird.job.publish.helpers._
-import org.sunbird.job.publish.util.CloudStorageUtil
-import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil, ScalaJsonUtil}
+import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, Neo4JUtil, ScalaJsonUtil, Slug}
 
 import java.io.{File, FileInputStream, FileOutputStream, IOException}
 import java.nio.file.{Files, Path, Paths}

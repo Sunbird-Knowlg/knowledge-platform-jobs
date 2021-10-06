@@ -7,7 +7,7 @@ import org.scalatestplus.mockito.MockitoSugar
 import org.sunbird.job.content.publish.helpers.ExtractableMimeTypeHelper
 import org.sunbird.job.content.task.ContentPublishConfig
 import org.sunbird.job.publish.core.ObjectData
-import org.sunbird.job.publish.util.CloudStorageUtil
+import org.sunbird.job.util.CloudStorageUtil
 
 import java.io.File
 

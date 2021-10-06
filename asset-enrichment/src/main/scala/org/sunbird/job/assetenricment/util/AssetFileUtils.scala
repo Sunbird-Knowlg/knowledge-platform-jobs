@@ -1,10 +1,8 @@
 package org.sunbird.job.assetenricment.util
 
-import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 
-import java.io.{File, IOException}
-import java.net.URL
+import java.io.File
 import javax.activation.MimetypesFileTypeMap
 
 object AssetFileUtils {
@@ -30,32 +28,6 @@ object AssetFileUtils {
         case _ => "Other"
       }
     }
-  }
-
-  def deleteDirectory(file: File): Unit = {
-    org.apache.commons.io.FileUtils.deleteDirectory(file)
-  }
-
-  def copyURLToFile(objectId: String, fileUrl: String, suffix: String): Option[File] = try {
-    val fileName = getBasePath(objectId) + "/" + suffix
-    val file = new File(fileName)
-    org.apache.commons.io.FileUtils.copyURLToFile(new URL(fileUrl), file)
-    Some(file)
-  } catch {
-    case e: IOException => logger.error(s"Please Provide Valid File Url. Url: ${fileUrl} and objectId: ${objectId}!", e)
-      None
-  }
-
-  def getBasePath(objectId: String): String = {
-    if (!StringUtils.isBlank(objectId))
-      s"/tmp/$objectId/${System.currentTimeMillis}_temp"
-    else ""
-  }
-
-  def createFile(fileName: String): File = {
-    val file = new File(fileName)
-    org.apache.commons.io.FileUtils.touch(file)
-    file
   }
 
 }

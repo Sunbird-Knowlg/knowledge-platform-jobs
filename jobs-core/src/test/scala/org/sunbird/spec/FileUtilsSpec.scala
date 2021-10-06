@@ -1,6 +1,7 @@
-package org.sunbird.job.autocreatorv2.util
+package org.sunbird.spec
 
 import org.scalatest.{FlatSpec, Matchers}
+import org.sunbird.job.util.FileUtils
 
 class FileUtilsSpec extends FlatSpec with Matchers {
 

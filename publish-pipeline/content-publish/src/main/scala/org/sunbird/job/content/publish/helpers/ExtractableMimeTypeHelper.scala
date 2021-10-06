@@ -1,15 +1,13 @@
 package org.sunbird.job.content.publish.helpers
 
-import com.datastax.driver.core.querybuilder.{QueryBuilder, Select}
 import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper}
 import org.apache.commons.io.{FileUtils, FilenameUtils, IOUtils}
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.content.publish.processor.{JsonParser, Media, Plugin, XmlParser}
 import org.sunbird.job.content.task.ContentPublishConfig
-import org.sunbird.job.publish.core.{ExtDataConfig, ObjectData, Slug}
-import org.sunbird.job.publish.util.CloudStorageUtil
-import org.sunbird.job.util.CassandraUtil
+import org.sunbird.job.publish.core.ObjectData
+import org.sunbird.job.util.{CloudStorageUtil, Slug}
 import org.xml.sax.{InputSource, SAXException}
 
 import java.io._
@@ -47,7 +45,7 @@ object ExtractableMimeTypeHelper {
     if (!isExtractedSnapshotExist(obj)) throw new Exception("Error! Snapshot Type Extraction doesn't Exists.")
     val sourcePrefix = getExtractionPath(obj, contentConfig, "snapshot")
     val destinationPrefix = getExtractionPath(obj, contentConfig, extractionType)
-    cloudStorageUtil.copyObjectsByPrefix(sourcePrefix, destinationPrefix)
+    cloudStorageUtil.copyObjectsByPrefix(sourcePrefix, destinationPrefix, isFolder = true)
   }
 
   private def isExtractedSnapshotExist(obj: ObjectData): Boolean = {
@@ -241,42 +239,42 @@ object ExtractableMimeTypeHelper {
 
   private def downloadAssetFiles(identifier: String, mediaFiles: List[Media], basePath: String, config: ContentPublishConfig)(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil): Future[List[Map[String, String]]] = {
     val futures = mediaFiles.map(mediaFile => {
-        logger.info(s"ExtractableMimeTypeHelper ::: downloadAssetFiles ::: Processing file: ${mediaFile.id} for : " + identifier)
-        if (!StringUtils.equals("youtube", mediaFile.`type`) && !StringUtils.isBlank(mediaFile.src) && !StringUtils.isBlank(mediaFile.`type`)) {
-          val downloadPath = if (isWidgetTypeAsset(mediaFile.`type`)) basePath + "/" + "widgets" else basePath + "/" + "assets"
-          val subFolder = {
-            if (!mediaFile.src.startsWith("http") && !mediaFile.src.startsWith("https")) {
-              val f = new File(mediaFile.src)
-              if (f.exists) f.delete
-              StringUtils.stripStart(f.getParent, "/")
-            } else ""
-          }
-          val fDownloadPath = if (StringUtils.isNotBlank(subFolder)) downloadPath + File.separator + subFolder + File.separator else downloadPath + File.separator
-          createDirectoryIfNeeded(fDownloadPath)
-          logger.info(s"ExtractableMimeTypeHelper ::: downloadAssetFiles ::: fDownloadPath: $fDownloadPath & src : ${mediaFile.src}")
+      logger.info(s"ExtractableMimeTypeHelper ::: downloadAssetFiles ::: Processing file: ${mediaFile.id} for : " + identifier)
+      if (!StringUtils.equals("youtube", mediaFile.`type`) && !StringUtils.isBlank(mediaFile.src) && !StringUtils.isBlank(mediaFile.`type`)) {
+        val downloadPath = if (isWidgetTypeAsset(mediaFile.`type`)) basePath + "/" + "widgets" else basePath + "/" + "assets"
+        val subFolder = {
+          if (!mediaFile.src.startsWith("http") && !mediaFile.src.startsWith("https")) {
+            val f = new File(mediaFile.src)
+            if (f.exists) f.delete
+            StringUtils.stripStart(f.getParent, "/")
+          } else ""
+        }
+        val fDownloadPath = if (StringUtils.isNotBlank(subFolder)) downloadPath + File.separator + subFolder + File.separator else downloadPath + File.separator
+        createDirectoryIfNeeded(fDownloadPath)
+        logger.info(s"ExtractableMimeTypeHelper ::: downloadAssetFiles ::: fDownloadPath: $fDownloadPath & src : ${mediaFile.src}")
 
-          if(mediaFile.src.startsWith("https://") || mediaFile.src.startsWith("http://")) {
-            downloadFile(mediaFile.src, fDownloadPath)
-          }
-          else {
-            if(mediaFile.src.contains("assets/public")) {
-              try {
-                cloudStorageUtil.downloadFile(fDownloadPath, StringUtils.replace(mediaFile.src, "//", "/").substring(mediaFile.src.indexOf("assets/public") + 14))
-              } catch {
-                case _:Exception => cloudStorageUtil.downloadFile(fDownloadPath, mediaFile.src.substring(mediaFile.src.indexOf("assets/public") + 13))
-              }
-            }
-            else if (mediaFile.src.startsWith(File.separator)) {
-              cloudStorageUtil.downloadFile(fDownloadPath, StringUtils.replace(mediaFile.src.substring(1), "//","/"))
-            } else {
-              cloudStorageUtil.downloadFile(fDownloadPath, StringUtils.replace(mediaFile.src, "//","/"))
+        if (mediaFile.src.startsWith("https://") || mediaFile.src.startsWith("http://")) {
+          downloadFile(mediaFile.src, fDownloadPath)
+        }
+        else {
+          if (mediaFile.src.contains("assets/public")) {
+            try {
+              cloudStorageUtil.downloadFile(fDownloadPath, StringUtils.replace(mediaFile.src, "//", "/").substring(mediaFile.src.indexOf("assets/public") + 14))
+            } catch {
+              case _: Exception => cloudStorageUtil.downloadFile(fDownloadPath, mediaFile.src.substring(mediaFile.src.indexOf("assets/public") + 13))
             }
           }
-          val downloadedFile = new File(fDownloadPath + mediaFile.src.split("/").last)
-          logger.info("Downloaded file : " + mediaFile.src + " - " + downloadedFile + " | [Content Id '" + identifier + "']")
+          else if (mediaFile.src.startsWith(File.separator)) {
+            cloudStorageUtil.downloadFile(fDownloadPath, StringUtils.replace(mediaFile.src.substring(1), "//", "/"))
+          } else {
+            cloudStorageUtil.downloadFile(fDownloadPath, StringUtils.replace(mediaFile.src, "//", "/"))
+          }
+        }
+        val downloadedFile = new File(fDownloadPath + mediaFile.src.split("/").last)
+        logger.info("Downloaded file : " + mediaFile.src + " - " + downloadedFile + " | [Content Id '" + identifier + "']")
 
-          Map(mediaFile.id -> downloadedFile.getName)
-        } else Map.empty[String, String]
+        Map(mediaFile.id -> downloadedFile.getName)
+      } else Map.empty[String, String]
     })
     Future(futures)
   }

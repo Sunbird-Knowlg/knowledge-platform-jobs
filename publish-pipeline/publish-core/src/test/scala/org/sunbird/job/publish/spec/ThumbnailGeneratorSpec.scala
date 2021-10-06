@@ -5,7 +5,7 @@ import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.ObjectData
 import org.sunbird.job.publish.helpers.ThumbnailGenerator
-import org.sunbird.job.publish.util.CloudStorageUtil
+import org.sunbird.job.util.CloudStorageUtil
 
 
 class ThumbnailGeneratorSpec extends FlatSpec with BeforeAndAfterAll with Matchers {
