@@ -16,6 +16,7 @@ import java.util.zip.{ZipEntry, ZipOutputStream}
 import java.util.{Date, Optional}
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.collection.JavaConverters._
 
 trait ObjectBundle {
 
@@ -34,7 +35,7 @@ trait ObjectBundle {
 		Slug.makeSlug(contentName, true) + "_" + System.currentTimeMillis() + "_" + identifier + "_" + metadata.getOrElse("pkgVersion", "") + (if (StringUtils.equals(EcarPackageType.FULL.toString, pkgType)) ".ecar" else "_" + pkgType + ".ecar")
 	}
 
-	def getManifestData(objIdentifier: String, pkgType: String, objList: List[Map[String, AnyRef]])(implicit defCache: DefinitionCache, defConfig: DefinitionConfig): (List[Map[String, AnyRef]], List[Map[AnyRef, String]]) = {
+	def getManifestData(objIdentifier: String, pkgType: String, objList: List[Map[String, AnyRef]])(implicit defCache: DefinitionCache, defConfig: DefinitionConfig, config: PublishConfig): (List[Map[String, AnyRef]], List[Map[AnyRef, String]]) = {
 		objList.map(data => {
 			val identifier = data.getOrElse("identifier", "").asInstanceOf[String].replaceAll(".img", "")
 			val mimeType = data.getOrElse("mimeType", "").asInstanceOf[String]
@@ -197,8 +198,21 @@ trait ObjectBundle {
 			file.getParent().substring(file.getParent().lastIndexOf(File.separator) + 1) + File.separator + file.getName()
 	}
 
-	def getDownloadUrls(identifier: String, pkgType: String, isOnlineObj: Boolean, data: Map[String, AnyRef]): Map[AnyRef, String] = {
-		val urlFields = if (StringUtils.equals("ONLINE", pkgType)) List() else List("appIcon", "grayScaleAppIcon", "artifactUrl", "itemSetPreviewUrl", "media")
+	def getDownloadUrls(identifier: String, pkgType: String, isOnlineObj: Boolean, data: Map[String, AnyRef])(implicit config: PublishConfig): Map[AnyRef, String] = {
+
+		val urlFields = pkgType match {
+			case EcarPackageType.ONLINE.toString => List.empty
+			case EcarPackageType.SPINE.toString =>
+				val spineDownloadFiles: util.List[String] = if (config.getConfig().hasPath("content.downloadFiles.spine")) config.getConfig().getStringList("content.downloadFiles.spine") else util.Arrays.asList[String]("appIcon")
+				spineDownloadFiles.asScala.toList
+			case _ =>
+				val fullDownloadFiles: util.List[String] = if (config.getConfig().hasPath("content.downloadFiles.full")) config.getConfig().getStringList("content.downloadFiles.full") else util.Arrays.asList[String]("appIcon", "grayScaleAppIcon", "artifactUrl", "itemSetPreviewUrl", "media")
+				fullDownloadFiles.asScala.toList
+		}
+
+			if (StringUtils.equals("ONLINE", pkgType)) List()
+										else if (StringUtils.equals("SPINE", pkgType)) List("appIcon")
+										else List("appIcon", "grayScaleAppIcon", "artifactUrl", "itemSetPreviewUrl", "media")
 		data.filter(en => urlFields.contains(en._1) && null != en._2).flatMap(entry => {
 			isOnlineObj match {
 				case true => {

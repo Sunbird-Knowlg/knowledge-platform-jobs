@@ -98,6 +98,8 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
   }
 
   override def getDataForEcar(obj: ObjectData): Option[List[Map[String, AnyRef]]] = {
+    //
+
     Some(List(obj.metadata ++ obj.extData.getOrElse(Map()).filter(p => !excludeBundleMeta.contains(p._1))))
   }
 

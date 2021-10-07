@@ -35,7 +35,7 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
   private val readerConfig = ExtDataConfig(config.hierarchyKeyspaceName, config.hierarchyTableName)
 
   @transient var ec: ExecutionContext = _
-  private val pkgTypes = List(EcarPackageType.FULL.toString, EcarPackageType.SPINE.toString, EcarPackageType.ONLINE.toString)
+  private val pkgTypes = List(EcarPackageType.SPINE.toString, EcarPackageType.ONLINE.toString)
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
