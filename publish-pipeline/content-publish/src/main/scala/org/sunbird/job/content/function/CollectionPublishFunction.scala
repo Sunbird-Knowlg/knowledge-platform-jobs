@@ -94,9 +94,9 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
 
           val children = obj.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
           // Collection - update and publish children - line 418 in PublishFinalizer
-          updateHierarchyMetadata(children, objWithEcar)(config)
-          publishHierarchy(children, objWithEcar, readerConfig)(cassandraUtil)
-//          if (!isContentShallowCopy) syncNodes(children, unitNodes)(esUtil)
+          val updatedChildren = updateHierarchyMetadata(children, objWithEcar)(config)
+          publishHierarchy(updatedChildren, objWithEcar, readerConfig)(cassandraUtil)
+//          if (!isContentShallowCopy) syncNodes(updatedChildren, unitNodes)(esUtil)
 
           metrics.incCounter(config.collectionPublishSuccessEventCount)
           logger.info("Collection publishing completed successfully for : " + data.identifier)

@@ -100,9 +100,11 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
   override def getDataForEcar(obj: ObjectData)(implicit config: PublishConfig): Option[List[Map[String, AnyRef]]] = {
     // Line 1107 in PublishFinalizer
     val children = obj.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
-    updateHierarchyMetadata(children, obj)(config)
-    val updatedObj = updateRootChildrenList(obj, children)
-
+    val updatedChildren = updateHierarchyMetadata(children, obj)(config)
+    val updatedObj = updateRootChildrenList(obj, updatedChildren)
+    val nodes = ListBuffer.empty
+    nodes += obj.identifier
+//    getNodeMap(children, nodes, nodeIds, definition)
 
     Some(List(updatedObj.metadata ++ updatedObj.extData.getOrElse(Map()).filter(p => !excludeBundleMeta.contains(p._1))))
   }
@@ -490,15 +492,16 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
   }
 
 
-  def updateHierarchyMetadata(children: List[Map[String, AnyRef]], obj: ObjectData)(implicit config: PublishConfig): Unit = {
-    if (children.nonEmpty) {
-      for (child <- children) {
+  def updateHierarchyMetadata(children: List[Map[String, AnyRef]], obj: ObjectData)(implicit config: PublishConfig): List[Map[String, AnyRef]] = {
+   if (children.nonEmpty) {
+      children.map(child => {
         if (StringUtils.equalsIgnoreCase("Parent", child.get("visibility").asInstanceOf[String])) { //set child metadata -- compatibilityLevel, appIcon, posterImage, lastPublishedOn, pkgVersion, status
           val updatedChild = populatePublishMetadata(child, obj)
           updateHierarchyMetadata(updatedChild.get("children").asInstanceOf[List[Map[String, AnyRef]]], obj)
-        }
-      }
-    }
+          updatedChild
+        } else child
+      })
+    } else children
   }
 
   private def populatePublishMetadata(content: Map[String, AnyRef], obj: ObjectData)(implicit config: PublishConfig): Map[String, AnyRef] = {
@@ -557,5 +560,72 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
 
     new ObjectData(obj.identifier, obj.metadata ++ Map("children"-> childrenMap), obj.extData, obj.hierarchy)
   }
+
+//  private def getNodeMap(children: List[Map[String, AnyRef]], nodes: List[Node], nodeIds: List[String], definition: DefinitionDTO): Unit = {
+//    if (CollectionUtils.isNotEmpty(children)) {
+//      children.stream.forEach((child: Map[String, AnyRef]) => {
+//        def foo(child: Map[String, AnyRef]) = {
+//          var node: Node = null
+//          try {
+//            if (StringUtils.equalsIgnoreCase("Default", child.get("visibility").asInstanceOf[String])) {
+//              node = util.getNode(ContentWorkflowPipelineParams.domain.name, child.get("identifier").asInstanceOf[String]) //getContentNode(TAXONOMY_ID, (String) child.get("identifier"), null);
+//
+//              node.getMetadata.remove("children")
+//              val childData: Map[String, AnyRef] = new HashMap[String, AnyRef]
+//              childData.putAll(child)
+//              val nextLevelNodes: List[Map[String, AnyRef]] = childData.get("children").asInstanceOf[List[Map[String, AnyRef]]]
+//              var finalChildList: List[Map[String, AnyRef]] = new ArrayList[Map[String, AnyRef]]
+//              if (CollectionUtils.isNotEmpty(nextLevelNodes)) {
+//                finalChildList = nextLevelNodes.stream.map((nextLevelNode: Map[String, AnyRef]) => {
+//                  def foo(nextLevelNode: Map[String, AnyRef]) = {
+//                    val metadata: Map[String, AnyRef] = new HashMap[String, AnyRef]() {}
+//                    return metadata
+//                  }
+//
+//                  foo(nextLevelNode)
+//                }).collect(Collectors.toList)
+//              }
+//              node.getMetadata.put("children", finalChildList)
+//            }
+//            else {
+//              val childData: Map[String, AnyRef] = new HashMap[String, AnyRef]
+//              childData.putAll(child)
+//              val nextLevelNodes: List[Map[String, AnyRef]] = childData.get("children").asInstanceOf[List[Map[String, AnyRef]]]
+//              childData.remove("children")
+//              node = ConvertToGraphNode.convertToGraphNode(childData, definition, null)
+//              var finalChildList: List[Map[String, AnyRef]] = new ArrayList[Map[String, AnyRef]]
+//              if (CollectionUtils.isNotEmpty(nextLevelNodes)) {
+//                finalChildList = nextLevelNodes.stream.map((nextLevelNode: Map[String, AnyRef]) => {
+//                  def foo(nextLevelNode: Map[String, AnyRef]) = {
+//                    val metadata: Map[String, AnyRef] = new HashMap[String, AnyRef]() {}
+//                    return metadata
+//                  }
+//
+//                  foo(nextLevelNode)
+//                }).collect(Collectors.toList)
+//              }
+//              node.getMetadata.put("children", finalChildList)
+//              if (StringUtils.isBlank(node.getObjectType)) {
+//                node.setObjectType(ContentWorkflowPipelineParams.Content.name)
+//              }
+//              if (StringUtils.isBlank(node.getGraphId)) {
+//                node.setGraphId(ContentWorkflowPipelineParams.domain.name)
+//              }
+//            }
+//            if (!(nodeIds.contains(node.getIdentifier))) {
+//              nodes.add(node)
+//              nodeIds.add(node.getIdentifier)
+//            }
+//          } catch {
+//            case e: Exception =>
+//              LOGGER.error("Error while generating node map. ", e)
+//          }
+//          getNodeMap(child.get("children").asInstanceOf[List[Map[String, AnyRef]]], nodes, nodeIds, definition)
+//        }
+//
+//        foo(child)
+//      })
+//    }
+//  }
 
 }
