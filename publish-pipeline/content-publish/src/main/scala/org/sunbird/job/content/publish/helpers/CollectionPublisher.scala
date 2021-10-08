@@ -97,10 +97,14 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
     Some(new ObjectData(obj.identifier, enrichedObj.metadata ++ updatedCompatibilityLevel, obj.extData, obj.hierarchy))
   }
 
-  override def getDataForEcar(obj: ObjectData): Option[List[Map[String, AnyRef]]] = {
-    //
+  override def getDataForEcar(obj: ObjectData)(implicit config: PublishConfig): Option[List[Map[String, AnyRef]]] = {
+    // Line 1107 in PublishFinalizer
+    val children = obj.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
+    updateHierarchyMetadata(children, obj)(config)
+    val updatedObj = updateRootChildrenList(obj, children)
 
-    Some(List(obj.metadata ++ obj.extData.getOrElse(Map()).filter(p => !excludeBundleMeta.contains(p._1))))
+
+    Some(List(updatedObj.metadata ++ updatedObj.extData.getOrElse(Map()).filter(p => !excludeBundleMeta.contains(p._1))))
   }
 
   override def saveExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Unit = None
@@ -539,6 +543,20 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
       throw new Exception(msg)
     }
 
+  }
+
+  private def updateRootChildrenList(obj: ObjectData, nextLevelNodes: List[Map[String, AnyRef]]): ObjectData = {
+    val childrenMap: Map[String, AnyRef] =
+    if (nextLevelNodes.nonEmpty) {
+      nextLevelNodes.map(record => {
+        Map("identifier" -> record.get("identifier").asInstanceOf[String],
+            "name" -> record.get("name").asInstanceOf[String],
+            "objectType" -> record.get("objectType").asInstanceOf[String],
+            "description" -> record.get("description").asInstanceOf[String],
+            "index" -> record.get("index").asInstanceOf[AnyRef])
+      })
+    }
+    new ObjectData(obj.identifier, obj.metadata ++ Map("children"-> childrenMap), obj.extData, obj.hierarchy)
   }
 
 }

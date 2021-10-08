@@ -80,7 +80,7 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
           // Clear redis cache
           cache.del(data.identifier)
 
-          // Collection - add step to remove units of already Live content from redis - line 243
+          // Collection - add step to remove units of already Live content from redis - line 243 in PublishFinalizer
           val unitNodes = if (data.pkgVersion > 0) {
             val childNodes = getUnitsFromLiveContent(updatedObj)(neo4JUtil)
             childNodes.foreach(childId => cache.del(childId))
@@ -93,7 +93,7 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
           saveOnSuccess(objWithEcar)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
 
           val children = obj.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
-          // Collection - update and publish children - line 418
+          // Collection - update and publish children - line 418 in PublishFinalizer
           updateHierarchyMetadata(children, objWithEcar)(config)
           publishHierarchy(children, objWithEcar, readerConfig)(cassandraUtil)
 //          if (!isContentShallowCopy) syncNodes(children, unitNodes)(esUtil)

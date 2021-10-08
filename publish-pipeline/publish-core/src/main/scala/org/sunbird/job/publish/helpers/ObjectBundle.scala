@@ -202,12 +202,14 @@ trait ObjectBundle {
 
 		val urlFields = pkgType match {
 			case EcarPackageType.ONLINE.toString => List.empty
-			case EcarPackageType.SPINE.toString =>
+			case EcarPackageType.SPINE.toString => {
 				val spineDownloadFiles: util.List[String] = if (config.getConfig().hasPath("content.downloadFiles.spine")) config.getConfig().getStringList("content.downloadFiles.spine") else util.Arrays.asList[String]("appIcon")
 				spineDownloadFiles.asScala.toList
-			case _ =>
+			}
+			case _ => {
 				val fullDownloadFiles: util.List[String] = if (config.getConfig().hasPath("content.downloadFiles.full")) config.getConfig().getStringList("content.downloadFiles.full") else util.Arrays.asList[String]("appIcon", "grayScaleAppIcon", "artifactUrl", "itemSetPreviewUrl", "media")
 				fullDownloadFiles.asScala.toList
+			}
 		}
 
 			if (StringUtils.equals("ONLINE", pkgType)) List()

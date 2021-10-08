@@ -109,7 +109,7 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
     cassandraUtil.session.execute(query.toString)
   }
 
-  override def getDataForEcar(obj: ObjectData): Option[List[Map[String, AnyRef]]] = {
+  override def getDataForEcar(obj: ObjectData)(implicit config: PublishConfig): Option[List[Map[String, AnyRef]]] = {
     Some(List(obj.metadata ++ obj.extData.getOrElse(Map()).filter(p => !excludeBundleMeta.contains(p._1))))
   }
 
