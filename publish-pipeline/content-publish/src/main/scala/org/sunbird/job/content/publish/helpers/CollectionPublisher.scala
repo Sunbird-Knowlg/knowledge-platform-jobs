@@ -546,8 +546,7 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
   }
 
   private def updateRootChildrenList(obj: ObjectData, nextLevelNodes: List[Map[String, AnyRef]]): ObjectData = {
-    val childrenMap: Map[String, AnyRef] =
-    if (nextLevelNodes.nonEmpty) {
+    val childrenMap: List[Map[String, AnyRef]] =
       nextLevelNodes.map(record => {
         Map("identifier" -> record.get("identifier").asInstanceOf[String],
             "name" -> record.get("name").asInstanceOf[String],
@@ -555,7 +554,7 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
             "description" -> record.get("description").asInstanceOf[String],
             "index" -> record.get("index").asInstanceOf[AnyRef])
       })
-    }
+
     new ObjectData(obj.identifier, obj.metadata ++ Map("children"-> childrenMap), obj.extData, obj.hierarchy)
   }
 

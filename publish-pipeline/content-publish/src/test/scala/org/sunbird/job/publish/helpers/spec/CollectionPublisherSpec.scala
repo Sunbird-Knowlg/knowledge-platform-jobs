@@ -9,7 +9,7 @@ import org.cassandraunit.utils.EmbeddedCassandraServerHelper
 import org.mockito.Mockito
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
-import org.sunbird.job.content.publish.helpers.{CollectionPublisher, ContentPublisher}
+import org.sunbird.job.content.publish.helpers.CollectionPublisher
 import org.sunbird.job.content.task.ContentPublishConfig
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.publish.config.PublishConfig

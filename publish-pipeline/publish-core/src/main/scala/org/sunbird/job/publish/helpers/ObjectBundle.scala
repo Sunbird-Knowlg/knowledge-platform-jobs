@@ -201,20 +201,15 @@ trait ObjectBundle {
 	def getDownloadUrls(identifier: String, pkgType: String, isOnlineObj: Boolean, data: Map[String, AnyRef])(implicit config: PublishConfig): Map[AnyRef, String] = {
 
 		val urlFields = pkgType match {
-			case EcarPackageType.ONLINE.toString => List.empty
-			case EcarPackageType.SPINE.toString => {
+			case "ONLINE" => List.empty
+			case "SPINE" =>
 				val spineDownloadFiles: util.List[String] = if (config.getConfig().hasPath("content.downloadFiles.spine")) config.getConfig().getStringList("content.downloadFiles.spine") else util.Arrays.asList[String]("appIcon")
 				spineDownloadFiles.asScala.toList
-			}
-			case _ => {
+			case _ =>
 				val fullDownloadFiles: util.List[String] = if (config.getConfig().hasPath("content.downloadFiles.full")) config.getConfig().getStringList("content.downloadFiles.full") else util.Arrays.asList[String]("appIcon", "grayScaleAppIcon", "artifactUrl", "itemSetPreviewUrl", "media")
 				fullDownloadFiles.asScala.toList
-			}
 		}
 
-			if (StringUtils.equals("ONLINE", pkgType)) List()
-										else if (StringUtils.equals("SPINE", pkgType)) List("appIcon")
-										else List("appIcon", "grayScaleAppIcon", "artifactUrl", "itemSetPreviewUrl", "media")
 		data.filter(en => urlFields.contains(en._1) && null != en._2).flatMap(entry => {
 			isOnlineObj match {
 				case true => {
