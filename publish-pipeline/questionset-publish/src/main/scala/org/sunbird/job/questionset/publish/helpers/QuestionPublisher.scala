@@ -156,7 +156,7 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
   def getIndexFile(identifier: String, objType: String, bundlePath: String, objList: List[Map[String, AnyRef]]): File = {
     try {
       val file: File = new File(bundlePath + File.separator + indexFileName)
-      val header: String = s"""{"id": "sunbird.${objType.toLowerCase()}.archive", "ver": "$defaultManifestVersion" ,"ts":"${getTimeStamp()}", "params":{"resmsgid": "${getUUID()}"}, "archive":{ "count": ${objList.size}, "ttl":24, "items": """
+      val header: String = s"""{"id": "sunbird.${objType.toLowerCase()}.archive", "ver": "$defaultManifestVersion" ,"ts":"$getTimeStamp", "params":{"resmsgid": "$getUUID"}, "archive":{ "count": ${objList.size}, "ttl":24, "items": """
       val mJson = header + ScalaJsonUtil.serialize(objList) + "}}"
       FileUtils.writeStringToFile(file, mJson)
       file
