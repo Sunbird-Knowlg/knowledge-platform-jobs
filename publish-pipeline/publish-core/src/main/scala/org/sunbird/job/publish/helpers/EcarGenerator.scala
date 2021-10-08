@@ -19,7 +19,7 @@ trait EcarGenerator extends ObjectBundle {
 		pkgType.flatMap(pkg => Map(pkg -> generateEcar(obj, enObjects, pkg))).toMap
 	}
 
-	def getDataForEcar(obj: ObjectData): Option[List[Map[String, AnyRef]]]
+	def getDataForEcar(obj: ObjectData)(implicit config: PublishConfig): Option[List[Map[String, AnyRef]]]
 
 	// this method returns only cloud url for given pkg
 	def generateEcar(obj: ObjectData, objList: List[Map[String, AnyRef]], pkgType: String)(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig): String = {
