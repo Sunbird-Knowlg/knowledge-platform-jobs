@@ -6,6 +6,7 @@ import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.content.publish.processor.{JsonParser, Media, Plugin, XmlParser}
 import org.sunbird.job.content.task.ContentPublishConfig
+import org.sunbird.job.exception.InvalidContentException
 import org.sunbird.job.publish.core.ObjectData
 import org.sunbird.job.util.{CloudStorageUtil, FileUtils, Slug}
 import org.xml.sax.{InputSource, SAXException}
@@ -39,7 +40,7 @@ object ExtractableMimeTypeHelper {
   }
 
   def copyExtractedContentPackage(obj: ObjectData, contentConfig: ContentPublishConfig, extractionType: String, cloudStorageUtil: CloudStorageUtil): Unit = {
-    if (!isExtractedSnapshotExist(obj)) throw new Exception("Error! Snapshot Type Extraction doesn't Exists.")
+    if (!isExtractedSnapshotExist(obj)) throw new InvalidContentException("Error! Snapshot Type Extraction doesn't Exists.")
     val sourcePrefix = getExtractionPath(obj, contentConfig, "snapshot")
     val destinationPrefix = getExtractionPath(obj, contentConfig, extractionType)
     cloudStorageUtil.copyObjectsByPrefix(sourcePrefix, destinationPrefix, isFolder = true)
@@ -105,9 +106,9 @@ object ExtractableMimeTypeHelper {
     if (!StringUtils.isBlank(contentBody)) {
       if (isValidJSON(contentBody)) "json"
       else if (isValidXML(contentBody)) "ecml"
-      else throw new Exception("Invalid Content Body")
+      else throw new InvalidContentException("Invalid Content Body")
     }
-    else throw new Exception("Invalid Content Body")
+    else throw new InvalidContentException("Invalid Content Body. ECML content should have body.")
   }
 
   private def isValidJSON(contentBody: String): Boolean = {
@@ -139,8 +140,8 @@ object ExtractableMimeTypeHelper {
 
   private def writeECMLFile(basePath: String, ecml: String, ecmlType: String): Unit = {
     try {
-      if (StringUtils.isBlank(ecml)) throw new Exception("[Unable to write Empty ECML File.]")
-      if (StringUtils.isBlank(ecmlType)) throw new Exception("[System is in a fix between (XML & JSON) ECML Type.]")
+      if (StringUtils.isBlank(ecml)) throw new InvalidContentException("[Unable to write Empty ECML File.]")
+      if (StringUtils.isBlank(ecmlType)) throw new InvalidContentException("[System is in a fix between (XML & JSON) ECML Type.]")
       val file = new File(basePath + "/" + "index." + ecmlType)
       FileUtils.writeStringToFile(file, ecml)
     } catch {
@@ -177,9 +178,9 @@ object ExtractableMimeTypeHelper {
 
   private def validationForCloudExtraction(file: File, extractionType: String, mimeType: String, config: ContentPublishConfig): Unit = {
     if (!file.exists() || (!extractablePackageExtensions.contains("." + FilenameUtils.getExtension(file.getName)) && config.extractableMimeTypes.contains(mimeType)))
-      throw new Exception("Error! File doesn't Exist.")
+      throw new InvalidContentException("Error! File doesn't Exist.")
     if (extractionType == null)
-      throw new Exception("Error! Invalid Content Extraction Type.")
+      throw new InvalidContentException("Error! Invalid Content Extraction Type.")
   }
 
 

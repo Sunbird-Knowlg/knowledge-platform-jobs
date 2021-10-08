@@ -5,6 +5,7 @@ import com.google.gson.reflect.TypeToken
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
+import org.neo4j.driver.v1.exceptions.ClientException
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cache.{DataCache, RedisConnect}
 import org.sunbird.job.content.publish.domain.Event
@@ -59,7 +60,7 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
 
   override def metricsList(): List[String] = {
     List(config.contentPublishEventCount, config.contentPublishSuccessEventCount, config.contentPublishFailedEventCount,
-      config.videoStreamingGeneratorEventCount, config.skippedEventCount, config.failedEventCount)
+      config.videoStreamingGeneratorEventCount, config.skippedEventCount)
   }
 
   override def processElement(data: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
@@ -92,23 +93,20 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
           logger.info("Content publishing completed successfully for : " + data.identifier)
         } else {
           saveOnFailure(obj, messages)(neo4JUtil)
-          metrics.incCounter(config.contentPublishFailedEventCount)
+          val errorMessages = messages.mkString("; ")
+          pushFailedEvent(data, errorMessages, null, context)(metrics)
           logger.info("Content publishing failed for : " + data.identifier)
         }
       }
     } catch {
-      case ex: InvalidContentException =>
+      case ex@(_: InvalidContentException | _: ClientException) => // ClientException - Invalid input exception.
         logger.error("Error while publishing content :: " + ex.getMessage)
         ex.printStackTrace()
-
-        val failedEvent = getFailedEvent(data.jobName, data.getMap(), ex)
-        context.output(config.failedEventOutTag, failedEvent)
-        metrics.incCounter(config.failedEventCount)
-      case exp: Exception => {
-        exp.printStackTrace();
-        logger.info("ContentPublishFunction::processElement::Exception" + exp.getMessage)
-        throw exp
-      }
+        pushFailedEvent(data, null, ex, context)(metrics)
+      case ex: Exception =>
+        ex.printStackTrace();
+        logger.error(s"Error while processing message for Partition: ${data.partition} and Offset: ${data.offset}. Error : ${ex.getMessage}", ex)
+        throw ex
     }
   }
 
@@ -132,5 +130,11 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
     val event = s"""{"eid":"BE_JOB_REQUEST", "ets": $ets, "mid": "$mid", "actor": {"id": "Post Publish Processor", "type": "System"}, "context":{"pdata":{"ver":"1.0","id":"org.ekstep.platform"}, "channel":"$channelId","env":"${config.jobEnv}"},"object":{"ver":"$ver","id":"${obj.identifier}"},"edata": {"action":"post-publish-process","iteration":1,"identifier":"${obj.identifier}","channel":"$channelId","artifactUrl":"$artifactUrl","mimeType":"${obj.mimeType}","contentType":"$contentType","pkgVersion":${obj.pkgVersion},"status":"$status"}}""".stripMargin
     logger.info(s"Video Streaming Event for identifier ${obj.identifier}  is  : $event")
     event
+  }
+
+  private def pushFailedEvent(event: Event, errorString: String, error: Throwable, context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
+    val failedEvent = if (error == null) getFailedEvent(event.jobName, event.getMap(), errorString) else getFailedEvent(event.jobName, event.getMap(), error)
+    context.output(config.failedEventOutTag, failedEvent)
+    metrics.incCounter(config.contentPublishFailedEventCount)
   }
 }

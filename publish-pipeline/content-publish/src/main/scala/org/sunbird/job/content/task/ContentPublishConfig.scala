@@ -32,7 +32,6 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
   // Metric List
   val totalEventsCount = "total-events-count"
   val skippedEventCount = "skipped-event-count"
-  val failedEventCount = "failed-events-count"
   val contentPublishEventCount = "content-publish-count"
   val contentPublishSuccessEventCount = "content-publish-success-count"
   val contentPublishFailedEventCount = "content-publish-failed-count"

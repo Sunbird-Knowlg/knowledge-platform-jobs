@@ -4,6 +4,7 @@ import org.apache.commons.io.{FilenameUtils, IOUtils}
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
+import org.sunbird.job.exception.InvalidContentException
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ObjectData}
 import org.sunbird.job.util.{FileUtils, JSONUtil, ScalaJsonUtil, Slug}
@@ -31,7 +32,7 @@ trait ObjectBundle {
   def getBundleFileName(identifier: String, metadata: Map[String, AnyRef], pkgType: String)(implicit config: PublishConfig): String = {
     val maxAllowedContentName = config.getInt("max_allowed_content_name", 120)
     val contentName = if (metadata.getOrElse("name", "").asInstanceOf[String].length > maxAllowedContentName) metadata.getOrElse("name", "").asInstanceOf[String].substring(0, maxAllowedContentName) else metadata.getOrElse("name", "").asInstanceOf[String]
-    Slug.makeSlug(contentName, true) + "_" + System.currentTimeMillis() + "_" + identifier + "_" + metadata.getOrElse("pkgVersion", "") + (if (StringUtils.equals(EcarPackageType.FULL.toString, pkgType)) ".ecar" else "_" + pkgType + ".ecar")
+    Slug.makeSlug(contentName, isTransliterate = true) + "_" + System.currentTimeMillis() + "_" + identifier + "_" + metadata.getOrElse("pkgVersion", "") + (if (StringUtils.equals(EcarPackageType.FULL.toString, pkgType)) ".ecar" else "_" + pkgType + ".ecar")
   }
 
   def getManifestData(objIdentifier: String, pkgType: String, objList: List[Map[String, AnyRef]])(implicit defCache: DefinitionCache, defConfig: DefinitionConfig): (List[Map[String, AnyRef]], List[Map[AnyRef, String]]) = {
@@ -43,7 +44,7 @@ trait ObjectBundle {
       val dUrlMap: Map[AnyRef, String] = getDownloadUrls(identifier, pkgType, isOnline(mimeType, contentDisposition), data)
       val updatedObj: Map[String, AnyRef] = data.map(entry =>
         if (dUrlMap.contains(entry._2)) {
-          (entry._1.asInstanceOf[String], dUrlMap.getOrElse(entry._2.asInstanceOf[String], "").asInstanceOf[AnyRef])
+          (entry._1, dUrlMap.getOrElse(entry._2.asInstanceOf[String], "").asInstanceOf[AnyRef])
         } else if (StringUtils.equalsIgnoreCase(EcarPackageType.FULL.toString, pkgType) && StringUtils.equalsIgnoreCase(entry._1, "media")) {
           val media: List[Map[String, AnyRef]] = Optional.ofNullable(ScalaJsonUtil.deserialize[List[Map[String, AnyRef]]](entry._2.asInstanceOf[String])).orElse(List[Map[String, AnyRef]]())
           val newMedia = media.map(m => {
@@ -58,9 +59,9 @@ trait ObjectBundle {
           (entry._1, ScalaJsonUtil.serialize(newMedia))
         } else {
           if (entry._1.equalsIgnoreCase("identifier"))
-            (entry._1 -> entry._2.asInstanceOf[String].replaceAll(".img", ""))
+            entry._1 -> entry._2.asInstanceOf[String].replaceAll(".img", "")
           else if (entry._1.equalsIgnoreCase("objectType"))
-            (entry._1 -> entry._2.asInstanceOf[String].replaceAll("Image", ""))
+            entry._1 -> entry._2.asInstanceOf[String].replaceAll("Image", "")
           else entry
         }
       )
@@ -87,7 +88,7 @@ trait ObjectBundle {
     val duration: String = config.getString("media_download_duration", "300 seconds")
     val downloadedMedias: List[File] = Await.result(downloadFiles(obj.identifier, downloadUrls, bundlePath), Duration.apply(duration))
     if (downloadUrls.nonEmpty && downloadedMedias.isEmpty)
-      throw new Exception("Error Occurred While Downloading Bundle Media Files For : " + obj.identifier)
+      throw new InvalidContentException("Error Occurred While Downloading Bundle Media Files For : " + obj.identifier)
     val manifestFile: File = getManifestFile(obj.identifier, objType, bundlePath, updatedObjList)
     val hierarchyFile: File = getHierarchyFile(obj, bundlePath).getOrElse(new File(bundlePath))
     val fList = if (obj.hierarchy.getOrElse(Map()).nonEmpty) List(manifestFile, hierarchyFile) else List(manifestFile)
@@ -104,16 +105,19 @@ trait ObjectBundle {
               val destPath = s"""${bundlePath}${File.separator}${StringUtils.replace(id, ".img", "")}"""
               logger.info(s"ObjectBundle ::: downloadFiles ::: Processing file: $k for : " + identifier)
               k match {
-                case _: File => {
+                case _: File =>
                   val file = k.asInstanceOf[File]
                   val newFile = new File(s"""${destPath}${File.separator}${file.getName}""")
                   FileUtils.copyFile(file, newFile)
                   newFile
-                }
-                case _ => {
+                case _ =>
                   val url = k.asInstanceOf[String]
-                  FileUtils.downloadFile(url, destPath)
-                }
+                  // UnknownHostException | FileNotFoundException
+                  try {
+                    FileUtils.downloadFile(url, destPath)
+                  } catch {
+                    case e: Exception => throw new InvalidContentException(s"Error while downloading file $url", e)
+                  }
               }
             }
           }
@@ -122,7 +126,7 @@ trait ObjectBundle {
     Future.sequence(futures)
   }
 
-  def createBundle(identifier: String, bundleFileName: String, bundlePath: String, pkgType: String, downloadedFiles: List[File]) = {
+  def createBundle(identifier: String, bundleFileName: String, bundlePath: String, pkgType: String, downloadedFiles: List[File]): File = {
     try {
       val stream = new FileOutputStream(bundleFileName)
       stream.write(getByteStream(identifier, downloadedFiles))
@@ -130,16 +134,15 @@ trait ObjectBundle {
       stream.close()
       new File(bundleFileName)
     } catch {
-      case ex: Exception => {
+      case ex: Exception =>
         ex.printStackTrace()
-        throw new Exception(s"Error While Generating ${pkgType} ECAR Bundle For : " + identifier, ex)
-      }
+        throw new Exception(s"Error While Generating $pkgType ECAR Bundle For : " + identifier, ex)
     } finally {
       FileUtils.deleteDirectory(new File(bundlePath))
     }
   }
 
-  def getByteStream(identifier: String, files: List[File]) = {
+  def getByteStream(identifier: String, files: List[File]): Array[Byte] = {
     val byteArrayOutputStream = new ByteArrayOutputStream
     val bufferedOutputStream = new BufferedOutputStream(byteArrayOutputStream)
     val zipOutputStream = new ZipOutputStream(bufferedOutputStream)
@@ -165,7 +168,7 @@ trait ObjectBundle {
     }
   }
 
-  def getFileName(file: File) = {
+  def getFileName(file: File): String = {
     if (file.getName().toLowerCase().endsWith("manifest.json") || file.getName().endsWith("hierarchy.json")) file.getName else
       file.getParent().substring(file.getParent().lastIndexOf(File.separator) + 1) + File.separator + file.getName()
   }
@@ -186,11 +189,13 @@ trait ObjectBundle {
             logger.info("MEDIA::::  " + media)
             getMediaUrl(media, identifier, pkgType)
           } else {
-            if (entry._2.isInstanceOf[File]) {
-              getUrlMap(identifier, pkgType, entry._1, entry._2)
-            } else if (entry._2.isInstanceOf[String] && validUrl(entry._2.asInstanceOf[String])) {
-              getUrlMap(identifier, pkgType, entry._1, entry._2)
-            } else Map[AnyRef, String]()
+            entry._2 match {
+              case _: File =>
+                getUrlMap(identifier, pkgType, entry._1, entry._2)
+              case str: String if validUrl(str) =>
+                getUrlMap(identifier, pkgType, entry._1, entry._2)
+              case _ => Map[AnyRef, String]()
+            }
           }
         }
       }
@@ -209,15 +214,17 @@ trait ObjectBundle {
   def getUrlMap(identifier: String, pkgType: String, key: String, value: AnyRef): Map[AnyRef, String] = {
     val pkgKeys = List("artifactUrl", "downloadUrl")
     if (!pkgKeys.contains(key) || StringUtils.equalsIgnoreCase(EcarPackageType.FULL.toString, pkgType)) {
-      val fileName = if (value.isInstanceOf[File]) value.asInstanceOf[File].getName else value.asInstanceOf[String]
+      val fileName = value match {
+        case file: File => file.getName
+        case _ => value.asInstanceOf[String]
+      }
       Map[AnyRef, String](value -> getRelativePath(identifier, fileName.asInstanceOf[String]))
     } else Map[AnyRef, String]()
   }
 
-
   def getRelativePath(identifier: String, value: String): String = {
     val fileName = FilenameUtils.getName(value)
-    val suffix = if (fileName.endsWith(".ecar")) identifier.trim + ".zip" else Slug.makeSlug(fileName, true)
+    val suffix = if (fileName.endsWith(".ecar")) identifier.trim + ".zip" else Slug.makeSlug(fileName, isTransliterate = true)
     val filePath = identifier.trim + File.separator + suffix
     filePath
   }
@@ -253,7 +260,7 @@ trait ObjectBundle {
     }
   }
 
-  def isOnline(mimeType: String, contentDisposition: String) = onlineMimeTypes.contains(mimeType) || StringUtils.equalsIgnoreCase(contentDisposition, "online-only")
+  def isOnline(mimeType: String, contentDisposition: String): Boolean = onlineMimeTypes.contains(mimeType) || StringUtils.equalsIgnoreCase(contentDisposition, "online-only")
 
   def validUrl(str: String): Boolean = {
     if (str.isEmpty) false else {
@@ -270,14 +277,14 @@ trait ObjectBundle {
     s"""{"id": "sunbird.$objType.hierarchy", "ver": "$hierarchyVersion" ,"ts":"$getTimeStamp", "params":{"resmsgid": "$getUUID"}, "$objType": """
   }
 
-  def getTimeStamp(): String = {
+  def getTimeStamp: String = {
     val sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
     sdf.format(new Date())
   }
 
-  def getUUID(): String = util.UUID.randomUUID().toString
+  def getUUID: String = util.UUID.randomUUID().toString
 
-  def convertJsonProperties(entry: (String, AnyRef), jsonProps: scala.List[String]) = {
+  def convertJsonProperties(entry: (String, AnyRef), jsonProps: scala.List[String]): AnyRef = {
     if (jsonProps.contains(entry._1)) {
       try {
         JSONUtil.deserialize[Object](entry._2.asInstanceOf[String])

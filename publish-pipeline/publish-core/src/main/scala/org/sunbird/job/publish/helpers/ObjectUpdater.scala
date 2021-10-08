@@ -5,6 +5,7 @@ import org.apache.commons.lang3.StringUtils
 import org.neo4j.driver.v1.StatementResult
 import org.slf4j.LoggerFactory
 import org.sunbird.job.domain.`object`.DefinitionCache
+import org.sunbird.job.exception.InvalidContentException
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
 import org.sunbird.job.util.{CassandraUtil, JSONUtil, Neo4JUtil, ScalaJsonUtil}
 
@@ -141,7 +142,7 @@ trait ObjectUpdater {
       if (result) logger.info(s"Content Body Updated Successfully For $identifier")
       else {
         logger.error(s"Content Body Update Failed For $identifier")
-        throw new Exception(s"Content Body Update Failed For $identifier")
+        throw new InvalidContentException(s"Content Body Update Failed For $identifier")
       }
   }
 
