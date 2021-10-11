@@ -522,7 +522,7 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
     setContentAndCategoryTypes(updatedContent)
   }
 
-  def publishHierarchy(children: List[Map[String, AnyRef]], obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil) = {
+  def publishHierarchy(children: List[Map[String, AnyRef]], obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Unit = {
     val identifier = obj.identifier.replace(".img", "")
 //    val children: List[Map[String, AnyRef]] = obj.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
     val hierarchy: Map[String, AnyRef] = obj.metadata ++ Map("children" -> children)
@@ -612,7 +612,6 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
             case e: Exception => logger.error("Error while generating node map. ", e)
           }
           getNodeMap(child.get("children").asInstanceOf[List[Map[String, AnyRef]]], nodes, nodeIds)
-
       })
     }
   }
