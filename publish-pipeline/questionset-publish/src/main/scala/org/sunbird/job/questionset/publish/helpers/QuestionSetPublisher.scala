@@ -151,7 +151,7 @@ trait QuestionSetPublisher extends ObjectReader with ObjectValidator with Object
 		result
 	}
 
-	override def getDataForEcar(obj: ObjectData)(implicit config: PublishConfig): Option[List[Map[String, AnyRef]]] = {
+	override def getDataForEcar(obj: ObjectData): Option[List[Map[String, AnyRef]]] = {
 		val hChildren: List[Map[String, AnyRef]] = obj.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
 		Some(getFlatStructure(List(obj.metadata ++ obj.extData.getOrElse(Map()) ++ Map("children" -> hChildren)), List()))
 	}

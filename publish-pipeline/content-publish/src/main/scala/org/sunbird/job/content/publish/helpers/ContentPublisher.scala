@@ -57,7 +57,7 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
     Some(new ObjectData(obj.identifier, updatedPreviewUrl, obj.extData, obj.hierarchy))
   }
 
-  override def getDataForEcar(obj: ObjectData)(implicit config: PublishConfig): Option[List[Map[String, AnyRef]]] = {
+  override def getDataForEcar(obj: ObjectData): Option[List[Map[String, AnyRef]]] = {
     Some(List(obj.metadata ++ obj.extData.getOrElse(Map()).filter(p => !excludeBundleMeta.contains(p._1))))
   }
 

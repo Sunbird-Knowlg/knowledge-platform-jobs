@@ -97,16 +97,8 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
     Some(new ObjectData(obj.identifier, enrichedObj.metadata ++ updatedCompatibilityLevel, obj.extData, obj.hierarchy))
   }
 
-  override def getDataForEcar(obj: ObjectData)(implicit config: PublishConfig): Option[List[Map[String, AnyRef]]] = {
-    // Line 1107 in PublishFinalizer
-    val children = obj.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
-    val updatedChildren = updateHierarchyMetadata(children, obj)(config)
-    val updatedObj = updateRootChildrenList(obj, updatedChildren)
-    val nodes = ListBuffer.empty
-    nodes += obj.identifier
-//    getNodeMap(children, nodes, nodeIds, definition)
-
-    Some(List(updatedObj.metadata ++ updatedObj.extData.getOrElse(Map()).filter(p => !excludeBundleMeta.contains(p._1))))
+  override def getDataForEcar(obj: ObjectData): Option[List[Map[String, AnyRef]]] = {
+    Some(List(obj.metadata ++ obj.extData.getOrElse(Map()).filter(p => !excludeBundleMeta.contains(p._1))))
   }
 
   override def saveExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Unit = None
@@ -122,13 +114,25 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
     messages.toList
   }
 
-  def getObjectWithEcar(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
-    logger.info("CollectionPulisher:getObjectWithEcar: Ecar generation done for Content: " + data.identifier)
-    val ecarMap: Map[String, String] = generateEcar(data, pkgTypes)
+  def getObjectWithEcar(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, cloudStorageUtil: CloudStorageUtil, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
+
+    // Line 1107 in PublishFinalizer
+    val children = data.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
+    val updatedChildren = updateHierarchyMetadata(children, data)(config)
+    val updatedObj = updateRootChildrenList(data, updatedChildren)
+    val nodes = ListBuffer.empty
+    val nodeIds = ListBuffer.empty
+    nodes += data
+    nodeIds += data.identifier
+//    getNodeMap(children, nodes, nodeIds)
+
+
+    logger.info("CollectionPulisher:getObjectWithEcar: Ecar generation done for Content: " + updatedObj.identifier)
+    val ecarMap: Map[String, String] = generateEcar(updatedObj, pkgTypes)
     val variants: java.util.Map[String, java.util.Map[String, String]] = ecarMap.map { case (key, value) => key.toLowerCase -> Map[String, String]("ecarUrl" -> value, "size" -> httpUtil.getSize(value).toString).asJava }.asJava
     logger.info("CollectionPulisher ::: getObjectWithEcar ::: ecar map ::: " + ecarMap)
     val meta: Map[String, AnyRef] = Map("downloadUrl" -> ecarMap.getOrElse(EcarPackageType.SPINE.toString, ""), "variants" -> variants)
-    new ObjectData(data.identifier, data.metadata ++ meta, data.extData, data.hierarchy)
+    new ObjectData(updatedObj.identifier, updatedObj.metadata ++ meta, updatedObj.extData, updatedObj.hierarchy)
   }
 
   private def setCompatibilityLevel(obj: ObjectData, updatedMeta: Map[String, AnyRef]): Option[Map[String, AnyRef]] = {
@@ -561,11 +565,11 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
     new ObjectData(obj.identifier, obj.metadata ++ Map("children"-> childrenMap), obj.extData, obj.hierarchy)
   }
 
-//  private def getNodeMap(children: List[Map[String, AnyRef]], nodes: List[Node], nodeIds: List[String], definition: DefinitionDTO): Unit = {
-//    if (CollectionUtils.isNotEmpty(children)) {
-//      children.stream.forEach((child: Map[String, AnyRef]) => {
+//  private def getNodeMap(children: List[Map[String, AnyRef]], nodes: ListBuffer[ObjectData], nodeIds: ListBuffer[String]): Unit = {
+//    if (children.nonEmpty) {
+//      children.foreach((child: Map[String, AnyRef]) => {
 //        def foo(child: Map[String, AnyRef]) = {
-//          var node: Node = null
+//          var node: ObjectData = null
 //          try {
 //            if (StringUtils.equalsIgnoreCase("Default", child.get("visibility").asInstanceOf[String])) {
 //              node = util.getNode(ContentWorkflowPipelineParams.domain.name, child.get("identifier").asInstanceOf[String]) //getContentNode(TAXONOMY_ID, (String) child.get("identifier"), null);
