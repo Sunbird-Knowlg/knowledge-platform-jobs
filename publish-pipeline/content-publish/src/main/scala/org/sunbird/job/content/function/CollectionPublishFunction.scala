@@ -33,6 +33,8 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
   val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
   private var cache: DataCache = _
   private val readerConfig = ExtDataConfig(config.hierarchyKeyspaceName, config.hierarchyTableName)
+  private val COLLECTION_CACHE_KEY_PREFIX = "hierarchy_"
+  private val COLLECTION_CACHE_KEY_SUFFIX = ":leafnodes"
 
   @transient var ec: ExecutionContext = _
   private val pkgTypes = List(EcarPackageType.SPINE.toString, EcarPackageType.ONLINE.toString)
@@ -79,6 +81,8 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
 
           // Clear redis cache
           cache.del(data.identifier)
+          cache.del(data.identifier + COLLECTION_CACHE_KEY_SUFFIX)
+          cache.del(COLLECTION_CACHE_KEY_PREFIX + data.identifier)
 
           // Collection - add step to remove units of already Live content from redis - line 243 in PublishFinalizer
           val unitNodes = if (data.pkgVersion > 0) {
