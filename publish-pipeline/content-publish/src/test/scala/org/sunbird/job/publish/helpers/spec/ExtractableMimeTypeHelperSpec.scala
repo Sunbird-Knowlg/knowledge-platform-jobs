@@ -6,6 +6,7 @@ import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
 import org.sunbird.job.content.publish.helpers.ExtractableMimeTypeHelper
 import org.sunbird.job.content.task.ContentPublishConfig
+import org.sunbird.job.exception.InvalidContentException
 import org.sunbird.job.publish.core.ObjectData
 import org.sunbird.job.util.CloudStorageUtil
 
@@ -15,6 +16,39 @@ class ExtractableMimeTypeHelperSpec extends FlatSpec with BeforeAndAfterAll with
   val config: Config = ConfigFactory.load("test.conf").withFallback(ConfigFactory.systemEnvironment())
   val jobConfig: ContentPublishConfig = new ContentPublishConfig(config)
   implicit val cloudStorageUtil = new CloudStorageUtil(jobConfig)
+
+  "processECMLBody with xml " should " throw exception Error! Invalid Media ('id' is required.) in ... if media id is blank and type is other than js and css" in {
+    val obj: ObjectData = new ObjectData("do_113188615625731",
+      Map[String, AnyRef]("identifier" -> "do_113188615625731", "objectType" -> "Content", "mimeType" -> "application/vnd.ekstep.ecml-archive", "primaryCategory" -> "some category", "name" -> "Some Content", "code" -> "some code"),
+      Some(Map[String, AnyRef]("body" -> "<theme><manifest><media plugin=\"org.ekstep.navigation\" id=\"\" ver=\"1.0\" src=\"content-plugins/org.ekstep.navigation-1.0/renderer/plugin.js\" type=\"plugin\"></media></manifest></theme>"))
+    )
+
+    assertThrows[InvalidContentException] {
+      ExtractableMimeTypeHelper.processECMLBody(obj, jobConfig)(ec, cloudStorageUtil)
+    }
+  }
+
+  "processECMLBody with xml " should " throw exception Error! Invalid Media ('type' is required.) in ... if media type is blank" in {
+    val obj: ObjectData = new ObjectData("do_113188615625731",
+      Map[String, AnyRef]("identifier" -> "do_113188615625731", "objectType" -> "Content", "mimeType" -> "application/vnd.ekstep.ecml-archive", "primaryCategory" -> "some category", "name" -> "Some Content", "code" -> "some code"),
+      Some(Map[String, AnyRef]("body" -> "<theme><manifest><media plugin=\"org.ekstep.navigation\" id=\"org.ekstep.navigation\" ver=\"1.0\" src=\"content-plugins/org.ekstep.navigation-1.0/renderer/plugin.js\" type=\"\"></media></manifest></theme>"))
+    )
+
+    assertThrows[InvalidContentException] {
+      ExtractableMimeTypeHelper.processECMLBody(obj, jobConfig)(ec, cloudStorageUtil)
+    }
+  }
+
+  "processECMLBody with xml " should " throw exception Error! Invalid Media ('src' is required.) in ... if media src is blank" in {
+    val obj: ObjectData = new ObjectData("do_113188615625731",
+      Map[String, AnyRef]("identifier" -> "do_113188615625731", "objectType" -> "Content", "mimeType" -> "application/vnd.ekstep.ecml-archive", "primaryCategory" -> "some category", "name" -> "Some Content", "code" -> "some code"),
+      Some(Map[String, AnyRef]("body" -> "<theme><manifest><media plugin=\"org.ekstep.navigation\" id=\"org.ekstep.navigation\" ver=\"1.0\" src=\"\" type=\"plugin\"></media></manifest></theme>"))
+    )
+
+    assertThrows[InvalidContentException] {
+      ExtractableMimeTypeHelper.processECMLBody(obj, jobConfig)(ec, cloudStorageUtil)
+    }
+  }
 
   "processECMLBody with xml " should " process the ecml body" in {
     val obj: ObjectData = new ObjectData("do_113188615625731",
@@ -26,6 +60,94 @@ class ExtractableMimeTypeHelperSpec extends FlatSpec with BeforeAndAfterAll with
     result.get("artifactUrl") shouldNot be(null)
     result.contains("cloudStorageKey") shouldBe true
     result.get("cloudStorageKey") shouldNot be(null)
+  }
+
+  "processECMLBody with json " should " throw exception if no body is available" in {
+    val obj: ObjectData = new ObjectData("do_113188615625731",
+      Map[String, AnyRef]("identifier" -> "do_113188615625731", "objectType" -> "Content", "mimeType" -> "application/vnd.ekstep.ecml-archive", "primaryCategory" -> "some category", "name" -> "Some Content", "code" -> "some code"),
+      Some(Map[String, AnyRef]())
+    )
+
+    assertThrows[InvalidContentException] {
+      val result: Map[String, AnyRef] = ExtractableMimeTypeHelper.processECMLBody(obj, jobConfig)(ec, cloudStorageUtil)
+    }
+  }
+
+  "processECMLBody with json " should " throw exception Invalid Content Body if not a valid body" in {
+    val obj: ObjectData = new ObjectData("do_113188615625731",
+      Map[String, AnyRef]("identifier" -> "do_113188615625731", "objectType" -> "Content", "mimeType" -> "application/vnd.ekstep.ecml-archive", "primaryCategory" -> "some category", "name" -> "Some Content", "code" -> "some code"),
+      Some(Map[String, AnyRef]("body" -> "Invalid body"))
+    )
+
+    assertThrows[InvalidContentException] {
+      ExtractableMimeTypeHelper.processECMLBody(obj, jobConfig)(ec, cloudStorageUtil)
+    }
+  }
+
+  "processECMLBody with json " should " throw exception Error! Invalid Controller ('id' is required.)" in {
+    val obj: ObjectData = new ObjectData("do_113188615625731",
+      Map[String, AnyRef]("identifier" -> "do_113188615625731", "objectType" -> "Content", "mimeType" -> "application/vnd.ekstep.ecml-archive", "primaryCategory" -> "some category", "name" -> "Some Content", "code" -> "some code"),
+      Some(Map[String, AnyRef]("body" -> "{\"theme\":{\"controller\":[{\"name\":\"dictionary\",\"type\":\"data\",\"id\":\"\",\"__cdata\":{}}]}}"))
+    )
+
+    assertThrows[InvalidContentException] {
+      ExtractableMimeTypeHelper.processECMLBody(obj, jobConfig)(ec, cloudStorageUtil)
+    }
+  }
+
+  "processECMLBody with json " should " throw exception Error! Invalid Controller ('type' is required.)" in {
+    val obj: ObjectData = new ObjectData("do_113188615625731",
+      Map[String, AnyRef]("identifier" -> "do_113188615625731", "objectType" -> "Content", "mimeType" -> "application/vnd.ekstep.ecml-archive", "primaryCategory" -> "some category", "name" -> "Some Content", "code" -> "some code"),
+      Some(Map[String, AnyRef]("body" -> "{\"theme\":{\"controller\":[{\"name\":\"dictionary\",\"type\":\"\",\"id\":\"dictionary\",\"__cdata\":{}}]}}"))
+    )
+
+    assertThrows[InvalidContentException] {
+      ExtractableMimeTypeHelper.processECMLBody(obj, jobConfig)(ec, cloudStorageUtil)
+    }
+  }
+
+  "processECMLBody with json " should " throw exception Error! Invalid Controller ('type' should be either 'items' or 'data')" in {
+    val obj: ObjectData = new ObjectData("do_113188615625731",
+      Map[String, AnyRef]("identifier" -> "do_113188615625731", "objectType" -> "Content", "mimeType" -> "application/vnd.ekstep.ecml-archive", "primaryCategory" -> "some category", "name" -> "Some Content", "code" -> "some code"),
+      Some(Map[String, AnyRef]("body" -> "{\"theme\":{\"controller\":[{\"name\":\"dictionary\",\"type\":\"some type\",\"id\":\"dictionary\",\"__cdata\":{}}]}}"))
+    )
+
+    assertThrows[InvalidContentException] {
+      ExtractableMimeTypeHelper.processECMLBody(obj, jobConfig)(ec, cloudStorageUtil)
+    }
+  }
+
+  "processECMLBody with json " should " throw exception Error! Invalid Media ('id' is required.) if media id is blank and type is other than js and css" in {
+    val obj: ObjectData = new ObjectData("do_113188615625731",
+      Map[String, AnyRef]("identifier" -> "do_113188615625731", "objectType" -> "Content", "mimeType" -> "application/vnd.ekstep.ecml-archive", "primaryCategory" -> "some category", "name" -> "Some Content", "code" -> "some code"),
+      Some(Map[String, AnyRef]("body" -> "{\"theme\":{\"controller\":[{\"name\":\"dictionary\",\"type\":\"data\",\"id\":\"dictionary\",\"__cdata\":{}}],\"manifest\":{\"media\":[{\"id\":\"\",\"src\":\"/content-plugins/org.ekstep.questionset-1.0/editor/assets/quizimage.png\",\"assetId\":\"QuizImage\",\"type\":\"image\",\"preload\":true}]}}}"))
+    )
+
+    assertThrows[InvalidContentException] {
+      ExtractableMimeTypeHelper.processECMLBody(obj, jobConfig)(ec, cloudStorageUtil)
+    }
+  }
+
+  "processECMLBody with json " should " throw exception Error! Invalid Media ('type' is required.) if media type is blank" in {
+    val obj: ObjectData = new ObjectData("do_113188615625731",
+      Map[String, AnyRef]("identifier" -> "do_113188615625731", "objectType" -> "Content", "mimeType" -> "application/vnd.ekstep.ecml-archive", "primaryCategory" -> "some category", "name" -> "Some Content", "code" -> "some code"),
+      Some(Map[String, AnyRef]("body" -> "{\"theme\":{\"controller\":[{\"name\":\"dictionary\",\"type\":\"data\",\"id\":\"dictionary\",\"__cdata\":{}}],\"manifest\":{\"media\":[{\"id\":\"QuizImage\",\"src\":\"/content-plugins/org.ekstep.questionset-1.0/editor/assets/quizimage.png\",\"assetId\":\"QuizImage\",\"type\":\"\",\"preload\":true}]}}}"))
+    )
+
+    assertThrows[InvalidContentException] {
+      ExtractableMimeTypeHelper.processECMLBody(obj, jobConfig)(ec, cloudStorageUtil)
+    }
+  }
+
+  "processECMLBody with json " should " throw exception Error! Invalid Media ('src' is required.) if media src is blank" in {
+    val obj: ObjectData = new ObjectData("do_113188615625731",
+      Map[String, AnyRef]("identifier" -> "do_113188615625731", "objectType" -> "Content", "mimeType" -> "application/vnd.ekstep.ecml-archive", "primaryCategory" -> "some category", "name" -> "Some Content", "code" -> "some code"),
+      Some(Map[String, AnyRef]("body" -> "{\"theme\":{\"controller\":[{\"name\":\"dictionary\",\"type\":\"data\",\"id\":\"dictionary\",\"__cdata\":{}}],\"manifest\":{\"media\":[{\"id\":\"QuizImage\",\"src\":\"\",\"assetId\":\"QuizImage\",\"type\":\"image\",\"preload\":true}]}}}"))
+    )
+
+    assertThrows[InvalidContentException] {
+      ExtractableMimeTypeHelper.processECMLBody(obj, jobConfig)(ec, cloudStorageUtil)
+    }
   }
 
   "processECMLBody with json " should " process the ecml body" in {

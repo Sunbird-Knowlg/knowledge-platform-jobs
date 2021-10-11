@@ -76,11 +76,8 @@ object XmlParser {
       val `type`: String = attributeMap.getOrElse("type", "").asInstanceOf[String]
       val src: String = attributeMap.getOrElse("src", "").asInstanceOf[String]
       if (validateNode) {
-        if (StringUtils.isBlank(id))
-          throw new InvalidContentException("Error! Invalid Media ('id' is required.) in '" + node.buildString(true) + "' ...")
-
         if (StringUtils.isBlank(id) && !(StringUtils.isNotBlank(`type`) && (StringUtils.equalsIgnoreCase(`type`, "js") || StringUtils.equalsIgnoreCase(`type`, "css"))))
-          throw new InvalidContentException("Error! Invalid Media ('type' is required.) in '" + node.buildString(true) + "' ...")
+          throw new InvalidContentException("Error! Invalid Media ('id' is required.) in '" + node.buildString(true) + "' ...")
         if (StringUtils.isBlank(`type`))
           throw new InvalidContentException("Error! Invalid Media ('type' is required.) in '" + node.buildString(true) + "' ...")
         if (StringUtils.isBlank(src))
