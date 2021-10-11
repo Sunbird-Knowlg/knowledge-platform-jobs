@@ -120,12 +120,11 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
     val children = data.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
     val updatedChildren = updateHierarchyMetadata(children, data)(config)
     val updatedObj = updateRootChildrenList(data, updatedChildren)
-    val nodes = ListBuffer.empty
-    val nodeIds = ListBuffer.empty
+    val nodes = ListBuffer.empty[ObjectData]
+    val nodeIds = ListBuffer.empty[String]
     nodes += data
     nodeIds += data.identifier
-//    getNodeMap(children, nodes, nodeIds)
-
+    getNodeMap(children, nodes, nodeIds)
 
     logger.info("CollectionPulisher:getObjectWithEcar: Ecar generation done for Content: " + updatedObj.identifier)
     val ecarMap: Map[String, String] = generateEcar(updatedObj, pkgTypes)
@@ -565,71 +564,57 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
     new ObjectData(obj.identifier, obj.metadata ++ Map("children"-> childrenMap), obj.extData, obj.hierarchy)
   }
 
-//  private def getNodeMap(children: List[Map[String, AnyRef]], nodes: ListBuffer[ObjectData], nodeIds: ListBuffer[String]): Unit = {
-//    if (children.nonEmpty) {
-//      children.foreach((child: Map[String, AnyRef]) => {
-//        def foo(child: Map[String, AnyRef]) = {
-//          var node: ObjectData = null
-//          try {
-//            if (StringUtils.equalsIgnoreCase("Default", child.get("visibility").asInstanceOf[String])) {
-//              node = util.getNode(ContentWorkflowPipelineParams.domain.name, child.get("identifier").asInstanceOf[String]) //getContentNode(TAXONOMY_ID, (String) child.get("identifier"), null);
-//
-//              node.getMetadata.remove("children")
-//              val childData: Map[String, AnyRef] = new HashMap[String, AnyRef]
-//              childData.putAll(child)
-//              val nextLevelNodes: List[Map[String, AnyRef]] = childData.get("children").asInstanceOf[List[Map[String, AnyRef]]]
-//              var finalChildList: List[Map[String, AnyRef]] = new ArrayList[Map[String, AnyRef]]
-//              if (CollectionUtils.isNotEmpty(nextLevelNodes)) {
-//                finalChildList = nextLevelNodes.stream.map((nextLevelNode: Map[String, AnyRef]) => {
-//                  def foo(nextLevelNode: Map[String, AnyRef]) = {
-//                    val metadata: Map[String, AnyRef] = new HashMap[String, AnyRef]() {}
-//                    return metadata
-//                  }
-//
-//                  foo(nextLevelNode)
-//                }).collect(Collectors.toList)
-//              }
-//              node.getMetadata.put("children", finalChildList)
-//            }
-//            else {
-//              val childData: Map[String, AnyRef] = new HashMap[String, AnyRef]
-//              childData.putAll(child)
-//              val nextLevelNodes: List[Map[String, AnyRef]] = childData.get("children").asInstanceOf[List[Map[String, AnyRef]]]
-//              childData.remove("children")
-//              node = ConvertToGraphNode.convertToGraphNode(childData, definition, null)
-//              var finalChildList: List[Map[String, AnyRef]] = new ArrayList[Map[String, AnyRef]]
-//              if (CollectionUtils.isNotEmpty(nextLevelNodes)) {
-//                finalChildList = nextLevelNodes.stream.map((nextLevelNode: Map[String, AnyRef]) => {
-//                  def foo(nextLevelNode: Map[String, AnyRef]) = {
-//                    val metadata: Map[String, AnyRef] = new HashMap[String, AnyRef]() {}
-//                    return metadata
-//                  }
-//
-//                  foo(nextLevelNode)
-//                }).collect(Collectors.toList)
-//              }
-//              node.getMetadata.put("children", finalChildList)
-//              if (StringUtils.isBlank(node.getObjectType)) {
-//                node.setObjectType(ContentWorkflowPipelineParams.Content.name)
-//              }
-//              if (StringUtils.isBlank(node.getGraphId)) {
-//                node.setGraphId(ContentWorkflowPipelineParams.domain.name)
-//              }
-//            }
-//            if (!(nodeIds.contains(node.getIdentifier))) {
-//              nodes.add(node)
-//              nodeIds.add(node.getIdentifier)
-//            }
-//          } catch {
-//            case e: Exception =>
-//              LOGGER.error("Error while generating node map. ", e)
-//          }
-//          getNodeMap(child.get("children").asInstanceOf[List[Map[String, AnyRef]]], nodes, nodeIds, definition)
-//        }
-//
-//        foo(child)
-//      })
-//    }
-//  }
+  private def getNodeMap(children: List[Map[String, AnyRef]], nodes: ListBuffer[ObjectData], nodeIds: ListBuffer[String])(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil): Unit = {
+    if (children.nonEmpty) {
+      children.foreach((child: Map[String, AnyRef]) => {
+         val updatedChildMetadata = try {
+            if (StringUtils.equalsIgnoreCase("Default", child.get("visibility").asInstanceOf[String])) {
+             val nodeMetadata = neo4JUtil.getNodeProperties(child.get("identifier").asInstanceOf[String])
+              nodeMetadata.remove("children")
+              val childData: mutable.Map[String, AnyRef] = mutable.Map.empty[String, AnyRef]
+              childData += child
+              val nextLevelNodes: List[Map[String, AnyRef]] = childData.get("children").asInstanceOf[List[Map[String, AnyRef]]]
+              val finalChildList = if (nextLevelNodes.nonEmpty) {
+                nextLevelNodes.map((nextLevelNode: Map[String, AnyRef]) => {
+                  Map("identifier" -> nextLevelNode.get("identifier").asInstanceOf[String], "name" -> nextLevelNode.get("name").asInstanceOf[String],
+                    "objectType" -> nextLevelNode.get("objectType").asInstanceOf[String], "description" -> nextLevelNode.get("description").asInstanceOf[String],
+                    "index" -> nextLevelNode.get("index").asInstanceOf[String])
+                })
+              }
+              nodeMetadata.put("children", finalChildList.asInstanceOf[AnyRef])
+            }
+            else {
+              val childData: mutable.Map[String, AnyRef] = mutable.Map.empty[String, AnyRef]
+              childData += child
+              val nextLevelNodes: List[Map[String, AnyRef]] = childData.get("children").asInstanceOf[List[Map[String, AnyRef]]]
+              childData.remove("children")
+              val nodeMetadata = childData
+              val finalChildList = if (nextLevelNodes.nonEmpty) {
+                nextLevelNodes.map((nextLevelNode: Map[String, AnyRef]) => {
+                  Map("identifier" -> nextLevelNode.get("identifier").asInstanceOf[String], "name" -> nextLevelNode.get("name").asInstanceOf[String],
+                    "objectType" -> nextLevelNode.get("objectType").asInstanceOf[String], "description" -> nextLevelNode.get("description").asInstanceOf[String],
+                    "index" -> nextLevelNode.get("index").asInstanceOf[String])
+                })
+              }
+              nodeMetadata.put("children", finalChildList.asInstanceOf[AnyRef])
+              if (StringUtils.isBlank(nodeMetadata.get("objectType").asInstanceOf[String])) {
+                nodeMetadata ++ ("objectType" -> "content")
+              }
+              if (StringUtils.isBlank(nodeMetadata.get("objectType").asInstanceOf[String])) {
+                nodeMetadata ++ ("graphId" -> "domain")
+              }
+            }
+            if (!nodeIds.contains(child.get("identifier").asInstanceOf[String])) {
+              nodes += new ObjectData(child.get("identifier").asInstanceOf[String], updatedChildMetadata, Option(Map.empty[String, AnyRef]), Option(Map.empty[String, AnyRef]))
+              nodeIds += child.get("identifier").asInstanceOf[String]
+            }
+          } catch {
+            case e: Exception => logger.error("Error while generating node map. ", e)
+          }
+          getNodeMap(child.get("children").asInstanceOf[List[Map[String, AnyRef]]], nodes, nodeIds)
+
+      })
+    }
+  }
 
 }
