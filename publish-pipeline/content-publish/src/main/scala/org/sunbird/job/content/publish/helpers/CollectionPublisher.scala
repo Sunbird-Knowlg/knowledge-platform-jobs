@@ -44,7 +44,7 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
     } else Option(Map())
   }
 
-  def getCollectionHierarchy(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil) = {
+  def getCollectionHierarchy(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Row = {
     val selectWhere: Select.Where = QueryBuilder.select().all()
       .from(readerConfig.keyspace, readerConfig.table).
       where()
@@ -569,7 +569,7 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
       children.foreach((child: Map[String, AnyRef]) => {
          val updatedChildMetadata = try {
             if (StringUtils.equalsIgnoreCase("Default", child.get("visibility").asInstanceOf[String])) {
-             val nodeMetadata = neo4JUtil.getNodeProperties(child.get("identifier").asInstanceOf[String])
+             val nodeMetadata = neo4JUtil.getNodeProperties(child.get("identifier").asInstanceOf[String]) // CHECK IF THIS IS GOOD
               nodeMetadata.remove("children")
               val childData: mutable.Map[String, AnyRef] = mutable.Map.empty[String, AnyRef]
               childData += child
@@ -588,7 +588,7 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
               childData += child
               val nextLevelNodes: List[Map[String, AnyRef]] = childData.get("children").asInstanceOf[List[Map[String, AnyRef]]]
               childData.remove("children")
-              val nodeMetadata = childData
+              val nodeMetadata = childData // CHECK WHAT VALUE IS TO BE PUT HERE
               val finalChildList = if (nextLevelNodes.nonEmpty) {
                 nextLevelNodes.map((nextLevelNode: Map[String, AnyRef]) => {
                   Map("identifier" -> nextLevelNode.get("identifier").asInstanceOf[String], "name" -> nextLevelNode.get("name").asInstanceOf[String],
