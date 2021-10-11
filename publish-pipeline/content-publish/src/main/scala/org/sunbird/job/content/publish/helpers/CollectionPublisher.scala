@@ -114,7 +114,7 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
     messages.toList
   }
 
-  def getObjectWithEcar(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, cloudStorageUtil: CloudStorageUtil, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
+  def getObjectWithEcar(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
 
     // Line 1107 in PublishFinalizer
     val children = data.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
@@ -564,7 +564,7 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
     new ObjectData(obj.identifier, obj.metadata ++ Map("children"-> childrenMap), obj.extData, obj.hierarchy)
   }
 
-  private def getNodeMap(children: List[Map[String, AnyRef]], nodes: ListBuffer[ObjectData], nodeIds: ListBuffer[String])(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil): Unit = {
+  private def getNodeMap(children: List[Map[String, AnyRef]], nodes: ListBuffer[ObjectData], nodeIds: ListBuffer[String])(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): Unit = {
     if (children.nonEmpty) {
       children.foreach((child: Map[String, AnyRef]) => {
          val updatedChildMetadata = try {
@@ -588,7 +588,7 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
               childData += child
               val nextLevelNodes: List[Map[String, AnyRef]] = childData.get("children").asInstanceOf[List[Map[String, AnyRef]]]
               childData.remove("children")
-              val nodeMetadata = childData // CHECK WHAT VALUE IS TO BE PUT HERE
+              val nodeMetadata = collection.mutable.Map() ++ getHierarchy(child.get("identifier").asInstanceOf[String], child.get("pkgVersion").asInstanceOf[Int], readerConfig).get // CHECK WHAT VALUE IS TO BE PUT HERE
               val finalChildList = if (nextLevelNodes.nonEmpty) {
                 nextLevelNodes.map((nextLevelNode: Map[String, AnyRef]) => {
                   Map("identifier" -> nextLevelNode.get("identifier").asInstanceOf[String], "name" -> nextLevelNode.get("name").asInstanceOf[String],
