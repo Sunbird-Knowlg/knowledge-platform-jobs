@@ -141,9 +141,16 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
     } else None
   }
 
-  def getUnitsFromLiveContent(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil): List[String] = {
-    val metaData = Option(neo4JUtil.getNodeProperties(obj.identifier)).getOrElse(neo4JUtil.getNodeProperties(obj.identifier)).asScala.toMap
-    metaData.getOrElse("childNodes",List.empty).asInstanceOf[List[String]]
+  def getUnitsFromLiveContent(obj: ObjectData)(implicit cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): List[String] = {
+    val objHierarchy = getHierarchy(obj.metadata.get("identifier").asInstanceOf[String], obj.metadata.getOrElse("pkgVersion", 0.0).asInstanceOf[Double], readerConfig).get
+    val children = objHierarchy.get("children").asInstanceOf[List[Map[String, AnyRef]]]
+    if(children.nonEmpty) {
+      children.map(child => {
+        if(child.get("visibility").asInstanceOf[String].equalsIgnoreCase("Parent")){
+          child.get("identifier").asInstanceOf[String]
+        } else ""
+      }).filter(rec => rec.nonEmpty)
+    } else List.empty[String]
   }
 
   def isContentShallowCopy(obj: ObjectData): Boolean = {

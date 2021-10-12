@@ -86,7 +86,7 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
 
           // Collection - add step to remove units of already Live content from redis - line 243 in PublishFinalizer
           if (data.pkgVersion > 1) {
-            val childNodes = getUnitsFromLiveContent(updatedObj)(neo4JUtil)
+            val childNodes = getUnitsFromLiveContent(updatedObj)(cassandraUtil, readerConfig)
             childNodes.foreach(childId => cache.del(childId))
           }
 
