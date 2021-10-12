@@ -90,9 +90,9 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
 
     logger.info("Collection processing started for content: " + updatedObj.identifier)
     val enrichedObj = processCollection(updatedObj, childrenBuffer.toList)
-    logger.info("Collection processing done for content: " + updatedObj.identifier)
-    logger.info("Collection data after processing for : " + updatedObj.identifier + " | Metadata : " + updatedObj.metadata)
-    logger.info("Collection children data after processing : " + children)
+    logger.info("Collection processing done for content: " + enrichedObj.identifier)
+    logger.info("Collection data after processing for : " + enrichedObj.identifier + " | Metadata : " + enrichedObj.metadata)
+    logger.info("Collection children data after processing : " + enrichedObj.hierarchy.get("children"))
 
     Some(enrichedObj)
   }
