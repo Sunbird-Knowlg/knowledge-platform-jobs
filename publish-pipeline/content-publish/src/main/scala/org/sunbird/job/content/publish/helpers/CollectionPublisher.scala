@@ -83,7 +83,7 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
         enrichChildren(childrenBuffer, collectionResourceChildNodes, obj)
         if (collectionResourceChildNodes.nonEmpty) {
           val collectionChildNodes: List[String] = obj.metadata.getOrElse("childNodes",List.empty).asInstanceOf[List[String]]
-          new ObjectData(obj.identifier, obj.metadata ++ Map("childNodes" -> (collectionChildNodes ++ collectionResourceChildNodes)), obj.extData, Option(collectionHierarchy))
+          new ObjectData(obj.identifier, obj.metadata ++ Map("childNodes" -> (collectionChildNodes ++ collectionResourceChildNodes).distinct), obj.extData, Option(collectionHierarchy))
         } else obj
       } else obj
     } else obj
@@ -94,7 +94,7 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
     logger.info("Collection data after processing for : " + updatedObj.identifier + " | Metadata : " + updatedObj.metadata)
     logger.info("Collection children data after processing : " + children)
 
-    Some(new ObjectData(obj.identifier, enrichedObj.metadata ++ updatedCompatibilityLevel, obj.extData, obj.hierarchy))
+    Some(enrichedObj)
   }
 
   override def getDataForEcar(obj: ObjectData): Option[List[Map[String, AnyRef]]] = {
