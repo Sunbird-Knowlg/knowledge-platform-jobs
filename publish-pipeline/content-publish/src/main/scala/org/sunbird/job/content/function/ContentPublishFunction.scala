@@ -72,7 +72,7 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
         metrics.incCounter(config.skippedEventCount)
         logger.info(s"""pkgVersion should be greater than or equal to the obj.pkgVersion for : ${obj.identifier}""")
       } else {
-        val messages: List[String] = validate(obj, obj.identifier, config, validateMetadata)
+        val messages: List[String] = validate(obj, obj.identifier, validateMetadata)
         if (messages.isEmpty) {
           // Pre-publish update
           updateProcessingNode(new ObjectData(obj.identifier, obj.metadata ++ Map("lastPublishedBy" -> data.lastPublishedBy), obj.extData, obj.hierarchy))(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
