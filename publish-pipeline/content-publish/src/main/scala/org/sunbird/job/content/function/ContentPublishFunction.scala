@@ -64,10 +64,10 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
   }
 
   override def processElement(data: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
+    logger.info("Content publishing started for : " + data.identifier)
+    metrics.incCounter(config.contentPublishEventCount)
+    val obj: ObjectData = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(neo4JUtil, cassandraUtil)
     try {
-      logger.info("Content publishing started for : " + data.identifier)
-      metrics.incCounter(config.contentPublishEventCount)
-      val obj: ObjectData = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(neo4JUtil, cassandraUtil)
       if (obj.pkgVersion > data.pkgVersion) {
         metrics.incCounter(config.skippedEventCount)
         logger.info(s"""pkgVersion should be greater than or equal to the obj.pkgVersion for : ${obj.identifier}""")
@@ -100,9 +100,10 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
       }
     } catch {
       case ex@(_: InvalidContentException | _: ClientException) => // ClientException - Invalid input exception.
-        logger.error("Error while publishing content :: " + ex.getMessage)
         ex.printStackTrace()
+        saveOnFailure(obj, List(ex.getMessage))(neo4JUtil)
         pushFailedEvent(data, null, ex, context)(metrics)
+        logger.error("Error while publishing content :: " + ex.getMessage)
       case ex: Exception =>
         ex.printStackTrace();
         logger.error(s"Error while processing message for Partition: ${data.partition} and Offset: ${data.offset}. Error : ${ex.getMessage}", ex)
@@ -132,8 +133,8 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
     event
   }
 
-  private def pushFailedEvent(event: Event, errorString: String, error: Throwable, context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
-    val failedEvent = if (error == null) getFailedEvent(event.jobName, event.getMap(), errorString) else getFailedEvent(event.jobName, event.getMap(), error)
+  private def pushFailedEvent(event: Event, errorMessage: String, error: Throwable, context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
+    val failedEvent = if (error == null) getFailedEvent(event.jobName, event.getMap(), errorMessage) else getFailedEvent(event.jobName, event.getMap(), error)
     context.output(config.failedEventOutTag, failedEvent)
     metrics.incCounter(config.contentPublishFailedEventCount)
   }
