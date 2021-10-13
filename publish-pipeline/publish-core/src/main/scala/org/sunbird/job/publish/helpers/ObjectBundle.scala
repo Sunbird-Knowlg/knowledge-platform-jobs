@@ -4,7 +4,7 @@ import org.apache.commons.io.{FilenameUtils, IOUtils}
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
-import org.sunbird.job.exception.InvalidContentException
+import org.sunbird.job.exception.InvalidInputException
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ObjectData}
 import org.sunbird.job.util.{FileUtils, JSONUtil, ScalaJsonUtil, Slug}
@@ -88,7 +88,7 @@ trait ObjectBundle {
     val duration: String = config.getString("media_download_duration", "300 seconds")
     val downloadedMedias: List[File] = Await.result(downloadFiles(obj.identifier, downloadUrls, bundlePath), Duration.apply(duration))
     if (downloadUrls.nonEmpty && downloadedMedias.isEmpty)
-      throw new InvalidContentException("Error Occurred While Downloading Bundle Media Files For : " + obj.identifier)
+      throw new InvalidInputException("Error Occurred While Downloading Bundle Media Files For : " + obj.identifier)
     val manifestFile: File = getManifestFile(obj.identifier, objType, bundlePath, updatedObjList)
     val hierarchyFile: File = getHierarchyFile(obj, bundlePath).getOrElse(new File(bundlePath))
     val fList = if (obj.hierarchy.getOrElse(Map()).nonEmpty) List(manifestFile, hierarchyFile) else List(manifestFile)
@@ -116,7 +116,7 @@ trait ObjectBundle {
                   try {
                     FileUtils.downloadFile(url, destPath)
                   } catch {
-                    case e: Exception => throw new InvalidContentException(s"Error while downloading file $url", e)
+                    case e: Exception => throw new InvalidInputException(s"Error while downloading file $url", e)
                   }
               }
             }

@@ -2,9 +2,9 @@ package org.sunbird.job.exception
 
 import org.slf4j.LoggerFactory
 
-class InvalidContentException(message: String, cause: Throwable = null) extends Exception(message, cause) {
+class InvalidInputException(message: String, cause: Throwable = null) extends Exception(message, cause) {
 
-  private[this] val logger = LoggerFactory.getLogger(classOf[InvalidContentException])
+  private[this] val logger = LoggerFactory.getLogger(classOf[InvalidInputException])
 
   def this(message: String, event: Map[String, Any], cause: Throwable) = {
     this(message, cause)

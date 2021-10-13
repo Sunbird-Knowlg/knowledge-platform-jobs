@@ -1,7 +1,7 @@
 package org.sunbird.job.content.publish.processor
 
 import org.apache.commons.lang3.{StringEscapeUtils, StringUtils}
-import org.sunbird.job.exception.InvalidContentException
+import org.sunbird.job.exception.InvalidInputException
 
 import scala.collection.mutable.ListBuffer
 import scala.xml._
@@ -77,11 +77,11 @@ object XmlParser {
       val src: String = attributeMap.getOrElse("src", "").asInstanceOf[String]
       if (validateNode) {
         if (StringUtils.isBlank(id) && !(StringUtils.isNotBlank(`type`) && (StringUtils.equalsIgnoreCase(`type`, "js") || StringUtils.equalsIgnoreCase(`type`, "css"))))
-          throw new InvalidContentException("Error! Invalid Media ('id' is required.) in '" + node.buildString(true) + "' ...")
+          throw new InvalidInputException("Error! Invalid Media ('id' is required.) in '" + node.buildString(true) + "' ...")
         if (StringUtils.isBlank(`type`))
-          throw new InvalidContentException("Error! Invalid Media ('type' is required.) in '" + node.buildString(true) + "' ...")
+          throw new InvalidInputException("Error! Invalid Media ('type' is required.) in '" + node.buildString(true) + "' ...")
         if (StringUtils.isBlank(src))
-          throw new InvalidContentException("Error! Invalid Media ('src' is required.) in '" + node.buildString(true) + "' ...")
+          throw new InvalidInputException("Error! Invalid Media ('src' is required.) in '" + node.buildString(true) + "' ...")
       }
       Media(id, getData(node), getInnerText(node), getCdata(node), src, `type`, getChildrenPlugin(node))
     } else classOf[Media].newInstance()

@@ -6,7 +6,7 @@ import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
 import org.sunbird.job.content.publish.helpers.ExtractableMimeTypeHelper
 import org.sunbird.job.content.task.ContentPublishConfig
-import org.sunbird.job.exception.InvalidContentException
+import org.sunbird.job.exception.InvalidInputException
 import org.sunbird.job.publish.core.ObjectData
 import org.sunbird.job.util.CloudStorageUtil
 
@@ -23,7 +23,7 @@ class ExtractableMimeTypeHelperSpec extends FlatSpec with BeforeAndAfterAll with
       Some(Map[String, AnyRef]("body" -> "<theme><manifest><media plugin=\"org.ekstep.navigation\" id=\"\" ver=\"1.0\" src=\"content-plugins/org.ekstep.navigation-1.0/renderer/plugin.js\" type=\"plugin\"></media></manifest></theme>"))
     )
 
-    assertThrows[InvalidContentException] {
+    assertThrows[InvalidInputException] {
       ExtractableMimeTypeHelper.processECMLBody(obj, jobConfig)(ec, cloudStorageUtil)
     }
   }
@@ -34,7 +34,7 @@ class ExtractableMimeTypeHelperSpec extends FlatSpec with BeforeAndAfterAll with
       Some(Map[String, AnyRef]("body" -> "<theme><manifest><media plugin=\"org.ekstep.navigation\" id=\"org.ekstep.navigation\" ver=\"1.0\" src=\"content-plugins/org.ekstep.navigation-1.0/renderer/plugin.js\" type=\"\"></media></manifest></theme>"))
     )
 
-    assertThrows[InvalidContentException] {
+    assertThrows[InvalidInputException] {
       ExtractableMimeTypeHelper.processECMLBody(obj, jobConfig)(ec, cloudStorageUtil)
     }
   }
@@ -45,7 +45,7 @@ class ExtractableMimeTypeHelperSpec extends FlatSpec with BeforeAndAfterAll with
       Some(Map[String, AnyRef]("body" -> "<theme><manifest><media plugin=\"org.ekstep.navigation\" id=\"org.ekstep.navigation\" ver=\"1.0\" src=\"\" type=\"plugin\"></media></manifest></theme>"))
     )
 
-    assertThrows[InvalidContentException] {
+    assertThrows[InvalidInputException] {
       ExtractableMimeTypeHelper.processECMLBody(obj, jobConfig)(ec, cloudStorageUtil)
     }
   }
@@ -68,7 +68,7 @@ class ExtractableMimeTypeHelperSpec extends FlatSpec with BeforeAndAfterAll with
       Some(Map[String, AnyRef]())
     )
 
-    assertThrows[InvalidContentException] {
+    assertThrows[InvalidInputException] {
       val result: Map[String, AnyRef] = ExtractableMimeTypeHelper.processECMLBody(obj, jobConfig)(ec, cloudStorageUtil)
     }
   }
@@ -79,7 +79,7 @@ class ExtractableMimeTypeHelperSpec extends FlatSpec with BeforeAndAfterAll with
       Some(Map[String, AnyRef]("body" -> "Invalid body"))
     )
 
-    assertThrows[InvalidContentException] {
+    assertThrows[InvalidInputException] {
       ExtractableMimeTypeHelper.processECMLBody(obj, jobConfig)(ec, cloudStorageUtil)
     }
   }
@@ -90,7 +90,7 @@ class ExtractableMimeTypeHelperSpec extends FlatSpec with BeforeAndAfterAll with
       Some(Map[String, AnyRef]("body" -> "{\"theme\":{\"controller\":[{\"name\":\"dictionary\",\"type\":\"data\",\"id\":\"\",\"__cdata\":{}}]}}"))
     )
 
-    assertThrows[InvalidContentException] {
+    assertThrows[InvalidInputException] {
       ExtractableMimeTypeHelper.processECMLBody(obj, jobConfig)(ec, cloudStorageUtil)
     }
   }
@@ -101,7 +101,7 @@ class ExtractableMimeTypeHelperSpec extends FlatSpec with BeforeAndAfterAll with
       Some(Map[String, AnyRef]("body" -> "{\"theme\":{\"controller\":[{\"name\":\"dictionary\",\"type\":\"\",\"id\":\"dictionary\",\"__cdata\":{}}]}}"))
     )
 
-    assertThrows[InvalidContentException] {
+    assertThrows[InvalidInputException] {
       ExtractableMimeTypeHelper.processECMLBody(obj, jobConfig)(ec, cloudStorageUtil)
     }
   }
@@ -112,7 +112,7 @@ class ExtractableMimeTypeHelperSpec extends FlatSpec with BeforeAndAfterAll with
       Some(Map[String, AnyRef]("body" -> "{\"theme\":{\"controller\":[{\"name\":\"dictionary\",\"type\":\"some type\",\"id\":\"dictionary\",\"__cdata\":{}}]}}"))
     )
 
-    assertThrows[InvalidContentException] {
+    assertThrows[InvalidInputException] {
       ExtractableMimeTypeHelper.processECMLBody(obj, jobConfig)(ec, cloudStorageUtil)
     }
   }
@@ -123,7 +123,7 @@ class ExtractableMimeTypeHelperSpec extends FlatSpec with BeforeAndAfterAll with
       Some(Map[String, AnyRef]("body" -> "{\"theme\":{\"controller\":[{\"name\":\"dictionary\",\"type\":\"data\",\"id\":\"dictionary\",\"__cdata\":{}}],\"manifest\":{\"media\":[{\"id\":\"\",\"src\":\"/content-plugins/org.ekstep.questionset-1.0/editor/assets/quizimage.png\",\"assetId\":\"QuizImage\",\"type\":\"image\",\"preload\":true}]}}}"))
     )
 
-    assertThrows[InvalidContentException] {
+    assertThrows[InvalidInputException] {
       ExtractableMimeTypeHelper.processECMLBody(obj, jobConfig)(ec, cloudStorageUtil)
     }
   }
@@ -134,7 +134,7 @@ class ExtractableMimeTypeHelperSpec extends FlatSpec with BeforeAndAfterAll with
       Some(Map[String, AnyRef]("body" -> "{\"theme\":{\"controller\":[{\"name\":\"dictionary\",\"type\":\"data\",\"id\":\"dictionary\",\"__cdata\":{}}],\"manifest\":{\"media\":[{\"id\":\"QuizImage\",\"src\":\"/content-plugins/org.ekstep.questionset-1.0/editor/assets/quizimage.png\",\"assetId\":\"QuizImage\",\"type\":\"\",\"preload\":true}]}}}"))
     )
 
-    assertThrows[InvalidContentException] {
+    assertThrows[InvalidInputException] {
       ExtractableMimeTypeHelper.processECMLBody(obj, jobConfig)(ec, cloudStorageUtil)
     }
   }
@@ -145,7 +145,7 @@ class ExtractableMimeTypeHelperSpec extends FlatSpec with BeforeAndAfterAll with
       Some(Map[String, AnyRef]("body" -> "{\"theme\":{\"controller\":[{\"name\":\"dictionary\",\"type\":\"data\",\"id\":\"dictionary\",\"__cdata\":{}}],\"manifest\":{\"media\":[{\"id\":\"QuizImage\",\"src\":\"\",\"assetId\":\"QuizImage\",\"type\":\"image\",\"preload\":true}]}}}"))
     )
 
-    assertThrows[InvalidContentException] {
+    assertThrows[InvalidInputException] {
       ExtractableMimeTypeHelper.processECMLBody(obj, jobConfig)(ec, cloudStorageUtil)
     }
   }

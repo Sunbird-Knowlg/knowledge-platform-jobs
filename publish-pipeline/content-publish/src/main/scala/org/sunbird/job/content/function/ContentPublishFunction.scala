@@ -12,7 +12,7 @@ import org.sunbird.job.content.publish.domain.Event
 import org.sunbird.job.content.publish.helpers.{ContentPublisher, ExtractableMimeTypeHelper}
 import org.sunbird.job.content.task.ContentPublishConfig
 import org.sunbird.job.domain.`object`.DefinitionCache
-import org.sunbird.job.exception.InvalidContentException
+import org.sunbird.job.exception.InvalidInputException
 import org.sunbird.job.helper.FailedEventHelper
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
 import org.sunbird.job.publish.helpers.EcarPackageType
@@ -99,7 +99,7 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
         }
       }
     } catch {
-      case ex@(_: InvalidContentException | _: ClientException) => // ClientException - Invalid input exception.
+      case ex@(_: InvalidInputException | _: ClientException) => // ClientException - Invalid input exception.
         ex.printStackTrace()
         saveOnFailure(obj, List(ex.getMessage))(neo4JUtil)
         pushFailedEvent(data, null, ex, context)(metrics)
