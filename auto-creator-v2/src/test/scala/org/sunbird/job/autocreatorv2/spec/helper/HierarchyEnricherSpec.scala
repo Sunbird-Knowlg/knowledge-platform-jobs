@@ -21,11 +21,19 @@ class HierarchyEnricherSpec extends FlatSpec with BeforeAndAfterAll with Matcher
     question.getOrElse("downloadUrl", "").asInstanceOf[String] shouldEqual "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/questionset/do_113264104174723072120/test-1_1619580036855_do_113264104174723072120_9.ecar"
   }
 
-  "filterChildren" should "return the accepted questions of given children map" in {
+  "filterChildren" should "return the accepted contributions of given children map" in {
     val data = new ObjectData("do_113264102878707712117", "Content", Map("acceptedContributions"->List("do_113264104174723072120", "do_11336893318541312012")), Some(Map()), Some(getHierarchyTwo()))
     val chMap = new TestHierarchyEnricher().getChildren(data)(jobConfig)
     val filterChMap = new TestHierarchyEnricher().filterChildren(chMap, data)
     val result = filterChMap.contains("do_11336893318541312012")
+    result shouldBe(true)
+  }
+
+  "filterChildren" should "return the given children map if accepted contributions are empty" in {
+    val data = new ObjectData("do_113264102878707712117", "Content", Map(), Some(Map()), Some(getHierarchyTwo()))
+    val chMap = new TestHierarchyEnricher().getChildren(data)(jobConfig)
+    val filterChMap = new TestHierarchyEnricher().filterChildren(chMap, data)
+    val result = chMap.equals(filterChMap)
     result shouldBe(true)
   }
 
