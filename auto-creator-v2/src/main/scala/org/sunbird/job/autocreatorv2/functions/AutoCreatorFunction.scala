@@ -59,10 +59,7 @@ class AutoCreatorFunction(config: AutoCreatorV2Config, httpUtil: HttpUtil,
       logger.info("Final updated metadata |with cloud-store updates| for " + updatedObj.identifier)
       val enrObj = if (config.expandableObjects.contains(updatedObj.objectType)) {
         val chMap: Map[String, AnyRef] = getChildren(updatedObj)(config)
-        val acceptedContributions: List[String] = obj.metadata.getOrElse("acceptedContributions",List()).asInstanceOf[List[String]]
-        val filterChMap: Map[String, AnyRef] = if (acceptedContributions.nonEmpty) {
-          chMap.filterKeys(ch => acceptedContributions.contains(ch))
-        } else chMap
+        val filterChMap: Map[String, AnyRef] = filterChildren(chMap, updatedObj)
         val childrenObj: Map[String, ObjectData] = processChildren(filterChMap)(config, neo4JUtil, cassandraUtil, cloudStorageUtil, defCache, httpUtil)
         enrichHierarchy(updatedObj, childrenObj)(config)
       } else updatedObj
