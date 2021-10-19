@@ -39,8 +39,8 @@ class PublishEventRouter(config: ContentPublishConfig) extends BaseProcessFuncti
           context.output(config.contentPublishOutTag, event)
         }
         case "Collection" | "CollectionImage" => {
-          logger.info("PublishEventRouter :: Sending Collection For Publish Having Identifier: " + event.objectId)
-          context.output(config.collectionPublishOutTag, PublishMetadata(event.objectId, event.objectType, event.mimeType, event.pkgVersion, event.lastPublishedBy, event.publishType))
+          logger.info("PublishEventRouter :: Sending Collection For Publish Having Identifier: " + event.identifier)
+          context.output(config.collectionPublishOutTag, event)
         }
         case _ => {
           metrics.incCounter(config.skippedEventCount)
