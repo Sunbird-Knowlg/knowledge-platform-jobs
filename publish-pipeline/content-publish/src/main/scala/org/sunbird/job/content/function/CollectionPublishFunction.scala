@@ -7,27 +7,27 @@ import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cache.{DataCache, RedisConnect}
-import org.sunbird.job.content.publish.domain.PublishMetadata
+import org.sunbird.job.content.publish.domain.Event
 import org.sunbird.job.content.publish.helpers.CollectionPublisher
 import org.sunbird.job.content.task.ContentPublishConfig
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
 import org.sunbird.job.publish.helpers.EcarPackageType
-import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, ElasticSearchUtil, HttpUtil, Neo4JUtil}
+import org.sunbird.job.util._
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import java.lang.reflect.Type
 import scala.concurrent.ExecutionContext
 
 class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
-                             @transient var neo4JUtil: Neo4JUtil = null,
-                             @transient var cassandraUtil: CassandraUtil = null,
+                                @transient var neo4JUtil: Neo4JUtil = null,
+                                @transient var cassandraUtil: CassandraUtil = null,
                                 @transient var esUtil: ElasticSearchUtil = null,
-                             @transient var cloudStorageUtil: CloudStorageUtil = null,
-                             @transient var definitionCache: DefinitionCache = null,
-                             @transient var definitionConfig: DefinitionConfig = null)
-                            (implicit val stringTypeInfo: TypeInformation[String])
-  extends BaseProcessFunction[PublishMetadata, String](config) with CollectionPublisher {
+                                @transient var cloudStorageUtil: CloudStorageUtil = null,
+                                @transient var definitionCache: DefinitionCache = null,
+                                @transient var definitionConfig: DefinitionConfig = null)
+                               (implicit val stringTypeInfo: TypeInformation[String])
+  extends BaseProcessFunction[Event, String](config) with CollectionPublisher {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[CollectionPublishFunction])
   val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
@@ -62,7 +62,7 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
     List(config.collectionPublishEventCount, config.collectionPublishSuccessEventCount, config.collectionPublishFailedEventCount, config.skippedEventCount)
   }
 
-  override def processElement(data: PublishMetadata, context: ProcessFunction[PublishMetadata, String]#Context, metrics: Metrics): Unit = {
+  override def processElement(data: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
     try {
       logger.info("Collection publishing started for : " + data.identifier)
       metrics.incCounter(config.collectionPublishEventCount)
@@ -76,7 +76,7 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
           // Pre-publish update
           updateProcessingNode(new ObjectData(obj.identifier, obj.metadata ++ Map("lastPublishedBy" -> data.lastPublishedBy), obj.extData, obj.hierarchy))(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
 
-          val isCollectionShallowCopy =  isContentShallowCopy(obj)
+          val isCollectionShallowCopy = isContentShallowCopy(obj)
           val updatedObj = if (isCollectionShallowCopy) updateOriginPkgVersion(obj)(neo4JUtil) else obj
 
           // Clear redis cache
@@ -87,7 +87,7 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
           // Collection - add step to remove units of already Live content from redis - line 243 in PublishFinalizer
           if (obj.identifier.endsWith(".img")) {
             val childNodes = getUnitsFromLiveContent(updatedObj)(cassandraUtil, readerConfig)
-            if(childNodes.exists(rec => rec.nonEmpty)) childNodes.foreach(childId => cache.del(COLLECTION_CACHE_KEY_PREFIX + childId))
+            if (childNodes.exists(rec => rec.nonEmpty)) childNodes.foreach(childId => cache.del(COLLECTION_CACHE_KEY_PREFIX + childId))
           }
 
           val enrichedObj = enrichObject(updatedObj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
@@ -99,7 +99,7 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
           // Collection - update and publish children - line 418 in PublishFinalizer
           val updatedChildren = updateHierarchyMetadata(children, objWithEcar)(config)
           publishHierarchy(updatedChildren, objWithEcar, readerConfig)(cassandraUtil)
-//          if (!isContentShallowCopy) syncNodes(updatedChildren, unitNodes)(esUtil)
+          //          if (!isContentShallowCopy) syncNodes(updatedChildren, unitNodes)(esUtil)
 
           metrics.incCounter(config.collectionPublishSuccessEventCount)
           logger.info("Collection publishing completed successfully for : " + data.identifier)
@@ -110,7 +110,7 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
         }
       }
     } catch {
-      case exp:Exception =>
+      case exp: Exception =>
         exp.printStackTrace()
         logger.info("CollectionPublishFunction::processElement::Exception" + exp.getMessage)
         throw exp
