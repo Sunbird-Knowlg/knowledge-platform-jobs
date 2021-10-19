@@ -4,7 +4,7 @@ import com.google.gson.reflect.TypeToken
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
-import org.sunbird.job.content.publish.domain.{Event, PublishMetadata}
+import org.sunbird.job.content.publish.domain.Event
 import org.sunbird.job.content.task.ContentPublishConfig
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
@@ -35,8 +35,8 @@ class PublishEventRouter(config: ContentPublishConfig) extends BaseProcessFuncti
     if (event.validEvent(config)) {
       event.objectType match {
         case "Content" | "ContentImage" => {
-          logger.info("PublishEventRouter :: Sending Content For Publish Having Identifier: " + event.objectId)
-          context.output(config.contentPublishOutTag, PublishMetadata(event.objectId, event.objectType, event.mimeType, event.pkgVersion, event.lastPublishedBy, event.publishType))
+          logger.info("PublishEventRouter :: Sending Content For Publish Having Identifier: " + event.identifier)
+          context.output(config.contentPublishOutTag, event)
         }
 //        case "Collection" | "CollectionImage" => {
 //          logger.info("PublishEventRouter :: Sending Collection For Publish Having Identifier: " + event.objectId)
@@ -44,11 +44,11 @@ class PublishEventRouter(config: ContentPublishConfig) extends BaseProcessFuncti
 //        }
         case _ => {
           metrics.incCounter(config.skippedEventCount)
-          logger.info("Invalid Object Type Received For Publish.| Identifier : " + event.objectId + " , objectType : " + event.objectType)
+          logger.info("Invalid Object Type Received For Publish.| Identifier : " + event.identifier + " , objectType : " + event.objectType)
         }
       }
     } else {
-      logger.warn("Event skipped for identifier: " + event.objectId + " objectType: " + event.objectType)
+      logger.warn("Event skipped for identifier: " + event.identifier + " objectType: " + event.objectType)
       metrics.incCounter(config.skippedEventCount)
     }
   }

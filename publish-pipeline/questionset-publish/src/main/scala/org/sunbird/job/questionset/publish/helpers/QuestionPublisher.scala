@@ -2,7 +2,6 @@ package org.sunbird.job.questionset.publish.helpers
 
 import com.datastax.driver.core.Row
 import com.datastax.driver.core.querybuilder.{QueryBuilder, Select}
-import org.apache.commons.io.FileUtils
 import org.apache.commons.lang3
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
@@ -10,12 +9,10 @@ import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core._
 import org.sunbird.job.publish.helpers._
-import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, Neo4JUtil, ScalaJsonUtil, Slug}
+import org.sunbird.job.util._
 
-import java.io.{File, FileInputStream, FileOutputStream, IOException}
-import java.nio.file.{Files, Path, Paths}
+import java.io.File
 import java.util
-import java.util.zip.{ZipEntry, ZipOutputStream}
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.duration.Duration
@@ -139,7 +136,7 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
 
       // create zip package
       val zipFileName: String = bundlePath + File.separator + obj.identifier + "_" + System.currentTimeMillis + ".zip"
-      createZipPackage(bundlePath, zipFileName)
+      FileUtils.createZipPackage(bundlePath, zipFileName)
 
       // upload zip file to blob and set artifactUrl
       val result: Array[String] = uploadArtifactToCloud(new File(zipFileName), obj.identifier)
@@ -159,53 +156,13 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
   def getIndexFile(identifier: String, objType: String, bundlePath: String, objList: List[Map[String, AnyRef]]): File = {
     try {
       val file: File = new File(bundlePath + File.separator + indexFileName)
-      val header: String = s"""{"id": "sunbird.${objType.toLowerCase()}.archive", "ver": "$defaultManifestVersion" ,"ts":"${getTimeStamp()}", "params":{"resmsgid": "${getUUID()}"}, "archive":{ "count": ${objList.size}, "ttl":24, "items": """
+      val header: String = s"""{"id": "sunbird.${objType.toLowerCase()}.archive", "ver": "$defaultManifestVersion" ,"ts":"$getTimeStamp", "params":{"resmsgid": "$getUUID"}, "archive":{ "count": ${objList.size}, "ttl":24, "items": """
       val mJson = header + ScalaJsonUtil.serialize(objList) + "}}"
       FileUtils.writeStringToFile(file, mJson)
       file
     } catch {
       case e: Exception => throw new Exception("Exception occurred while writing manifest file for : " + identifier, e)
     }
-  }
-
-  private def createZipPackage(basePath: String, zipFileName: String): Unit =
-    if (!StringUtils.isBlank(zipFileName)) {
-      logger.info("Creating Zip File: " + zipFileName)
-      val fileList: List[String] = generateFileList(basePath)
-      zipIt(zipFileName, fileList, basePath)
-    }
-
-  private def generateFileList(sourceFolder: String): List[String] =
-    Files.walk(Paths.get(new File(sourceFolder).getPath)).toArray()
-      .map(path => path.asInstanceOf[Path])
-      .filter(path => Files.isRegularFile(path))
-      .map(path => generateZipEntry(path.toString, sourceFolder)).toList
-
-
-  private def generateZipEntry(file: String, sourceFolder: String): String = file.substring(sourceFolder.length, file.length)
-
-  private def zipIt(zipFile: String, fileList: List[String], sourceFolder: String): Unit = {
-    val buffer = new Array[Byte](1024)
-    var zos: ZipOutputStream = null
-    try {
-      zos = new ZipOutputStream(new FileOutputStream(zipFile))
-      logger.info("Creating Zip File: " + zipFile)
-      fileList.foreach(file => {
-        val ze = new ZipEntry(file)
-        zos.putNextEntry(ze)
-        val in = new FileInputStream(sourceFolder + File.separator + file)
-        try {
-          var len = in.read(buffer)
-          while (len > 0) {
-            zos.write(buffer, 0, len)
-            len = in.read(buffer)
-          }
-        } finally if (in != null) in.close()
-        zos.closeEntry()
-      })
-    } catch {
-      case e: IOException => logger.error("Error! Something Went Wrong While Creating the ZIP File: " + e.getMessage, e)
-    } finally if (zos != null) zos.close()
   }
 
   private def uploadArtifactToCloud(uploadFile: File, identifier: String)(implicit cloudStorageUtil: CloudStorageUtil): Array[String] = {

@@ -307,7 +307,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
     val compositeFunc = new DIALCodeMetricsIndexerFunction(jobConfig)
     val event = getEvent(EventFixture.DATA_NODE_DELETE, 509674)
     val exception = new Exception(s"Test Exception Handling")
-    val failedEventString = compositeFunc.getFailedEvent(event, exception)
+    val failedEventString = compositeFunc.getFailedEvent(event.jobName, event.getMap(), exception)
     failedEventString.isEmpty should be(false)
     failedEventString.contains("failInfo") should be(true)
     failedEventString.contains("jobName") should be(true)
