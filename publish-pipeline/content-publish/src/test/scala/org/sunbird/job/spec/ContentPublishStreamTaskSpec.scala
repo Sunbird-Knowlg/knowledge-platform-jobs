@@ -83,7 +83,7 @@ class ContentPublishStreamTaskSpec extends BaseTestSpec {
     when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new ContentPublishFailedEventSink)
   }
 
-  "task process " should " publish the content " in {
+  "ContentPublishStreamTask process event " should " publish the content " in {
     when(mockNeo4JUtil.getNodeProperties(anyString())).thenReturn(new util.HashMap[String, AnyRef])
     initialize()
     new ContentPublishStreamTask(jobConfig, mockKafkaUtil, mockHttpUtil, mockNeo4JUtil).process()
