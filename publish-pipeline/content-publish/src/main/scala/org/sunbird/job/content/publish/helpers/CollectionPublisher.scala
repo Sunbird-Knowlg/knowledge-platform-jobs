@@ -574,13 +574,13 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
   private def getNodeMap(children: List[Map[String, AnyRef]], nodes: ListBuffer[ObjectData], nodeIds: ListBuffer[String])(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): Unit = {
     if (children.nonEmpty) {
       children.foreach((child: Map[String, AnyRef]) => {
-         val updatedChildMetadata = try {
-            if (StringUtils.equalsIgnoreCase("Default", child.get("visibility").asInstanceOf[String])) {
+         try {
+           val updatedChildMetadata: Map[String, AnyRef] = if (StringUtils.equalsIgnoreCase("Default", child.get("visibility").asInstanceOf[String])) {
              val nodeMetadata = neo4JUtil.getNodeProperties(child.get("identifier").asInstanceOf[String]) // CHECK IF THIS IS GOOD
               nodeMetadata.remove("children")
-              val childData: mutable.Map[String, AnyRef] = mutable.Map.empty[String, AnyRef]
-              childData += child
-              val nextLevelNodes: List[Map[String, AnyRef]] = childData.get("children").asInstanceOf[List[Map[String, AnyRef]]]
+//              val childData: mutable.Map[String, AnyRef] = mutable.Map.empty[String, AnyRef]
+//              childData += child
+              val nextLevelNodes: List[Map[String, AnyRef]] = child.get("children").asInstanceOf[List[Map[String, AnyRef]]]
               val finalChildList = if (nextLevelNodes.nonEmpty) {
                 nextLevelNodes.map((nextLevelNode: Map[String, AnyRef]) => {
                   Map("identifier" -> nextLevelNode.get("identifier").asInstanceOf[String], "name" -> nextLevelNode.get("name").asInstanceOf[String],
@@ -589,13 +589,14 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
                 })
               }
               nodeMetadata.put("children", finalChildList.asInstanceOf[AnyRef])
+             nodeMetadata.asScala.toMap[String, AnyRef]
             }
             else {
-              val childData: mutable.Map[String, AnyRef] = mutable.Map.empty[String, AnyRef]
-              childData += child
-              val nextLevelNodes: List[Map[String, AnyRef]] = childData.get("children").asInstanceOf[List[Map[String, AnyRef]]]
-              childData.remove("children")
-              val nodeMetadata = collection.mutable.Map() ++ getHierarchy(child.get("identifier").asInstanceOf[String], child.get("pkgVersion").asInstanceOf[Int], readerConfig).get // CHECK WHAT VALUE IS TO BE PUT HERE
+//              val childData: mutable.Map[String, AnyRef] = mutable.Map.empty[String, AnyRef]
+//              childData += child
+//              childData.remove("children")
+              val nextLevelNodes: List[Map[String, AnyRef]] = child.get("children").asInstanceOf[List[Map[String, AnyRef]]]
+              val nodeMetadata: mutable.Map[String, AnyRef] = mutable.Map() ++ getHierarchy(child.get("identifier").asInstanceOf[String], child.get("pkgVersion").asInstanceOf[Int], readerConfig).get // CHECK WHAT VALUE IS TO BE PUT HERE
               val finalChildList = if (nextLevelNodes.nonEmpty) {
                 nextLevelNodes.map((nextLevelNode: Map[String, AnyRef]) => {
                   Map("identifier" -> nextLevelNode.get("identifier").asInstanceOf[String], "name" -> nextLevelNode.get("name").asInstanceOf[String],
@@ -604,12 +605,13 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
                 })
               }
               nodeMetadata.put("children", finalChildList.asInstanceOf[AnyRef])
-              if (StringUtils.isBlank(nodeMetadata.get("objectType").asInstanceOf[String])) {
-                nodeMetadata ++ ("objectType" -> "content")
+              if (nodeMetadata.get("objectType").asInstanceOf[String].isEmpty) {
+                nodeMetadata += ("objectType" -> "content")
               }
-              if (StringUtils.isBlank(nodeMetadata.get("objectType").asInstanceOf[String])) {
-                nodeMetadata ++ ("graphId" -> "domain")
+              if (nodeMetadata.get("graphId").asInstanceOf[String].isEmpty) {
+                nodeMetadata += ("graphId" -> "domain")
               }
+             nodeMetadata.toMap[String, AnyRef]
             }
             if (!nodeIds.contains(child.get("identifier").asInstanceOf[String])) {
               nodes += new ObjectData(child.get("identifier").asInstanceOf[String], updatedChildMetadata, Option(Map.empty[String, AnyRef]), Option(Map.empty[String, AnyRef]))
