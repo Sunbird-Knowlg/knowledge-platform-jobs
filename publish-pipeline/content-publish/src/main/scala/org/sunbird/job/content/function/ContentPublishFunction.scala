@@ -24,7 +24,7 @@ import java.util.UUID
 import scala.concurrent.ExecutionContext
 
 class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
-                             @transient var neo4JUtil: Neo4JUtil = null,
+                             neo4JUtil: Neo4JUtil,
                              @transient var cassandraUtil: CassandraUtil = null,
                              @transient var cloudStorageUtil: CloudStorageUtil = null,
                              @transient var definitionCache: DefinitionCache = null,
@@ -43,7 +43,6 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
     cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort)
-    neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName)
     cloudStorageUtil = new CloudStorageUtil(config)
     ec = ExecutionContexts.global
     definitionCache = new DefinitionCache()

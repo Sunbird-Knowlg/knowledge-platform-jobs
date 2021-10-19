@@ -8,12 +8,12 @@ import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.content.function.{ContentPublishFunction, PublishEventRouter}
 import org.sunbird.job.content.publish.domain.Event
-import org.sunbird.job.util.{FlinkUtil, HttpUtil}
+import org.sunbird.job.util.{FlinkUtil, HttpUtil, Neo4JUtil}
 
 import java.io.File
 import java.util
 
-class ContentPublishStreamTask(config: ContentPublishConfig, kafkaConnector: FlinkKafkaConnector, httpUtil: HttpUtil) {
+class ContentPublishStreamTask(config: ContentPublishConfig, kafkaConnector: FlinkKafkaConnector, httpUtil: HttpUtil, neo4JUtil: Neo4JUtil) {
 
   def process(): Unit = {
     implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
@@ -29,7 +29,7 @@ class ContentPublishStreamTask(config: ContentPublishConfig, kafkaConnector: Fli
       .name("publish-event-router").uid("publish-event-router")
       .setParallelism(config.eventRouterParallelism)
 
-    val contentPublish = processStreamTask.getSideOutput(config.contentPublishOutTag).process(new ContentPublishFunction(config, httpUtil))
+    val contentPublish = processStreamTask.getSideOutput(config.contentPublishOutTag).process(new ContentPublishFunction(config, httpUtil, neo4JUtil))
       .name("content-publish-process").uid("content-publish-process").setParallelism(1)
 
     contentPublish.getSideOutput(config.generateVideoStreamingOutTag).addSink(kafkaConnector.kafkaStringSink(config.postPublishTopic))
@@ -52,7 +52,8 @@ object ContentPublishStreamTask {
     val publishConfig = new ContentPublishConfig(config)
     val kafkaUtil = new FlinkKafkaConnector(publishConfig)
     val httpUtil = new HttpUtil
-    val task = new ContentPublishStreamTask(publishConfig, kafkaUtil, httpUtil)
+    val neo4JUtil = new Neo4JUtil(publishConfig.graphRoutePath, publishConfig.graphName)
+    val task = new ContentPublishStreamTask(publishConfig, kafkaUtil, httpUtil, neo4JUtil)
     task.process()
   }
 }
