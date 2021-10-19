@@ -64,7 +64,7 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
     val configSize = contentConfig.artifactSizeForOnline
     val updatedMeta: Map[String, AnyRef] = if (contentSize > configSize) obj.metadata ++ extraMeta ++ Map("contentDisposition" -> "online-only") else obj.metadata ++ extraMeta
 
-    val updatedCompatibilityLevel = setCompatibilityLevel(obj, updatedMeta).get
+    val updatedCompatibilityLevelMeta: Map[String, AnyRef] = setCompatibilityLevel(obj, updatedMeta).get
 
     val isCollectionShallowCopy =  isContentShallowCopy(obj)
 
@@ -83,7 +83,7 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
         enrichChildren(childrenBuffer, collectionResourceChildNodes, obj)
         if (collectionResourceChildNodes.nonEmpty) {
           val collectionChildNodes: List[String] = obj.metadata.getOrElse("childNodes",List.empty).asInstanceOf[List[String]]
-          new ObjectData(obj.identifier, obj.metadata ++ Map("childNodes" -> (collectionChildNodes ++ collectionResourceChildNodes).distinct), obj.extData, Option(collectionHierarchy))
+          new ObjectData(obj.identifier, updatedCompatibilityLevelMeta ++ Map("childNodes" -> (collectionChildNodes ++ collectionResourceChildNodes).distinct), obj.extData, Option(collectionHierarchy))
         } else obj
       } else obj
     } else obj

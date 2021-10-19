@@ -66,18 +66,6 @@ class CollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Match
     result.metadata.getOrElse("pkgVersion", 0.0.asInstanceOf[Number]).asInstanceOf[Number] should be(1.0.asInstanceOf[Number])
   }
 
-  ignore should "enrich the Content metadata for application/vnd.ekstep.html-archive should through exception in artifactUrl is not available" in {
-    val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/vnd.ekstep.html-archive"))
-    val result: ObjectData = new TestCollectionPublisher().enrichObjectMetadata(data).getOrElse(data)
-    result.metadata.getOrElse("pkgVersion", 0.0.asInstanceOf[Number]).asInstanceOf[Number] should be(1.0.asInstanceOf[Number])
-  }
-
-  "enrichObjectMetadata" should "enrich the Content metadata for application/vnd.ekstep.html-archive" in {
-    val data = new ObjectData("do_1132167819505500161297", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_1132167819505500161297", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/vnd.ekstep.html-archive", "artifactUrl" -> "artifactUrl.zip"))
-    val result: ObjectData = new TestCollectionPublisher().enrichObjectMetadata(data).getOrElse(data)
-    result.metadata.getOrElse("pkgVersion", 0.0.asInstanceOf[Number]).asInstanceOf[Number] should be(1.0.asInstanceOf[Number])
-  }
-
   "validateMetadata with invalid external data" should "return exception messages" in {
     val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef]), Some(Map[String, AnyRef]("artifactUrl" -> "artifactUrl")))
     val result: List[String] = new TestCollectionPublisher().validateMetadata(data, data.identifier)
@@ -87,12 +75,6 @@ class CollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Match
   "saveExternalData " should "save external data to cassandra table" in {
     val data = new ObjectData("do_123", Map[String, AnyRef](), Some(Map[String, AnyRef]("body" -> "body", "answer" -> "answer")))
     new TestCollectionPublisher().saveExternalData(data, readerConfig)
-  }
-
-  "getExtData " should " get content body for application/vnd.ekstep.ecml-archive mimeType " in {
-    val identifier = "do_11321328578759884811663"
-    val result: Option[ObjectExtData] = new TestCollectionPublisher().getExtData(identifier, 0.0, "application/vnd.ekstep.ecml-archive", readerConfig)
-    result.getOrElse(new ObjectExtData).data.getOrElse(Map()).contains("body") shouldBe(true)
   }
 
   "getHierarchy " should "do nothing " in {
