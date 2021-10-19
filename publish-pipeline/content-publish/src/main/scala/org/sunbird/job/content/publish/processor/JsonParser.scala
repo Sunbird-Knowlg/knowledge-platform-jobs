@@ -1,6 +1,7 @@
 package org.sunbird.job.content.publish.processor
 
 import org.apache.commons.lang3.StringUtils
+import org.sunbird.job.exception.InvalidInputException
 import org.sunbird.job.util.ScalaJsonUtil
 
 import scala.collection.mutable.ListBuffer
@@ -81,13 +82,13 @@ object JsonParser {
 
   def validateController(obj: Map[String, AnyRef]): Unit = {
     if (StringUtils.isBlank(getDataFromMap(obj, "id")))
-      throw new Exception("Error! Invalid Controller ('id' is required.)")
+      throw new InvalidInputException("Error! Invalid Controller ('id' is required.)")
 
     val `type` = getDataFromMap(obj, "type")
     if (StringUtils.isBlank(getDataFromMap(obj, "type")))
-      throw new Exception("Error! Invalid Controller ('type' is required.)")
+      throw new InvalidInputException("Error! Invalid Controller ('type' is required.)")
     if (!"items".equalsIgnoreCase(`type`) && !"data".equalsIgnoreCase(`type`))
-      throw new Exception("Error! Invalid Controller ('type' should be either 'items' or 'data')")
+      throw new InvalidInputException("Error! Invalid Controller ('type' should be either 'items' or 'data')")
   }
 
   private def getEventsFromObject(jsonObject: AnyRef): List[Event] = {
@@ -134,11 +135,11 @@ object JsonParser {
       val `type` = getDataFromMap(mediaJson, "type")
       if (validateMedia) {
         if (StringUtils.isBlank(id) && isMediaIdRequiredForMediaType(`type`))
-          throw new Exception("Error! Invalid Media ('id' is required.)")
+          throw new InvalidInputException("Error! Invalid Media ('id' is required.)")
         if (StringUtils.isBlank(`type`))
-          throw new Exception("Error! Invalid Media ('type' is required.)")
+          throw new InvalidInputException("Error! Invalid Media ('type' is required.)")
         if (StringUtils.isBlank(src))
-          throw new Exception("Error! Invalid Media ('src' is required.)")
+          throw new InvalidInputException("Error! Invalid Media ('src' is required.)")
       }
       Media(id, getData(mediaJson, "media"), getInnerText(mediaJson), getCdata(mediaJson), src, `type`, getChildrenPlugin(mediaJson))
     } else classOf[Media].newInstance()

@@ -8,7 +8,7 @@ import java.util
 class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) extends JobRequest(eventMap, partition, offset) {
 
   private val jobName = "VideoStreamGenerator"
-  import scala.collection.JavaConverters._
+
   def action: String = readOrDefault[String]("edata.action", "")
 
   def mimeType: String = readOrDefault[String]("edata.mimeType", "")

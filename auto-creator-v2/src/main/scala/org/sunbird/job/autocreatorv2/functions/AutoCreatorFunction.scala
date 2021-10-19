@@ -57,7 +57,8 @@ class AutoCreatorFunction(config: AutoCreatorV2Config, httpUtil: HttpUtil,
       logger.info("Final updated metadata |with cloud-store updates| for " + updatedObj.identifier)
       val enrObj = if (config.expandableObjects.contains(updatedObj.objectType)) {
         val chMap: Map[String, AnyRef] = getChildren(updatedObj)(config)
-        val childrenObj: Map[String, ObjectData] = processChildren(chMap)(config, neo4JUtil, cassandraUtil, cloudStorageUtil, defCache, httpUtil)
+        val filterChMap: Map[String, AnyRef] = filterChildren(chMap, updatedObj)
+        val childrenObj: Map[String, ObjectData] = processChildren(filterChMap)(config, neo4JUtil, cassandraUtil, cloudStorageUtil, defCache, httpUtil)
         enrichHierarchy(updatedObj, childrenObj)(config)
       } else updatedObj
       val extConfig = ExtDataConfig(config.getString(enrObj.objectType.toLowerCase + ".keyspace", ""), definition.getExternalTable, definition.getExternalPrimaryKey, definition.getExternalProps)
