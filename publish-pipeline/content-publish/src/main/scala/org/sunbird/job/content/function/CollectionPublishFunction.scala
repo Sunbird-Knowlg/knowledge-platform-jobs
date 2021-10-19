@@ -85,7 +85,7 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
           cache.del(COLLECTION_CACHE_KEY_PREFIX + data.identifier)
 
           // Collection - add step to remove units of already Live content from redis - line 243 in PublishFinalizer
-          if (data.pkgVersion > 1) {
+          if (obj.identifier.endsWith(".img")) {
             val childNodes = getUnitsFromLiveContent(updatedObj)(cassandraUtil, readerConfig)
             if(childNodes.exists(rec => rec.nonEmpty)) childNodes.foreach(childId => cache.del(COLLECTION_CACHE_KEY_PREFIX + childId))
           }

@@ -64,7 +64,7 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
     val configSize = contentConfig.artifactSizeForOnline
     val updatedMeta: Map[String, AnyRef] = if (contentSize > configSize) obj.metadata ++ extraMeta ++ Map("contentDisposition" -> "online-only") else obj.metadata ++ extraMeta
 
-    val updatedCompatibilityLevel = setCompatibilityLevel(obj, updatedMeta).getOrElse(updatedMeta)
+    val updatedCompatibilityLevel = setCompatibilityLevel(obj, updatedMeta).get
 
     val isCollectionShallowCopy =  isContentShallowCopy(obj)
 
