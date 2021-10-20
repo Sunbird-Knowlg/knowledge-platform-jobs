@@ -80,7 +80,7 @@ class ContentPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers
 
   "validateMetadata with invalid external data" should "return exception messages" in {
     val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef]), Some(Map[String, AnyRef]("artifactUrl" -> "artifactUrl")))
-    val result: List[String] = new TestContentPublisher().validateMetadata(data, data.identifier)
+    val result: List[String] = new TestContentPublisher().validateMetadata(data, data.identifier, jobConfig)
     result.size should be(1)
   }
 
