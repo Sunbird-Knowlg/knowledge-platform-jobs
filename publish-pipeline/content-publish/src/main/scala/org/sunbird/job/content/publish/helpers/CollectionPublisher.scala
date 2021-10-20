@@ -11,7 +11,7 @@ import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData, ObjectExtData}
 import org.sunbird.job.publish.helpers._
-import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, JSONUtil, Neo4JUtil, ScalaJsonUtil, Slug}
+import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, ElasticSearchUtil, HttpUtil, JSONUtil, Neo4JUtil, ScalaJsonUtil, Slug}
 
 import java.io.File
 import java.io.IOException
@@ -624,5 +624,83 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
       })
     }
   }
+
+//  private def syncNodes(children: List[Map[String, AnyRef]], unitNodes: List[String])(implicit esUtil: ElasticSearchUtil, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): Unit = {
+//    val nodes = ListBuffer.empty[ObjectData]
+//    val nodeIds = ListBuffer.empty[String]
+//
+//    getNodeForSyncing(children, nodes, nodeIds)
+//    val updatedUnitNodes = if (unitNodes.nonEmpty) unitNodes.filter(unitNode => !nodeIds.contains(unitNode)) else unitNodes
+//
+//    if (nodes.isEmpty && updatedUnitNodes.isEmpty ) return
+//
+//    var errors = null
+//    val `def` = mapper.convertValue(definition, new TypeReference[Map[String, AnyRef]]() {})
+//    val relationMap = GraphUtil.getRelationMap(ContentWorkflowPipelineParams.Collection.name, `def`)
+//    if (CollectionUtils.isNotEmpty(nodes)) while ( {
+//      !nodes.isEmpty
+//    }) {
+//      val currentBatchSize = if (nodes.size >= batchSize) batchSize
+//      else nodes.size
+//      val nodeBatch = nodes.subList(0, currentBatchSize)
+//      if (CollectionUtils.isNotEmpty(nodeBatch)) {
+//        errors = new HashMap[String, String]
+//        val messages = SyncMessageGenerator.getMessages(nodeBatch, ContentWorkflowPipelineParams.Collection.name, relationMap, errors, disableAkka)
+//        if (!errors.isEmpty) logger.error("Error! while forming ES document data from nodes, below nodes are ignored: " + errors)
+//        if (MapUtils.isNotEmpty(messages)) try {
+//          System.out.println("Number of units to be synced : " + messages.size)
+//          ElasticSearchUtil.bulkIndexWithIndexId(ES_INDEX_NAME, DOCUMENT_TYPE, messages)
+//          System.out.println("UnitIds synced : " + messages.keySet)
+//        } catch {
+//          case e: Exception =>
+//            e.printStackTrace()
+//            logger.error("Elastic Search indexing failed: " + e)
+//        }
+//      }
+//      // clear the already batched node ids from the list
+//      nodes.subList(0, currentBatchSize).clear()
+//    }
+//    try //Unindexing not utilized units
+//      if (unitNodes.nonEmpty) unitNodes.map(unitNodeId => esUtil.deleteDocument(unitNodeId))
+//    catch {
+//      case e: Exception =>
+//        logger.error("Elastic Search indexing failed: " + e)
+//    }
+//  }
+
+
+  private def getNodeForSyncing(children: List[Map[String, AnyRef]], nodes: ListBuffer[ObjectData], nodeIds: ListBuffer[String])(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): Unit = {
+    if (children.nonEmpty) {
+      children.foreach((child: Map[String, AnyRef]) => {
+        try {
+          val updatedChildMetadata: Map[String, AnyRef] = if (StringUtils.equalsIgnoreCase("Parent", child.get("visibility").asInstanceOf[String])) {
+            //              val childData: mutable.Map[String, AnyRef] = mutable.Map.empty[String, AnyRef]
+            //              childData += child
+
+            val nodeMetadata = mutable.Map() ++ getHierarchy(child.get("identifier").asInstanceOf[String], child.get("pkgVersion").asInstanceOf[Int], readerConfig).get // CHECK WHAT VALUE IS TO BE PUT HERE
+
+            // TO DO - Relation related CODE is MISSING - Line 735 in Publish Finalizer
+
+            if (nodeMetadata.get("objectType").asInstanceOf[String].isEmpty) {
+              nodeMetadata += ("objectType" -> "Collection")
+            }
+            if (nodeMetadata.get("graphId").asInstanceOf[String].isEmpty) {
+              nodeMetadata += ("graphId" -> "domain")
+            }
+            nodeMetadata.toMap[String, AnyRef]
+          }
+          if (!nodeIds.contains(child.get("identifier").asInstanceOf[String])) {
+            nodes += new ObjectData(child.get("identifier").asInstanceOf[String], updatedChildMetadata, Option(Map.empty[String, AnyRef]), Option(Map.empty[String, AnyRef]))
+            nodeIds += child.get("identifier").asInstanceOf[String]
+          }
+        } catch {
+          case e: Exception => logger.error("Error while generating node map. ", e)
+        }
+        getNodeForSyncing(child.get("children").asInstanceOf[List[Map[String, AnyRef]]], nodes, nodeIds)
+      })
+    }
+  }
+
+
 
 }

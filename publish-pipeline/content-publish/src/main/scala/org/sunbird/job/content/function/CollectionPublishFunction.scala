@@ -99,7 +99,7 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
           // Collection - update and publish children - line 418 in PublishFinalizer
           val updatedChildren = updateHierarchyMetadata(children, objWithEcar)(config)
           publishHierarchy(updatedChildren, objWithEcar, readerConfig)(cassandraUtil)
-          //          if (!isContentShallowCopy) syncNodes(updatedChildren, unitNodes)(esUtil)
+          //          if (!isContentShallowCopy) syncNodes(updatedChildren, unitNodes)(esUtil, neo4JUtil, cassandraUtil, readerConfig)
 
           metrics.incCounter(config.collectionPublishSuccessEventCount)
           logger.info("Collection publishing completed successfully for : " + data.identifier)
