@@ -44,7 +44,7 @@ class ContentPublishStreamTaskSpec extends BaseTestSpec {
 
   //  val mockHttpUtil: HttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
   val mockHttpUtil: HttpUtil = new HttpUtil
-  val mockNeo4JUtil: Neo4JUtil = mock[Neo4JUtil](Mockito.withSettings().serializable())
+  val mockNeo4JUtil: org.sunbird.job.util.Neo4JUtil = mock[org.sunbird.job.util.Neo4JUtil](Mockito.withSettings().serializable())
   var cassandraUtil: CassandraUtil = _
   val publishConfig: PublishConfig = new PublishConfig(config, "")
   val cloudStorageUtil: CloudStorageUtil = new CloudStorageUtil(publishConfig)
