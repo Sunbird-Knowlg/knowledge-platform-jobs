@@ -673,7 +673,7 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
     if (children.nonEmpty) {
       children.foreach((child: Map[String, AnyRef]) => {
         try {
-          val updatedChildMetadata: Map[String, AnyRef] = if (StringUtils.equalsIgnoreCase("Parent", child.get("visibility").asInstanceOf[String])) {
+          if (StringUtils.equalsIgnoreCase("Parent", child.get("visibility").asInstanceOf[String])) {
             //              val childData: mutable.Map[String, AnyRef] = mutable.Map.empty[String, AnyRef]
             //              childData += child
 
@@ -688,15 +688,17 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
               nodeMetadata += ("graphId" -> "domain")
             }
             nodeMetadata.toMap[String, AnyRef]
-          }
-          if (!nodeIds.contains(child.get("identifier").asInstanceOf[String])) {
-            nodes += new ObjectData(child.get("identifier").asInstanceOf[String], updatedChildMetadata, Option(Map.empty[String, AnyRef]), Option(Map.empty[String, AnyRef]))
-            nodeIds += child.get("identifier").asInstanceOf[String]
+
+            if (!nodeIds.contains(child.get("identifier").asInstanceOf[String])) {
+              nodes += new ObjectData(child.get("identifier").asInstanceOf[String], nodeMetadata, Option(Map.empty[String, AnyRef]), Option(Map.empty[String, AnyRef]))
+              nodeIds += child.get("identifier").asInstanceOf[String]
+            }
+
+            getNodeForSyncing(child.get("children").asInstanceOf[List[Map[String, AnyRef]]], nodes, nodeIds)
           }
         } catch {
           case e: Exception => logger.error("Error while generating node map. ", e)
         }
-        getNodeForSyncing(child.get("children").asInstanceOf[List[Map[String, AnyRef]]], nodes, nodeIds)
       })
     }
   }
