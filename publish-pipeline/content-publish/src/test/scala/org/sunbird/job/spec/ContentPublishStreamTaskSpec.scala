@@ -1,5 +1,7 @@
 package org.sunbird.job.spec
 
+import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, Neo4JUtil}
+
 import com.google.gson.Gson
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.flink.api.common.typeinfo.TypeInformation
@@ -21,7 +23,6 @@ import org.sunbird.job.content.publish.domain.Event
 import org.sunbird.job.content.task.{ContentPublishConfig, ContentPublishStreamTask}
 import org.sunbird.job.fixture.EventFixture
 import org.sunbird.job.publish.config.PublishConfig
-import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, Neo4JUtil}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 import redis.clients.jedis.Jedis
 import redis.embedded.RedisServer
@@ -44,7 +45,7 @@ class ContentPublishStreamTaskSpec extends BaseTestSpec {
 
   //  val mockHttpUtil: HttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
   val mockHttpUtil: HttpUtil = new HttpUtil
-  val mockNeo4JUtil: org.sunbird.job.util.Neo4JUtil = mock[org.sunbird.job.util.Neo4JUtil](Mockito.withSettings().serializable())
+  val mockNeo4JUtil: Neo4JUtil = mock[Neo4JUtil](Mockito.withSettings().serializable())
   var cassandraUtil: CassandraUtil = _
   val publishConfig: PublishConfig = new PublishConfig(config, "")
   val cloudStorageUtil: CloudStorageUtil = new CloudStorageUtil(publishConfig)
