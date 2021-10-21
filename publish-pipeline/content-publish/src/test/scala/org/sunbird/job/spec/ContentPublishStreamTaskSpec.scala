@@ -1,7 +1,5 @@
 package org.sunbird.job.spec
 
-import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, Neo4JUtil}
-
 import com.google.gson.Gson
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.flink.api.common.typeinfo.TypeInformation
@@ -23,6 +21,7 @@ import org.sunbird.job.content.publish.domain.Event
 import org.sunbird.job.content.task.{ContentPublishConfig, ContentPublishStreamTask}
 import org.sunbird.job.fixture.EventFixture
 import org.sunbird.job.publish.config.PublishConfig
+import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, Neo4JUtil}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 import redis.clients.jedis.Jedis
 import redis.embedded.RedisServer
@@ -64,8 +63,8 @@ class ContentPublishStreamTaskSpec extends BaseTestSpec {
     val session = cassandraUtil.session
     val dataLoader = new CQLDataLoader(session)
     dataLoader.load(new FileCQLDataSet(getClass.getResource("/test.cql").getPath, true, true))
-    flinkCluster.before()
     jedis.flushDB()
+    flinkCluster.before()
   }
 
   override protected def afterAll(): Unit = {
@@ -75,8 +74,8 @@ class ContentPublishStreamTaskSpec extends BaseTestSpec {
     } catch {
       case ex: Exception =>
     }
-    flinkCluster.after()
     redisServer.stop()
+    flinkCluster.after()
   }
 
   def initialize(): Unit = {
