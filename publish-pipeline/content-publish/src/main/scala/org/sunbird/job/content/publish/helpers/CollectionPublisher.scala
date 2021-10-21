@@ -165,7 +165,7 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
     if (null != originNodeMetadata) {
       val originPkgVer: Double = originNodeMetadata.getOrDefault("pkgVersion", "0").asInstanceOf[Any].asInstanceOf[Double]
       if (originPkgVer != 0.0) {
-        val originData = obj.metadata.getOrElse("originData","").asInstanceOf[Map[String, AnyRef]] ++ Map("pkgVersion" -> originPkgVer)
+        val originData = obj.metadata.getOrElse("originData",Map.empty[String, AnyRef]).asInstanceOf[Map[String, AnyRef]] ++ Map("pkgVersion" -> originPkgVer)
         new ObjectData(obj.identifier, obj.metadata ++ Map("originData" -> originData) , obj.extData, obj.hierarchy)
       } else obj
     } else obj
