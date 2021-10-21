@@ -36,7 +36,7 @@ class ProgressCompleteFunction(config: EnrolmentReconciliationConfig)(implicit v
       (row != null && row.getInt("status") != 2)
     } else events
     
-    val enrolmentQueries = pendingEnrolments.map(enrolmentComplete => getEnrolmentCompleteQuery(enrolmentComplete))
+    val enrolmentQueries = pendingEnrolments.flatMap(enrolmentComplete => List(getEnrolmentCompleteQuery(enrolmentComplete), getActivityAggQuery(enrolmentComplete)))
     updateDB(config.thresholdBatchWriteSize, enrolmentQueries)(metrics)
     pendingEnrolments.foreach(e => {
       createIssueCertEvent(e, context)(metrics)
@@ -76,7 +76,6 @@ class ProgressCompleteFunction(config: EnrolmentReconciliationConfig)(implicit v
       .`with`(QueryBuilder.set("status", 2))
       .and(QueryBuilder.set("completedon", enrolment.completedOn))
       .and(QueryBuilder.set("progress", enrolment.progress))
-      .and(QueryBuilder.set("contentstatus", enrolment.contentStatus.asJava))
       .and(QueryBuilder.set("datetime", System.currentTimeMillis))
       .where(QueryBuilder.eq("userid", enrolment.userId))
       .and(QueryBuilder.eq("courseid", enrolment.courseId))
@@ -115,5 +114,14 @@ class ProgressCompleteFunction(config: EnrolmentReconciliationConfig)(implicit v
     val event = s"""{"eid": "BE_JOB_REQUEST","ets": ${ets},"mid": "${mid}","actor": {"id": "Course Certificate Generator","type": "System"},"context": {"pdata": {"ver": "1.0","id": "org.sunbird.platform"}},"object": {"id": "${enrolment.batchId}_${enrolment.courseId}","type": "CourseCertificateGeneration"},"edata": {"userIds": ["${enrolment.userId}"],"action": "issue-certificate","iteration": 1, "trigger": "auto-issue","batchId": "${enrolment.batchId}","reIssue": false,"courseId": "${enrolment.courseId}"}}"""
     context.output(config.certIssueOutputTag, event)
     metrics.incCounter(config.certIssueEventsCount)
+  }
+
+  def getActivityAggQuery(collectionProgress: CollectionProgress): Update.Where = {
+    QueryBuilder.update(config.dbKeyspace, config.dbUserActivityAggTable)
+      .`with`(QueryBuilder.set("content_status", collectionProgress.contentStatus.asJava))
+      .where(QueryBuilder.eq("activity_type", "Course"))
+      .and(QueryBuilder.eq("user_id", collectionProgress.userId))
+      .and(QueryBuilder.eq("activity_id", collectionProgress.courseId))
+      .and(QueryBuilder.eq("context_id", "cb:" + collectionProgress.batchId))
   }
 }

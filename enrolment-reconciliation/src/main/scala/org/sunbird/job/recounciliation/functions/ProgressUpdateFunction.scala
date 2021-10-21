@@ -32,7 +32,7 @@ class ProgressUpdateFunction(config: EnrolmentReconciliationConfig)(implicit val
       val row = getEnrolment(p.userId, p.courseId, p.batchId)(metrics)
       (row != null && row.getInt("status") != 2)
     } else events
-    val enrolmentQueries = pendingEnrolments.map(collectionProgress => getEnrolmentUpdateQuery(collectionProgress))
+    val enrolmentQueries = pendingEnrolments.flatMap(collectionProgress => List(getEnrolmentUpdateQuery(collectionProgress),  getActivityAggQuery(collectionProgress)))
     updateDB(config.thresholdBatchWriteSize, enrolmentQueries)(metrics)
     // Create and update the checksum to DeDup store for the input events.
   }
@@ -81,5 +81,14 @@ class ProgressUpdateFunction(config: EnrolmentReconciliationConfig)(implicit val
         throw new Exception(msg)
       }
     })
+  }
+
+  def getActivityAggQuery(collectionProgress: CollectionProgress): Update.Where = {
+    QueryBuilder.update(config.dbKeyspace, config.dbUserActivityAggTable)
+      .`with`(QueryBuilder.set("content_status", collectionProgress.contentStatus.asJava))
+      .where(QueryBuilder.eq("activity_type", "Course"))
+      .and(QueryBuilder.eq("user_id", collectionProgress.userId))
+      .and(QueryBuilder.eq("activity_id", collectionProgress.courseId))
+      .and(QueryBuilder.eq("context_id", "cb:" + collectionProgress.batchId))
   }
 }

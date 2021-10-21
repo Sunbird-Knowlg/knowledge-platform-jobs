@@ -29,13 +29,14 @@ INSERT INTO sunbird_courses.user_content_consumption(userid, contentid, batchid,
 
 
 CREATE TABLE IF NOT EXISTS sunbird_courses.user_activity_agg (
+    activity_type text,
     activity_id text,
     user_id text,
-    activity_type text,
     context_id text,
+    content_status frozen<map<text, int>>,
     agg Map<text, int>,
     agg_last_updated Map<text, timestamp>,
-    PRIMARY KEY ((activity_type, activity_id), context_id, user_id)
+    PRIMARY KEY ((activity_type, activity_id, user_id), context_id)
 );
 
 CREATE TABLE sunbird_courses.user_enrolments (
@@ -75,4 +76,7 @@ CREATE INDEX inx_ues_status ON sunbird_courses.user_enrolments (status);
 CREATE INDEX inx_ues_certs ON sunbird_courses.user_enrolments (values(certificates));
 
 
-INSERT INTO sunbird_courses.user_enrolments(userid, courseid, batchid, status) VALUES ('user001', 'course001', 'Batch1', 1)
+INSERT INTO sunbird_courses.user_enrolments(userid, courseid, batchid, status) VALUES ('user001', 'course001', 'Batch1', 1);
+INSERT INTO sunbird_courses.user_enrolments(userid, courseid, batchid, status) VALUES ('8454cb21-3ce9-4e30-85b5-fade097880d8', 'do_1127212344324751361295', '0126083288437637121', 1);
+INSERT INTO sunbird_courses.user_activity_agg(activity_type, activity_id, user_id, context_id) VALUES ('Course', 'do_1127212344324751361295','8454cb21-3ce9-4e30-85b5-fade097880d8', 'cb:0126083288437637121');
+INSERT INTO sunbird_courses.user_activity_agg(activity_type, activity_id, user_id, context_id) VALUES ('Course', 'course001','user001', 'cb:Batch1');
