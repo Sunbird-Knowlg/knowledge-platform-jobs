@@ -690,7 +690,7 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
             nodeMetadata.toMap[String, AnyRef]
 
             if (!nodeIds.contains(child.get("identifier").asInstanceOf[String])) {
-              nodes += new ObjectData(child.get("identifier").asInstanceOf[String], nodeMetadata, Option(Map.empty[String, AnyRef]), Option(Map.empty[String, AnyRef]))
+              nodes += new ObjectData(child.get("identifier").asInstanceOf[String], nodeMetadata.toMap[String, AnyRef], Option(Map.empty[String, AnyRef]), Option(Map.empty[String, AnyRef]))
               nodeIds += child.get("identifier").asInstanceOf[String]
             }
 
