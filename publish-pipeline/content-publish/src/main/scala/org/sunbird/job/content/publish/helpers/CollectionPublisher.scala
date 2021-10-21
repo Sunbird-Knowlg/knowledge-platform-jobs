@@ -105,14 +105,14 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
 
   override def deleteExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Unit = None
 
-  def validateMetadata(obj: ObjectData, identifier: String): List[String] = {
-    logger.info("Validating Collection metadata for : " + obj.identifier)
-    val messages = ListBuffer[String]()
-   if (StringUtils.isBlank(obj.getString("artifactUrl", "")))
-      messages += s"""There is no artifactUrl available for : $identifier"""
-
-    messages.toList
-  }
+//  def validateMetadata(obj: ObjectData, identifier: String): List[String] = {
+//    logger.info("Validating Collection metadata for : " + obj.identifier)
+//    val messages = ListBuffer[String]()
+//   if (StringUtils.isBlank(obj.getString("artifactUrl", "")))
+//      messages += s"""There is no artifactUrl available for : $identifier"""
+//
+//    messages.toList
+//  }
 
   def getObjectWithEcar(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
 
@@ -154,7 +154,7 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
   }
 
   def isContentShallowCopy(obj: ObjectData): Boolean = {
-    val originData: Map[String, AnyRef] = obj.metadata.getOrElse("originData","").asInstanceOf[Map[String,AnyRef]]
+    val originData: Map[String, AnyRef] = obj.metadata.getOrElse("originData",Map.empty[String, AnyRef]).asInstanceOf[Map[String,AnyRef]]
     if (originData != null && originData.nonEmpty && StringUtils.isNoneBlank(originData.get("copyType").asInstanceOf[String]) && StringUtils.equalsIgnoreCase(originData.get("copyType").asInstanceOf[String], "shallow")) true
     else false
   }

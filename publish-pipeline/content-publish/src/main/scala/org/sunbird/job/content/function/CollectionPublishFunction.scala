@@ -67,7 +67,7 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
       logger.info("Collection publishing started for : " + data.identifier)
       metrics.incCounter(config.collectionPublishEventCount)
       val obj: ObjectData = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(neo4JUtil, cassandraUtil)
-      val messages: List[String] = validate(obj, obj.identifier, validateMetadata)
+      val messages: List[String] = List.empty[String] // validate(obj, obj.identifier, validateMetadata)
       if (obj.pkgVersion > data.pkgVersion) {
         metrics.incCounter(config.skippedEventCount)
         logger.info(s"""pkgVersion should be greater than or equal to the obj.pkgVersion for : ${obj.identifier}""")
