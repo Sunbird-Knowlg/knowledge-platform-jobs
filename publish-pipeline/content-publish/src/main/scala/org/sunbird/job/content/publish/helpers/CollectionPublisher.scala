@@ -41,7 +41,7 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
     if (null != row) {
       val data: Map[String, AnyRef] = ScalaJsonUtil.deserialize[Map[String, AnyRef]](row.getString("hierarchy"))
       Option(data)
-    } else Option(Map())
+    } else Option(Map.empty[String, AnyRef])
   }
 
   def getCollectionHierarchy(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Row = {
@@ -73,16 +73,16 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
       val originData: Map[String, AnyRef] = obj.metadata.getOrElse("originData","").asInstanceOf[Map[String,AnyRef]]
       getHierarchy(obj.metadata.get("origin").asInstanceOf[String], originData.getOrElse("pkgVersion", 0.0).asInstanceOf[Double], readerConfig).get
     } else getHierarchy(obj.identifier, obj.pkgVersion, readerConfig).get
-    logger.debug("Hierarchy for content : " + obj.identifier + " : " + collectionHierarchy)
+    println("Hierarchy for content : " + obj.identifier + " : " + collectionHierarchy)
 
-    val children = if (collectionHierarchy.nonEmpty) { collectionHierarchy.get("children").asInstanceOf[List[Map[String, AnyRef]]] } else List.empty
+    val children = if (collectionHierarchy.nonEmpty) { collectionHierarchy.getOrElse("children",List.empty[Map[String, AnyRef]]).asInstanceOf[List[Map[String, AnyRef]]] } else List.empty[Map[String, AnyRef]]
     val childrenBuffer = children.to[ListBuffer]
     val updatedObj: ObjectData = if (collectionHierarchy.nonEmpty) {
       if (!isCollectionShallowCopy) {
         val collectionResourceChildNodes: mutable.HashSet[String] = new mutable.HashSet[String]
         enrichChildren(childrenBuffer, collectionResourceChildNodes, obj)
         if (collectionResourceChildNodes.nonEmpty) {
-          val collectionChildNodes: List[String] = obj.metadata.getOrElse("childNodes",List.empty).asInstanceOf[List[String]]
+          val collectionChildNodes: List[String] = obj.metadata.getOrElse("childNodes", new java.util.ArrayList()).asInstanceOf[java.util.List[String]].asScala.toList
           new ObjectData(obj.identifier, updatedCompatibilityLevelMeta ++ Map("childNodes" -> (collectionChildNodes ++ collectionResourceChildNodes).distinct), obj.extData, Option(collectionHierarchy))
         } else obj
       } else obj
@@ -138,16 +138,16 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
     if (level4ContentTypes.contains(obj.getString("contentType", ""))) {
       logger.info("setting compatibility level for content id : " + obj.identifier + " as 4.")
       Some(updatedMeta ++ Map("compatibilityLevel" -> 4.asInstanceOf[AnyRef]))
-    } else None
+    } else Some(updatedMeta)
   }
 
   def getUnitsFromLiveContent(obj: ObjectData)(implicit cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): List[String] = {
-    val objHierarchy = getHierarchy(obj.metadata.get("identifier").asInstanceOf[String], obj.metadata.getOrElse("pkgVersion", 0.0).asInstanceOf[Double], readerConfig).get
-    val children = objHierarchy.get("children").asInstanceOf[List[Map[String, AnyRef]]]
+    val objHierarchy = getHierarchy(obj.metadata.getOrElse("identifier", "").asInstanceOf[String], obj.metadata.getOrElse("pkgVersion", 0.0).asInstanceOf[Double], readerConfig).get
+    val children = objHierarchy.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]]
     if(children.nonEmpty) {
       children.map(child => {
-        if(child.get("visibility").asInstanceOf[String].equalsIgnoreCase("Parent")){
-          child.get("identifier").asInstanceOf[String]
+        if(child.getOrElse("visibility", "").asInstanceOf[String].equalsIgnoreCase("Parent")){
+          child.getOrElse("identifier", "").asInstanceOf[String]
         } else ""
       }).filter(rec => rec.nonEmpty)
     } else List.empty[String]
@@ -155,7 +155,7 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
 
   def isContentShallowCopy(obj: ObjectData): Boolean = {
     val originData: Map[String, AnyRef] = obj.metadata.getOrElse("originData",Map.empty[String, AnyRef]).asInstanceOf[Map[String,AnyRef]]
-    if (originData != null && originData.nonEmpty && StringUtils.isNoneBlank(originData.get("copyType").asInstanceOf[String]) && StringUtils.equalsIgnoreCase(originData.get("copyType").asInstanceOf[String], "shallow")) true
+    if (originData != null && originData.nonEmpty && StringUtils.isNoneBlank(originData.getOrElse("copyType","").asInstanceOf[String]) && StringUtils.equalsIgnoreCase(originData.getOrElse("copyType","").asInstanceOf[String], "shallow")) true
     else false
   }
 
@@ -175,28 +175,28 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
     if (children.nonEmpty) {
       val newChildren = children.toList
       newChildren.map(child => {
-        if (StringUtils.equalsIgnoreCase(child.get("visibility").asInstanceOf[String], "Parent") && StringUtils.equalsIgnoreCase(child.get("mimeType").asInstanceOf[String], COLLECTION_MIME_TYPE))
-          enrichChildren(child.get("children").asInstanceOf[List[Map[String, AnyRef]]].to[ListBuffer], collectionResourceChildNodes, obj)
+        if (StringUtils.equalsIgnoreCase(child.getOrElse("visibility","").asInstanceOf[String], "Parent") && StringUtils.equalsIgnoreCase(child.getOrElse("mimeType","").asInstanceOf[String], COLLECTION_MIME_TYPE))
+          enrichChildren(child.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]].to[ListBuffer], collectionResourceChildNodes, obj)
 
-        if (StringUtils.equalsIgnoreCase(child.get("visibility").asInstanceOf[String], "Default") && EXPANDABLE_OBJECTS.contains(child.get("objectType").asInstanceOf[String])) {
-          val collectionHierarchy = getHierarchy(child.get("identifier").asInstanceOf[String], child.getOrElse("pkgVersion", 0.0).asInstanceOf[Double], readerConfig).get
-          logger.debug("Collection hierarchy for childNode : " + child.get("identifier") + " : " + collectionHierarchy)
+        if (StringUtils.equalsIgnoreCase(child.getOrElse("visibility", "").asInstanceOf[String], "Default") && EXPANDABLE_OBJECTS.contains(child.getOrElse("objectType", "").asInstanceOf[String])) {
+          val collectionHierarchy = getHierarchy(child.getOrElse("identifier","").asInstanceOf[String], child.getOrElse("pkgVersion", 0.0).asInstanceOf[Double], readerConfig).get
+          logger.debug("Collection hierarchy for childNode : " + child.getOrElse("identifier","") + " : " + collectionHierarchy)
           if (collectionHierarchy.nonEmpty) {
-            val childNodes = collectionHierarchy.get("childNodes").asInstanceOf[List[String]]
-            if (childNodes.nonEmpty && INCLUDE_CHILDNODE_OBJECTS.contains(child.get("objectType").asInstanceOf[String])) collectionResourceChildNodes ++= childNodes.toSet[String]
+            val childNodes = collectionHierarchy.getOrElse("childNodes", List.empty).asInstanceOf[List[String]]
+            if (childNodes.nonEmpty && INCLUDE_CHILDNODE_OBJECTS.contains(child.getOrElse("objectType","").asInstanceOf[String])) collectionResourceChildNodes ++= childNodes.toSet[String]
             children.remove(children.indexOf(child))
-            children ++= ListBuffer(collectionHierarchy ++ Map("index" -> child.get("index"), "parent" -> child.get("parent")))
+            children ++= ListBuffer(collectionHierarchy ++ Map("index" -> child.getOrElse("index",0).asInstanceOf[AnyRef], "parent" -> child.getOrElse("parent","")))
           }
         }
 
-        if (StringUtils.equalsIgnoreCase(child.get("visibility").asInstanceOf[String], "Default") && !EXPANDABLE_OBJECTS.contains(child.get("objectType").asInstanceOf[String])) {
-          val childNode = Option(neo4JUtil.getNodeProperties(child.get("identifier").toString)).getOrElse(neo4JUtil.getNodeProperties(child.get("identifier").toString)).asScala.toMap
+        if (StringUtils.equalsIgnoreCase(child.getOrElse("visibility", "").asInstanceOf[String], "Default") && !EXPANDABLE_OBJECTS.contains(child.getOrElse("objectType", "").asInstanceOf[String])) {
+          val childNode = Option(neo4JUtil.getNodeProperties(child.getOrElse("identifier", "").asInstanceOf[String])).getOrElse(neo4JUtil.getNodeProperties(child.getOrElse("identifier", "").asInstanceOf[String])).asScala.toMap
           children.remove(children.indexOf(child))
-          val childNodes = obj.metadata.get("childNodes").asInstanceOf[List[String]].to[ListBuffer]
+          val childNodes = obj.metadata.getOrElse("childNodes", new java.util.ArrayList()).asInstanceOf[java.util.List[String]].asScala.toList.to[ListBuffer]
 
-          if (PUBLISHED_STATUS_LIST.contains(childNode.get("status").asInstanceOf[String]))
-            children ++= ListBuffer(childNode ++ Map("index" -> child.get("index"), "parent" -> child.get("parent"), "depth" -> child.get("depth")) - ("collections", "children"))
-          else childNodes.remove(childNodes.indexOf(child.get("identifier").asInstanceOf[String]))
+          if (PUBLISHED_STATUS_LIST.contains(childNode.getOrElse("status", "").asInstanceOf[String]))
+            children ++= ListBuffer(childNode ++ Map("index" -> child.getOrElse("index",0).asInstanceOf[AnyRef], "parent" -> child.getOrElse("parent","").asInstanceOf[String], "depth" -> child.getOrElse("depth",0).asInstanceOf[AnyRef]) - ("collections", "children"))
+          else childNodes.remove(childNodes.indexOf(child.getOrElse("identifier", "").asInstanceOf[String]))
         }
       })
 
@@ -215,12 +215,12 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
           Map(record._1 -> record._2.asInstanceOf[Set[String]].toArray[String])
         } else Map.empty[String, AnyRef]
       }).filter(record => record._1.nonEmpty).toMap[String, AnyRef]
-      val keywords = dataMap.get("keywords").asInstanceOf[Set[String]].toArray[String]
+      val keywords = dataMap.getOrElse("keywords", Set.empty).asInstanceOf[Set[String]].toArray[String]
       val finalKeywords = if (null != keywords && keywords.nonEmpty) {
        val updatedKeywords: Array[String] = if (null != obj.metadata.get("keywords")) {
           val objKeywords = obj.metadata.get("keywords")
           if (objKeywords.isInstanceOf[Array[String]]) {
-            val stringArray = obj.metadata.get("keywords").asInstanceOf[Array[String]]
+            val stringArray = obj.metadata.getOrElse("keywords",Array.empty).asInstanceOf[Array[String]]
             keywords ++ stringArray
           }
           else if (objKeywords.isInstanceOf[String]) {
@@ -245,14 +245,14 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
 //    if (leafNodes.nonEmpty) {
 //      val relations = new ArrayList[Relation]
 //      for (leafNode <- leafNodes) {
-//        val id = leafNode.get("identifier").asInstanceOf[String]
+//        val id = leafNode.getOrElse("identifier", "").asInstanceOf[String]
 //        var index = 1
-//        val num = leafNode.get("index").asInstanceOf[Number]
+//        val num = leafNode.getOrElse("index",0).asInstanceOf[AnyRef].asInstanceOf[Number]
 //        if (num != null) index = num.intValue
 //        val rel = new Relation(node.getIdentifier, RelationTypes.SEQUENCE_MEMBERSHIP.relationName, id)
 //        val metadata = new HashMap[String, AnyRef]
 //        metadata.put(SystemProperties.IL_SEQUENCE_INDEX", index)
-//        metadata.put("depth", leafNode.get("depth"))
+//        metadata.put("depth", leafNode.getOrElse("depth",0).asInstanceOf[AnyRef])
 //        rel.setMetadata(metadata)
 //        relations.add(rel)
 //      }
@@ -267,9 +267,9 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
     if (children.nonEmpty) {
       var index = 1
       for (child <- children) {
-        val visibility = child.get("visibility").asInstanceOf[String]
+        val visibility = child.getOrElse("visibility", "").asInstanceOf[String]
         if (StringUtils.equalsIgnoreCase(visibility, "Parent")) {
-          val nextChildren = child.get("children").asInstanceOf[ListBuffer[Map[String, AnyRef]]]
+          val nextChildren = child.getOrElse("children", ListBuffer.empty).asInstanceOf[ListBuffer[Map[String, AnyRef]]]
           val nextDepth = depth + 1
           val nextLevelLeafNodes = getLeafNodes(nextChildren, nextDepth)
           leafNodes ++= nextLevelLeafNodes
@@ -293,7 +293,7 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
     if (null != children && children.nonEmpty) {
       for (child <- children) {
         mergeMap(dataMap, processChild(child))
-        processChildren(child.get("children").asInstanceOf[List[Map[String, AnyRef]]], dataMap)
+        processChildren(child.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]], dataMap)
       }
     }
   }
@@ -374,20 +374,20 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
 //      if (null != children && children.nonEmpty) {
 //      children.map(child => {
 //        val childMap = child.asInstanceOf[Map[String, AnyRef]]
-//        childMap.get("identifier").asInstanceOf[String]
+//        childMap.getOrElse("identifier", "").asInstanceOf[String]
 //        getChildNode(childMap, childrenSet)
 //      })
 //    }
 //  }
 
   private def getTypeCount(data: Map[String, AnyRef], `type`: String, typeMap: mutable.Map[String, AnyRef]): Unit = {
-    val children = data.get("children").asInstanceOf[List[AnyRef]]
+    val children = data.getOrElse("children", List.empty).asInstanceOf[List[AnyRef]]
     if (null != children && children.nonEmpty) {
       for (child <- children) {
         val childMap = child.asInstanceOf[Map[String, AnyRef]]
-        val typeValue = childMap.get(`type`).asInstanceOf[String]
+        val typeValue = childMap.getOrElse(`type`, "").asInstanceOf[String]
         if (null != typeValue) if (typeMap.contains(typeValue)) {
-          var count = typeMap.get(typeValue).asInstanceOf[Int]
+          var count = typeMap.getOrElse(typeValue, 0).asInstanceOf[Int]
           count += 1
           typeMap.put(typeValue, count.asInstanceOf[AnyRef])
         }
@@ -405,24 +405,24 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
   }
 
   private def getLeafNodesIds(data: Map[String, AnyRef], leafNodeIds: mutable.Set[String]): Unit = {
-    if (INCLUDE_LEAFNODE_OBJECTS.contains(data.get("objectType"))) leafNodeIds += (data.get("identifier").asInstanceOf[String])
-    val children = data.get("children").asInstanceOf[List[Map[String, AnyRef]]]
+    if (INCLUDE_LEAFNODE_OBJECTS.contains(data.getOrElse("objectType", ""))) leafNodeIds += (data.getOrElse("identifier", "").asInstanceOf[String])
+    val children = data.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]]
     if (children.nonEmpty) {
       for (child <- children) {
         getLeafNodesIds(child, leafNodeIds)
       }
     }
-    else if (!EXCLUDE_LEAFNODE_OBJECTS.contains(data.get("objectType").asInstanceOf[String])) leafNodeIds.add(data.get("identifier").asInstanceOf[String])
+    else if (!EXCLUDE_LEAFNODE_OBJECTS.contains(data.getOrElse("objectType", "").asInstanceOf[String])) leafNodeIds.add(data.getOrElse("identifier", "").asInstanceOf[String])
   }
 
   private def getTotalCompressedSize(data: Map[String, AnyRef], totalCompressed: Double): Double = {
-    val children = data.get("children").asInstanceOf[List[Map[String, AnyRef]]]
+    val children = data.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]]
     if (children.nonEmpty) {
       val childrenSizes = children.map(child => {
         val childSize =
-          if (!EXPANDABLE_OBJECTS.contains(child.get("objectType").asInstanceOf[String]) && StringUtils.equals(child.get("visibility").asInstanceOf[String], "Default")) {
-            if (null != child.get("totalCompressedSize")) child.get("totalCompressedSize").asInstanceOf[Number].doubleValue
-            else if (null != child.get("size")) child.get("size").asInstanceOf[Number].doubleValue
+          if (!EXPANDABLE_OBJECTS.contains(child.getOrElse("objectType", "").asInstanceOf[String]) && StringUtils.equals(child.getOrElse("visibility", "").asInstanceOf[String], "Default")) {
+            if (null != child.get("totalCompressedSize")) child.getOrElse("totalCompressedSize",0).asInstanceOf[Number].doubleValue
+            else if (null != child.get("size")) child.getOrElse("size",0).asInstanceOf[Number].doubleValue
             else 0
           } else 0
 
@@ -478,13 +478,13 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
     val categoryMapForMimeType = contentConfig.categoryMapForMimeType
     val categoryMapForResourceType = contentConfig.categoryMapForResourceType
     if(StringUtils.isBlank(objType) || objectTypes.contains(objType)) {
-      val contentType = input.get("contentType").asInstanceOf[String]
-      val primaryCategory = input.get("primaryCategory").asInstanceOf[String]
+      val contentType = input.getOrElse("contentType", "").asInstanceOf[String]
+      val primaryCategory = input.getOrElse("primaryCategory","").asInstanceOf[String]
       val (updatedContentType, updatedPrimaryCategory): (String, String) = (contentType, primaryCategory) match {
         case (x: String, y: String) => (x, y)
         case ("Resource", y) => (contentType, getCategoryForResource(input.getOrElse("mimeType", "").asInstanceOf[String],
           input.getOrElse("resourceType", "").asInstanceOf[String], categoryMapForMimeType, categoryMapForResourceType))
-        case (x: String, y) => (x, categoryMap.get(x).asInstanceOf[String])
+        case (x: String, y) => (x, categoryMap.getOrDefault(x,"").asInstanceOf[String])
         case (x, y: String) => (categoryMap.asScala.filter(entry => StringUtils.equalsIgnoreCase(entry._2.asInstanceOf[String], y)).keys.headOption.getOrElse(""), y)
         case _ => (contentType, primaryCategory)
       }
@@ -505,9 +505,9 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
   def updateHierarchyMetadata(children: List[Map[String, AnyRef]], obj: ObjectData)(implicit config: PublishConfig): List[Map[String, AnyRef]] = {
    if (children.nonEmpty) {
       children.map(child => {
-        if (StringUtils.equalsIgnoreCase("Parent", child.get("visibility").asInstanceOf[String])) { //set child metadata -- compatibilityLevel, appIcon, posterImage, lastPublishedOn, pkgVersion, status
+        if (StringUtils.equalsIgnoreCase("Parent", child.getOrElse("visibility", "").asInstanceOf[String])) { //set child metadata -- compatibilityLevel, appIcon, posterImage, lastPublishedOn, pkgVersion, status
           val updatedChild = populatePublishMetadata(child, obj)
-          updateHierarchyMetadata(updatedChild.get("children").asInstanceOf[List[Map[String, AnyRef]]], obj)
+          updateHierarchyMetadata(updatedChild.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]], obj)
           updatedChild
         } else child
       })
@@ -520,7 +520,7 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
     getLeafNodesIds(content, leafNodeIds)
 
     val updatedContent = content ++
-    Map("compatibilityLevel" -> (if (null != content.get("compatibilityLevel")) content.get("compatibilityLevel").asInstanceOf[Number].intValue else 1),
+    Map("compatibilityLevel" -> (if (null != content.get("compatibilityLevel")) content.getOrElse("compatibilityLevel",1).asInstanceOf[Number].intValue else 1),
     "lastPublishedOn" -> obj.metadata.get("lastPublishedOn"), "pkgVersion" -> obj.metadata.get("pkgVersion"), "leafNodesCount" -> getLeafNodeCount(content),
     "leafNodes" -> leafNodeIds.toArray[String], "status" -> obj.metadata.get("status"), "lastUpdatedOn" -> obj.metadata.get("lastUpdatedOn"),
       "downloadUrl"-> obj.metadata.get("downloadUrl"), "variants" -> obj.metadata.get("variants")).asInstanceOf[Map[String, AnyRef]]
@@ -561,11 +561,11 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
   private def updateRootChildrenList(obj: ObjectData, nextLevelNodes: List[Map[String, AnyRef]]): ObjectData = {
     val childrenMap: List[Map[String, AnyRef]] =
       nextLevelNodes.map(record => {
-        Map("identifier" -> record.get("identifier").asInstanceOf[String],
-            "name" -> record.get("name").asInstanceOf[String],
-            "objectType" -> record.get("objectType").asInstanceOf[String],
-            "description" -> record.get("description").asInstanceOf[String],
-            "index" -> record.get("index").asInstanceOf[AnyRef])
+        Map("identifier" -> record.getOrElse("identifier", "").asInstanceOf[String],
+            "name" -> record.getOrElse("name","").asInstanceOf[String],
+            "objectType" -> record.getOrElse("objectType", "").asInstanceOf[String],
+            "description" -> record.getOrElse("description","").asInstanceOf[String],
+            "index" -> record.getOrElse("index",0).asInstanceOf[AnyRef].asInstanceOf[AnyRef])
       })
 
     new ObjectData(obj.identifier, obj.metadata ++ Map("children"-> childrenMap), obj.extData, obj.hierarchy)
@@ -575,17 +575,17 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
     if (children.nonEmpty) {
       children.foreach((child: Map[String, AnyRef]) => {
          try {
-           val updatedChildMetadata: Map[String, AnyRef] = if (StringUtils.equalsIgnoreCase("Default", child.get("visibility").asInstanceOf[String])) {
-             val nodeMetadata = neo4JUtil.getNodeProperties(child.get("identifier").asInstanceOf[String]) // CHECK IF THIS IS GOOD
+           val updatedChildMetadata: Map[String, AnyRef] = if (StringUtils.equalsIgnoreCase("Default", child.getOrElse("visibility", "").asInstanceOf[String])) {
+             val nodeMetadata = neo4JUtil.getNodeProperties(child.getOrElse("identifier", "").asInstanceOf[String]) // CHECK IF THIS IS GOOD
               nodeMetadata.remove("children")
 //              val childData: mutable.Map[String, AnyRef] = mutable.Map.empty[String, AnyRef]
 //              childData += child
-              val nextLevelNodes: List[Map[String, AnyRef]] = child.get("children").asInstanceOf[List[Map[String, AnyRef]]]
+              val nextLevelNodes: List[Map[String, AnyRef]] = child.getOrElse("children",List.empty).asInstanceOf[List[Map[String, AnyRef]]]
               val finalChildList = if (nextLevelNodes.nonEmpty) {
                 nextLevelNodes.map((nextLevelNode: Map[String, AnyRef]) => {
-                  Map("identifier" -> nextLevelNode.get("identifier").asInstanceOf[String], "name" -> nextLevelNode.get("name").asInstanceOf[String],
-                    "objectType" -> nextLevelNode.get("objectType").asInstanceOf[String], "description" -> nextLevelNode.get("description").asInstanceOf[String],
-                    "index" -> nextLevelNode.get("index").asInstanceOf[String])
+                  Map("identifier" -> nextLevelNode.getOrElse("identifier", "").asInstanceOf[String], "name" -> nextLevelNode.getOrElse("name","").asInstanceOf[String],
+                    "objectType" -> nextLevelNode.getOrElse("objectType", "").asInstanceOf[String], "description" -> nextLevelNode.getOrElse("description","").asInstanceOf[String],
+                    "index" -> nextLevelNode.getOrElse("index",0).asInstanceOf[AnyRef].asInstanceOf[String])
                 })
               }
               nodeMetadata.put("children", finalChildList.asInstanceOf[AnyRef])
@@ -595,32 +595,32 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
 //              val childData: mutable.Map[String, AnyRef] = mutable.Map.empty[String, AnyRef]
 //              childData += child
 //              childData.remove("children")
-              val nextLevelNodes: List[Map[String, AnyRef]] = child.get("children").asInstanceOf[List[Map[String, AnyRef]]]
-              val nodeMetadata: mutable.Map[String, AnyRef] = mutable.Map() ++ getHierarchy(child.get("identifier").asInstanceOf[String], child.get("pkgVersion").asInstanceOf[Int], readerConfig).get // CHECK WHAT VALUE IS TO BE PUT HERE
+              val nextLevelNodes: List[Map[String, AnyRef]] = child.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]]
+              val nodeMetadata: mutable.Map[String, AnyRef] = mutable.Map() ++ getHierarchy(child.getOrElse("identifier", "").asInstanceOf[String], child.getOrElse("pkgVersion",1).asInstanceOf[Int], readerConfig).get // CHECK WHAT VALUE IS TO BE PUT HERE
               val finalChildList = if (nextLevelNodes.nonEmpty) {
                 nextLevelNodes.map((nextLevelNode: Map[String, AnyRef]) => {
-                  Map("identifier" -> nextLevelNode.get("identifier").asInstanceOf[String], "name" -> nextLevelNode.get("name").asInstanceOf[String],
-                    "objectType" -> nextLevelNode.get("objectType").asInstanceOf[String], "description" -> nextLevelNode.get("description").asInstanceOf[String],
-                    "index" -> nextLevelNode.get("index").asInstanceOf[String])
+                  Map("identifier" -> nextLevelNode.getOrElse("identifier", "").asInstanceOf[String], "name" -> nextLevelNode.getOrElse("name","").asInstanceOf[String],
+                    "objectType" -> nextLevelNode.getOrElse("objectType", "").asInstanceOf[String], "description" -> nextLevelNode.getOrElse("description","").asInstanceOf[String],
+                    "index" -> nextLevelNode.getOrElse("index",0).asInstanceOf[AnyRef].asInstanceOf[String])
                 })
               }
               nodeMetadata.put("children", finalChildList.asInstanceOf[AnyRef])
-              if (nodeMetadata.get("objectType").asInstanceOf[String].isEmpty) {
+              if (nodeMetadata.getOrElse("objectType", "").asInstanceOf[String].isEmpty) {
                 nodeMetadata += ("objectType" -> "content")
               }
-              if (nodeMetadata.get("graphId").asInstanceOf[String].isEmpty) {
+              if (nodeMetadata.getOrElse("graphId", "").asInstanceOf[String].isEmpty) {
                 nodeMetadata += ("graphId" -> "domain")
               }
              nodeMetadata.toMap[String, AnyRef]
             }
-            if (!nodeIds.contains(child.get("identifier").asInstanceOf[String])) {
-              nodes += new ObjectData(child.get("identifier").asInstanceOf[String], updatedChildMetadata, Option(Map.empty[String, AnyRef]), Option(Map.empty[String, AnyRef]))
-              nodeIds += child.get("identifier").asInstanceOf[String]
+            if (!nodeIds.contains(child.getOrElse("identifier", "").asInstanceOf[String])) {
+              nodes += new ObjectData(child.getOrElse("identifier", "").asInstanceOf[String], updatedChildMetadata, Option(Map.empty[String, AnyRef]), Option(Map.empty[String, AnyRef]))
+              nodeIds += child.getOrElse("identifier", "").asInstanceOf[String]
             }
           } catch {
             case e: Exception => logger.error("Error while generating node map. ", e)
           }
-          getNodeMap(child.get("children").asInstanceOf[List[Map[String, AnyRef]]], nodes, nodeIds)
+          getNodeMap(child.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]], nodes, nodeIds)
       })
     }
   }
@@ -673,28 +673,28 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
     if (children.nonEmpty) {
       children.foreach((child: Map[String, AnyRef]) => {
         try {
-          if (StringUtils.equalsIgnoreCase("Parent", child.get("visibility").asInstanceOf[String])) {
+          if (StringUtils.equalsIgnoreCase("Parent", child.getOrElse("visibility", "").asInstanceOf[String])) {
             //              val childData: mutable.Map[String, AnyRef] = mutable.Map.empty[String, AnyRef]
             //              childData += child
 
-            val nodeMetadata = mutable.Map() ++ getHierarchy(child.get("identifier").asInstanceOf[String], child.get("pkgVersion").asInstanceOf[Int], readerConfig).get // CHECK WHAT VALUE IS TO BE PUT HERE
+            val nodeMetadata = mutable.Map() ++ getHierarchy(child.getOrElse("identifier", "").asInstanceOf[String], child.getOrElse("pkgVersion",1).asInstanceOf[Int], readerConfig).get // CHECK WHAT VALUE IS TO BE PUT HERE
 
             // TO DO - Relation related CODE is MISSING - Line 735 in Publish Finalizer
 
-            if (nodeMetadata.get("objectType").asInstanceOf[String].isEmpty) {
+            if (nodeMetadata.getOrElse("objectType", "").asInstanceOf[String].isEmpty) {
               nodeMetadata += ("objectType" -> "Collection")
             }
-            if (nodeMetadata.get("graphId").asInstanceOf[String].isEmpty) {
+            if (nodeMetadata.getOrElse("graphId", "").asInstanceOf[String].isEmpty) {
               nodeMetadata += ("graphId" -> "domain")
             }
             nodeMetadata.toMap[String, AnyRef]
 
-            if (!nodeIds.contains(child.get("identifier").asInstanceOf[String])) {
-              nodes += new ObjectData(child.get("identifier").asInstanceOf[String], nodeMetadata.toMap[String, AnyRef], Option(Map.empty[String, AnyRef]), Option(Map.empty[String, AnyRef]))
-              nodeIds += child.get("identifier").asInstanceOf[String]
+            if (!nodeIds.contains(child.getOrElse("identifier", "").asInstanceOf[String])) {
+              nodes += new ObjectData(child.getOrElse("identifier", "").asInstanceOf[String], nodeMetadata.toMap[String, AnyRef], Option(Map.empty[String, AnyRef]), Option(Map.empty[String, AnyRef]))
+              nodeIds += child.getOrElse("identifier", "").asInstanceOf[String]
             }
 
-            getNodeForSyncing(child.get("children").asInstanceOf[List[Map[String, AnyRef]]], nodes, nodeIds)
+            getNodeForSyncing(child.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]], nodes, nodeIds)
           }
         } catch {
           case e: Exception => logger.error("Error while generating node map. ", e)
