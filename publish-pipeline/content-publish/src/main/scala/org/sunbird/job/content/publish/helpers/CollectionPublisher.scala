@@ -174,7 +174,7 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
   private def enrichChildren(children: ListBuffer[Map[String, AnyRef]], collectionResourceChildNodes: mutable.HashSet[String], obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): ObjectData = {
     if (children.nonEmpty) {
       val newChildren = children.toList
-      newChildren.map(child => {
+      val childNodesToRemove: List[String] = newChildren.map(child => {
         if (StringUtils.equalsIgnoreCase(child.getOrElse("visibility","").asInstanceOf[String], "Parent") && StringUtils.equalsIgnoreCase(child.getOrElse("mimeType","").asInstanceOf[String], COLLECTION_MIME_TYPE))
           enrichChildren(child.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]].to[ListBuffer], collectionResourceChildNodes, obj)
 
@@ -192,15 +192,19 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
         if (StringUtils.equalsIgnoreCase(child.getOrElse("visibility", "").asInstanceOf[String], "Default") && !EXPANDABLE_OBJECTS.contains(child.getOrElse("objectType", "").asInstanceOf[String])) {
           val childNode = Option(neo4JUtil.getNodeProperties(child.getOrElse("identifier", "").asInstanceOf[String])).getOrElse(neo4JUtil.getNodeProperties(child.getOrElse("identifier", "").asInstanceOf[String])).asScala.toMap
           children.remove(children.indexOf(child))
-          val childNodes = obj.metadata.getOrElse("childNodes", new java.util.ArrayList()).asInstanceOf[java.util.List[String]].asScala.toList.to[ListBuffer]
+//          val childNodes = obj.metadata.getOrElse("childNodes", new java.util.ArrayList()).asInstanceOf[java.util.List[String]].asScala.toList.to[ListBuffer]
 
-          if (PUBLISHED_STATUS_LIST.contains(childNode.getOrElse("status", "").asInstanceOf[String]))
+          if (PUBLISHED_STATUS_LIST.contains(childNode.getOrElse("status", "").asInstanceOf[String])) {
             children ++= ListBuffer(childNode ++ Map("index" -> child.getOrElse("index",0).asInstanceOf[AnyRef], "parent" -> child.getOrElse("parent","").asInstanceOf[String], "depth" -> child.getOrElse("depth",0).asInstanceOf[AnyRef]) - ("collections", "children"))
-          else childNodes.remove(childNodes.indexOf(child.getOrElse("identifier", "").asInstanceOf[String]))
-        }
-      })
+          ""
+          } else child.getOrElse("identifier", "").asInstanceOf[String]
+        } else ""
+      }).filter(rec => rec.nonEmpty)
 
-      new ObjectData(obj.identifier, obj.metadata ++ Map("childNodes" -> collectionResourceChildNodes), obj.extData, obj.hierarchy)
+      if(childNodesToRemove.nonEmpty) {
+        val originalChildNodes = obj.metadata.getOrElse("childNodes", new java.util.ArrayList()).asInstanceOf[java.util.List[String]].asScala.toList
+        new ObjectData(obj.identifier, obj.metadata ++ Map("childNodes" -> originalChildNodes.filter(rec => !childNodesToRemove.contains(rec))), obj.extData, obj.hierarchy)
+      } else obj
     } else obj
   }
 
