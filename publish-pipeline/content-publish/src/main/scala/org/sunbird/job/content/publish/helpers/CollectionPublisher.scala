@@ -192,7 +192,6 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
         if (StringUtils.equalsIgnoreCase(child.getOrElse("visibility", "").asInstanceOf[String], "Default") && !EXPANDABLE_OBJECTS.contains(child.getOrElse("objectType", "").asInstanceOf[String])) {
           val childNode = Option(neo4JUtil.getNodeProperties(child.getOrElse("identifier", "").asInstanceOf[String])).getOrElse(neo4JUtil.getNodeProperties(child.getOrElse("identifier", "").asInstanceOf[String])).asScala.toMap
           children.remove(children.indexOf(child))
-//          val childNodes = obj.metadata.getOrElse("childNodes", new java.util.ArrayList()).asInstanceOf[java.util.List[String]].asScala.toList.to[ListBuffer]
 
           if (PUBLISHED_STATUS_LIST.contains(childNode.getOrElse("status", "").asInstanceOf[String])) {
             children ++= ListBuffer(childNode ++ Map("index" -> child.getOrElse("index",0).asInstanceOf[AnyRef], "parent" -> child.getOrElse("parent","").asInstanceOf[String], "depth" -> child.getOrElse("depth",0).asInstanceOf[AnyRef]) - ("collections", "children"))
@@ -303,7 +302,7 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
   }
 
   def enrichCollection(obj: ObjectData, children: List[Map[String, AnyRef]])(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig): ObjectData = {
-    val node = obj.asInstanceOf[java.util.Map[String, AnyRef]]
+    val nodeMetadata = obj.metadata.asInstanceOf[java.util.Map[String, AnyRef]]
     val contentId = obj.identifier
     logger.info("Processing Collection Content :" + contentId)
     if (null != children && children.nonEmpty) {
@@ -312,8 +311,8 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
       val leafCount = getLeafNodeCount(content)
       val totalCompressedSize = getTotalCompressedSize(content, 0.0)
 
-      node.get("metadata").asInstanceOf[java.util.Map[String, AnyRef]].put("leafNodesCount", leafCount.asInstanceOf[AnyRef])
-      node.get("metadata").asInstanceOf[java.util.Map[String, AnyRef]].put("totalCompressedSize", totalCompressedSize.asInstanceOf[AnyRef])
+      nodeMetadata.put("leafNodesCount", leafCount.asInstanceOf[AnyRef])
+      nodeMetadata.put("totalCompressedSize", totalCompressedSize.asInstanceOf[AnyRef])
 
       updateLeafNodeIds(obj, content)
       val mimeTypeMap: mutable.Map[String, AnyRef] = mutable.Map.empty[String, AnyRef]
@@ -323,15 +322,15 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
 
       val updatedContent = content ++ Map("leafNodesCount"-> leafCount, "totalCompressedSize"-> totalCompressedSize,"mimeTypesCount"-> mimeTypeMap,"contentTypesCount"-> contentTypeMap).asInstanceOf[Map[String, AnyRef]]
 
-      node.get("metadata").asInstanceOf[java.util.Map[String, AnyRef]].put("toc_url", generateTOC(obj, updatedContent).asInstanceOf[AnyRef])
+      nodeMetadata.put("toc_url", generateTOC(obj, updatedContent).asInstanceOf[AnyRef])
 
       val updatedMetadata: Map[String, AnyRef] =  try {
-        node.get("metadata").asInstanceOf[java.util.Map[String, AnyRef]].put("mimeTypesCount", JSONUtil.serialize(mimeTypeMap))
-        node.get("metadata").asInstanceOf[java.util.Map[String, AnyRef]].put("contentTypesCount", JSONUtil.serialize(contentTypeMap))
-        setContentAndCategoryTypes(node.get("metadata").asInstanceOf[Map[String, AnyRef]])
+        nodeMetadata.put("mimeTypesCount", JSONUtil.serialize(mimeTypeMap))
+        nodeMetadata.put("contentTypesCount", JSONUtil.serialize(contentTypeMap))
+        setContentAndCategoryTypes(nodeMetadata.asScala.toMap, nodeMetadata.get("objectType").asInstanceOf[String])
       } catch {
         case e: Exception =>  logger.error("Error while stringify mimeTypeCount or contentTypesCount.", e)
-          node.get("metadata").asInstanceOf[Map[String, AnyRef]]
+          obj.metadata
       }
 
       new ObjectData(obj.identifier, updatedMetadata, obj.extData, Option(updatedContent))
