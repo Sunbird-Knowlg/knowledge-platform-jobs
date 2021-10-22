@@ -302,7 +302,7 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
   }
 
   def enrichCollection(obj: ObjectData, children: List[Map[String, AnyRef]])(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig): ObjectData = {
-    val nodeMetadata = obj.metadata.asInstanceOf[java.util.Map[String, AnyRef]]
+    val nodeMetadata = obj.metadata.asJava
     val contentId = obj.identifier
     logger.info("Processing Collection Content :" + contentId)
     if (null != children && children.nonEmpty) {
