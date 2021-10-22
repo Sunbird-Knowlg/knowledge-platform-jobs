@@ -10,7 +10,7 @@ import org.sunbird.job.cache.{DataCache, RedisConnect}
 import org.sunbird.job.content.publish.domain.Event
 import org.sunbird.job.content.publish.helpers.CollectionPublisher
 import org.sunbird.job.content.task.ContentPublishConfig
-import org.sunbird.job.domain.`object`.DefinitionCache
+import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
 import org.sunbird.job.publish.helpers.EcarPackageType
 import org.sunbird.job.util._
@@ -32,7 +32,6 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
   private[this] val logger = LoggerFactory.getLogger(classOf[CollectionPublishFunction])
   val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
   private var cache: DataCache = _
-  private val readerConfig = ExtDataConfig(config.hierarchyKeyspaceName, config.hierarchyTableName)
   private val COLLECTION_CACHE_KEY_PREFIX = "hierarchy_"
   private val COLLECTION_CACHE_KEY_SUFFIX = ":leafnodes"
 
@@ -64,6 +63,8 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
 
   override def processElement(data: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
     try {
+      val definition: ObjectDefinition = definitionCache.getDefinition(data.objectType, config.schemaSupportVersionMap.getOrElse(data.objectType.toLowerCase(), "1.0").asInstanceOf[String], config.definitionBasePath)
+      val readerConfig = ExtDataConfig(config.hierarchyKeyspaceName, config.hierarchyTableName, definition.getExternalPrimaryKey, definition.getExternalProps)
       logger.info("Collection publishing started for : " + data.identifier)
       metrics.incCounter(config.collectionPublishEventCount)
       val obj: ObjectData = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(neo4JUtil, cassandraUtil)
@@ -93,7 +94,8 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
           val enrichedObj = enrichObject(updatedObj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
           val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
           logger.info("Ecar generation done for Collection: " + objWithEcar.identifier)
-          saveOnSuccess(objWithEcar)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
+
+          saveOnSuccess(new ObjectData(objWithEcar.identifier, objWithEcar.metadata.-("children"), objWithEcar.extData, objWithEcar.hierarchy))(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
 
           val children = obj.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
           // Collection - update and publish children - line 418 in PublishFinalizer
