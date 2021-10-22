@@ -302,7 +302,7 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
   }
 
   def enrichCollection(obj: ObjectData, children: List[Map[String, AnyRef]])(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig): ObjectData = {
-    val nodeMetadata = obj.metadata.asJava
+    val nodeMetadata= mutable.Map.empty[String, AnyRef] ++ obj.metadata
     val contentId = obj.identifier
     logger.info("Processing Collection Content :" + contentId)
     if (null != children && children.nonEmpty) {
@@ -327,7 +327,7 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
       val updatedMetadata: Map[String, AnyRef] =  try {
         nodeMetadata.put("mimeTypesCount", JSONUtil.serialize(mimeTypeMap))
         nodeMetadata.put("contentTypesCount", JSONUtil.serialize(contentTypeMap))
-        setContentAndCategoryTypes(nodeMetadata.asScala.toMap, nodeMetadata.get("objectType").asInstanceOf[String])
+        setContentAndCategoryTypes(nodeMetadata.toMap, nodeMetadata.get("objectType").asInstanceOf[String])
       } catch {
         case e: Exception =>  logger.error("Error while stringify mimeTypeCount or contentTypesCount.", e)
           obj.metadata
