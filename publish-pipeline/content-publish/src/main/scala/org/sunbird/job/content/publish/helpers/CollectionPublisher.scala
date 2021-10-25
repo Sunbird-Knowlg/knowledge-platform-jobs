@@ -30,7 +30,6 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
   private val INCLUDE_CHILDNODE_OBJECTS = List("Collection")
   private val PUBLISHED_STATUS_LIST = List("Live", "Unlisted")
   private val COLLECTION_MIME_TYPE = "application/vnd.ekstep.content-collection"
-  private val objectTypes = List("Content", "Collection")
   private val mimeTypesToCheck = List("application/vnd.ekstep.h5p-archive", "application/vnd.ekstep.html-archive", "application/vnd.android.package-archive",
     "video/webm", "video/x-youtube", "video/mp4")
 
@@ -328,9 +327,9 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
       val updatedMetadata: Map[String, AnyRef] =  try {
         nodeMetadata.put("mimeTypesCount", JSONUtil.serialize(mimeTypeMap))
         nodeMetadata.put("contentTypesCount", JSONUtil.serialize(contentTypeMap))
-        setContentAndCategoryTypes(nodeMetadata.toMap, nodeMetadata.get("objectType").asInstanceOf[String])
+        setContentAndCategoryTypes(nodeMetadata.toMap)
       } catch {
-        case e: Exception =>  logger.error("Error while stringify mimeTypeCount or contentTypesCount.", e)
+        case e: Exception =>  logger.error("Error while stringify mimeTypeCount or contentTypesCount:", e)
           nodeMetadata.toMap
       }
 
@@ -476,12 +475,11 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
     if (folderName.nonEmpty) folderName + File.separator + Slug.makeSlug(identifier, isTransliterate = true) + File.separator + contentConfig.artifactFolder else folderName
   }
 
-  def setContentAndCategoryTypes(input: Map[String, AnyRef], objType: String = "")(implicit config: PublishConfig): Map[String, AnyRef] = {
+  def setContentAndCategoryTypes(input: Map[String, AnyRef])(implicit config: PublishConfig): Map[String, AnyRef] = {
     val contentConfig = config.asInstanceOf[ContentPublishConfig]
     val categoryMap = contentConfig.categoryMap
     val categoryMapForMimeType = contentConfig.categoryMapForMimeType
     val categoryMapForResourceType = contentConfig.categoryMapForResourceType
-    if(StringUtils.isBlank(objType) || objectTypes.contains(objType)) {
       val contentType = input.getOrElse("contentType", "").asInstanceOf[String]
       val primaryCategory = input.getOrElse("primaryCategory","").asInstanceOf[String]
       val (updatedContentType, updatedPrimaryCategory): (String, String) = (contentType, primaryCategory) match {
@@ -494,8 +492,6 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
       }
 
       input ++ Map("contentType" -> updatedContentType, "primaryCategory" -> updatedPrimaryCategory)
-    }
-    else input
   }
 
   private def getCategoryForResource(mimeType: String, resourceType: String, categoryMapForMimeType: java.util.Map[String, AnyRef], categoryMapForResourceType: java.util.Map[String, AnyRef]): String = (mimeType, resourceType) match {
