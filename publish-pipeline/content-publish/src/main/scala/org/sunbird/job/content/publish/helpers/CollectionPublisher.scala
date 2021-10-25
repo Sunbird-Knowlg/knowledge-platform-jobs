@@ -314,14 +314,15 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
       nodeMetadata.put("leafNodesCount", leafCount.asInstanceOf[AnyRef])
       nodeMetadata.put("totalCompressedSize", totalCompressedSize.asInstanceOf[AnyRef])
 
-      updateLeafNodeIds(obj, content)
+      nodeMetadata.put("leafNodes",updateLeafNodeIds(obj, content))
       val mimeTypeMap: mutable.Map[String, AnyRef] = mutable.Map.empty[String, AnyRef]
       val contentTypeMap: mutable.Map[String, AnyRef] = mutable.Map.empty[String, AnyRef]
       getTypeCount(content, "mimeType", mimeTypeMap)
       getTypeCount(content, "contentType", contentTypeMap)
 
       val updatedContent = content ++ Map("leafNodesCount"-> leafCount, "totalCompressedSize"-> totalCompressedSize,"mimeTypesCount"-> mimeTypeMap,"contentTypesCount"-> contentTypeMap).asInstanceOf[Map[String, AnyRef]]
-
+      nodeMetadata.put("mimeTypesCount", mimeTypeMap)
+      nodeMetadata.put("contentTypesCount", contentTypeMap)
       nodeMetadata.put("toc_url", generateTOC(obj, updatedContent).asInstanceOf[AnyRef])
 
       val updatedMetadata: Map[String, AnyRef] =  try {
@@ -330,17 +331,17 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
         setContentAndCategoryTypes(nodeMetadata.toMap, nodeMetadata.get("objectType").asInstanceOf[String])
       } catch {
         case e: Exception =>  logger.error("Error while stringify mimeTypeCount or contentTypesCount.", e)
-          obj.metadata
+          nodeMetadata.toMap
       }
 
       new ObjectData(obj.identifier, updatedMetadata, obj.extData, Option(updatedContent))
     } else obj
   }
 
-  private def updateLeafNodeIds(obj: ObjectData, content: Map[String, AnyRef]): ObjectData = {
+  private def updateLeafNodeIds(obj: ObjectData, content: Map[String, AnyRef]): Array[String] = {
     val leafNodeIds: mutable.Set[String] = mutable.Set.empty[String]
     getLeafNodesIds(content, leafNodeIds)
-    new ObjectData(obj.identifier, (obj.metadata ++ Map("leafNodes" -> leafNodeIds.toArray)), obj.extData, obj.hierarchy)
+    leafNodeIds.toArray
   }
 
   private def processChild(childMetadata: Map[String, AnyRef]): Map[String, AnyRef] = {
