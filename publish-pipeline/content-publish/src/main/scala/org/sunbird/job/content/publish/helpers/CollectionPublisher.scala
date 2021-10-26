@@ -76,15 +76,13 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
 
     val children = if (collectionHierarchy.nonEmpty) { collectionHierarchy.getOrElse("children",List.empty[Map[String, AnyRef]]).asInstanceOf[List[Map[String, AnyRef]]] } else List.empty[Map[String, AnyRef]]
     val childrenBuffer = children.to[ListBuffer]
-    val updatedObjMetadata: Map[String,AnyRef] = if (collectionHierarchy.nonEmpty) {
-      if (!isCollectionShallowCopy) {
+    val updatedObjMetadata: Map[String,AnyRef] = if (collectionHierarchy.nonEmpty && !isCollectionShallowCopy) {
         val collectionResourceChildNodes: mutable.HashSet[String] = mutable.HashSet.empty[String]
         enrichChildren(childrenBuffer, collectionResourceChildNodes, obj)
         if (collectionResourceChildNodes.nonEmpty) {
           val collectionChildNodes: List[String] = obj.metadata.getOrElse("childNodes", new java.util.ArrayList()).asInstanceOf[java.util.List[String]].asScala.toList
           updatedCompatibilityLevelMeta ++ Map("childNodes" -> (collectionChildNodes ++ collectionResourceChildNodes).distinct)
         } else updatedCompatibilityLevelMeta
-      } else updatedCompatibilityLevelMeta
     } else updatedCompatibilityLevelMeta
 
     val updatedObj = new ObjectData(obj.identifier, updatedObjMetadata, obj.extData, Option(collectionHierarchy))
