@@ -7,7 +7,7 @@ import org.apache.commons.io.FileUtils
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.content.task.ContentPublishConfig
-import org.sunbird.job.domain.`object`.DefinitionCache
+import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData, ObjectExtData}
 import org.sunbird.job.publish.helpers._
@@ -20,7 +20,7 @@ import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext
 
-trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectEnrichment with EcarGenerator with ObjectUpdater {
+trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with ObjectValidator with ObjectEnrichment with EcarGenerator with ObjectUpdater {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[CollectionPublisher])
   private val level4ContentTypes = List("Course", "CourseUnit", "LessonPlan", "LessonPlanUnit")
@@ -156,8 +156,7 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
 
   def isContentShallowCopy(obj: ObjectData): Boolean = {
     val originData: Map[String, AnyRef] = obj.metadata.getOrElse("originData",Map.empty[String, AnyRef]).asInstanceOf[Map[String,AnyRef]]
-    if (originData != null && originData.nonEmpty && StringUtils.isNoneBlank(originData.getOrElse("copyType","").asInstanceOf[String]) && StringUtils.equalsIgnoreCase(originData.getOrElse("copyType","").asInstanceOf[String], "shallow")) true
-    else false
+    (originData.nonEmpty && originData.getOrElse("copyType","").asInstanceOf[String].equalsIgnoreCase( "shallow"))
   }
 
   def updateOriginPkgVersion(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil): ObjectData = {
@@ -211,7 +210,7 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
 
   private def processCollection(obj: ObjectData, children: List[Map[String, AnyRef]])(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig): ObjectData = {
     val contentId = obj.identifier
-    val dataMap: mutable.Map[String, AnyRef] = processChildren(obj, children)
+    val dataMap: mutable.Map[String, AnyRef] = processChildren(children)
     logger.info("Children nodes processing for collection - " + contentId)
     val updatedObj: ObjectData = if (dataMap.nonEmpty) {
      val updatedMetadataMap: Map[String, AnyRef] = dataMap.flatMap(record => {
@@ -287,7 +286,7 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
     leafNodes.toList
   }
 
-  private def processChildren(obj: ObjectData, children: List[Map[String, AnyRef]]): mutable.Map[String, AnyRef] = {
+  private def processChildren(children: List[Map[String, AnyRef]]): mutable.Map[String, AnyRef] = {
     val dataMap: mutable.Map[String, AnyRef] = mutable.Map.empty
     processChildren(children, dataMap)
     dataMap
@@ -315,7 +314,7 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
       nodeMetadata.put("leafNodesCount", leafCount.asInstanceOf[AnyRef])
       nodeMetadata.put("totalCompressedSize", totalCompressedSize.asInstanceOf[AnyRef])
 
-      nodeMetadata.put("leafNodes",updateLeafNodeIds(obj, content))
+      nodeMetadata.put("leafNodes",updateLeafNodeIds(content))
       val mimeTypeMap: mutable.Map[String, AnyRef] = mutable.Map.empty[String, AnyRef]
       val contentTypeMap: mutable.Map[String, AnyRef] = mutable.Map.empty[String, AnyRef]
       getTypeCount(content, "mimeType", mimeTypeMap)
@@ -339,7 +338,7 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
     } else obj
   }
 
-  private def updateLeafNodeIds(obj: ObjectData, content: Map[String, AnyRef]): Array[String] = {
+  private def updateLeafNodeIds(content: Map[String, AnyRef]): Array[String] = {
     val leafNodeIds: mutable.Set[String] = mutable.Set.empty[String]
     getLeafNodesIds(content, leafNodeIds)
     leafNodeIds.toArray
@@ -626,48 +625,43 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
     }
   }
 
-//  private def syncNodes(children: List[Map[String, AnyRef]], unitNodes: List[String])(implicit esUtil: ElasticSearchUtil, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): Unit = {
-//    val nodes = ListBuffer.empty[ObjectData]
-//    val nodeIds = ListBuffer.empty[String]
-//
-//    getNodeForSyncing(children, nodes, nodeIds)
-//    val updatedUnitNodes = if (unitNodes.nonEmpty) unitNodes.filter(unitNode => !nodeIds.contains(unitNode)) else unitNodes
-//
-//    if (nodes.isEmpty && updatedUnitNodes.isEmpty ) return
-//
-//    var errors = null
-//    val `def` = mapper.convertValue(definition, new TypeReference[Map[String, AnyRef]]() {})
-//    val relationMap = GraphUtil.getRelationMap(ContentWorkflowPipelineParams.Collection.name, `def`)
-//    if (CollectionUtils.isNotEmpty(nodes)) while ( {
-//      !nodes.isEmpty
-//    }) {
-//      val currentBatchSize = if (nodes.size >= batchSize) batchSize
-//      else nodes.size
-//      val nodeBatch = nodes.subList(0, currentBatchSize)
-//      if (CollectionUtils.isNotEmpty(nodeBatch)) {
-//        errors = new HashMap[String, String]
-//        val messages = SyncMessageGenerator.getMessages(nodeBatch, ContentWorkflowPipelineParams.Collection.name, relationMap, errors, disableAkka)
-//        if (!errors.isEmpty) logger.error("Error! while forming ES document data from nodes, below nodes are ignored: " + errors)
-//        if (MapUtils.isNotEmpty(messages)) try {
-//          System.out.println("Number of units to be synced : " + messages.size)
-//          ElasticSearchUtil.bulkIndexWithIndexId(ES_INDEX_NAME, DOCUMENT_TYPE, messages)
-//          System.out.println("UnitIds synced : " + messages.keySet)
-//        } catch {
-//          case e: Exception =>
-//            e.printStackTrace()
-//            logger.error("Elastic Search indexing failed: " + e)
-//        }
-//      }
-//      // clear the already batched node ids from the list
-//      nodes.subList(0, currentBatchSize).clear()
-//    }
-//    try //Unindexing not utilized units
-//      if (unitNodes.nonEmpty) unitNodes.map(unitNodeId => esUtil.deleteDocument(unitNodeId))
-//    catch {
-//      case e: Exception =>
-//        logger.error("Elastic Search indexing failed: " + e)
-//    }
-//  }
+  def syncNodes(children: List[Map[String, AnyRef]], unitNodes: List[String])(implicit esUtil: ElasticSearchUtil, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, definition: ObjectDefinition, config: PublishConfig): Unit = {
+    val contentConfig = config.asInstanceOf[ContentPublishConfig]
+    val nestedFields = contentConfig.nestedFields.asScala.toList
+
+    val nodes = ListBuffer.empty[ObjectData]
+    val nodeIds = ListBuffer.empty[String]
+
+    getNodeForSyncing(children, nodes, nodeIds)
+    val updatedUnitNodes = if (unitNodes.nonEmpty) unitNodes.filter(unitNode => !nodeIds.contains(unitNode)) else unitNodes
+
+    if (nodes.isEmpty && updatedUnitNodes.isEmpty ) return
+
+    val errors = mutable.Map.empty[String, String]
+    val messages: Map[String, Map[String, AnyRef]] = getMessages(nodes.toList, definition, nestedFields, errors)(esUtil)
+    if (errors.nonEmpty) logger.error("Error! while forming ES document data from nodes, below nodes are ignored: " + errors)
+    if(messages.nonEmpty)
+      try {
+        logger.info("Number of units to be synced : " + messages.size)
+        messages.foreach(message => {
+          val indexDocument = getJsonMessage(message._2, true, definition, nestedFields, List.empty)(esUtil)
+          val jsonIndexDocument = ScalaJsonUtil.serialize(indexDocument)
+          upsertDocument(message._1, jsonIndexDocument)(esUtil)
+        })
+        logger.info("UnitIds synced : " + messages.keySet)
+      } catch {
+        case e: Exception =>  e.printStackTrace()
+          logger.error("Elastic Search indexing failed: " + e)
+      }
+
+
+    try //Unindexing not utilized units
+      if (updatedUnitNodes.nonEmpty) updatedUnitNodes.map(unitNodeId => esUtil.deleteDocument(unitNodeId))
+    catch {
+      case e: Exception =>
+        logger.error("Elastic Search indexing failed: " + e)
+    }
+  }
 
 
   private def getNodeForSyncing(children: List[Map[String, AnyRef]], nodes: ListBuffer[ObjectData], nodeIds: ListBuffer[String])(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): Unit = {

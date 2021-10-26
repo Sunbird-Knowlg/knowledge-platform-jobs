@@ -86,10 +86,11 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
           cache.del(COLLECTION_CACHE_KEY_PREFIX + data.identifier)
 
           // Collection - add step to remove units of already Live content from redis - line 243 in PublishFinalizer
-          if (obj.identifier.endsWith(".img")) {
+          val unitNodes = if (obj.identifier.endsWith(".img")) {
             val childNodes = getUnitsFromLiveContent(updatedObj)(cassandraUtil, readerConfig)
             childNodes.filter(rec => rec.nonEmpty).foreach(childId => cache.del(COLLECTION_CACHE_KEY_PREFIX + childId))
-          }
+            childNodes.filter(rec => rec.nonEmpty)
+          } else List.empty
 
           val enrichedObj = enrichObject(updatedObj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
           val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
@@ -101,7 +102,7 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
           // Collection - update and publish children - line 418 in PublishFinalizer
           val updatedChildren = updateHierarchyMetadata(children, objWithEcar)(config)
           publishHierarchy(updatedChildren, objWithEcar, readerConfig)(cassandraUtil)
-          //          if (!isContentShallowCopy) syncNodes(updatedChildren, unitNodes)(esUtil, neo4JUtil, cassandraUtil, readerConfig)
+          if (!isCollectionShallowCopy) syncNodes(updatedChildren, unitNodes)(esUtil, neo4JUtil, cassandraUtil, readerConfig, definition, config)
 
           metrics.incCounter(config.collectionPublishSuccessEventCount)
           logger.info("Collection publishing completed successfully for : " + data.identifier)
