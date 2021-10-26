@@ -25,7 +25,7 @@ class CollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Match
   implicit var cassandraUtil: CassandraUtil = _
   val config: Config = ConfigFactory.load("test.conf").withFallback(ConfigFactory.systemEnvironment())
   val jobConfig: ContentPublishConfig = new ContentPublishConfig(config)
-  implicit val readerConfig: ExtDataConfig = ExtDataConfig(jobConfig.contentKeyspaceName, jobConfig.contentTableName)
+  implicit val readerConfig: ExtDataConfig = ExtDataConfig(jobConfig.hierarchyKeyspaceName, jobConfig.hierarchyTableName)
   implicit val cloudStorageUtil: CloudStorageUtil = new CloudStorageUtil(jobConfig)
   implicit val ec: ExecutionContextExecutor = ExecutionContexts.global
   implicit val defCache: DefinitionCache = new DefinitionCache()
@@ -61,7 +61,7 @@ class CollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Match
   }
 
   "enrichObjectMetadata" should "enrich the Content pkgVersion metadata" in {
-    val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/pdf"))
+    val data = new ObjectData("do_2133950809948078081503", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_2133950809948078081503", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/vnd.ekstep.content-collection"))
     val result: ObjectData = new TestCollectionPublisher().enrichObjectMetadata(data).getOrElse(data)
     result.metadata.getOrElse("pkgVersion", 0.0.asInstanceOf[Number]).asInstanceOf[Number] should be(1.0.asInstanceOf[Number])
   }
