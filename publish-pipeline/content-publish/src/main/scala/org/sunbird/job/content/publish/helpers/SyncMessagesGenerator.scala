@@ -15,8 +15,7 @@ trait SyncMessagesGenerator {
 
   private def getIndexDocument(identifier: String)(esUtil: ElasticSearchUtil): scala.collection.mutable.Map[String, AnyRef] = {
     val documentJson: String = esUtil.getDocumentAsString(identifier)
-    val indexDocument = if (documentJson != null && documentJson.nonEmpty) ScalaJsonUtil.deserialize[scala.collection.mutable.Map[String, AnyRef]](documentJson) else scala.collection.mutable.Map[String, AnyRef]()
-    indexDocument
+    if (documentJson != null && documentJson.nonEmpty) ScalaJsonUtil.deserialize[scala.collection.mutable.Map[String, AnyRef]](documentJson) else scala.collection.mutable.Map[String, AnyRef]()
   }
 
   def getJsonMessage(message: Map[String, Any], isUpdate: Boolean, definition: ObjectDefinition, nestedFields: List[String], ignoredFields: List[String])(esUtil: ElasticSearchUtil): Map[String, AnyRef] = {
@@ -81,13 +80,11 @@ trait SyncMessagesGenerator {
   }
 
   private def addMetadataToDocument(propertyName: String, propertyValue: AnyRef, nestedFields: List[String]): AnyRef = {
-    val propertyNewValue = if (nestedFields.contains(propertyName)) ScalaJsonUtil.deserialize[AnyRef](propertyValue.asInstanceOf[String]) else propertyValue
-    propertyNewValue
+    if (nestedFields.contains(propertyName)) ScalaJsonUtil.deserialize[AnyRef](propertyValue.asInstanceOf[String]) else propertyValue
   }
 
   def getMessages(nodes: List[ObjectData], definition: ObjectDefinition, nestedFields: List[String], errors: mutable.Map[String, String])(esUtil: ElasticSearchUtil): Map[String, Map[String, AnyRef]] = {
     val messages = collection.mutable.Map.empty[String, Map[String, AnyRef]]
-
     for (node <- nodes) {
       try {
         if (definition.getRelationLabels() != null) {
@@ -105,7 +102,6 @@ trait SyncMessagesGenerator {
 
 
   def getMessage(node: ObjectData): Map[String, AnyRef] = {
-    val map = collection.mutable.Map.empty[String, AnyRef]
     val transactionData = collection.mutable.Map.empty[String, AnyRef]
     if (null != node.metadata && node.metadata.nonEmpty) {
       val propertyMap = collection.mutable.Map.empty[String, AnyRef]
@@ -138,15 +134,8 @@ trait SyncMessagesGenerator {
 //      }
 //    }
     transactionData.put("addedRelations", relations)
-    map.put("operationType", "UPDATE")
-    map.put("graphId", node.metadata.get("graphId"))
-    map.put("nodeGraphId", node.dbId)
-    map.put("nodeUniqueId", node.identifier)
-    map.put("objectType", node.dbObjType)
-    map.put("nodeType", "DATA_NODE")
-    map.put("transactionData", transactionData)
-    map.put("syncMessage", true.asInstanceOf[AnyRef])
-    map.toMap
+    Map("operationType"-> "UPDATE", "graphId" -> node.metadata.get("graphId"), "nodeGraphId"-> node.dbId, "nodeUniqueId"-> node.identifier, "objectType"-> node.dbObjType,
+      "nodeType"-> "DATA_NODE", "transactionData" -> transactionData, "syncMessage" -> true.asInstanceOf[AnyRef])
   }
 
 }
