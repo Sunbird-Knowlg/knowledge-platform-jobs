@@ -29,6 +29,7 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
   private val INCLUDE_LEAFNODE_OBJECTS = List("QuestionSet")
   private val INCLUDE_CHILDNODE_OBJECTS = List("Collection")
   private val PUBLISHED_STATUS_LIST = List("Live", "Unlisted")
+  private val learningResource = "Learning Resource"
   private val COLLECTION_MIME_TYPE = "application/vnd.ekstep.content-collection"
   private val mimeTypesToCheck = List("application/vnd.ekstep.h5p-archive", "application/vnd.ekstep.html-archive", "application/vnd.android.package-archive",
     "video/webm", "video/x-youtube", "video/mp4")
@@ -211,7 +212,7 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
   private def processCollection(obj: ObjectData, children: List[Map[String, AnyRef]])(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig): ObjectData = {
     val contentId = obj.identifier
     val dataMap: mutable.Map[String, AnyRef] = processChildren(obj, children)
-    logger.info("Children nodes process for collection - " + contentId)
+    logger.info("Children nodes processing for collection - " + contentId)
     val updatedObj: ObjectData = if (dataMap.nonEmpty) {
      val updatedMetadataMap: Map[String, AnyRef] = dataMap.flatMap(record => {
         if (!"concepts".equalsIgnoreCase(record._1) && !"keywords".equalsIgnoreCase(record._1)) {
@@ -496,10 +497,9 @@ trait CollectionPublisher extends ObjectReader with ObjectValidator with ObjectE
   }
 
   private def getCategoryForResource(mimeType: String, resourceType: String, categoryMapForMimeType: java.util.Map[String, AnyRef], categoryMapForResourceType: java.util.Map[String, AnyRef]): String = (mimeType, resourceType) match {
-    case ("", "") => "Learning Resource"
-    case (x: String, "") => categoryMapForMimeType.get(x).asInstanceOf[java.util.List[String]].asScala.headOption.getOrElse("Learning Resource")
-    case (x: String, y: String) => if (mimeTypesToCheck.contains(x)) categoryMapForMimeType.get(x).asInstanceOf[java.util.List[String]].asScala.headOption.getOrElse("Learning Resource") else categoryMapForResourceType.getOrDefault(y, "Learning Resource").asInstanceOf[String]
-    case _ => "Learning Resource"
+    case (x: String, "") => categoryMapForMimeType.get(x).asInstanceOf[java.util.List[String]].asScala.headOption.getOrElse(learningResource)
+    case (x: String, y: String) => if (mimeTypesToCheck.contains(x)) categoryMapForMimeType.get(x).asInstanceOf[java.util.List[String]].asScala.headOption.getOrElse(learningResource) else categoryMapForResourceType.getOrDefault(y, learningResource).asInstanceOf[String]
+    case _ => learningResource
   }
 
 
