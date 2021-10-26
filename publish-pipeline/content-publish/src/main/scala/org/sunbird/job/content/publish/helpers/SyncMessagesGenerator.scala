@@ -145,7 +145,7 @@ trait SyncMessagesGenerator {
     map.put("objectType", node.dbObjType)
     map.put("nodeType", "DATA_NODE")
     map.put("transactionData", transactionData)
-    map.put("syncMessage", true)
+    map.put("syncMessage", true.asInstanceOf[AnyRef])
     map.toMap
   }
 
