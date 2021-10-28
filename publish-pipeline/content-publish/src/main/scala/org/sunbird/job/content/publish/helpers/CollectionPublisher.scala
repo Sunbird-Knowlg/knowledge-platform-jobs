@@ -73,7 +73,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       val originData: Map[String, AnyRef] = obj.metadata.getOrElse("originData","").asInstanceOf[Map[String,AnyRef]]
       getHierarchy(obj.metadata.get("origin").asInstanceOf[String], originData.getOrElse("pkgVersion", 0.0).asInstanceOf[Double], readerConfig).get
     } else getHierarchy(obj.identifier, obj.pkgVersion, readerConfig).get
-    println("Hierarchy for content : " + obj.identifier + " : " + collectionHierarchy)
+    logger.info("CollectionPublisher:: enrichObjectMetadata:: Hierarchy for content : " + obj.identifier + " : " + collectionHierarchy)
 
     val children = if (collectionHierarchy.nonEmpty) { collectionHierarchy.getOrElse("children",List.empty[Map[String, AnyRef]]).asInstanceOf[List[Map[String, AnyRef]]] } else List.empty[Map[String, AnyRef]]
     val childrenBuffer = children.to[ListBuffer]
@@ -89,11 +89,11 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
 
     val updatedObj = new ObjectData(obj.identifier, updatedObjMetadata, obj.extData, Option(collectionHierarchy))
 
-    logger.info("Collection processing started for content: " + updatedObj.identifier)
+    logger.info("CollectionPublisher:: enrichObjectMetadata:: Collection processing started for content: " + updatedObj.identifier)
     val enrichedObj = processCollection(updatedObj, childrenBuffer.toList)
-    logger.info("Collection processing done for content: " + enrichedObj.identifier)
-    logger.info("Collection data after processing for : " + enrichedObj.identifier + " | Metadata : " + enrichedObj.metadata)
-    logger.info("Collection children data after processing : " + enrichedObj.hierarchy.get("children"))
+    logger.info("CollectionPublisher:: enrichObjectMetadata:: Collection processing done for content: " + enrichedObj.identifier)
+    logger.info("CollectionPublisher:: enrichObjectMetadata:: Collection data after processing for : " + enrichedObj.identifier + " | Metadata : " + enrichedObj.metadata)
+    logger.info("CollectionPublisher:: enrichObjectMetadata:: Collection children data after processing : " + enrichedObj.hierarchy.get("children"))
 
     Some(enrichedObj)
   }
@@ -138,7 +138,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
 
   private def setCompatibilityLevel(obj: ObjectData, updatedMeta: Map[String, AnyRef]): Option[Map[String, AnyRef]] = {
     if (level4ContentTypes.contains(obj.getString("contentType", ""))) {
-      logger.info("setting compatibility level for content id : " + obj.identifier + " as 4.")
+      logger.info("CollectionPublisher:: setCompatibilityLevel:: setting compatibility level for content id : " + obj.identifier + " as 4.")
       Some(updatedMeta ++ Map("compatibilityLevel" -> 4.asInstanceOf[AnyRef]))
     } else Some(updatedMeta)
   }
@@ -212,7 +212,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
   private def processCollection(obj: ObjectData, children: List[Map[String, AnyRef]])(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig): ObjectData = {
     val contentId = obj.identifier
     val dataMap: mutable.Map[String, AnyRef] = processChildren(children)
-    logger.info("Children nodes processing for collection - " + contentId)
+    logger.info("CollectionPublisher:: processCollection:: Children nodes processing for collection - " + contentId)
     val updatedObj: ObjectData = if (dataMap.nonEmpty) {
      val updatedMetadataMap: Map[String, AnyRef] = dataMap.flatMap(record => {
         if (!"concepts".equalsIgnoreCase(record._1) && !"keywords".equalsIgnoreCase(record._1)) {
@@ -305,7 +305,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
   def enrichCollection(obj: ObjectData, children: List[Map[String, AnyRef]])(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig): ObjectData = {
     val nodeMetadata= mutable.Map.empty[String, AnyRef] ++ obj.metadata
     val contentId = obj.identifier
-    logger.info("Processing Collection Content :" + contentId)
+    logger.info("CollectionPublisher:: enrichCollection:: Processing Collection Content :" + contentId)
     if (null != children && children.nonEmpty) {
       val content = getHierarchy(obj.identifier, obj.pkgVersion, readerConfig).get
       if (content.isEmpty) return obj
@@ -331,7 +331,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
         nodeMetadata.put("contentTypesCount", JSONUtil.serialize(contentTypeMap))
         setContentAndCategoryTypes(nodeMetadata.toMap)
       } catch {
-        case e: Exception =>  logger.error("Error while stringify mimeTypeCount or contentTypesCount:", e)
+        case e: Exception =>  logger.error("CollectionPublisher:: enrichCollection:: Error while stringify mimeTypeCount or contentTypesCount:", e)
           nodeMetadata.toMap
       }
 
@@ -437,31 +437,31 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
   }
 
   def generateTOC(obj: ObjectData, content: Map[String, AnyRef])(implicit cloudStorageUtil: CloudStorageUtil, config: PublishConfig): String = {
-    logger.info("Write hierarchy to JSON File :" +obj.identifier)
+    logger.info("CollectionPublisher:: generateTOC:: Write hierarchy to JSON File :" +obj.identifier)
     val file = new File(getTOCBasePath(obj.identifier) + "_toc.json")
     try {
       val data = ScalaJsonUtil.serialize(content)
       FileUtils.writeStringToFile(file, data, "UTF-8")
       val url: String = if (file.exists) {
-        logger.info("Upload File to cloud storage :" + file.getName)
+        logger.info("CollectionPublisher:: generateTOC:: Upload File to cloud storage :" + file.getName)
         val uploadedFileUrl = cloudStorageUtil.uploadFile(getAWSPath(obj.identifier), file, Option.apply(true))
         if (null != uploadedFileUrl && uploadedFileUrl.length > 1) {
-          logger.info("Update cloud storage url to node" + uploadedFileUrl(1))
+          logger.info("CollectionPublisher:: generateTOC:: Update cloud storage url to node" + uploadedFileUrl(1))
           uploadedFileUrl(1)
         } else ""
       } else ""
       url
     } catch {
-      case e: JsonProcessingException =>  logger.error("Error while parsing map object to string.", e)
+      case e: JsonProcessingException =>  logger.error("CollectionPublisher:: publishHierarchy:: Error while parsing map object to string.", e)
         throw e
-      case e: Exception =>  logger.error("Error while uploading file ", e)
+      case e: Exception =>  logger.error("CollectionPublisher:: generateTOC:: Error while uploading file ", e)
         throw e
     } finally try {
-      logger.info("Deleting Uploaded files")
+      logger.info("CollectionPublisher:: generateTOC:: Deleting Uploaded files")
       FileUtils.deleteDirectory(file.getParentFile)
     } catch {
       case e: IOException =>
-        logger.error("Error while deleting file ", e)
+        logger.error("CollectionPublisher:: generateTOC::Error while deleting file ", e)
     }
   }
 
@@ -543,12 +543,12 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
         case _ => query.value(d._1, d._2)
       }
     })
-    logger.debug(s"Publishing Hierarchy data for $identifier | Query : ${query.toString}")
+    logger.debug(s"CollectionPublisher:: publishHierarchy::Publishing Hierarchy data for $identifier | Query : ${query.toString}")
     val result = cassandraUtil.upsert(query.toString)
     if (result) {
-      logger.info(s"Hierarchy data saved successfully for ${identifier}")
+      logger.info(s"CollectionPublisher:: publishHierarchy::Hierarchy data saved successfully for ${identifier}")
     } else {
-      val msg = s"Hierarchy Data Insertion Failed For ${identifier}"
+      val msg = s"CollectionPublisher:: publishHierarchy::Hierarchy Data Insertion Failed For ${identifier}"
       logger.error(msg)
       throw new Exception(msg)
     }
@@ -615,7 +615,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
               nodeIds += child.getOrElse("identifier", "").asInstanceOf[String]
             }
           } catch {
-            case e: Exception => logger.error("Error while generating node map. ", e)
+            case e: Exception => logger.error("CollectionPublisher:: getNodeMap:: Error while generating node map. ", e)
           }
           getNodeMap(child.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]], nodes, nodeIds)
       })
@@ -630,32 +630,39 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     val nodeIds = ListBuffer.empty[String]
 
     getNodeForSyncing(children, nodes, nodeIds)
+
+    logger.info("CollectionPublisher:: syncNodes:: after getNodeForSyncing:: nodes:: " + nodes)
+    logger.info("CollectionPublisher:: syncNodes:: after getNodeForSyncing:: nodeIds:: " + nodeIds)
+
     val updatedUnitNodes = if (unitNodes.nonEmpty) unitNodes.filter(unitNode => !nodeIds.contains(unitNode)) else unitNodes
+
+    logger.info("CollectionPublisher:: syncNodes:: after getNodeForSyncing:: updatedUnitNodes:: " + updatedUnitNodes)
 
     if (nodes.isEmpty && updatedUnitNodes.isEmpty ) return
 
     val errors = mutable.Map.empty[String, String]
     val messages: Map[String, Map[String, AnyRef]] = getMessages(nodes.toList, definition, nestedFields, errors)(esUtil)
-    if (errors.nonEmpty) logger.error("Error! while forming ES document data from nodes, below nodes are ignored: " + errors)
+    logger.info("CollectionPublisher:: syncNodes:: after getMessages:: messages:: " + messages)
+    if (errors.nonEmpty) logger.error("CollectionPublisher:: syncNodes:: Error! while forming ES document data from nodes, below nodes are ignored: " + errors)
     if(messages.nonEmpty)
       try {
-        logger.info("Number of units to be synced : " + messages.size)
+        logger.info("CollectionPublisher:: syncNodes:: Number of units to be synced : " + messages.size)
         messages.foreach(message => {
           val indexDocument = getJsonMessage(message._2, true, definition, nestedFields, List.empty)(esUtil)
           val jsonIndexDocument = ScalaJsonUtil.serialize(indexDocument)
           upsertDocument(message._1, jsonIndexDocument)(esUtil)
         })
-        logger.info("UnitIds synced : " + messages.keySet)
+        logger.info("CollectionPublisher:: syncNodes:: UnitIds synced : " + messages.keySet)
       } catch {
         case e: Exception =>  e.printStackTrace()
-          logger.error("Elastic Search indexing failed: " + e)
+          logger.error("CollectionPublisher:: syncNodes:: Elastic Search indexing failed: " + e)
       }
 
     try //Unindexing not utilized units
       if (updatedUnitNodes.nonEmpty) updatedUnitNodes.map(unitNodeId => esUtil.deleteDocument(unitNodeId))
     catch {
       case e: Exception =>
-        logger.error("Elastic Search indexing failed: " + e)
+        logger.error("CollectionPublisher:: syncNodes:: Elastic Search indexing failed: " + e)
     }
   }
 

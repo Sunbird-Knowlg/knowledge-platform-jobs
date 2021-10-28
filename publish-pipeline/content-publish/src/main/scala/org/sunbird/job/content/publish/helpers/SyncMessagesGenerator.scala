@@ -22,7 +22,8 @@ trait SyncMessagesGenerator {
     val identifier = message.getOrElse("nodeUniqueId", "").asInstanceOf[String]
     val indexDocument = if (isUpdate) getIndexDocument(identifier)(esUtil) else scala.collection.mutable.Map[String, AnyRef]()
     val transactionData = message.getOrElse("transactionData", Map[String, Any]()).asInstanceOf[Map[String, Any]]
-
+    logger.info("SyncMessagesGenerator:: getJsonMessage:: initial indexDocument:: " + indexDocument)
+    logger.info("SyncMessagesGenerator:: getJsonMessage:: transactionData:: " + transactionData)
     if (transactionData.nonEmpty) {
       val addedProperties = transactionData.getOrElse("properties", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
       addedProperties.foreach(property => {
@@ -31,7 +32,7 @@ trait SyncMessagesGenerator {
           if (propertyNewValue == null) indexDocument.remove(property._1) else indexDocument.put(property._1, addMetadataToDocument(property._1, propertyNewValue, nestedFields))
         }
       })
-
+      logger.info("SyncMessagesGenerator:: getJsonMessage:: after addedProperties:: ")
       val addedRelations = transactionData.getOrElse("addedRelations", List[Map[String, AnyRef]]()).asInstanceOf[List[Map[String, AnyRef]]]
       if (addedRelations.nonEmpty) {
         addedRelations.foreach(rel => {
@@ -46,7 +47,7 @@ trait SyncMessagesGenerator {
           }
         })
       }
-
+      logger.info("SyncMessagesGenerator:: getJsonMessage:: after addedRelations:: ")
       val removedRelations = transactionData.getOrElse("removedRelations", List[Map[String, AnyRef]]()).asInstanceOf[List[Map[String, AnyRef]]]
       removedRelations.foreach(rel => {
         val direction = rel.getOrElse("dir", "").asInstanceOf[String]
@@ -63,7 +64,7 @@ trait SyncMessagesGenerator {
         }
       })
     }
-    
+    logger.info("SyncMessagesGenerator:: getJsonMessage:: after removedRelations:: ")
     //Ignored fields are removed-> it can be a propertyName or relation Name
     indexDocument --= ignoredFields
 
@@ -72,6 +73,9 @@ trait SyncMessagesGenerator {
     indexDocument.put("identifier", message.getOrElse("nodeUniqueId", "").asInstanceOf[String])
     indexDocument.put("objectType", message.getOrElse("objectType", "").asInstanceOf[String])
     indexDocument.put("nodeType", message.getOrElse("nodeType", "").asInstanceOf[String])
+
+    logger.info("SyncMessagesGenerator:: getJsonMessage:: final indexDocument:: " + indexDocument)
+
     indexDocument.toMap
   }
 
@@ -88,8 +92,10 @@ trait SyncMessagesGenerator {
     for (node <- nodes) {
       try {
         if (definition.getRelationLabels() != null) {
-          val nodeMap = getMessage(node)
+          val nodeMap = getNodeMap(node)
+          logger.info("SyncMessagesGenerator:: getMessages:: nodeMap:: " + nodeMap)
           val message = getJsonMessage(nodeMap, true, definition, nestedFields, List.empty)(esUtil)
+          logger.info("SyncMessagesGenerator:: getMessages:: message:: " + message)
           messages.put(node.identifier, message)
         }
       } catch {
@@ -101,7 +107,7 @@ trait SyncMessagesGenerator {
   }
 
 
-  def getMessage(node: ObjectData): Map[String, AnyRef] = {
+  def getNodeMap(node: ObjectData): Map[String, AnyRef] = {
     val transactionData = collection.mutable.Map.empty[String, AnyRef]
     if (null != node.metadata && node.metadata.nonEmpty) {
       val propertyMap = collection.mutable.Map.empty[String, AnyRef]
@@ -112,12 +118,13 @@ trait SyncMessagesGenerator {
           valueMap.put("nv", node.metadata.get(key)) // new value
 
           // temporary check to not sync body and editorState
-          if (!StringUtils.equalsIgnoreCase("body", key) && !StringUtils.equalsIgnoreCase("editorState", key)) propertyMap.put(key, valueMap)
+          if (!StringUtils.equalsIgnoreCase("body", key) && !StringUtils.equalsIgnoreCase("editorState", key)) propertyMap.put(key, valueMap.toMap)
         }
       }
       transactionData.put("properties", propertyMap.toMap)
     }
     else transactionData.put("properties", Map.empty[String,AnyRef])
+
     // add IN relations
     val relations = ListBuffer.empty[Map[String, AnyRef]]
 //    if (null != node.metadata.inRelations && node.metadata.inRelations.nonEmpty) {
@@ -134,8 +141,9 @@ trait SyncMessagesGenerator {
 //      }
 //    }
     transactionData.put("addedRelations", relations)
+
     Map("operationType"-> "UPDATE", "graphId" -> node.metadata.get("graphId"), "nodeGraphId"-> node.dbId, "nodeUniqueId"-> node.identifier, "objectType"-> node.dbObjType,
-      "nodeType"-> "DATA_NODE", "transactionData" -> transactionData, "syncMessage" -> true.asInstanceOf[AnyRef])
+      "nodeType"-> "DATA_NODE", "transactionData" -> transactionData.toMap, "syncMessage" -> true.asInstanceOf[AnyRef])
   }
 
 }
