@@ -519,7 +519,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
 
     val updatedContent = content ++
     Map("compatibilityLevel" -> (if (null != content.get("compatibilityLevel")) content.getOrElse("compatibilityLevel",1).asInstanceOf[Number].intValue else 1),
-    "lastPublishedOn" -> obj.metadata.get("lastPublishedOn"), "pkgVersion" -> obj.metadata.get("pkgVersion"), "leafNodesCount" -> getLeafNodeCount(content),
+    "lastPublishedOn" -> obj.metadata.get("lastPublishedOn"), "pkgVersion" -> obj.metadata.getOrElse("pkgVersion",1).asInstanceOf[Number].intValue, "leafNodesCount" -> getLeafNodeCount(content),
     "leafNodes" -> leafNodeIds.toArray[String], "status" -> obj.metadata.get("status"), "lastUpdatedOn" -> obj.metadata.get("lastUpdatedOn"),
       "downloadUrl"-> obj.metadata.get("downloadUrl"), "variants" -> obj.metadata.get("variants")).asInstanceOf[Map[String, AnyRef]]
 
