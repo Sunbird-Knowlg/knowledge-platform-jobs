@@ -130,8 +130,9 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     logger.info("CollectionPulisher:getObjectWithEcar: Ecar generation done for Content: " + updatedObj.identifier)
     val ecarMap: Map[String, String] = generateEcar(updatedObj, pkgTypes)
     val variants: java.util.Map[String, java.util.Map[String, String]] = ecarMap.map { case (key, value) => key.toLowerCase -> Map[String, String]("ecarUrl" -> value, "size" -> httpUtil.getSize(value).toString).asJava }.asJava
-    logger.info("CollectionPulisher ::: getObjectWithEcar ::: ecar map ::: " + ecarMap)
-    val meta: Map[String, AnyRef] = Map("downloadUrl" -> ecarMap.getOrElse(EcarPackageType.SPINE.toString, ""), "variants" -> variants)
+    logger.info("CollectionPulisher ::: getObjectWithEcar ::: variants ::: " + variants)
+    val publishType = data.getString("publish_type", "Public")
+    val meta: Map[String, AnyRef] = Map("downloadUrl" -> ecarMap.getOrElse(EcarPackageType.SPINE.toString, ""), "variants" -> variants, "size" -> httpUtil.getSize(ecarMap.getOrElse(EcarPackageType.SPINE.toString, "")), "status" -> (if (StringUtils.equalsIgnoreCase("Unlisted", publishType)) "Unlisted" else "Live"))
     new ObjectData(updatedObj.identifier, updatedObj.metadata ++ meta, updatedObj.extData, updatedObj.hierarchy)
   }
 
@@ -264,27 +265,27 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
 //      node.setOutRelations(relations)
 //    }
 //  }
-
-  private def getLeafNodes(children: ListBuffer[Map[String, AnyRef]], depth: Int): List[Map[String, AnyRef]] = {
-    val leafNodes = new ListBuffer[Map[String, AnyRef]]
-    if (children.nonEmpty) {
-      var index = 1
-      for (child <- children) {
-        val visibility = child.getOrElse("visibility", "").asInstanceOf[String]
-        if (StringUtils.equalsIgnoreCase(visibility, "Parent")) {
-          val nextChildren = child.getOrElse("children", ListBuffer.empty).asInstanceOf[ListBuffer[Map[String, AnyRef]]]
-          val nextDepth = depth + 1
-          val nextLevelLeafNodes = getLeafNodes(nextChildren, nextDepth)
-          leafNodes ++= nextLevelLeafNodes
-        }
-        else {
-          leafNodes ++ (child ++ Map ("index" -> index, "depth"-> depth))
-          index += 1
-        }
-      }
-    }
-    leafNodes.toList
-  }
+//
+//  private def getLeafNodes(children: ListBuffer[Map[String, AnyRef]], depth: Int): List[Map[String, AnyRef]] = {
+//    val leafNodes = new ListBuffer[Map[String, AnyRef]]
+//    if (children.nonEmpty) {
+//      var index = 1
+//      for (child <- children) {
+//        val visibility = child.getOrElse("visibility", "").asInstanceOf[String]
+//        if (StringUtils.equalsIgnoreCase(visibility, "Parent")) {
+//          val nextChildren = child.getOrElse("children", ListBuffer.empty).asInstanceOf[ListBuffer[Map[String, AnyRef]]]
+//          val nextDepth = depth + 1
+//          val nextLevelLeafNodes = getLeafNodes(nextChildren, nextDepth)
+//          leafNodes ++= nextLevelLeafNodes
+//        }
+//        else {
+//          leafNodes ++ (child ++ Map ("index" -> index, "depth"-> depth))
+//          index += 1
+//        }
+//      }
+//    }
+//    leafNodes.toList
+//  }
 
   private def processChildren(children: List[Map[String, AnyRef]]): mutable.Map[String, AnyRef] = {
     val dataMap: mutable.Map[String, AnyRef] = mutable.Map.empty
@@ -309,7 +310,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       val content = getHierarchy(obj.identifier, obj.pkgVersion, readerConfig).get
       if (content.isEmpty) return obj
       val leafCount = getLeafNodeCount(content)
-      val totalCompressedSize = getTotalCompressedSize(content, 0.0)
+      val totalCompressedSize = getTotalCompressedSize(content, 0.0).toLong
 
       nodeMetadata.put("leafNodesCount", leafCount.asInstanceOf[AnyRef])
       nodeMetadata.put("totalCompressedSize", totalCompressedSize.asInstanceOf[AnyRef])
@@ -425,9 +426,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       val childrenSizes = children.map(child => {
         val childSize =
           if (!EXPANDABLE_OBJECTS.contains(child.getOrElse("objectType", "").asInstanceOf[String]) && StringUtils.equals(child.getOrElse("visibility", "").asInstanceOf[String], "Default")) {
-            if (null != child.get("totalCompressedSize")) child.getOrElse("totalCompressedSize",0).asInstanceOf[Number].doubleValue
-            else if (null != child.get("size")) child.getOrElse("size",0).asInstanceOf[Number].doubleValue
-            else 0
+            child.getOrElse("totalCompressedSize",child.getOrElse("size",0).asInstanceOf[Number].doubleValue).asInstanceOf[Number].doubleValue
           } else 0
 
         getTotalCompressedSize(child, childSize)
@@ -507,8 +506,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       children.map(child => {
         if (StringUtils.equalsIgnoreCase("Parent", child.getOrElse("visibility", "").asInstanceOf[String])) { //set child metadata -- compatibilityLevel, appIcon, posterImage, lastPublishedOn, pkgVersion, status
           val updatedChild = populatePublishMetadata(child, obj)
-          updateHierarchyMetadata(updatedChild.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]], obj)
-          updatedChild
+          updatedChild + ("children" -> updateHierarchyMetadata(updatedChild.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]], obj))
         } else child
       })
     } else children
@@ -531,7 +529,6 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
 
   def publishHierarchy(children: List[Map[String, AnyRef]], obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Unit = {
     val identifier = obj.identifier.replace(".img", "")
-//    val children: List[Map[String, AnyRef]] = obj.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
     val hierarchy: Map[String, AnyRef] = obj.metadata ++ Map("children" -> children)
     val data = Map("hierarchy" -> hierarchy) ++ obj.extData.getOrElse(Map())
     val query: Insert = QueryBuilder.insertInto(readerConfig.keyspace, readerConfig.table)
@@ -653,7 +650,6 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
         case e: Exception =>  e.printStackTrace()
           logger.error("Elastic Search indexing failed: " + e)
       }
-
 
     try //Unindexing not utilized units
       if (updatedUnitNodes.nonEmpty) updatedUnitNodes.map(unitNodeId => esUtil.deleteDocument(unitNodeId))

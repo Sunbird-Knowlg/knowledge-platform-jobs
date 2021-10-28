@@ -98,7 +98,7 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
 
           saveOnSuccess(new ObjectData(objWithEcar.identifier, objWithEcar.metadata.-("children"), objWithEcar.extData, objWithEcar.hierarchy))(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
 
-          val children = obj.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
+          val children = objWithEcar.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
           // Collection - update and publish children - line 418 in PublishFinalizer
           val updatedChildren = updateHierarchyMetadata(children, objWithEcar)(config)
           publishHierarchy(updatedChildren, objWithEcar, readerConfig)(cassandraUtil)
