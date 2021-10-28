@@ -140,7 +140,7 @@ trait SyncMessagesGenerator {
 //        relations += relMap
 //      }
 //    }
-    transactionData.put("addedRelations", relations)
+    transactionData.put("addedRelations", relations.toList)
 
     Map("operationType"-> "UPDATE", "graphId" -> node.metadata.get("graphId"), "nodeGraphId"-> node.dbId, "nodeUniqueId"-> node.identifier, "objectType"-> node.dbObjType,
       "nodeType"-> "DATA_NODE", "transactionData" -> transactionData.toMap, "syncMessage" -> true.asInstanceOf[AnyRef])
