@@ -132,7 +132,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     val variants: java.util.Map[String, java.util.Map[String, String]] = ecarMap.map { case (key, value) => key.toLowerCase -> Map[String, String]("ecarUrl" -> value, "size" -> httpUtil.getSize(value).toString).asJava }.asJava
     logger.info("CollectionPulisher ::: getObjectWithEcar ::: variants ::: " + variants)
     val publishType = data.getString("publish_type", "Public")
-    val meta: Map[String, AnyRef] = Map("downloadUrl" -> ecarMap.getOrElse(EcarPackageType.SPINE.toString, ""), "variants" -> variants, "size" -> httpUtil.getSize(ecarMap.getOrElse(EcarPackageType.SPINE.toString, "")), "status" -> (if (StringUtils.equalsIgnoreCase("Unlisted", publishType)) "Unlisted" else "Live"))
+    val meta: Map[String, AnyRef] = Map("downloadUrl" -> ecarMap.getOrElse(EcarPackageType.SPINE.toString, ""), "variants" -> variants, "size" -> httpUtil.getSize(ecarMap.getOrElse(EcarPackageType.SPINE.toString, "")).asInstanceOf[AnyRef], "status" -> (if (StringUtils.equalsIgnoreCase("Unlisted", publishType)) "Unlisted" else "Live"))
     new ObjectData(updatedObj.identifier, updatedObj.metadata ++ meta, updatedObj.extData, updatedObj.hierarchy)
   }
 
