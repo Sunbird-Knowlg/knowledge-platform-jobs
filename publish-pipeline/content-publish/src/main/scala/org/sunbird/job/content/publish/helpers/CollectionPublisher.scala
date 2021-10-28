@@ -584,7 +584,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
                     "objectType" -> nextLevelNode.getOrElse("objectType", "").asInstanceOf[String], "description" -> nextLevelNode.getOrElse("description","").asInstanceOf[String],
                     "index" -> nextLevelNode.getOrElse("index",0).asInstanceOf[AnyRef])
                 })
-              }
+              } else List.empty
              if(finalChildList != null && finalChildList.nonEmpty)  nodeMetadata.put("children", finalChildList.asInstanceOf[AnyRef])
              nodeMetadata.asScala.toMap[String, AnyRef]
             }
@@ -600,7 +600,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
                     "objectType" -> nextLevelNode.getOrElse("objectType", "").asInstanceOf[String], "description" -> nextLevelNode.getOrElse("description","").asInstanceOf[String],
                     "index" -> nextLevelNode.getOrElse("index",0).asInstanceOf[AnyRef])
                 })
-              }
+              } else List.empty
              if(finalChildList != null && finalChildList.nonEmpty)  nodeMetadata.put("children", finalChildList.asInstanceOf[AnyRef])
               if (nodeMetadata.getOrElse("objectType", "").asInstanceOf[String].isEmpty) {
                 nodeMetadata += ("objectType" -> "content")
