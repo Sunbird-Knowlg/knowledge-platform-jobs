@@ -141,7 +141,7 @@ class ElasticSearchUtil(connectionInfo: String, indexName: String, indexType: St
         val request = new BulkRequest
         for (key <- jsonObjects.keySet) {
           count += 1
-          request.add(new IndexRequest(indexName, documentType, key).source(jsonObjects.get(key).asInstanceOf[Map[String, AnyRef]]))
+          request.add(new IndexRequest(indexName, documentType, key).source(jsonObjects(key).asInstanceOf[Map[String, AnyRef]]))
           if (count % batchSize == 0 || (count % batchSize < batchSize && count == jsonObjects.size)) {
             val bulkResponse = esClient.bulk(request)
             if (bulkResponse.hasFailures) logger.info("Failures in Elasticsearch bulkIndex : " + bulkResponse.buildFailureMessage)
