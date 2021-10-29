@@ -32,7 +32,7 @@ trait SyncMessagesGenerator {
           if (propertyNewValue == null) indexDocument.remove(property._1) else indexDocument.put(property._1, addMetadataToDocument(property._1, propertyNewValue, nestedFields))
         }
       })
-      logger.info("SyncMessagesGenerator:: getJsonMessage:: after addedProperties:: ")
+
       val addedRelations = transactionData.getOrElse("addedRelations", List[Map[String, AnyRef]]()).asInstanceOf[List[Map[String, AnyRef]]]
       if (addedRelations.nonEmpty) {
         addedRelations.foreach(rel => {
@@ -47,7 +47,7 @@ trait SyncMessagesGenerator {
           }
         })
       }
-      logger.info("SyncMessagesGenerator:: getJsonMessage:: after addedRelations:: ")
+
       val removedRelations = transactionData.getOrElse("removedRelations", List[Map[String, AnyRef]]()).asInstanceOf[List[Map[String, AnyRef]]]
       removedRelations.foreach(rel => {
         val direction = rel.getOrElse("dir", "").asInstanceOf[String]
@@ -64,12 +64,12 @@ trait SyncMessagesGenerator {
         }
       })
     }
-    logger.info("SyncMessagesGenerator:: getJsonMessage:: after removedRelations:: ")
+
     //Ignored fields are removed-> it can be a propertyName or relation Name
     indexDocument --= ignoredFields
 
     indexDocument.put("graph_id", message.getOrElse("graphId", "domain").asInstanceOf[String])
-    indexDocument.put("node_id", message.getOrElse("nodeGraphId", 0).asInstanceOf[Integer])
+    indexDocument.put("node_id", message.getOrElse("nodeGraphId", "").asInstanceOf[String])
     indexDocument.put("identifier", message.getOrElse("nodeUniqueId", "").asInstanceOf[String])
     indexDocument.put("objectType", message.getOrElse("objectType", "").asInstanceOf[String])
     indexDocument.put("nodeType", message.getOrElse("nodeType", "").asInstanceOf[String])
@@ -125,8 +125,8 @@ trait SyncMessagesGenerator {
     }
     else transactionData.put("properties", Map.empty[String,AnyRef])
 
-    // add IN relations
     val relations = ListBuffer.empty[Map[String, AnyRef]]
+    // add IN relations
 //    if (null != node.metadata.inRelations && node.metadata.inRelations.nonEmpty) {
 //      for (rel <- node.metadata.inRelations) {
 //        val relMap = Map("rel" -> rel.relationType, "id" -> rel.startNodeId, "dir" -> "IN", "type" -> rel.startNodeObjectType, "label" -> getLabel(rel.getStartNodeMetadata))
