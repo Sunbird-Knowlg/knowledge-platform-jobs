@@ -646,7 +646,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     if (errors.nonEmpty) logger.error("CollectionPublisher:: syncNodes:: Error! while forming ES document data from nodes, below nodes are ignored: " + errors)
     if(messages.nonEmpty)
       try {
-        logger.info("CollectionPublisher:: syncNodes:: Number of units to be synced : " + messages.size)
+        logger.info("CollectionPublisher:: syncNodes:: Number of units to be synced : " + messages.size + " || " + messages.keySet)
         messages.foreach(message => {
           val indexDocument = getJsonMessage(message._2, true, definition, nestedFields, List.empty)(esUtil)
           val jsonIndexDocument = ScalaJsonUtil.serialize(indexDocument)
