@@ -69,7 +69,7 @@ trait SyncMessagesGenerator {
     indexDocument --= ignoredFields
 
     indexDocument.put("graph_id", message.getOrElse("graphId", "domain").asInstanceOf[String])
-    indexDocument.put("node_id", message.getOrElse("nodeGraphId",0).asInstanceOf[Long])
+    indexDocument.put("node_id", message.getOrElse("nodeGraphId",0).asInstanceOf[AnyRef])
     indexDocument.put("identifier", message.getOrElse("nodeUniqueId", "").asInstanceOf[String])
     indexDocument.put("objectType", message.getOrElse("objectType", "").asInstanceOf[String])
     indexDocument.put("nodeType", message.getOrElse("nodeType", "").asInstanceOf[String])
@@ -143,7 +143,7 @@ trait SyncMessagesGenerator {
     transactionData.put("addedRelations", relations.toList)
 
     // TODO - verify nodeGraphId (node_id or node.id) value with Mahesh
-    Map("operationType"-> "UPDATE", "graphId" -> node.metadata.getOrElse("graphId","domain").asInstanceOf[String], "nodeGraphId"-> 0, "nodeUniqueId"-> node.identifier, "objectType"-> node.dbObjType,
+    Map("operationType"-> "UPDATE", "graphId" -> node.metadata.getOrElse("graphId","domain").asInstanceOf[String], "nodeGraphId"-> 0.asInstanceOf[AnyRef], "nodeUniqueId"-> node.identifier, "objectType"-> node.dbObjType,
       "nodeType"-> "DATA_NODE", "transactionData" -> transactionData.toMap, "syncMessage" -> true.asInstanceOf[AnyRef])
   }
 
