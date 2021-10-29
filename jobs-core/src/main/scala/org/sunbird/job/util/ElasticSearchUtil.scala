@@ -9,11 +9,12 @@ import org.apache.http.HttpHost
 import org.apache.http.client.config.RequestConfig
 import org.elasticsearch.action.admin.indices.alias.Alias
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequest
+import org.elasticsearch.action.bulk.BulkRequest
 import org.elasticsearch.action.delete.DeleteRequest
 import org.elasticsearch.action.get.GetRequest
 import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.action.update.UpdateRequest
-import org.elasticsearch.client.{RestClient, RestClientBuilder, RestHighLevelClient}
+import org.elasticsearch.client.{Response, RestClient, RestClientBuilder, RestHighLevelClient}
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.common.xcontent.XContentType
 import org.slf4j.LoggerFactory
@@ -128,6 +129,35 @@ class ElasticSearchUtil(connectionInfo: String, indexName: String, indexType: St
     if (null != esClient) try esClient.close()
     catch {
       case e: IOException => e.printStackTrace()
+    }
+  }
+
+
+  @throws[Exception]
+  def bulkIndexWithIndexId(indexName: String, documentType: String, jsonObjects: Map[String, AnyRef]): Unit = {
+    if (isIndexExists(indexName)) {
+      if (jsonObjects.nonEmpty) {
+        var count = 0
+        val request = new BulkRequest
+        for (key <- jsonObjects.keySet) {
+          count += 1
+          request.add(new IndexRequest(indexName, documentType, key).source(jsonObjects.get(key).asInstanceOf[Map[String, AnyRef]]))
+          if (count % batchSize == 0 || (count % batchSize < batchSize && count == jsonObjects.size)) {
+            val bulkResponse = esClient.bulk(request)
+            if (bulkResponse.hasFailures) logger.info("Failures in Elasticsearch bulkIndex : " + bulkResponse.buildFailureMessage)
+          }
+        }
+      }
+    }
+    else throw new Exception("Index does not exist: " + indexName)
+  }
+
+  def isIndexExists(indexName: String): Boolean = {
+    try {
+      val response: Response = esClient.getLowLevelClient.performRequest("HEAD", "/" + indexName)
+      response.getStatusLine.getStatusCode == 200
+    } catch {
+      case e: IOException =>  false
     }
   }
 

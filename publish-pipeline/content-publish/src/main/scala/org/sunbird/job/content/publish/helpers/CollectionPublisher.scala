@@ -585,7 +585,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
                     "index" -> nextLevelNode.getOrElse("index",0).asInstanceOf[AnyRef])
                 })
               } else List.empty
-             nodeMetadata.put("children", finalChildList)
+             if(finalChildList != null && finalChildList.nonEmpty) nodeMetadata.put("children", finalChildList) else nodeMetadata.put("children", List.empty)
              nodeMetadata.asScala.toMap[String, AnyRef]
             }
             else {
@@ -601,7 +601,9 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
                     "index" -> nextLevelNode.getOrElse("index",0).asInstanceOf[AnyRef])
                 })
               } else List.empty
-             nodeMetadata.put("children", finalChildList)
+
+             if(finalChildList != null && finalChildList.nonEmpty) nodeMetadata.put("children", finalChildList) else nodeMetadata.put("children", List.empty)
+
               if (nodeMetadata.getOrElse("objectType", "").asInstanceOf[String].isEmpty) {
                 nodeMetadata += ("objectType" -> "content")
               }
@@ -647,9 +649,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     if(messages.nonEmpty)
       try {
         logger.info("CollectionPublisher:: syncNodes:: Number of units to be synced : " + messages.size + " || " + messages.keySet)
-        messages.foreach(message => {
-          upsertDocument(message._1, ScalaJsonUtil.serialize(message._2))(esUtil)
-        })
+        esUtil.bulkIndexWithIndexId(contentConfig.compositeSearchIndexName, contentConfig.compositeSearchIndexType, messages)
         logger.info("CollectionPublisher:: syncNodes:: UnitIds synced : " + messages.keySet)
       } catch {
         case e: Exception =>  e.printStackTrace()
