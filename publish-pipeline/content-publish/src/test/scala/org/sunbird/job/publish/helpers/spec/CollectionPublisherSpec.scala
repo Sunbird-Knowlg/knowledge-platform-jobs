@@ -13,7 +13,7 @@ import org.sunbird.job.content.publish.helpers.CollectionPublisher
 import org.sunbird.job.content.task.ContentPublishConfig
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.publish.config.PublishConfig
-import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData, ObjectExtData}
+import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
 import org.sunbird.job.publish.helpers.EcarPackageType
 import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, Neo4JUtil}
 
@@ -66,11 +66,11 @@ class CollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Match
     result.metadata.getOrElse("pkgVersion", 0.0.asInstanceOf[Number]).asInstanceOf[Number] should be(1.0.asInstanceOf[Number])
   }
 
-//  "validateMetadata with invalid external data" should "return exception messages" in {
-//    val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef]), Some(Map[String, AnyRef]("artifactUrl" -> "artifactUrl")))
-//    val result: List[String] = new TestCollectionPublisher().validateMetadata(data, data.identifier)
-//    result.size should be(1)
-//  }
+  //  "validateMetadata with invalid external data" should "return exception messages" in {
+  //    val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef]), Some(Map[String, AnyRef]("artifactUrl" -> "artifactUrl")))
+  //    val result: List[String] = new TestCollectionPublisher().validateMetadata(data, data.identifier)
+  //    result.size should be(1)
+  //  }
 
   "saveExternalData " should "save external data to cassandra table" in {
     val data = new ObjectData("do_123", Map[String, AnyRef](), Some(Map[String, AnyRef]("body" -> "body", "answer" -> "answer")))
@@ -99,14 +99,10 @@ class CollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Match
   }
 
   "getObjectWithEcar" should "return object with ecar url" in {
-    val data = new ObjectData("do_123", Map("objectType" -> "Content", "identifier" -> "do_123", "name" -> "Test PDF Content"), Some(Map("responseDeclaration" -> "test", "media" -> "[{\"id\":\"do_1127129497561497601326\",\"type\":\"image\",\"src\":\"/content/do_1127129497561497601326.img/artifact/sunbird_1551961194254.jpeg\",\"baseUrl\":\"https://sunbirddev.blob.core.windows.net/sunbird-content-dev\"}]")), Some(Map()))
-    val result = new TestCollectionPublisher().getObjectWithEcar(data, List(EcarPackageType.FULL.toString, EcarPackageType.ONLINE.toString))(ec, mockNeo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, jobConfig, defCache, defConfig, httpUtil)
+    val data = new ObjectData("do_123", Map("objectType" -> "Collection", "identifier" -> "do_123", "name" -> "Test Collection"), Some(Map()), Some(Map()))
+    val result = new TestCollectionPublisher().getObjectWithEcar(data, List(EcarPackageType.SPINE.toString, EcarPackageType.ONLINE.toString))(ec, mockNeo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, jobConfig, defCache, defConfig, httpUtil)
     StringUtils.isNotBlank(result.metadata.getOrElse("downloadUrl", "").asInstanceOf[String])
   }
-
-
-
-
 
 }
 
