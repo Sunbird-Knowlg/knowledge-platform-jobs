@@ -68,7 +68,7 @@ trait SyncMessagesGenerator {
     //Ignored fields are removed-> it can be a propertyName or relation Name
     indexDocument --= ignoredFields
 
-    indexDocument.put("graph_id", message.getOrElse("graphId", "").asInstanceOf[String])
+    indexDocument.put("graph_id", message.getOrElse("graphId", "domain").asInstanceOf[String])
     indexDocument.put("node_id", message.getOrElse("nodeGraphId", 0).asInstanceOf[Integer])
     indexDocument.put("identifier", message.getOrElse("nodeUniqueId", "").asInstanceOf[String])
     indexDocument.put("objectType", message.getOrElse("objectType", "").asInstanceOf[String])
@@ -99,7 +99,7 @@ trait SyncMessagesGenerator {
           messages.put(node.identifier, message)
         }
       } catch {
-        case e: Exception =>
+        case e: Exception => e.printStackTrace()
           errors.put(node.identifier, e.getMessage)
       }
     }
@@ -115,7 +115,7 @@ trait SyncMessagesGenerator {
         if (StringUtils.isNotBlank(key)) {
           val valueMap = collection.mutable.Map.empty[String, AnyRef]
           valueMap.put("ov", null) // old value
-          valueMap.put("nv", node.metadata.get(key)) // new value
+          valueMap.put("nv", node.metadata(key)) // new value
 
           // temporary check to not sync body and editorState
           if (!StringUtils.equalsIgnoreCase("body", key) && !StringUtils.equalsIgnoreCase("editorState", key)) propertyMap.put(key, valueMap.toMap)
@@ -142,7 +142,7 @@ trait SyncMessagesGenerator {
 //    }
     transactionData.put("addedRelations", relations.toList)
 
-    Map("operationType"-> "UPDATE", "graphId" -> node.metadata.get("graphId"), "nodeGraphId"-> node.dbId, "nodeUniqueId"-> node.identifier, "objectType"-> node.dbObjType,
+    Map("operationType"-> "UPDATE", "graphId" -> node.metadata.getOrElse("graphId","domain").asInstanceOf[String], "nodeGraphId"-> node.dbId, "nodeUniqueId"-> node.identifier, "objectType"-> node.dbObjType,
       "nodeType"-> "DATA_NODE", "transactionData" -> transactionData.toMap, "syncMessage" -> true.asInstanceOf[AnyRef])
   }
 
