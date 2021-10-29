@@ -144,7 +144,8 @@ class ElasticSearchUtil(connectionInfo: String, indexName: String, indexType: St
         for (key <- jsonObjects.keySet) {
           count += 1
           val document = ScalaJsonUtil.serialize(jsonObjects(key).asInstanceOf[Map[String, AnyRef]])
-          val doc = mapper.readValue(document, new TypeReference[util.Map[String, AnyRef]]() {})
+          val doc: util.Map[String, AnyRef] = mapper.readValue(document, new TypeReference[util.Map[String, AnyRef]]() {})
+          logger.info("Elasticsearch doc class : " + doc.getClass)
           request.add(new IndexRequest(indexName, documentType, key).source(doc))
           if (count % batchSize == 0 || (count % batchSize < batchSize && count == jsonObjects.size)) {
             logger.info("Elasticsearch Request : " + request)
