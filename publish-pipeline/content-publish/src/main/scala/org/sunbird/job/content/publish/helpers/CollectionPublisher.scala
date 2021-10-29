@@ -585,7 +585,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
                     "index" -> nextLevelNode.getOrElse("index",0).asInstanceOf[AnyRef])
                 })
               } else List.empty
-             if(finalChildList != null && finalChildList.nonEmpty) nodeMetadata.put("children", finalChildList) else nodeMetadata.put("children", List.empty)
+             if(finalChildList != null && finalChildList.nonEmpty) nodeMetadata.put("children", finalChildList)
              nodeMetadata.asScala.toMap[String, AnyRef]
             }
             else {
@@ -602,7 +602,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
                 })
               } else List.empty
 
-             if(finalChildList != null && finalChildList.nonEmpty) nodeMetadata.put("children", finalChildList) else nodeMetadata.put("children", List.empty)
+             if(finalChildList != null && finalChildList.nonEmpty) nodeMetadata.put("children", finalChildList)
 
               if (nodeMetadata.getOrElse("objectType", "").asInstanceOf[String].isEmpty) {
                 nodeMetadata += ("objectType" -> "content")
