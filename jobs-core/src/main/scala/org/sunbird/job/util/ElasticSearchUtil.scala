@@ -19,6 +19,8 @@ import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.common.xcontent.XContentType
 import org.slf4j.LoggerFactory
 
+import scala.collection.JavaConverters
+
 class ElasticSearchUtil(connectionInfo: String, indexName: String, indexType: String, batchSize: Int = 1000) extends Serializable {
 
   private val resultLimit = 100
@@ -141,8 +143,9 @@ class ElasticSearchUtil(connectionInfo: String, indexName: String, indexType: St
         val request = new BulkRequest
         for (key <- jsonObjects.keySet) {
           count += 1
-          request.add(new IndexRequest(indexName, documentType, key).source(jsonObjects(key).asInstanceOf[Map[String, AnyRef]]))
+          request.add(new IndexRequest(indexName, documentType, key).source(JavaConverters.mapAsJavaMapConverter(jsonObjects(key).asInstanceOf[Map[String, AnyRef]])))
           if (count % batchSize == 0 || (count % batchSize < batchSize && count == jsonObjects.size)) {
+            logger.info("Elasticsearch Request : " + request)
             val bulkResponse = esClient.bulk(request)
             if (bulkResponse.hasFailures) logger.info("Failures in Elasticsearch bulkIndex : " + bulkResponse.buildFailureMessage)
           }
