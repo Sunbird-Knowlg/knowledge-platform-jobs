@@ -648,9 +648,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       try {
         logger.info("CollectionPublisher:: syncNodes:: Number of units to be synced : " + messages.size + " || " + messages.keySet)
         messages.foreach(message => {
-          val indexDocument = getJsonMessage(message._2, true, definition, nestedFields, List.empty)(esUtil)
-          val jsonIndexDocument = ScalaJsonUtil.serialize(indexDocument)
-          upsertDocument(message._1, jsonIndexDocument)(esUtil)
+          upsertDocument(message._1, ScalaJsonUtil.serialize(message._2))(esUtil)
         })
         logger.info("CollectionPublisher:: syncNodes:: UnitIds synced : " + messages.keySet)
       } catch {
