@@ -96,7 +96,7 @@ trait SyncMessagesGenerator {
           logger.info("SyncMessagesGenerator:: getMessages:: nodeMap:: " + nodeMap)
           val message = getJsonMessage(nodeMap, true, definition, nestedFields, List.empty)(esUtil)
           logger.info("SyncMessagesGenerator:: getMessages:: message:: " + message)
-          messages.put(node.identifier, message)
+          messages.put(node.identifier, node.metadata ++ message)
         }
       } catch {
         case e: Exception => e.printStackTrace()
@@ -143,7 +143,7 @@ trait SyncMessagesGenerator {
     transactionData.put("addedRelations", relations.toList)
 
     // TODO - verify nodeGraphId (node_id or node.id) value with Mahesh
-    Map("operationType"-> "UPDATE", "graphId" -> node.metadata.getOrElse("graphId","domain").asInstanceOf[String], "nodeGraphId"-> 0.asInstanceOf[AnyRef], "nodeUniqueId"-> node.identifier, "objectType"-> node.dbObjType,
+     Map("operationType"-> "UPDATE", "graphId" -> node.metadata.getOrElse("graphId","domain").asInstanceOf[String], "nodeGraphId"-> 0.asInstanceOf[AnyRef], "nodeUniqueId"-> node.identifier, "objectType"-> node.dbObjType,
       "nodeType"-> "DATA_NODE", "transactionData" -> transactionData.toMap, "syncMessage" -> true.asInstanceOf[AnyRef])
   }
 
