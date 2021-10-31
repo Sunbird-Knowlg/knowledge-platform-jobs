@@ -94,9 +94,9 @@ trait SyncMessagesGenerator {
         if (definition.getRelationLabels() != null) {
           val nodeMap = getNodeMap(node)
           logger.info("SyncMessagesGenerator:: getMessages:: nodeMap:: " + nodeMap)
-          val message = getJsonMessage(nodeMap, true, definition, nestedFields, List.empty)(esUtil)
+          val message = node.metadata ++ getJsonMessage(nodeMap, true, definition, nestedFields, List.empty)(esUtil)
           logger.info("SyncMessagesGenerator:: getMessages:: message:: " + message)
-          messages.put(node.identifier, node.metadata ++ message)
+          messages.put(node.identifier, message)
         }
       } catch {
         case e: Exception => e.printStackTrace()
