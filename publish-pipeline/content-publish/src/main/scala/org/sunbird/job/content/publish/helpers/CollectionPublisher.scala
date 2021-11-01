@@ -589,11 +589,9 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
              nodeMetadata.asScala.toMap[String, AnyRef]
             }
             else {
-//              val childData: mutable.Map[String, AnyRef] = mutable.Map.empty[String, AnyRef]
-//              childData += child
-//              childData.remove("children")
               val nextLevelNodes: List[Map[String, AnyRef]] = child.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]]
-              val nodeMetadata: mutable.Map[String, AnyRef] = mutable.Map() ++ getHierarchy(child.getOrElse("identifier", "").asInstanceOf[String], child.getOrElse("pkgVersion",0).asInstanceOf[Number].doubleValue(), readerConfig).get // CHECK WHAT VALUE IS TO BE PUT HERE
+              val nodeMetadata: mutable.Map[String, AnyRef] = mutable.Map() ++ child // CHECK WHAT VALUE IS TO BE PUT HERE
+              if(nodeMetadata.contains("children")) nodeMetadata.remove("children")
               val finalChildList: List[Map[String, AnyRef]] = if (nextLevelNodes.nonEmpty) {
                 nextLevelNodes.map((nextLevelNode: Map[String, AnyRef]) => {
                   Map("identifier" -> nextLevelNode.getOrElse("identifier", "").asInstanceOf[String], "name" -> nextLevelNode.getOrElse("name","").asInstanceOf[String],
