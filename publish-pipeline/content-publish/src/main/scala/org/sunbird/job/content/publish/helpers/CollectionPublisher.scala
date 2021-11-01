@@ -239,7 +239,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     } else obj
 
     val enrichedObject = enrichCollection(updatedObj, children)
-//    addResourceToCollection(enrichedObject, children.to[ListBuffer]) - TO DO
+//    addResourceToCollection(enrichedObject, children.to[ListBuffer]) - TODO
     enrichedObject
 
   }
@@ -593,7 +593,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
 //              childData += child
 //              childData.remove("children")
               val nextLevelNodes: List[Map[String, AnyRef]] = child.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]]
-              val nodeMetadata: mutable.Map[String, AnyRef] = mutable.Map() ++ getHierarchy(child.getOrElse("identifier", "").asInstanceOf[String], child.getOrElse("pkgVersion",1).asInstanceOf[Number].doubleValue(), readerConfig).get // CHECK WHAT VALUE IS TO BE PUT HERE
+              val nodeMetadata: mutable.Map[String, AnyRef] = mutable.Map() ++ getHierarchy(child.getOrElse("identifier", "").asInstanceOf[String], child.getOrElse("pkgVersion",0).asInstanceOf[Number].doubleValue(), readerConfig).get // CHECK WHAT VALUE IS TO BE PUT HERE
               val finalChildList: List[Map[String, AnyRef]] = if (nextLevelNodes.nonEmpty) {
                 nextLevelNodes.map((nextLevelNode: Map[String, AnyRef]) => {
                   Map("identifier" -> nextLevelNode.getOrElse("identifier", "").asInstanceOf[String], "name" -> nextLevelNode.getOrElse("name","").asInstanceOf[String],
@@ -673,9 +673,9 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
             //              val childData: mutable.Map[String, AnyRef] = mutable.Map.empty[String, AnyRef]
             //              childData += child
 
-            val nodeMetadata = mutable.Map() ++ getHierarchy(child.getOrElse("identifier", "").asInstanceOf[String], child.getOrElse("pkgVersion",1).asInstanceOf[Number].doubleValue(), readerConfig).get // CHECK WHAT VALUE IS TO BE PUT HERE
+            val nodeMetadata = mutable.Map() ++ getHierarchy(child.getOrElse("identifier", "").asInstanceOf[String], child.getOrElse("pkgVersion",0).asInstanceOf[Number].doubleValue(), readerConfig).get // CHECK WHAT VALUE IS TO BE PUT HERE
 
-            // TO DO - Relation related CODE is MISSING - Line 735 in Publish Finalizer
+            // TODO - Relation related CODE is MISSING - Line 735 in Publish Finalizer
 
             if (nodeMetadata.getOrElse("objectType", "").asInstanceOf[String].isEmpty) {
               nodeMetadata += ("objectType" -> "Collection")
@@ -683,7 +683,8 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
             if (nodeMetadata.getOrElse("graphId", "").asInstanceOf[String].isEmpty) {
               nodeMetadata += ("graphId" -> "domain")
             }
-            nodeMetadata.toMap[String, AnyRef]
+
+            logger.info("CollectionPublisher:: getNodeForSyncing:: nodeMetadata: " + nodeMetadata)
 
             if (!nodeIds.contains(child.getOrElse("identifier", "").asInstanceOf[String])) {
               nodes += new ObjectData(child.getOrElse("identifier", "").asInstanceOf[String], nodeMetadata.toMap[String, AnyRef], Option(Map.empty[String, AnyRef]), Option(Map.empty[String, AnyRef]))
