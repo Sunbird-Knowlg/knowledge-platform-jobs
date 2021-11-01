@@ -673,7 +673,9 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
             //              val childData: mutable.Map[String, AnyRef] = mutable.Map.empty[String, AnyRef]
             //              childData += child
 
-            val nodeMetadata = mutable.Map() ++ getHierarchy(child.getOrElse("identifier", "").asInstanceOf[String], child.getOrElse("pkgVersion",0).asInstanceOf[Number].doubleValue(), readerConfig).get // CHECK WHAT VALUE IS TO BE PUT HERE
+            logger.info("CollectionPublisher:: getNodeForSyncing:: child identifier: " + child.getOrElse("identifier", "").asInstanceOf[String])
+
+            val nodeMetadata = mutable.Map() ++ child //CHECK IF THIS IS GOOD
 
             // TODO - Relation related CODE is MISSING - Line 735 in Publish Finalizer
 
@@ -681,8 +683,10 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
               nodeMetadata += ("objectType" -> "Collection")
             }
             if (nodeMetadata.getOrElse("graphId", "").asInstanceOf[String].isEmpty) {
-              nodeMetadata += ("graphId" -> "domain")
+              nodeMetadata += ("graph_Id" -> "domain")
             }
+
+            if(nodeMetadata.contains("children")) nodeMetadata.remove("children")
 
             logger.info("CollectionPublisher:: getNodeForSyncing:: nodeMetadata: " + nodeMetadata)
 
