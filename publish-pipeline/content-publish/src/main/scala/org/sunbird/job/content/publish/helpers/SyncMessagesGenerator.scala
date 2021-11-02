@@ -26,6 +26,7 @@ trait SyncMessagesGenerator {
     logger.info("SyncMessagesGenerator:: getJsonMessage:: transactionData:: " + transactionData)
     if (transactionData.nonEmpty) {
       val addedProperties = transactionData.getOrElse("properties", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
+      logger.info("SyncMessagesGenerator:: getJsonMessage:: definition.externalProperties:: " + definition.externalProperties)
       addedProperties.foreach(property => {
         if (!definition.externalProperties.contains(property._1)) {
           val propertyNewValue: AnyRef = property._2.asInstanceOf[Map[String, AnyRef]].getOrElse("nv", null)
@@ -94,7 +95,7 @@ trait SyncMessagesGenerator {
         if (definition.getRelationLabels() != null) {
           val nodeMap = getNodeMap(node)
           logger.info("SyncMessagesGenerator:: getMessages:: nodeMap:: " + nodeMap)
-          val message = node.metadata ++ getJsonMessage(nodeMap, true, definition, nestedFields, List.empty)(esUtil)
+          val message = getJsonMessage(nodeMap, true, definition, nestedFields, List.empty)(esUtil)
           logger.info("SyncMessagesGenerator:: getMessages:: message:: " + message)
           messages.put(node.identifier, message)
         }

@@ -681,7 +681,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
               nodeMetadata += ("objectType" -> "Collection")
             }
             if (nodeMetadata.getOrElse("graphId", "").asInstanceOf[String].isEmpty) {
-              nodeMetadata += ("graph_Id" -> "domain")
+              nodeMetadata += ("graph_id" -> "domain")
             }
 
             if(nodeMetadata.contains("children")) nodeMetadata.remove("children")
