@@ -142,12 +142,13 @@ class ElasticSearchUtil(connectionInfo: String, indexName: String, indexType: St
         for (key <- jsonObjects.keySet) {
           count += 1
           val document = ScalaJsonUtil.serialize(jsonObjects(key).asInstanceOf[Map[String, AnyRef]])
+          logger.info("ElasticSearchUtil:: bulkIndexWithIndexId:: document: " + document)
           val doc: util.Map[String, AnyRef] = mapper.readValue(document, new TypeReference[util.Map[String, AnyRef]]() {})
-
+          logger.info("ElasticSearchUtil:: bulkIndexWithIndexId:: doc: " + doc)
           request.add(new IndexRequest(indexName, documentType, key).source(doc))
           if (count % batchSize == 0 || (count % batchSize < batchSize && count == jsonObjects.size)) {
             val bulkResponse = esClient.bulk(request)
-            if (bulkResponse.hasFailures) logger.info("ElasticSearchUtil:: Failures in Elasticsearch bulkIndex : " + bulkResponse.buildFailureMessage)
+            if (bulkResponse.hasFailures) logger.info("ElasticSearchUtil:: bulkIndexWithIndexId:: Failures in Elasticsearch bulkIndex : " + bulkResponse.buildFailureMessage)
           }
         }
       }
