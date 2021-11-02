@@ -131,8 +131,8 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     val ecarMap: Map[String, String] = generateEcar(updatedObj, pkgTypes)
     val variants: java.util.Map[String, java.util.Map[String, String]] = ecarMap.map { case (key, value) => key.toLowerCase -> Map[String, String]("ecarUrl" -> value, "size" -> httpUtil.getSize(value).toString).asJava }.asJava
     logger.info("CollectionPulisher ::: getObjectWithEcar ::: variants ::: " + variants)
-    val publishType = data.getString("publish_type", "Public")
-    val meta: Map[String, AnyRef] = Map("downloadUrl" -> ecarMap.getOrElse(EcarPackageType.SPINE.toString, ""), "variants" -> variants, "size" -> httpUtil.getSize(ecarMap.getOrElse(EcarPackageType.SPINE.toString, "")).asInstanceOf[AnyRef], "status" -> (if (StringUtils.equalsIgnoreCase("Unlisted", publishType)) "Unlisted" else "Live"))
+
+    val meta: Map[String, AnyRef] = Map("downloadUrl" -> ecarMap.getOrElse(EcarPackageType.SPINE.toString, ""), "variants" -> variants, "size" -> httpUtil.getSize(ecarMap.getOrElse(EcarPackageType.SPINE.toString, "")).asInstanceOf[AnyRef])
     new ObjectData(updatedObj.identifier, updatedObj.metadata ++ meta, updatedObj.extData, updatedObj.hierarchy)
   }
 
@@ -519,9 +519,9 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
 
     val updatedContent = content ++
     Map("compatibilityLevel" -> (if (null != content.get("compatibilityLevel")) content.getOrElse("compatibilityLevel",1).asInstanceOf[Number].intValue else 1),
-    "lastPublishedOn" -> obj.metadata.get("lastPublishedOn"), "pkgVersion" -> obj.metadata.getOrElse("pkgVersion",1).asInstanceOf[Number].intValue, "leafNodesCount" -> getLeafNodeCount(content),
-    "leafNodes" -> leafNodeIds.toArray[String], "status" -> obj.metadata.get("status"), "lastUpdatedOn" -> obj.metadata.get("lastUpdatedOn"),
-      "downloadUrl"-> obj.metadata.get("downloadUrl"), "variants" -> obj.metadata.get("variants")).asInstanceOf[Map[String, AnyRef]]
+    "lastPublishedOn" -> obj.metadata("lastPublishedOn"), "pkgVersion" -> obj.metadata.getOrElse("pkgVersion",1).asInstanceOf[Number].intValue, "leafNodesCount" -> getLeafNodeCount(content),
+    "leafNodes" -> leafNodeIds.toArray[String], "status" -> obj.metadata("status"), "lastUpdatedOn" -> obj.metadata("lastUpdatedOn"),
+      "downloadUrl"-> obj.metadata("downloadUrl"), "variants" -> obj.metadata("variants")).asInstanceOf[Map[String, AnyRef]]
 
     // PRIMARY CATEGORY MAPPING IS DONE
     setContentAndCategoryTypes(updatedContent)
@@ -696,7 +696,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
             getNodeForSyncing(child.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]], nodes, nodeIds)
           }
         } catch {
-          case e: Exception => logger.error("Error while generating node map. ", e)
+          case e: Exception => logger.error("CollectionPublisher:: getNodeForSyncing:: Error while generating node map. ", e)
         }
       })
     }

@@ -19,8 +19,6 @@ import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.common.xcontent.XContentType
 import org.slf4j.LoggerFactory
 
-import scala.collection.JavaConverters
-
 class ElasticSearchUtil(connectionInfo: String, indexName: String, indexType: String, batchSize: Int = 1000) extends Serializable {
 
   private val resultLimit = 100
@@ -52,7 +50,7 @@ class ElasticSearchUtil(connectionInfo: String, indexName: String, indexType: St
       response.getStatusLine.getStatusCode == 200
     } catch {
       case e: IOException => {
-        logger.error("Failed to check Index if Present or not. Exception : ", e)
+        logger.error("ElasticSearchUtil:: Failed to check Index if Present or not. Exception : ", e)
         false
       }
     }
@@ -81,7 +79,7 @@ class ElasticSearchUtil(connectionInfo: String, indexName: String, indexType: St
       logger.info(s"Added ${response.getId} to index ${response.getIndex}")
     } catch {
       case e: IOException =>
-        logger.error(s"Error while adding document to index : $indexName", e)
+        logger.error(s"ElasticSearchUtil:: Error while adding document to index : $indexName", e)
     }
   }
 
@@ -96,7 +94,7 @@ class ElasticSearchUtil(connectionInfo: String, indexName: String, indexType: St
       logger.info(s"Added ${response.getId} to index ${response.getIndex}")
     } catch {
       case e: IOException =>
-        logger.error(s"Error while adding document to index : $indexName : " + e.getMessage)
+        logger.error(s"ElasticSearchUtil:: Error while adding document to index : $indexName : " + e.getMessage)
         e.printStackTrace()
         throw e
     }
@@ -113,7 +111,7 @@ class ElasticSearchUtil(connectionInfo: String, indexName: String, indexType: St
       logger.info(s"Updated ${response.getId} to index ${response.getIndex}")
     } catch {
       case e: IOException =>
-        logger.error(s"Error while updating document to index : $indexName", e)
+        logger.error(s"ElasticSearchUtil:: Error while updating document to index : $indexName", e)
     }
   }
 
@@ -145,17 +143,16 @@ class ElasticSearchUtil(connectionInfo: String, indexName: String, indexType: St
           count += 1
           val document = ScalaJsonUtil.serialize(jsonObjects(key).asInstanceOf[Map[String, AnyRef]])
           val doc: util.Map[String, AnyRef] = mapper.readValue(document, new TypeReference[util.Map[String, AnyRef]]() {})
-          logger.info("Elasticsearch doc class : " + doc.getClass)
+
           request.add(new IndexRequest(indexName, documentType, key).source(doc))
           if (count % batchSize == 0 || (count % batchSize < batchSize && count == jsonObjects.size)) {
-            logger.info("Elasticsearch Request : " + request)
             val bulkResponse = esClient.bulk(request)
-            if (bulkResponse.hasFailures) logger.info("Failures in Elasticsearch bulkIndex : " + bulkResponse.buildFailureMessage)
+            if (bulkResponse.hasFailures) logger.info("ElasticSearchUtil:: Failures in Elasticsearch bulkIndex : " + bulkResponse.buildFailureMessage)
           }
         }
       }
     }
-    else throw new Exception("Index does not exist: " + indexName)
+    else throw new Exception("ElasticSearchUtil:: Index does not exist: " + indexName)
   }
 
   def isIndexExists(indexName: String): Boolean = {
