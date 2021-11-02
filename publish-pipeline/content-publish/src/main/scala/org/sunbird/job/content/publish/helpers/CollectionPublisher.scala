@@ -3,8 +3,6 @@ package org.sunbird.job.content.publish.helpers
 import com.datastax.driver.core.Row
 import com.datastax.driver.core.querybuilder.{Insert, QueryBuilder, Select}
 import com.fasterxml.jackson.core.JsonProcessingException
-import org.apache.commons.collections.collection.UnmodifiableCollection
-import org.apache.commons.collections.list.UnmodifiableList
 import org.apache.commons.io.FileUtils
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
@@ -13,10 +11,9 @@ import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData, ObjectExtData}
 import org.sunbird.job.publish.helpers._
-import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, ElasticSearchUtil, HttpUtil, JSONUtil, Neo4JUtil, ScalaJsonUtil, Slug}
+import org.sunbird.job.util._
 
-import java.io.File
-import java.io.IOException
+import java.io.{File, IOException}
 import java.util
 import scala.collection.JavaConverters._
 import scala.collection.mutable
@@ -160,7 +157,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
 
   def isContentShallowCopy(obj: ObjectData): Boolean = {
     val originData: Map[String, AnyRef] = obj.metadata.getOrElse("originData",Map.empty[String, AnyRef]).asInstanceOf[Map[String,AnyRef]]
-    (originData.nonEmpty && originData.getOrElse("copyType","").asInstanceOf[String].equalsIgnoreCase( "shallow"))
+    originData.nonEmpty && originData.getOrElse("copyType","").asInstanceOf[String].equalsIgnoreCase( "shallow")
   }
 
   def updateOriginPkgVersion(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil): ObjectData = {
@@ -215,7 +212,6 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
   private def processCollection(obj: ObjectData, children: List[Map[String, AnyRef]])(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig): ObjectData = {
     val contentId = obj.identifier
     val dataMap: mutable.Map[String, AnyRef] = processChildren(children)
-    logger.info("CollectionPublisher:: processCollection:: Children nodes processing for collection - " + contentId)
     logger.info("CollectionPublisher:: processCollection:: dataMap: " + dataMap)
     val updatedObj: ObjectData = if (dataMap.nonEmpty) {
      val updatedMetadataMap: Map[String, AnyRef] = dataMap.flatMap(record => {
@@ -235,8 +231,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
         } else keywords
        updatedKeywords.filter(record => record.trim.nonEmpty).distinct
       } else Array.empty[String]
-      logger.info("CollectionPublisher:: processCollection:: finalKeywords: " + finalKeywords)
-      new ObjectData(obj.identifier, (obj.metadata ++ updatedMetadataMap + ("keywords" -> finalKeywords) ), obj.extData, obj.hierarchy)
+      new ObjectData(obj.identifier, obj.metadata ++ updatedMetadataMap + ("keywords" -> finalKeywords), obj.extData, obj.hierarchy)
     } else obj
 
     val enrichedObject = enrichCollection(updatedObj, children)
@@ -321,7 +316,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     if (dataMap.isEmpty) dataMap ++= childDataMap
     else {
       dataMap.map(record => {
-        dataMap += (record._1 -> (if (childDataMap.contains(record._1)) (childDataMap(record._1).asInstanceOf[Set[String]] ++ record._2.asInstanceOf[Set[String]]) else record._2.asInstanceOf[Set[String]]))
+        dataMap += (record._1 -> (if (childDataMap.contains(record._1)) childDataMap(record._1).asInstanceOf[Set[String]] ++ record._2.asInstanceOf[Set[String]] else record._2.asInstanceOf[Set[String]]))
       })
       if (!dataMap.equals(childDataMap)) {
         childDataMap.map(record => {
@@ -486,10 +481,10 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       val primaryCategory = input.getOrElse("primaryCategory","").asInstanceOf[String]
       val (updatedContentType, updatedPrimaryCategory): (String, String) = (contentType, primaryCategory) match {
         case (x: String, y: String) => (x, y)
-        case ("Resource", y) => (contentType, getCategoryForResource(input.getOrElse("mimeType", "").asInstanceOf[String],
+        case ("Resource", _) => (contentType, getCategoryForResource(input.getOrElse("mimeType", "").asInstanceOf[String],
           input.getOrElse("resourceType", "").asInstanceOf[String], categoryMapForMimeType, categoryMapForResourceType))
-        case (x: String, y) => (x, categoryMap.getOrDefault(x,"").asInstanceOf[String])
-        case (x, y: String) => (categoryMap.asScala.filter(entry => StringUtils.equalsIgnoreCase(entry._2.asInstanceOf[String], y)).keys.headOption.getOrElse(""), y)
+        case (x: String, _) => (x, categoryMap.getOrDefault(x,"").asInstanceOf[String])
+        case (_, y: String) => (categoryMap.asScala.filter(entry => StringUtils.equalsIgnoreCase(entry._2.asInstanceOf[String], y)).keys.headOption.getOrElse(""), y)
         case _ => (contentType, primaryCategory)
       }
 
@@ -548,9 +543,9 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     logger.debug(s"CollectionPublisher:: publishHierarchy::Publishing Hierarchy data for $identifier | Query : ${query.toString}")
     val result = cassandraUtil.upsert(query.toString)
     if (result) {
-      logger.info(s"CollectionPublisher:: publishHierarchy::Hierarchy data saved successfully for ${identifier}")
+      logger.info(s"CollectionPublisher:: publishHierarchy::Hierarchy data saved successfully for $identifier")
     } else {
-      val msg = s"CollectionPublisher:: publishHierarchy::Hierarchy Data Insertion Failed For ${identifier}"
+      val msg = s"CollectionPublisher:: publishHierarchy::Hierarchy Data Insertion Failed For $identifier"
       logger.error(msg)
       throw new Exception(msg)
     }
