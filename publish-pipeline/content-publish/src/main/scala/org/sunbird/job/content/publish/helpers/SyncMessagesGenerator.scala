@@ -22,7 +22,6 @@ trait SyncMessagesGenerator {
     val identifier = message.getOrElse("nodeUniqueId", "").asInstanceOf[String]
     val indexDocument = if (isUpdate) getIndexDocument(identifier)(esUtil) else scala.collection.mutable.Map[String, AnyRef]()
     val transactionData = message.getOrElse("transactionData", Map[String, Any]()).asInstanceOf[Map[String, Any]]
-    logger.info("SyncMessagesGenerator:: getJsonMessage:: initial indexDocument:: " + indexDocument)
     logger.info("SyncMessagesGenerator:: getJsonMessage:: transactionData:: " + transactionData)
     if (transactionData.nonEmpty) {
       val addedProperties = transactionData.getOrElse("properties", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
