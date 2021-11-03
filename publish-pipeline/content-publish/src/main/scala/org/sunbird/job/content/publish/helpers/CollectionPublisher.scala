@@ -527,14 +527,14 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
   def publishHierarchy(children: List[Map[String, AnyRef]], obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Unit = {
     val identifier = obj.identifier.replace(".img", "")
     val hierarchy: Map[String, AnyRef] = obj.metadata ++ Map("children" -> children)
-    val data = Map("hierarchy" -> hierarchy, "identifier" -> identifier) ++ obj.extData.getOrElse(Map())
+    val data = Map("hierarchy" -> hierarchy) ++ obj.extData.getOrElse(Map())
     val query: Insert = QueryBuilder.insertInto(readerConfig.keyspace, readerConfig.table)
     query.value(readerConfig.primaryKey.head, identifier)
     data.map(d => {
       readerConfig.propsMapping.getOrElse(d._1, "") match {
         case "blob" => query.value(d._1.toLowerCase, QueryBuilder.fcall("textAsBlob", d._2))
         case "string" => d._2 match {
-          case value: String => query.value(d._1.toLowerCase, value)
+          case value: String => if(value.equalsIgnoreCase(identifier+".img")) query.value(d._1.toLowerCase, value.replace(".img", "")) else query.value(d._1.toLowerCase, value)
           case _ => query.value(d._1.toLowerCase, JSONUtil.serialize(d._2))
         }
         case _ => query.value(d._1, d._2)
