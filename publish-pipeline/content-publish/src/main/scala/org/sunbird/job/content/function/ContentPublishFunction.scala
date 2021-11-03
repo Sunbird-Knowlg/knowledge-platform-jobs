@@ -106,6 +106,7 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
         logger.error("Error while publishing content :: " + ex.getMessage)
       case ex: Exception =>
         ex.printStackTrace()
+        saveOnFailure(obj, List(ex.getMessage))(neo4JUtil)
         logger.error(s"Error while processing message for Partition: ${data.partition} and Offset: ${data.offset}. Error : ${ex.getMessage}", ex)
         throw ex
     }
