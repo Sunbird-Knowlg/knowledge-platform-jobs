@@ -534,13 +534,13 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       readerConfig.propsMapping.getOrElse(d._1, "") match {
         case "blob" => query.value(d._1.toLowerCase, QueryBuilder.fcall("textAsBlob", d._2))
         case "string" => d._2 match {
-          case value: String => query.value(d._1.toLowerCase, value)
+          case value: String => if(value.equalsIgnoreCase(identifier+".img")) query.value(d._1.toLowerCase, value.replace(".img", "")) else query.value(d._1.toLowerCase, value)
           case _ => query.value(d._1.toLowerCase, JSONUtil.serialize(d._2))
         }
         case _ => query.value(d._1, d._2)
       }
     })
-    logger.debug(s"CollectionPublisher:: publishHierarchy::Publishing Hierarchy data for $identifier | Query : ${query.toString}")
+    logger.info(s"CollectionPublisher:: publishHierarchy::Publishing Hierarchy data for $identifier | Query : ${query.toString}")
     val result = cassandraUtil.upsert(query.toString)
     if (result) {
       logger.info(s"CollectionPublisher:: publishHierarchy::Hierarchy data saved successfully for $identifier")
@@ -549,8 +549,8 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       logger.error(msg)
       throw new Exception(msg)
     }
-
   }
+
 
   private def updateRootChildrenList(obj: ObjectData, nextLevelNodes: List[Map[String, AnyRef]]): ObjectData = {
     val childrenMap: List[Map[String, AnyRef]] =
