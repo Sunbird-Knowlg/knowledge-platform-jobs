@@ -116,7 +116,6 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
 //  }
 
   def getObjectWithEcar(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
-
     // Line 1107 in PublishFinalizer
     val children = data.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
     val updatedChildren = updateHierarchyMetadata(children, data)(config)
@@ -210,7 +209,6 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
 
 
   private def processCollection(obj: ObjectData, children: List[Map[String, AnyRef]])(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig): ObjectData = {
-    val contentId = obj.identifier
     val dataMap: mutable.Map[String, AnyRef] = processChildren(children)
     logger.info("CollectionPublisher:: processCollection:: dataMap: " + dataMap)
     val updatedObj: ObjectData = if (dataMap.nonEmpty) {
@@ -534,13 +532,13 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       readerConfig.propsMapping.getOrElse(d._1, "") match {
         case "blob" => query.value(d._1.toLowerCase, QueryBuilder.fcall("textAsBlob", d._2))
         case "string" => d._2 match {
-          case value: String => if(value.contains(".img")) query.value(d._1.toLowerCase, value.replace(".img", "")) else query.value(d._1.toLowerCase, value)
-          case _ => query.value(d._1.toLowerCase, JSONUtil.serialize(d._2).replace(".img", ""))
+          case value: String => query.value(d._1.toLowerCase, value)
+          case _ => query.value(d._1.toLowerCase, JSONUtil.serialize(d._2))
         }
         case _ => query.value(d._1, d._2)
       }
     })
-    logger.info(s"CollectionPublisher:: publishHierarchy:: Publishing Hierarchy data for $identifier | Query : ${query.toString}")
+    logger.debug(s"CollectionPublisher:: publishHierarchy:: Publishing Hierarchy data for $identifier | Query : ${query.toString}")
     val result = cassandraUtil.upsert(query.toString)
     if (result) {
       logger.info(s"CollectionPublisher:: publishHierarchy:: Hierarchy data saved successfully for $identifier")
