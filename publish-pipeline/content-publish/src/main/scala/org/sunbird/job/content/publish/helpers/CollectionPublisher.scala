@@ -440,7 +440,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       val data = ScalaJsonUtil.serialize(content)
       FileUtils.writeStringToFile(file, data, "UTF-8")
       val url: String = if (file.exists) {
-        logger.info("CollectionPublisher:: generateTOC:: Upload File to cloud storage :" + file.getName)
+        logger.debug("CollectionPublisher:: generateTOC:: Upload File to cloud storage :" + file.getName)
         val uploadedFileUrl = cloudStorageUtil.uploadFile(getAWSPath(obj.identifier), file, Option.apply(true))
         if (null != uploadedFileUrl && uploadedFileUrl.length > 1) {
           logger.info("CollectionPublisher:: generateTOC:: Update cloud storage url to node" + uploadedFileUrl(1))
@@ -449,7 +449,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       } else ""
       url
     } catch {
-      case e: JsonProcessingException =>  logger.error("CollectionPublisher:: publishHierarchy:: Error while parsing map object to string.", e)
+      case e: JsonProcessingException =>  logger.error("CollectionPublisher:: generateTOC:: Error while parsing map object to string.", e)
         throw e
       case e: Exception =>  logger.error("CollectionPublisher:: generateTOC:: Error while uploading file ", e)
         throw e
@@ -534,18 +534,18 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       readerConfig.propsMapping.getOrElse(d._1, "") match {
         case "blob" => query.value(d._1.toLowerCase, QueryBuilder.fcall("textAsBlob", d._2))
         case "string" => d._2 match {
-          case value: String => if(value.equalsIgnoreCase(identifier+".img")) query.value(d._1.toLowerCase, value.replace(".img", "")) else query.value(d._1.toLowerCase, value)
-          case _ => query.value(d._1.toLowerCase, JSONUtil.serialize(d._2))
+          case value: String => if(value.contains(".img")) query.value(d._1.toLowerCase, value.replace(".img", "")) else query.value(d._1.toLowerCase, value)
+          case _ => query.value(d._1.toLowerCase, JSONUtil.serialize(d._2).replace(".img", ""))
         }
         case _ => query.value(d._1, d._2)
       }
     })
-    logger.info(s"CollectionPublisher:: publishHierarchy::Publishing Hierarchy data for $identifier | Query : ${query.toString}")
+    logger.info(s"CollectionPublisher:: publishHierarchy:: Publishing Hierarchy data for $identifier | Query : ${query.toString}")
     val result = cassandraUtil.upsert(query.toString)
     if (result) {
-      logger.info(s"CollectionPublisher:: publishHierarchy::Hierarchy data saved successfully for $identifier")
+      logger.info(s"CollectionPublisher:: publishHierarchy:: Hierarchy data saved successfully for $identifier")
     } else {
-      val msg = s"CollectionPublisher:: publishHierarchy::Hierarchy Data Insertion Failed For $identifier"
+      val msg = s"CollectionPublisher:: publishHierarchy:: Hierarchy Data Insertion Failed For $identifier"
       logger.error(msg)
       throw new Exception(msg)
     }
