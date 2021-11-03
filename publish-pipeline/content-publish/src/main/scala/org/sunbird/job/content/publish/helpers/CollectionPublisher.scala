@@ -527,7 +527,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
   def publishHierarchy(children: List[Map[String, AnyRef]], obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Unit = {
     val identifier = obj.identifier.replace(".img", "")
     val hierarchy: Map[String, AnyRef] = obj.metadata ++ Map("children" -> children)
-    val data = Map("hierarchy" -> hierarchy) ++ obj.extData.getOrElse(Map())
+    val data = Map("hierarchy" -> hierarchy, "identifier" -> identifier) ++ obj.extData.getOrElse(Map())
     val query: Insert = QueryBuilder.insertInto(readerConfig.keyspace, readerConfig.table)
     query.value(readerConfig.primaryKey.head, identifier)
     data.map(d => {
@@ -540,7 +540,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
         case _ => query.value(d._1, d._2)
       }
     })
-    logger.debug(s"CollectionPublisher:: publishHierarchy::Publishing Hierarchy data for $identifier | Query : ${query.toString}")
+    logger.info(s"CollectionPublisher:: publishHierarchy::Publishing Hierarchy data for $identifier | Query : ${query.toString}")
     val result = cassandraUtil.upsert(query.toString)
     if (result) {
       logger.info(s"CollectionPublisher:: publishHierarchy::Hierarchy data saved successfully for $identifier")
@@ -549,8 +549,8 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       logger.error(msg)
       throw new Exception(msg)
     }
-
   }
+
 
   private def updateRootChildrenList(obj: ObjectData, nextLevelNodes: List[Map[String, AnyRef]]): ObjectData = {
     val childrenMap: List[Map[String, AnyRef]] =
