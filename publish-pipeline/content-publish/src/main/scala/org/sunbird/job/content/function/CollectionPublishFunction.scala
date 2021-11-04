@@ -5,12 +5,15 @@ import com.google.gson.reflect.TypeToken
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
+import org.neo4j.driver.v1.exceptions.ClientException
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cache.{DataCache, RedisConnect}
 import org.sunbird.job.content.publish.domain.Event
 import org.sunbird.job.content.publish.helpers.CollectionPublisher
 import org.sunbird.job.content.task.ContentPublishConfig
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
+import org.sunbird.job.exception.InvalidInputException
+import org.sunbird.job.helper.FailedEventHelper
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
 import org.sunbird.job.publish.helpers.EcarPackageType
 import org.sunbird.job.util._
@@ -27,7 +30,7 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
                                 @transient var definitionCache: DefinitionCache = null,
                                 @transient var definitionConfig: DefinitionConfig = null)
                                (implicit val stringTypeInfo: TypeInformation[String])
-  extends BaseProcessFunction[Event, String](config) with CollectionPublisher {
+  extends BaseProcessFunction[Event, String](config) with CollectionPublisher with FailedEventHelper {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[CollectionPublishFunction])
   val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
@@ -62,17 +65,17 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
   }
 
   override def processElement(data: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
+    val definition: ObjectDefinition = definitionCache.getDefinition(data.objectType, config.schemaSupportVersionMap.getOrElse(data.objectType.toLowerCase(), "1.0").asInstanceOf[String], config.definitionBasePath)
+    val readerConfig = ExtDataConfig(config.hierarchyKeyspaceName, config.hierarchyTableName, definition.getExternalPrimaryKey, definition.getExternalProps)
+    logger.info("Collection publishing started for : " + data.identifier)
+    metrics.incCounter(config.collectionPublishEventCount)
+    val obj: ObjectData = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(neo4JUtil, cassandraUtil)
     try {
-      val definition: ObjectDefinition = definitionCache.getDefinition(data.objectType, config.schemaSupportVersionMap.getOrElse(data.objectType.toLowerCase(), "1.0").asInstanceOf[String], config.definitionBasePath)
-      val readerConfig = ExtDataConfig(config.hierarchyKeyspaceName, config.hierarchyTableName, definition.getExternalPrimaryKey, definition.getExternalProps)
-      logger.info("Collection publishing started for : " + data.identifier)
-      metrics.incCounter(config.collectionPublishEventCount)
-      val obj: ObjectData = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(neo4JUtil, cassandraUtil)
-      val messages: List[String] = List.empty[String] // validate(obj, obj.identifier, validateMetadata)
       if (obj.pkgVersion > data.pkgVersion) {
         metrics.incCounter(config.skippedEventCount)
         logger.info(s"""pkgVersion should be greater than or equal to the obj.pkgVersion for : ${obj.identifier}""")
       } else {
+        val messages: List[String] = List.empty[String] // validate(obj, obj.identifier, validateMetadata)
         if (messages.isEmpty) {
           // Pre-publish update
           updateProcessingNode(new ObjectData(obj.identifier, obj.metadata ++ Map("lastPublishedBy" -> data.lastPublishedBy), obj.extData, obj.hierarchy))(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
@@ -113,16 +116,29 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
           logger.info("Collection publishing completed successfully for : " + data.identifier)
         } else {
           saveOnFailure(obj, messages)(neo4JUtil)
-          metrics.incCounter(config.collectionPublishFailedEventCount)
+          val errorMessages = messages.mkString("; ")
+          pushFailedEvent(data, errorMessages, null, context)(metrics)
           logger.info("Collection publishing failed for : " + data.identifier)
         }
       }
     } catch {
-      case exp: Exception =>
-        exp.printStackTrace()
-        logger.info("CollectionPublishFunction::processElement::Exception" + exp.getMessage)
-        throw exp
+      case ex@(_: InvalidInputException | _: ClientException) => // ClientException - Invalid input exception.
+        ex.printStackTrace()
+        saveOnFailure(obj, List(ex.getMessage))(neo4JUtil)
+        pushFailedEvent(data, null, ex, context)(metrics)
+        logger.error(s"CollectionPublishFunction::Error while publishing collection :: ${data.partition} and Offset: ${data.offset}. Error : ${ex.getMessage}", ex)
+      case ex: Exception =>
+        ex.printStackTrace()
+        saveOnFailure(obj, List(ex.getMessage))(neo4JUtil)
+        logger.error(s"CollectionPublishFunction::Error while processing message for Partition: ${data.partition} and Offset: ${data.offset}. Error : ${ex.getMessage}", ex)
+        throw ex
     }
+  }
+
+  private def pushFailedEvent(event: Event, errorMessage: String, error: Throwable, context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
+    val failedEvent = if (error == null) getFailedEvent(event.jobName, event.getMap(), errorMessage) else getFailedEvent(event.jobName, event.getMap(), error)
+    context.output(config.failedEventOutTag, failedEvent)
+    metrics.incCounter(config.collectionPublishFailedEventCount)
   }
 
 }
