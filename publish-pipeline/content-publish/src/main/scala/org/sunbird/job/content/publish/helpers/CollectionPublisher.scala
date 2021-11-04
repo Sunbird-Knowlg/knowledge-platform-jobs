@@ -8,6 +8,7 @@ import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.content.task.ContentPublishConfig
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
+import org.sunbird.job.exception.InvalidInputException
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData, ObjectExtData}
 import org.sunbird.job.publish.helpers._
@@ -66,7 +67,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
 
     val updatedCompatibilityLevelMeta: Map[String, AnyRef] = setCompatibilityLevel(obj, updatedMeta).get
 
-    val isCollectionShallowCopy =  isContentShallowCopy(obj)
+    val isCollectionShallowCopy = isContentShallowCopy(obj)
 
     // Collection - Enrich Children - line 345
     val collectionHierarchy: Map[String, AnyRef] = if (isCollectionShallowCopy) {
@@ -545,7 +546,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     } else {
       val msg = s"CollectionPublisher:: publishHierarchy:: Hierarchy Data Insertion Failed For $identifier"
       logger.error(msg)
-      throw new Exception(msg)
+      throw new InvalidInputException(msg)
     }
   }
 
@@ -626,12 +627,12 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
 
     getNodeForSyncing(children, nodes, nodeIds)
 
-    logger.debug("CollectionPublisher:: syncNodes:: after getNodeForSyncing:: nodes:: " + nodes)
-    logger.debug("CollectionPublisher:: syncNodes:: after getNodeForSyncing:: nodeIds:: " + nodeIds)
+    logger.info("CollectionPublisher:: syncNodes:: after getNodeForSyncing:: nodes:: " + nodes)
+    logger.info("CollectionPublisher:: syncNodes:: after getNodeForSyncing:: nodeIds:: " + nodeIds)
 
     val updatedUnitNodes = if (unitNodes.nonEmpty) unitNodes.filter(unitNode => !nodeIds.contains(unitNode)) else unitNodes
 
-    logger.debug("CollectionPublisher:: syncNodes:: after getNodeForSyncing:: updatedUnitNodes:: " + updatedUnitNodes)
+    logger.info("CollectionPublisher:: syncNodes:: after getNodeForSyncing:: updatedUnitNodes:: " + updatedUnitNodes)
 
     if (nodes.isEmpty && updatedUnitNodes.isEmpty ) return
 
@@ -666,7 +667,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
             //              val childData: mutable.Map[String, AnyRef] = mutable.Map.empty[String, AnyRef]
             //              childData += child
 
-            logger.debug("CollectionPublisher:: getNodeForSyncing:: child identifier: " + child.getOrElse("identifier", "").asInstanceOf[String])
+            logger.info("CollectionPublisher:: getNodeForSyncing:: child identifier: " + child.getOrElse("identifier", "").asInstanceOf[String])
 
             val nodeMetadata = mutable.Map() ++ child //CHECK IF THIS IS GOOD
 
@@ -681,7 +682,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
 
             if(nodeMetadata.contains("children")) nodeMetadata.remove("children")
 
-            logger.debug("CollectionPublisher:: getNodeForSyncing:: nodeMetadata: " + nodeMetadata)
+            logger.info("CollectionPublisher:: getNodeForSyncing:: nodeMetadata: " + nodeMetadata)
 
             if (!nodeIds.contains(child.getOrElse("identifier", "").asInstanceOf[String])) {
               nodes += new ObjectData(child.getOrElse("identifier", "").asInstanceOf[String], nodeMetadata.toMap[String, AnyRef], Option(Map.empty[String, AnyRef]), Option(Map.empty[String, AnyRef]))
