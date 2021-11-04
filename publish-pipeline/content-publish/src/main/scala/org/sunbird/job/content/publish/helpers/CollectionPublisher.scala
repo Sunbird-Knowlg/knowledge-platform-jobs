@@ -71,7 +71,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     // Collection - Enrich Children - line 345
     val collectionHierarchy: Map[String, AnyRef] = if (isCollectionShallowCopy) {
       val originData: Map[String, AnyRef] = obj.metadata.getOrElse("originData","").asInstanceOf[Map[String,AnyRef]]
-      getHierarchy(obj.metadata.get("origin").asInstanceOf[String], originData.getOrElse("pkgVersion", 0.0).asInstanceOf[Double], readerConfig).get
+      getHierarchy(obj.metadata.get("origin").asInstanceOf[String], originData.getOrElse("pkgVersion", 0).asInstanceOf[Integer].doubleValue(), readerConfig).get
     } else getHierarchy(obj.identifier, obj.pkgVersion, readerConfig).get
     logger.info("CollectionPublisher:: enrichObjectMetadata:: Hierarchy for content : " + obj.identifier + " : " + collectionHierarchy)
 
@@ -143,7 +143,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
   }
 
   def getUnitsFromLiveContent(obj: ObjectData)(implicit cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): List[String] = {
-    val objHierarchy = getHierarchy(obj.metadata.getOrElse("identifier", "").asInstanceOf[String], obj.metadata.getOrElse("pkgVersion", 0.0).asInstanceOf[Double], readerConfig).get
+    val objHierarchy = getHierarchy(obj.metadata.getOrElse("identifier", "").asInstanceOf[String], obj.metadata.getOrElse("pkgVersion", 0).asInstanceOf[Integer].doubleValue(), readerConfig).get
     val children = objHierarchy.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]]
     if(children.nonEmpty) {
       children.map(child => {
@@ -179,7 +179,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
           enrichChildren(child.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]].to[ListBuffer], collectionResourceChildNodes, obj)
 
         if (StringUtils.equalsIgnoreCase(child.getOrElse("visibility", "").asInstanceOf[String], "Default") && EXPANDABLE_OBJECTS.contains(child.getOrElse("objectType", "").asInstanceOf[String])) {
-          val collectionHierarchy = getHierarchy(child.getOrElse("identifier","").asInstanceOf[String], child.getOrElse("pkgVersion", 0.0).asInstanceOf[Double], readerConfig).get
+          val collectionHierarchy = getHierarchy(child.getOrElse("identifier","").asInstanceOf[String], child.getOrElse("pkgVersion", 0).asInstanceOf[Integer].doubleValue(), readerConfig).get
           logger.debug("Collection hierarchy for childNode : " + child.getOrElse("identifier","") + " : " + collectionHierarchy)
           if (collectionHierarchy.nonEmpty) {
             val childNodes = collectionHierarchy.getOrElse("childNodes", List.empty).asInstanceOf[List[String]]
@@ -626,12 +626,12 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
 
     getNodeForSyncing(children, nodes, nodeIds)
 
-    logger.info("CollectionPublisher:: syncNodes:: after getNodeForSyncing:: nodes:: " + nodes)
-    logger.info("CollectionPublisher:: syncNodes:: after getNodeForSyncing:: nodeIds:: " + nodeIds)
+    logger.debug("CollectionPublisher:: syncNodes:: after getNodeForSyncing:: nodes:: " + nodes)
+    logger.debug("CollectionPublisher:: syncNodes:: after getNodeForSyncing:: nodeIds:: " + nodeIds)
 
     val updatedUnitNodes = if (unitNodes.nonEmpty) unitNodes.filter(unitNode => !nodeIds.contains(unitNode)) else unitNodes
 
-    logger.info("CollectionPublisher:: syncNodes:: after getNodeForSyncing:: updatedUnitNodes:: " + updatedUnitNodes)
+    logger.debug("CollectionPublisher:: syncNodes:: after getNodeForSyncing:: updatedUnitNodes:: " + updatedUnitNodes)
 
     if (nodes.isEmpty && updatedUnitNodes.isEmpty ) return
 
@@ -666,7 +666,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
             //              val childData: mutable.Map[String, AnyRef] = mutable.Map.empty[String, AnyRef]
             //              childData += child
 
-            logger.info("CollectionPublisher:: getNodeForSyncing:: child identifier: " + child.getOrElse("identifier", "").asInstanceOf[String])
+            logger.debug("CollectionPublisher:: getNodeForSyncing:: child identifier: " + child.getOrElse("identifier", "").asInstanceOf[String])
 
             val nodeMetadata = mutable.Map() ++ child //CHECK IF THIS IS GOOD
 
@@ -681,7 +681,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
 
             if(nodeMetadata.contains("children")) nodeMetadata.remove("children")
 
-            logger.info("CollectionPublisher:: getNodeForSyncing:: nodeMetadata: " + nodeMetadata)
+            logger.debug("CollectionPublisher:: getNodeForSyncing:: nodeMetadata: " + nodeMetadata)
 
             if (!nodeIds.contains(child.getOrElse("identifier", "").asInstanceOf[String])) {
               nodes += new ObjectData(child.getOrElse("identifier", "").asInstanceOf[String], nodeMetadata.toMap[String, AnyRef], Option(Map.empty[String, AnyRef]), Option(Map.empty[String, AnyRef]))
