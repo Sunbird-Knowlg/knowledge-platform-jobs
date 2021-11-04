@@ -448,10 +448,10 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       } else ""
       url
     } catch {
-      case e: JsonProcessingException =>  logger.error("CollectionPublisher:: generateTOC:: Error while parsing map object to string.", e)
-        throw e
-      case e: Exception =>  logger.error("CollectionPublisher:: generateTOC:: Error while uploading file ", e)
-        throw e
+      case e: JsonProcessingException => logger.error("CollectionPublisher:: generateTOC:: Error while parsing map object to string.", e)
+        throw new InvalidInputException("CollectionPublisher:: generateTOC:: Error while parsing map object to string.", e)
+      case e: Exception => logger.error("CollectionPublisher:: generateTOC:: Error while uploading file ", e)
+        throw new InvalidInputException("CollectionPublisher:: generateTOC:: Error while uploading file", e)
     } finally try {
       logger.info("CollectionPublisher:: generateTOC:: Deleting Uploaded files")
       FileUtils.deleteDirectory(file.getParentFile)
