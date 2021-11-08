@@ -618,7 +618,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     }
   }
 
-  def syncNodes(children: List[Map[String, AnyRef]], unitNodes: List[String])(implicit esUtil: ElasticSearchUtil, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, definition: ObjectDefinition, config: PublishConfig): Unit = {
+  def syncNodes(children: List[Map[String, AnyRef]], unitNodes: List[String])(implicit esUtil: ElasticSearchUtil, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, definition: ObjectDefinition, config: PublishConfig): Map[String, Map[String, AnyRef]] = {
     val contentConfig = config.asInstanceOf[ContentPublishConfig]
     val nestedFields = contentConfig.nestedFields.asScala.toList
 
@@ -634,7 +634,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
 
     logger.info("CollectionPublisher:: syncNodes:: after getNodeForSyncing:: updatedUnitNodes:: " + updatedUnitNodes)
 
-    if (nodes.isEmpty && updatedUnitNodes.isEmpty ) return
+    if (nodes.isEmpty && updatedUnitNodes.isEmpty ) return Map.empty
 
     val errors = mutable.Map.empty[String, String]
     val messages: Map[String, Map[String, AnyRef]] = getMessages(nodes.toList, definition, nestedFields, errors)(esUtil)
@@ -656,6 +656,8 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       case e: Exception =>
         logger.error("CollectionPublisher:: syncNodes:: Elastic Search indexing failed: " + e)
     }
+
+    messages
   }
 
 
