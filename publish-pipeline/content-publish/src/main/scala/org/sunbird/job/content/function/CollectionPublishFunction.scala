@@ -107,7 +107,7 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
           val children = successObj.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
 
           // Collection - update and publish children - line 418 in PublishFinalizer
-          val updatedChildren = updateHierarchyMetadata(children, successObj)(config)
+          val updatedChildren = updateHierarchyMetadata(children, successObj.metadata)(config)
           publishHierarchy(updatedChildren, successObj, readerConfig)(cassandraUtil)
 
           if (!isCollectionShallowCopy) syncNodes(updatedChildren, unitNodes)(esUtil, neo4JUtil, cassandraUtil, readerConfig, definition, config)

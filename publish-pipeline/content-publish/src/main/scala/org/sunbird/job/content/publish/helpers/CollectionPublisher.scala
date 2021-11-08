@@ -119,7 +119,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
   def getObjectWithEcar(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
     // Line 1107 in PublishFinalizer
     val children = data.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
-    val updatedChildren = updateHierarchyMetadata(children, data)(config)
+    val updatedChildren = updateHierarchyMetadata(children, data.metadata)(config)
     val updatedObj = updateRootChildrenList(data, updatedChildren)
     val nodes = ListBuffer.empty[ObjectData]
     val nodeIds = ListBuffer.empty[String]
@@ -497,27 +497,27 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
   }
 
 
-  def updateHierarchyMetadata(children: List[Map[String, AnyRef]], obj: ObjectData)(implicit config: PublishConfig): List[Map[String, AnyRef]] = {
+  def updateHierarchyMetadata(children: List[Map[String, AnyRef]], objMetadata: Map[String,AnyRef])(implicit config: PublishConfig): List[Map[String, AnyRef]] = {
    if (children.nonEmpty) {
       children.map(child => {
         if (StringUtils.equalsIgnoreCase("Parent", child.getOrElse("visibility", "").asInstanceOf[String])) { //set child metadata -- compatibilityLevel, appIcon, posterImage, lastPublishedOn, pkgVersion, status
-          val updatedChild = populatePublishMetadata(child, obj)
-          updatedChild + ("children" -> updateHierarchyMetadata(updatedChild.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]], obj))
+          val updatedChild = populatePublishMetadata(child, objMetadata)
+          updatedChild + ("children" -> updateHierarchyMetadata(updatedChild.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]], objMetadata))
         } else child
       })
     } else children
   }
 
-  private def populatePublishMetadata(content: Map[String, AnyRef], obj: ObjectData)(implicit config: PublishConfig): Map[String, AnyRef] = {
+  private def populatePublishMetadata(content: Map[String, AnyRef], objMetadata: Map[String,AnyRef])(implicit config: PublishConfig): Map[String, AnyRef] = {
     //TODO:  For appIcon, posterImage and screenshot createThumbNail method has to be implemented.
     val leafNodeIds: mutable.Set[String] = mutable.Set.empty[String]
     getLeafNodesIds(content, leafNodeIds)
 
     val updatedContent = content ++
     Map("compatibilityLevel" -> (if (null != content.get("compatibilityLevel")) content.getOrElse("compatibilityLevel",1).asInstanceOf[Number].intValue else 1),
-    "lastPublishedOn" -> obj.metadata("lastPublishedOn"), "pkgVersion" -> obj.metadata.getOrElse("pkgVersion",1).asInstanceOf[Number].intValue, "leafNodesCount" -> getLeafNodeCount(content),
-    "leafNodes" -> leafNodeIds.toArray[String], "status" -> obj.metadata("status"), "lastUpdatedOn" -> obj.metadata("lastUpdatedOn"),
-      "downloadUrl"-> obj.metadata("downloadUrl"), "variants" -> obj.metadata("variants")).asInstanceOf[Map[String, AnyRef]]
+    "lastPublishedOn" -> objMetadata("lastPublishedOn"), "pkgVersion" -> objMetadata.getOrElse("pkgVersion",1).asInstanceOf[Number].intValue, "leafNodesCount" -> getLeafNodeCount(content),
+    "leafNodes" -> leafNodeIds.toArray[String], "status" -> objMetadata("status"), "lastUpdatedOn" -> objMetadata("lastUpdatedOn"),
+      "downloadUrl"-> objMetadata("downloadUrl"), "variants" -> objMetadata("variants")).asInstanceOf[Map[String, AnyRef]]
 
     // PRIMARY CATEGORY MAPPING IS DONE
     setContentAndCategoryTypes(updatedContent)
@@ -564,7 +564,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     new ObjectData(obj.identifier, obj.metadata ++ Map("children"-> childrenMap), obj.extData, obj.hierarchy)
   }
 
-  private def getNodeMap(children: List[Map[String, AnyRef]], nodes: ListBuffer[ObjectData], nodeIds: ListBuffer[String])(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): Unit = {
+  def getNodeMap(children: List[Map[String, AnyRef]], nodes: ListBuffer[ObjectData], nodeIds: ListBuffer[String])(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): Unit = {
     if (children.nonEmpty) {
       children.foreach((child: Map[String, AnyRef]) => {
          try {
