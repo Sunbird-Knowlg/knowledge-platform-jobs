@@ -18,7 +18,7 @@ trait SyncMessagesGenerator {
     if (documentJson != null && documentJson.nonEmpty) ScalaJsonUtil.deserialize[scala.collection.mutable.Map[String, AnyRef]](documentJson) else scala.collection.mutable.Map[String, AnyRef]()
   }
 
-  def getJsonMessage(message: Map[String, Any], isUpdate: Boolean, definition: ObjectDefinition, nestedFields: List[String], ignoredFields: List[String])(esUtil: ElasticSearchUtil): Map[String, AnyRef] = {
+  private def getJsonMessage(message: Map[String, Any], isUpdate: Boolean, definition: ObjectDefinition, nestedFields: List[String], ignoredFields: List[String])(esUtil: ElasticSearchUtil): Map[String, AnyRef] = {
     val identifier = message.getOrElse("nodeUniqueId", "").asInstanceOf[String]
     val indexDocument = if (isUpdate) getIndexDocument(identifier)(esUtil) else scala.collection.mutable.Map[String, AnyRef]()
     val transactionData = message.getOrElse("transactionData", Map[String, Any]()).asInstanceOf[Map[String, Any]]
@@ -33,36 +33,36 @@ trait SyncMessagesGenerator {
         }
       })
 
-      val addedRelations = transactionData.getOrElse("addedRelations", List[Map[String, AnyRef]]()).asInstanceOf[List[Map[String, AnyRef]]]
-      if (addedRelations.nonEmpty) {
-        addedRelations.foreach(rel => {
-          val direction = rel.getOrElse("dir", "").asInstanceOf[String]
-          val relationType = rel.getOrElse("rel", "").asInstanceOf[String]
-          val targetObjType = rel.getOrElse("type", "").asInstanceOf[String]
-          val title = definition.relationLabel(targetObjType, direction, relationType)
-          if (title.nonEmpty) {
-            val list = indexDocument.getOrElse(title.get, List[String]()).asInstanceOf[List[String]]
-            val id = rel.getOrElse("id", "").asInstanceOf[String]
-            if (!list.contains(id)) indexDocument.put(title.get, (id :: list).asInstanceOf[AnyRef])
-          }
-        })
-      }
-
-      val removedRelations = transactionData.getOrElse("removedRelations", List[Map[String, AnyRef]]()).asInstanceOf[List[Map[String, AnyRef]]]
-      removedRelations.foreach(rel => {
-        val direction = rel.getOrElse("dir", "").asInstanceOf[String]
-        val relationType = rel.getOrElse("rel", "").asInstanceOf[String]
-        val targetObjType = rel.getOrElse("type", "").asInstanceOf[String]
-        val title = definition.relationLabel(targetObjType, direction, relationType)
-        if (title.nonEmpty) {
-          val list = indexDocument.getOrElse(title.get, List[String]()).asInstanceOf[List[String]]
-          val id = rel.getOrElse("id", "").asInstanceOf[String]
-          if (list.contains(id)) {
-            val updatedList =  list diff List(id)
-            indexDocument.put(title.get, updatedList.asInstanceOf[AnyRef])
-          }
-        }
-      })
+//      val addedRelations = transactionData.getOrElse("addedRelations", List[Map[String, AnyRef]]()).asInstanceOf[List[Map[String, AnyRef]]]
+//      if (addedRelations.nonEmpty) {
+//        addedRelations.foreach(rel => {
+//          val direction = rel.getOrElse("dir", "").asInstanceOf[String]
+//          val relationType = rel.getOrElse("rel", "").asInstanceOf[String]
+//          val targetObjType = rel.getOrElse("type", "").asInstanceOf[String]
+//          val title = definition.relationLabel(targetObjType, direction, relationType)
+//          if (title.nonEmpty) {
+//            val list = indexDocument.getOrElse(title.get, List[String]()).asInstanceOf[List[String]]
+//            val id = rel.getOrElse("id", "").asInstanceOf[String]
+//            if (!list.contains(id)) indexDocument.put(title.get, (id :: list).asInstanceOf[AnyRef])
+//          }
+//        })
+//      }
+//
+//      val removedRelations = transactionData.getOrElse("removedRelations", List[Map[String, AnyRef]]()).asInstanceOf[List[Map[String, AnyRef]]]
+//      removedRelations.foreach(rel => {
+//        val direction = rel.getOrElse("dir", "").asInstanceOf[String]
+//        val relationType = rel.getOrElse("rel", "").asInstanceOf[String]
+//        val targetObjType = rel.getOrElse("type", "").asInstanceOf[String]
+//        val title = definition.relationLabel(targetObjType, direction, relationType)
+//        if (title.nonEmpty) {
+//          val list = indexDocument.getOrElse(title.get, List[String]()).asInstanceOf[List[String]]
+//          val id = rel.getOrElse("id", "").asInstanceOf[String]
+//          if (list.contains(id)) {
+//            val updatedList =  list diff List(id)
+//            indexDocument.put(title.get, updatedList.asInstanceOf[AnyRef])
+//          }
+//        }
+//      })
     }
 
     //Ignored fields are removed-> it can be a propertyName or relation Name
@@ -77,10 +77,6 @@ trait SyncMessagesGenerator {
     logger.debug("SyncMessagesGenerator:: getJsonMessage:: final indexDocument:: " + indexDocument)
 
     indexDocument.toMap
-  }
-
-  def upsertDocument(identifier: String, jsonIndexDocument: String)(esUtil: ElasticSearchUtil): Unit = {
-    esUtil.addDocument(identifier, jsonIndexDocument)
   }
 
   private def addMetadataToDocument(propertyName: String, propertyValue: AnyRef, nestedFields: List[String]): AnyRef = {
@@ -107,7 +103,7 @@ trait SyncMessagesGenerator {
   }
 
 
-  def getNodeMap(node: ObjectData): Map[String, AnyRef] = {
+  private def getNodeMap(node: ObjectData): Map[String, AnyRef] = {
     val transactionData = collection.mutable.Map.empty[String, AnyRef]
     if (null != node.metadata && node.metadata.nonEmpty) {
       val propertyMap = collection.mutable.Map.empty[String, AnyRef]

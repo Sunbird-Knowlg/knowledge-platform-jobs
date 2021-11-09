@@ -45,7 +45,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     } else Option(Map.empty[String, AnyRef])
   }
 
-  def getCollectionHierarchy(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Row = {
+  private def getCollectionHierarchy(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Row = {
     val selectWhere: Select.Where = QueryBuilder.select().all()
       .from(readerConfig.keyspace, readerConfig.table).
       where()
@@ -119,7 +119,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
   def getObjectWithEcar(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
     // Line 1107 in PublishFinalizer
     val children = data.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
-    val updatedChildren = updateHierarchyMetadata(children, data)(config)
+    val updatedChildren = updateHierarchyMetadata(children, data.metadata)(config)
     val updatedObj = updateRootChildrenList(data, updatedChildren)
     val nodes = ListBuffer.empty[ObjectData]
     val nodeIds = ListBuffer.empty[String]
@@ -144,7 +144,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
   }
 
   def getUnitsFromLiveContent(obj: ObjectData)(implicit cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): List[String] = {
-    val objHierarchy = getHierarchy(obj.metadata.getOrElse("identifier", "").asInstanceOf[String], obj.metadata.getOrElse("pkgVersion", 0).asInstanceOf[Integer].doubleValue(), readerConfig).get
+    val objHierarchy = getHierarchy(obj.metadata.getOrElse("identifier", "").asInstanceOf[String], obj.metadata.getOrElse("pkgVersion", 1).asInstanceOf[Integer].doubleValue(), readerConfig).get
     val children = objHierarchy.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]]
     if(children.nonEmpty) {
       children.map(child => {
@@ -369,18 +369,6 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     leafNodeIds.toArray
   }
 
-//
-//  private def getChildNode(data: Map[String, AnyRef], childrenSet: scala.collection.mutable.SortedSet[String]): Unit = {
-//    val children = data.get("children").asInstanceOf[List[AnyRef]]
-//      if (null != children && children.nonEmpty) {
-//      children.map(child => {
-//        val childMap = child.asInstanceOf[Map[String, AnyRef]]
-//        childMap.getOrElse("identifier", "").asInstanceOf[String]
-//        getChildNode(childMap, childrenSet)
-//      })
-//    }
-//  }
-
   private def getTypeCount(data: Map[String, AnyRef], `type`: String, typeMap: mutable.Map[String, AnyRef]): Unit = {
     val children = data.getOrElse("children", List.empty).asInstanceOf[List[AnyRef]]
     if (null != children && children.nonEmpty) {
@@ -497,33 +485,33 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
   }
 
 
-  def updateHierarchyMetadata(children: List[Map[String, AnyRef]], obj: ObjectData)(implicit config: PublishConfig): List[Map[String, AnyRef]] = {
+  def updateHierarchyMetadata(children: List[Map[String, AnyRef]], objMetadata: Map[String,AnyRef])(implicit config: PublishConfig): List[Map[String, AnyRef]] = {
    if (children.nonEmpty) {
       children.map(child => {
         if (StringUtils.equalsIgnoreCase("Parent", child.getOrElse("visibility", "").asInstanceOf[String])) { //set child metadata -- compatibilityLevel, appIcon, posterImage, lastPublishedOn, pkgVersion, status
-          val updatedChild = populatePublishMetadata(child, obj)
-          updatedChild + ("children" -> updateHierarchyMetadata(updatedChild.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]], obj))
+          val updatedChild = populatePublishMetadata(child, objMetadata)
+          updatedChild + ("children" -> updateHierarchyMetadata(updatedChild.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]], objMetadata))
         } else child
       })
     } else children
   }
 
-  private def populatePublishMetadata(content: Map[String, AnyRef], obj: ObjectData)(implicit config: PublishConfig): Map[String, AnyRef] = {
+  private def populatePublishMetadata(content: Map[String, AnyRef], objMetadata: Map[String,AnyRef])(implicit config: PublishConfig): Map[String, AnyRef] = {
     //TODO:  For appIcon, posterImage and screenshot createThumbNail method has to be implemented.
     val leafNodeIds: mutable.Set[String] = mutable.Set.empty[String]
     getLeafNodesIds(content, leafNodeIds)
 
     val updatedContent = content ++
     Map("compatibilityLevel" -> (if (null != content.get("compatibilityLevel")) content.getOrElse("compatibilityLevel",1).asInstanceOf[Number].intValue else 1),
-    "lastPublishedOn" -> obj.metadata("lastPublishedOn"), "pkgVersion" -> obj.metadata.getOrElse("pkgVersion",1).asInstanceOf[Number].intValue, "leafNodesCount" -> getLeafNodeCount(content),
-    "leafNodes" -> leafNodeIds.toArray[String], "status" -> obj.metadata("status"), "lastUpdatedOn" -> obj.metadata("lastUpdatedOn"),
-      "downloadUrl"-> obj.metadata("downloadUrl"), "variants" -> obj.metadata("variants")).asInstanceOf[Map[String, AnyRef]]
+    "lastPublishedOn" -> objMetadata("lastPublishedOn"), "pkgVersion" -> objMetadata.getOrElse("pkgVersion",1).asInstanceOf[Number].intValue, "leafNodesCount" -> getLeafNodeCount(content),
+    "leafNodes" -> leafNodeIds.toArray[String], "status" -> objMetadata("status"), "lastUpdatedOn" -> objMetadata("lastUpdatedOn"),
+      "downloadUrl"-> objMetadata("downloadUrl"), "variants" -> objMetadata("variants")).asInstanceOf[Map[String, AnyRef]]
 
     // PRIMARY CATEGORY MAPPING IS DONE
     setContentAndCategoryTypes(updatedContent)
   }
 
-  def publishHierarchy(children: List[Map[String, AnyRef]], obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Unit = {
+  def publishHierarchy(children: List[Map[String, AnyRef]], obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Boolean = {
     val identifier = obj.identifier.replace(".img", "")
     val hierarchy: Map[String, AnyRef] = obj.metadata ++ Map("children" -> children)
     val data = Map("hierarchy" -> hierarchy) ++ obj.extData.getOrElse(Map())
@@ -548,6 +536,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       logger.error(msg)
       throw new InvalidInputException(msg)
     }
+    result
   }
 
 
@@ -564,15 +553,13 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     new ObjectData(obj.identifier, obj.metadata ++ Map("children"-> childrenMap), obj.extData, obj.hierarchy)
   }
 
-  private def getNodeMap(children: List[Map[String, AnyRef]], nodes: ListBuffer[ObjectData], nodeIds: ListBuffer[String])(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): Unit = {
+  def getNodeMap(children: List[Map[String, AnyRef]], nodes: ListBuffer[ObjectData], nodeIds: ListBuffer[String])(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): Unit = {
     if (children.nonEmpty) {
       children.foreach((child: Map[String, AnyRef]) => {
          try {
            val updatedChildMetadata: Map[String, AnyRef] = if (StringUtils.equalsIgnoreCase("Default", child.getOrElse("visibility", "").asInstanceOf[String])) {
              val nodeMetadata = neo4JUtil.getNodeProperties(child.getOrElse("identifier", "").asInstanceOf[String]) // CHECK IF THIS IS GOOD
               if(nodeMetadata.containsKey("children")) nodeMetadata.remove("children")
-//              val childData: mutable.Map[String, AnyRef] = mutable.Map.empty[String, AnyRef]
-//              childData += child
               val nextLevelNodes: List[Map[String, AnyRef]] = child.getOrElse("children",List.empty).asInstanceOf[List[Map[String, AnyRef]]]
               val finalChildList: List[Map[String,AnyRef]] = if (nextLevelNodes.nonEmpty) {
                 nextLevelNodes.map((nextLevelNode: Map[String, AnyRef]) => {
@@ -618,7 +605,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     }
   }
 
-  def syncNodes(children: List[Map[String, AnyRef]], unitNodes: List[String])(implicit esUtil: ElasticSearchUtil, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, definition: ObjectDefinition, config: PublishConfig): Unit = {
+  def syncNodes(children: List[Map[String, AnyRef]], unitNodes: List[String])(implicit esUtil: ElasticSearchUtil, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, definition: ObjectDefinition, config: PublishConfig): Map[String, Map[String, AnyRef]] = {
     val contentConfig = config.asInstanceOf[ContentPublishConfig]
     val nestedFields = contentConfig.nestedFields.asScala.toList
 
@@ -634,7 +621,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
 
     logger.info("CollectionPublisher:: syncNodes:: after getNodeForSyncing:: updatedUnitNodes:: " + updatedUnitNodes)
 
-    if (nodes.isEmpty && updatedUnitNodes.isEmpty ) return
+    if (nodes.isEmpty && updatedUnitNodes.isEmpty ) return Map.empty
 
     val errors = mutable.Map.empty[String, String]
     val messages: Map[String, Map[String, AnyRef]] = getMessages(nodes.toList, definition, nestedFields, errors)(esUtil)
@@ -656,6 +643,8 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       case e: Exception =>
         logger.error("CollectionPublisher:: syncNodes:: Elastic Search indexing failed: " + e)
     }
+
+    messages
   }
 
 
@@ -664,9 +653,6 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       children.foreach((child: Map[String, AnyRef]) => {
         try {
           if (StringUtils.equalsIgnoreCase("Parent", child.getOrElse("visibility", "").asInstanceOf[String])) {
-            //              val childData: mutable.Map[String, AnyRef] = mutable.Map.empty[String, AnyRef]
-            //              childData += child
-
             logger.info("CollectionPublisher:: getNodeForSyncing:: child identifier: " + child.getOrElse("identifier", "").asInstanceOf[String])
 
             val nodeMetadata = mutable.Map() ++ child //CHECK IF THIS IS GOOD
