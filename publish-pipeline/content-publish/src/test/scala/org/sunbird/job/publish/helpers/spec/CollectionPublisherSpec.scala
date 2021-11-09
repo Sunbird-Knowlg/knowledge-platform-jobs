@@ -36,8 +36,7 @@ class CollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Match
   implicit val defConfig: DefinitionConfig = DefinitionConfig(jobConfig.schemaSupportVersionMap, jobConfig.definitionBasePath)
   implicit val publishConfig: PublishConfig = jobConfig.asInstanceOf[PublishConfig]
   implicit val httpUtil: HttpUtil = new HttpUtil
-  val mockKafkaUtil: FlinkKafkaConnector = mock[FlinkKafkaConnector](Mockito.withSettings().serializable())
-  val mockElasticUtil = mock[ElasticSearchUtil](Mockito.withSettings().serializable())
+  val mockElasticUtil: ElasticSearchUtil = mock[ElasticSearchUtil](Mockito.withSettings().serializable())
   var definitionCache = new DefinitionCache()
   implicit val definition: ObjectDefinition = definitionCache.getDefinition("Collection", jobConfig.schemaSupportVersionMap.getOrElse("collection", "1.0").asInstanceOf[String], jobConfig.definitionBasePath)
 
