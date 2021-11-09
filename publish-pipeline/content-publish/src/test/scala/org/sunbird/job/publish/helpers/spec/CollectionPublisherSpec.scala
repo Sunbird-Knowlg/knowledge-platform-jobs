@@ -169,7 +169,6 @@ class CollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Match
   }
 
   "publishHierarchy " should "save hierarchy data to cassandra table" in {
-
     val publishChildrenData = ScalaJsonUtil.deserialize[List[Map[String, AnyRef]]](publishedChildrenData)
     val publishedCollectionNodeMetadataObj: Map[String,AnyRef] = ScalaJsonUtil.deserialize[Map[String,AnyRef]](publishedCollectionNodeMetadata)
     val data = new ObjectData("do_123", publishedCollectionNodeMetadataObj, Some(Map.empty[String, AnyRef]))
@@ -178,10 +177,8 @@ class CollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Match
   }
 
   "getUnitsFromLiveContent" should "return object hierarchy" in {
-    val publishedCollectionNodeMetadataObj: Map[String,AnyRef] = ScalaJsonUtil.deserialize[Map[String,AnyRef]](publishedCollectionNodeMetadata)
     val data = new ObjectData("do_2133950809948078081503", Map("identifier" -> "do_2133950809948078081503"), Some(Map.empty[String, AnyRef]))
     val fetchedChildren = new TestCollectionPublisher().getUnitsFromLiveContent(data)(cassandraUtil,readerConfig)
-    println("getUnitsFromLiveContent fetchedChildren:: " + fetchedChildren)
     assert(fetchedChildren.nonEmpty)
   }
 
