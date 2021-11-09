@@ -369,18 +369,6 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     leafNodeIds.toArray
   }
 
-//
-//  private def getChildNode(data: Map[String, AnyRef], childrenSet: scala.collection.mutable.SortedSet[String]): Unit = {
-//    val children = data.get("children").asInstanceOf[List[AnyRef]]
-//      if (null != children && children.nonEmpty) {
-//      children.map(child => {
-//        val childMap = child.asInstanceOf[Map[String, AnyRef]]
-//        childMap.getOrElse("identifier", "").asInstanceOf[String]
-//        getChildNode(childMap, childrenSet)
-//      })
-//    }
-//  }
-
   private def getTypeCount(data: Map[String, AnyRef], `type`: String, typeMap: mutable.Map[String, AnyRef]): Unit = {
     val children = data.getOrElse("children", List.empty).asInstanceOf[List[AnyRef]]
     if (null != children && children.nonEmpty) {
@@ -571,8 +559,6 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
            val updatedChildMetadata: Map[String, AnyRef] = if (StringUtils.equalsIgnoreCase("Default", child.getOrElse("visibility", "").asInstanceOf[String])) {
              val nodeMetadata = neo4JUtil.getNodeProperties(child.getOrElse("identifier", "").asInstanceOf[String]) // CHECK IF THIS IS GOOD
               if(nodeMetadata.containsKey("children")) nodeMetadata.remove("children")
-//              val childData: mutable.Map[String, AnyRef] = mutable.Map.empty[String, AnyRef]
-//              childData += child
               val nextLevelNodes: List[Map[String, AnyRef]] = child.getOrElse("children",List.empty).asInstanceOf[List[Map[String, AnyRef]]]
               val finalChildList: List[Map[String,AnyRef]] = if (nextLevelNodes.nonEmpty) {
                 nextLevelNodes.map((nextLevelNode: Map[String, AnyRef]) => {
@@ -666,9 +652,6 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       children.foreach((child: Map[String, AnyRef]) => {
         try {
           if (StringUtils.equalsIgnoreCase("Parent", child.getOrElse("visibility", "").asInstanceOf[String])) {
-            //              val childData: mutable.Map[String, AnyRef] = mutable.Map.empty[String, AnyRef]
-            //              childData += child
-
             logger.info("CollectionPublisher:: getNodeForSyncing:: child identifier: " + child.getOrElse("identifier", "").asInstanceOf[String])
 
             val nodeMetadata = mutable.Map() ++ child //CHECK IF THIS IS GOOD

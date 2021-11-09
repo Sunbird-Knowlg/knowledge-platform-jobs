@@ -18,7 +18,7 @@ trait SyncMessagesGenerator {
     if (documentJson != null && documentJson.nonEmpty) ScalaJsonUtil.deserialize[scala.collection.mutable.Map[String, AnyRef]](documentJson) else scala.collection.mutable.Map[String, AnyRef]()
   }
 
-  def getJsonMessage(message: Map[String, Any], isUpdate: Boolean, definition: ObjectDefinition, nestedFields: List[String], ignoredFields: List[String])(esUtil: ElasticSearchUtil): Map[String, AnyRef] = {
+  private def getJsonMessage(message: Map[String, Any], isUpdate: Boolean, definition: ObjectDefinition, nestedFields: List[String], ignoredFields: List[String])(esUtil: ElasticSearchUtil): Map[String, AnyRef] = {
     val identifier = message.getOrElse("nodeUniqueId", "").asInstanceOf[String]
     val indexDocument = if (isUpdate) getIndexDocument(identifier)(esUtil) else scala.collection.mutable.Map[String, AnyRef]()
     val transactionData = message.getOrElse("transactionData", Map[String, Any]()).asInstanceOf[Map[String, Any]]
@@ -103,7 +103,7 @@ trait SyncMessagesGenerator {
   }
 
 
-  def getNodeMap(node: ObjectData): Map[String, AnyRef] = {
+  private def getNodeMap(node: ObjectData): Map[String, AnyRef] = {
     val transactionData = collection.mutable.Map.empty[String, AnyRef]
     if (null != node.metadata && node.metadata.nonEmpty) {
       val propertyMap = collection.mutable.Map.empty[String, AnyRef]
