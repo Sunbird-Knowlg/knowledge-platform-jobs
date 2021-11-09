@@ -45,7 +45,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     } else Option(Map.empty[String, AnyRef])
   }
 
-  def getCollectionHierarchy(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Row = {
+  private def getCollectionHierarchy(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Row = {
     val selectWhere: Select.Where = QueryBuilder.select().all()
       .from(readerConfig.keyspace, readerConfig.table).
       where()
@@ -144,7 +144,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
   }
 
   def getUnitsFromLiveContent(obj: ObjectData)(implicit cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): List[String] = {
-    val objHierarchy = getHierarchy(obj.metadata.getOrElse("identifier", "").asInstanceOf[String], obj.metadata.getOrElse("pkgVersion", 0).asInstanceOf[Integer].doubleValue(), readerConfig).get
+    val objHierarchy = getHierarchy(obj.metadata.getOrElse("identifier", "").asInstanceOf[String], obj.metadata.getOrElse("pkgVersion", 1).asInstanceOf[Integer].doubleValue(), readerConfig).get
     val children = objHierarchy.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]]
     if(children.nonEmpty) {
       children.map(child => {
@@ -511,7 +511,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     setContentAndCategoryTypes(updatedContent)
   }
 
-  def publishHierarchy(children: List[Map[String, AnyRef]], obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Unit = {
+  def publishHierarchy(children: List[Map[String, AnyRef]], obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Boolean = {
     val identifier = obj.identifier.replace(".img", "")
     val hierarchy: Map[String, AnyRef] = obj.metadata ++ Map("children" -> children)
     val data = Map("hierarchy" -> hierarchy) ++ obj.extData.getOrElse(Map())
@@ -536,6 +536,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       logger.error(msg)
       throw new InvalidInputException(msg)
     }
+    result
   }
 
 
