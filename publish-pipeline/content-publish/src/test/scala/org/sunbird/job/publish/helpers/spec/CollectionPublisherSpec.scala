@@ -67,7 +67,7 @@ class CollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Match
   }
 
   "enrichObjectMetadata" should "enrich the Content pkgVersion metadata" in {
-    val data = new ObjectData("do_2133950809948078081503", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_2133950809948078081503", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/vnd.ekstep.content-collection"))
+    val data = new ObjectData("do_2133950809948078081503", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_2133950809948078081503", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/vnd.ekstep.content-collection", "keywords" -> Array[String]("test keyword")))
     val result: ObjectData = new TestCollectionPublisher().enrichObjectMetadata(data).getOrElse(data)
     result.metadata.getOrElse("pkgVersion", 0.0.asInstanceOf[Number]).asInstanceOf[Number] should be(1.0.asInstanceOf[Number])
   }
