@@ -104,6 +104,7 @@ class ActivityAggregateUpdaterConfig(override val config: Config) extends BaseJo
   val courseBatch = "CourseBatch"
   val collectionProgressUpdateFn = "progress-update-process"
   val collectionCompleteFn = "collection-completion-process"
+  val aggregates = "aggregates"
 
   // Consumers
   val activityAggregateUpdaterConsumer = "activity-aggregate-updater-consumer"

@@ -72,7 +72,7 @@ trait IssueCertificateHelper {
         var assessedUser = enrolledUser
 
         if(!assessmentCriteria.isEmpty && !enrolledUser.isEmpty) {
-            val score:Double = getMaxScore(event)(metrics, cassandraUtil, config, contentCache)
+            val score:Double = getMaxScore(event)(metrics, cassandraUtil, config)
             if(!isValidAssessCriteria(assessmentCriteria, score))
                 assessedUser = ""
         }
@@ -88,8 +88,23 @@ trait IssueCertificateHelper {
             } else Map[String, AnyRef]()
         } else Map[String, AnyRef]()
     }
+    
+    def getMaxScore(event: Event)(metrics:Metrics, cassandraUtil: CassandraUtil, config:CollectionCertPreProcessorConfig):Double = {
+        val contextId = "cb:" + event.batchId
+        val query = QueryBuilder.select().column("aggregates").column("agg").from(config.keyspace, config.useActivityAggTable)
+          .where(QueryBuilder.eq("activity_type", "Course")).and(QueryBuilder.eq("activity_id", event.courseId))
+          .and(QueryBuilder.eq("user_id", event.userId)).and(QueryBuilder.eq("context_id", contextId))
 
-    def getMaxScore(event: Event)(metrics:Metrics, cassandraUtil: CassandraUtil, config:CollectionCertPreProcessorConfig, contentCache: DataCache):Double = {
+        val rows: java.util.List[Row] = cassandraUtil.find(query.toString)
+        metrics.incCounter(config.dbReadCount)
+        val aggregates: Map[String, Double] = rows.asScala.toList.head.get[java.util.Map[String, Double]]("aggregates", TypeTokens.mapOf(classOf[String], classOf[Double])).asScala.toMap
+        val agg: Map[String, Double] = rows.asScala.toList.head.get[java.util.Map[String, Integer]]("agg", TypeTokens.mapOf(classOf[String], classOf[Integer])).asScala.map(e => e._1 -> e._2.toDouble).toMap
+        val aggs: Map[String, Double] = agg + aggregates
+        val contentIds = aggs.keySet.filter(key => key.contains("score:")).map(key => key.replaceAll("score:","")).toList
+        if(contentIds.nonEmpty)contentIds.map(id => (aggs.getOrElse("score:" + id, 0d) * 100)/aggs.getOrElse("max_score:" + id, 1d)).max else 0d
+    }
+
+    /*def getMaxScore(event: Event)(metrics:Metrics, cassandraUtil: CassandraUtil, config:CollectionCertPreProcessorConfig, contentCache: DataCache):Double = {
         val query = QueryBuilder.select().column("content_id").column("total_max_score").column("total_score").as("score").from(config.keyspace, config.assessmentTable)
           .where(QueryBuilder.eq("course_id", event.courseId)).and(QueryBuilder.eq("batch_id", event.batchId))
           .and(QueryBuilder.eq("user_id", event.userId))
@@ -109,7 +124,7 @@ trait IssueCertificateHelper {
           // TODO: Here we have an assumption that, we will consider max percentage from all the available attempts of different assessment contents.
           if (filteredUserAssessments.nonEmpty) filteredUserAssessments.values.flatten.map(a => (a.score*100/a.totalScore)).max else 0d
         } else 0d
-    }
+    }*/
 
     def isValidAssessCriteria(assessmentCriteria: Map[String, AnyRef], score: Double): Boolean = {
         if(assessmentCriteria.get("score").isInstanceOf[Number]) {

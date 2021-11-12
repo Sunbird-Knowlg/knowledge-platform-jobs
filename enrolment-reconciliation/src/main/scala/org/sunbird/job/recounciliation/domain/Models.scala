@@ -41,7 +41,7 @@ case class UserActivityAgg(activity_type: String,
                            user_id: String,
                            activity_id: String,
                            context_id: String,
-                           agg: Map[String, Int],
+                           aggregates: Map[String, Double],
                            agg_last_updated: Map[String, Long]
                    )
 
