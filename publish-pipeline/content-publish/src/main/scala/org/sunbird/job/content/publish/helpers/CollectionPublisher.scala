@@ -164,8 +164,8 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     val originId = obj.metadata.getOrElse("origin", "").asInstanceOf[String]
     val originNodeMetadata = Option(neo4JUtil.getNodeProperties(originId)).getOrElse(neo4JUtil.getNodeProperties(originId))
     if (null != originNodeMetadata) {
-      val originPkgVer: Double = originNodeMetadata.getOrDefault("pkgVersion", "0").asInstanceOf[Any].asInstanceOf[Double]
-      if (originPkgVer != 0.0) {
+      val originPkgVer: Int = originNodeMetadata.getOrDefault("pkgVersion", "0").toString.toInt
+      if (originPkgVer != 0) {
         val originData = obj.metadata.getOrElse("originData",Map.empty[String, AnyRef]).asInstanceOf[Map[String, AnyRef]] ++ Map("pkgVersion" -> originPkgVer)
         new ObjectData(obj.identifier, obj.metadata ++ Map("originData" -> originData) , obj.extData, obj.hierarchy)
       } else obj
@@ -462,28 +462,16 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
   def setContentAndCategoryTypes(input: Map[String, AnyRef])(implicit config: PublishConfig): Map[String, AnyRef] = {
     val contentConfig = config.asInstanceOf[ContentPublishConfig]
     val categoryMap = contentConfig.categoryMap
-    val categoryMapForMimeType = contentConfig.categoryMapForMimeType
-    val categoryMapForResourceType = contentConfig.categoryMapForResourceType
-      val contentType = input.getOrElse("contentType", "").asInstanceOf[String]
-      val primaryCategory = input.getOrElse("primaryCategory","").asInstanceOf[String]
-      val (updatedContentType, updatedPrimaryCategory): (String, String) = (contentType, primaryCategory) match {
-        case (x: String, y: String) => (x, y)
-        case ("Resource", _) => (contentType, getCategoryForResource(input.getOrElse("mimeType", "").asInstanceOf[String],
-          input.getOrElse("resourceType", "").asInstanceOf[String], categoryMapForMimeType, categoryMapForResourceType))
-        case (x: String, _) => (x, categoryMap.getOrDefault(x,"").asInstanceOf[String])
-        case (_, y: String) => (categoryMap.asScala.filter(entry => StringUtils.equalsIgnoreCase(entry._2.asInstanceOf[String], y)).keys.headOption.getOrElse(""), y)
-        case _ => (contentType, primaryCategory)
-      }
+    val contentType = input.getOrElse("contentType", "").asInstanceOf[String]
+    val primaryCategory = input.getOrElse("primaryCategory","").asInstanceOf[String]
+    val (updatedContentType, updatedPrimaryCategory): (String, String) = (contentType, primaryCategory) match {
+      case (x: String, _) => (x, categoryMap.getOrDefault(x,"").asInstanceOf[String])
+      case (_, y: String) => (categoryMap.asScala.filter(entry => StringUtils.equalsIgnoreCase(entry._2.asInstanceOf[String], y)).keys.headOption.getOrElse(""), y)
+      case _ => (contentType, primaryCategory)
+    }
 
       input ++ Map("contentType" -> updatedContentType, "primaryCategory" -> updatedPrimaryCategory)
   }
-
-  private def getCategoryForResource(mimeType: String, resourceType: String, categoryMapForMimeType: java.util.Map[String, AnyRef], categoryMapForResourceType: java.util.Map[String, AnyRef]): String = (mimeType, resourceType) match {
-    case (x: String, "") => categoryMapForMimeType.get(x).asInstanceOf[java.util.List[String]].asScala.headOption.getOrElse(learningResource)
-    case (x: String, y: String) => if (mimeTypesToCheck.contains(x)) categoryMapForMimeType.get(x).asInstanceOf[java.util.List[String]].asScala.headOption.getOrElse(learningResource) else categoryMapForResourceType.getOrDefault(y, learningResource).asInstanceOf[String]
-    case _ => learningResource
-  }
-
 
   def updateHierarchyMetadata(children: List[Map[String, AnyRef]], objMetadata: Map[String,AnyRef])(implicit config: PublishConfig): List[Map[String, AnyRef]] = {
    if (children.nonEmpty) {
@@ -683,7 +671,5 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       })
     }
   }
-
-
 
 }
