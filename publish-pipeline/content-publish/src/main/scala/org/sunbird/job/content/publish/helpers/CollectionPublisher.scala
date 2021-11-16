@@ -30,10 +30,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
   private val INCLUDE_LEAFNODE_OBJECTS = List("QuestionSet")
   private val INCLUDE_CHILDNODE_OBJECTS = List("Collection")
   private val PUBLISHED_STATUS_LIST = List("Live", "Unlisted")
-  private val learningResource = "Learning Resource"
   private val COLLECTION_MIME_TYPE = "application/vnd.ekstep.content-collection"
-  private val mimeTypesToCheck = List("application/vnd.ekstep.h5p-archive", "application/vnd.ekstep.html-archive", "application/vnd.android.package-archive",
-    "video/webm", "video/x-youtube", "video/mp4")
 
   override def getExtData(identifier: String, pkgVersion: Double, mimeType: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[ObjectExtData] = None
 
