@@ -83,8 +83,6 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
   val extractableMimeTypes = List("application/vnd.ekstep.ecml-archive", "application/vnd.ekstep.html-archive", "application/vnd.ekstep.plugin-archive", "application/vnd.ekstep.h5p-archive")
 
   val categoryMap: java.util.Map[String, AnyRef] = if (config.hasPath("contentTypeToPrimaryCategory")) config.getAnyRef("contentTypeToPrimaryCategory").asInstanceOf[java.util.Map[String, AnyRef]] else new util.HashMap[String, AnyRef]()
-  val categoryMapForMimeType: java.util.Map[String, AnyRef] = if (config.hasPath("mimeTypeToPrimaryCategory")) config.getAnyRef("mimeTypeToPrimaryCategory").asInstanceOf[java.util.Map[String, AnyRef]] else new util.HashMap[String, AnyRef]()
-  val categoryMapForResourceType: java.util.Map[String, AnyRef] = if (config.hasPath("resourceTypeToPrimaryCategory")) config.getAnyRef("resourceTypeToPrimaryCategory").asInstanceOf[java.util.Map[String, AnyRef]] else new util.HashMap[String, AnyRef]()
 
   val esConnectionInfo: String = config.getString("es.basePath")
   val compositeSearchIndexName: String = if (config.hasPath("compositesearch.index.name")) config.getString("compositesearch.index.name") else "compositesearch";
