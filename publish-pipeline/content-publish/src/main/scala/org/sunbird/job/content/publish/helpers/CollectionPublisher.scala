@@ -86,8 +86,8 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
         updatedCompatibilityLevelMeta ++ Map("childNodes" -> (collectionChildNodes ++ collectionResourceChildNodes).distinct)
       } else enrichedChildrenObject.metadata
     } else updatedCompatibilityLevelMeta
-
-    val updatedObj = new ObjectData(obj.identifier, updatedObjMetadata, obj.extData, Option(collectionHierarchy))
+    logger.info("CollectionPublisher:: enrichObjectMetadata:: Enriched Children: " + childrenBuffer.toList)
+    val updatedObj = new ObjectData(obj.identifier, updatedObjMetadata, obj.extData, Option(collectionHierarchy ++ Map("children" -> childrenBuffer.toList)))
 
     logger.info("CollectionPublisher:: enrichObjectMetadata:: Collection processing started for content: " + updatedObj.identifier)
     val enrichedObj = processCollection(updatedObj, childrenBuffer.toList)
