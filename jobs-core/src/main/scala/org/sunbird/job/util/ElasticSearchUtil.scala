@@ -12,7 +12,7 @@ import org.elasticsearch.action.admin.indices.create.CreateIndexRequest
 import org.elasticsearch.action.bulk.BulkRequest
 import org.elasticsearch.action.delete.DeleteRequest
 import org.elasticsearch.action.get.GetRequest
-import org.elasticsearch.action.index.IndexRequest
+import org.elasticsearch.action.index.{IndexRequest, IndexResponse}
 import org.elasticsearch.action.update.UpdateRequest
 import org.elasticsearch.client.{Response, RestClient, RestClientBuilder, RestHighLevelClient}
 import org.elasticsearch.common.settings.Settings
@@ -70,16 +70,18 @@ class ElasticSearchUtil(connectionInfo: String, indexName: String, indexType: St
     response
   }
 
-  def addDocument(identifier: String, document: String): Unit = {
+  def addDocument(identifier: String, document: String): IndexResponse = {
     try {
       // TODO
       // Replace mapper with JSONUtil once the JSONUtil is fixed
       val doc = mapper.readValue(document, new TypeReference[util.Map[String, AnyRef]]() {})
       val response = esClient.index(new IndexRequest(indexName, indexType, identifier).source(doc))
       logger.info(s"Added ${response.getId} to index ${response.getIndex}")
+      response
     } catch {
       case e: IOException =>
         logger.error(s"ElasticSearchUtil:: Error while adding document to index : $indexName", e)
+        null
     }
   }
 
