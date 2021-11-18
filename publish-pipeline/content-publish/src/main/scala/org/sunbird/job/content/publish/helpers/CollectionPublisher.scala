@@ -181,22 +181,21 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
           enrichChildren(child.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]].to[ListBuffer], collectionResourceChildNodes, obj)
 
         if (StringUtils.equalsIgnoreCase(child.getOrElse("visibility", "").asInstanceOf[String], "Default") && EXPANDABLE_OBJECTS.contains(child.getOrElse("objectType", "").asInstanceOf[String])) {
-          val collectionHierarchy = getHierarchy(child.getOrElse("identifier", "").asInstanceOf[String], child.getOrElse("pkgVersion", 0).asInstanceOf[Integer].doubleValue(), readerConfig).get
-          logger.info("CollectionPublisher:: enrichChildren:: Collection hierarchy for childNode : " + child.getOrElse("identifier", "") + " : " + collectionHierarchy)
-          if (collectionHierarchy.nonEmpty) {
-            val childNodes = collectionHierarchy.getOrElse("childNodes", List.empty).asInstanceOf[List[String]]
+          val childCollectionHierarchy = getHierarchy(child.getOrElse("identifier", "").asInstanceOf[String], child.getOrElse("pkgVersion", 0).asInstanceOf[Integer].doubleValue(), readerConfig).get
+          logger.info("CollectionPublisher:: enrichChildren:: Collection hierarchy for childNode : " + child.getOrElse("identifier", "") + " :-> " + childCollectionHierarchy)
+          if (childCollectionHierarchy.nonEmpty) {
+            val childNodes = childCollectionHierarchy.getOrElse("childNodes", List.empty).asInstanceOf[List[String]]
             if (childNodes.nonEmpty && INCLUDE_CHILDNODE_OBJECTS.contains(child.getOrElse("objectType", "").asInstanceOf[String])) collectionResourceChildNodes ++= childNodes.toSet[String]
-            children.remove(children.indexOf(child))
-            children ++= ListBuffer(collectionHierarchy ++ Map("index" -> child.getOrElse("index", 0).asInstanceOf[AnyRef], "parent" -> child.getOrElse("parent", "")))
+            children(children.indexOf(child)) = childCollectionHierarchy ++ Map("index" -> child.getOrElse("index", 0).asInstanceOf[AnyRef], "parent" -> child.getOrElse("parent", ""))
+            logger.info("CollectionPublisher:: enrichChildren:: After updating children buffer with child collection hierarchy : " + child.getOrElse("identifier", "") + " : " + children)
           }
         }
 
         if (StringUtils.equalsIgnoreCase(child.getOrElse("visibility", "").asInstanceOf[String], "Default") && !EXPANDABLE_OBJECTS.contains(child.getOrElse("objectType", "").asInstanceOf[String])) {
           val childNode = Option(neo4JUtil.getNodeProperties(child.getOrElse("identifier", "").asInstanceOf[String])).getOrElse(neo4JUtil.getNodeProperties(child.getOrElse("identifier", "").asInstanceOf[String])).asScala.toMap
-          children.remove(children.indexOf(child))
 
           if (PUBLISHED_STATUS_LIST.contains(childNode.getOrElse("status", "").asInstanceOf[String])) {
-            children ++= ListBuffer(childNode ++ Map("index" -> child.getOrElse("index", 0).asInstanceOf[AnyRef], "parent" -> child.getOrElse("parent", "").asInstanceOf[String], "depth" -> child.getOrElse("depth", 0).asInstanceOf[AnyRef]) - ("collections", "children"))
+            children(children.indexOf(child)) = childNode ++ Map("index" -> child.getOrElse("index", 0).asInstanceOf[AnyRef], "parent" -> child.getOrElse("parent", "").asInstanceOf[String], "depth" -> child.getOrElse("depth", 0).asInstanceOf[AnyRef]) - ("collections", "children")
             ""
           } else child.getOrElse("identifier", "").asInstanceOf[String]
         } else ""
@@ -400,7 +399,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
   }
 
   private def getLeafNodesIds(data: Map[String, AnyRef], leafNodeIds: mutable.Set[String]): Unit = {
-    if (INCLUDE_LEAFNODE_OBJECTS.contains(data.getOrElse("objectType", ""))) leafNodeIds += (data.getOrElse("identifier", "").asInstanceOf[String])
+    if (INCLUDE_LEAFNODE_OBJECTS.contains(data.getOrElse("objectType", "")) && StringUtils.equals(data.getOrElse("visibility", "").asInstanceOf[String], "Default")) leafNodeIds += data.getOrElse("identifier", "").asInstanceOf[String]
     val children = data.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]]
     if (children.nonEmpty) {
       for (child <- children) {
