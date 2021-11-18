@@ -184,8 +184,8 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
           if (childCollectionHierarchy.nonEmpty) {
             val childNodes = childCollectionHierarchy.getOrElse("childNodes", List.empty).asInstanceOf[List[String]]
             if (childNodes.nonEmpty && INCLUDE_CHILDNODE_OBJECTS.contains(child.getOrElse("objectType", "").asInstanceOf[String])) collectionResourceChildNodes ++= childNodes.toSet[String]
-            toEnrichChildren(children.indexOf(child)) = childCollectionHierarchy ++ Map("index" -> child.getOrElse("index", 0).asInstanceOf[AnyRef], "parent" -> child.getOrElse("parent", ""))
-            logger.info("CollectionPublisher:: enrichChildren:: After updating children buffer with child collection hierarchy : " + child.getOrElse("identifier", "") + " : " + children)
+            toEnrichChildren(children.indexOf(child)) = childCollectionHierarchy ++ Map("index" -> child.getOrElse("index", 0).asInstanceOf[AnyRef], "depth" -> child.getOrElse("depth", 0).asInstanceOf[AnyRef], "parent" -> child.getOrElse("parent", ""))
+            logger.info("CollectionPublisher:: enrichChildren:: After updating children buffer with child collection hierarchy : " + child.getOrElse("identifier", "") + " : " + ScalaJsonUtil.serialize(children))
           }
         }
 
@@ -198,7 +198,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
         } else ""
       }).filter(rec => rec.nonEmpty)
 
-      logger.info("CollectionPublisher:: enrichChildren:: Enriched Children:: " + toEnrichChildren)
+      logger.info("CollectionPublisher:: enrichChildren:: Enriched Children:: " + ScalaJsonUtil.serialize(toEnrichChildren))
 
       if (childNodesToRemove.nonEmpty) {
         val originalChildNodes = obj.metadata.getOrElse("childNodes", new java.util.ArrayList()).asInstanceOf[java.util.List[String]].asScala.toList
@@ -543,8 +543,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       children.foreach((child: Map[String, AnyRef]) => {
         try {
           val updatedChildMetadata: Map[String, AnyRef] = if (StringUtils.equalsIgnoreCase("Default", child.getOrElse("visibility", "").asInstanceOf[String])) {
-            val nodeMetadata = neo4JUtil.getNodeProperties(child.getOrElse("identifier", "").asInstanceOf[String]) // CHECK IF THIS IS GOOD
-            if (nodeMetadata.containsKey("children")) nodeMetadata.remove("children")
+            val nodeMetadata = neo4JUtil.getNodeProperties(child.getOrElse("identifier", "").asInstanceOf[String]).asScala.toMap[String, AnyRef] // CHECK IF THIS IS GOOD
             val nextLevelNodes: List[Map[String, AnyRef]] = child.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]]
             val finalChildList: List[Map[String, AnyRef]] = if (nextLevelNodes.nonEmpty) {
               nextLevelNodes.map((nextLevelNode: Map[String, AnyRef]) => {
@@ -553,8 +552,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
                   "index" -> nextLevelNode.getOrElse("index", 0).asInstanceOf[AnyRef])
               })
             } else List.empty
-            if (finalChildList != null && finalChildList.nonEmpty) nodeMetadata.put("children", finalChildList)
-            nodeMetadata.asScala.toMap[String, AnyRef]
+            if (finalChildList != null && finalChildList.nonEmpty) nodeMetadata + ("children"-> finalChildList) else nodeMetadata
           }
           else {
             val nextLevelNodes: List[Map[String, AnyRef]] = child.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]]

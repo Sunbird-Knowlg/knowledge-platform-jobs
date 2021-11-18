@@ -106,10 +106,10 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
           val publishType = objWithEcar.getString("publish_type", "Public")
           val successObj = new ObjectData(objWithEcar.identifier, objWithEcar.metadata + ("status" -> (if (publishType.equalsIgnoreCase("Unlisted")) "Unlisted" else "Live"), "variants" -> variantsJsonString, "identifier" -> objWithEcar.identifier), objWithEcar.extData, objWithEcar.hierarchy)
           val children = successObj.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
-          logger.info("CollectionPublishFunction:: Children to update Hierarchy Metadata for collection: " + successObj.identifier + " || "  + children)
+          logger.info("CollectionPublishFunction:: Children to update Hierarchy Metadata for collection: " + successObj.identifier + " || "  + ScalaJsonUtil.serialize(children))
           // Collection - update and publish children - line 418 in PublishFinalizer
           val updatedChildren = updateHierarchyMetadata(children, successObj.metadata)(config)
-          logger.info("CollectionPublishFunction:: Children after Hierarchy Metadata updated for collection: " + successObj.identifier + " || "  +  updatedChildren)
+          logger.info("CollectionPublishFunction:: Children after Hierarchy Metadata updated for collection: " + successObj.identifier + " || "  +  ScalaJsonUtil.serialize(updatedChildren))
           logger.info("CollectionPublishFunction:: Collection Object to Publish: " + successObj.identifier + " || "  +  successObj.hierarchy.get)
           publishHierarchy(updatedChildren, successObj, readerConfig)(cassandraUtil)
 
