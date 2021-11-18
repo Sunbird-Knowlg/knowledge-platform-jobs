@@ -72,8 +72,6 @@ trait ObjectUpdater {
 					case _: List[String] =>
 						val strValue = ScalaJsonUtil.serialize(prop._2.asInstanceOf[List[String]].distinct)
 						s"""n.${prop._1}=${strValue}"""
-					case _: String =>
-						s"""n.${prop._1}="${prop._2}""""
 					case _ =>
 						val strValue = JSONUtil.serialize(prop._2)
 						s"""n.${prop._1}=$strValue"""

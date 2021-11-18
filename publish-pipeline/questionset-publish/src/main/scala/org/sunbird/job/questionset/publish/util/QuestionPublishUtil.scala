@@ -13,28 +13,34 @@ import scala.concurrent.ExecutionContext
 
 object QuestionPublishUtil extends QuestionPublisher {
 
-	private val pkgTypes = List(EcarPackageType.FULL.toString, EcarPackageType.ONLINE.toString)
+  private val pkgTypes = List(EcarPackageType.FULL.toString, EcarPackageType.ONLINE.toString)
 
-	private[this] val logger = LoggerFactory.getLogger(classOf[QuestionPublishUtil])
+  private[this] val logger = LoggerFactory.getLogger(classOf[QuestionPublishUtil])
 
-	def publishQuestions(identifier: String, objList: List[ObjectData])(implicit ec: ExecutionContext, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, definitionCache: DefinitionCache, definitionConfig: DefinitionConfig, config: PublishConfig, httpUtil: HttpUtil): Unit = {
-		objList.foreach(qData => {
-			logger.info("QuestionPublishUtil :::: publishing child question  for : " + qData.identifier)
-			val obj = getObject(qData.identifier, qData.pkgVersion, readerConfig)(neo4JUtil, cassandraUtil)
-			val messages: List[String] = validate(obj, obj.identifier, validateQuestion)
-			if (messages.isEmpty) {
-				val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
-				val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
-				logger.info("Ecar generation done for Question: " + objWithEcar.identifier)
-				saveOnSuccess(objWithEcar)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
-				logger.info("Question publishing completed successfully for : " + qData.identifier)
-			} else {
-				saveOnFailure(obj, messages)(neo4JUtil)
-				logger.info("Question publishing failed for : " + qData.identifier)
-			}
-		})
-
-	}
+  def publishQuestions(identifier: String, objList: List[ObjectData])(implicit ec: ExecutionContext, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, definitionCache: DefinitionCache, definitionConfig: DefinitionConfig, config: PublishConfig, httpUtil: HttpUtil): List[ObjectData] = {
+    logger.info("QuestionPublishUtil :::: publishing child question for questionset : " + identifier)
+    objList.map(qData => {
+      logger.info("QuestionPublishUtil :::: publishing child question : " + qData.identifier)
+      val obj = getObject(qData.identifier, qData.pkgVersion, qData.mimeType, qData.metadata.getOrElse("publish_type","Public").toString, readerConfig)(neo4JUtil, cassandraUtil)
+      val messages: List[String] = validate(obj, obj.identifier, validateQuestion)
+      if (messages.isEmpty) {
+        val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
+        val objWithArtifactUrl = if (enrichedObj.getString("artifactUrl", "").isEmpty) {
+          //create artifact zip locally, upload to cloud and update the artifact URL
+          updateArtifactUrl(enrichedObj, EcarPackageType.FULL.toString)(ec, cloudStorageUtil, definitionCache, definitionConfig, config, httpUtil)
+        } else enrichedObj
+        val objWithEcar = getObjectWithEcar(objWithArtifactUrl, pkgTypes)(ec, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
+        logger.info("Ecar generation done for Question: " + objWithEcar.identifier)
+        saveOnSuccess(objWithEcar)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
+        logger.info("Question publishing completed successfully for : " + qData.identifier)
+        objWithEcar
+      } else {
+        saveOnFailure(obj, messages)(neo4JUtil)
+        logger.info("Question publishing failed for : " + qData.identifier)
+        obj
+      }
+    })
+  }
 }
 
 class QuestionPublishUtil {}

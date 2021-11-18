@@ -1,16 +1,17 @@
 package org.sunbird.job.util
 
 import java.lang.reflect.{ParameterizedType, Type}
-
 import com.fasterxml.jackson.annotation.JsonInclude.Include
 import com.fasterxml.jackson.core.JsonGenerator.Feature
 import com.fasterxml.jackson.module.scala.DefaultScalaModule
 import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper, SerializationFeature}
 import com.fasterxml.jackson.core.`type`.TypeReference
+import com.fasterxml.jackson.core.json.JsonReadFeature
+import com.fasterxml.jackson.databind.json.JsonMapper
 
 object JSONUtil {
 
-  @transient val mapper = new ObjectMapper()
+  @transient val mapper = JsonMapper.builder().enable(JsonReadFeature.ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER).build();
   mapper.registerModule(DefaultScalaModule)
   mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
   mapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)

@@ -51,5 +51,11 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
   def certificateDescription: String = readOrDefault[String]("edata.description", "")
 
   def related: Map[String, AnyRef] = readOrDefault[Map[String, AnyRef]]("edata.related", Map[String, AnyRef]())
+  
+  def batchId: String = related.getOrElse("batchId", "").asInstanceOf[String]
+
+  def courseId: String = related.getOrElse("courseId", "").asInstanceOf[String]
+  
+  def userId: String = readOrDefault[String]("edata.userId", "")
 
 }

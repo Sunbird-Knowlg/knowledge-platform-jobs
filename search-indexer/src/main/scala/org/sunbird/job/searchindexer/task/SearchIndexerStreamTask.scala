@@ -2,6 +2,7 @@ package org.sunbird.job.searchindexer.task
 
 import com.typesafe.config.ConfigFactory
 import org.apache.flink.api.common.typeinfo.TypeInformation
+import org.apache.flink.api.java.functions.KeySelector
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
@@ -25,6 +26,7 @@ class SearchIndexerStreamTask(config: SearchIndexerConfig, kafkaConnector: Flink
     val processStreamTask = env.addSource(source).name(config.searchIndexerConsumer)
       .uid(config.searchIndexerConsumer).setParallelism(config.kafkaConsumerParallelism)
       .rebalance
+      .keyBy(new SearchIndexerKeySelector())
       .process(new TransactionEventRouter(config))
       .name(config.transactionEventRouter).uid(config.transactionEventRouter)
       .setParallelism(config.eventRouterParallelism)
@@ -61,3 +63,7 @@ object SearchIndexerStreamTask {
 }
 
 // $COVERAGE-ON$
+
+class SearchIndexerKeySelector extends KeySelector[Event, String] {
+  override def getKey(in: Event): String = in.id.replace(".img", "")
+}

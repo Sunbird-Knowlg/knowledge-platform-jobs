@@ -2,6 +2,7 @@ package org.sunbird.job.audithistory.task
 
 import com.typesafe.config.ConfigFactory
 import org.apache.flink.api.common.typeinfo.TypeInformation
+import org.apache.flink.api.java.functions.KeySelector
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
@@ -24,6 +25,7 @@ class AuditHistoryIndexerStreamTask(config: AuditHistoryIndexerConfig, kafkaConn
     env.addSource(kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)).name(config.eventConsumer)
       .uid(config.eventConsumer).setParallelism(config.kafkaConsumerParallelism)
       .rebalance
+      .keyBy(new AuditHistoryIndexerKeySelector)
       .process(new AuditHistoryIndexer(config, esUtil))
       .name(config.auditHistoryIndexerFunction)
       .uid(config.auditHistoryIndexerFunction)
@@ -50,3 +52,7 @@ object AuditHistoryIndexerStreamTask {
 }
 
 // $COVERAGE-ON$
+
+class AuditHistoryIndexerKeySelector extends KeySelector[Event, String] {
+  override def getKey(in: Event): String = in.id.replace(".img", "")
+}

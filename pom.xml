@@ -33,7 +33,8 @@
 		<module>asset-enrichment</module>
 		<module>audit-history-indexer</module>
 		<module>audit-event-generator</module>
-  </modules>
+		<module>metrics-data-transformer</module>
+	</modules>
 
 	<properties>
 		<!-- maven specific properties -->
