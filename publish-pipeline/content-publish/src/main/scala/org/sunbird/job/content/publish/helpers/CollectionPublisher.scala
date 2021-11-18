@@ -76,22 +76,21 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     val children = if (collectionHierarchy.nonEmpty) {
       collectionHierarchy.getOrElse("children", List.empty[Map[String, AnyRef]]).asInstanceOf[List[Map[String, AnyRef]]]
     } else List.empty[Map[String, AnyRef]]
-    val childrenBuffer = children.to[ListBuffer]
+    val toEnrichChildren = children.to[ListBuffer]
     val updatedObjMetadata: Map[String, AnyRef] = if (collectionHierarchy.nonEmpty && !isCollectionShallowCopy) {
       val collectionResourceChildNodes: mutable.HashSet[String] = mutable.HashSet.empty[String]
       val toEnrichChildrenObj = new ObjectData(obj.identifier, updatedCompatibilityLevelMeta, obj.extData, Option(collectionHierarchy))
-      val enrichedChildrenObject = enrichChildren(childrenBuffer, collectionResourceChildNodes, toEnrichChildrenObj)
+      val enrichedChildrenObject = enrichChildren(toEnrichChildren, children, collectionResourceChildNodes, toEnrichChildrenObj)
       if (collectionResourceChildNodes.nonEmpty) {
         val collectionChildNodes: List[String] = enrichedChildrenObject.metadata.getOrElse("childNodes", new java.util.ArrayList()).asInstanceOf[java.util.List[String]].asScala.toList
         updatedCompatibilityLevelMeta ++ Map("childNodes" -> (collectionChildNodes ++ collectionResourceChildNodes).distinct)
       } else enrichedChildrenObject.metadata
     } else updatedCompatibilityLevelMeta
-    logger.info("CollectionPublisher:: enrichObjectMetadata:: Enriched Children: " + childrenBuffer.toList)
-    val updatedObj = new ObjectData(obj.identifier, updatedObjMetadata, obj.extData, Option(collectionHierarchy ++ Map("children" -> childrenBuffer.toList)))
+    logger.info("CollectionPublisher:: enrichObjectMetadata:: Enriched Children: " + toEnrichChildren.toList)
+    val updatedObj = new ObjectData(obj.identifier, updatedObjMetadata, obj.extData, Option(collectionHierarchy ++ Map("children" -> toEnrichChildren.toList)))
 
     logger.info("CollectionPublisher:: enrichObjectMetadata:: Collection processing started for content: " + updatedObj.identifier)
-    val enrichedObj = processCollection(updatedObj, childrenBuffer.toList)
-    logger.info("CollectionPublisher:: enrichObjectMetadata:: Collection processing done for content: " + enrichedObj.identifier)
+    val enrichedObj = processCollection(updatedObj, toEnrichChildren.toList)
     logger.info("CollectionPublisher:: enrichObjectMetadata:: Collection data after processing for : " + enrichedObj.identifier + " | Metadata : " + enrichedObj.metadata)
     logger.info("CollectionPublisher:: enrichObjectMetadata:: Collection children data after processing : " + enrichedObj.hierarchy.get("children"))
 
@@ -171,14 +170,13 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     } else obj
   }
 
-  private def enrichChildren(children: ListBuffer[Map[String, AnyRef]], collectionResourceChildNodes: mutable.HashSet[String], obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): ObjectData = {
+  private def enrichChildren(toEnrichChildren: ListBuffer[Map[String, AnyRef]], children: List[Map[String,AnyRef]], collectionResourceChildNodes: mutable.HashSet[String], obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): ObjectData = {
     if (children.nonEmpty) {
-      val newChildren = children.toList
-      logger.info("CollectionPublisher:: enrichChildren:: To Enrich Children:: " + newChildren)
-      val childNodesToRemove: List[String] = newChildren.map(child => {
+      logger.info("CollectionPublisher:: enrichChildren:: To Enrich Children:: " + toEnrichChildren)
+      val childNodesToRemove: List[String] = children.map(child => {
         logger.info("CollectionPublisher:: enrichChildren:: child identifier:: " + child.getOrElse("identifier", "") + " || visibility " + child.getOrElse("visibility", "") + " || mimeType:: " + child.getOrElse("mimeType", "") + " || objectType:: " + child.getOrElse("objectType", ""))
         if (StringUtils.equalsIgnoreCase(child.getOrElse("visibility", "").asInstanceOf[String], "Parent") && StringUtils.equalsIgnoreCase(child.getOrElse("mimeType", "").asInstanceOf[String], COLLECTION_MIME_TYPE))
-          enrichChildren(child.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]].to[ListBuffer], collectionResourceChildNodes, obj)
+          enrichChildren(toEnrichChildren, child.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]], collectionResourceChildNodes, obj)
 
         if (StringUtils.equalsIgnoreCase(child.getOrElse("visibility", "").asInstanceOf[String], "Default") && EXPANDABLE_OBJECTS.contains(child.getOrElse("objectType", "").asInstanceOf[String])) {
           val childCollectionHierarchy = getHierarchy(child.getOrElse("identifier", "").asInstanceOf[String], child.getOrElse("pkgVersion", 0).asInstanceOf[Integer].doubleValue(), readerConfig).get
@@ -186,7 +184,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
           if (childCollectionHierarchy.nonEmpty) {
             val childNodes = childCollectionHierarchy.getOrElse("childNodes", List.empty).asInstanceOf[List[String]]
             if (childNodes.nonEmpty && INCLUDE_CHILDNODE_OBJECTS.contains(child.getOrElse("objectType", "").asInstanceOf[String])) collectionResourceChildNodes ++= childNodes.toSet[String]
-            children(children.indexOf(child)) = childCollectionHierarchy ++ Map("index" -> child.getOrElse("index", 0).asInstanceOf[AnyRef], "parent" -> child.getOrElse("parent", ""))
+            toEnrichChildren(children.indexOf(child)) = childCollectionHierarchy ++ Map("index" -> child.getOrElse("index", 0).asInstanceOf[AnyRef], "parent" -> child.getOrElse("parent", ""))
             logger.info("CollectionPublisher:: enrichChildren:: After updating children buffer with child collection hierarchy : " + child.getOrElse("identifier", "") + " : " + children)
           }
         }
@@ -194,20 +192,18 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
         if (StringUtils.equalsIgnoreCase(child.getOrElse("visibility", "").asInstanceOf[String], "Default") && !EXPANDABLE_OBJECTS.contains(child.getOrElse("objectType", "").asInstanceOf[String])) {
           val childNode = Option(neo4JUtil.getNodeProperties(child.getOrElse("identifier", "").asInstanceOf[String])).getOrElse(neo4JUtil.getNodeProperties(child.getOrElse("identifier", "").asInstanceOf[String])).asScala.toMap
           if (PUBLISHED_STATUS_LIST.contains(childNode.getOrElse("status", "").asInstanceOf[String])) {
-            children(children.indexOf(child)) = childNode ++ Map("index" -> child.getOrElse("index", 0).asInstanceOf[AnyRef], "parent" -> child.getOrElse("parent", "").asInstanceOf[String], "depth" -> child.getOrElse("depth", 0).asInstanceOf[AnyRef]) - ("collections", "children")
+            toEnrichChildren(children.indexOf(child)) = childNode ++ Map("index" -> child.getOrElse("index", 0).asInstanceOf[AnyRef], "parent" -> child.getOrElse("parent", "").asInstanceOf[String], "depth" -> child.getOrElse("depth", 0).asInstanceOf[AnyRef]) - ("collections", "children")
             ""
           } else child.getOrElse("identifier", "").asInstanceOf[String]
         } else ""
       }).filter(rec => rec.nonEmpty)
 
-      logger.info("CollectionPublisher:: enrichChildren:: Enriched Children:: " + children.toList)
+      logger.info("CollectionPublisher:: enrichChildren:: Enriched Children:: " + toEnrichChildren)
 
       if (childNodesToRemove.nonEmpty) {
         val originalChildNodes = obj.metadata.getOrElse("childNodes", new java.util.ArrayList()).asInstanceOf[java.util.List[String]].asScala.toList
         new ObjectData(obj.identifier, obj.metadata ++ Map("childNodes" -> originalChildNodes.filter(rec => !childNodesToRemove.contains(rec))), obj.extData, Option(obj.hierarchy.get ++ Map("children" -> children.toList)))
       } else obj
-
-
 
     } else obj
   }
@@ -519,7 +515,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
         case _ => query.value(d._1, d._2)
       }
     })
-    logger.debug(s"CollectionPublisher:: publishHierarchy:: Publishing Hierarchy data for $identifier | Query : ${query.toString}")
+    logger.info(s"CollectionPublisher:: publishHierarchy:: Publishing Hierarchy data for $identifier | Query : ${query.toString}")
     val result = cassandraUtil.upsert(query.toString)
     if (result) {
       logger.info(s"CollectionPublisher:: publishHierarchy:: Hierarchy data saved successfully for $identifier")
