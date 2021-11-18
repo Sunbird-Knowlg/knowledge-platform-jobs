@@ -96,10 +96,10 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
           } else List.empty
 
           val enrichedObj = enrichObject(updatedObj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
-          logger.info("CollectionPublishFunction:: Collection enrichedObj: " + enrichedObj)
+          logger.info("CollectionPublishFunction:: Collection enrichedObj hierarchy: " + enrichedObj.hierarchy.get)
           val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
           logger.info("CollectionPublishFunction:: Ecar generation done for Collection: " + objWithEcar.identifier)
-          logger.info("CollectionPublishFunction:: Collection objWithEcar: " + objWithEcar)
+          logger.info("CollectionPublishFunction:: Collection objWithEcar hierarchy: " + objWithEcar.hierarchy.get)
           saveOnSuccess(new ObjectData(objWithEcar.identifier, objWithEcar.metadata.-("children"), objWithEcar.extData, objWithEcar.hierarchy))(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
 
           val variantsJsonString = ScalaJsonUtil.serialize(objWithEcar.metadata("variants"))
@@ -110,7 +110,7 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
           // Collection - update and publish children - line 418 in PublishFinalizer
           val updatedChildren = updateHierarchyMetadata(children, successObj.metadata)(config)
           logger.info("CollectionPublishFunction:: Children after Hierarchy Metadata updated for collection: " + successObj.identifier + " || "  +  updatedChildren)
-          logger.info("CollectionPublishFunction:: Collection Object to Publish: " + successObj.identifier + " || "  +  successObj)
+          logger.info("CollectionPublishFunction:: Collection Object to Publish: " + successObj.identifier + " || "  +  successObj.hierarchy.get)
           publishHierarchy(updatedChildren, successObj, readerConfig)(cassandraUtil)
 
           if (!isCollectionShallowCopy) syncNodes(updatedChildren, unitNodes)(esUtil, neo4JUtil, cassandraUtil, readerConfig, definition, config)

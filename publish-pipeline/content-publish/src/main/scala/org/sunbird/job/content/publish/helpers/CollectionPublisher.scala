@@ -233,7 +233,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       new ObjectData(obj.identifier, obj.metadata ++ updatedMetadataMap + ("keywords" -> finalKeywords), obj.extData, obj.hierarchy)
     } else obj
 
-    val enrichedObject = enrichCollection(updatedObj, children)
+    val enrichedObject = if(children.nonEmpty) enrichCollection(updatedObj) else updatedObj
     //    addResourceToCollection(enrichedObject, children.to[ListBuffer]) - TODO
     enrichedObject
 
@@ -326,41 +326,39 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     dataMap
   }
 
-  def enrichCollection(obj: ObjectData, children: List[Map[String, AnyRef]])(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig): ObjectData = {
+  def enrichCollection(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig): ObjectData = {
     val nodeMetadata = mutable.Map.empty[String, AnyRef] ++ obj.metadata
     val contentId = obj.identifier
     logger.info("CollectionPublisher:: enrichCollection:: Processing Collection Content :" + contentId)
-    if (null != children && children.nonEmpty) {
-      val content = getHierarchy(obj.identifier, obj.pkgVersion, readerConfig).get
-      if (content.isEmpty) return obj
-      val leafCount = getLeafNodeCount(content)
-      val totalCompressedSize = getTotalCompressedSize(content, 0.0).toLong
+    val content = obj.hierarchy.get
+    if (content.isEmpty) return obj
+    val leafCount = getLeafNodeCount(content)
+    val totalCompressedSize = getTotalCompressedSize(content, 0.0).toLong
 
-      nodeMetadata.put("leafNodesCount", leafCount.asInstanceOf[AnyRef])
-      nodeMetadata.put("totalCompressedSize", totalCompressedSize.asInstanceOf[AnyRef])
+    nodeMetadata.put("leafNodesCount", leafCount.asInstanceOf[AnyRef])
+    nodeMetadata.put("totalCompressedSize", totalCompressedSize.asInstanceOf[AnyRef])
 
-      nodeMetadata.put("leafNodes", updateLeafNodeIds(content))
-      val mimeTypeMap: mutable.Map[String, AnyRef] = mutable.Map.empty[String, AnyRef]
-      val contentTypeMap: mutable.Map[String, AnyRef] = mutable.Map.empty[String, AnyRef]
-      getTypeCount(content, "mimeType", mimeTypeMap)
-      getTypeCount(content, "contentType", contentTypeMap)
+    nodeMetadata.put("leafNodes", updateLeafNodeIds(content))
+    val mimeTypeMap: mutable.Map[String, AnyRef] = mutable.Map.empty[String, AnyRef]
+    val contentTypeMap: mutable.Map[String, AnyRef] = mutable.Map.empty[String, AnyRef]
+    getTypeCount(content, "mimeType", mimeTypeMap)
+    getTypeCount(content, "contentType", contentTypeMap)
 
-      val updatedContent = content ++ Map("leafNodesCount" -> leafCount, "totalCompressedSize" -> totalCompressedSize, "mimeTypesCount" -> mimeTypeMap, "contentTypesCount" -> contentTypeMap).asInstanceOf[Map[String, AnyRef]]
-      nodeMetadata.put("mimeTypesCount", mimeTypeMap)
-      nodeMetadata.put("contentTypesCount", contentTypeMap)
-      nodeMetadata.put("toc_url", generateTOC(obj, updatedContent).asInstanceOf[AnyRef])
+    val updatedContent = content ++ Map("leafNodesCount" -> leafCount, "totalCompressedSize" -> totalCompressedSize, "mimeTypesCount" -> mimeTypeMap, "contentTypesCount" -> contentTypeMap).asInstanceOf[Map[String, AnyRef]]
+    nodeMetadata.put("mimeTypesCount", mimeTypeMap)
+    nodeMetadata.put("contentTypesCount", contentTypeMap)
+    nodeMetadata.put("toc_url", generateTOC(obj, updatedContent).asInstanceOf[AnyRef])
 
-      val updatedMetadata: Map[String, AnyRef] = try {
-        nodeMetadata.put("mimeTypesCount", JSONUtil.serialize(mimeTypeMap))
-        nodeMetadata.put("contentTypesCount", JSONUtil.serialize(contentTypeMap))
-        setContentAndCategoryTypes(nodeMetadata.toMap)
-      } catch {
-        case e: Exception => logger.error("CollectionPublisher:: enrichCollection:: Error while stringify mimeTypeCount or contentTypesCount:", e)
-          nodeMetadata.toMap
-      }
+    val updatedMetadata: Map[String, AnyRef] = try {
+      nodeMetadata.put("mimeTypesCount", JSONUtil.serialize(mimeTypeMap))
+      nodeMetadata.put("contentTypesCount", JSONUtil.serialize(contentTypeMap))
+      setContentAndCategoryTypes(nodeMetadata.toMap)
+    } catch {
+      case e: Exception => logger.error("CollectionPublisher:: enrichCollection:: Error while stringify mimeTypeCount or contentTypesCount:", e)
+        nodeMetadata.toMap
+    }
 
-      new ObjectData(obj.identifier, updatedMetadata, obj.extData, Option(updatedContent))
-    } else obj
+    new ObjectData(obj.identifier, updatedMetadata, obj.extData, Option(updatedContent))
   }
 
   private def updateLeafNodeIds(content: Map[String, AnyRef]): Array[String] = {
