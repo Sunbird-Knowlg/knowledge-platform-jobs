@@ -37,7 +37,8 @@ class CollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Match
   implicit val defConfig: DefinitionConfig = DefinitionConfig(jobConfig.schemaSupportVersionMap, jobConfig.definitionBasePath)
   implicit val publishConfig: PublishConfig = jobConfig.asInstanceOf[PublishConfig]
   implicit val httpUtil: HttpUtil = new HttpUtil
-  val mockElasticUtil: ElasticSearchUtil = mock[ElasticSearchUtil](Mockito.withSettings().serializable())
+//  val mockElasticUtil: ElasticSearchUtil = mock[ElasticSearchUtil](Mockito.withSettings().serializable())
+  val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.compositeSearchIndexName, jobConfig.compositeSearchIndexType)
   var definitionCache = new DefinitionCache()
   implicit val definition: ObjectDefinition = definitionCache.getDefinition("Collection", jobConfig.schemaSupportVersionMap.getOrElse("collection", "1.0").asInstanceOf[String], jobConfig.definitionBasePath)
   implicit val readerConfig: ExtDataConfig = ExtDataConfig(jobConfig.hierarchyKeyspaceName, jobConfig.hierarchyTableName, definition.getExternalPrimaryKey, definition.getExternalProps)
@@ -120,33 +121,33 @@ class CollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Match
   }
 
   "syncNodes" should "sync Child Nodes into ElasticSearch" in {
-    Mockito.reset(mockElasticUtil)
-    doNothing().when(mockElasticUtil).addDocument(anyString(), anyString())
-    doNothing().when(mockElasticUtil).bulkIndexWithIndexId(anyString(), anyString(), any())
-
-    val do_113405023736512512114Json = """{"identifier":"do_113405023736512512114","graph_id":"domain","node_id":0,"collections":["do_11340502373639782416", "do_113405023736479744112"],"objectType":"Collection","nodeType":"DATA_NODE"}"""
-    when(mockElasticUtil.getDocumentAsString("do_113405023736512512114")).thenReturn(do_113405023736512512114Json)
-
-    val do_11340502373639782416Json = """{"identifier":"do_11340502373639782416","graph_id":"domain","node_id":0,"collections":["do_11340502373642240018", "do_11340502373608652812"],"objectType":"Collection","nodeType":"DATA_NODE"}"""
-    when(mockElasticUtil.getDocumentAsString("do_11340502373639782416")).thenReturn(do_11340502373639782416Json)
-
-    val do_11340502373642240018Json = """{"identifier":"do_11340502373642240018","graph_id":"domain","node_id":0,"collections":["do_11336831941257625611"],"objectType":"Collection","nodeType":"DATA_NODE"}"""
-    when(mockElasticUtil.getDocumentAsString("do_11340502373642240018")).thenReturn(do_11340502373642240018Json)
-
-    val do_11340502373608652812Json = """{"identifier":"do_11340502373608652812","graph_id":"domain","node_id":0,"collections":["do_11340096165525094411"],"objectType":"Collection","nodeType":"DATA_NODE"}"""
-    when(mockElasticUtil.getDocumentAsString("do_11340502373608652812")).thenReturn(do_11340502373608652812Json)
-
-    val do_113405023736479744112Json = """{"identifier":"do_113405023736479744112","graph_id":"domain","node_id":0,"collections":["do_11340502373638144014"],"objectType":"Collection","nodeType":"DATA_NODE"}"""
-    when(mockElasticUtil.getDocumentAsString("do_113405023736479744112")).thenReturn(do_113405023736479744112Json)
-
-    val do_11340502373638144014Json = """{"identifier":"do_11340502373638144014","graph_id":"domain","node_id":0,"collections":["do_113405023736455168110"],"objectType":"Collection","nodeType":"DATA_NODE"}"""
-    when(mockElasticUtil.getDocumentAsString("do_11340502373638144014")).thenReturn(do_11340502373638144014Json)
-
-    val do_113405023736455168110Json = """{"identifier":"do_113405023736455168110","graph_id":"domain","node_id":0,"collections":["do_11340096293585715212"],"objectType":"Collection","nodeType":"DATA_NODE"}"""
-    when(mockElasticUtil.getDocumentAsString("do_113405023736455168110")).thenReturn(do_113405023736455168110Json)
+//    Mockito.reset(mockElasticUtil)
+//    doNothing().when(mockElasticUtil).addDocument(anyString(), anyString())
+//    doNothing().when(mockElasticUtil).bulkIndexWithIndexId(anyString(), anyString(), any())
+//
+//    val do_113405023736512512114Json = """{"identifier":"do_113405023736512512114","graph_id":"domain","node_id":0,"collections":["do_11340502373639782416", "do_113405023736479744112"],"objectType":"Collection","nodeType":"DATA_NODE"}"""
+//    when(mockElasticUtil.getDocumentAsString("do_113405023736512512114")).thenReturn(do_113405023736512512114Json)
+//
+//    val do_11340502373639782416Json = """{"identifier":"do_11340502373639782416","graph_id":"domain","node_id":0,"collections":["do_11340502373642240018", "do_11340502373608652812"],"objectType":"Collection","nodeType":"DATA_NODE"}"""
+//    when(mockElasticUtil.getDocumentAsString("do_11340502373639782416")).thenReturn(do_11340502373639782416Json)
+//
+//    val do_11340502373642240018Json = """{"identifier":"do_11340502373642240018","graph_id":"domain","node_id":0,"collections":["do_11336831941257625611"],"objectType":"Collection","nodeType":"DATA_NODE"}"""
+//    when(mockElasticUtil.getDocumentAsString("do_11340502373642240018")).thenReturn(do_11340502373642240018Json)
+//
+//    val do_11340502373608652812Json = """{"identifier":"do_11340502373608652812","graph_id":"domain","node_id":0,"collections":["do_11340096165525094411"],"objectType":"Collection","nodeType":"DATA_NODE"}"""
+//    when(mockElasticUtil.getDocumentAsString("do_11340502373608652812")).thenReturn(do_11340502373608652812Json)
+//
+//    val do_113405023736479744112Json = """{"identifier":"do_113405023736479744112","graph_id":"domain","node_id":0,"collections":["do_11340502373638144014"],"objectType":"Collection","nodeType":"DATA_NODE"}"""
+//    when(mockElasticUtil.getDocumentAsString("do_113405023736479744112")).thenReturn(do_113405023736479744112Json)
+//
+//    val do_11340502373638144014Json = """{"identifier":"do_11340502373638144014","graph_id":"domain","node_id":0,"collections":["do_113405023736455168110"],"objectType":"Collection","nodeType":"DATA_NODE"}"""
+//    when(mockElasticUtil.getDocumentAsString("do_11340502373638144014")).thenReturn(do_11340502373638144014Json)
+//
+//    val do_113405023736455168110Json = """{"identifier":"do_113405023736455168110","graph_id":"domain","node_id":0,"collections":["do_11340096293585715212"],"objectType":"Collection","nodeType":"DATA_NODE"}"""
+//    when(mockElasticUtil.getDocumentAsString("do_113405023736455168110")).thenReturn(do_113405023736455168110Json)
 
     val syncChildrenData = ScalaJsonUtil.deserialize[List[Map[String, AnyRef]]](publishedChildrenData)
-    val messages: Map[String, Map[String, AnyRef]] = new TestCollectionPublisher().syncNodes(syncChildrenData, List.empty)(mockElasticUtil, mockNeo4JUtil, cassandraUtil, readerConfig, definition, jobConfig)
+    val messages: Map[String, Map[String, AnyRef]] = new TestCollectionPublisher().syncNodes(syncChildrenData, List.empty)(elasticUtil, mockNeo4JUtil, cassandraUtil, readerConfig, definition, jobConfig)
 
     assert(messages != null && messages.size > 0)
   }
