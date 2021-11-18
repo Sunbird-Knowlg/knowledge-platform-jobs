@@ -70,18 +70,16 @@ class ElasticSearchUtil(connectionInfo: String, indexName: String, indexType: St
     response
   }
 
-  def addDocument(identifier: String, document: String): IndexResponse = {
+  def addDocument(identifier: String, document: String): Unit = {
     try {
       // TODO
       // Replace mapper with JSONUtil once the JSONUtil is fixed
       val doc = mapper.readValue(document, new TypeReference[util.Map[String, AnyRef]]() {})
       val response = esClient.index(new IndexRequest(indexName, indexType, identifier).source(doc))
       logger.info(s"Added ${response.getId} to index ${response.getIndex}")
-      response
     } catch {
       case e: IOException =>
         logger.error(s"ElasticSearchUtil:: Error while adding document to index : $indexName", e)
-        null
     }
   }
 
