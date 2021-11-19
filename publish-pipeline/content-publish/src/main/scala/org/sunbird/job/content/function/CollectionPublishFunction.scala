@@ -98,23 +98,19 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
           val enrichedObj = enrichObject(updatedObj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
           logger.info("CollectionPublishFunction:: Collection enrichedObj hierarchy: " + enrichedObj.hierarchy.get)
           val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
-          logger.info("CollectionPublishFunction:: Ecar generation done for Collection: " + objWithEcar.identifier)
-          logger.info("CollectionPublishFunction:: Collection objWithEcar hierarchy: " + objWithEcar.hierarchy.get)
           saveOnSuccess(new ObjectData(objWithEcar.identifier, objWithEcar.metadata.-("children"), objWithEcar.extData, objWithEcar.hierarchy))(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
 
           val variantsJsonString = ScalaJsonUtil.serialize(objWithEcar.metadata("variants"))
           val publishType = objWithEcar.getString("publish_type", "Public")
           val successObj = new ObjectData(objWithEcar.identifier, objWithEcar.metadata + ("status" -> (if (publishType.equalsIgnoreCase("Unlisted")) "Unlisted" else "Live"), "variants" -> variantsJsonString, "identifier" -> objWithEcar.identifier), objWithEcar.extData, objWithEcar.hierarchy)
           val children = successObj.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
-          logger.info("CollectionPublishFunction:: Children to update Hierarchy Metadata for collection: " + successObj.identifier + " || "  + ScalaJsonUtil.serialize(children))
+
           // Collection - update and publish children - line 418 in PublishFinalizer
           val updatedChildren = updateHierarchyMetadata(children, successObj.metadata)(config)
-          logger.info("CollectionPublishFunction:: Children after Hierarchy Metadata updated for collection: " + successObj.identifier + " || "  +  ScalaJsonUtil.serialize(updatedChildren))
-          logger.info("CollectionPublishFunction:: Collection Object to Publish: " + successObj.identifier + " || "  +  successObj.hierarchy.get)
+          logger.info("CollectionPublishFunction:: Collection Object hierarchy to Publish: " + successObj.identifier + " || "  +  successObj.hierarchy.get)
           publishHierarchy(updatedChildren, successObj, readerConfig)(cassandraUtil)
 
           if (!isCollectionShallowCopy) syncNodes(updatedChildren, unitNodes)(esUtil, neo4JUtil, cassandraUtil, readerConfig, definition, config)
-
           metrics.incCounter(config.collectionPublishSuccessEventCount)
           logger.info("CollectionPublishFunction:: Collection publishing completed successfully for : " + data.identifier)
         } else {
