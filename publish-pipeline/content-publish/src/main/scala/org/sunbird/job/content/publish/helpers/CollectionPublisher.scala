@@ -92,7 +92,8 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
   }
 
   override def getDataForEcar(obj: ObjectData): Option[List[Map[String, AnyRef]]] = {
-    Some(List(obj.metadata ++ obj.extData.getOrElse(Map()).filter(p => !excludeBundleMeta.contains(p._1))))
+    val hChildren: List[Map[String, AnyRef]] = obj.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
+    Some(getFlatStructure(List(obj.metadata ++ obj.extData.getOrElse(Map()) ++ Map("children" -> hChildren)), List()))
   }
 
   override def saveExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Unit = None
@@ -465,7 +466,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
           "index" -> record.getOrElse("index", 0).asInstanceOf[AnyRef])
       })
 
-    new ObjectData(obj.identifier, obj.metadata ++ Map("children" -> childrenMap), obj.extData, obj.hierarchy)
+    new ObjectData(obj.identifier, obj.metadata ++ Map("children" -> childrenMap, "objectType" -> "content"), obj.extData, obj.hierarchy)
   }
 
   def getNodeMap(children: List[Map[String, AnyRef]], nodes: ListBuffer[ObjectData], nodeIds: ListBuffer[String])(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): Unit = {
