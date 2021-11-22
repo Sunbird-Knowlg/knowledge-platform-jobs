@@ -156,23 +156,6 @@ trait QuestionSetPublisher extends ObjectReader with ObjectValidator with Object
 		Some(getFlatStructure(List(obj.metadata ++ obj.extData.getOrElse(Map()) ++ Map("children" -> hChildren)), List()))
 	}
 
-	def getFlatStructure(children: List[Map[String, AnyRef]], childrenList: List[Map[String, AnyRef]]): List[Map[String, AnyRef]] = {
-		children.flatMap(child => {
-			val innerChildren = getInnerChildren(child)
-			val updatedChild: Map[String, AnyRef] = if (innerChildren.nonEmpty) child ++ Map("children" -> innerChildren) else child
-			val finalChild = updatedChild.filter(p => !excludeBundleMeta.contains(p._1.asInstanceOf[String]))
-			val updatedChildren: List[Map[String, AnyRef]] = finalChild :: childrenList
-			val result = getFlatStructure(child.getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]], updatedChildren)
-			finalChild :: result
-		}).distinct
-	}
-
-	def getInnerChildren(child: Map[String, AnyRef]): List[Map[String, AnyRef]] = {
-		val metaList: List[String] = List("identifier", "name", "objectType", "description", "index")
-		child.getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
-		  .map(ch => ch.filterKeys(key => metaList.contains(key)))
-	}
-
 	override def enrichObjectMetadata(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig, definitionCache: DefinitionCache, definitionConfig: DefinitionConfig): Option[ObjectData] = {
 		val newMetadata: Map[String, AnyRef] = obj.metadata ++ Map("identifier"-> obj.identifier, "pkgVersion" -> (obj.pkgVersion + 1).asInstanceOf[AnyRef], "lastPublishedOn" -> getTimeStamp,
 			"publishError" -> null, "variants" -> null, "downloadUrl" -> null, "compatibilityLevel" -> 5.asInstanceOf[AnyRef], "status" -> "Live")

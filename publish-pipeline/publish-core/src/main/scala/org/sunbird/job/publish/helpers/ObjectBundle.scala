@@ -305,4 +305,22 @@ trait ObjectBundle {
     else entry._2
   }
 
+  def getFlatStructure(children: List[Map[String, AnyRef]], childrenList: List[Map[String, AnyRef]]): List[Map[String, AnyRef]] = {
+    children.flatMap(child => {
+      val innerChildren = getInnerChildren(child)
+      val updatedChild: Map[String, AnyRef] = if (innerChildren.nonEmpty) child ++ Map("children" -> innerChildren) else child
+      val finalChild = updatedChild.filter(p => !excludeBundleMeta.contains(p._1.asInstanceOf[String]))
+      val updatedChildren: List[Map[String, AnyRef]] = finalChild :: childrenList
+      val result = getFlatStructure(child.getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]], updatedChildren)
+      finalChild :: result
+    }).distinct
+  }
+
+  def getInnerChildren(child: Map[String, AnyRef]): List[Map[String, AnyRef]] = {
+    val metaList: List[String] = List("identifier", "name", "objectType", "description", "index", "depth")
+    child.getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
+      .map(ch => ch.filterKeys(key => metaList.contains(key)))
+  }
+
+
 }
