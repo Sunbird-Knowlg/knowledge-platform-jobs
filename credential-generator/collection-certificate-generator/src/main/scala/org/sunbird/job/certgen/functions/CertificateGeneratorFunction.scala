@@ -90,12 +90,12 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
         certificateExtension.printUri = Option(printUri)
         val jsonUrl = uploadJson(certificateExtension, directory.concat(uuid).concat(".json"), event.tag.concat("/"))
         //adding certificate to registry
-        val addReq = Map[String, AnyRef](JsonKeys.REQUEST -> Map[String, AnyRef](
+        val addReq = Map[String, AnyRef](JsonKeys.REQUEST -> {Map[String, AnyRef](
           JsonKeys.ID -> uuid, JsonKeys.JSON_URL -> certificateConfig.basePath.concat(jsonUrl),
           JsonKeys.JSON_DATA -> certificateExtension, JsonKeys.ACCESS_CODE -> qrMap.accessCode,
           JsonKeys.RECIPIENT_NAME -> certModel.recipientName, JsonKeys.RECIPIENT_ID -> certModel.identifier,
           config.RELATED -> event.related
-        )) ++ {if (!event.oldId.isEmpty) Map[String, AnyRef](config.OLD_ID -> event.oldId) else Map[String, AnyRef]()}
+        ) ++ {if (!event.oldId.isEmpty) Map[String, AnyRef](config.OLD_ID -> event.oldId) else Map[String, AnyRef]()}})
         addCertToRegistry(event, addReq, context)(metrics)
         //cert-registry end
         val related = event.related
