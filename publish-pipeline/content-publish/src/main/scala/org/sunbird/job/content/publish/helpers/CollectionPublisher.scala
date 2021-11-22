@@ -483,7 +483,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
           "index" -> record.getOrElse("index", 0).asInstanceOf[AnyRef])
       })
 
-    new ObjectData(obj.identifier, obj.metadata ++ Map("children" -> childrenMap), obj.extData, obj.hierarchy)
+    new ObjectData(obj.identifier, obj.metadata ++ Map("children" -> childrenMap, "objectType" -> "content"), obj.extData, obj.hierarchy)
   }
 
   def getNodeMap(children: List[Map[String, AnyRef]], nodes: ListBuffer[ObjectData], nodeIds: ListBuffer[String])(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): Unit = {
