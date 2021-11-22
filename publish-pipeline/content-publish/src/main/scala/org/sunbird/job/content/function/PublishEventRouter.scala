@@ -38,10 +38,10 @@ class PublishEventRouter(config: ContentPublishConfig) extends BaseProcessFuncti
           logger.info("PublishEventRouter :: Sending Content For Publish Having Identifier: " + event.identifier)
           context.output(config.contentPublishOutTag, event)
         }
-//        case "Collection" | "CollectionImage" => {
-//          logger.info("PublishEventRouter :: Sending Collection For Publish Having Identifier: " + event.objectId)
-//          context.output(config.collectionPublishOutTag, PublishMetadata(event.objectId, event.objectType, event.mimeType, event.pkgVersion, event.lastPublishedBy, event.publishType))
-//        }
+        case "Collection" | "CollectionImage" => {
+          logger.info("PublishEventRouter :: Sending Collection For Publish Having Identifier: " + event.identifier)
+          context.output(config.collectionPublishOutTag, event)
+        }
         case _ => {
           metrics.incCounter(config.skippedEventCount)
           logger.info("Invalid Object Type Received For Publish.| Identifier : " + event.identifier + " , objectType : " + event.objectType)
