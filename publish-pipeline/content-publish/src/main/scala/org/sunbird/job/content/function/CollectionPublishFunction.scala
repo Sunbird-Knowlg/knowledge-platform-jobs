@@ -96,9 +96,11 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
           } else List.empty
 
           val enrichedObj = enrichObject(updatedObj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
-          logger.info("CollectionPublishFunction:: Collection enrichedObj hierarchy: " + enrichedObj.hierarchy.get)
+          logger.info("CollectionPublishFunction:: Collection Object Enriched: " + enrichedObj.identifier)
           val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
+          logger.info("CollectionPublishFunction:: ECAR generation completed for Collection Object: " + objWithEcar.identifier)
           saveOnSuccess(new ObjectData(objWithEcar.identifier, objWithEcar.metadata.-("children"), objWithEcar.extData, objWithEcar.hierarchy))(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
+          logger.info("CollectionPublishFunction:: Published Collection Object metadata saved successfully to graph DB: " + objWithEcar.identifier)
 
           val variantsJsonString = ScalaJsonUtil.serialize(objWithEcar.metadata("variants"))
           val publishType = objWithEcar.getString("publish_type", "Public")
@@ -107,7 +109,7 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
 
           // Collection - update and publish children - line 418 in PublishFinalizer
           val updatedChildren = updateHierarchyMetadata(children, successObj.metadata)(config)
-          logger.info("CollectionPublishFunction:: Collection Object hierarchy to Publish: " + successObj.identifier + " || "  +  successObj.hierarchy.get)
+          logger.info("CollectionPublishFunction:: Hierarchy Metadata updated for Collection Object: " + successObj.identifier)
           publishHierarchy(updatedChildren, successObj, readerConfig)(cassandraUtil)
 
           if (!isCollectionShallowCopy) syncNodes(updatedChildren, unitNodes)(esUtil, neo4JUtil, cassandraUtil, readerConfig, definition, config)

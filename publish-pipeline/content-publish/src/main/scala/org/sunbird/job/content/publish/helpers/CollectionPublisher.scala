@@ -84,10 +84,9 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       new ObjectData(obj.identifier, updatedCompatibilityLevelMeta ++ Map("childNodes" -> collectionChildNodes.filter(rec => !childNodesToRemove.contains(rec))), obj.extData, Option(collectionHierarchy + ("children" -> enrichedChildrenData.toList)))
     } else new ObjectData(obj.identifier, updatedCompatibilityLevelMeta, obj.extData, Option(collectionHierarchy ++ Map("children" -> toEnrichChildren.toList)))
 
-    logger.info("CollectionPublisher:: updatedObj:: Enriched Children: " + updatedObj.hierarchy.get("children"))
     val enrichedObj = processCollection(updatedObj, toEnrichChildren.toList)
     logger.info("CollectionPublisher:: enrichObjectMetadata:: Collection data after processing for : " + enrichedObj.identifier + " | Metadata : " + enrichedObj.metadata)
-    logger.info("CollectionPublisher:: enrichObjectMetadata:: Collection children data after processing : " + enrichedObj.hierarchy.get("children"))
+    logger.debug("CollectionPublisher:: enrichObjectMetadata:: Collection children data after processing : " + enrichedObj.hierarchy.get("children"))
 
     Some(enrichedObj)
   }
@@ -185,7 +184,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       if (StringUtils.equalsIgnoreCase(child.getOrElse("visibility", "").asInstanceOf[String], "Default") && !EXPANDABLE_OBJECTS.contains(child.getOrElse("objectType", "").asInstanceOf[String])) {
         val childNode = Option(neo4JUtil.getNodeProperties(child.getOrElse("identifier", "").asInstanceOf[String])).getOrElse(neo4JUtil.getNodeProperties(child.getOrElse("identifier", "").asInstanceOf[String])).asScala.toMap
         if (PUBLISHED_STATUS_LIST.contains(childNode.getOrElse("status", "").asInstanceOf[String])) {
-          toEnrichChildren(newChildren.indexOf(child)) = childNode ++ Map("index" -> child.getOrElse("index", 0).asInstanceOf[AnyRef], "parent" -> child.getOrElse("parent", "").asInstanceOf[String], "depth" -> child.getOrElse("depth", 0).asInstanceOf[AnyRef]) - ("collections", "children")
+          toEnrichChildren(newChildren.indexOf(child)) = childNode ++ Map("identifier" ->child.getOrElse("identifier", "").asInstanceOf[String], "objectType" -> child.getOrElse("objectType", "Content").asInstanceOf[String], "index" -> child.getOrElse("index", 0).asInstanceOf[AnyRef], "parent" -> child.getOrElse("parent", "").asInstanceOf[String], "depth" -> child.getOrElse("depth", 0).asInstanceOf[AnyRef]) - ("collections", "children", "IL_FUNC_OBJECT_TYPE", "IL_SYS_NODE_TYPE","IL_UNIQUE_ID")
         } else childNodesToRemove += child.getOrElse("identifier", "").asInstanceOf[String]
       }
     })
@@ -493,7 +492,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
         case "blob" => query.value(d._1.toLowerCase, QueryBuilder.fcall("textAsBlob", d._2))
         case "string" => d._2 match {
           case value: String => query.value(d._1.toLowerCase, value)
-          case _ => query.value(d._1.toLowerCase, JSONUtil.serialize(d._2))
+          case _ => query.value(d._1.toLowerCase, ScalaJsonUtil.serialize(d._2))
         }
         case _ => query.value(d._1, d._2)
       }
