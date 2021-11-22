@@ -108,7 +108,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
   }
 
   def getInnerChildren(child: Map[String, AnyRef]): List[Map[String, AnyRef]] = {
-    val metaList: List[String] = List("identifier", "name", "objectType", "description", "index")
+    val metaList: List[String] = List("identifier", "name", "objectType", "description", "index", "depth")
     child.getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
       .map(ch => ch.filterKeys(key => metaList.contains(key)))
   }
