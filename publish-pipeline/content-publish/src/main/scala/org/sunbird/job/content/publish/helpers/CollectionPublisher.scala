@@ -99,15 +99,6 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
 
   override def deleteExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Unit = None
 
-  //  def validateMetadata(obj: ObjectData, identifier: String): List[String] = {
-  //    logger.info("Validating Collection metadata for : " + obj.identifier)
-  //    val messages = ListBuffer[String]()
-  //   if (StringUtils.isBlank(obj.getString("artifactUrl", "")))
-  //      messages += s"""There is no artifactUrl available for : $identifier"""
-  //
-  //    messages.toList
-  //  }
-
   def getObjectWithEcar(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
     // Line 1107 in PublishFinalizer
     val children = data.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
@@ -223,49 +214,6 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
 
   }
 
-  //  private def addResourceToCollection(obj: ObjectData, children: ListBuffer[Map[String, AnyRef]]): Unit = {
-  //    val leafNodes = getLeafNodes(children, 1)
-  //    if (leafNodes.nonEmpty) {
-  //      val relations = new ArrayList[Relation]
-  //      for (leafNode <- leafNodes) {
-  //        val id = leafNode.getOrElse("identifier", "").asInstanceOf[String]
-  //        var index = 1
-  //        val num = leafNode.getOrElse("index",0).asInstanceOf[AnyRef]
-  //        if (num != null) index = num.intValue
-  //        val rel = new Relation(node.getIdentifier, RelationTypes.SEQUENCE_MEMBERSHIP.relationName, id)
-  //        val metadata = new HashMap[String, AnyRef]
-  //        metadata.put(SystemProperties.IL_SEQUENCE_INDEX", index)
-  //        metadata.put("depth", leafNode.getOrElse("depth",0).asInstanceOf[AnyRef])
-  //        rel.setMetadata(metadata)
-  //        relations.add(rel)
-  //      }
-  //      val existingRelations = node.getOutRelations
-  //      if (CollectionUtils.isNotEmpty(existingRelations)) relations.addAll(existingRelations)
-  //      node.setOutRelations(relations)
-  //    }
-  //  }
-  //
-  //  private def getLeafNodes(children: ListBuffer[Map[String, AnyRef]], depth: Int): List[Map[String, AnyRef]] = {
-  //    val leafNodes = new ListBuffer[Map[String, AnyRef]]
-  //    if (children.nonEmpty) {
-  //      var index = 1
-  //      for (child <- children) {
-  //        val visibility = child.getOrElse("visibility", "").asInstanceOf[String]
-  //        if (StringUtils.equalsIgnoreCase(visibility, "Parent")) {
-  //          val nextChildren = child.getOrElse("children", ListBuffer.empty).asInstanceOf[ListBuffer[Map[String, AnyRef]]]
-  //          val nextDepth = depth + 1
-  //          val nextLevelLeafNodes = getLeafNodes(nextChildren, nextDepth)
-  //          leafNodes ++= nextLevelLeafNodes
-  //        }
-  //        else {
-  //          leafNodes ++ (child ++ Map ("index" -> index, "depth"-> depth))
-  //          index += 1
-  //        }
-  //      }
-  //    }
-  //    leafNodes.toList
-  //  }
-
   private def processChildren(children: List[Map[String, AnyRef]]): mutable.Map[String, AnyRef] = {
     val dataMap: mutable.Map[String, AnyRef] = mutable.Map.empty
     processChildren(children, dataMap)
@@ -331,11 +279,9 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     val updatedContent = content ++ Map("leafNodesCount" -> leafCount, "totalCompressedSize" -> totalCompressedSize, "mimeTypesCount" -> mimeTypeMap, "contentTypesCount" -> contentTypeMap).asInstanceOf[Map[String, AnyRef]]
     nodeMetadata.put("mimeTypesCount", mimeTypeMap)
     nodeMetadata.put("contentTypesCount", contentTypeMap)
-    nodeMetadata.put("toc_url", generateTOC(obj, updatedContent).asInstanceOf[AnyRef])
+    nodeMetadata.put("toc_url", generateTOC(obj, nodeMetadata.toMap).asInstanceOf[AnyRef])
 
     val updatedMetadata: Map[String, AnyRef] = try {
-      nodeMetadata.put("mimeTypesCount", JSONUtil.serialize(mimeTypeMap))
-      nodeMetadata.put("contentTypesCount", JSONUtil.serialize(contentTypeMap))
       setContentAndCategoryTypes(nodeMetadata.toMap)
     } catch {
       case e: Exception => logger.error("CollectionPublisher:: enrichCollection:: Error while stringify mimeTypeCount or contentTypesCount:", e)
