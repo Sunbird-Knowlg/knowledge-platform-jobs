@@ -21,11 +21,10 @@ trait ObjectUpdater {
   def saveOnSuccess(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, definitionCache: DefinitionCache, config: DefinitionConfig): Unit = {
     val publishType = obj.getString("publish_type", "Public")
     val status = if (StringUtils.equalsIgnoreCase("Unlisted", publishType)) "Unlisted" else "Live"
-    val prevStatus = obj.metadata.getOrElse("status","Processing").asInstanceOf[String]
     val editId = obj.dbId
     val identifier = obj.identifier
     val metadataUpdateQuery = metaDataQuery(obj)(definitionCache, config)
-    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$identifier"}) SET n.status="$status",n.pkgVersion=${obj.pkgVersion},n.prevStatus="$prevStatus",$metadataUpdateQuery,$auditPropsUpdateQuery;"""
+    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$identifier"}) SET n.status="$status",n.pkgVersion=${obj.pkgVersion},n.prevStatus="Processing",$metadataUpdateQuery,$auditPropsUpdateQuery;"""
     logger.info("ObjectUpdater:: saveOnSuccess:: Query: " + query)
 
     if (obj.mimeType.equalsIgnoreCase("application/vnd.ekstep.ecml-archive")) {
