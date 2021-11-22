@@ -277,9 +277,9 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     getTypeCount(content, "mimeType", mimeTypeMap)
     getTypeCount(content, "contentType", contentTypeMap)
 
-    val updatedContent = content ++ Map("leafNodesCount" -> leafCount, "totalCompressedSize" -> totalCompressedSize, "mimeTypesCount" -> mimeTypeMap, "contentTypesCount" -> contentTypeMap).asInstanceOf[Map[String, AnyRef]]
-    nodeMetadata.put("mimeTypesCount", mimeTypeMap)
-    nodeMetadata.put("contentTypesCount", contentTypeMap)
+    val updatedContent = content ++ Map("leafNodesCount" -> leafCount, "totalCompressedSize" -> totalCompressedSize, "mimeTypesCount" -> ScalaJsonUtil.serialize(mimeTypeMap), "contentTypesCount" -> ScalaJsonUtil.serialize(contentTypeMap)).asInstanceOf[Map[String, AnyRef]]
+    nodeMetadata.put("mimeTypesCount", ScalaJsonUtil.serialize(mimeTypeMap))
+    nodeMetadata.put("contentTypesCount", ScalaJsonUtil.serialize(contentTypeMap))
     nodeMetadata.put("toc_url", generateTOC(obj, nodeMetadata.toMap).asInstanceOf[AnyRef])
 
     val updatedMetadata: Map[String, AnyRef] = try {
