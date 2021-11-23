@@ -151,16 +151,6 @@ class CollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Match
     assert(messages != null && messages.size > 0)
   }
 
-  "getNodeMap" should "return unitNodes" in {
-    val nodes = ListBuffer.empty[ObjectData]
-    val nodeIds = ListBuffer.empty[String]
-    val childrenData = ScalaJsonUtil.deserialize[List[Map[String, AnyRef]]](publishedChildrenData)
-    new TestCollectionPublisher().getNodeMap(childrenData, nodes, nodeIds)
-
-    assert(nodes != null && nodes.size>0)
-    assert(nodeIds != null && nodeIds.size>0)
-  }
-
   "updateHierarchyMetadata" should "update child nodes with published object metadata" in {
     val unpublishedChildrenObj: List[Map[String, AnyRef]] = ScalaJsonUtil.deserialize[List[Map[String, AnyRef]]](unpublishedChildrenData)
     val publishedCollectionNodeMetadataObj: Map[String,AnyRef] = ScalaJsonUtil.deserialize[Map[String,AnyRef]](publishedCollectionNodeMetadata)

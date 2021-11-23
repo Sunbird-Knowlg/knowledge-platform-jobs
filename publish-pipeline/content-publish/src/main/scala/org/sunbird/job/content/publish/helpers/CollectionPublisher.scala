@@ -62,7 +62,9 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     val configSize = contentConfig.artifactSizeForOnline
     val updatedMeta: Map[String, AnyRef] = if (contentSize > configSize) obj.metadata ++ extraMeta ++ Map("contentDisposition" -> "online-only") else obj.metadata ++ extraMeta
 
-    val updatedCompatibilityLevelMeta: Map[String, AnyRef] = setCompatibilityLevel(obj, updatedMeta).get
+    val publishType = obj.getString("publish_type", "Public")
+    val status = if (StringUtils.equalsIgnoreCase("Unlisted", publishType)) "Unlisted" else "Live"
+    val updatedCompatibilityLevelMeta: Map[String, AnyRef] = setCompatibilityLevel(obj, updatedMeta).get + ("status" -> status)
 
     val isCollectionShallowCopy = isContentShallowCopy(obj)
 
@@ -109,7 +111,6 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     val nodeIds = ListBuffer.empty[String]
     nodes += data
     nodeIds += data.identifier
-    getNodeMap(children, nodes, nodeIds) // TODO - check for metadata if this is required
 
     val ecarMap: Map[String, String] = generateEcar(updatedObj, pkgTypes)
     val variants: java.util.Map[String, java.util.Map[String, String]] = ecarMap.map { case (key, value) => key.toLowerCase -> Map[String, String]("ecarUrl" -> value, "size" -> httpUtil.getSize(value).toString).asJava }.asJava
@@ -467,57 +468,6 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       })
 
     new ObjectData(obj.identifier, obj.metadata ++ Map("children" -> childrenMap, "objectType" -> "content"), obj.extData, obj.hierarchy)
-  }
-
-  def getNodeMap(children: List[Map[String, AnyRef]], nodes: ListBuffer[ObjectData], nodeIds: ListBuffer[String])(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): Unit = {
-    if (children.nonEmpty) {
-      children.foreach((child: Map[String, AnyRef]) => {
-        logger.info("CollectionPublisher:: getNodeMap:: child:: " + child)
-        try {
-          val updatedChildMetadata: Map[String, AnyRef] = if (StringUtils.equalsIgnoreCase("Default", child.getOrElse("visibility", "").asInstanceOf[String])) {
-            val nodeMetadata = neo4JUtil.getNodeProperties(child.getOrElse("identifier", "").asInstanceOf[String]).asScala.toMap[String, AnyRef] // CHECK IF THIS IS GOOD
-            val nextLevelNodes: List[Map[String, AnyRef]] = child.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]]
-            val finalChildList: List[Map[String, AnyRef]] = if (nextLevelNodes.nonEmpty) {
-              nextLevelNodes.map((nextLevelNode: Map[String, AnyRef]) => {
-                Map("identifier" -> nextLevelNode.getOrElse("identifier", "").asInstanceOf[String], "name" -> nextLevelNode.getOrElse("name", "").asInstanceOf[String],
-                  "objectType" -> nextLevelNode.getOrElse("objectType", "").asInstanceOf[String], "description" -> nextLevelNode.getOrElse("description", "").asInstanceOf[String],
-                  "index" -> nextLevelNode.getOrElse("index", 0).asInstanceOf[AnyRef])
-              })
-            } else List.empty
-            if (finalChildList != null && finalChildList.nonEmpty) nodeMetadata + ("children"-> finalChildList) else nodeMetadata
-          }
-          else {
-            val nextLevelNodes: List[Map[String, AnyRef]] = child.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]]
-            val nodeMetadata: mutable.Map[String, AnyRef] = mutable.Map() ++ child // CHECK WHAT VALUE IS TO BE PUT HERE
-            if (nodeMetadata.contains("children")) nodeMetadata.remove("children")
-            val finalChildList: List[Map[String, AnyRef]] = if (nextLevelNodes.nonEmpty) {
-              nextLevelNodes.map((nextLevelNode: Map[String, AnyRef]) => {
-                Map("identifier" -> nextLevelNode.getOrElse("identifier", "").asInstanceOf[String], "name" -> nextLevelNode.getOrElse("name", "").asInstanceOf[String],
-                  "objectType" -> nextLevelNode.getOrElse("objectType", "").asInstanceOf[String], "description" -> nextLevelNode.getOrElse("description", "").asInstanceOf[String],
-                  "index" -> nextLevelNode.getOrElse("index", 0).asInstanceOf[AnyRef])
-              })
-            } else List.empty
-
-            if (finalChildList != null && finalChildList.nonEmpty) nodeMetadata.put("children", finalChildList)
-
-            if (nodeMetadata.getOrElse("objectType", "").asInstanceOf[String].isEmpty) {
-              nodeMetadata += ("objectType" -> "content")
-            }
-            if (nodeMetadata.getOrElse("graphId", "").asInstanceOf[String].isEmpty) {
-              nodeMetadata += ("graphId" -> "domain")
-            }
-            nodeMetadata.toMap[String, AnyRef]
-          }
-          if (!nodeIds.contains(child.getOrElse("identifier", "").asInstanceOf[String])) {
-            nodes += new ObjectData(child.getOrElse("identifier", "").asInstanceOf[String], updatedChildMetadata, Option(Map.empty[String, AnyRef]), Option(Map.empty[String, AnyRef]))
-            nodeIds += child.getOrElse("identifier", "").asInstanceOf[String]
-          }
-        } catch {
-          case e: Exception => logger.error("CollectionPublisher:: getNodeMap:: Error while generating node map. ", e)
-        }
-        getNodeMap(child.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]], nodes, nodeIds)
-      })
-    }
   }
 
   def syncNodes(children: List[Map[String, AnyRef]], unitNodes: List[String])(implicit esUtil: ElasticSearchUtil, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, definition: ObjectDefinition, config: PublishConfig): Map[String, Map[String, AnyRef]] = {
