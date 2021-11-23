@@ -42,6 +42,7 @@ trait ObjectBundle {
       val mimeType = data.getOrElse("mimeType", "").asInstanceOf[String]
       val objectType = data.getOrElse("objectType", "").asInstanceOf[String].replaceAll("Image", "")
       val contentDisposition = data.getOrElse("contentDisposition", "").asInstanceOf[String]
+      logger.info("ObjectBundle:: getManifestData:: identifier:: " + identifier + " || objectType:: " + objectType)
       val dUrlMap: Map[AnyRef, String] = getDownloadUrls(identifier, pkgType, isOnline(mimeType, contentDisposition), data)
       val updatedObj: Map[String, AnyRef] = data.map(entry =>
         if (dUrlMap.contains(entry._2)) {
@@ -80,7 +81,8 @@ trait ObjectBundle {
   def getObjectBundle(obj: ObjectData, objList: List[Map[String, AnyRef]], pkgType: String)(implicit ec: ExecutionContext, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig): File = {
     val bundleFileName = bundleLocation + File.separator + getBundleFileName(obj.identifier, obj.metadata, pkgType)
     val bundlePath = bundleLocation + File.separator + System.currentTimeMillis + "_temp"
-    val objType = obj.getString("objectType", "").replaceAll("Image", "")
+    val objType = if(obj.getString("objectType", "").replaceAll("Image", "").equalsIgnoreCase("collection")) "content" else obj.getString("objectType", "").replaceAll("Image", "")
+    logger.info("ObjectBundle ::: getObjectBundle ::: input objList :::: " + objList)
     // create manifest data
     val (updatedObjList, dUrls) = getManifestData(obj.identifier, pkgType, objList)
     logger.info("ObjectBundle ::: getObjectBundle ::: updatedObjList :::: " + updatedObjList)
