@@ -20,6 +20,9 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext
+import java.text.DecimalFormat
+import java.text.DecimalFormatSymbols
+import java.util.Locale
 
 trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with ObjectValidator with ObjectEnrichment with EcarGenerator with ObjectUpdater {
 
@@ -166,7 +169,12 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       }
 
       if (StringUtils.equalsIgnoreCase(child.getOrElse("visibility", "").asInstanceOf[String], "Default") && EXPANDABLE_OBJECTS.contains(child.getOrElse("objectType", "").asInstanceOf[String])) {
-        val childCollectionHierarchy = getHierarchy(child.getOrElse("identifier", "").asInstanceOf[String], child.getOrElse("pkgVersion", 0).asInstanceOf[Integer].doubleValue(), readerConfig).get
+        val pkgVersion = child.getOrElse("pkgVersion", 0) match {
+          case _: Integer => child.getOrElse("pkgVersion", 0).asInstanceOf[Integer].doubleValue()
+          case _: Double => child.getOrElse("pkgVersion", 0).asInstanceOf[Double].doubleValue()
+          case _ => child.getOrElse("pkgVersion", "0").toString.toDouble
+        }
+        val childCollectionHierarchy = getHierarchy(child.getOrElse("identifier", "").asInstanceOf[String], pkgVersion, readerConfig).get
         if (childCollectionHierarchy.nonEmpty) {
           val childNodes = childCollectionHierarchy.getOrElse("childNodes", List.empty).asInstanceOf[List[String]]
           if (childNodes.nonEmpty && INCLUDE_CHILDNODE_OBJECTS.contains(child.getOrElse("objectType", "").asInstanceOf[String])) collectionResourceChildNodes ++= childNodes.toSet[String]
@@ -267,10 +275,13 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     val content = obj.hierarchy.get
     if (content.isEmpty) return obj
     val leafCount = getLeafNodeCount(content)
-    val totalCompressedSize = getTotalCompressedSize(content, 0.0).toLong
+    val totalCompressedSize = getTotalCompressedSize(content, 0.0)
+
+    val df = new DecimalFormat("0", DecimalFormatSymbols.getInstance(Locale.ENGLISH))
+    df.setMaximumFractionDigits(0)
 
     nodeMetadata.put("leafNodesCount", leafCount.asInstanceOf[AnyRef])
-    nodeMetadata.put("totalCompressedSize", totalCompressedSize.asInstanceOf[AnyRef])
+    nodeMetadata.put("totalCompressedSize", df.format(totalCompressedSize).asInstanceOf[AnyRef])
 
     nodeMetadata.put("leafNodes", updateLeafNodeIds(content))
     val mimeTypeMap: mutable.Map[String, AnyRef] = mutable.Map.empty[String, AnyRef]
@@ -278,7 +289,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     getTypeCount(content, "mimeType", mimeTypeMap)
     getTypeCount(content, "contentType", contentTypeMap)
 
-    val updatedContent = content ++ Map("leafNodesCount" -> leafCount, "totalCompressedSize" -> totalCompressedSize, "mimeTypesCount" -> ScalaJsonUtil.serialize(mimeTypeMap), "contentTypesCount" -> ScalaJsonUtil.serialize(contentTypeMap)).asInstanceOf[Map[String, AnyRef]]
+    val updatedContent = content ++ Map("leafNodesCount" -> leafCount, "totalCompressedSize" -> df.format(totalCompressedSize), "mimeTypesCount" -> ScalaJsonUtil.serialize(mimeTypeMap), "contentTypesCount" -> ScalaJsonUtil.serialize(contentTypeMap)).asInstanceOf[Map[String, AnyRef]]
     nodeMetadata.put("mimeTypesCount", ScalaJsonUtil.serialize(mimeTypeMap))
     nodeMetadata.put("contentTypesCount", ScalaJsonUtil.serialize(contentTypeMap))
     nodeMetadata.put("toc_url", generateTOC(obj, nodeMetadata.toMap).asInstanceOf[AnyRef])
