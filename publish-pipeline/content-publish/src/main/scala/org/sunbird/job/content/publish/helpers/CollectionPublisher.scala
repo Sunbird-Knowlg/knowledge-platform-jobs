@@ -185,7 +185,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       if (StringUtils.equalsIgnoreCase(child.getOrElse("visibility", "").asInstanceOf[String], "Default") && !EXPANDABLE_OBJECTS.contains(child.getOrElse("objectType", "").asInstanceOf[String])) {
         val childNode = Option(neo4JUtil.getNodeProperties(child.getOrElse("identifier", "").asInstanceOf[String])).getOrElse(neo4JUtil.getNodeProperties(child.getOrElse("identifier", "").asInstanceOf[String])).asScala.toMap
         if (PUBLISHED_STATUS_LIST.contains(childNode.getOrElse("status", "").asInstanceOf[String])) {
-          toEnrichChildren(newChildren.indexOf(child)) = childNode ++ Map("identifier" ->child.getOrElse("identifier", "").asInstanceOf[String], "objectType" ->child.getOrElse("objectType", "").asInstanceOf[String], "index" -> child.getOrElse("index", 0).asInstanceOf[AnyRef], "parent" -> child.getOrElse("parent", "").asInstanceOf[String], "depth" -> child.getOrElse("depth", 0).asInstanceOf[AnyRef]) - ("collections", "children", "IL_FUNC_OBJECT_TYPE", "IL_SYS_NODE_TYPE","IL_UNIQUE_ID")
+          toEnrichChildren(newChildren.indexOf(child)) = childNode ++ Map("identifier" ->childNode.getOrElse("IL_UNIQUE_ID", "").asInstanceOf[String], "objectType" ->childNode.getOrElse("IL_FUNC_OBJECT_TYPE", "").asInstanceOf[String], "index" -> child.getOrElse("index", 0).asInstanceOf[AnyRef], "parent" -> child.getOrElse("parent", "").asInstanceOf[String], "depth" -> child.getOrElse("depth", 0).asInstanceOf[AnyRef]) - ("collections", "children", "IL_FUNC_OBJECT_TYPE", "IL_SYS_NODE_TYPE","IL_UNIQUE_ID")
         } else childNodesToRemove += child.getOrElse("identifier", "").asInstanceOf[String]
       }
     })
@@ -281,7 +281,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     df.setMaximumFractionDigits(0)
 
     nodeMetadata.put("leafNodesCount", leafCount.asInstanceOf[AnyRef])
-    nodeMetadata.put("totalCompressedSize", df.format(totalCompressedSize).asInstanceOf[AnyRef])
+    nodeMetadata.put("totalCompressedSize", df.format(totalCompressedSize).toLong.asInstanceOf[AnyRef])
 
     nodeMetadata.put("leafNodes", updateLeafNodeIds(content))
     val mimeTypeMap: mutable.Map[String, AnyRef] = mutable.Map.empty[String, AnyRef]
@@ -289,7 +289,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     getTypeCount(content, "mimeType", mimeTypeMap)
     getTypeCount(content, "contentType", contentTypeMap)
 
-    val updatedContent = content ++ Map("leafNodesCount" -> leafCount, "totalCompressedSize" -> df.format(totalCompressedSize), "mimeTypesCount" -> ScalaJsonUtil.serialize(mimeTypeMap), "contentTypesCount" -> ScalaJsonUtil.serialize(contentTypeMap)).asInstanceOf[Map[String, AnyRef]]
+    val updatedContent = content ++ Map("leafNodesCount" -> leafCount, "totalCompressedSize" -> df.format(totalCompressedSize).toLong, "mimeTypesCount" -> ScalaJsonUtil.serialize(mimeTypeMap), "contentTypesCount" -> ScalaJsonUtil.serialize(contentTypeMap)).asInstanceOf[Map[String, AnyRef]]
     nodeMetadata.put("mimeTypesCount", ScalaJsonUtil.serialize(mimeTypeMap))
     nodeMetadata.put("contentTypesCount", ScalaJsonUtil.serialize(contentTypeMap))
     nodeMetadata.put("toc_url", generateTOC(obj, nodeMetadata.toMap).asInstanceOf[AnyRef])
