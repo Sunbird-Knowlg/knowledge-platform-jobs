@@ -184,7 +184,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
         if (childCollectionHierarchy.nonEmpty) {
           val childNodes = childCollectionHierarchy.getOrElse("childNodes", List.empty).asInstanceOf[List[String]]
           if (childNodes.nonEmpty && INCLUDE_CHILDNODE_OBJECTS.contains(child.getOrElse("objectType", "").asInstanceOf[String])) collectionResourceChildNodes ++= childNodes.toSet[String]
-          toEnrichChildren(newChildren.indexOf(child)) = childCollectionHierarchy ++ Map("index" -> child.getOrElse("index", 0).asInstanceOf[AnyRef], "depth" -> child.getOrElse("depth", 0).asInstanceOf[AnyRef], "parent" -> child.getOrElse("parent", ""))
+          toEnrichChildren(newChildren.indexOf(child)) = childCollectionHierarchy ++ Map("index" -> child.getOrElse("index", 0).asInstanceOf[AnyRef], "depth" -> child.getOrElse("depth", 0).asInstanceOf[AnyRef], "parent" -> child.getOrElse("parent", ""), "objectType" -> child.getOrElse("objectType", "Collection").asInstanceOf[String])
         }
       }
 
