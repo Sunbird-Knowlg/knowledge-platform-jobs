@@ -77,7 +77,7 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
       //TODO: Remove below statement
       childQuestions.foreach(ch => logger.info("child questions visibility parent identifier : " + ch.identifier))
       // Publish Child Questions
-      QuestionPublishUtil.publishQuestions(obj.identifier, childQuestions)(ec, neo4JUtil, cassandraUtil, qReaderConfig, cloudStorageUtil, definitionCache, definitionConfig, config, httpUtil)
+      QuestionPublishUtil.publishQuestions(obj.identifier, childQuestions, data.pkgVersion)(ec, neo4JUtil, cassandraUtil, qReaderConfig, cloudStorageUtil, definitionCache, definitionConfig, config, httpUtil)
       val pubMsgs: List[String] = isChildrenPublished(childQuestions, data.publishType, qReaderConfig)
       if (pubMsgs.isEmpty) {
         // Enrich Object as well as hierarchy
@@ -93,12 +93,12 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
         logger.info("QuestionSet publishing completed successfully for : " + data.identifier)
         metrics.incCounter(config.questionSetPublishSuccessEventCount)
       } else {
-        saveOnFailure(obj, pubMsgs)(neo4JUtil)
+        saveOnFailure(obj, pubMsgs, data.pkgVersion)(neo4JUtil)
         metrics.incCounter(config.questionSetPublishFailedEventCount)
         logger.info("QuestionSet publishing failed for : " + data.identifier)
       }
     } else {
-      saveOnFailure(obj, messages)(neo4JUtil)
+      saveOnFailure(obj, messages, data.pkgVersion)(neo4JUtil)
       metrics.incCounter(config.questionSetPublishFailedEventCount)
       logger.info("QuestionSet publishing failed for : " + data.identifier)
     }

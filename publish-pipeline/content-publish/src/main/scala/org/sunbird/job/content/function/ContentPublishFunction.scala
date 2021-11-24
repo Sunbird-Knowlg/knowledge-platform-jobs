@@ -92,7 +92,7 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
           metrics.incCounter(config.contentPublishSuccessEventCount)
           logger.info("Content publishing completed successfully for : " + data.identifier)
         } else {
-          saveOnFailure(obj, messages)(neo4JUtil)
+          saveOnFailure(obj, messages, data.pkgVersion)(neo4JUtil)
           val errorMessages = messages.mkString("; ")
           pushFailedEvent(data, errorMessages, null, context)(metrics)
           logger.info("Content publishing failed for : " + data.identifier)
@@ -101,12 +101,12 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
     } catch {
       case ex@(_: InvalidInputException | _: ClientException) => // ClientException - Invalid input exception.
         ex.printStackTrace()
-        saveOnFailure(obj, List(ex.getMessage))(neo4JUtil)
+        saveOnFailure(obj, List(ex.getMessage), data.pkgVersion)(neo4JUtil)
         pushFailedEvent(data, null, ex, context)(metrics)
         logger.error("Error while publishing content :: " + ex.getMessage)
       case ex: Exception =>
         ex.printStackTrace()
-        saveOnFailure(obj, List(ex.getMessage))(neo4JUtil)
+        saveOnFailure(obj, List(ex.getMessage), data.pkgVersion)(neo4JUtil)
         logger.error(s"Error while processing message for Partition: ${data.partition} and Offset: ${data.offset}. Error : ${ex.getMessage}", ex)
         throw ex
     }
