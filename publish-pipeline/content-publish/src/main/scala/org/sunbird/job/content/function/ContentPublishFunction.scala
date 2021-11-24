@@ -99,7 +99,7 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
         }
       }
     } catch {
-      case ex@(_: InvalidInputException | _: ClientException) => // ClientException - Invalid input exception.
+      case ex@(_: InvalidInputException | _: ClientException | _: java.lang.IllegalArgumentException) => // ClientException - Invalid input exception.
         ex.printStackTrace()
         saveOnFailure(obj, List(ex.getMessage), data.pkgVersion)(neo4JUtil)
         pushFailedEvent(data, null, ex, context)(metrics)
