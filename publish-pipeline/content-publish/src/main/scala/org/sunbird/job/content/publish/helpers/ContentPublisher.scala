@@ -4,6 +4,7 @@ import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.content.task.ContentPublishConfig
 import org.sunbird.job.domain.`object`.DefinitionCache
+import org.sunbird.job.exception.InvalidInputException
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData, ObjectExtData}
 import org.sunbird.job.publish.helpers._
@@ -77,12 +78,15 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
   }
 
   def getObjectWithEcar(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
-    logger.info("ContentPublisher:getObjectWithEcar: Ecar generation done for Content: " + data.identifier)
-    val ecarMap: Map[String, String] = generateEcar(data, pkgTypes)
-    val variants: java.util.Map[String, java.util.Map[String, String]] = ecarMap.map { case (key, value) => key.toLowerCase -> Map[String, String]("ecarUrl" -> value, "size" -> httpUtil.getSize(value).toString).asJava }.asJava
-    logger.info("ContentPublisher ::: getObjectWithEcar ::: ecar map ::: " + ecarMap)
-    val meta: Map[String, AnyRef] = Map("downloadUrl" -> ecarMap.getOrElse(EcarPackageType.FULL.toString, ""), "variants" -> variants)
-    new ObjectData(data.identifier, data.metadata ++ meta, data.extData, data.hierarchy)
+    try {
+      logger.info("ContentPublisher:getObjectWithEcar: Ecar generation done for Content: " + data.identifier)
+
+      val ecarMap: Map[String, String] = generateEcar(data, pkgTypes)
+      val variants: java.util.Map[String, java.util.Map[String, String]] = ecarMap.map { case (key, value) => key.toLowerCase -> Map[String, String]("ecarUrl" -> value, "size" -> httpUtil.getSize(value).toString).asJava }.asJava
+      logger.info("ContentPublisher ::: getObjectWithEcar ::: ecar map ::: " + ecarMap)
+      val meta: Map[String, AnyRef] = Map("downloadUrl" -> ecarMap.getOrElse(EcarPackageType.FULL.toString, ""), "variants" -> variants)
+      new ObjectData(data.identifier, data.metadata ++ meta, data.extData, data.hierarchy)
+    } catch { case _: java.lang.IllegalArgumentException => throw new InvalidInputException(s"Invalid input found For $data.identifier")}
   }
 
   private def setCompatibilityLevel(obj: ObjectData, updatedMeta: Map[String, AnyRef]): Option[Map[String, AnyRef]] = {
