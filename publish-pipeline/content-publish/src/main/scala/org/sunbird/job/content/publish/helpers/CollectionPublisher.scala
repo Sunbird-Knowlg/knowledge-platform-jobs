@@ -298,7 +298,11 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     val updatedContent = content ++ Map("leafNodesCount" -> leafCount, "totalCompressedSize" -> df.format(totalCompressedSize).toLong, "mimeTypesCount" -> ScalaJsonUtil.serialize(mimeTypeMap), "contentTypesCount" -> ScalaJsonUtil.serialize(contentTypeMap)).asInstanceOf[Map[String, AnyRef]]
     nodeMetadata.put("mimeTypesCount", ScalaJsonUtil.serialize(mimeTypeMap))
     nodeMetadata.put("contentTypesCount", ScalaJsonUtil.serialize(contentTypeMap))
-    nodeMetadata.put("toc_url", generateTOC(obj, nodeMetadata.toMap).asInstanceOf[AnyRef])
+    val uploadedFileUrl: Array[String] = generateTOC(obj, nodeMetadata.toMap)
+    if(uploadedFileUrl.nonEmpty) {
+      nodeMetadata.put("toc_url", uploadedFileUrl(1))
+      nodeMetadata.put("s3Key", uploadedFileUrl(0))
+    }
 
     val updatedMetadata: Map[String, AnyRef] = try {
       setContentAndCategoryTypes(nodeMetadata.toMap)
@@ -367,21 +371,20 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     else totalCompressed
   }
 
-  def generateTOC(obj: ObjectData, content: Map[String, AnyRef])(implicit cloudStorageUtil: CloudStorageUtil, config: PublishConfig): String = {
+  def generateTOC(obj: ObjectData, content: Map[String, AnyRef])(implicit cloudStorageUtil: CloudStorageUtil, config: PublishConfig): Array[String] = {
     logger.info("CollectionPublisher:: generateTOC:: Write hierarchy to JSON File :" + obj.identifier)
     val file = new File(getTOCBasePath(obj.identifier) + "_toc.json")
     try {
       val data = ScalaJsonUtil.serialize(content)
       FileUtils.writeStringToFile(file, data, "UTF-8")
-      val url: String = if (file.exists) {
+      if (file.exists) {
         logger.debug("CollectionPublisher:: generateTOC:: Upload File to cloud storage :" + file.getName)
         val uploadedFileUrl = cloudStorageUtil.uploadFile(getAWSPath(obj.identifier), file, Option.apply(true))
         if (null != uploadedFileUrl && uploadedFileUrl.length > 1) {
           logger.info("CollectionPublisher:: generateTOC:: Update cloud storage url to node" + uploadedFileUrl(1))
-          uploadedFileUrl(1)
-        } else ""
-      } else ""
-      url
+          uploadedFileUrl
+        } else Array.empty
+      } else Array.empty
     } catch {
       case e: JsonProcessingException => logger.error("CollectionPublisher:: generateTOC:: Error while parsing map object to string.", e)
         throw new InvalidInputException("CollectionPublisher:: generateTOC:: Error while parsing map object to string.", e)
