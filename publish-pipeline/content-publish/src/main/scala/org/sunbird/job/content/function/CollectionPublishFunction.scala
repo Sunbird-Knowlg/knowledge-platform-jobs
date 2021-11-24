@@ -116,7 +116,7 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
           metrics.incCounter(config.collectionPublishSuccessEventCount)
           logger.info("CollectionPublishFunction:: Collection publishing completed successfully for : " + data.identifier)
         } else {
-          saveOnFailure(obj, messages)(neo4JUtil)
+          saveOnFailure(obj, messages, data.pkgVersion)(neo4JUtil)
           val errorMessages = messages.mkString("; ")
           pushFailedEvent(data, errorMessages, null, context)(metrics)
           logger.info("CollectionPublishFunction:: Collection publishing failed for : " + data.identifier)
@@ -125,12 +125,12 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
     } catch {
       case ex@(_: InvalidInputException | _: ClientException) => // ClientException - Invalid input exception.
         ex.printStackTrace()
-        saveOnFailure(obj, List(ex.getMessage))(neo4JUtil)
+        saveOnFailure(obj, List(ex.getMessage), data.pkgVersion)(neo4JUtil)
         pushFailedEvent(data, null, ex, context)(metrics)
         logger.error(s"CollectionPublishFunction::Error while publishing collection :: ${data.partition} and Offset: ${data.offset}. Error : ${ex.getMessage}", ex)
       case ex: Exception =>
         ex.printStackTrace()
-        saveOnFailure(obj, List(ex.getMessage))(neo4JUtil)
+        saveOnFailure(obj, List(ex.getMessage), data.pkgVersion)(neo4JUtil)
         logger.error(s"CollectionPublishFunction::Error while processing message for Partition: ${data.partition} and Offset: ${data.offset}. Error : ${ex.getMessage}", ex)
         throw ex
     }
