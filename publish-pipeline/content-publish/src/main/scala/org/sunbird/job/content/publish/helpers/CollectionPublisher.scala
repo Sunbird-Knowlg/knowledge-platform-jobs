@@ -143,7 +143,13 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
   }
 
   def isContentShallowCopy(obj: ObjectData): Boolean = {
-    val originData: Map[String, AnyRef] = obj.metadata.getOrElse("originData", Map.empty[String, AnyRef]).asInstanceOf[Map[String, AnyRef]]
+    val originData: Map[String, AnyRef] = if(obj.metadata.contains("originData")) {
+      obj.metadata("originData") match {
+        case strValue: String => ScalaJsonUtil.deserialize[Map[String, AnyRef]](strValue)
+        case mapValue:util.Map[String, AnyRef] =>  mapValue.asScala.toMap[String, AnyRef]
+        case _ => obj.metadata("originData").asInstanceOf[Map[String,AnyRef]]
+      }
+    } else Map.empty[String, AnyRef]
     originData.nonEmpty && originData.getOrElse("copyType", "").asInstanceOf[String].equalsIgnoreCase("shallow")
   }
 
