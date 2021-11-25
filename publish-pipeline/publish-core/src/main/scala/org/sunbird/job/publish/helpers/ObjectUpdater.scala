@@ -62,11 +62,12 @@ trait ObjectUpdater {
   def deleteExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Unit
 
   @throws[Exception]
-  def saveOnFailure(obj: ObjectData, messages: List[String])(implicit neo4JUtil: Neo4JUtil): Unit = {
+  def saveOnFailure(obj: ObjectData, messages: List[String], pkgVersion: Double)(implicit neo4JUtil: Neo4JUtil): Unit = {
+    val upPkgVersion = pkgVersion + 1
     val errorMessages = messages.mkString("; ")
     val nodeId = obj.dbId
-    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$nodeId"}) SET n.status="Failed", n.publishError="$errorMessages", $auditPropsUpdateQuery;"""
-    logger.info("Query: " + query)
+    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$nodeId"}) SET n.status="Failed", n.pkgVersion=$upPkgVersion, n.publishError="$errorMessages", $auditPropsUpdateQuery;"""
+    logger.info("ObjectUpdater:: saveOnFailure:: Query: " + query)
     neo4JUtil.executeQuery(query)
   }
 
