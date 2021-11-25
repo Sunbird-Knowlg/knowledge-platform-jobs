@@ -66,7 +66,7 @@ class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUt
       metrics.incCounter(config.questionPublishSuccessEventCount)
       logger.info("Question publishing completed successfully for : " + data.identifier)
     } else {
-      saveOnFailure(obj, messages)(neo4JUtil)
+      saveOnFailure(obj, messages, data.pkgVersion)(neo4JUtil)
       metrics.incCounter(config.questionPublishFailedEventCount)
       logger.info("Question publishing failed for : " + data.identifier)
     }
