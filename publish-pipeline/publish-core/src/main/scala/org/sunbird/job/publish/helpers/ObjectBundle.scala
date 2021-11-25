@@ -152,10 +152,12 @@ trait ObjectBundle {
     try {
       files.foreach(file => {
         val fileName = getFileName(file)
-        zipOutputStream.putNextEntry(new ZipEntry(fileName))
-        val fileInputStream = new FileInputStream(file)
-        IOUtils.copy(fileInputStream, zipOutputStream)
-        zipOutputStream.closeEntry()
+        try {
+          zipOutputStream.putNextEntry(new ZipEntry(fileName))
+          val fileInputStream = new FileInputStream(file)
+          IOUtils.copy(fileInputStream, zipOutputStream)
+          zipOutputStream.closeEntry()
+        } catch { case ze:java.util.zip.ZipException => logger.info(ze.getMessage) }
       })
 
       if (zipOutputStream != null) {
