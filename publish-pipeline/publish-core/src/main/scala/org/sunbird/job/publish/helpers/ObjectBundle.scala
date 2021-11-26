@@ -158,7 +158,6 @@ trait ObjectBundle {
           IOUtils.copy(fileInputStream, zipOutputStream)
         } catch {case ze:java.util.zip.ZipException => logger.info("ObjectBundle:: getByteStream:: ", ze.getMessage) }
         zipOutputStream.closeEntry()
-
       })
 
       if (zipOutputStream != null) {
