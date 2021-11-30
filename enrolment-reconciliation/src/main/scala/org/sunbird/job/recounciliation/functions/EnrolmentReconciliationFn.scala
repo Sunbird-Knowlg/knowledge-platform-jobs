@@ -104,7 +104,7 @@ class EnrolmentReconciliationFn(config: EnrolmentReconciliationConfig,  httpUtil
   def getUserAggQuery(progress: UserActivityAgg):
   Update.Where = {
     QueryBuilder.update(config.dbKeyspace, config.dbUserActivityAggTable)
-      .`with`(QueryBuilder.putAll("agg", progress.agg.asJava))
+      .`with`(QueryBuilder.putAll("aggregates", progress.aggregates.asJava))
       .and(QueryBuilder.putAll("agg_last_updated", progress.agg_last_updated.asJava))
       .where(QueryBuilder.eq("activity_id", progress.activity_id))
       .and(QueryBuilder.eq("activity_type", progress.activity_type))
@@ -245,7 +245,7 @@ class EnrolmentReconciliationFn(config: EnrolmentReconciliationConfig,  httpUtil
       } else {
         Option(CollectionProgress(userId, userConsumption.batchId, courseId, completedCount, null, contentStatus, inputContents))
       }
-      Option(UserEnrolmentAgg(UserActivityAgg("Course", userId, courseId, contextId, Map("completedCount" -> completedCount), Map("completedCount" -> System.currentTimeMillis())), collectionProgress))
+      Option(UserEnrolmentAgg(UserActivityAgg("Course", userId, courseId, contextId, Map("completedCount" -> completedCount.toDouble), Map("completedCount" -> System.currentTimeMillis())), collectionProgress))
     }
   }
 
