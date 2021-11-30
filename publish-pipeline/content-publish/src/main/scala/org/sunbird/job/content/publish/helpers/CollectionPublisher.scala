@@ -20,9 +20,8 @@ import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext
-import java.text.DecimalFormat
-import java.text.DecimalFormatSymbols
-import java.util.Locale
+import java.text.{DecimalFormat, DecimalFormatSymbols, SimpleDateFormat}
+import java.util.{Date, Locale}
 
 trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with ObjectValidator with ObjectEnrichment with EcarGenerator with ObjectUpdater {
 
@@ -304,6 +303,9 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       nodeMetadata.put("s3Key", uploadedFileUrl(0))
     }
 
+    val sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
+    val updatedOn = sdf.format(new Date())
+    nodeMetadata.put("sYS_INTERNAL_LAST_UPDATED_ON", updatedOn)
     val updatedMetadata: Map[String, AnyRef] = try {
       setContentAndCategoryTypes(nodeMetadata.toMap)
     } catch {
