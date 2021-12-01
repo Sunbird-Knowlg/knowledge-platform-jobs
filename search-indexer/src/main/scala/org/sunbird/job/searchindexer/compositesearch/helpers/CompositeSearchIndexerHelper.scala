@@ -116,6 +116,7 @@ trait CompositeSearchIndexerHelper {
   }
 
   private def addMetadataToDocument(propertyName: String, propertyValue: AnyRef, nestedFields: List[String]): AnyRef = {
+    logger.info("CompositeSearchIndexerHelper:: addMetadataToDocument:: propertyName: " + propertyName + " || propertyNewValue: " + propertyValue + " || nestedFields:: " + nestedFields)
     val propertyNewValue = if (nestedFields.contains(propertyName)) ScalaJsonUtil.deserialize[AnyRef](propertyValue.asInstanceOf[String]) else propertyValue
     propertyNewValue
   }
