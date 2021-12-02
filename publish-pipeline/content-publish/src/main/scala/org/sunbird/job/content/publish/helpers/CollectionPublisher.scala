@@ -156,7 +156,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     val originId = obj.metadata.getOrElse("origin", "").asInstanceOf[String]
     val originNodeMetadata = Option(neo4JUtil.getNodeProperties(originId)).getOrElse(neo4JUtil.getNodeProperties(originId))
     if (null != originNodeMetadata) {
-      val originPkgVer: Int = originNodeMetadata.getOrDefault("pkgVersion", "0").toString.toInt
+      val originPkgVer = originNodeMetadata.getOrDefault("pkgVersion", "0").toString.toDouble
       if (originPkgVer != 0) {
         val originData = obj.metadata.getOrElse("originData", Map.empty[String, AnyRef]).asInstanceOf[Map[String, AnyRef]] ++ Map("pkgVersion" -> originPkgVer)
         new ObjectData(obj.identifier, obj.metadata ++ Map("originData" -> originData), obj.extData, obj.hierarchy)
