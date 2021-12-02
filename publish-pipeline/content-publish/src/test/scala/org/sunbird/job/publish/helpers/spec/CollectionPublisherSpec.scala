@@ -170,7 +170,7 @@ class CollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Match
     val publishChildrenData = ScalaJsonUtil.deserialize[List[Map[String, AnyRef]]](publishedChildrenData)
     val publishedCollectionNodeMetadataObj: Map[String,AnyRef] = ScalaJsonUtil.deserialize[Map[String,AnyRef]](publishedCollectionNodeMetadata)
     val data = new ObjectData("do_123", publishedCollectionNodeMetadataObj, Some(Map.empty[String, AnyRef]))
-    val result = new TestCollectionPublisher().publishHierarchy(publishChildrenData, data, readerConfig)
+    val result = new TestCollectionPublisher().publishHierarchy(publishChildrenData, data, readerConfig, jobConfig)
     assert(result)
   }
 
