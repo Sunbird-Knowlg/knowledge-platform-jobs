@@ -451,9 +451,17 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     setContentAndCategoryTypes(updatedContent)
   }
 
-  def publishHierarchy(children: List[Map[String, AnyRef]], obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Boolean = {
+  def publishHierarchy(children: List[Map[String, AnyRef]], obj: ObjectData, readerConfig: ExtDataConfig, config: PublishConfig)(implicit cassandraUtil: CassandraUtil): Boolean = {
     val identifier = obj.identifier.replace(".img", "")
-    val hierarchy: Map[String, AnyRef] = obj.metadata ++ Map("children" -> children)
+    val contentConfig = config.asInstanceOf[ContentPublishConfig]
+    val nestedFields = contentConfig.nestedFields.asScala.toList
+    val nodeMetadata = obj.metadata.map(property => {
+      property._2 match {
+        case propVal: String => if (nestedFields.contains(property._1)) (property._1 -> ScalaJsonUtil.deserialize[AnyRef](propVal)) else property
+        case _ => property
+      }
+    })
+    val hierarchy: Map[String, AnyRef] = nodeMetadata ++ Map("children" -> children)
     val data = Map("hierarchy" -> hierarchy) ++ obj.extData.getOrElse(Map())
     val query: Insert = QueryBuilder.insertInto(readerConfig.keyspace, readerConfig.table)
     query.value(readerConfig.primaryKey.head, identifier)
@@ -495,7 +503,6 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
   def syncNodes(children: List[Map[String, AnyRef]], unitNodes: List[String])(implicit esUtil: ElasticSearchUtil, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, definition: ObjectDefinition, config: PublishConfig): Map[String, Map[String, AnyRef]] = {
     val contentConfig = config.asInstanceOf[ContentPublishConfig]
     val nestedFields = contentConfig.nestedFields.asScala.toList
-
     val nodes = ListBuffer.empty[ObjectData]
     val nodeIds = ListBuffer.empty[String]
 
