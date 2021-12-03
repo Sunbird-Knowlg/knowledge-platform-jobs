@@ -71,7 +71,13 @@ trait ObjectBundle {
       val dUrl: String = if (StringUtils.isNotBlank(downloadUrl)) downloadUrl else updatedObj.getOrElse("artifactUrl", "").asInstanceOf[String]
       val dMap = if (StringUtils.equalsIgnoreCase(contentDisposition, "online-only")) Map("downloadUrl" -> null) else Map("downloadUrl" -> dUrl)
       val downloadUrls: Map[AnyRef, String] = dUrlMap.keys.flatMap(key => Map(key -> identifier)).toMap
-      val mergedMeta = updatedObj ++ dMap
+
+      // TODO: Addressing visibility "Parent" issue for collection children as expected by Mobile - ContentBundle.java line120 - start
+      val mergedMeta = if(!identifier.equalsIgnoreCase(objIdentifier) && (objectType.equalsIgnoreCase("Content") || objectType.equalsIgnoreCase("Collection"))) {
+          updatedObj + ("visibility" -> "Parent") ++ dMap
+        } else updatedObj ++ dMap
+      // TODO: Addressing visibility "Parent" issue for collection children as expected by Mobile - ContentBundle.java line120 - end
+
       val definition: ObjectDefinition = defCache.getDefinition(objectType, defConfig.supportedVersion.getOrElse(objectType.toLowerCase, "1.0").asInstanceOf[String], defConfig.basePath)
       val enMeta = mergedMeta.filter(x => null != x._2).map(element => (element._1, convertJsonProperties(element, definition.getJsonProps())))
       (enMeta, downloadUrls)

@@ -73,7 +73,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     // Collection - Enrich Children - line 345
     val collectionHierarchy: Map[String, AnyRef] = if (isCollectionShallowCopy) {
       val originData: Map[String, AnyRef] = obj.metadata.getOrElse("originData", "").asInstanceOf[Map[String, AnyRef]]
-      getHierarchy(obj.metadata.get("origin").asInstanceOf[String], originData.getOrElse("pkgVersion", 0).asInstanceOf[Integer].doubleValue(), readerConfig).get
+      getHierarchy(obj.metadata("origin").asInstanceOf[String], originData.getOrElse("pkgVersion", 0).asInstanceOf[Number].doubleValue(), readerConfig).get
     } else getHierarchy(obj.identifier, obj.pkgVersion, readerConfig).get
 
     val children = if (collectionHierarchy.nonEmpty) {
@@ -158,7 +158,10 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     if (null != originNodeMetadata) {
       val originPkgVer: Double = originNodeMetadata.getOrDefault("pkgVersion", "0").toString.toDouble
       if (originPkgVer != 0) {
-        val originData = obj.metadata.getOrElse("originData", Map.empty[String, AnyRef]).asInstanceOf[Map[String, AnyRef]] ++ Map("pkgVersion" -> originPkgVer)
+        val originData = obj.metadata("originData") match {
+          case propVal: String => ScalaJsonUtil.deserialize[Map[String, AnyRef]](propVal) + ("pkgVersion" -> originPkgVer)
+          case _ => obj.metadata.getOrElse("originData", Map.empty[String, AnyRef]).asInstanceOf[Map[String, AnyRef]] + ("pkgVersion" -> originPkgVer)
+        }
         new ObjectData(obj.identifier, obj.metadata ++ Map("originData" -> originData), obj.extData, obj.hierarchy)
       } else obj
     } else obj
