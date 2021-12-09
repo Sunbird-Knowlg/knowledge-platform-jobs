@@ -29,7 +29,6 @@ trait SyncMessagesGenerator {
       addedProperties.foreach(property => {
         if (!definition.externalProperties.contains(property._1)) {
           val propertyNewValue: AnyRef = property._2.asInstanceOf[Map[String, AnyRef]].getOrElse("nv", null)
-          logger.info("SyncMessagesGenerator:: getJsonMessage:: property._1:: " + property._1 + " || propertyNewValue: " + propertyNewValue)
           if (propertyNewValue == null) indexDocument.remove(property._1) else indexDocument.put(property._1, addMetadataToDocument(property._1, propertyNewValue, nestedFields))
         }
       })
@@ -81,7 +80,12 @@ trait SyncMessagesGenerator {
   }
 
   private def addMetadataToDocument(propertyName: String, propertyValue: AnyRef, nestedFields: List[String]): AnyRef = {
-    if (nestedFields.contains(propertyName)) ScalaJsonUtil.deserialize[AnyRef](propertyValue.asInstanceOf[String]) else propertyValue
+    if (nestedFields.contains(propertyName)) {
+      propertyValue match {
+        case propVal: String => ScalaJsonUtil.deserialize[AnyRef](propVal)
+        case _ => propertyValue
+      }
+    } else propertyValue
   }
 
   def getMessages(nodes: List[ObjectData], definition: ObjectDefinition, nestedFields: List[String], errors: mutable.Map[String, String])(esUtil: ElasticSearchUtil): Map[String, Map[String, AnyRef]] = {
