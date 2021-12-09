@@ -29,6 +29,7 @@ trait SyncMessagesGenerator {
       addedProperties.foreach(property => {
         if (!definition.externalProperties.contains(property._1)) {
           val propertyNewValue: AnyRef = property._2.asInstanceOf[Map[String, AnyRef]].getOrElse("nv", null)
+          logger.info("SyncMessagesGenerator:: getJsonMessage:: property._1:: " + property._1 + " || propertyNewValue: " + propertyNewValue)
           if (propertyNewValue == null) indexDocument.remove(property._1) else indexDocument.put(property._1, addMetadataToDocument(property._1, propertyNewValue, nestedFields))
         }
       })
