@@ -18,9 +18,8 @@ trait SyncMessagesGenerator {
     if (documentJson != null && documentJson.nonEmpty) ScalaJsonUtil.deserialize[scala.collection.mutable.Map[String, AnyRef]](documentJson) else scala.collection.mutable.Map[String, AnyRef]()
   }
 
-  private def getJsonMessage(message: Map[String, Any], isUpdate: Boolean, definition: ObjectDefinition, nestedFields: List[String], ignoredFields: List[String])(esUtil: ElasticSearchUtil): Map[String, AnyRef] = {
-    val identifier = message.getOrElse("nodeUniqueId", "").asInstanceOf[String]
-    val indexDocument = if (isUpdate) getIndexDocument(identifier)(esUtil) else scala.collection.mutable.Map[String, AnyRef]()
+  private def getJsonMessage(message: Map[String, Any], definition: ObjectDefinition, nestedFields: List[String], ignoredFields: List[String])(esUtil: ElasticSearchUtil): Map[String, AnyRef] = {
+    val indexDocument = scala.collection.mutable.Map[String, AnyRef]()
     val transactionData = message.getOrElse("transactionData", Map[String, Any]()).asInstanceOf[Map[String, Any]]
     logger.debug("SyncMessagesGenerator:: getJsonMessage:: transactionData:: " + transactionData)
     if (transactionData.nonEmpty) {
@@ -74,7 +73,7 @@ trait SyncMessagesGenerator {
     indexDocument.put("objectType", message.getOrElse("objectType", "").asInstanceOf[String])
     indexDocument.put("nodeType", message.getOrElse("nodeType", "").asInstanceOf[String])
 
-    logger.debug("SyncMessagesGenerator:: getJsonMessage:: final indexDocument:: " + indexDocument)
+    logger.info("SyncMessagesGenerator:: getJsonMessage:: final indexDocument:: " + indexDocument)
 
     indexDocument.toMap
   }
@@ -95,7 +94,7 @@ trait SyncMessagesGenerator {
         if (definition.getRelationLabels() != null) {
           val nodeMap = getNodeMap(node)
           logger.debug("SyncMessagesGenerator:: getMessages:: nodeMap:: " + nodeMap)
-          val message = getJsonMessage(nodeMap, true, definition, nestedFields, List.empty)(esUtil)
+          val message = getJsonMessage(nodeMap, definition, nestedFields, List.empty)(esUtil)
           logger.debug("SyncMessagesGenerator:: getMessages:: message:: " + message)
           messages.put(node.identifier, message)
         }
