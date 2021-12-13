@@ -73,7 +73,8 @@ trait ObjectBundle {
       val downloadUrls: Map[AnyRef, String] = dUrlMap.keys.flatMap(key => Map(key -> identifier)).toMap
 
       // TODO: Addressing visibility "Parent" issue for collection children as expected by Mobile - ContentBundle.java line120 - start
-      val mergedMeta = if(!identifier.equalsIgnoreCase(objIdentifier) && (objectType.equalsIgnoreCase("Content") || objectType.equalsIgnoreCase("Collection"))) {
+      val mergedMeta = if(!identifier.equalsIgnoreCase(objIdentifier) && (objectType.equalsIgnoreCase("Content")
+        || objectType.equalsIgnoreCase("Collection") || objectType.equalsIgnoreCase("QuestionSet"))) {
           updatedObj + ("visibility" -> "Parent") ++ dMap
         } else updatedObj ++ dMap
       // TODO: Addressing visibility "Parent" issue for collection children as expected by Mobile - ContentBundle.java line120 - end
