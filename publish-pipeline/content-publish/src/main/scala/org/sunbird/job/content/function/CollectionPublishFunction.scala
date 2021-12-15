@@ -117,7 +117,7 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
           logger.info("CollectionPublishFunction:: Collection publishing completed successfully for : " + data.identifier)
 
           // Syncing collection metadata
-          val doc: Map[String, AnyRef] = getDocument(successObj.metadata, true)(esUtil)
+          val doc: Map[String, AnyRef] = getDocument(successObj, true)(esUtil)
           val jsonDoc: String = ScalaJsonUtil.serialize(doc)
           esUtil.addDocument(objWithEcar.identifier, jsonDoc)
         } else {

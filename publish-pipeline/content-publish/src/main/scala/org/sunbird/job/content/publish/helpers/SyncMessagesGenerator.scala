@@ -147,8 +147,9 @@ trait SyncMessagesGenerator {
   }
 
 
-  def getDocument(message: Map[String, Any], updateRequest: Boolean)(esUtil: ElasticSearchUtil): Map[String, AnyRef] = {
-    val identifier: String = message.getOrElse("identifier", "").asInstanceOf[String]
+  def getDocument(node: ObjectData, updateRequest: Boolean)(esUtil: ElasticSearchUtil): Map[String, AnyRef] = {
+    val message = getNodeMap(node)
+    val identifier: String = message.getOrElse("nodeUniqueId", "").asInstanceOf[String]
     val indexDocument = if (updateRequest) getIndexDocument(identifier)(esUtil) else mutable.Map[String, AnyRef]()
     val transactionData: Map[String, AnyRef] = message.getOrElse("transactionData", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
     if (transactionData.nonEmpty) {
@@ -158,7 +159,7 @@ trait SyncMessagesGenerator {
         if (propertyNewValue == null) indexDocument.remove(property._1) else indexDocument.put(property._1, propertyNewValue)
       })
     }
-    indexDocument.put("identifier", message.getOrElse("identifier", "").asInstanceOf[String])
+    indexDocument.put("identifier", message.getOrElse("nodeUniqueId", "").asInstanceOf[String])
     indexDocument.put("objectType", message.getOrElse("objectType", "").asInstanceOf[String])
     indexDocument.toMap
   }
