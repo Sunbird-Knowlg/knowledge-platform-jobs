@@ -150,7 +150,7 @@ trait SyncMessagesGenerator {
   def getDocument(node: ObjectData, updateRequest: Boolean, nestedFields: List[String])(esUtil: ElasticSearchUtil): Map[String, AnyRef] = {
     val message = getNodeMap(node)
     val identifier: String = message.getOrElse("nodeUniqueId", "").asInstanceOf[String]
-    val indexDocument = if (updateRequest) getIndexDocument(identifier)(esUtil) else mutable.Map[String, AnyRef]()
+    val indexDocument = mutable.Map[String, AnyRef]()
     val transactionData: Map[String, AnyRef] = message.getOrElse("transactionData", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
     if (transactionData.nonEmpty) {
       val addedProperties: Map[String, AnyRef] = transactionData.getOrElse("properties", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
