@@ -142,9 +142,25 @@ trait SyncMessagesGenerator {
 //    }
     transactionData.put("addedRelations", relations.toList)
 
-    // TODO - verify nodeGraphId (node_id or node.id) value with Mahesh
      Map("operationType"-> "UPDATE", "graphId" -> node.metadata.getOrElse("graphId","domain").asInstanceOf[String], "nodeGraphId"-> 0.asInstanceOf[AnyRef], "nodeUniqueId"-> node.identifier, "objectType"-> node.dbObjType,
       "nodeType"-> "DATA_NODE", "transactionData" -> transactionData.toMap, "syncMessage" -> true.asInstanceOf[AnyRef])
+  }
+
+
+  def getDocument(message: Map[String, Any], updateRequest: Boolean)(esUtil: ElasticSearchUtil): Map[String, AnyRef] = {
+    val identifier: String = message.getOrElse("nodeUniqueId", "").asInstanceOf[String]
+    val indexDocument = if (updateRequest) getIndexDocument(identifier)(esUtil) else mutable.Map[String, AnyRef]()
+    val transactionData: Map[String, AnyRef] = message.getOrElse("transactionData", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
+    if (transactionData.nonEmpty) {
+      val addedProperties: Map[String, AnyRef] = transactionData.getOrElse("properties", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
+      addedProperties.foreach(property => {
+        val propertyNewValue: AnyRef = property._2.asInstanceOf[Map[String, AnyRef]].getOrElse("nv", null)
+        if (propertyNewValue == null) indexDocument.remove(property._1) else indexDocument.put(property._1, propertyNewValue)
+      })
+    }
+    indexDocument.put("identifier", message.getOrElse("nodeUniqueId", "").asInstanceOf[String])
+    indexDocument.put("objectType", message.getOrElse("objectType", "").asInstanceOf[String])
+    indexDocument.toMap
   }
 
 }

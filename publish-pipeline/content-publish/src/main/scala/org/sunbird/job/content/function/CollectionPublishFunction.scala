@@ -115,6 +115,11 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
           if (!isCollectionShallowCopy) syncNodes(updatedChildren, unitNodes)(esUtil, neo4JUtil, cassandraUtil, readerConfig, definition, config)
           metrics.incCounter(config.collectionPublishSuccessEventCount)
           logger.info("CollectionPublishFunction:: Collection publishing completed successfully for : " + data.identifier)
+
+          // Syncing collection metadata
+          val doc: Map[String, AnyRef] = getDocument(successObj.metadata, true)(esUtil)
+          val jsonDoc: String = ScalaJsonUtil.serialize(doc)
+          esUtil.addDocument(objWithEcar.identifier, jsonDoc)
         } else {
           saveOnFailure(obj, messages, data.pkgVersion)(neo4JUtil)
           val errorMessages = messages.mkString("; ")
