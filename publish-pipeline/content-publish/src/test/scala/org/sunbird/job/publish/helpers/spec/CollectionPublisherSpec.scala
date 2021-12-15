@@ -145,8 +145,10 @@ class CollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Match
     val do_113405023736455168110Json = """{"identifier":"do_113405023736455168110","graph_id":"domain","node_id":0,"collections":["do_11340096293585715212"],"objectType":"Collection","nodeType":"DATA_NODE"}"""
     when(mockElasticUtil.getDocumentAsString("do_113405023736455168110")).thenReturn(do_113405023736455168110Json)
 
+    val publishedCollectionNodeMetadataObj: Map[String,AnyRef] = ScalaJsonUtil.deserialize[Map[String,AnyRef]](publishedCollectionNodeMetadata)
+    val data = new ObjectData("do_123", publishedCollectionNodeMetadataObj, Some(Map.empty[String, AnyRef]))
     val syncChildrenData = ScalaJsonUtil.deserialize[List[Map[String, AnyRef]]](publishedChildrenData)
-    val messages: Map[String, Map[String, AnyRef]] = new TestCollectionPublisher().syncNodes(syncChildrenData, List.empty)(mockElasticUtil, mockNeo4JUtil, cassandraUtil, readerConfig, definition, jobConfig)
+    val messages: Map[String, Map[String, AnyRef]] = new TestCollectionPublisher().syncNodes(data, syncChildrenData, List.empty)(mockElasticUtil, mockNeo4JUtil, cassandraUtil, readerConfig, definition, jobConfig)
 
     assert(messages != null && messages.size > 0)
   }
