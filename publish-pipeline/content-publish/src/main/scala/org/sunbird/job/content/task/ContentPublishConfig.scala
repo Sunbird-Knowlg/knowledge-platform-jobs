@@ -39,6 +39,7 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
   val collectionPublishEventCount = "collection-publish-count"
   val collectionPublishSuccessEventCount = "collection-publish-success-count"
   val collectionPublishFailedEventCount = "collection-publish-failed-count"
+  val collectionPostPublishProcessEventCount = "collection-post-publish-process-count"
 
   // Cassandra Configurations
   val cassandraHost: String = config.getString("lms-cassandra.host")
@@ -60,6 +61,7 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
   val collectionPublishOutTag: OutputTag[Event] = OutputTag[Event]("collection-publish")
   val generateVideoStreamingOutTag: OutputTag[String] = OutputTag[String]("video-streaming-generator-request")
   val failedEventOutTag: OutputTag[String] = OutputTag[String]("failed-event")
+  val generatePostPublishProcessTag: OutputTag[String] = OutputTag[String]("post-publish-process-request")
 
   // Service Urls
   val printServiceBaseUrl: String = config.getString("service.print.basePath")

@@ -537,12 +537,12 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       case e: Exception =>
         logger.error("CollectionPublisher:: syncNodes:: Elastic Search indexing failed: " + e)
     }
-
-    // Syncing collection metadata
-    val doc: Map[String, AnyRef] = getDocument(new ObjectData(successObj.identifier, successObj.metadata.-("children"), successObj.extData, successObj.hierarchy), true, nestedFields)(esUtil)
-    val jsonDoc: String = ScalaJsonUtil.serialize(doc)
-    logger.info("CollectionPublisher:: syncNodes:: collection doc: " + jsonDoc)
-    esUtil.addDocument(successObj.identifier, jsonDoc)
+//
+//    // Syncing collection metadata
+//    val doc: Map[String, AnyRef] = getDocument(new ObjectData(successObj.identifier, successObj.metadata.-("children"), successObj.extData, successObj.hierarchy), true, nestedFields)(esUtil)
+//    val jsonDoc: String = ScalaJsonUtil.serialize(doc)
+//    logger.info("CollectionPublisher:: syncNodes:: collection doc: " + jsonDoc)
+//    esUtil.addDocument(successObj.identifier, jsonDoc)
 
     messages
   }
