@@ -114,7 +114,7 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
           publishHierarchy(updatedChildren, successObj, readerConfig, config)(cassandraUtil)
 
           if (!isCollectionShallowCopy) syncNodes(successObj, updatedChildren, unitNodes)(esUtil, neo4JUtil, cassandraUtil, readerConfig, definition, config)
-          pushPostProcessEvent(enrichedObj, context)(metrics)
+          pushPostProcessEvent(successObj, context)(metrics)
           metrics.incCounter(config.collectionPublishSuccessEventCount)
           logger.info("CollectionPublishFunction:: Collection publishing completed successfully for : " + data.identifier)
         } else {
@@ -147,13 +147,14 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
   def getPostProcessEvent(obj: ObjectData): String = {
     val ets = System.currentTimeMillis
     val mid = s"""LP.$ets.${UUID.randomUUID}"""
-    val channelId = obj.getString("channel", "")
-    val ver = obj.getString("versionKey", "")
-    val artifactUrl = obj.getString("artifactUrl", "")
-    val contentType = obj.getString("contentType", "")
-    val status = obj.getString("status", "")
+    val channelId = obj.metadata("channel")
+    val ver = obj.metadata("versionKey")
+    val contentType = obj.metadata("contentType")
+    val status = obj.metadata("status")
+    val createdBy = if(obj.metadata.contains("createdBy")) obj.metadata("createdBy") else ""
+    val createdFor = if(obj.metadata.contains("createdFor")) obj.metadata("createdFor") else ""
     //TODO: deprecate using contentType in the event.
-    val event = s"""{"eid":"BE_JOB_REQUEST", "ets": $ets, "mid": "$mid", "actor": {"id": "Post Publish Processor", "type": "System"}, "context":{"pdata":{"ver":"1.0","id":"org.ekstep.platform"}, "channel":"$channelId","env":"${config.jobEnv}"},"object":{"ver":"$ver","id":"${obj.identifier}"},"edata": {"action":"post-publish-process","iteration":1,"identifier":"${obj.identifier}","channel":"$channelId","artifactUrl":"$artifactUrl","mimeType":"${obj.mimeType}","contentType":"$contentType","pkgVersion":${obj.pkgVersion},"status":"$status"}}""".stripMargin
+    val event = s"""{"eid":"BE_JOB_REQUEST", "ets": $ets, "mid": "$mid", "actor": {"id": "Post Publish Processor", "type": "System"}, "context":{"pdata":{"ver":"1.0","id":"org.sunbird.platform"}, "channel":"$channelId","env":"${config.jobEnv}"},"object":{"ver":"$ver","id":"${obj.identifier}"},"edata": {"action":"post-publish-process","iteration":1,"identifier":"${obj.identifier}","channel":"$channelId","mimeType":"${obj.mimeType}","contentType":"$contentType","pkgVersion":${obj.pkgVersion},"status":"$status","name":"${obj.metadata("name")}","createdBy":"$createdBy","createdFor":"$createdFor","trackable":"${obj.metadata("trackable")}"}}""".stripMargin
     logger.info(s"Post Publish Process Event for identifier ${obj.identifier}  is  : $event")
     event
   }
