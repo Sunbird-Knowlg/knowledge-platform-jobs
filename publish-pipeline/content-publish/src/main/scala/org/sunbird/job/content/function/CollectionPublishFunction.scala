@@ -152,9 +152,9 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
     val contentType = obj.metadata("contentType")
     val status = obj.metadata("status")
     val createdBy = if(obj.metadata.contains("createdBy")) obj.metadata("createdBy") else ""
-    val createdFor = if(obj.metadata.contains("createdFor")) obj.metadata("createdFor") else ""
+    val createdFor = if(obj.metadata.contains("createdFor")) obj.metadata("createdFor").asInstanceOf[Array[String]] else ""
     //TODO: deprecate using contentType in the event.
-    val event = s"""{"eid":"BE_JOB_REQUEST", "ets": $ets, "mid": "$mid", "actor": {"id": "Post Publish Processor", "type": "System"}, "context":{"pdata":{"ver":"1.0","id":"org.sunbird.platform"}, "channel":"$channelId","env":"${config.jobEnv}"},"object":{"ver":"$ver","id":"${obj.identifier}"},"edata": {"action":"post-publish-process","iteration":1,"identifier":"${obj.identifier}","channel":"$channelId","mimeType":"${obj.mimeType}","contentType":"$contentType","pkgVersion":${obj.pkgVersion},"status":"$status","name":"${obj.metadata("name")}","createdBy":"$createdBy","createdFor":"$createdFor","trackable":${obj.metadata("trackable")}}}""".stripMargin
+    val event = s"""{"eid":"BE_JOB_REQUEST", "ets": $ets, "mid": "$mid", "actor": {"id": "Post Publish Processor", "type": "System"}, "context":{"pdata":{"ver":"1.0","id":"org.sunbird.platform"}, "channel":"$channelId","env":"${config.jobEnv}"},"object":{"ver":"$ver","id":"${obj.identifier}"},"edata": {"action":"post-publish-process","iteration":1,"identifier":"${obj.identifier}","channel":"$channelId","mimeType":"${obj.mimeType}","contentType":"$contentType","pkgVersion":${obj.pkgVersion},"status":"$status","name":"${obj.metadata("name")}","createdBy":"$createdBy","createdFor":$createdFor,"trackable":${obj.metadata("trackable")}}}""".stripMargin
     logger.info(s"Post Publish Process Event for identifier ${obj.identifier}  is  : $event")
     event
   }
