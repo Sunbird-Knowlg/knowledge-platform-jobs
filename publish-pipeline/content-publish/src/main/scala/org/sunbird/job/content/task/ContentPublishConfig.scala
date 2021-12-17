@@ -22,6 +22,7 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
   // Kafka Topics Configuration
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
   val postPublishTopic: String = config.getString("kafka.post_publish.topic")
+  val mvcTopic: String = config.getString("kafka.mvc.topic")
   val kafkaErrorTopic: String = config.getString("kafka.error.topic")
   val inputConsumerName = "content-publish-consumer"
 
@@ -40,6 +41,7 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
   val collectionPublishSuccessEventCount = "collection-publish-success-count"
   val collectionPublishFailedEventCount = "collection-publish-failed-count"
   val collectionPostPublishProcessEventCount = "collection-post-publish-process-count"
+  val mvProcessorEventCount = "mvc-processor-event-count"
 
   // Cassandra Configurations
   val cassandraHost: String = config.getString("lms-cassandra.host")
@@ -62,6 +64,7 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
   val generateVideoStreamingOutTag: OutputTag[String] = OutputTag[String]("video-streaming-generator-request")
   val failedEventOutTag: OutputTag[String] = OutputTag[String]("failed-event")
   val generatePostPublishProcessTag: OutputTag[String] = OutputTag[String]("post-publish-process-request")
+  val mvcProcessorTag: OutputTag[String] = OutputTag[String]("mvc-processor-request")
 
   // Service Urls
   val printServiceBaseUrl: String = config.getString("service.print.basePath")
