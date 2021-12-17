@@ -12,10 +12,9 @@ import org.scalatestplus.mockito.MockitoSugar
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
-import org.sunbird.job.publish.util.CloudStorageUtil
 import org.sunbird.job.questionset.publish.util.QuestionPublishUtil
 import org.sunbird.job.questionset.task.QuestionSetPublishConfig
-import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
+import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, Neo4JUtil}
 
 import scala.collection.JavaConverters._
 
@@ -68,7 +67,7 @@ class QuestionPublishUtilSpec extends FlatSpec with BeforeAndAfterAll with Match
     val identifier = "do_123";
     val obj1: ObjectData = new ObjectData("do_113188615625731", Map[String, AnyRef]("identifier" -> "do_113188615625731", "objectType" -> "Question", "visibility" -> "Parent", "mimeType" -> "application/vnd.sunbird.question", "primaryCategory" -> "some category", "name" -> "Some Question", "code" -> "some code"))
     val objList: List[ObjectData] = List(obj1)
-    val publishedQuestions = QuestionPublishUtil.publishQuestions(identifier, objList)(ec, mockNeo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, defCache, defConfig, jobConfig, httpUtil)
+    val publishedQuestions = QuestionPublishUtil.publishQuestions(identifier, objList, 1)(ec, mockNeo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, defCache, defConfig, jobConfig, httpUtil)
     publishedQuestions.map(record => record.getString("artifactUrl","") shouldNot be(null))
   }
 

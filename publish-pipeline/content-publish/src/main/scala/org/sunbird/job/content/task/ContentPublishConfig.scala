@@ -5,7 +5,7 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.streaming.api.scala.OutputTag
 import org.sunbird.job.publish.config.PublishConfig
-import org.sunbird.job.content.publish.domain.PublishMetadata
+import org.sunbird.job.content.publish.domain.Event
 
 import java.util
 import scala.collection.JavaConverters._
@@ -14,7 +14,7 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
 
   implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
   implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
-  implicit val publishMetaTypeInfo: TypeInformation[PublishMetadata] = TypeExtractor.getForClass(classOf[PublishMetadata])
+  implicit val publishMetaTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
 
   // Job Configuration
   val jobEnv: String = config.getString("job.env")
@@ -22,6 +22,7 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
   // Kafka Topics Configuration
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
   val postPublishTopic: String = config.getString("kafka.post_publish.topic")
+  val kafkaErrorTopic: String = config.getString("kafka.error.topic")
   val inputConsumerName = "content-publish-consumer"
 
   // Parallelism
@@ -42,7 +43,6 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
   // Cassandra Configurations
   val cassandraHost: String = config.getString("lms-cassandra.host")
   val cassandraPort: Int = config.getInt("lms-cassandra.port")
-  // TODO: Need to check respective changes for content
   val contentKeyspaceName: String = config.getString("content.keyspace")
   val contentTableName: String = config.getString("content.table")
 
@@ -54,9 +54,10 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
   val nodeStore: Int = config.getInt("redis.database.contentCache.id")
 
   // Out Tags
-  val contentPublishOutTag: OutputTag[PublishMetadata] = OutputTag[PublishMetadata]("content-publish")
-  val collectionPublishOutTag: OutputTag[PublishMetadata] = OutputTag[PublishMetadata]("collection-publish")
+  val contentPublishOutTag: OutputTag[Event] = OutputTag[Event]("content-publish")
+  val collectionPublishOutTag: OutputTag[Event] = OutputTag[Event]("collection-publish")
   val generateVideoStreamingOutTag: OutputTag[String] = OutputTag[String]("video-streaming-generator-request")
+  val failedEventOutTag: OutputTag[String] = OutputTag[String]("failed-event")
 
   // Service Urls
   val printServiceBaseUrl: String = config.getString("service.print.basePath")

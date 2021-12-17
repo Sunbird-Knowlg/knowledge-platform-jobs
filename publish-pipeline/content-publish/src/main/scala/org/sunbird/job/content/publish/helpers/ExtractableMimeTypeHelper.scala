@@ -1,21 +1,17 @@
 package org.sunbird.job.content.publish.helpers
 
-import com.datastax.driver.core.querybuilder.{QueryBuilder, Select}
 import com.fasterxml.jackson.databind.{DeserializationFeature, ObjectMapper}
-import org.apache.commons.io.{FileUtils, FilenameUtils, IOUtils}
+import org.apache.commons.io.FilenameUtils
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.content.publish.processor.{JsonParser, Media, Plugin, XmlParser}
 import org.sunbird.job.content.task.ContentPublishConfig
-import org.sunbird.job.publish.core.{ExtDataConfig, ObjectData, Slug}
-import org.sunbird.job.publish.util.CloudStorageUtil
-import org.sunbird.job.util.CassandraUtil
+import org.sunbird.job.exception.InvalidInputException
+import org.sunbird.job.publish.core.ObjectData
+import org.sunbird.job.util.{CloudStorageUtil, FileUtils, Slug}
 import org.xml.sax.{InputSource, SAXException}
 
 import java.io._
-import java.net.{HttpURLConnection, URL}
-import java.nio.file.{Files, Path, Paths}
-import java.util.zip.{ZipEntry, ZipOutputStream}
 import javax.xml.parsers.{DocumentBuilderFactory, ParserConfigurationException}
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
@@ -44,10 +40,10 @@ object ExtractableMimeTypeHelper {
   }
 
   def copyExtractedContentPackage(obj: ObjectData, contentConfig: ContentPublishConfig, extractionType: String, cloudStorageUtil: CloudStorageUtil): Unit = {
-    if (!isExtractedSnapshotExist(obj)) throw new Exception("Error! Snapshot Type Extraction doesn't Exists.")
+    if (!isExtractedSnapshotExist(obj)) throw new InvalidInputException("Error! Snapshot Type Extraction doesn't Exists.")
     val sourcePrefix = getExtractionPath(obj, contentConfig, "snapshot")
     val destinationPrefix = getExtractionPath(obj, contentConfig, extractionType)
-    cloudStorageUtil.copyObjectsByPrefix(sourcePrefix, destinationPrefix)
+    cloudStorageUtil.copyObjectsByPrefix(sourcePrefix, destinationPrefix, isFolder = true)
   }
 
   private def isExtractedSnapshotExist(obj: ObjectData): Boolean = {
@@ -74,7 +70,7 @@ object ExtractableMimeTypeHelper {
 
     // create zip package
     val zipFileName: String = basePath + File.separator + System.currentTimeMillis + "_" + Slug.makeSlug(obj.identifier) + ".zip"
-    createZipPackage(basePath, zipFileName)
+    FileUtils.createZipPackage(basePath, zipFileName)
 
     // upload zip file to blob and set artifactUrl
     val result: Array[String] = uploadArtifactToCloud(new File(zipFileName), obj.identifier, None, config)
@@ -85,7 +81,7 @@ object ExtractableMimeTypeHelper {
     val contentSize = (new File(zipFileName)).length
 
     // delete local folder
-    FileUtils.deleteQuietly(FileUtils.getFile(basePath).getParentFile)
+    FileUtils.deleteQuietly(basePath)
 
     obj.metadata ++ Map("artifactUrl" -> result(1), "cloudStorageKey" -> result(0), "size" -> contentSize.asInstanceOf[AnyRef])
   }
@@ -110,9 +106,9 @@ object ExtractableMimeTypeHelper {
     if (!StringUtils.isBlank(contentBody)) {
       if (isValidJSON(contentBody)) "json"
       else if (isValidXML(contentBody)) "ecml"
-      else throw new Exception("Invalid Content Body")
+      else throw new InvalidInputException("Invalid Content Body")
     }
-    else throw new Exception("Invalid Content Body")
+    else throw new InvalidInputException("Invalid Content Body. ECML content should have body.")
   }
 
   private def isValidJSON(contentBody: String): Boolean = {
@@ -144,57 +140,15 @@ object ExtractableMimeTypeHelper {
 
   private def writeECMLFile(basePath: String, ecml: String, ecmlType: String): Unit = {
     try {
-      if (StringUtils.isBlank(ecml)) throw new Exception("[Unable to write Empty ECML File.]")
-      if (StringUtils.isBlank(ecmlType)) throw new Exception("[System is in a fix between (XML & JSON) ECML Type.]")
+      if (StringUtils.isBlank(ecml)) throw new InvalidInputException("[Unable to write Empty ECML File.]")
+      if (StringUtils.isBlank(ecmlType)) throw new InvalidInputException("[System is in a fix between (XML & JSON) ECML Type.]")
       val file = new File(basePath + "/" + "index." + ecmlType)
-      FileUtils.writeStringToFile(file, ecml, "UTF-8")
+      FileUtils.writeStringToFile(file, ecml)
     } catch {
       case e: Exception =>
         logger.error("writeECMLFile - Exception when write ECML file :: ", e)
         throw new Exception("[Unable to Write ECML File.]", e)
     }
-  }
-
-  private def createZipPackage(basePath: String, zipFileName: String): Unit =
-    if (!StringUtils.isBlank(zipFileName)) {
-      logger.info("Creating Zip File: " + zipFileName)
-      val fileList: List[String] = generateFileList(basePath)
-      zipIt(zipFileName, fileList, basePath)
-    }
-
-  private def generateFileList(sourceFolder: String): List[String] =
-    Files.walk(Paths.get(new File(sourceFolder).getPath)).toArray()
-      .map(path => path.asInstanceOf[Path])
-      .filter(path => Files.isRegularFile(path))
-      .map(path => generateZipEntry(path.toString, sourceFolder)).toList
-
-
-  private def generateZipEntry(file: String, sourceFolder: String): String = file.substring(sourceFolder.length, file.length)
-
-  private def zipIt(zipFile: String, fileList: List[String], sourceFolder: String): Unit = {
-    val buffer = new Array[Byte](1024)
-    var zos: ZipOutputStream = null
-    try {
-      zos = new ZipOutputStream(new FileOutputStream(zipFile))
-      logger.info("Creating Zip File: " + zipFile)
-      fileList.foreach(file => {
-        val ze = new ZipEntry(file)
-        zos.putNextEntry(ze)
-        val in = new FileInputStream(sourceFolder + File.separator + file)
-        try {
-          var len = in.read(buffer)
-          while (len > 0) {
-            zos.write(buffer, 0, len)
-            len = in.read(buffer)
-          }
-        } finally if (in != null) in.close()
-        zos.closeEntry()
-      })
-    } catch {
-      case e: IOException =>
-        logger.error("Error! Something Went Wrong While Creating the ZIP File: " + e.getMessage, e)
-        throw new Exception("Something Went Wrong While Creating the ZIP File", e)
-    } finally if (zos != null) zos.close()
   }
 
   private def extractPackageInCloud(uploadFile: File, obj: ObjectData, extractionType: String, slugFile: Boolean, basePath: String, config: ContentPublishConfig)(implicit cloudStorageUtil: CloudStorageUtil) = {
@@ -209,7 +163,8 @@ object ExtractableMimeTypeHelper {
   private def uploadArtifactToCloud(uploadedFile: File, identifier: String, filePath: Option[String] = None, config: ContentPublishConfig)(implicit cloudStorageUtil: CloudStorageUtil): Array[String] = {
     val urlArray = {
       try {
-        val folder = if (filePath.isDefined) filePath.get + File.separator + config.contentFolder + File.separator + Slug.makeSlug(identifier, isTransliterate = true) + File.separator + config.artifactFolder else config.contentFolder + File.separator + Slug.makeSlug(identifier, isTransliterate = true) + File.separator + config.artifactFolder
+        val folder = if (filePath.isDefined) filePath.get + File.separator + config.contentFolder + File.separator + Slug.makeSlug(identifier, isTransliterate = true) + File.separator + config.artifactFolder
+        else config.contentFolder + File.separator + Slug.makeSlug(identifier, isTransliterate = true) + File.separator + config.artifactFolder
         cloudStorageUtil.uploadFile(folder, uploadedFile)
       } catch {
         case e: Exception =>
@@ -223,9 +178,9 @@ object ExtractableMimeTypeHelper {
 
   private def validationForCloudExtraction(file: File, extractionType: String, mimeType: String, config: ContentPublishConfig): Unit = {
     if (!file.exists() || (!extractablePackageExtensions.contains("." + FilenameUtils.getExtension(file.getName)) && config.extractableMimeTypes.contains(mimeType)))
-      throw new Exception("Error! File doesn't Exist.")
+      throw new InvalidInputException("Error! File doesn't Exist.")
     if (extractionType == null)
-      throw new Exception("Error! Invalid Content Extraction Type.")
+      throw new InvalidInputException("Error! Invalid Content Extraction Type.")
   }
 
 
@@ -241,42 +196,42 @@ object ExtractableMimeTypeHelper {
 
   private def downloadAssetFiles(identifier: String, mediaFiles: List[Media], basePath: String, config: ContentPublishConfig)(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil): Future[List[Map[String, String]]] = {
     val futures = mediaFiles.map(mediaFile => {
-        logger.info(s"ExtractableMimeTypeHelper ::: downloadAssetFiles ::: Processing file: ${mediaFile.id} for : " + identifier)
-        if (!StringUtils.equals("youtube", mediaFile.`type`) && !StringUtils.isBlank(mediaFile.src) && !StringUtils.isBlank(mediaFile.`type`)) {
-          val downloadPath = if (isWidgetTypeAsset(mediaFile.`type`)) basePath + "/" + "widgets" else basePath + "/" + "assets"
-          val subFolder = {
-            if (!mediaFile.src.startsWith("http") && !mediaFile.src.startsWith("https")) {
-              val f = new File(mediaFile.src)
-              if (f.exists) f.delete
-              StringUtils.stripStart(f.getParent, "/")
-            } else ""
-          }
-          val fDownloadPath = if (StringUtils.isNotBlank(subFolder)) downloadPath + File.separator + subFolder + File.separator else downloadPath + File.separator
-          createDirectoryIfNeeded(fDownloadPath)
-          logger.info(s"ExtractableMimeTypeHelper ::: downloadAssetFiles ::: fDownloadPath: $fDownloadPath & src : ${mediaFile.src}")
+      logger.info(s"ExtractableMimeTypeHelper ::: downloadAssetFiles ::: Processing file: ${mediaFile.id} for : " + identifier)
+      if (!StringUtils.equals("youtube", mediaFile.`type`) && !StringUtils.isBlank(mediaFile.src) && !StringUtils.isBlank(mediaFile.`type`)) {
+        val downloadPath = if (isWidgetTypeAsset(mediaFile.`type`)) basePath + "/" + "widgets" else basePath + "/" + "assets"
+        val subFolder = {
+          if (!mediaFile.src.startsWith("http") && !mediaFile.src.startsWith("https")) {
+            val f = new File(mediaFile.src)
+            if (f.exists) f.delete
+            StringUtils.stripStart(f.getParent, "/")
+          } else ""
+        }
+        val fDownloadPath = if (StringUtils.isNotBlank(subFolder)) downloadPath + File.separator + subFolder + File.separator else downloadPath + File.separator
+        createDirectoryIfNeeded(fDownloadPath)
+        logger.info(s"ExtractableMimeTypeHelper ::: downloadAssetFiles ::: fDownloadPath: $fDownloadPath & src : ${mediaFile.src}")
 
-          if(mediaFile.src.startsWith("https://") || mediaFile.src.startsWith("http://")) {
-            downloadFile(mediaFile.src, fDownloadPath)
-          }
-          else {
-            if(mediaFile.src.contains("assets/public")) {
-              try {
-                cloudStorageUtil.downloadFile(fDownloadPath, StringUtils.replace(mediaFile.src, "//", "/").substring(mediaFile.src.indexOf("assets/public") + 14))
-              } catch {
-                case _:Exception => cloudStorageUtil.downloadFile(fDownloadPath, mediaFile.src.substring(mediaFile.src.indexOf("assets/public") + 13))
-              }
-            }
-            else if (mediaFile.src.startsWith(File.separator)) {
-              cloudStorageUtil.downloadFile(fDownloadPath, StringUtils.replace(mediaFile.src.substring(1), "//","/"))
-            } else {
-              cloudStorageUtil.downloadFile(fDownloadPath, StringUtils.replace(mediaFile.src, "//","/"))
+        if (mediaFile.src.startsWith("https://") || mediaFile.src.startsWith("http://")) {
+          FileUtils.downloadFile(mediaFile.src, fDownloadPath)
+        }
+        else {
+          if (mediaFile.src.contains("assets/public")) {
+            try {
+              cloudStorageUtil.downloadFile(fDownloadPath, StringUtils.replace(mediaFile.src, "//", "/").substring(mediaFile.src.indexOf("assets/public") + 14))
+            } catch {
+              case _: Exception => cloudStorageUtil.downloadFile(fDownloadPath, mediaFile.src.substring(mediaFile.src.indexOf("assets/public") + 13))
             }
           }
-          val downloadedFile = new File(fDownloadPath + mediaFile.src.split("/").last)
-          logger.info("Downloaded file : " + mediaFile.src + " - " + downloadedFile + " | [Content Id '" + identifier + "']")
+          else if (mediaFile.src.startsWith(File.separator)) {
+            cloudStorageUtil.downloadFile(fDownloadPath, StringUtils.replace(mediaFile.src.substring(1), "//", "/"))
+          } else {
+            cloudStorageUtil.downloadFile(fDownloadPath, StringUtils.replace(mediaFile.src, "//", "/"))
+          }
+        }
+        val downloadedFile = new File(fDownloadPath + mediaFile.src.split("/").last)
+        logger.info("Downloaded file : " + mediaFile.src + " - " + downloadedFile + " | [Content Id '" + identifier + "']")
 
-          Map(mediaFile.id -> downloadedFile.getName)
-        } else Map.empty[String, String]
+        Map(mediaFile.id -> downloadedFile.getName)
+      } else Map.empty[String, String]
     })
     Future(futures)
   }
@@ -286,31 +241,6 @@ object ExtractableMimeTypeHelper {
   private def createDirectoryIfNeeded(directoryName: String): Unit = {
     val theDir = new File(directoryName)
     if (!theDir.exists) theDir.mkdirs
-  }
-
-  @throws[Exception]
-  def downloadFile(fileUrl: String, basePath: String): File = {
-    val url = new URL(fileUrl)
-    val httpConn = url.openConnection().asInstanceOf[HttpURLConnection]
-    val disposition = httpConn.getHeaderField("Content-Disposition")
-    httpConn.getContentType
-    httpConn.getContentLength
-    val fileName = if (StringUtils.isNotBlank(disposition)) {
-      val index = disposition.indexOf("filename=")
-      if (index > 0)
-        disposition.substring(index + 10, disposition.indexOf("\"", index + 10))
-      else
-        fileUrl.substring(fileUrl.lastIndexOf("/") + 1, fileUrl.length)
-    } else fileUrl.substring(fileUrl.lastIndexOf("/") + 1, fileUrl.length)
-    val saveFile = new File(basePath)
-    if (!saveFile.exists) saveFile.mkdirs
-    val saveFilePath = basePath + File.separator + fileName
-    val inputStream = httpConn.getInputStream
-    val outputStream = new FileOutputStream(saveFilePath)
-    IOUtils.copy(inputStream, outputStream)
-    val file = new File(saveFilePath)
-    logger.info(System.currentTimeMillis() + " ::: Downloaded file: " + file.getAbsolutePath)
-    file
   }
 
 }

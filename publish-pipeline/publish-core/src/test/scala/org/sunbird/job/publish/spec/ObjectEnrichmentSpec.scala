@@ -9,8 +9,7 @@ import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
 import org.sunbird.job.publish.helpers.ObjectEnrichment
-import org.sunbird.job.publish.util.CloudStorageUtil
-import org.sunbird.job.util.{CassandraUtil, Neo4JUtil}
+import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, Neo4JUtil}
 
 class ObjectEnrichmentSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
 

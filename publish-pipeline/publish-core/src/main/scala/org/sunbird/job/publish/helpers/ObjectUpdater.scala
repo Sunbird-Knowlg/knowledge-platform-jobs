@@ -5,6 +5,7 @@ import org.apache.commons.lang3.StringUtils
 import org.neo4j.driver.v1.StatementResult
 import org.slf4j.LoggerFactory
 import org.sunbird.job.domain.`object`.DefinitionCache
+import org.sunbird.job.exception.InvalidInputException
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
 import org.sunbird.job.util.{CassandraUtil, JSONUtil, Neo4JUtil, ScalaJsonUtil}
 
@@ -61,11 +62,12 @@ trait ObjectUpdater {
   def deleteExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Unit
 
   @throws[Exception]
-  def saveOnFailure(obj: ObjectData, messages: List[String])(implicit neo4JUtil: Neo4JUtil): Unit = {
+  def saveOnFailure(obj: ObjectData, messages: List[String], pkgVersion: Double)(implicit neo4JUtil: Neo4JUtil): Unit = {
+    val upPkgVersion = pkgVersion + 1
     val errorMessages = messages.mkString("; ")
     val nodeId = obj.dbId
-    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$nodeId"}) SET n.status="Failed", n.publishError="$errorMessages", $auditPropsUpdateQuery;"""
-    logger.info("Query: " + query)
+    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$nodeId"}) SET n.status="Failed", n.pkgVersion=$upPkgVersion, n.publishError="$errorMessages", $auditPropsUpdateQuery;"""
+    logger.info("ObjectUpdater:: saveOnFailure:: Query: " + query)
     neo4JUtil.executeQuery(query)
   }
 
@@ -141,7 +143,7 @@ trait ObjectUpdater {
       if (result) logger.info(s"Content Body Updated Successfully For $identifier")
       else {
         logger.error(s"Content Body Update Failed For $identifier")
-        throw new Exception(s"Content Body Update Failed For $identifier")
+        throw new InvalidInputException(s"Content Body Update Failed For $identifier")
       }
   }
 

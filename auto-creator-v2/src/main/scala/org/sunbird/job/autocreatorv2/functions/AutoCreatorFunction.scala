@@ -7,14 +7,12 @@ import org.slf4j.LoggerFactory
 import org.sunbird.job.autocreatorv2.domain.Event
 import org.sunbird.job.autocreatorv2.helpers.AutoCreator
 import org.sunbird.job.autocreatorv2.model.{ExtDataConfig, ObjectData, ObjectParent}
-import org.sunbird.job.autocreatorv2.util.CloudStorageUtil
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.task.AutoCreatorV2Config
 import org.sunbird.job.util._
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import java.util
-
 
 class AutoCreatorFunction(config: AutoCreatorV2Config, httpUtil: HttpUtil,
                           @transient var neo4JUtil: Neo4JUtil = null,
@@ -59,7 +57,8 @@ class AutoCreatorFunction(config: AutoCreatorV2Config, httpUtil: HttpUtil,
       logger.info("Final updated metadata |with cloud-store updates| for " + updatedObj.identifier)
       val enrObj = if (config.expandableObjects.contains(updatedObj.objectType)) {
         val chMap: Map[String, AnyRef] = getChildren(updatedObj)(config)
-        val childrenObj: Map[String, ObjectData] = processChildren(chMap)(config, neo4JUtil, cassandraUtil, cloudStorageUtil, defCache, httpUtil)
+        val filterChMap: Map[String, AnyRef] = filterChildren(chMap, updatedObj)
+        val childrenObj: Map[String, ObjectData] = processChildren(filterChMap)(config, neo4JUtil, cassandraUtil, cloudStorageUtil, defCache, httpUtil)
         enrichHierarchy(updatedObj, childrenObj)(config)
       } else updatedObj
       val extConfig = ExtDataConfig(config.getString(enrObj.objectType.toLowerCase + ".keyspace", ""), definition.getExternalTable, definition.getExternalPrimaryKey, definition.getExternalProps)

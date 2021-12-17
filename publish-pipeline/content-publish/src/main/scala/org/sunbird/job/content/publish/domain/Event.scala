@@ -9,7 +9,7 @@ import scala.collection.JavaConverters._
 
 class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) extends JobRequest(eventMap, partition, offset) {
 
-  private val jobName = "content-publish"
+  val jobName = "content-publish"
 
   def eData: Map[String, AnyRef] = readOrDefault("edata", new util.HashMap[String, AnyRef]()).asScala.toMap
 
@@ -17,7 +17,7 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 
   def mimeType: String = readOrDefault[String]("edata.metadata.mimeType", "")
 
-  def objectId: String = readOrDefault[String]("edata.metadata.identifier", "")
+  def identifier: String = readOrDefault[String]("edata.metadata.identifier", "")
 
   def objectType: String = readOrDefault[String]("edata.metadata.objectType", "")
 
@@ -31,6 +31,6 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
   }
 
   def validEvent(config: ContentPublishConfig): Boolean = {
-    (StringUtils.equals("publish", action) && StringUtils.isNotBlank(objectId)) && (config.supportedObjectType.contains(objectType) && config.supportedMimeType.contains(mimeType))
+    (StringUtils.equals("publish", action) && StringUtils.isNotBlank(identifier)) && (config.supportedObjectType.contains(objectType) && config.supportedMimeType.contains(mimeType))
   }
 }

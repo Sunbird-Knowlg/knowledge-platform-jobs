@@ -2,6 +2,7 @@ package org.sunbird.job.assetenricment.util
 
 import org.imgscalr.Scalr
 import org.slf4j.LoggerFactory
+import org.sunbird.job.util.FileUtils
 
 import java.awt.image.BufferedImage
 import java.io.File
@@ -18,7 +19,7 @@ trait ThumbnailUtil {
         if ((srcImage.getHeight > thumbnailSize) || (srcImage.getWidth > thumbnailSize)) {
           val scaledImage: BufferedImage = Scalr.resize(srcImage, thumbnailSize)
           val thumbFile = getThumbnailFileName(inFile)
-          val outFile = AssetFileUtils.createFile(thumbFile)
+          val outFile = FileUtils.createFile(thumbFile)
           ImageIO.write(scaledImage, "png", outFile)
           Some(outFile)
         } else None

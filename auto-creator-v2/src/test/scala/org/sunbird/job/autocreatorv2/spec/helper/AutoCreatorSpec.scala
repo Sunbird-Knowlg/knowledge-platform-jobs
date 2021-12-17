@@ -12,10 +12,9 @@ import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
 import org.sunbird.job.autocreatorv2.helpers.AutoCreator
 import org.sunbird.job.autocreatorv2.model.ObjectData
-import org.sunbird.job.autocreatorv2.util.CloudStorageUtil
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.task.AutoCreatorV2Config
-import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, Neo4JUtil, ScalaJsonUtil}
+import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HTTPResponse, HttpUtil, Neo4JUtil, ScalaJsonUtil}
 
 class AutoCreatorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
 
@@ -93,7 +92,7 @@ class AutoCreatorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with
 		val result: Map[String, ObjectData] = new TestAutoCreator().processChildren(child)(jobConfig, mockNeo4JUtil, cassandraUtil, cloudUtil, defCache, httpUtil)
 		result should not be empty
     result.keys should contain ("do_113264104174723072120")
-		result.get("do_113264104174723072120").get.identifier shouldEqual "do_113264104174723072120"
+		result("do_113264104174723072120").identifier shouldEqual "do_113264104174723072120"
 	}
 
 

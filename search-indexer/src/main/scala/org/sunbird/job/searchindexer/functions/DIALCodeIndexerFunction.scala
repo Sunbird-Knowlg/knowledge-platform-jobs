@@ -4,8 +4,9 @@ import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.exception.InvalidEventException
+import org.sunbird.job.helper.FailedEventHelper
 import org.sunbird.job.searchindexer.compositesearch.domain.Event
-import org.sunbird.job.searchindexer.compositesearch.helpers.{DIALCodeIndexerHelper, FailedEventHelper}
+import org.sunbird.job.searchindexer.compositesearch.helpers.DIALCodeIndexerHelper
 import org.sunbird.job.searchindexer.task.SearchIndexerConfig
 import org.sunbird.job.util.ElasticSearchUtil
 import org.sunbird.job.{BaseProcessFunction, Metrics}
@@ -39,7 +40,7 @@ class DIALCodeIndexerFunction(config: SearchIndexerConfig,
       case ex: Throwable =>
         logger.error(s"Error while processing message for identifier : ${event.id}. Error : ", ex)
         metrics.incCounter(config.failedDialcodeExternalEventCount)
-        val failedEvent = getFailedEvent(event, ex)
+        val failedEvent = getFailedEvent(event.jobName, event.getMap(), ex)
         context.output(config.failedEventOutTag, failedEvent)
         throw new InvalidEventException(ex.getMessage, Map("partition" -> event.partition, "offset" -> event.offset), ex)
     }

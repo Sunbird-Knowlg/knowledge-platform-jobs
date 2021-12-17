@@ -1,7 +1,7 @@
-package org.sunbird.job.publish.spec
+package org.sunbird.spec
 
 import org.scalatest.{FlatSpec, Matchers}
-import org.sunbird.job.publish.core.Slug
+import org.sunbird.job.util.Slug
 
 import java.io.File
 

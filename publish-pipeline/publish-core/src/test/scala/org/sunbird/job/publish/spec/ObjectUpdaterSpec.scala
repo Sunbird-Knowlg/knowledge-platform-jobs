@@ -62,7 +62,7 @@ class ObjectUpdaterSpec extends FlatSpec with BeforeAndAfterAll with Matchers wi
     val objData = new ObjectData("do_123", metadata, None, Some(hierarchy))
 
     val obj = new TestObjectUpdater()
-    obj.saveOnFailure(objData, List("Testing Save on Publish Failure"))
+    obj.saveOnFailure(objData, List("Testing Save on Publish Failure"), 1)
   }
 
   "ObjectUpdater metaDataQuery" should " give the update query " in {
