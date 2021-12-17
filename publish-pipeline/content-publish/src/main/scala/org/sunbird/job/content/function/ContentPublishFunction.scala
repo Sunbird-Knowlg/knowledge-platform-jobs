@@ -85,7 +85,7 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
           // Clear redis cache
           cache.del(data.identifier)
           val enrichedObj = enrichObject(ecmlVerifiedObj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
-          val objWithEcar = getObjectWithEcar(enrichedObj, if (enrichedObj.metadata.getOrElse("contentDisposition", "").asInstanceOf[String].equalsIgnoreCase("online-only")) List(EcarPackageType.SPINE.toString) else pkgTypes)(ec, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
+          val objWithEcar = getObjectWithEcar(enrichedObj, if (enrichedObj.getString("contentDisposition", "").asInstanceOf[String].equalsIgnoreCase("online-only")) List(EcarPackageType.SPINE.toString) else pkgTypes)(ec, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
           logger.info("Ecar generation done for Content: " + objWithEcar.identifier)
           saveOnSuccess(objWithEcar)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
           pushStreamingUrlEvent(enrichedObj, context)(metrics)
@@ -124,11 +124,11 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
   def getStreamingEvent(obj: ObjectData): String = {
     val ets = System.currentTimeMillis
     val mid = s"""LP.$ets.${UUID.randomUUID}"""
-    val channelId = obj.metadata.getOrElse("channel", "")
-    val ver = obj.metadata.getOrElse("versionKey", "")
-    val artifactUrl = obj.metadata.getOrElse("artifactUrl", "")
-    val contentType = obj.metadata.getOrElse("contentType", "")
-    val status = obj.metadata.getOrElse("status", "")
+    val channelId = obj.getString("channel", "")
+    val ver = obj.getString("versionKey", "")
+    val artifactUrl = obj.getString("artifactUrl", "")
+    val contentType = obj.getString("contentType", "")
+    val status = obj.getString("status", "")
     //TODO: deprecate using contentType in the event.
     val event = s"""{"eid":"BE_JOB_REQUEST", "ets": $ets, "mid": "$mid", "actor": {"id": "Post Publish Processor", "type": "System"}, "context":{"pdata":{"ver":"1.0","id":"org.ekstep.platform"}, "channel":"$channelId","env":"${config.jobEnv}"},"object":{"ver":"$ver","id":"${obj.identifier}"},"edata": {"action":"post-publish-process","iteration":1,"identifier":"${obj.identifier}","channel":"$channelId","artifactUrl":"$artifactUrl","mimeType":"${obj.mimeType}","contentType":"$contentType","pkgVersion":${obj.pkgVersion},"status":"$status"}}""".stripMargin
     logger.info(s"Video Streaming Event for identifier ${obj.identifier}  is  : $event")
@@ -147,10 +147,10 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
   def getMVCProcessorEvent(obj: ObjectData): String = {
     val ets = System.currentTimeMillis
     val mid = s"""LP.$ets.${UUID.randomUUID}"""
-    val channelId = obj.metadata.getOrElse("channel", "")
-    val ver = obj.metadata.getOrElse("versionKey", "")
-    val artifactUrl = obj.metadata.getOrElse("artifactUrl", "")
-    val name = obj.metadata.getOrElse("name", "")
+    val channelId = obj.getString("channel", "")
+    val ver = obj.getString("versionKey", "")
+    val artifactUrl = obj.getString("artifactUrl", "")
+    val name = obj.getString("name", "")
     //TODO: deprecate using contentType in the event.
     val event = s"""{"eid":"MVC_JOB_PROCESSOR", "ets": $ets, "mid": "$mid", "actor": {"id": "Post Publish Processor", "type": "System"}, "context":{"pdata":{"ver":"1.0","id":"org.sunbird.platform"}, "channel":"$channelId","env":"${config.jobEnv}"},"object":{"ver":"$ver","id":"${obj.identifier}"},"eventData": {"action":"update-es-index","stage":1,"identifier":"${obj.identifier}","channel":"$channelId","artifactUrl":"$artifactUrl","name":"$name"}}""".stripMargin
     logger.info(s"MVC Processor Event for identifier ${obj.identifier}  is  : $event")
