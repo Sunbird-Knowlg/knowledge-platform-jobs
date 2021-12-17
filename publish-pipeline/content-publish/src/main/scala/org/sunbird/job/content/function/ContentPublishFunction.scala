@@ -89,6 +89,7 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
           logger.info("Ecar generation done for Content: " + objWithEcar.identifier)
           saveOnSuccess(objWithEcar)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
           pushStreamingUrlEvent(enrichedObj, context)(metrics)
+          pushMVCProcessorEvent(enrichedObj, context)(metrics)
           metrics.incCounter(config.contentPublishSuccessEventCount)
           logger.info("Content publishing completed successfully for : " + data.identifier)
         } else {
@@ -123,14 +124,36 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
   def getStreamingEvent(obj: ObjectData): String = {
     val ets = System.currentTimeMillis
     val mid = s"""LP.$ets.${UUID.randomUUID}"""
-    val channelId = obj.getString("channel", "")
-    val ver = obj.getString("versionKey", "")
-    val artifactUrl = obj.getString("artifactUrl", "")
-    val contentType = obj.getString("contentType", "")
-    val status = obj.getString("status", "")
+    val channelId = obj.metadata.getOrElse("channel", "")
+    val ver = obj.metadata.getOrElse("versionKey", "")
+    val artifactUrl = obj.metadata.getOrElse("artifactUrl", "")
+    val contentType = obj.metadata.getOrElse("contentType", "")
+    val status = obj.metadata.getOrElse("status", "")
     //TODO: deprecate using contentType in the event.
     val event = s"""{"eid":"BE_JOB_REQUEST", "ets": $ets, "mid": "$mid", "actor": {"id": "Post Publish Processor", "type": "System"}, "context":{"pdata":{"ver":"1.0","id":"org.ekstep.platform"}, "channel":"$channelId","env":"${config.jobEnv}"},"object":{"ver":"$ver","id":"${obj.identifier}"},"edata": {"action":"post-publish-process","iteration":1,"identifier":"${obj.identifier}","channel":"$channelId","artifactUrl":"$artifactUrl","mimeType":"${obj.mimeType}","contentType":"$contentType","pkgVersion":${obj.pkgVersion},"status":"$status"}}""".stripMargin
     logger.info(s"Video Streaming Event for identifier ${obj.identifier}  is  : $event")
+    event
+  }
+
+  private def pushMVCProcessorEvent(obj: ObjectData, context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
+    val sourceURL = if (obj.metadata("sourceURL") != null) obj.metadata.get("sourceURL").asInstanceOf[String] else ""
+    if (sourceURL.nonEmpty) {
+      val event = getMVCProcessorEvent(obj)
+      context.output(config.mvcProcessorTag, event)
+      metrics.incCounter(config.mvProcessorEventCount)
+    }
+  }
+
+  def getMVCProcessorEvent(obj: ObjectData): String = {
+    val ets = System.currentTimeMillis
+    val mid = s"""LP.$ets.${UUID.randomUUID}"""
+    val channelId = obj.metadata.getOrElse("channel", "")
+    val ver = obj.metadata.getOrElse("versionKey", "")
+    val artifactUrl = obj.metadata.getOrElse("artifactUrl", "")
+    val name = obj.metadata.getOrElse("name", "")
+    //TODO: deprecate using contentType in the event.
+    val event = s"""{"eid":"MVC_JOB_PROCESSOR", "ets": $ets, "mid": "$mid", "actor": {"id": "Post Publish Processor", "type": "System"}, "context":{"pdata":{"ver":"1.0","id":"org.sunbird.platform"}, "channel":"$channelId","env":"${config.jobEnv}"},"object":{"ver":"$ver","id":"${obj.identifier}"},"eventData": {"action":"update-es-index","stage":1,"identifier":"${obj.identifier}","channel":"$channelId","artifactUrl":"$artifactUrl","name":"$name"}}""".stripMargin
+    logger.info(s"MVC Processor Event for identifier ${obj.identifier}  is  : $event")
     event
   }
 
