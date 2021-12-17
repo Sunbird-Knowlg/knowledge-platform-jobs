@@ -22,6 +22,7 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
   // Kafka Topics Configuration
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
   val postPublishTopic: String = config.getString("kafka.post_publish.topic")
+  val mvcTopic: String = config.getString("kafka.mvc.topic")
   val kafkaErrorTopic: String = config.getString("kafka.error.topic")
   val inputConsumerName = "content-publish-consumer"
 
