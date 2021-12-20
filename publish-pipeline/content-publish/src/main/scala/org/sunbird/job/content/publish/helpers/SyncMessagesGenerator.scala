@@ -18,9 +18,8 @@ trait SyncMessagesGenerator {
     if (documentJson != null && documentJson.nonEmpty) ScalaJsonUtil.deserialize[scala.collection.mutable.Map[String, AnyRef]](documentJson) else scala.collection.mutable.Map[String, AnyRef]()
   }
 
-  private def getJsonMessage(message: Map[String, Any], isUpdate: Boolean, definition: ObjectDefinition, nestedFields: List[String], ignoredFields: List[String])(esUtil: ElasticSearchUtil): Map[String, AnyRef] = {
-    val identifier = message.getOrElse("nodeUniqueId", "").asInstanceOf[String]
-    val indexDocument = if (isUpdate) getIndexDocument(identifier)(esUtil) else scala.collection.mutable.Map[String, AnyRef]()
+  private def getJsonMessage(message: Map[String, Any], definition: ObjectDefinition, nestedFields: List[String], ignoredFields: List[String]): Map[String, AnyRef] = {
+    val indexDocument = scala.collection.mutable.Map[String, AnyRef]()
     val transactionData = message.getOrElse("transactionData", Map[String, Any]()).asInstanceOf[Map[String, Any]]
     logger.debug("SyncMessagesGenerator:: getJsonMessage:: transactionData:: " + transactionData)
     if (transactionData.nonEmpty) {
@@ -74,13 +73,18 @@ trait SyncMessagesGenerator {
     indexDocument.put("objectType", message.getOrElse("objectType", "").asInstanceOf[String])
     indexDocument.put("nodeType", message.getOrElse("nodeType", "").asInstanceOf[String])
 
-    logger.debug("SyncMessagesGenerator:: getJsonMessage:: final indexDocument:: " + indexDocument)
+    logger.info("SyncMessagesGenerator:: getJsonMessage:: final indexDocument:: " + indexDocument)
 
     indexDocument.toMap
   }
 
   private def addMetadataToDocument(propertyName: String, propertyValue: AnyRef, nestedFields: List[String]): AnyRef = {
-    if (nestedFields.contains(propertyName)) ScalaJsonUtil.deserialize[AnyRef](propertyValue.asInstanceOf[String]) else propertyValue
+    if (nestedFields.contains(propertyName)) {
+      propertyValue match {
+        case propVal: String => ScalaJsonUtil.deserialize[AnyRef](propVal)
+        case _ => propertyValue
+      }
+    } else propertyValue
   }
 
   def getMessages(nodes: List[ObjectData], definition: ObjectDefinition, nestedFields: List[String], errors: mutable.Map[String, String])(esUtil: ElasticSearchUtil): Map[String, Map[String, AnyRef]] = {
@@ -90,7 +94,7 @@ trait SyncMessagesGenerator {
         if (definition.getRelationLabels() != null) {
           val nodeMap = getNodeMap(node)
           logger.debug("SyncMessagesGenerator:: getMessages:: nodeMap:: " + nodeMap)
-          val message = getJsonMessage(nodeMap, true, definition, nestedFields, List.empty)(esUtil)
+          val message = getJsonMessage(nodeMap, definition, nestedFields, List.empty)
           logger.debug("SyncMessagesGenerator:: getMessages:: message:: " + message)
           messages.put(node.identifier, message)
         }
@@ -138,9 +142,26 @@ trait SyncMessagesGenerator {
 //    }
     transactionData.put("addedRelations", relations.toList)
 
-    // TODO - verify nodeGraphId (node_id or node.id) value with Mahesh
      Map("operationType"-> "UPDATE", "graphId" -> node.metadata.getOrElse("graphId","domain").asInstanceOf[String], "nodeGraphId"-> 0.asInstanceOf[AnyRef], "nodeUniqueId"-> node.identifier, "objectType"-> node.dbObjType,
       "nodeType"-> "DATA_NODE", "transactionData" -> transactionData.toMap, "syncMessage" -> true.asInstanceOf[AnyRef])
+  }
+
+
+  def getDocument(node: ObjectData, updateRequest: Boolean, nestedFields: List[String])(esUtil: ElasticSearchUtil): Map[String, AnyRef] = {
+    val message = getNodeMap(node)
+    val identifier: String = message.getOrElse("nodeUniqueId", "").asInstanceOf[String]
+    val indexDocument = mutable.Map[String, AnyRef]()
+    val transactionData: Map[String, AnyRef] = message.getOrElse("transactionData", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
+    if (transactionData.nonEmpty) {
+      val addedProperties: Map[String, AnyRef] = transactionData.getOrElse("properties", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
+      addedProperties.foreach(property => {
+        val propertyNewValue: AnyRef = property._2.asInstanceOf[Map[String, AnyRef]].getOrElse("nv", null)
+        if (propertyNewValue == null) indexDocument.remove(property._1) else indexDocument.put(property._1, addMetadataToDocument(property._1, propertyNewValue, nestedFields))
+      })
+    }
+    indexDocument.put("identifier", message.getOrElse("nodeUniqueId", "").asInstanceOf[String])
+    indexDocument.put("objectType", message.getOrElse("objectType", "").asInstanceOf[String])
+    indexDocument.toMap
   }
 
 }

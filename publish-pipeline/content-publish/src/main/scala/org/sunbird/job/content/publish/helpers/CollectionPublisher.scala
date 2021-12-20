@@ -503,7 +503,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     new ObjectData(obj.identifier, obj.metadata ++ Map("children" -> childrenMap, "objectType" -> "content"), obj.extData, obj.hierarchy)
   }
 
-  def syncNodes(children: List[Map[String, AnyRef]], unitNodes: List[String])(implicit esUtil: ElasticSearchUtil, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, definition: ObjectDefinition, config: PublishConfig): Map[String, Map[String, AnyRef]] = {
+  def syncNodes(successObj: ObjectData, children: List[Map[String, AnyRef]], unitNodes: List[String])(implicit esUtil: ElasticSearchUtil, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, definition: ObjectDefinition, config: PublishConfig): Map[String, Map[String, AnyRef]] = {
     val contentConfig = config.asInstanceOf[ContentPublishConfig]
     val nestedFields = contentConfig.nestedFields.asScala.toList
     val nodes = ListBuffer.empty[ObjectData]
@@ -537,6 +537,12 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       case e: Exception =>
         logger.error("CollectionPublisher:: syncNodes:: Elastic Search indexing failed: " + e)
     }
+
+    // Syncing collection metadata
+    val doc: Map[String, AnyRef] = getDocument(new ObjectData(successObj.identifier, successObj.metadata.-("children"), successObj.extData, successObj.hierarchy), true, nestedFields)(esUtil)
+    val jsonDoc: String = ScalaJsonUtil.serialize(doc)
+    logger.info("CollectionPublisher:: syncNodes:: collection doc: " + jsonDoc)
+    esUtil.addDocument(successObj.identifier, jsonDoc)
 
     messages
   }
