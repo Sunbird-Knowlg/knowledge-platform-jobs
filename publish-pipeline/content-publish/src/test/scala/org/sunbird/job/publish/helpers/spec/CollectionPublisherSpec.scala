@@ -157,8 +157,9 @@ class CollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Match
     val unpublishedChildrenObj: List[Map[String, AnyRef]] = ScalaJsonUtil.deserialize[List[Map[String, AnyRef]]](unpublishedChildrenData)
     val publishedCollectionNodeMetadataObj: Map[String,AnyRef] = ScalaJsonUtil.deserialize[Map[String,AnyRef]](publishedCollectionNodeMetadata)
 
+    val collRelationalMetadata = new TestCollectionPublisher().getRelationalMetadata("do_123", 1, readerConfig)(cassandraUtil).get
     // Collection - update and publish children - line 418 in PublishFinalizer
-    val updatedChildren: List[Map[String, AnyRef]] = new TestCollectionPublisher().updateHierarchyMetadata(unpublishedChildrenObj, publishedCollectionNodeMetadataObj)(jobConfig)
+    val updatedChildren: List[Map[String, AnyRef]] = new TestCollectionPublisher().updateHierarchyMetadata(unpublishedChildrenObj, publishedCollectionNodeMetadataObj, collRelationalMetadata)(jobConfig)
 
     assert(updatedChildren.nonEmpty)
 

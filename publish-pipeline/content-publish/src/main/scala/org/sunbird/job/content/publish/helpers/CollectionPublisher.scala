@@ -113,9 +113,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
   override def deleteExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Unit = None
 
   def getObjectWithEcar(obj: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
-
    val collRelationalMetadata = getRelationalMetadata(obj.identifier, obj.pkgVersion, readerConfig).get
-
     // Line 1107 in PublishFinalizer
     val children = obj.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
     val updatedChildren = updateHierarchyMetadata(children, obj.metadata, collRelationalMetadata)(config)
@@ -447,7 +445,16 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
           updatedChild + ("children" -> updateHierarchyMetadata(updatedChild.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]], objMetadata, collRelationalMetadata))
         } else {
           //TODO: Populate relationalMetadata here for child contents
-          child
+          if (collRelationalMetadata.nonEmpty) {
+            val parent = child.getOrElse("parent", "").asInstanceOf[String]
+            val unitRelationalMetadata = collRelationalMetadata(parent).asInstanceOf[Map[String, AnyRef]].getOrElse("relationalMetadata", Map.empty).asInstanceOf[Map[String, AnyRef]]
+            if (unitRelationalMetadata.nonEmpty) {
+              val childRelationalMetadata = unitRelationalMetadata.getOrElse(child.getOrElse("identifier","").asInstanceOf[String], Map.empty).asInstanceOf[Map[String, AnyRef]]
+              if(childRelationalMetadata.nonEmpty) {
+                child ++ childRelationalMetadata
+              } else child
+            } else child
+          } else child
         }
       })
     } else children

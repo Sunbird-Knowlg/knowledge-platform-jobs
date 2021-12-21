@@ -108,8 +108,9 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
           val successObj = new ObjectData(objWithEcar.identifier, objWithEcar.metadata + ("status" -> (if (publishType.equalsIgnoreCase("Unlisted")) "Unlisted" else "Live"), "variants" -> variantsJsonString, "identifier" -> objWithEcar.identifier), objWithEcar.extData, objWithEcar.hierarchy)
           val children = successObj.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
 
+          val collRelationalMetadata = getRelationalMetadata(obj.identifier, obj.pkgVersion, readerConfig)(cassandraUtil).get
           // Collection - update and publish children - line 418 in PublishFinalizer
-          val updatedChildren = updateHierarchyMetadata(children, successObj.metadata)(config)
+          val updatedChildren = updateHierarchyMetadata(children, successObj.metadata, collRelationalMetadata)(config)
           logger.info("CollectionPublishFunction:: Hierarchy Metadata updated for Collection Object: " + successObj.identifier + " || updatedChildren:: " + updatedChildren)
           publishHierarchy(updatedChildren, successObj, readerConfig, config)(cassandraUtil)
 
