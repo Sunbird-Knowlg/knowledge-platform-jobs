@@ -20,6 +20,7 @@ import org.sunbird.job.util._
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import java.lang.reflect.Type
+import java.util.UUID
 import scala.concurrent.ExecutionContext
 
 class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
@@ -61,7 +62,7 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
   }
 
   override def metricsList(): List[String] = {
-    List(config.collectionPublishEventCount, config.collectionPublishSuccessEventCount, config.collectionPublishFailedEventCount, config.skippedEventCount)
+    List(config.collectionPublishEventCount, config.collectionPublishSuccessEventCount, config.collectionPublishFailedEventCount, config.skippedEventCount, config.collectionPostPublishProcessEventCount)
   }
 
   override def processElement(data: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
@@ -112,7 +113,8 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
           logger.info("CollectionPublishFunction:: Hierarchy Metadata updated for Collection Object: " + successObj.identifier + " || updatedChildren:: " + updatedChildren)
           publishHierarchy(updatedChildren, successObj, readerConfig, config)(cassandraUtil)
 
-          if (!isCollectionShallowCopy) syncNodes(updatedChildren, unitNodes)(esUtil, neo4JUtil, cassandraUtil, readerConfig, definition, config)
+          if (!isCollectionShallowCopy) syncNodes(successObj, updatedChildren, unitNodes)(esUtil, neo4JUtil, cassandraUtil, readerConfig, definition, config)
+          pushPostProcessEvent(successObj, context)(metrics)
           metrics.incCounter(config.collectionPublishSuccessEventCount)
           logger.info("CollectionPublishFunction:: Collection publishing completed successfully for : " + data.identifier)
         } else {
@@ -136,6 +138,24 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
     }
   }
 
+  private def pushPostProcessEvent(obj: ObjectData, context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
+      val event = getPostProcessEvent(obj)
+      context.output(config.generatePostPublishProcessTag, event)
+      metrics.incCounter(config.collectionPostPublishProcessEventCount)
+  }
+
+  def getPostProcessEvent(obj: ObjectData): String = {
+    val ets = System.currentTimeMillis
+    val mid = s"""LP.$ets.${UUID.randomUUID}"""
+    val channelId = obj.metadata("channel")
+    val ver = obj.metadata("versionKey")
+    val contentType = obj.metadata("contentType")
+    val status = obj.metadata("status")
+     //TODO: deprecate using contentType in the event.
+    val event = s"""{"eid":"BE_JOB_REQUEST", "ets": $ets, "mid": "$mid", "actor": {"id": "Post Publish Processor", "type": "System"}, "context":{"pdata":{"ver":"1.0","id":"org.sunbird.platform"}, "channel":"$channelId","env":"${config.jobEnv}"},"object":{"ver":"$ver","id":"${obj.identifier}"},"edata": {"action":"post-publish-process","iteration":1,"identifier":"${obj.identifier}","channel":"$channelId","mimeType":"${obj.mimeType}","contentType":"$contentType","pkgVersion":${obj.pkgVersion},"status":"$status","name":"${obj.metadata("name")}","trackable":${obj.metadata("trackable")}}}""".stripMargin
+    logger.info(s"Post Publish Process Event for identifier ${obj.identifier}  is  : $event")
+    event
+  }
   private def pushFailedEvent(event: Event, errorMessage: String, error: Throwable, context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
     val failedEvent = if (error == null) getFailedEvent(event.jobName, event.getMap(), errorMessage) else getFailedEvent(event.jobName, event.getMap(), error)
     context.output(config.failedEventOutTag, failedEvent)
