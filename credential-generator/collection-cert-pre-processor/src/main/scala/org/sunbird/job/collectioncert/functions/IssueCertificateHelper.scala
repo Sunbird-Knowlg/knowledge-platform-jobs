@@ -88,26 +88,38 @@ trait IssueCertificateHelper {
             } else Map[String, AnyRef]()
         } else Map[String, AnyRef]()
     }
-
+    
     def getMaxScore(event: Event)(metrics:Metrics, cassandraUtil: CassandraUtil, config:CollectionCertPreProcessorConfig, contentCache: DataCache):Double = {
-        val query = QueryBuilder.select().column("content_id").column("total_max_score").column("total_score").as("score").from(config.keyspace, config.assessmentTable)
-          .where(QueryBuilder.eq("course_id", event.courseId)).and(QueryBuilder.eq("batch_id", event.batchId))
-          .and(QueryBuilder.eq("user_id", event.userId))
-        
+        val contextId = "cb:" + event.batchId
+        val query = QueryBuilder.select().column("aggregates").column("agg").from(config.keyspace, config.useActivityAggTable)
+          .where(QueryBuilder.eq("activity_type", "Course")).and(QueryBuilder.eq("activity_id", event.courseId))
+          .and(QueryBuilder.eq("user_id", event.userId)).and(QueryBuilder.eq("context_id", contextId))
+
         val rows: java.util.List[Row] = cassandraUtil.find(query.toString)
         metrics.incCounter(config.dbReadCount)
         if(null != rows && !rows.isEmpty) {
-          val userAssessments = rows.asScala.toList.map(row => AssessmentUserAttempt(row.getString("content_id"), row.getDouble("score"), row.getDouble("total_max_score")))
-            .groupBy(f => f.contentId)
-          val filteredUserAssessments = userAssessments.filterKeys(key => {
-            val metadata = contentCache.getWithRetry(key)
-            if (metadata.nonEmpty) {
-              val contentType = metadata.getOrElse("contenttype", "")
-              config.assessmentContentTypes.contains(contentType)
-            } else throw new Exception("Metadata cache not available for: " + key)
-          })
-          // TODO: Here we have an assumption that, we will consider max percentage from all the available attempts of different assessment contents.
-          if (filteredUserAssessments.nonEmpty) filteredUserAssessments.values.flatten.map(a => (a.score*100/a.totalScore)).max else 0d
+            val aggregates: Map[String, Double] = rows.asScala.toList.head
+              .getMap("aggregates", classOf[String], classOf[java.lang.Double]).asScala.map(e => e._1 -> e._2.toDouble)
+              .toMap
+            val agg: Map[String, Double] = rows.asScala.toList.head.getMap("agg", classOf[String], classOf[Integer])
+              .asScala.map(e => e._1 -> e._2.toDouble).toMap
+            val aggs: Map[String, Double] = agg ++ aggregates
+            val userAssessments = aggs.keySet.filter(key => key.startsWith("score:")).map(
+                key => {
+                    val id= key.replaceAll("score:", "")
+                    AssessmentUserAttempt(id, aggs.getOrElse("score:" + id, 0d), aggs.getOrElse("max_score:" + id, 1d))
+                }).groupBy(f => f.contentId)
+              
+            val filteredUserAssessments = userAssessments.filterKeys(key => {
+                val metadata = contentCache.getWithRetry(key)
+                if (metadata.nonEmpty) {
+                    val contentType = metadata.getOrElse("contenttype", "")
+                    config.assessmentContentTypes.contains(contentType)
+                } else throw new Exception("Metadata cache not available for: " + key)
+            })
+            // TODO: Here we have an assumption that, we will consider max percentage from all the available attempts of different assessment contents.
+            if (filteredUserAssessments.nonEmpty) filteredUserAssessments.values.flatten
+              .map(a => (a.score * 100 / a.totalScore)).max else 0d
         } else 0d
     }
 
