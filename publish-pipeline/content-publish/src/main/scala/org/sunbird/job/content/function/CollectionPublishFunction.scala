@@ -113,8 +113,7 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
 
           //TODO: Save IMAGE Object with enrichedObj children and collRelationalMetadata when pkgVersion is 1 - verify with MaheshG
           if(data.pkgVersion == 1) {
-            val imgObj = new ObjectData(successObj.identifier, successObj.metadata, successObj.extData, enrichedObj.hierarchy)
-            saveImageHierarchy(imgObj, readerConfig, config)(cassandraUtil)
+            saveImageHierarchy(enrichedObj, readerConfig, config)(cassandraUtil)
           }
 
           // Collection - update and publish children - line 418 in PublishFinalizer
