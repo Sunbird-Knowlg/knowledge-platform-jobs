@@ -105,10 +105,18 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
 
           val variantsJsonString = ScalaJsonUtil.serialize(objWithEcar.metadata("variants"))
           val publishType = objWithEcar.getString("publish_type", "Public")
+
+          val collRelationalMetadata = getRelationalMetadata(obj.identifier, obj.pkgVersion, readerConfig)(cassandraUtil).get
+
           val successObj = new ObjectData(objWithEcar.identifier, objWithEcar.metadata + ("status" -> (if (publishType.equalsIgnoreCase("Unlisted")) "Unlisted" else "Live"), "variants" -> variantsJsonString, "identifier" -> objWithEcar.identifier), objWithEcar.extData, objWithEcar.hierarchy)
           val children = successObj.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
 
-          val collRelationalMetadata = getRelationalMetadata(obj.identifier, obj.pkgVersion, readerConfig)(cassandraUtil).get
+          //TODO: Save IMAGE Object with enrichedObj children and collRelationalMetadata when pkgVersion is 1 - verify with MaheshG
+          if(data.pkgVersion == 1) {
+            val imgObj = new ObjectData(successObj.identifier, successObj.metadata, successObj.extData, enrichedObj.hierarchy)
+            saveImageHierarchy(imgObj, readerConfig, config)(cassandraUtil)
+          }
+
           // Collection - update and publish children - line 418 in PublishFinalizer
           val updatedChildren = updateHierarchyMetadata(children, successObj.metadata, collRelationalMetadata)(config)
           logger.info("CollectionPublishFunction:: Hierarchy Metadata updated for Collection Object: " + successObj.identifier + " || updatedChildren:: " + updatedChildren)

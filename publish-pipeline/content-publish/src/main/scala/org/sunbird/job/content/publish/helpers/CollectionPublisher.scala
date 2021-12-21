@@ -96,7 +96,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       new ObjectData(obj.identifier, updatedCompatibilityLevelMeta ++ Map("childNodes" -> collectionChildNodes.filter(rec => !childNodesToRemove.contains(rec))), obj.extData, Option(collectionHierarchy + ("children" -> enrichedChildrenData.toList)))
     } else new ObjectData(obj.identifier, updatedCompatibilityLevelMeta, obj.extData, Option(collectionHierarchy ++ Map("children" -> toEnrichChildren.toList)))
 
-    val enrichedObj = processCollection(updatedObj, toEnrichChildren.toList)
+    val enrichedObj = processCollection(updatedObj)
     logger.info("CollectionPublisher:: enrichObjectMetadata:: Collection data after processing for : " + enrichedObj.identifier + " | Metadata : " + enrichedObj.metadata)
     logger.debug("CollectionPublisher:: enrichObjectMetadata:: Collection children data after processing : " + enrichedObj.hierarchy.get("children"))
 
@@ -108,7 +108,19 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     Some(getFlatStructure(List(obj.metadata ++ obj.extData.getOrElse(Map()) ++ Map("children" -> hChildren)), List()))
   }
 
-  override def saveExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Unit = None
+  override def saveExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Unit = {
+    val identifier = obj.identifier.replace(".img", "")
+    val query: Insert = QueryBuilder.insertInto(readerConfig.keyspace, readerConfig.table)
+    query.value(readerConfig.primaryKey(0), identifier)
+    query.value("relational_metadata", null)
+    val result = cassandraUtil.upsert(query.toString)
+    if (result) {
+      logger.info(s"relational_metadata emptied successfully for ${identifier}")
+    } else {
+      val msg = s"relational_metadata emptying Failed For ${identifier}"
+      logger.error(msg)
+    }
+  }
 
   override def deleteExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Unit = None
 
@@ -211,7 +223,8 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
   }
 
 
-  private def processCollection(obj: ObjectData, children: List[Map[String, AnyRef]])(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig): ObjectData = {
+  private def processCollection(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig): ObjectData = {
+    val children = obj.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
     val dataMap: mutable.Map[String, AnyRef] = processChildren(children)
     logger.info("CollectionPublisher:: processCollection:: dataMap: " + dataMap)
     val updatedObj: ObjectData = if (dataMap.nonEmpty) {
@@ -238,7 +251,6 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     val enrichedObject = if(children.nonEmpty) enrichCollection(updatedObj) else updatedObj
     //    addResourceToCollection(enrichedObject, children.to[ListBuffer]) - TODO
     enrichedObject
-
   }
 
   private def processChildren(children: List[Map[String, AnyRef]]): mutable.Map[String, AnyRef] = {
@@ -602,6 +614,24 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
         }
       })
     }
+  }
+
+  def saveImageHierarchy(obj: ObjectData, readerConfig: ExtDataConfig, config: PublishConfig)(implicit cassandraUtil: CassandraUtil): Boolean = {
+    val identifier = if(obj.identifier.endsWith(".img")) obj.identifier else obj.identifier+".img"
+    val hierarchy: Map[String, AnyRef] = obj.hierarchy.getOrElse(Map())
+    val query: Insert = QueryBuilder.insertInto(readerConfig.keyspace, readerConfig.table)
+    query.value(readerConfig.primaryKey.head, identifier)
+    query.value("hierarchy", hierarchy)
+    logger.info(s"CollectionPublisher:: saveImageHierarchy:: Publishing Hierarchy data for $identifier | Query : ${query.toString}")
+    val result = cassandraUtil.upsert(query.toString)
+    if (result) {
+      logger.info(s"CollectionPublisher:: saveImageHierarchy:: Hierarchy data saved successfully for $identifier")
+    } else {
+      val msg = s"CollectionPublisher:: saveImageHierarchy:: Hierarchy Data Insertion Failed For $identifier"
+      logger.error(msg)
+      throw new InvalidInputException(msg)
+    }
+    result
   }
 
 }
