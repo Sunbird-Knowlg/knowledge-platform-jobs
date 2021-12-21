@@ -136,8 +136,7 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
   }
 
   private def pushMVCProcessorEvent(obj: ObjectData, context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
-    val sourceURL = if (obj.metadata("sourceURL") != null) obj.metadata.get("sourceURL").asInstanceOf[String] else ""
-    if (sourceURL.nonEmpty) {
+    if (obj.getString("sourceURL", "").nonEmpty) {
       val event = getMVCProcessorEvent(obj)
       context.output(config.mvcProcessorTag, event)
       metrics.incCounter(config.mvProcessorEventCount)
