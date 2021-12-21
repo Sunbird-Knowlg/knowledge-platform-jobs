@@ -100,20 +100,20 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
           logger.info("CollectionPublishFunction:: Collection Object Enriched: " + enrichedObj.identifier)
           val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
           logger.info("CollectionPublishFunction:: ECAR generation completed for Collection Object: " + objWithEcar.identifier)
+
+          val collRelationalMetadata = getRelationalMetadata(obj.identifier, obj.pkgVersion, readerConfig)(cassandraUtil).get
+
           saveOnSuccess(new ObjectData(objWithEcar.identifier, objWithEcar.metadata.-("children"), objWithEcar.extData, objWithEcar.hierarchy))(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
           logger.info("CollectionPublishFunction:: Published Collection Object metadata saved successfully to graph DB: " + objWithEcar.identifier)
 
           val variantsJsonString = ScalaJsonUtil.serialize(objWithEcar.metadata("variants"))
           val publishType = objWithEcar.getString("publish_type", "Public")
-
-          val collRelationalMetadata = getRelationalMetadata(obj.identifier, obj.pkgVersion, readerConfig)(cassandraUtil).get
-
           val successObj = new ObjectData(objWithEcar.identifier, objWithEcar.metadata + ("status" -> (if (publishType.equalsIgnoreCase("Unlisted")) "Unlisted" else "Live"), "variants" -> variantsJsonString, "identifier" -> objWithEcar.identifier), objWithEcar.extData, objWithEcar.hierarchy)
           val children = successObj.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
 
           //TODO: Save IMAGE Object with enrichedObj children and collRelationalMetadata when pkgVersion is 1 - verify with MaheshG
           if(data.pkgVersion == 1) {
-            saveImageHierarchy(enrichedObj, readerConfig, config)(cassandraUtil)
+            saveImageHierarchy(enrichedObj, readerConfig, collRelationalMetadata)(cassandraUtil)
           }
 
           // Collection - update and publish children - line 418 in PublishFinalizer
