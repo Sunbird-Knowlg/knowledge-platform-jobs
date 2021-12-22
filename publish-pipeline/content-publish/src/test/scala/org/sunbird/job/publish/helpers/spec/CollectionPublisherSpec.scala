@@ -87,7 +87,7 @@ class CollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Match
   //  }
 
   "saveExternalData " should "save external data to cassandra table" in {
-    val data = new ObjectData("do_123", Map[String, AnyRef](), Some(Map[String, AnyRef]("body" -> "body", "answer" -> "answer")))
+    val data = new ObjectData("do_1234", Map[String, AnyRef](), Some(Map[String, AnyRef]("body" -> "body", "answer" -> "answer")))
     new TestCollectionPublisher().saveExternalData(data, readerConfig)
   }
 
