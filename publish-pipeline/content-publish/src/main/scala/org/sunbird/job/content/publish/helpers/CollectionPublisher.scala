@@ -255,6 +255,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
         childMetadata(prop._1) match {
           case propStrValue: String => Map(prop._1 -> Set(propStrValue))
           case propListValue: List[_] => Map(prop._1 -> propListValue.toSet)
+          case propVal: java.util.List[String] => Map(prop._1 -> propVal.asScala.toSet[String])
           case _ => Map.empty[String, AnyRef]
         }
       } else Map.empty[String, AnyRef]
