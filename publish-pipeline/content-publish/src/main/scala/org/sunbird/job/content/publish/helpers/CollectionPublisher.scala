@@ -88,7 +88,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       new ObjectData(obj.identifier, updatedCompatibilityLevelMeta ++ Map("childNodes" -> collectionChildNodes.filter(rec => !childNodesToRemove.contains(rec))), obj.extData, Option(collectionHierarchy + ("children" -> enrichedChildrenData.toList)))
     } else new ObjectData(obj.identifier, updatedCompatibilityLevelMeta, obj.extData, Option(collectionHierarchy ++ Map("children" -> toEnrichChildren.toList)))
 
-    val enrichedObj = processCollection(updatedObj, toEnrichChildren.toList)
+    val enrichedObj = processCollection(updatedObj)
     logger.info("CollectionPublisher:: enrichObjectMetadata:: Collection data after processing for : " + enrichedObj.identifier + " | Metadata : " + enrichedObj.metadata)
     logger.debug("CollectionPublisher:: enrichObjectMetadata:: Collection children data after processing : " + enrichedObj.hierarchy.get("children"))
 
@@ -202,7 +202,8 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
   }
 
 
-  private def processCollection(obj: ObjectData, children: List[Map[String, AnyRef]])(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig): ObjectData = {
+  private def processCollection(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig): ObjectData = {
+    val children = obj.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
     val dataMap: mutable.Map[String, AnyRef] = processChildren(children)
     logger.info("CollectionPublisher:: processCollection:: dataMap: " + dataMap)
     val updatedObj: ObjectData = if (dataMap.nonEmpty) {
@@ -254,6 +255,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
         childMetadata(prop._1) match {
           case propStrValue: String => Map(prop._1 -> Set(propStrValue))
           case propListValue: List[_] => Map(prop._1 -> propListValue.toSet)
+          case propVal: java.util.List[String] => Map(prop._1 -> propVal.asScala.toSet[String])
           case _ => Map.empty[String, AnyRef]
         }
       } else Map.empty[String, AnyRef]
