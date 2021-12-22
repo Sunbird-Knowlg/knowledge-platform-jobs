@@ -19,3 +19,5 @@ case class ExtDataConfig(keyspace: String, table: String, primaryKey: List[Strin
 case class DefinitionConfig(supportedVersion: Map[String, AnyRef], basePath: String)
 
 case class ObjectExtData(data: Option[Map[String, AnyRef]] = None, hierarchy: Option[Map[String, AnyRef]] = None)
+
+case class PublishMetadata(identifier: String, pkgVersion: Double, publishType: String,eData:Map[String, AnyRef],context:Map[String, AnyRef],obj:Map[String, AnyRef],publishChain: List[Map[String, AnyRef]])
