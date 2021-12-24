@@ -587,7 +587,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
           if (StringUtils.equalsIgnoreCase("Parent", child.getOrElse("visibility", "").asInstanceOf[String])) {
             logger.info("CollectionPublisher:: getNodeForSyncing:: child identifier: " + child.getOrElse("identifier", "").asInstanceOf[String])
 
-            val nodeMetadata = mutable.Map() ++ child //CHECK IF THIS IS GOOD
+            val nodeMetadata = mutable.Map() ++ child
 
             // TODO - Relation related CODE is MISSING - Line 735 in Publish Finalizer
 
