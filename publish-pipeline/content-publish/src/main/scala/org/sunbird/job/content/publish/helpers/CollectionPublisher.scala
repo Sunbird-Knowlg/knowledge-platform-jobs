@@ -116,7 +116,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     if (result) {
       logger.info(s"relational_metadata emptied successfully for ${identifier}")
     } else {
-      val msg = s"relational_metadata emptying Failed For ${identifier}"
+      val msg = s"relational_metadata emptying Failed For $identifier"
       logger.error(msg)
     }
   }
@@ -124,7 +124,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
   override def deleteExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Unit = None
 
   def getObjectWithEcar(obj: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
-   val collRelationalMetadata = getRelationalMetadata(obj.identifier, obj.pkgVersion, readerConfig).get
+   val collRelationalMetadata = getRelationalMetadata(obj.identifier, obj.pkgVersion-1, readerConfig).get
     // Line 1107 in PublishFinalizer
     val children = obj.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
     val updatedChildren = updateHierarchyMetadata(children, obj.metadata, collRelationalMetadata)(config)
@@ -463,7 +463,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
             if (unitRelationalMetadata.nonEmpty) {
               val childRelationalMetadata = unitRelationalMetadata.getOrElse(child.getOrElse("identifier","").asInstanceOf[String], Map.empty).asInstanceOf[Map[String, AnyRef]]
               if(childRelationalMetadata.nonEmpty) {
-                child ++ childRelationalMetadata
+                child + ("relationalMetadata" -> childRelationalMetadata)
               } else child
             } else child
           } else child
