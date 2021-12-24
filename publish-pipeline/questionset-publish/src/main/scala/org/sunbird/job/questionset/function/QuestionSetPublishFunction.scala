@@ -89,8 +89,8 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
         // Generate ECAR
         val objWithEcar = generateECAR(enrichedObj, pkgTypes)(ec, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
         // Generate PDF URL
-    //    val updatedObj = generatePreviewUrl(objWithEcar, qList)(httpUtil, cloudStorageUtil)
-     //   saveOnSuccess(updatedObj)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
+        val updatedObj = generatePreviewUrl(objWithEcar, qList)(httpUtil, cloudStorageUtil)
+        saveOnSuccess(updatedObj)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
         logger.info("QuestionSet publishing completed successfully for : " + data.identifier)
         publishNextEvent(data,objWithEcar.metadata.getOrElse("downloadUrl","").toString)
         metrics.incCounter(config.questionSetPublishSuccessEventCount)
