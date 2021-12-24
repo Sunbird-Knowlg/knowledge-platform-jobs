@@ -121,8 +121,8 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
             saveImageHierarchy(enrichedObj, readerConfig, collRelationalMetadata)(cassandraUtil)
           }
 
-//          if (!isCollectionShallowCopy) syncNodes(successObj, updatedChildren, unitNodes)(esUtil, neo4JUtil, cassandraUtil, readerConfig, definition, config)
-//          pushPostProcessEvent(successObj, context)(metrics)
+          if (!isCollectionShallowCopy) syncNodes(successObj, updatedChildren, unitNodes)(esUtil, neo4JUtil, cassandraUtil, readerConfig, definition, config)
+          pushPostProcessEvent(successObj, context)(metrics)
           metrics.incCounter(config.collectionPublishSuccessEventCount)
           logger.info("CollectionPublishFunction:: Collection publishing completed successfully for : " + data.identifier)
         } else {
