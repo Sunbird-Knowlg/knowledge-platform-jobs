@@ -38,7 +38,7 @@ class DefinitionCacheTestSpec extends FlatSpec with BeforeAndAfterAll with Match
 
   it should "return external properties"  in {
     val definition = definitionCache.getDefinition("Collection", "1.0", basePath)
-    definition.externalProperties.size should be(1)
+    definition.externalProperties.size should be >= 1
     definition.externalProperties contains("hierarchy")
   }
 }
