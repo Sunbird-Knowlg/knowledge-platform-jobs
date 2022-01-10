@@ -12,12 +12,14 @@ import org.elasticsearch.action.admin.indices.create.CreateIndexRequest
 import org.elasticsearch.action.bulk.BulkRequest
 import org.elasticsearch.action.delete.DeleteRequest
 import org.elasticsearch.action.get.GetRequest
-import org.elasticsearch.action.index.{IndexRequest, IndexResponse}
+import org.elasticsearch.action.index.IndexRequest
 import org.elasticsearch.action.update.UpdateRequest
 import org.elasticsearch.client.{Response, RestClient, RestClientBuilder, RestHighLevelClient}
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.common.xcontent.XContentType
 import org.slf4j.LoggerFactory
+
+import scala.collection.convert.ImplicitConversions.`collection AsScalaIterable`
 
 class ElasticSearchUtil(connectionInfo: String, indexName: String, indexType: String, batchSize: Int = 1000) extends Serializable {
 
@@ -171,10 +173,9 @@ class ElasticSearchUtil(connectionInfo: String, indexName: String, indexType: St
   }
 
   private def checkDocStringLength(doc: util.Map[String, AnyRef]): util.Map[String, AnyRef] = {
-    while (doc.keySet.iterator.hasNext) {
-      val docKey = doc.keySet.iterator.next
-      if (doc.get(docKey).isInstanceOf[String] && doc.get(docKey).toString.length > maxFieldLimit) doc.put(docKey, doc.get(docKey).toString.substring(0, maxFieldLimit))
-    }
+    doc.entrySet.map(entry => {
+      if (entry.getValue.isInstanceOf[String] && entry.getValue.toString.length > maxFieldLimit) doc.put(entry.getKey, entry.getValue.toString.substring(0, maxFieldLimit))
+    })
     doc
   }
 
