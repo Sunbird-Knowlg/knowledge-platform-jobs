@@ -2,7 +2,9 @@ package org.sunbird.job.collectioncert.domain
 
 import java.util.{Date, UUID}
 
-case class EnrolledUser(userId: String, oldId: String = null, issuedOn: Date = null)
+case class EnrolledUser(userId: String, oldId: String = null, issuedOn: Date = null, additionalProps: Map[String, Any] = Map[String, Any]())
+
+case class AssessedUser(userId: String, additionalProps: Map[String, Any] = Map[String, Any]())
 
 
 case class ActorObject(id: String = "Certificate Generator", `type`: String = "System")
