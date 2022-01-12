@@ -15,6 +15,8 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 
 	def collection: List[Map[String, String]] = readOrDefault("edata.collection", List(Map())).asInstanceOf[List[Map[String, String]]]
 
+	def textbookInfo: Map[String, String] = readOrDefault("edata.textbookInfo", Map()).asInstanceOf[Map[String, String]]
+
 	def action: String = readOrDefault[String]("edata.action", "")
 
 	def mimeType: String = readOrDefault[String]("edata.metadata.mimeType", "")
@@ -26,6 +28,12 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 	def repository: Option[String] = read[String]("edata.repository")
 
 	def downloadUrl: String = readOrDefault[String]("edata.metadata.downloadUrl", "")
+
+	def stage: String = readOrDefault[String]("edata.stage", "")
+
+	def identifier: String = readOrDefault[String]("edata.identifier", "")
+
+	def reqOriginData: Map[String, String] = readOrDefault("edata.originData", Map()).asInstanceOf[Map[String, String]]
 
 	def pkgVersion: Double = {
 		val pkgVersion = readOrDefault[Int]("edata.metadata.pkgVersion", 0)

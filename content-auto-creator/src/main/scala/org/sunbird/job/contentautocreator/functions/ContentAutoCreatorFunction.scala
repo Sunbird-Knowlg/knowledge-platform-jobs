@@ -49,6 +49,8 @@ class ContentAutoCreatorFunction(config: ContentAutoCreatorConfig, httpUtil: Htt
       logger.debug("event edata : " + event.eData)
       val definition: ObjectDefinition = defCache.getDefinition(event.objectType, config.schemaSupportVersionMap.getOrElse(event.objectType.toLowerCase(), "1.0").asInstanceOf[String], config.definitionBasePath)
 
+
+
       logger.info("Bulk approval operation completed for : " + event.objectId)
       metrics.incCounter(config.successEventCount)
     } else {
