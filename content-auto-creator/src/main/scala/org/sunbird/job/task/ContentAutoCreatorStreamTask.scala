@@ -10,25 +10,23 @@ import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.util.{FlinkUtil, HttpUtil}
 import org.slf4j.LoggerFactory
-import org.sunbird.job.autocreatorv2.domain.Event
-import org.sunbird.job.autocreatorv2.functions.{AutoCreatorFunction, LinkCollectionFunction}
-import org.sunbird.job.autocreatorv2.model.ObjectParent
+import org.sunbird.job.contentautocreator.domain.Event
+import org.sunbird.job.contentautocreator.functions.ContentAutoCreatorFunction
 
 
-class ContentAutoCreatorStreamTask(config: AutoCreatorV2Config, kafkaConnector: FlinkKafkaConnector, httpUtil: HttpUtil) {
+class ContentAutoCreatorStreamTask(config: ContentAutoCreatorConfig, kafkaConnector: FlinkKafkaConnector, httpUtil: HttpUtil) {
   private[this] val logger = LoggerFactory.getLogger(classOf[ContentAutoCreatorStreamTask])
 
   def process(): Unit = {
     implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
     implicit val eventTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
     implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
-    implicit val objectParentTypeInfo: TypeInformation[ObjectParent] = TypeExtractor.getForClass(classOf[ObjectParent])
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
 
     val contentAutoCreatorStream = env.addSource(kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)).name(config.eventConsumer)
       .uid(config.eventConsumer).setParallelism(config.kafkaConsumerParallelism)
       .rebalance
-      .process(new AutoCreatorFunction(config, httpUtil))
+      .process(new ContentAutoCreatorFunction(config, httpUtil))
       .name(config.contentAutoCreatorFunction)
       .uid(config.contentAutoCreatorFunction)
       .setParallelism(config.parallelism)
