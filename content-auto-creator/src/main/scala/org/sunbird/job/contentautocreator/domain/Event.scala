@@ -32,7 +32,7 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 		pkgVersion.toDouble
 	}
 
-	def isValid(): Boolean = {
+	def isValid: Boolean = {
 		(StringUtils.equals("auto-create", action) && StringUtils.isNotBlank(objectId)) && (contentObjectType.contains(objectType)
 		  && repository.nonEmpty && metadata.nonEmpty) && (StringUtils.isNotBlank(downloadUrl) && StringUtils.endsWith(downloadUrl, ".ecar"))
 	}

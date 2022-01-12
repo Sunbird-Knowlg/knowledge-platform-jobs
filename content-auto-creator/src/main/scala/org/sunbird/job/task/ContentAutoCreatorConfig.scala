@@ -6,7 +6,7 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.streaming.api.scala.OutputTag
 import org.sunbird.job.BaseJobConfig
-import org.sunbird.job.autocreatorv2.model.ObjectParent
+import org.sunbird.job.contentautocreator.model.ObjectParent
 
 import scala.collection.JavaConverters._
 
@@ -36,6 +36,7 @@ class ContentAutoCreatorConfig(override val config: Config) extends BaseJobConfi
 
   // Tags
   val contentAutoCreatorOutputTag: OutputTag[ObjectParent] = OutputTag[ObjectParent]("content-auto-creator")
+
 
   val configVersion = "1.0"
 
