@@ -43,13 +43,13 @@ class ContentAutoCreatorConfig(override val config: Config) extends BaseJobConfi
   // DB Config
   val cassandraHost: String = config.getString("lms-cassandra.host")
   val cassandraPort: Int = config.getInt("lms-cassandra.port")
-  val graphRoutePath = config.getString("neo4j.routePath")
-  val graphName = config.getString("neo4j.graph")
+  val graphRoutePath: String = config.getString("neo4j.routePath")
+  val graphName: String = config.getString("neo4j.graph")
 
 
   // Schema Config
   val definitionBasePath: String = if (config.hasPath("schema.basePath")) config.getString("schema.basePath") else "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local"
-  val schemaSupportVersionMap = if (config.hasPath("schema.supportedVersion")) config.getObject("schema.supportedVersion").unwrapped().asScala.toMap else Map[String, AnyRef]()
+  val schemaSupportVersionMap: Map[String, AnyRef] = if (config.hasPath("schema.supportedVersion")) config.getObject("schema.supportedVersion").unwrapped().asScala.toMap else Map[String, AnyRef]()
 
   val cloudProps: List[String] = if (config.hasPath("object.cloud_props")) config.getStringList("object.cloud_props").asScala.toList else List("variants", "downloadUrl", "appIcon", "posterImage", "pdfUrl")
   val overrideManifestProps: List[String] = if (config.hasPath("object.override_manifest_props")) config.getStringList("object.override_manifest_props").asScala.toList else List("variants", "downloadUrl", "previewUrl", "pdfUrl", "lastPublishedBy")
