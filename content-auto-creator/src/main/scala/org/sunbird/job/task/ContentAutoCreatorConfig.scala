@@ -59,5 +59,5 @@ class ContentAutoCreatorConfig(override val config: Config) extends BaseJobConfi
   val contentServiceBaseUrl : String = config.getString("service.content.basePath")
   val sourceBaseUrl: String = config.getString("source.baseUrl")
 
-  def getConfig() = config
+  def getConfig(): Config = config
 }
