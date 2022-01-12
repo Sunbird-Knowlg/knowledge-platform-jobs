@@ -6,7 +6,7 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.streaming.api.scala.OutputTag
 import org.sunbird.job.BaseJobConfig
-import org.sunbird.job.contentautocreator.model.ObjectParent
+import org.sunbird.job.contentautocreator.domain.Event
 
 import scala.collection.JavaConverters._
 
@@ -14,7 +14,7 @@ class ContentAutoCreatorConfig(override val config: Config) extends BaseJobConfi
 
   implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
   implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
-  implicit val objectParentTypeInfo: TypeInformation[ObjectParent] = TypeExtractor.getForClass(classOf[ObjectParent])
+  implicit val contentAutoCreatorTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
 
   // Kafka Topics Configuration
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
@@ -35,7 +35,7 @@ class ContentAutoCreatorConfig(override val config: Config) extends BaseJobConfi
   val contentAutoCreatorEventProducer = "content-auto-creator-producer"
 
   // Tags
-  val contentAutoCreatorOutputTag: OutputTag[ObjectParent] = OutputTag[ObjectParent]("content-auto-creator")
+  val contentAutoCreatorOutputTag: OutputTag[Event] = OutputTag[Event]("content-auto-creator")
 
 
   val configVersion = "1.0"

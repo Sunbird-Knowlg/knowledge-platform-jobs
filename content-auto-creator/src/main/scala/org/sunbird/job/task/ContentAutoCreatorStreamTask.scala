@@ -9,13 +9,11 @@ import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.util.{FlinkUtil, HttpUtil}
-import org.slf4j.LoggerFactory
 import org.sunbird.job.contentautocreator.domain.Event
 import org.sunbird.job.contentautocreator.functions.ContentAutoCreatorFunction
 
 
 class ContentAutoCreatorStreamTask(config: ContentAutoCreatorConfig, kafkaConnector: FlinkKafkaConnector, httpUtil: HttpUtil) {
-  private[this] val logger = LoggerFactory.getLogger(classOf[ContentAutoCreatorStreamTask])
 
   def process(): Unit = {
     implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
