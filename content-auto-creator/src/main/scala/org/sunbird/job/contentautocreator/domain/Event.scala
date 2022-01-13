@@ -2,12 +2,11 @@ package org.sunbird.job.contentautocreator.domain
 
 import org.apache.commons.lang3.StringUtils
 import org.sunbird.job.domain.reader.JobRequest
+import org.sunbird.job.task.ContentAutoCreatorConfig
 
 class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) extends JobRequest(eventMap, partition, offset) {
 
 	private val jobName = "content-auto-creator"
-
-	private val contentObjectType = "Content"
 
 	def eData: Map[String, AnyRef] = readOrDefault("edata", Map()).asInstanceOf[Map[String, AnyRef]]
 
@@ -48,8 +47,9 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 		pkgVersion.toDouble
 	}
 
-	def isValid: Boolean = {
+	def isValid(config: ContentAutoCreatorConfig): Boolean = {
 		(StringUtils.equals("auto-create", action) && StringUtils.isNotBlank(objectId)) && StringUtils.isNotBlank(channel) &&
-			(contentObjectType.contains(objectType) && metadata.nonEmpty && (repository.nonEmpty || StringUtils.isNotBlank(artifactUrl)))
+			(config.allowedContentObjectTypes.contains(objectType) && metadata.nonEmpty && (repository.nonEmpty || StringUtils.isNotBlank(artifactUrl))) &&
+		 (if (StringUtils.isNotBlank(stage)) config.allowedContentStages.contains(stage) else true)
 	}
 }

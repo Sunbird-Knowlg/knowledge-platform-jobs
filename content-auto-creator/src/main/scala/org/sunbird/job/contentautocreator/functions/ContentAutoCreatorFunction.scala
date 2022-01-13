@@ -44,7 +44,7 @@ class ContentAutoCreatorFunction(config: ContentAutoCreatorConfig, httpUtil: Htt
                               metrics: Metrics): Unit = {
     metrics.incCounter(config.totalEventsCount)
     // TODO: Check if object already exists. If exists, add validation based on pkgVersion
-    if (event.isValid) {
+    if (event.isValid(config)) {
       logger.info("ContentAutoCreatorFunction::processElement:: Processing event for auto creator content upload/approval operation having identifier : " + event.objectId)
       logger.debug("ContentAutoCreatorFunction::processElement:: event edata : " + event.eData)
 

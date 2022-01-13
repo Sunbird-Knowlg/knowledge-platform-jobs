@@ -54,6 +54,8 @@ class ContentAutoCreatorConfig(override val config: Config) extends BaseJobConfi
   val overrideManifestProps: List[String] = if (config.hasPath("object.override_manifest_props")) config.getStringList("object.override_manifest_props").asScala.toList else List("variants", "downloadUrl", "previewUrl", "pdfUrl", "lastPublishedBy")
   val contentServiceBaseUrl : String = config.getString("service.content.basePath")
   val sourceBaseUrl: String = config.getString("source.baseUrl")
+  val allowedContentStages: List[String] = if (config.hasPath("content_auto_creator.allowed_content_stages")) config.getStringList("content_auto_creator.allowed_content_stages").asScala.toList else List("create", "upload", "review", "publish")
+  val allowedContentObjectTypes: List[String] = if (config.hasPath("content_auto_creator.allowed_object_types")) config.getStringList("content_auto_creator.allowed_object_types").asScala.toList else List("Content")
 
   def getConfig: Config = config
 }
