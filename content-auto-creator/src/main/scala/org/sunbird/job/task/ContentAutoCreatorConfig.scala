@@ -56,6 +56,7 @@ class ContentAutoCreatorConfig(override val config: Config) extends BaseJobConfi
   val sourceBaseUrl: String = config.getString("source.baseUrl")
   val allowedContentStages: List[String] = if (config.hasPath("content_auto_creator.allowed_content_stages")) config.getStringList("content_auto_creator.allowed_content_stages").asScala.toList else List("create", "upload", "review", "publish")
   val allowedContentObjectTypes: List[String] = if (config.hasPath("content_auto_creator.allowed_object_types")) config.getStringList("content_auto_creator.allowed_object_types").asScala.toList else List("Content")
+  val mandatoryContentMetadata: List[String] = if (config.hasPath("content_auto_creator.content_mandatory_fields")) config.getStringList("content_auto_creator.content_mandatory_fields").asScala.toList else List.empty
 
   def getConfig: Config = config
 }

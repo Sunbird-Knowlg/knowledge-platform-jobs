@@ -49,7 +49,14 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 
 	def isValid(config: ContentAutoCreatorConfig): Boolean = {
 		(StringUtils.equals("auto-create", action) && StringUtils.isNotBlank(objectId)) && StringUtils.isNotBlank(channel) &&
-			(config.allowedContentObjectTypes.contains(objectType) && metadata.nonEmpty && (repository.nonEmpty || StringUtils.isNotBlank(artifactUrl))) &&
-		 (if (StringUtils.isNotBlank(stage)) config.allowedContentStages.contains(stage) else true)
+			(config.allowedContentObjectTypes.contains(objectType) && metadata.nonEmpty && (repository.nonEmpty || StringUtils.isNotBlank(artifactUrl)))
+	}
+
+	def validateStage(config: ContentAutoCreatorConfig): Boolean = {
+		if (StringUtils.isNotBlank(stage)) config.allowedContentStages.contains(stage) else true
+	}
+
+	def validateMetadata(config: ContentAutoCreatorConfig): Boolean = {
+		config.mandatoryContentMetadata.nonEmpty && config.mandatoryContentMetadata.forall(attr => metadata.contains(attr))
 	}
 }

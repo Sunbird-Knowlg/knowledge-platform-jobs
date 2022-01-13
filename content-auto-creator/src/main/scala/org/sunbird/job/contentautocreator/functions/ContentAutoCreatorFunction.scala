@@ -47,12 +47,21 @@ class ContentAutoCreatorFunction(config: ContentAutoCreatorConfig, httpUtil: Htt
     if (event.isValid(config)) {
       logger.info("ContentAutoCreatorFunction::processElement:: Processing event for auto creator content upload/approval operation having identifier : " + event.objectId)
       logger.debug("ContentAutoCreatorFunction::processElement:: event edata : " + event.eData)
+      if(event.validateStage(config)) {
+        if(event.validateMetadata(config)) {
 
 
-
-
-      logger.info("ContentAutoCreatorFunction::processElement:: Content auto creator upload/approval operation completed for : " + event.objectId)
-      metrics.incCounter(config.successEventCount)
+          logger.info("ContentAutoCreatorFunction::processElement:: Content auto creator upload/approval operation completed for : " + event.objectId)
+          metrics.incCounter(config.successEventCount)
+        } else{
+          logger.info("ContentAutoCreatorFunction::processElement:: Event Ignored. Event Metadata Validation Failed for :" + event.identifier + " | Metadata : " + event.metadata + " Required fields are : " + config.mandatoryContentMetadata)
+          metrics.incCounter(config.skippedEventCount)
+        }
+      }
+      else{
+        logger.info("ContentAutoCreatorFunction::processElement:: Event Ignored. Content Stage Validation Failed for :" + event.identifier + " | Stage : " + event.stage + " Allowed Stages are : " + config.allowedContentStages)
+        metrics.incCounter(config.skippedEventCount)
+      }
     } else {
       logger.info("ContentAutoCreatorFunction::processElement:: Event is not qualified for auto creator content upload/approval having identifier : " + event.objectId + " | objectType : " + event.objectType + " | source : " + event.repository)
       metrics.incCounter(config.skippedEventCount)
