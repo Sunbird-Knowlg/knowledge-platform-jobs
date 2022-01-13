@@ -11,6 +11,10 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 
 	def eData: Map[String, AnyRef] = readOrDefault("edata", Map()).asInstanceOf[Map[String, AnyRef]]
 
+	def context: Map[String, AnyRef] = readOrDefault("context", Map()).asInstanceOf[Map[String, AnyRef]]
+
+	def channel: String = readOrDefault[String]("context.channel", "")
+
 	def metadata: Map[String, AnyRef] = readOrDefault("edata.metadata", Map())
 
 	def collection: List[Map[String, String]] = readOrDefault("edata.collection", List(Map())).asInstanceOf[List[Map[String, String]]]
@@ -27,7 +31,7 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 
 	def repository: Option[String] = read[String]("edata.repository")
 
-	def downloadUrl: String = readOrDefault[String]("edata.metadata.downloadUrl", "")
+	def artifactUrl: String = readOrDefault[String]("edata.metadata.artifactUrl", "")
 
 	def stage: String = readOrDefault[String]("edata.stage", "")
 
@@ -41,7 +45,7 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 	}
 
 	def isValid: Boolean = {
-		(StringUtils.equals("auto-create", action) && StringUtils.isNotBlank(objectId)) && (contentObjectType.contains(objectType)
-		  && repository.nonEmpty && metadata.nonEmpty) && (StringUtils.isNotBlank(downloadUrl) && StringUtils.endsWith(downloadUrl, ".ecar"))
+		(StringUtils.equals("auto-create", action) && StringUtils.isNotBlank(objectId)) && StringUtils.isNotBlank(channel) &&
+			(contentObjectType.contains(objectType) && metadata.nonEmpty && (repository.nonEmpty || StringUtils.isNotBlank(artifactUrl)))
 	}
 }
