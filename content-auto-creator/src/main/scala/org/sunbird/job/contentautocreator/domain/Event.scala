@@ -13,6 +13,8 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 
 	def context: Map[String, AnyRef] = readOrDefault("context", Map()).asInstanceOf[Map[String, AnyRef]]
 
+	def obj: Map[String, AnyRef] = readOrDefault("object", Map()).asInstanceOf[Map[String, AnyRef]]
+
 	def channel: String = readOrDefault[String]("context.channel", "")
 
 	def metadata: Map[String, AnyRef] = readOrDefault("edata.metadata", Map())
@@ -35,7 +37,7 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 
 	def stage: String = readOrDefault[String]("edata.stage", "")
 
-	def identifier: String = readOrDefault[String]("edata.identifier", "")
+	def identifier: String = readOrDefault[String]("object.identifier", "")
 
 	def reqOriginData: Map[String, String] = readOrDefault("edata.originData", Map()).asInstanceOf[Map[String, String]]
 
