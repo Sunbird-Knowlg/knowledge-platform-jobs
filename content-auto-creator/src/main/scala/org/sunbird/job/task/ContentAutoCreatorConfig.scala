@@ -52,9 +52,6 @@ class ContentAutoCreatorConfig(override val config: Config) extends BaseJobConfi
 
   val cloudProps: List[String] = if (config.hasPath("object.cloud_props")) config.getStringList("object.cloud_props").asScala.toList else List("variants", "downloadUrl", "appIcon", "posterImage", "pdfUrl")
   val overrideManifestProps: List[String] = if (config.hasPath("object.override_manifest_props")) config.getStringList("object.override_manifest_props").asScala.toList else List("variants", "downloadUrl", "previewUrl", "pdfUrl", "lastPublishedBy")
-  val expandableObjects: List[String] = if (config.hasPath("expandable_objects")) config.getStringList("expandable_objects").asScala.toList else List("QuestionSet")
-  val nonExpandableObjects: List[String] = if (config.hasPath("non_expandable_objects")) config.getStringList("non_expandable_objects").asScala.toList else List("Question")
-  val graphEnabledObjects: List[String] = if (config.hasPath("graph_enabled_objecttypes")) config.getStringList("graph_enabled_objecttypes").asScala.toList else List("Question")
   val contentServiceBaseUrl : String = config.getString("service.content.basePath")
   val sourceBaseUrl: String = config.getString("source.baseUrl")
 
