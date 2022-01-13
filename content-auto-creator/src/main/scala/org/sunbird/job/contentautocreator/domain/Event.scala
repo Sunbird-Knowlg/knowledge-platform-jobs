@@ -39,6 +39,8 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 
 	def reqOriginData: Map[String, String] = readOrDefault("edata.originData", Map()).asInstanceOf[Map[String, String]]
 
+	def currentIteration: String = readOrDefault[String]("edata.iteration", "")
+
 	def pkgVersion: Double = {
 		val pkgVersion = readOrDefault[Int]("edata.metadata.pkgVersion", 0)
 		pkgVersion.toDouble
