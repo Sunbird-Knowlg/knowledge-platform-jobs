@@ -45,16 +45,16 @@ class ContentAutoCreatorFunction(config: ContentAutoCreatorConfig, httpUtil: Htt
     metrics.incCounter(config.totalEventsCount)
     // TODO: Check if object already exists. If exists, add validation based on pkgVersion
     if (event.isValid) {
-      logger.info("Processing event for bulk approval operation having identifier : " + event.objectId)
-      logger.debug("event edata : " + event.eData)
-      val definition: ObjectDefinition = defCache.getDefinition(event.objectType, config.schemaSupportVersionMap.getOrElse(event.objectType.toLowerCase(), "1.0").asInstanceOf[String], config.definitionBasePath)
+      logger.info("ContentAutoCreatorFunction::processElement:: Processing event for auto creator content upload/approval operation having identifier : " + event.objectId)
+      logger.debug("ContentAutoCreatorFunction::processElement:: event edata : " + event.eData)
 
 
 
-      logger.info("Bulk approval operation completed for : " + event.objectId)
+
+      logger.info("ContentAutoCreatorFunction::processElement:: Content auto creator upload/approval operation completed for : " + event.objectId)
       metrics.incCounter(config.successEventCount)
     } else {
-      logger.info("Event is not qualified for bulk approval having identifier : " + event.objectId + " | objectType : " + event.objectType + " | source : " + event.repository)
+      logger.info("ContentAutoCreatorFunction::processElement:: Event is not qualified for auto creator content upload/approval having identifier : " + event.objectId + " | objectType : " + event.objectType + " | source : " + event.repository)
       metrics.incCounter(config.skippedEventCount)
     }
   }
