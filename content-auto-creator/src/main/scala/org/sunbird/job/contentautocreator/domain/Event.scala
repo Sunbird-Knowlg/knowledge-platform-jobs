@@ -40,7 +40,7 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 
 	def reqOriginData: Map[String, String] = readOrDefault("edata.originData", Map()).asInstanceOf[Map[String, String]]
 
-	def currentIteration: String = readOrDefault[String]("edata.iteration", "")
+	def currentIteration: Int = readOrDefault[Int]("edata.iteration", 1)
 
 	def pkgVersion: Double = {
 		val pkgVersion = readOrDefault[Int]("edata.metadata.pkgVersion", 0)
@@ -48,7 +48,7 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 	}
 
 	def isValid(config: ContentAutoCreatorConfig): Boolean = {
-		(StringUtils.equals("auto-create", action) && StringUtils.isNotBlank(objectId)) && StringUtils.isNotBlank(channel) &&
+		(currentIteration<=config.maxIteration && StringUtils.equals("auto-create", action) && StringUtils.isNotBlank(objectId)) && StringUtils.isNotBlank(channel) &&
 			(config.allowedContentObjectTypes.contains(objectType) && metadata.nonEmpty && (repository.nonEmpty || StringUtils.isNotBlank(artifactUrl)))
 	}
 
