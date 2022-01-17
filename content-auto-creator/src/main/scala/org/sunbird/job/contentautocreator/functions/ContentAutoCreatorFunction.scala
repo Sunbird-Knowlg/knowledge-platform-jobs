@@ -6,7 +6,7 @@ import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.contentautocreator.domain.Event
 import org.sunbird.job.contentautocreator.helpers.ContentAutoCreator
-import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
+import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.task.ContentAutoCreatorConfig
 import org.sunbird.job.util._
 import org.sunbird.job.{BaseProcessFunction, Metrics}
@@ -43,12 +43,12 @@ class ContentAutoCreatorFunction(config: ContentAutoCreatorConfig, httpUtil: Htt
                               context: ProcessFunction[Event, String]#Context,
                               metrics: Metrics): Unit = {
     metrics.incCounter(config.totalEventsCount)
-    // TODO: Check if object already exists. If exists, add validation based on pkgVersion
     if (event.isValid(config)) {
       logger.info("ContentAutoCreatorFunction::processElement:: Processing event for auto creator content upload/approval operation having identifier : " + event.objectId)
       logger.debug("ContentAutoCreatorFunction::processElement:: event edata : " + event.eData)
       if(event.validateStage(config)) {
         if(event.validateMetadata(config)) {
+          process(config, event, httpUtil, neo4JUtil, cassandraUtil, cloudStorageUtil)
 
 
           logger.info("ContentAutoCreatorFunction::processElement:: Content auto creator upload/approval operation completed for : " + event.objectId)

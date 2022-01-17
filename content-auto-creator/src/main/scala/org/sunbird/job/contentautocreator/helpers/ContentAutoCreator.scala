@@ -1,117 +1,157 @@
 package org.sunbird.job.contentautocreator.helpers
 
+import kong.unirest.Unirest
 import org.apache.commons.io.FilenameUtils
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
+import org.sunbird.job.contentautocreator.domain.Event
 import org.sunbird.job.contentautocreator.model.{ExtDataConfig, ObjectData}
+import org.sunbird.job.contentautocreator.util.ContentAutoCreatorConstants
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.task.ContentAutoCreatorConfig
 import org.sunbird.job.util._
 
 import java.io.File
+import java.util
+import scala.collection.convert.ImplicitConversions.`map AsJavaMap`
+import scala.collection.mutable
 
-trait ContentAutoCreator extends ObjectUpdater with ContentCollectionUpdater with HierarchyEnricher {
+trait ContentAutoCreator extends ObjectUpdater with ContentCollectionUpdater {
 
 	private[this] val logger = LoggerFactory.getLogger(classOf[ContentAutoCreator])
 
-	def getObject(identifier: String, objType: String, downloadUrl: String, metaUrl: Option[String] = None)(implicit config: ContentAutoCreatorConfig, httpUtil: HttpUtil, objDef: ObjectDefinition): ObjectData = {
-		val extractPath = extractDataZip(identifier, downloadUrl)
-		val manifestData = getObjectDetails(identifier, extractPath, objType, metaUrl)
-		val metadata = manifestData.filterKeys(k => !(objDef.getRelationLabels().contains(k) || objDef.externalProperties.contains(k)))
-		val extData = manifestData.filterKeys(k => objDef.externalProperties.contains(k))
-		val hierarchy = getHierarchy(extractPath, objType)(config)
-		val externalData = if (hierarchy.nonEmpty) extData ++ Map("hierarchy" -> hierarchy) else extData
-		new ObjectData(identifier, objType, metadata, Some(externalData), Some(hierarchy))
+	def process(config: ContentAutoCreatorConfig, event: Event, httpUtil: HttpUtil, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, cloudStorageUtil: CloudStorageUtil): Unit = {
+		val filteredMetadata = event.metadata.filter(x => !config.content_props_to_removed.contains(x._1))
+		val createMetadata = filteredMetadata.filter(x => config.content_create_props.contains(x._1))
+		val updateMetadata = filteredMetadata.filter(x => !config.content_create_props.contains(x._1))
+
+		val originId = event.reqOriginData.getOrDefault("identifier","")
+		var internalId, contentStage: String = ""
+		var isCreated = false
+		
+		if (event.reqOriginData.nonEmpty && originId.nonEmpty) {
+			val contentMetadata = neo4JUtil.getNodeProperties(event.identifier)
+			if (!contentMetadata.isEmpty) {
+				internalId = originId
+				contentStage = "na"
+			}
+		}
+
+		if(contentStage.isEmpty) {
+			val contentMetadata = searchContent(event.identifier, config, httpUtil)
+			if(contentMetadata.isEmpty) contentStage = "create" else {
+				internalId = contentMetadata("contentId").asInstanceOf[String]
+				contentStage = getContentStage(event.identifier, event.pkgVersion, contentMetadata)
+			}
+		}
+
+		contentStage match {
+			case "create" =>
+				val result = createContent(event, createMetadata, config, httpUtil)
+				internalId = result.get("identifier").asInstanceOf[String]
+				if (StringUtils.isNotBlank(internalId)) {
+					isCreated = true
+					updateMetadata.put("versionKey", result.get("versionKey").asInstanceOf[Nothing])
+				}
+			case _ => logger.info("ContentUtil :: process :: Event Skipped for operations (create, upload, publish) for: " + event.identifier + " | Content Stage : " + contentStage)
+		}
+
 	}
 
-  private def extractDataZip(identifier: String, downloadUrl: String): String = {
-    val suffix = FilenameUtils.getName(downloadUrl).replace(".ecar", ".zip")
-    val zipFile: File = FileUtils.copyURLToFile(identifier, downloadUrl, suffix).get
-    logger.debug("zip file path :: " + zipFile.getAbsolutePath)
-    val extractPath = FileUtils.getBasePath(identifier)
-    logger.debug("zip extracted path :: " + extractPath)
-    FileUtils.extractPackage(zipFile, extractPath)
-    extractPath
-  }
 
-  private def getObjectDetails(identifier: String, extractPath: String, objectType: String, metaUrl: Option[String])(implicit httpUtil: HttpUtil) : Map[String, AnyRef] = {
-    val manifest = FileUtils.readJsonFile(extractPath, "manifest.json")
-    val manifestMetadata: Map[String, AnyRef] = manifest.getOrElse("archive", Map()).asInstanceOf[Map[String, AnyRef]]
-      .getOrElse("items", List()).asInstanceOf[List[Map[String, AnyRef]]]
-      .find(p => StringUtils.equalsIgnoreCase(identifier, p.getOrElse("identifier", "").asInstanceOf[String])).getOrElse(Map())
-    if (metaUrl.nonEmpty) {
-      // TODO: deprecate setting "origin" after single sourcing refactoring.
-      val originData = s"""{\\"identifier\\": \\"$identifier\\",\\"repository\\":\\"${metaUrl.head}\\"}"""
-      val originDetails = Map[String, AnyRef]("origin" -> identifier, "originData" -> originData)
-      val metadata = getMetaUrlData(metaUrl.head, objectType)(httpUtil) ++ originDetails
-      manifestMetadata.++(metadata)
-    } else manifestMetadata
-  }
+	private def searchContent(identifier: String, config: ContentAutoCreatorConfig, httpUtil: HttpUtil): Map[String, AnyRef] = {
+		val reqMap = new java.util.HashMap[String, AnyRef]() {
+			put(ContentAutoCreatorConstants.REQUEST, new java.util.HashMap[String, AnyRef]() {
+				put(ContentAutoCreatorConstants.FILTERS, new java.util.HashMap[String, AnyRef]() {
+					put(ContentAutoCreatorConstants.CONTENT, "Content")
+					put(ContentAutoCreatorConstants.STATUS, new util.ArrayList[String]())
+					put(ContentAutoCreatorConstants.ORIGIN, identifier)
+				})
+				put(ContentAutoCreatorConstants.EXISTS, config.searchExistsFields.toArray[String])
+				put(ContentAutoCreatorConstants.FIELDS, config.searchFields.toArray[String])
+			})
+		}
 
-  private def getMetaUrlData(metaUrl: String, objectType: String)(implicit httpUtil: HttpUtil): Map[String, AnyRef] = {
-    val response = httpUtil.get(metaUrl)
-    if (response.status == 200) {
-      JSONUtil.deserialize[Map[String, AnyRef]](response.body).getOrElse("result", Map()).asInstanceOf[Map[String, AnyRef]]
-        .getOrElse(objectType.toLowerCase, Map()).asInstanceOf[Map[String, AnyRef]]
-    } else throw new Exception("Invalid object read url for fetching metadata: " + metaUrl)
-  }
-
-  private def getHierarchy(extractPath: String, objectType: String)(implicit config: ContentAutoCreatorConfig): Map[String, AnyRef] = {
-    if (config.expandableObjects.contains(objectType))
-      FileUtils.readJsonFile(extractPath, "hierarchy.json")
-        .getOrElse(objectType.toLowerCase(), Map()).asInstanceOf[Map[String, AnyRef]]
-    else Map[String, AnyRef]()
-  }
-
-	def enrichMetadata(obj: ObjectData, eventMeta: Map[String, AnyRef], overrideCloudProps: Boolean = false)(implicit config: ContentAutoCreatorConfig): ObjectData = {
-		val sysMeta = Map("IL_UNIQUE_ID" -> obj.identifier, "IL_FUNC_OBJECT_TYPE" -> obj.objectType, "IL_SYS_NODE_TYPE" -> "DATA_NODE")
-		val oProps: Map[String, AnyRef] = config.overrideManifestProps.map(prop => (prop, eventMeta.getOrElse(prop, ""))).toMap
-		val processId = eventMeta.getOrElse("processId", "").asInstanceOf[String]
-		val pIdMap = if (StringUtils.isNotBlank(processId)) Map("processId" -> processId) else Map()
-		val enMetadata = if(overrideCloudProps) obj.metadata ++ sysMeta ++ oProps ++ pIdMap  else obj.metadata ++ sysMeta ++ pIdMap
-		new ObjectData(obj.identifier, obj.objectType, enMetadata, obj.extData, obj.hierarchy)
+		val requestUrl = config.getString(ContentAutoCreatorConstants.SUNBIRD_CONTENT_SEARCH_URL,"")
+		val httpResponse = httpUtil.post(requestUrl, JSONUtil.serialize(reqMap))
+		if (httpResponse.status == 200) {
+			val response = JSONUtil.deserialize[Map[String, AnyRef]](httpResponse.body)
+			val result = response.getOrElse("result", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
+			val contents = result.getOrElse("content", List[Map[String,AnyRef]]()).asInstanceOf[List[Map[String,AnyRef]]]
+			val count = result.getOrElse("count", 0).asInstanceOf[Int]
+			if(count>0) {
+				contents.filter(c => c.contains("originData")).filter(content => {
+					val originDataStr = content.getOrElse("originData", "{}").asInstanceOf[String]
+					val originData = JSONUtil.deserialize[Map[String, AnyRef]](originDataStr)
+					val originId = originData.getOrElse("identifier", "").asInstanceOf[String]
+					val repository = originData.getOrElse("repository", "").asInstanceOf[String]
+					StringUtils.equalsIgnoreCase(originId, identifier) && repository.nonEmpty
+				}).map(content => {
+					Map("contentId" -> content.getOrDefault("identifier",""), "status" -> content.getOrDefault("status",""),
+					"artifactUrl" -> content.getOrDefault("artifactUrl",""), "pkgVersion" -> content.getOrDefault("pkgVersion",0.0))
+				}).head
+			} else {
+				logger.info("ContentAutoCreator :: searchContent :: Received 0 count while searching content for : " + identifier)
+				Map.empty[String, AnyRef]
+			}
+		} else {
+			throw new Exception("Content search failed for shallow copy check:" + identifier)
+		}
 	}
 
-	def processCloudMeta(obj: ObjectData)(implicit config: ContentAutoCreatorConfig, cloudStorageUtil: CloudStorageUtil, httpUtil: HttpUtil): ObjectData = {
-		val data = config.cloudProps.filter(x => obj.metadata.get(x).nonEmpty).flatMap(prop => {
-			if (StringUtils.equalsIgnoreCase("variants", prop)) {
-				obj.metadata.getOrElse("variants", Map()).asInstanceOf[Map[String, AnyRef]].toList.map(entry => (entry._1 -> entry._2.asInstanceOf[Map[String, AnyRef]].getOrElse("ecarUrl", "").asInstanceOf[String]))
-			} else List((prop, obj.metadata.getOrElse(prop, "")))
-		}).toMap
-		val updatedUrls: Map[String, AnyRef] = data.map(en => {
-			logger.info("processCloudMeta :: key : " + en._1 + " | url : " + en._2)
-			val file = FileUtils.copyURLToFile(obj.identifier, en._2.asInstanceOf[String], FilenameUtils.getName(en._2.asInstanceOf[String]))
-			val url = FileUtils.uploadFile(file, obj.identifier, obj.metadata.getOrElse("IL_FUNC_OBJECT_TYPE", "").asInstanceOf[String])
-			(en._1, url.getOrElse(""))
-		})
-		logger.info("processCloudMeta :: updatedUrls : " + updatedUrls)
-		val updatedMeta = obj.metadata ++ updatedUrls.filterKeys(k => !List("spine", "online","full").contains(k)) ++ Map("variants" -> getVariantMap(updatedUrls))
-		new ObjectData(obj.identifier, obj.objectType, updatedMeta, obj.extData, obj.hierarchy)
+	private def getContentStage(identifier: String, pkgVersion: Double, metadata: Map[String, AnyRef]): String = {
+		val status = metadata.get("status").asInstanceOf[String]
+		val artifactUrl = metadata.get("artifactUrl").asInstanceOf[String]
+		val pkgVer = metadata.getOrElse("pkgVersion", 0) match {
+			case _: Integer => metadata.getOrElse("pkgVersion", 0).asInstanceOf[Integer].doubleValue()
+			case _: Double => metadata.getOrElse("pkgVersion", 0).asInstanceOf[Double].doubleValue()
+			case _ => metadata.getOrElse("pkgVersion", "0").toString.toDouble
+		}
+
+		if (!ContentAutoCreatorConstants.FINAL_STATUS.contains(status)) { if (artifactUrl.nonEmpty) "review" else "update" }
+		else if (pkgVersion > pkgVer) "update"
+		else {
+			logger.info("ContentAutoCreator :: getContentStage :: Skipped Processing for : " + identifier + " | Internal Identifier : " + metadata.get("contentId") + " ,Status : " + status + " , artifactUrl : " + artifactUrl)
+			"na"
+		}
 	}
 
-	def getVariantMap(map: Map[String, AnyRef])(implicit httpUtil: HttpUtil): Map[String, AnyRef] = {
-		List("full", "online", "spine").filter(x => map.contains(x)).map(m => (m, Map("ecarUrl"->map.getOrElse(m, "").asInstanceOf[String], "size" -> httpUtil.getSize(map.getOrElse(m, "").asInstanceOf[String])))).toMap
+	private def createContent(event: Event, createMetadata: Map[String,AnyRef], config: ContentAutoCreatorConfig, httpUtil: HttpUtil): Map[String, AnyRef] = {
+		val updateMetadataFields = if(event.eData.getOrDefault(ContentAutoCreatorConstants.IDENTIFIER, "").asInstanceOf[String].nonEmpty) {
+			createMetadata + (ContentAutoCreatorConstants.IDENTIFIER -> event.eData.getOrDefault(ContentAutoCreatorConstants.IDENTIFIER, "")) - ContentAutoCreatorConstants.CONTENT_TYPE
+		} else {
+			createMetadata + (ContentAutoCreatorConstants.IDENTIFIER -> event.identifier, ContentAutoCreatorConstants.ORIGIN -> event.identifier,
+				ContentAutoCreatorConstants.ORIGIN_DATA -> Map[String,AnyRef](ContentAutoCreatorConstants.IDENTIFIER -> event.identifier,
+					ContentAutoCreatorConstants.REPOSITORY -> event.repository)) - ContentAutoCreatorConstants.CONTENT_TYPE
+		}
+		logger.info("ContentAutoCreator :: createContent :: updateMetadataFields : " + updateMetadataFields)
+		val reqMap = new java.util.HashMap[String, AnyRef]() {
+			put(ContentAutoCreatorConstants.REQUEST, new java.util.HashMap[String, AnyRef]() {
+				put(ContentAutoCreatorConstants.CONTENT, new java.util.HashMap[String, AnyRef]() {
+					put(ContentAutoCreatorConstants.CONTENT, updateMetadataFields)
+				})
+			})
+		}
+
+		val headers = Map[String, String]("X-Channel-Id" -> event.channel, "Content-Type" -> ContentAutoCreatorConstants.APPLICATION_JSON)
+		val requestUrl = config.getString(ContentAutoCreatorConstants.KP_CS_BASE_URL,"") + "/content/v4/create"
+		val httpResponse = httpUtil.post(requestUrl, JSONUtil.serialize(reqMap), headers)
+		if (httpResponse.status == 200) {
+			val response = JSONUtil.deserialize[Map[String, AnyRef]](httpResponse.body)
+			val result = response.getOrElse("result", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
+			val contentId = result.getOrElse(ContentAutoCreatorConstants.IDENTIFIER, "").asInstanceOf[String]
+			logger.info("ContentAutoCreator :: createContent :: Content Created Successfully with identifier : " + contentId)
+			result
+		} else {
+			logger.info("ContentAutoCreator :: createContent :: Invalid Response received while creating content for : " + event.identifier + getErrorDetails(httpResponse))
+			throw new Exception("Invalid Response received while creating content for :" + event.identifier)
+		}
 	}
 
-	def processChildren(children: Map[String, AnyRef])(implicit config: ContentAutoCreatorConfig, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, cloudStorageUtil: CloudStorageUtil, defCache: DefinitionCache, httpUtil: HttpUtil): Map[String, ObjectData] = {
-		children.flatMap(ch => {
-			logger.info("Processing Children Having Identifier : " + ch._1)
-			val objType = ch._2.asInstanceOf[Map[String, AnyRef]].getOrElse("objectType", "").asInstanceOf[String]
-			val definition: ObjectDefinition = defCache.getDefinition(objType, config.schemaSupportVersionMap.getOrElse(objType.toLowerCase(), "1.0").asInstanceOf[String], config.definitionBasePath)
-			val downloadUrl = ch._2.asInstanceOf[Map[String, AnyRef]].getOrElse("downloadUrl", "").asInstanceOf[String]
-			val props = definition.getSchemaProps() ++ definition.getExternalProps().keySet.toList
-			val repository = s"""${config.sourceBaseUrl}/${objType.toLowerCase}/v1/read/${ch._1}?fields=${props.mkString(",")}"""
-			val obj: ObjectData = getObject(ch._1, objType, downloadUrl, Some(repository))(config, httpUtil, definition)
-			logger.debug("Graph metadata for " + obj.identifier + " : " + obj.metadata)
-			val enObj = enrichMetadata(obj, ch._2.asInstanceOf[Map[String, AnyRef]], overrideCloudProps = true)(config)
-			logger.debug("Enriched metadata for " + enObj.identifier + " : " + enObj.metadata)
-			val updatedObj = processCloudMeta(enObj)
-			logger.info("Final updated metadata for " + updatedObj.identifier + " : " + JSONUtil.serialize(updatedObj.metadata))
-			val extConfig = ExtDataConfig(config.getString(updatedObj.objectType.toLowerCase + ".keyspace", ""), definition.getExternalTable, definition.getExternalPrimaryKey, definition.getExternalProps)
-			saveExternalData(updatedObj.identifier, updatedObj.extData.getOrElse(Map()), extConfig)(cassandraUtil)
-			saveGraphData(updatedObj.identifier, updatedObj.metadata, definition)(neo4JUtil)
-			Map(updatedObj.identifier-> updatedObj)
-		})
+	private def getErrorDetails(httpResponse: HTTPResponse): String = {
+		val response = JSONUtil.deserialize[Map[String, AnyRef]](httpResponse.body)
+		if (null != response) " | Response Code :" + httpResponse.status + " | Result : " + response.getOrElse("result", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]] + " | Error Message : " + response.getOrElse("params", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
+		else " | Null Response Received."
 	}
 
 }

@@ -57,7 +57,14 @@ class ContentAutoCreatorConfig(override val config: Config) extends BaseJobConfi
   val allowedContentStages: List[String] = if (config.hasPath("content_auto_creator.allowed_content_stages")) config.getStringList("content_auto_creator.allowed_content_stages").asScala.toList else List("create", "upload", "review", "publish")
   val allowedContentObjectTypes: List[String] = if (config.hasPath("content_auto_creator.allowed_object_types")) config.getStringList("content_auto_creator.allowed_object_types").asScala.toList else List("Content")
   val mandatoryContentMetadata: List[String] = if (config.hasPath("content_auto_creator.content_mandatory_fields")) config.getStringList("content_auto_creator.content_mandatory_fields").asScala.toList else List.empty
+  val content_props_to_removed : List[String] = if (config.hasPath("content_auto_creator.content_props_to_removed")) config.getStringList("content_auto_creator.content_props_to_removed").asScala.toList else List.empty
+  val content_create_props : List[String] = if (config.hasPath("content_auto_creator.content_create_props")) config.getStringList("content_auto_creator.content_create_props").asScala.toList else List.empty
+
+
   val maxIteration: Int = config.getInt("content_auto_creator.maxIteration")
+
+  val searchExistsFields: List[String] = if (config.hasPath("search_exists_fields")) config.getStringList("search_exists_fields").asScala.toList else List("originData")
+  val searchFields: List[String] = if (config.hasPath("search_fields")) config.getStringList("search_fields").asScala.toList else List("identifier", "mimeType", "pkgVersion", "channel", "status", "origin", "originData", "artifactUrl")
 
   def getConfig: Config = config
 }
