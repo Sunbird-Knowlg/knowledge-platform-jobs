@@ -1,6 +1,8 @@
 package org.sunbird.job.content.publish.helpers
 
+import org.apache.commons.io.FilenameUtils
 import org.apache.commons.lang3.StringUtils
+import org.apache.tika.Tika
 import org.slf4j.LoggerFactory
 import org.sunbird.job.content.task.ContentPublishConfig
 import org.sunbird.job.domain.`object`.DefinitionCache
@@ -8,10 +10,12 @@ import org.sunbird.job.exception.InvalidInputException
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData, ObjectExtData}
 import org.sunbird.job.publish.helpers._
-import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, Neo4JUtil}
+import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, FileUtils, HttpUtil, Neo4JUtil}
 
-import java.io.File
+import java.io.{File, IOException}
 import java.nio.file.Files
+import java.util
+import java.util.regex.Pattern
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext
@@ -21,7 +25,11 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
   private[this] val logger = LoggerFactory.getLogger(classOf[ContentPublisher])
   private val level4MimeTypes = List("video/x-youtube", "application/pdf", "application/msword", "application/epub", "application/vnd.ekstep.h5p-archive", "text/x-url")
   private val level4ContentTypes = List("Course", "CourseUnit", "LessonPlan", "LessonPlanUnit")
-  private val pragmaMimeTypes = List("video/x-youtube", "application/pdf")
+  private val pragmaMimeTypes = List("video/x-youtube", "application/pdf") // Ne to check for other mimetype
+  private val youtubeMimetypes = List("video/x-youtube", "video/youtube")
+  private val validateArtifactUrlMimetypes = List("application/pdf", "application/epub", "application/msword")
+  private val ignoreValidationMimeType = List(MimeType.Collection.toString, MimeType.Plugin_Archive.toString, MimeType.ASSETS.toString)
+  private val YOUTUBE_REGEX = "^(http(s)?:\\/\\/)?((w){3}.)?youtu(be|.be)?(\\.com)?\\/.+"
 
   override def getExtData(identifier: String, pkgVersion: Double, mimeType: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[ObjectExtData] = {
     if (mimeType.equalsIgnoreCase("application/vnd.ekstep.ecml-archive")) {
@@ -42,7 +50,9 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
       "flagReasons" -> null, "body" -> null, "publishError" -> null, "variants" -> null, "downloadUrl" -> null)
     val contentSize = obj.metadata.getOrElse("size", 0).toString.toDouble
     val configSize = contentConfig.artifactSizeForOnline
-    val updatedMeta: Map[String, AnyRef] = if (contentSize > configSize) obj.metadata ++ extraMeta ++ Map("contentDisposition" -> "online-only") else obj.metadata ++ extraMeta
+    val publishType = obj.getString("publish_type", "Public")
+    val status = if (StringUtils.equalsIgnoreCase("Unlisted", publishType)) "Unlisted" else "Live"
+    val updatedMeta: Map[String, AnyRef] = if (contentSize > configSize) obj.metadata ++ extraMeta ++ Map("contentDisposition" -> "online-only", "status" -> status) else obj.metadata ++ extraMeta ++ Map("status" -> status)
 
     val updatedCompatibilityLevel = setCompatibilityLevel(obj, updatedMeta).getOrElse(updatedMeta)
     val updatedPragma = setPragma(obj, updatedCompatibilityLevel).getOrElse(updatedCompatibilityLevel)
@@ -66,15 +76,79 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
 
   override def deleteExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Unit = None
 
-  def validateMetadata(obj: ObjectData, identifier: String): List[String] = {
+  def validateMetadata(obj: ObjectData, identifier: String, config: PublishConfig): List[String] = {
     logger.info("Validating Content metadata for : " + obj.identifier)
     val messages = ListBuffer[String]()
-    if (obj.mimeType.equalsIgnoreCase("application/vnd.ekstep.ecml-archive") && (obj.extData.getOrElse("body", "") == null || obj.extData.getOrElse("body", "").asInstanceOf[Map[String, AnyRef]].isEmpty))
-      messages += s"""There is no body available for : $identifier"""
-    else if (!obj.mimeType.equalsIgnoreCase("application/vnd.ekstep.ecml-archive") && StringUtils.isBlank(obj.getString("artifactUrl", "")))
-      messages += s"""There is no artifactUrl available for : $identifier"""
+    val artifactUtl = obj.getString("artifactUrl", "")
+    if (ignoreValidationMimeType.contains(obj.mimeType)) {
+      // Validation not required. Nothing to do.
+    } else if (obj.mimeType.equalsIgnoreCase(MimeType.ECML_Archive.toString) && // Either 'body' or 'artifactUrl' is needed
+      ((obj.extData.getOrElse("body", null) == null || obj.extData.getOrElse("body", null).asInstanceOf[Map[String, AnyRef]].isEmpty) || StringUtils.isBlank(artifactUtl)))
+      messages += s"""Either 'body' or 'artifactUrl' are required for processing of ECML content for : $identifier"""
+    else {
+      val allowedExtensionsWord: util.List[String] = config.asInstanceOf[ContentPublishConfig].allowedExtensionsWord
 
+      if (StringUtils.isBlank(artifactUtl))
+        messages += s"""There is no artifactUrl available for : $identifier"""
+      else if (youtubeMimetypes.contains(obj.mimeType) && !isValidYouTubeUrl(artifactUtl))
+        messages += s"""Invalid youtube Url = $artifactUtl for : $identifier"""
+      else if (validateArtifactUrlMimetypes.contains(obj.mimeType) && !isValidUrl(artifactUtl, obj.mimeType, allowedExtensionsWord)) { // valid url check by downloading the file and then delete it
+        // artifactUrl + valid url check by downloading the file
+        obj.mimeType match {
+          case "application/pdf" =>
+            messages += s"""Error! Invalid File Extension. Uploaded file $artifactUtl is not a pdf file for : $identifier"""
+          case "application/epub" =>
+            messages += s"""Error! Invalid File Extension. Uploaded file $artifactUtl is not a epub file for : $identifier"""
+          case "application/msword" =>
+            messages += s"""Error! Invalid File Extension. | Uploaded file $artifactUtl should be among the Allowed_file_extensions for mimeType doc $allowedExtensionsWord for : $identifier"""
+        }
+      }
+    }
     messages.toList
+  }
+
+  private def isValidYouTubeUrl(artifactUrl: String): Boolean = {
+    logger.info(s"Validating if the given youtube url = $artifactUrl is valid or not.")
+    Pattern.matches(YOUTUBE_REGEX, artifactUrl)
+  }
+
+  private def isValidUrl(url: String, mimeType: String, allowedExtensionsWord: util.List[String]): Boolean = {
+    // Todo:
+    val destPath = s"""/tmp"""
+//    val destPath = s"""$bundlePath${File.separator}${StringUtils.replace(id, ".img", "")}"""
+    val file = FileUtils.downloadFile(url, destPath)
+    try if (exceptionChecks(mimeType, file, allowedExtensionsWord)) return true
+    catch {
+      case e: Exception => e.printStackTrace()
+    }
+//    finally FileUtils.deleteFile(file)
+    false
+  }
+
+  private def exceptionChecks(mimeType: String, file: File, allowedExtensionsWord: util.List[String]): Boolean = {
+
+    try {
+      val extension = FilenameUtils.getExtension(file.getPath)
+      logger.info("Validating File For MimeType: " + file.getName)
+      if (extension.nonEmpty) {
+        val tika = new Tika
+        val file_type = tika.detect(file)
+        mimeType match {
+          case "application/pdf" =>
+            if (StringUtils.equalsIgnoreCase(extension, "pdf") && file_type == "application/pdf") return true
+          case "application/epub" =>
+            if (StringUtils.equalsIgnoreCase(extension, "epub") && file_type == "application/epub+zip") return true
+          case "application/msword" =>
+            if (allowedExtensionsWord.contains(extension)) return true
+        }
+      }
+    } catch {
+      case e: IOException =>
+        logger.error("exceptionChecks: Error while checking mimeType.")
+        e.printStackTrace()
+        throw new InvalidInputException("Error while checking mimeType ", e)
+    }
+    false
   }
 
   def getObjectWithEcar(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
