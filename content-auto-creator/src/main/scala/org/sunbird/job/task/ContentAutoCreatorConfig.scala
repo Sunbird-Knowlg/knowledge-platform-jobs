@@ -59,7 +59,7 @@ class ContentAutoCreatorConfig(override val config: Config) extends BaseJobConfi
   val mandatoryContentMetadata: List[String] = if (config.hasPath("content_auto_creator.content_mandatory_fields")) config.getStringList("content_auto_creator.content_mandatory_fields").asScala.toList else List.empty
   val content_props_to_removed : List[String] = if (config.hasPath("content_auto_creator.content_props_to_removed")) config.getStringList("content_auto_creator.content_props_to_removed").asScala.toList else List.empty
   val content_create_props : List[String] = if (config.hasPath("content_auto_creator.content_create_props")) config.getStringList("content_auto_creator.content_create_props").asScala.toList else List.empty
-
+  val temp_file_location: String = if (config.hasPath("content_auto_creator.temp_file_location")) config.getString("content_auto_creator.temp_file_location") else "/tmp/content"
 
   val maxIteration: Int = config.getInt("content_auto_creator.maxIteration")
 

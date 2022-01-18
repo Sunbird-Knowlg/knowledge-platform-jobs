@@ -20,7 +20,7 @@ import java.nio.charset.Charset
 import java.util
 
 
-class GoogleDriveUtil (implicit config: ContentAutoCreatorConfig) {
+class GoogleDriveUtil(config: ContentAutoCreatorConfig) {
   private val JSON_FACTORY = new JacksonFactory
   private val SCOPES = util.Arrays.asList(DriveScopes.DRIVE_READONLY)
   private val APP_NAME = config.getString("auto_creator.gdrive.application_name","drive-download-sunbird")
