@@ -113,12 +113,12 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
   }
 
   private def isValidUrl(url: String, mimeType: String, allowedExtensionsWord: util.List[String]): Boolean = {
-    // Todo:
     val destPath = s"""/tmp"""
 //    val destPath = s"""$bundlePath${File.separator}${StringUtils.replace(id, ".img", "")}"""
-    val file = FileUtils.downloadFile(url, destPath)
-    try if (exceptionChecks(mimeType, file, allowedExtensionsWord)) return true
-    catch {
+    try {
+      val file = FileUtils.downloadFile(url, destPath)
+      if (exceptionChecks(mimeType, file, allowedExtensionsWord)) return true
+    } catch {
       case e: Exception => e.printStackTrace()
     }
 //    finally FileUtils.deleteFile(file)
@@ -126,7 +126,6 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
   }
 
   private def exceptionChecks(mimeType: String, file: File, allowedExtensionsWord: util.List[String]): Boolean = {
-
     try {
       val extension = FilenameUtils.getExtension(file.getPath)
       logger.info("Validating File For MimeType: " + file.getName)

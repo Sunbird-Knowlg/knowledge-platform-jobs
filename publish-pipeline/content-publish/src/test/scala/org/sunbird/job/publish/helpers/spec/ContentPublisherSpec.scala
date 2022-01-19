@@ -84,6 +84,44 @@ class ContentPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers
     result.size should be(1)
   }
 
+  "validateMetadata with mimeType video/x-youtube or video/youtube " should " return exception messages if content is having invalid artifactUrl" in {
+    val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "video/x-youtube", "artifactUrl" -> "https://www.youtube.com/"), None)
+    val result: List[String] = new TestContentPublisher().validateMetadata(data, data.identifier, jobConfig)
+    result.size should be(1)
+    result.contains("Invalid youtube Url = https://www.youtube.com/ for : do_123") shouldBe true
+  }
+
+  "validateMetadata with mimeType video/x-youtube or video/youtube " should " not return exception messages if content is having valid artifactUrl = https://www.youtube.com/embed/watch?" in {
+    val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "video/x-youtube", "artifactUrl" -> "https://www.youtube.com/embed/watch?"), None)
+    val result: List[String] = new TestContentPublisher().validateMetadata(data, data.identifier, jobConfig)
+    result.size should be(0)
+  }
+
+  "validateMetadata with mimeType video/x-youtube or video/youtube " should " not return exception messages if content is having valid artifactUrl = https://www.youtube.com/watch?v=6Js8tBCfbWk" in {
+    val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "video/x-youtube", "artifactUrl" -> "https://www.youtube.com/watch?v=6Js8tBCfbWk"), None)
+    val result: List[String] = new TestContentPublisher().validateMetadata(data, data.identifier, jobConfig)
+    result.size should be(0)
+  }
+
+  "validateMetadata with mimeType video/x-youtube or video/youtube " should " not return exception messages if content is having valid artifactUrl = https://youtu.be/6Js8tBCfbWk" in {
+    val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "video/x-youtube", "artifactUrl" -> "https://youtu.be/6Js8tBCfbWk"), None)
+    val result: List[String] = new TestContentPublisher().validateMetadata(data, data.identifier, jobConfig)
+    result.size should be(0)
+  }
+
+  "validateMetadata with mimeType application/pdf or application/epub or application/msword " should " return exception messages if content is having invalid artifactUrl" in {
+    val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/pdf", "artifactUrl" -> "https://www.youtube.com/"), None)
+    val result: List[String] = new TestContentPublisher().validateMetadata(data, data.identifier, jobConfig)
+    result.size should be(1)
+    result.contains("Error! Invalid File Extension. Uploaded file https://www.youtube.com/ is not a pdf file for : do_123") shouldBe true
+  }
+
+  "validateMetadata with mimeType application/pdf or application/epub or application/msword " should " not return exception messages if content is having valid artifactUrl" in {
+    val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/pdf", "artifactUrl" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_11329603741667328018/artifact/do_11329603741667328018_1623058698775_intellijidea_referencecard.pdf"), None)
+    val result: List[String] = new TestContentPublisher().validateMetadata(data, data.identifier, jobConfig)
+    result.size should be(0)
+  }
+
   "saveExternalData " should "save external data to cassandra table" in {
     val data = new ObjectData("do_123", Map[String, AnyRef](), Some(Map[String, AnyRef]("body" -> "body", "answer" -> "answer")))
     new TestContentPublisher().saveExternalData(data, readerConfig)
@@ -92,7 +130,7 @@ class ContentPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers
   "getExtData " should " get content body for application/vnd.ekstep.ecml-archive mimeType " in {
     val identifier = "do_11321328578759884811663"
     val result: Option[ObjectExtData] = new TestContentPublisher().getExtData(identifier, 0.0, "application/vnd.ekstep.ecml-archive", readerConfig)
-    result.getOrElse(new ObjectExtData).data.getOrElse(Map()).contains("body") shouldBe(true)
+    result.getOrElse(new ObjectExtData).data.getOrElse(Map()).contains("body") shouldBe true
   }
 
   "getHierarchy " should "do nothing " in {
