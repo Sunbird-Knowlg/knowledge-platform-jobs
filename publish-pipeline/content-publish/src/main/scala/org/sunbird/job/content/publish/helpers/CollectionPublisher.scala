@@ -224,14 +224,13 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
           }
         } else keywords
         updatedKeywords.filter(record => record.trim.nonEmpty).distinct
-      } else Array.empty[String]
+      } else obj.metadata.getOrElse("keywords", Array.empty).asInstanceOf[util.Collection[String]].asScala.toArray[String]
       new ObjectData(obj.identifier, obj.metadata ++ updatedMetadataMap + ("keywords" -> finalKeywords), obj.extData, obj.hierarchy)
     } else obj
 
     val enrichedObject = if(children.nonEmpty) enrichCollection(updatedObj) else updatedObj
     //    addResourceToCollection(enrichedObject, children.to[ListBuffer]) - TODO
     enrichedObject
-
   }
 
   private def processChildren(children: List[Map[String, AnyRef]]): mutable.Map[String, AnyRef] = {

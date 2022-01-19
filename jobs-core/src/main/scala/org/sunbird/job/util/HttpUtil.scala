@@ -3,7 +3,11 @@ package org.sunbird.job.util
 import kong.unirest.Unirest
 import org.apache.commons.collections.CollectionUtils
 
+import sys.process._
+import java.io.File
+import java.net.URL
 import scala.collection.JavaConverters._
+import scala.language.postfixOps
 
 case class HTTPResponse(status: Int, body: String) extends Serializable {
   def isSuccess:Boolean = Array(200, 201) contains status
@@ -45,6 +49,14 @@ class HttpUtil extends Serializable {
       val msg = s"Unable to get metadata for : $url | status : ${resp.getStatus}, body: ${resp.getBody}"
       throw new Exception(msg)
     }
+  }
+
+  def downloadFile(url: String, downloadLocation: String): String = {
+    val saveFile = new File(downloadLocation)
+    if (!saveFile.exists) saveFile.mkdirs
+    val urlObject = new URL(url)
+    val filePath = downloadLocation + "/" + urlObject.getPath.replaceAll("/", "")
+    urlObject #> new File(filePath) !!
   }
 }
 
