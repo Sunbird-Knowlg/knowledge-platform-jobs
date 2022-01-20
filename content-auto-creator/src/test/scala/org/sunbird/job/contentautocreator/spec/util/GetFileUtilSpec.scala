@@ -12,7 +12,7 @@ import org.sunbird.job.util.HttpUtil
 import java.io.File
 
 
-class GoogleDriveUtilSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
+class GetFileUtilSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
   val config: Config = ConfigFactory.load("test.conf")
 
   "httpUtil.downloadFile" should "download non-GoogleDrive Url object" in {
