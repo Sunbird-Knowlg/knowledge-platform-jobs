@@ -1,6 +1,7 @@
 package org.sunbird.job.contentautocreator.helpers
 
 import kong.unirest.Unirest
+import org.apache.commons.io.FileUtils
 import org.apache.commons.io.FilenameUtils
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
@@ -50,10 +51,12 @@ trait ContentAutoCreator extends ObjectUpdater with ContentCollectionUpdater {
 			case "create" =>
 				createContent(event, createMetadata, config, httpUtil)
 				updateContent(event, internalId, updateMetadata, config, httpUtil, cloudStorageUtil)
+				uploadContent(event, internalId, updateMetadata, config, httpUtil, cloudStorageUtil)
 			case "update" => updateContent(event, internalId, updateMetadata, config, httpUtil, cloudStorageUtil)
+			case "upload" => uploadContent(event, internalId, event.metadata, config, httpUtil, cloudStorageUtil)
 
 
-			case _ => logger.info("ContentUtil :: process :: Event Skipped for operations (create, upload, publish) for: " + event.identifier + " | Content Stage : " + contentStage)
+			case _ => logger.info("ContentAutoCreator :: process :: Event Skipped for operations (create, upload, publish) for: " + event.identifier + " | Content Stage : " + contentStage)
 		}
 
 	}
@@ -118,7 +121,7 @@ trait ContentAutoCreator extends ObjectUpdater with ContentCollectionUpdater {
 
 	private def read(channelId: String, identifier: String, config: ContentAutoCreatorConfig, httpUtil: HttpUtil) = {
 		val requestUrl = config.getString(ContentAutoCreatorConstants.KP_CS_BASE_URL,"") + "/content/v4/read/" + identifier + "mode=edit"
-		logger.info("ContentUtil :: read :: Reading content having identifier : " + identifier)
+		logger.info("ContentAutoCreator :: read :: Reading content having identifier : " + identifier)
 		val headers = Map[String, String]("X-Channel-Id" -> channelId, "Content-Type" -> ContentAutoCreatorConstants.APPLICATION_JSON)
 		val httpResponse = httpUtil.get(requestUrl, headers)
 		if (httpResponse.status == 200) {
@@ -126,12 +129,12 @@ trait ContentAutoCreator extends ObjectUpdater with ContentCollectionUpdater {
 			val result = response.getOrElse("result", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
 			val content = result.getOrElse("content", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
 			val contentId = content.getOrDefault("identifier", "").asInstanceOf[String].replace(".img", "")
-			if (StringUtils.equalsIgnoreCase(identifier, contentId)) logger.info("ContentUtil :: read :: Content Fetched Successfully with identifier : " + contentId)
+			if (StringUtils.equalsIgnoreCase(identifier, contentId)) logger.info("ContentAutoCreator :: read :: Content Fetched Successfully with identifier : " + contentId)
 			else throw new ServerException("SYSTEM_ERROR", "Invalid Response received while reading content for : " + identifier)
 			content
 		}
 		else {
-			logger.info("ContentUtil :: read :: Invalid Response received while reading content for : " + identifier + getErrorDetails(httpResponse))
+			logger.info("ContentAutoCreator :: read :: Invalid Response received while reading content for : " + identifier + getErrorDetails(httpResponse))
 			throw new ServerException("SYSTEM_ERROR", "Invalid Response received while reading content for : " + identifier + getErrorDetails(httpResponse))
 		}
 	}
@@ -172,14 +175,14 @@ trait ContentAutoCreator extends ObjectUpdater with ContentCollectionUpdater {
 
 		val appIconUrl = updateMetadata.getOrDefault("appIcon", "").asInstanceOf[String].trim
 		if (appIconUrl != null && appIconUrl.nonEmpty) {
-			logger.info("ContentUtil :: update :: Initiating Icon download for : " + internalId + " | appIconUrl : " + appIconUrl)
+			logger.info("ContentAutoCreator :: update :: Initiating Icon download for : " + internalId + " | appIconUrl : " + appIconUrl)
 			val file = getFile(internalId, appIconUrl, "image", config, httpUtil)
-			logger.info("ContentUtil :: update :: Icon downloaded for : " + internalId + " | appIconUrl : " + appIconUrl)
+			logger.info("ContentAutoCreator :: update :: Icon downloaded for : " + internalId + " | appIconUrl : " + appIconUrl)
 			if (null == file || !file.exists) throw new Exception("Error Occurred while downloading appIcon file for " + internalId + " | File Url : " + appIconUrl)
 			val urls = uploadArtifact(file, internalId, config, cloudStorageUtil)
 			if (null != urls && StringUtils.isNotBlank(urls(1))) {
 				val appIconBlobUrl = urls(1)
-				logger.info("ContentUtil :: update :: Icon Uploaded Successfully to cloud for : " + internalId + " | appIconUrl : " + appIconUrl + " | appIconBlobUrl : " + appIconBlobUrl)
+				logger.info("ContentAutoCreator :: update :: Icon Uploaded Successfully to cloud for : " + internalId + " | appIconUrl : " + appIconUrl + " | appIconBlobUrl : " + appIconBlobUrl)
 				updateMetadata.put("appIcon", appIconBlobUrl)
 			}
 		}
@@ -205,9 +208,50 @@ trait ContentAutoCreator extends ObjectUpdater with ContentCollectionUpdater {
 		}
 	}
 
+	private def uploadContent(event: Event, internalId: String, updateMetadata: Map[String,AnyRef], config: ContentAutoCreatorConfig, httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil): Unit = {
+		val sourceUrl: String = updateMetadata.getOrDefault("artifactUrl", "").asInstanceOf[String].trim
+		val mimeType: String = updateMetadata.getOrDefault("mimeType", "").asInstanceOf[String]
+		val allowedArtifactSources: List[String] = config.artifactAllowedSources
+
+		if(allowedArtifactSources.nonEmpty && !allowedArtifactSources.exists(x => sourceUrl.contains(x)))
+			throw new ServerException("SYSTEM_ERROR", "Artifact Source is not from allowed one for : " + event.identifier + " | artifactUrl: " + sourceUrl + " | Allowed Sources : " + allowedArtifactSources)
+
+		if (sourceUrl != null && sourceUrl.nonEmpty) {
+			logger.info("ContentAutoCreator :: uploadContent :: Initiating sourceFile download for : " + internalId + " | sourceUrl : " + sourceUrl)
+			val file = getFile(internalId, sourceUrl, mimeType, config, httpUtil)
+			logger.info("ContentAutoCreator :: uploadContent :: sourceFile downloaded for : " + internalId + " | sourceUrl : " + sourceUrl)
+			if (null == file || !file.exists) throw new Exception("Error Occurred while downloading sourceUrl file for " + internalId + " | File Url : " + sourceUrl)
+			logger.info("ContentAutoCreator :: uploadContent :: File Path for " + event.identifier + "is : " + file.getAbsolutePath + " | File Size : " + file.length)
+			val size = FileUtils.sizeOf(file)
+			logger.info("ContentAutoCreator :: uploadContent :: file size (MB): " + (size / 1048576))
+			if (size > config.artifactMaxSize && !config.bulkUploadMimeTypes.contains(mimeType)) {
+				logger.info("ContentAutoCreator :: uploadContent :: File Size is larger than allowed file size allowed in upload api for : " + event.identifier + " | File Size (MB): " + (size / 1048576) + " | mimeType : " + mimeType)
+				throw new ServerException("SYSTEM_ERROR", "File Size is larger than allowed file size allowed in upload api for : " + event.identifier + " | File Size (MB): " + (size / 1048576) + " | mimeType : " + mimeType)
+			}
+
+			val urls = uploadArtifact(file, internalId, config, cloudStorageUtil)
+			if (null != urls && StringUtils.isNotBlank(urls(1))) {
+				val sourceFileBlobUrl = urls(1)
+				logger.info("ContentAutoCreator :: uploadContent :: sourceUrl Uploaded Successfully to cloud for : " + internalId + " | sourceUrl : " + sourceUrl + " | sourceFileBlobUrl : " + sourceFileBlobUrl)
+
+				val headers = Map[String, String]("X-Channel-Id" -> event.channel)
+				val requestUrl = config.getString(ContentAutoCreatorConstants.KP_CS_BASE_URL,"") + "/content/v4/update" + internalId
+				val httpResponse = httpUtil.postFilePath(requestUrl, "fileUrl", sourceFileBlobUrl, headers)
+				if (httpResponse.status == 200) {
+					val response = JSONUtil.deserialize[Map[String, AnyRef]](httpResponse.body)
+					val result = response.getOrElse("result", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
+					val artifactUrl = result.getOrElse("artifactUrl", "").asInstanceOf[String]
+					logger.info("ContentAutoCreator :: uploadContent :: Content Uploaded Successfully for identifier : " + event.identifier + " | artifactUrl: " + artifactUrl)
+				} else {
+					logger.info("ContentAutoCreator :: uploadContent :: Invalid Response received while uploading source file for content : " + event.identifier + getErrorDetails(httpResponse))
+					throw new ServerException("SYSTEM_ERROR", "Invalid Response received while uploading source file for content :" + event.identifier)
+				}
+			}	else throw new ServerException("SYSTEM_ERROR", "Artifact source file upload to cloud storage failed for :" + event.identifier)
+		} else throw new ServerException("SYSTEM_ERROR", "Artifact Source is not available for content : " + event.identifier)
+	}
+
 	@throws[Exception]
 	private def getFile(identifier: String, fileUrl: String, mimeType: String, config: ContentAutoCreatorConfig, httpUtil: HttpUtil): File = {
-
 		try {
 			val file: File = if (StringUtils.isNotBlank(fileUrl) && fileUrl.contains("drive.google.com")) {
 				val fileId = fileUrl.split("download&id=")(1)
@@ -248,7 +292,7 @@ trait ContentAutoCreator extends ObjectUpdater with ContentCollectionUpdater {
 			cloudStorageUtil.uploadFile(folder, uploadedFile, Option(true))
 		} catch {
 			case e: Exception =>
-				logger.info("ContentUtil :: uploadArtifact ::  Exception occurred while uploading artifact for : " + identifier + "Exception is : " + e.getMessage)
+				logger.info("ContentAutoCreator :: uploadArtifact ::  Exception occurred while uploading artifact for : " + identifier + "Exception is : " + e.getMessage)
 				e.printStackTrace
 				throw new ServerException("ERR_CONTENT_UPLOAD_FILE", "Error while uploading the File.", e)
 		}

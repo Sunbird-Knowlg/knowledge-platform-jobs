@@ -2,6 +2,7 @@ package org.sunbird.job.util
 
 import kong.unirest.Unirest
 import org.apache.commons.collections.CollectionUtils
+import org.sunbird.job.exception.ServerException
 
 import sys.process._
 import java.io.File
@@ -27,6 +28,13 @@ class HttpUtil extends Serializable {
 
   def post_map(url: String, requestBody: Map[String, AnyRef], headers: Map[String, String] = Map[String, String]("Content-Type"->"application/json")): HTTPResponse = {
     val response = Unirest.post(url).headers(headers.asJava).fields(requestBody.asJava).asString()
+    HTTPResponse(response.getStatus, response.getBody)
+  }
+
+  def postFilePath(url: String, paramName: String, filePath: String, headers: Map[String, String]): HTTPResponse = {
+    if (null == filePath) throw new ServerException("ERR_INVALID_REQUEST_PARAM", "Invalid File Source!")
+    validateRequest(url,headers)
+    val response = Unirest.post(url).headers(headers.asJava).multiPartContent.field(paramName, filePath).asString;
     HTTPResponse(response.getStatus, response.getBody)
   }
 
@@ -57,6 +65,11 @@ class HttpUtil extends Serializable {
     val urlObject = new URL(url)
     val filePath = downloadLocation + "/" + urlObject.getPath.replaceAll("/", "")
     urlObject #> new File(filePath) !!
+  }
+
+  private def validateRequest(url: String, headerParam: Map[String, String]): Unit = {
+    if (url.isEmpty) throw new ServerException("ERR_INVALID_URL", "Url Parameter is Missing!")
+    if (null == headerParam || headerParam.isEmpty) throw new ServerException("ERR_INVALID_HEADER_PARAM", "Header Parameter is Missing!")
   }
 }
 
