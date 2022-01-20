@@ -38,7 +38,7 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
   private val readerConfig = ExtDataConfig(config.contentKeyspaceName, config.contentTableName)
 
   @transient var ec: ExecutionContext = _
-  private val pkgTypes = List(EcarPackageType.FULL.toString, EcarPackageType.SPINE.toString)
+  private val pkgTypes = List(EcarPackageType.FULL, EcarPackageType.SPINE)
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
@@ -85,7 +85,7 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
           // Clear redis cache
           cache.del(data.identifier)
           val enrichedObj = enrichObject(ecmlVerifiedObj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
-          val objWithEcar = getObjectWithEcar(enrichedObj, if (enrichedObj.getString("contentDisposition", "").equalsIgnoreCase("online-only")) List(EcarPackageType.SPINE.toString) else pkgTypes)(ec, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
+          val objWithEcar = getObjectWithEcar(enrichedObj, if (enrichedObj.getString("contentDisposition", "").equalsIgnoreCase("online-only")) List(EcarPackageType.SPINE) else pkgTypes)(ec, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
           logger.info("Ecar generation done for Content: " + objWithEcar.identifier)
           saveOnSuccess(objWithEcar)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
           pushStreamingUrlEvent(enrichedObj, context)(metrics)
