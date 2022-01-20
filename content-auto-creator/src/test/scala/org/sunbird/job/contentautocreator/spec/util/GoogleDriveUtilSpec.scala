@@ -2,6 +2,7 @@ package org.sunbird.job.contentautocreator.spec.util
 
 
 import com.typesafe.config.{Config, ConfigFactory}
+import org.apache.commons.io.FileUtils
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
 import org.sunbird.job.contentautocreator.util.GoogleDriveUtil
@@ -19,15 +20,18 @@ class GoogleDriveUtilSpec extends FlatSpec with BeforeAndAfterAll with Matchers 
     val httpUtil = new HttpUtil
     val downloadPath = "/tmp/content" + File.separator + "_temp_" + System.currentTimeMillis
     httpUtil.downloadFile(fileUrl, downloadPath)
-    assert(new File(downloadPath).exists())
+    val downloadedFile = new File(downloadPath)
+    assert(downloadedFile.exists())
+    FileUtils.deleteDirectory(downloadedFile.getParentFile)
   }
 
   "GoogleDriveUtil.downloadFile" should "download non-GoogleDrive Url object" in {
     val contentConfig = new ContentAutoCreatorConfig(config)
-    val fileUrl = "1ZUSXrODwNK52pzDJZ_fuNKK9lXBzxCsS"
+    val fileId = "1ZUSXrODwNK52pzDJZ_fuNKK9lXBzxCsS"
     val downloadPath = "/tmp/content" + File.separator + "_temp_" + System.currentTimeMillis
-    val downloadedFile = GoogleDriveUtil.downloadFile(fileUrl, downloadPath, "image")(contentConfig)
+    val downloadedFile = GoogleDriveUtil.downloadFile(fileId, downloadPath, "image")(contentConfig)
     assert(downloadedFile.exists())
+    FileUtils.deleteDirectory(downloadedFile.getParentFile)
   }
 
 }
