@@ -20,9 +20,10 @@ class GetFileUtilSpec extends FlatSpec with BeforeAndAfterAll with Matchers with
     val httpUtil = new HttpUtil
     val downloadPath = "/tmp/content" + File.separator + "_temp_" + System.currentTimeMillis
     httpUtil.downloadFile(fileUrl, downloadPath)
-    val downloadedFile = new File(downloadPath)
-    assert(downloadedFile.exists())
-    FileUtils.deleteDirectory(downloadedFile.getParentFile)
+    val downloadedFolder = new File(downloadPath)
+    assert(downloadedFolder.exists() && downloadedFolder.listFiles().nonEmpty)
+    println("File:: " + downloadedFolder.listFiles().head)
+    FileUtils.deleteDirectory(downloadedFolder)
   }
 
   "GoogleDriveUtil.downloadFile" should "download non-GoogleDrive Url object" in {
