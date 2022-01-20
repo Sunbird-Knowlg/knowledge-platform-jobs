@@ -82,10 +82,11 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
     val artifactUtl = obj.getString("artifactUrl", "")
     if (ignoreValidationMimeType.contains(obj.mimeType)) {
       // Validation not required. Nothing to do.
-    } else if (obj.mimeType.equalsIgnoreCase(MimeType.ECML_Archive.toString) && // Either 'body' or 'artifactUrl' is needed
-      ((obj.extData.getOrElse("body", null) == null || obj.extData.getOrElse("body", null).asInstanceOf[Map[String, AnyRef]].isEmpty) || StringUtils.isBlank(artifactUtl)))
-      messages += s"""Either 'body' or 'artifactUrl' are required for processing of ECML content for : $identifier"""
-    else {
+    } else if (obj.mimeType.equalsIgnoreCase(MimeType.ECML_Archive.toString)) { // Either 'body' or 'artifactUrl' is needed
+      if (obj.extData.nonEmpty && ((obj.extData.get.getOrElse("body", Map.empty).isInstanceOf[Map[String, AnyRef]] && obj.extData.get.getOrElse("body", Map.empty).asInstanceOf[Map[String, AnyRef]].nonEmpty) || StringUtils.isNotBlank(artifactUtl) )) {
+        //  Do nothing.
+      } else messages += s"""Either 'body' or 'artifactUrl' are required for processing of ECML content for : $identifier"""
+    } else {
       val allowedExtensionsWord: util.List[String] = config.asInstanceOf[ContentPublishConfig].allowedExtensionsWord
 
       if (StringUtils.isBlank(artifactUtl))
@@ -131,12 +132,12 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
       logger.info("Validating File For MimeType: " + file.getName)
       if (extension.nonEmpty) {
         val tika = new Tika
-        val file_type = tika.detect(file)
+        val fileType = tika.detect(file)
         mimeType match {
           case "application/pdf" =>
-            if (StringUtils.equalsIgnoreCase(extension, "pdf") && file_type == "application/pdf") return true
+            if (StringUtils.equalsIgnoreCase(extension, "pdf") && fileType == "application/pdf") return true
           case "application/epub" =>
-            if (StringUtils.equalsIgnoreCase(extension, "epub") && file_type == "application/epub+zip") return true
+            if (StringUtils.equalsIgnoreCase(extension, "epub") && fileType == "application/epub+zip") return true
           case "application/msword" =>
             if (allowedExtensionsWord.contains(extension)) return true
         }

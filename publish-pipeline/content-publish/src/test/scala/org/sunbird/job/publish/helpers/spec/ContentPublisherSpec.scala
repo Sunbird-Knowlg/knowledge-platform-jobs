@@ -84,6 +84,39 @@ class ContentPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers
     result.size should be(1)
   }
 
+  "validateMetadata with mimeType application/vnd.ekstep.ecml-archive " should " return exception messages if extData is set as None" in {
+    val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/vnd.ekstep.ecml-archive"), None)
+    val result: List[String] = new TestContentPublisher().validateMetadata(data, data.identifier, jobConfig)
+    result.size should be(1)
+    result.contains("Either 'body' or 'artifactUrl' are required for processing of ECML content for : do_123") shouldBe true
+  }
+
+  "validateMetadata with mimeType application/vnd.ekstep.ecml-archive " should " return exception messages if is having body=\"\"" in {
+    val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/vnd.ekstep.ecml-archive"), Some(Map[String, AnyRef]("body" -> "")))
+    val result: List[String] = new TestContentPublisher().validateMetadata(data, data.identifier, jobConfig)
+    result.size should be(1)
+    result.contains("Either 'body' or 'artifactUrl' are required for processing of ECML content for : do_123") shouldBe true
+  }
+
+  "validateMetadata with mimeType application/vnd.ekstep.ecml-archive " should " return exception messages if is having body=null" in {
+    val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/vnd.ekstep.ecml-archive"), Some(Map[String, AnyRef]("body" -> null)))
+    val result: List[String] = new TestContentPublisher().validateMetadata(data, data.identifier, jobConfig)
+    result.size should be(1)
+    result.contains("Either 'body' or 'artifactUrl' are required for processing of ECML content for : do_123") shouldBe true
+  }
+
+  "validateMetadata with mimeType application/vnd.ekstep.ecml-archive " should " not return exception messages if is having body=null but artifactUrl is available" in {
+    val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/vnd.ekstep.ecml-archive", "artifactUrl" -> "sampleUrl"), Some(Map[String, AnyRef]("body" -> null)))
+    val result: List[String] = new TestContentPublisher().validateMetadata(data, data.identifier, jobConfig)
+    result.size should be(0)
+  }
+
+  "validateMetadata with mimeType application/vnd.ekstep.ecml-archive " should " not return exception messages if is having valid body" in {
+    val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/vnd.ekstep.ecml-archive"), Some(Map[String, AnyRef]("body" -> Map("sampleKey" -> "sampleValue"))))
+    val result: List[String] = new TestContentPublisher().validateMetadata(data, data.identifier, jobConfig)
+    result.size should be(0)
+  }
+
   "validateMetadata with mimeType video/x-youtube or video/youtube " should " return exception messages if content is having invalid artifactUrl" in {
     val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "video/x-youtube", "artifactUrl" -> "https://www.youtube.com/"), None)
     val result: List[String] = new TestContentPublisher().validateMetadata(data, data.identifier, jobConfig)
@@ -109,17 +142,31 @@ class ContentPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers
     result.size should be(0)
   }
 
-  "validateMetadata with mimeType application/pdf or application/epub or application/msword " should " return exception messages if content is having invalid artifactUrl" in {
+  "validateMetadata with mimeType application/pdf " should " return exception messages if content is having invalid artifactUrl" in {
     val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/pdf", "artifactUrl" -> "https://www.youtube.com/"), None)
     val result: List[String] = new TestContentPublisher().validateMetadata(data, data.identifier, jobConfig)
     result.size should be(1)
     result.contains("Error! Invalid File Extension. Uploaded file https://www.youtube.com/ is not a pdf file for : do_123") shouldBe true
   }
 
-  "validateMetadata with mimeType application/pdf or application/epub or application/msword " should " not return exception messages if content is having valid artifactUrl" in {
+  "validateMetadata with mimeType application/pdf " should " not return exception messages if content is having valid artifactUrl" in {
     val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/pdf", "artifactUrl" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_11329603741667328018/artifact/do_11329603741667328018_1623058698775_intellijidea_referencecard.pdf"), None)
     val result: List[String] = new TestContentPublisher().validateMetadata(data, data.identifier, jobConfig)
     result.size should be(0)
+  }
+
+  "validateMetadata with mimeType application/epub " should " return exception messages if content is having invalid artifactUrl" in {
+    val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/epub", "artifactUrl" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_11329603741667328018/artifact/do_11329603741667328018_1623058698775_intellijidea_referencecard.pdf"), None)
+    val result: List[String] = new TestContentPublisher().validateMetadata(data, data.identifier, jobConfig)
+    result.size should be(1)
+    result.contains("Error! Invalid File Extension. Uploaded file https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_11329603741667328018/artifact/do_11329603741667328018_1623058698775_intellijidea_referencecard.pdf is not a epub file for : do_123") shouldBe true
+  }
+
+  "validateMetadata with mimeType application/msword " should " return exception messages if content is having invalid artifactUrl" in {
+    val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/msword", "artifactUrl" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_11329603741667328018/artifact/do_11329603741667328018_1623058698775_intellijidea_referencecard.pdf"), None)
+    val result: List[String] = new TestContentPublisher().validateMetadata(data, data.identifier, jobConfig)
+    result.size should be(1)
+    result.contains("Error! Invalid File Extension. | Uploaded file https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_11329603741667328018/artifact/do_11329603741667328018_1623058698775_intellijidea_referencecard.pdf should be among the Allowed_file_extensions for mimeType doc [doc, docx, ppt, pptx, key, odp, pps, odt, wpd, wps, wks] for : do_123") shouldBe true
   }
 
   "saveExternalData " should "save external data to cassandra table" in {
