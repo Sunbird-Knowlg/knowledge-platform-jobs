@@ -79,7 +79,7 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
         val messages: List[String] = List.empty[String] // validate(obj, obj.identifier, validateMetadata)
         if (messages.isEmpty) {
           // Pre-publish update
-          updateProcessingNode(new ObjectData(obj.identifier, obj.metadata ++ Map("lastPublishedBy" -> data.lastPublishedBy), obj.extData, obj.hierarchy))(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
+          updateProcessingNode(new ObjectData(obj.identifier, obj.metadata ++ Map("lastPublishedBy" -> data.lastPublishedBy, "dialcodes" -> obj.metadata.getOrElse("dialcodes",null)), obj.extData, obj.hierarchy))(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
 
           val isCollectionShallowCopy = isContentShallowCopy(obj)
           val updatedObj = if (isCollectionShallowCopy) updateOriginPkgVersion(obj)(neo4JUtil) else obj
