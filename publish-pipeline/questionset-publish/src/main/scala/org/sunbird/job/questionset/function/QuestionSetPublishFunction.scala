@@ -73,9 +73,9 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
       val qList: List[ObjectData] = getQuestions(obj, qReaderConfig)(cassandraUtil)
       logger.info("processElement ::: child questions list from hierarchy :::  " + qList)
       // Filter out questions having visibility parent (which need to be published)
-      val childQuestions: List[ObjectData] = qList.filter(q => isValidChildQuestion(q))
+      val childQuestions: List[ObjectData] = qList.filter(q => isValidChildQuestion(q, obj.getString("createdBy", "")))
       //TODO: Remove below statement
-      childQuestions.foreach(ch => logger.info("child questions visibility parent identifier : " + ch.identifier))
+      childQuestions.foreach(ch => logger.info(s"child questions which are going to be published.  identifier : ${ch.identifier} , visibility: ${ch.getString("visibility", "")} , createdBy: ${ch.getString("createdBy", "")}"))
       // Publish Child Questions
       QuestionPublishUtil.publishQuestions(obj.identifier, childQuestions, data.pkgVersion)(ec, neo4JUtil, cassandraUtil, qReaderConfig, cloudStorageUtil, definitionCache, definitionConfig, config, httpUtil)
       val pubMsgs: List[String] = isChildrenPublished(childQuestions, data.publishType, qReaderConfig)
@@ -134,8 +134,8 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
     new ObjectData(data.identifier, data.metadata ++ Map("previewUrl" -> previewUrl.getOrElse(""), "pdfUrl" -> pdfUrl.getOrElse("")), data.extData, data.hierarchy)
   }
 
-  def isValidChildQuestion(obj: ObjectData): Boolean = {
-    StringUtils.equalsIgnoreCase("Parent", obj.getString("visibility", ""))
+  def isValidChildQuestion(obj: ObjectData, createdBy: String): Boolean = {
+    StringUtils.equalsIgnoreCase("Parent", obj.getString("visibility", "")) || (StringUtils.equalsIgnoreCase("Default", obj.getString("visibility", "")) && !StringUtils.equalsIgnoreCase("Live", obj.getString("status", "")) && StringUtils.equalsIgnoreCase(createdBy, obj.getString("createdBy", "")))
   }
 
 }
