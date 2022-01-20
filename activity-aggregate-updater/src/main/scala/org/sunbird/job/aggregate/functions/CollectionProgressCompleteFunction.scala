@@ -110,6 +110,7 @@ class CollectionProgressCompleteFunction(config: ActivityAggregateUpdaterConfig)
     groupedQueries.foreach(queries => {
       val cqlBatch = QueryBuilder.batch()
       queries.map(query => cqlBatch.add(query))
+      logger.info("is cassandra cluster available =>"+(null !=cassandraUtil.session))
       val result = cassandraUtil.upsert(cqlBatch.toString)
       logger.info("result after update => "+result)
       if (result) {
