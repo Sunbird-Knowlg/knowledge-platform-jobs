@@ -24,7 +24,7 @@ class GoogleDriveUtilSpec extends FlatSpec with BeforeAndAfterAll with Matchers 
 
   "GoogleDriveUtil.downloadFile" should "download non-GoogleDrive Url object" in {
     val contentConfig = new ContentAutoCreatorConfig(config)
-    val fileUrl = "https://drive.google.com/uc?export=download&id=0B2kcffmj4S4MNkZUckhRTThZQ0RtUHJYc0hpN1VjT3VDaUlJ"
+    val fileUrl = "1ZUSXrODwNK52pzDJZ_fuNKK9lXBzxCsS"
     val downloadPath = "/tmp/content" + File.separator + "_temp_" + System.currentTimeMillis
     val downloadedFile = GoogleDriveUtil.downloadFile(fileUrl, downloadPath, "image")(contentConfig)
     assert(downloadedFile.exists())
