@@ -143,13 +143,18 @@ class ContentPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers
     result.size should be(0)
   }
 
-  "validateMetadata with mimeType application/pdf " should " return exception messages if content is having invalid artifactUrl" in {
+  "validateMetadata with mimeType application/pdf " should " throw InvalidInputException invalid artifactUrl" in {
     val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/pdf", "artifactUrl" -> "https://www.youtube.com/"), None)
     assertThrows[InvalidInputException] {
-      val result: List[String] = new TestContentPublisher().validateMetadata(data, data.identifier, jobConfig)
-      result.size should be(1)
-      result.contains("Error! Invalid File Extension. Uploaded file https://www.youtube.com/ is not a pdf file for : do_123") shouldBe true
+      new TestContentPublisher().validateMetadata(data, data.identifier, jobConfig)
     }
+  }
+
+  "validateMetadata with mimeType application/pdf " should " exception messages if content is having other fileType in artifactUrl" in {
+    val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/pdf", "artifactUrl" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_1130958930694553601102/artifact/index.epub"), None)
+    val result: List[String] = new TestContentPublisher().validateMetadata(data, data.identifier, jobConfig)
+    result.size should be(1)
+    result.contains("Error! Invalid File Extension. Uploaded file https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_1130958930694553601102/artifact/index.epub is not a pdf file for : do_123") shouldBe true
   }
 
   "validateMetadata with mimeType application/pdf " should " not return exception messages if content is having valid artifactUrl" in {
@@ -165,11 +170,29 @@ class ContentPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers
     result.contains("Error! Invalid File Extension. Uploaded file https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_11329603741667328018/artifact/do_11329603741667328018_1623058698775_intellijidea_referencecard.pdf is not a epub file for : do_123") shouldBe true
   }
 
+  "validateMetadata with mimeType application/epub " should " not return exception messages if content is having valid artifactUrl" in {
+    val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/epub", "artifactUrl" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_1130958930694553601102/artifact/index.epub"), None)
+    val result: List[String] = new TestContentPublisher().validateMetadata(data, data.identifier, jobConfig)
+    result.size should be(0)
+  }
+
   "validateMetadata with mimeType application/msword " should " return exception messages if content is having invalid artifactUrl" in {
     val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/msword", "artifactUrl" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_11329603741667328018/artifact/do_11329603741667328018_1623058698775_intellijidea_referencecard.pdf"), None)
     val result: List[String] = new TestContentPublisher().validateMetadata(data, data.identifier, jobConfig)
     result.size should be(1)
     result.contains("Error! Invalid File Extension. | Uploaded file https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_11329603741667328018/artifact/do_11329603741667328018_1623058698775_intellijidea_referencecard.pdf should be among the Allowed_file_extensions for mimeType doc [doc, docx, ppt, pptx, key, odp, pps, odt, wpd, wps, wks] for : do_123") shouldBe true
+  }
+
+  "validateMetadata with mimeType application/msword and .pptx " should " not return exception messages if content is having valid artifactUrl" in {
+    val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/msword", "artifactUrl" -> "https://ekstep-public-dev.s3-ap-south-1.amazonaws.com/content/do_112216616320983040129/artifact/performance_out_1491286194831.pptx"), None)
+    val result: List[String] = new TestContentPublisher().validateMetadata(data, data.identifier, jobConfig)
+    result.size should be(0)
+  }
+
+  "validateMetadata with mimeType application/msword and .docx " should " not return exception messages if content is having valid artifactUrl" in {
+    val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/msword", "artifactUrl" -> "https://ekstep-public-dev.s3-ap-south-1.amazonaws.com/content/do_112216615190192128128/artifact/prdassetstagging-2_1491286084107.docx"), None)
+    val result: List[String] = new TestContentPublisher().validateMetadata(data, data.identifier, jobConfig)
+    result.size should be(0)
   }
 
   "saveExternalData " should "save external data to cassandra table" in {
@@ -181,6 +204,12 @@ class ContentPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers
     val identifier = "do_11321328578759884811663"
     val result: Option[ObjectExtData] = new TestContentPublisher().getExtData(identifier, 0.0, "application/vnd.ekstep.ecml-archive", readerConfig)
     result.getOrElse(new ObjectExtData).data.getOrElse(Map()).contains("body") shouldBe true
+  }
+
+  "getExtData " should " not get content body for other than application/pdf mimeType " in {
+    val identifier = "do_11321328578759884811663"
+    val result: Option[ObjectExtData] = new TestContentPublisher().getExtData(identifier, 0.0, "application/pdf", readerConfig)
+    result.getOrElse(new ObjectExtData).data.getOrElse(Map()).contains("body") shouldBe false
   }
 
   "getHierarchy " should "do nothing " in {
