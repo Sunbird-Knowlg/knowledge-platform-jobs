@@ -22,6 +22,7 @@ trait ContentAutoCreator extends ObjectUpdater with ContentCollectionUpdater {
 		val filteredMetadata = event.metadata.filter(x => !config.content_props_to_removed.contains(x._1))
 		val createMetadata = filteredMetadata.filter(x => config.content_create_props.contains(x._1))
 		val updateMetadata = filteredMetadata.filter(x => !config.content_create_props.contains(x._1))
+		val delayUpload = if (StringUtils.equalsIgnoreCase(event.mimeType, "application/vnd.ekstep.h5p-archive")) 6 * config.apiCallDelay else config.apiCallDelay
 
 		val originId = event.reqOriginData.getOrDefault("identifier","")
 		var internalId, contentStage: String = ""
@@ -41,8 +42,6 @@ trait ContentAutoCreator extends ObjectUpdater with ContentCollectionUpdater {
 				contentStage = getContentStage(event.identifier, event.pkgVersion, contentMetadata)
 			}
 		}
-
-		val delayUpload = if (StringUtils.equalsIgnoreCase(event.mimeType, "application/vnd.ekstep.h5p-archive")) 6 * config.apiCallDelay else config.apiCallDelay
 
 		contentStage match {
 			case "create" =>
