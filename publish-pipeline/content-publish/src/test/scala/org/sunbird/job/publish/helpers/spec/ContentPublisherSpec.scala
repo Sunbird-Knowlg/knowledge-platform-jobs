@@ -12,6 +12,7 @@ import org.scalatestplus.mockito.MockitoSugar
 import org.sunbird.job.content.publish.helpers.ContentPublisher
 import org.sunbird.job.content.task.ContentPublishConfig
 import org.sunbird.job.domain.`object`.DefinitionCache
+import org.sunbird.job.exception.InvalidInputException
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData, ObjectExtData}
 import org.sunbird.job.publish.helpers.EcarPackageType
@@ -144,9 +145,11 @@ class ContentPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers
 
   "validateMetadata with mimeType application/pdf " should " return exception messages if content is having invalid artifactUrl" in {
     val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/pdf", "artifactUrl" -> "https://www.youtube.com/"), None)
-    val result: List[String] = new TestContentPublisher().validateMetadata(data, data.identifier, jobConfig)
-    result.size should be(1)
-    result.contains("Error! Invalid File Extension. Uploaded file https://www.youtube.com/ is not a pdf file for : do_123") shouldBe true
+    assertThrows[InvalidInputException] {
+      val result: List[String] = new TestContentPublisher().validateMetadata(data, data.identifier, jobConfig)
+      result.size should be(1)
+      result.contains("Error! Invalid File Extension. Uploaded file https://www.youtube.com/ is not a pdf file for : do_123") shouldBe true
+    }
   }
 
   "validateMetadata with mimeType application/pdf " should " not return exception messages if content is having valid artifactUrl" in {

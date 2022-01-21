@@ -119,16 +119,21 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
   }
 
   private def isValidUrl(url: String, mimeType: String, allowedExtensionsWord: util.List[String]): Boolean = {
-    val destPath = s"""/tmp"""
+    val destPath = s"""${File.separator}tmp${File.separator}validUrl"""
     //    val destPath = s"""$bundlePath${File.separator}${StringUtils.replace(id, ".img", "")}"""
+    var isValid = false
     try {
-      val file = FileUtils.downloadFile(url, destPath)
-      if (exceptionChecks(mimeType, file, allowedExtensionsWord)) return true
+      val file: File = FileUtils.downloadFile(url, destPath)
+      if (exceptionChecks(mimeType, file, allowedExtensionsWord)) isValid = true
     } catch {
-      case e: Exception => e.printStackTrace()
+      case e: Exception =>
+        logger.error("isValidUrl: Error while checking mimeType.")
+        e.printStackTrace()
+        throw new InvalidInputException("isValidUrl: Error while checking mimeType ", e)
+    } finally {
+      FileUtils.deleteQuietly(destPath)
     }
-    //    finally FileUtils.deleteFile(file)
-    false
+    isValid
   }
 
   private def exceptionChecks(mimeType: String, file: File, allowedExtensionsWord: util.List[String]): Boolean = {
@@ -151,7 +156,7 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
       case e: IOException =>
         logger.error("exceptionChecks: Error while checking mimeType.")
         e.printStackTrace()
-        throw new InvalidInputException("Error while checking mimeType ", e)
+        throw new InvalidInputException("exceptionChecks: Error while checking mimeType ", e)
     }
     false
   }
