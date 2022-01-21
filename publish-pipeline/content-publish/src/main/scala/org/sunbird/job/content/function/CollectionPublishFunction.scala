@@ -40,7 +40,7 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
   private val COLLECTION_CACHE_KEY_SUFFIX = ":leafnodes"
 
   @transient var ec: ExecutionContext = _
-  private val pkgTypes = List(EcarPackageType.SPINE.toString, EcarPackageType.ONLINE.toString)
+  private val pkgTypes = List(EcarPackageType.SPINE, EcarPackageType.ONLINE)
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)

@@ -97,11 +97,10 @@ class ObjectBundleSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
     val objList = List(Map[String, AnyRef]("publish_type" -> "public", "mediaType" -> "content", "name" -> "PDF Content edited 1", "streamingUrl" -> "http://google.com/fsdfsdfsdf", "identifier" -> "do_11338246158784921611", "primaryCategory" -> "Explanation Content", "framework" -> "NCF", "versionKey" -> "1633945983008", "mimeType" -> "application/pdf", "license" -> "CC BY 4.0", "contentType" -> "ClassroomTeachingVideo", "objectType" -> "Content", "status" -> "Draft", "lastPublishedBy" -> "anil", "contentDisposition" -> "inline", "previewUrl" -> "http://google.com/fsdfsdfsdf", "artifactUrl" -> "http://google.com/fsdfsdfsdf", "visibility" -> "Default"))
 
     assertThrows[InvalidInputException] {
-      obj.getObjectBundle(data, objList, EcarPackageType.FULL.toString)
+      obj.getObjectBundle(data, objList, EcarPackageType.FULL)
     }
   }
 }
 
 class TestObjectBundle extends ObjectBundle {
-
 }
