@@ -52,6 +52,14 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     cassandraUtil.findOne(selectWhere.toString)
   }
 
+  def getRelationalMetadata(identifier: String, pkgVersion: Double, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = {
+    val row: Row = Option(getCollectionHierarchy(getEditableObjId(identifier, pkgVersion), readerConfig)).getOrElse(getCollectionHierarchy(identifier, readerConfig))
+    if (null != row) {
+      val data: Map[String, AnyRef] = ScalaJsonUtil.deserialize[Map[String, AnyRef]](row.getString("relational_metadata"))
+      Option(data)
+    } else Option(Map.empty[String, AnyRef])
+  }
+
   override def getExtDatas(identifiers: List[String], readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = None
 
   override def getHierarchies(identifiers: List[String], readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = None
@@ -80,7 +88,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       collectionHierarchy.getOrElse("children", List.empty[Map[String, AnyRef]]).asInstanceOf[List[Map[String, AnyRef]]]
     } else List.empty[Map[String, AnyRef]]
     val toEnrichChildren = children.to[ListBuffer]
-    val updatedObj: ObjectData = if (collectionHierarchy.nonEmpty && !isCollectionShallowCopy) {
+    val enrichedObj: ObjectData = if (collectionHierarchy.nonEmpty && !isCollectionShallowCopy) {
       val childNodesToRemove = ListBuffer.empty[String]
       val collectionResourceChildNodes: mutable.HashSet[String] = mutable.HashSet.empty[String]
       val enrichedChildrenData = enrichChildren(toEnrichChildren, collectionResourceChildNodes, childNodesToRemove)
@@ -88,7 +96,6 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       new ObjectData(obj.identifier, updatedCompatibilityLevelMeta ++ Map("childNodes" -> collectionChildNodes.filter(rec => !childNodesToRemove.contains(rec))), obj.extData, Option(collectionHierarchy + ("children" -> enrichedChildrenData.toList)))
     } else new ObjectData(obj.identifier, updatedCompatibilityLevelMeta, obj.extData, Option(collectionHierarchy ++ Map("children" -> toEnrichChildren.toList)))
 
-    val enrichedObj = processCollection(updatedObj)
     logger.info("CollectionPublisher:: enrichObjectMetadata:: Collection data after processing for : " + enrichedObj.identifier + " | Metadata : " + enrichedObj.metadata)
     logger.debug("CollectionPublisher:: enrichObjectMetadata:: Collection children data after processing : " + enrichedObj.hierarchy.get("children"))
 
@@ -100,19 +107,33 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     Some(getFlatStructure(List(obj.metadata ++ obj.extData.getOrElse(Map()) ++ Map("children" -> hChildren)), List()))
   }
 
-  override def saveExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Unit = None
+  override def saveExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Unit = {
+    val identifier = obj.identifier.replace(".img", "")
+    val query: Insert = QueryBuilder.insertInto(readerConfig.keyspace, readerConfig.table)
+    query.value(readerConfig.primaryKey(0), identifier)
+    query.value("relational_metadata", null)
+    val result = cassandraUtil.upsert(query.toString)
+    if (result) {
+      logger.info(s"relational_metadata emptied successfully for ${identifier}")
+    } else {
+      val msg = s"relational_metadata emptying Failed For $identifier"
+      logger.error(msg)
+    }
+  }
 
   override def deleteExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Unit = None
 
-  def getObjectWithEcar(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
+  def getObjectWithEcar(obj: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
+   val collRelationalMetadata = getRelationalMetadata(obj.identifier, obj.pkgVersion-1, readerConfig).get
     // Line 1107 in PublishFinalizer
-    val children = data.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
-    val updatedChildren = updateHierarchyMetadata(children, data.metadata)(config)
-    val updatedObj = updateRootChildrenList(data, updatedChildren)
+    val children = obj.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
+    val updatedChildren = updateHierarchyMetadata(children, obj.metadata, collRelationalMetadata)(config)
+    val enrichedObj = processCollection(obj, updatedChildren)
+    val updatedObj = updateRootChildrenList(enrichedObj, updatedChildren)
     val nodes = ListBuffer.empty[ObjectData]
     val nodeIds = ListBuffer.empty[String]
-    nodes += data
-    nodeIds += data.identifier
+    nodes += obj
+    nodeIds += obj.identifier
 
     val ecarMap: Map[String, String] = generateEcar(updatedObj, pkgTypes)
     val variants: java.util.Map[String, java.util.Map[String, String]] = ecarMap.map { case (key, value) => key.toLowerCase -> Map[String, String]("ecarUrl" -> value, "size" -> httpUtil.getSize(value).toString).asJava }.asJava
@@ -203,8 +224,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
   }
 
 
-  private def processCollection(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig): ObjectData = {
-    val children = obj.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
+  private def processCollection(obj: ObjectData, children: List[Map[String, AnyRef]])(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig): ObjectData = {
     val dataMap: mutable.Map[String, AnyRef] = processChildren(children)
     logger.info("CollectionPublisher:: processCollection:: dataMap: " + dataMap)
     val updatedObj: ObjectData = if (dataMap.nonEmpty) {
@@ -231,7 +251,6 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     val enrichedObject = if(children.nonEmpty) enrichCollection(updatedObj) else updatedObj
     //    addResourceToCollection(enrichedObject, children.to[ListBuffer]) - TODO
     enrichedObject
-
   }
 
   private def processChildren(children: List[Map[String, AnyRef]]): mutable.Map[String, AnyRef] = {
@@ -431,13 +450,25 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     input ++ Map("contentType" -> updatedContentType, "primaryCategory" -> updatedPrimaryCategory)
   }
 
-  def updateHierarchyMetadata(children: List[Map[String, AnyRef]], objMetadata: Map[String, AnyRef])(implicit config: PublishConfig): List[Map[String, AnyRef]] = {
+  def updateHierarchyMetadata(children: List[Map[String, AnyRef]], objMetadata: Map[String, AnyRef], collRelationalMetadata: Map[String, AnyRef])(implicit config: PublishConfig): List[Map[String, AnyRef]] = {
     if (children.nonEmpty) {
       children.map(child => {
         if (StringUtils.equalsIgnoreCase("Parent", child.getOrElse("visibility", "").asInstanceOf[String])) { //set child metadata -- compatibilityLevel, appIcon, posterImage, lastPublishedOn, pkgVersion, status
           val updatedChild = populatePublishMetadata(child, objMetadata)
-          updatedChild + ("children" -> updateHierarchyMetadata(updatedChild.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]], objMetadata))
-        } else child
+          updatedChild + ("children" -> updateHierarchyMetadata(updatedChild.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]], objMetadata, collRelationalMetadata))
+        } else {
+          //TODO: Populate relationalMetadata here for child contents
+          if (collRelationalMetadata.nonEmpty) {
+            val parent = child.getOrElse("parent", "").asInstanceOf[String]
+            val unitRelationalMetadata = collRelationalMetadata(parent).asInstanceOf[Map[String, AnyRef]].getOrElse("relationalMetadata", Map.empty).asInstanceOf[Map[String, AnyRef]]
+            if (unitRelationalMetadata.nonEmpty) {
+              val childRelationalMetadata = unitRelationalMetadata.getOrElse(child.getOrElse("identifier","").asInstanceOf[String], Map.empty).asInstanceOf[Map[String, AnyRef]]
+              if(childRelationalMetadata.nonEmpty) {
+                child + ("relationalMetadata" -> childRelationalMetadata)
+              } else child
+            } else child
+          } else child
+        }
       })
     } else children
   }
@@ -503,7 +534,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
           "index" -> record.getOrElse("index", 0).asInstanceOf[AnyRef])
       })
 
-    new ObjectData(obj.identifier, obj.metadata ++ Map("children" -> childrenMap, "objectType" -> "content"), obj.extData, obj.hierarchy)
+    new ObjectData(obj.identifier, obj.metadata ++ Map("children" -> childrenMap, "objectType" -> "content"), obj.extData, Option(obj.hierarchy.get + ("children" -> nextLevelNodes)))
   }
 
   def syncNodes(successObj: ObjectData, children: List[Map[String, AnyRef]], unitNodes: List[String])(implicit esUtil: ElasticSearchUtil, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, definition: ObjectDefinition, config: PublishConfig): Map[String, Map[String, AnyRef]] = {
@@ -557,7 +588,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
           if (StringUtils.equalsIgnoreCase("Parent", child.getOrElse("visibility", "").asInstanceOf[String])) {
             logger.info("CollectionPublisher:: getNodeForSyncing:: child identifier: " + child.getOrElse("identifier", "").asInstanceOf[String])
 
-            val nodeMetadata = mutable.Map() ++ child //CHECK IF THIS IS GOOD
+            val nodeMetadata = mutable.Map() ++ child
 
             // TODO - Relation related CODE is MISSING - Line 735 in Publish Finalizer
 
@@ -584,6 +615,25 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
         }
       })
     }
+  }
+
+  def saveImageHierarchy(obj: ObjectData, readerConfig: ExtDataConfig, collRelationalMetadata: Map[String, AnyRef])(implicit cassandraUtil: CassandraUtil): Boolean = {
+    val identifier = if(obj.identifier.endsWith(".img")) obj.identifier else obj.identifier+".img"
+    val hierarchy: Map[String, AnyRef] = obj.hierarchy.getOrElse(Map())
+    val query: Insert = QueryBuilder.insertInto(readerConfig.keyspace, readerConfig.table)
+    query.value(readerConfig.primaryKey.head, identifier)
+    query.value("hierarchy", ScalaJsonUtil.serialize(hierarchy))
+    query.value("relational_metadata", ScalaJsonUtil.serialize(collRelationalMetadata))
+    logger.info(s"CollectionPublisher:: saveImageHierarchy:: Publishing Hierarchy data for $identifier | Query : ${query.toString}")
+    val result = cassandraUtil.upsert(query.toString)
+    if (result) {
+      logger.info(s"CollectionPublisher:: saveImageHierarchy:: Hierarchy data saved successfully for $identifier")
+    } else {
+      val msg = s"CollectionPublisher:: saveImageHierarchy:: Hierarchy Data Insertion Failed For $identifier"
+      logger.error(msg)
+      throw new InvalidInputException(msg)
+    }
+    result
   }
 
 }
