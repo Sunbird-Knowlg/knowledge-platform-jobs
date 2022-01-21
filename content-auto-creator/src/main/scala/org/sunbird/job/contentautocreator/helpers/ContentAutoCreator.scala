@@ -43,36 +43,41 @@ trait ContentAutoCreator extends ObjectUpdater with ContentCollectionUpdater {
 			}
 		}
 
-		contentStage match {
-			case "create" =>
-				createContent(event, createMetadata, config, httpUtil)
-				updateContent(event, internalId, updateMetadata, config, httpUtil, cloudStorageUtil)
-				uploadContent(event, internalId, updateMetadata, config, httpUtil, cloudStorageUtil)
-				reviewContent(event, internalId, config, httpUtil)
-				publishContent(event, internalId, event.metadata.get("lastPublishedBy").asInstanceOf[String], config, httpUtil)
-			case "update" =>
-				updateContent(event, internalId, updateMetadata, config, httpUtil, cloudStorageUtil)
-				if(!stage.equalsIgnoreCase("create")) {
-					uploadContent(event, internalId, updateMetadata, config, httpUtil, cloudStorageUtil)
-					reviewContent(event, internalId, config, httpUtil)
-					publishContent(event, internalId, event.metadata.get("lastPublishedBy").asInstanceOf[String], config, httpUtil)
-				}
-			case "upload" =>
-				uploadContent(event, internalId, event.metadata, config, httpUtil, cloudStorageUtil)
-				delay(delayUpload)
-				if(!stage.equalsIgnoreCase("upload")) {
-					reviewContent(event, internalId, config, httpUtil)
-					publishContent(event, internalId, event.metadata.get("lastPublishedBy").asInstanceOf[String], config, httpUtil)
-				}
-			case "review" =>
-				reviewContent(event, internalId, config, httpUtil)
-				delay(config.apiCallDelay)
-				if(!stage.equalsIgnoreCase("review")) {
-					publishContent(event, internalId, event.metadata.get("lastPublishedBy").asInstanceOf[String], config, httpUtil)
-				}
-			case "publish" =>
-				publishContent(event, internalId, event.metadata.get("lastPublishedBy").asInstanceOf[String], config, httpUtil)
-			case _ => logger.info("ContentAutoCreator :: process :: Event Skipped for operations (create, upload, publish) for: " + event.identifier + " | Content Stage : " + contentStage)
+		try {
+			contentStage match {
+				case "create" =>
+					createContent(event, createMetadata, config, httpUtil)
+					updateContent(event.channel, internalId, updateMetadata, config, httpUtil, cloudStorageUtil)
+					uploadContent(event.channel, internalId, updateMetadata, config, httpUtil, cloudStorageUtil)
+					reviewContent(event.channel, internalId, config, httpUtil)
+					publishContent(event.channel, internalId, event.metadata.get("lastPublishedBy").asInstanceOf[String], config, httpUtil)
+				case "update" =>
+					updateContent(event.channel, internalId, updateMetadata, config, httpUtil, cloudStorageUtil)
+					if (!stage.equalsIgnoreCase("create")) {
+						uploadContent(event.channel, internalId, updateMetadata, config, httpUtil, cloudStorageUtil)
+						reviewContent(event.channel, internalId, config, httpUtil)
+						publishContent(event.channel, internalId, event.metadata.get("lastPublishedBy").asInstanceOf[String], config, httpUtil)
+					}
+				case "upload" =>
+					uploadContent(event.channel, internalId, event.metadata, config, httpUtil, cloudStorageUtil)
+					delay(delayUpload)
+					if (!stage.equalsIgnoreCase("upload")) {
+						reviewContent(event.channel, internalId, config, httpUtil)
+						publishContent(event.channel, internalId, event.metadata.get("lastPublishedBy").asInstanceOf[String], config, httpUtil)
+					}
+				case "review" =>
+					reviewContent(event.channel, internalId, config, httpUtil)
+					delay(config.apiCallDelay)
+					if (!stage.equalsIgnoreCase("review")) {
+						publishContent(event.channel, internalId, event.metadata.get("lastPublishedBy").asInstanceOf[String], config, httpUtil)
+					}
+				case "publish" =>
+					publishContent(event.channel, internalId, event.metadata.get("lastPublishedBy").asInstanceOf[String], config, httpUtil)
+				case _ => logger.info("ContentAutoCreator :: process :: Event Skipped for operations (create, upload, publish) for: " + event.identifier + " | Content Stage : " + contentStage)
+			}
+		} catch {
+			case e: Exception => if(internalId.nonEmpty) updateStatus(event.channel, internalId, e.getMessage, config, httpUtil)
+				throw e
 		}
 
 	}
@@ -184,8 +189,8 @@ trait ContentAutoCreator extends ObjectUpdater with ContentCollectionUpdater {
 		}
 	}
 
-	private def updateContent(event: Event, internalId: String, updateMetadata: Map[String,AnyRef], config: ContentAutoCreatorConfig, httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil): Unit = {
-		val readMetadata = read(event.channel, internalId, config, httpUtil)
+	private def updateContent(channel: String, internalId: String, updateMetadata: Map[String,AnyRef], config: ContentAutoCreatorConfig, httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil): Unit = {
+		val readMetadata = read(channel, internalId, config, httpUtil)
 		val updateMetadataFields = updateMetadata + (ContentAutoCreatorConstants.VERSION_KEY -> readMetadata.get(ContentAutoCreatorConstants.VERSION_KEY).asInstanceOf[String])
 
 		val appIconUrl = updateMetadata.getOrDefault("appIcon", "").asInstanceOf[String].trim
@@ -209,7 +214,7 @@ trait ContentAutoCreator extends ObjectUpdater with ContentCollectionUpdater {
 			})
 		}
 
-		val headers = Map[String, String]("X-Channel-Id" -> event.channel, "Content-Type" -> ContentAutoCreatorConstants.APPLICATION_JSON)
+		val headers = Map[String, String]("X-Channel-Id" -> channel, "Content-Type" -> ContentAutoCreatorConstants.APPLICATION_JSON)
 		val requestUrl = config.getString(ContentAutoCreatorConstants.KP_CS_BASE_URL,"") + "/content/v4/update" + internalId
 		val httpResponse = httpUtil.patch(requestUrl, JSONUtil.serialize(reqMap), headers)
 		if (httpResponse.status == 200) {
@@ -218,30 +223,30 @@ trait ContentAutoCreator extends ObjectUpdater with ContentCollectionUpdater {
 			val contentId = result.getOrElse(ContentAutoCreatorConstants.IDENTIFIER, "").asInstanceOf[String]
 			logger.info("ContentAutoCreator :: updateContent :: Content Updated Successfully with identifier : " + contentId)
 		} else {
-			logger.info("ContentAutoCreator :: updateContent :: Invalid Response received while updating content for : " + event.identifier + getErrorDetails(httpResponse))
-			throw new ServerException("SYSTEM_ERROR", "Invalid Response received while creating content for :" + event.identifier)
+			logger.info("ContentAutoCreator :: updateContent :: Invalid Response received while updating content for : " + internalId + getErrorDetails(httpResponse))
+			throw new ServerException("SYSTEM_ERROR", "Invalid Response received while creating content for :" + internalId)
 		}
 	}
 
-	private def uploadContent(event: Event, internalId: String, updateMetadata: Map[String,AnyRef], config: ContentAutoCreatorConfig, httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil): Unit = {
+	private def uploadContent(channel: String, internalId: String, updateMetadata: Map[String,AnyRef], config: ContentAutoCreatorConfig, httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil): Unit = {
 		val sourceUrl: String = updateMetadata.getOrDefault("artifactUrl", "").asInstanceOf[String].trim
 		val mimeType: String = updateMetadata.getOrDefault("mimeType", "").asInstanceOf[String]
 		val allowedArtifactSources: List[String] = config.artifactAllowedSources
 
 		if(allowedArtifactSources.nonEmpty && !allowedArtifactSources.exists(x => sourceUrl.contains(x)))
-			throw new ServerException("SYSTEM_ERROR", "Artifact Source is not from allowed one for : " + event.identifier + " | artifactUrl: " + sourceUrl + " | Allowed Sources : " + allowedArtifactSources)
+			throw new ServerException("SYSTEM_ERROR", "Artifact Source is not from allowed one for : " + internalId + " | artifactUrl: " + sourceUrl + " | Allowed Sources : " + allowedArtifactSources)
 
 		if (sourceUrl != null && sourceUrl.nonEmpty) {
 			logger.info("ContentAutoCreator :: uploadContent :: Initiating sourceFile download for : " + internalId + " | sourceUrl : " + sourceUrl)
 			val file = getFile(internalId, sourceUrl, mimeType, config, httpUtil)
 			logger.info("ContentAutoCreator :: uploadContent :: sourceFile downloaded for : " + internalId + " | sourceUrl : " + sourceUrl)
 			if (null == file || !file.exists) throw new Exception("Error Occurred while downloading sourceUrl file for " + internalId + " | File Url : " + sourceUrl)
-			logger.info("ContentAutoCreator :: uploadContent :: File Path for " + event.identifier + "is : " + file.getAbsolutePath + " | File Size : " + file.length)
+			logger.info("ContentAutoCreator :: uploadContent :: File Path for " + internalId + "is : " + file.getAbsolutePath + " | File Size : " + file.length)
 			val size = FileUtils.sizeOf(file)
 			logger.info("ContentAutoCreator :: uploadContent :: file size (MB): " + (size / 1048576))
 			if (size > config.artifactMaxSize && !config.bulkUploadMimeTypes.contains(mimeType)) {
-				logger.info("ContentAutoCreator :: uploadContent :: File Size is larger than allowed file size allowed in upload api for : " + event.identifier + " | File Size (MB): " + (size / 1048576) + " | mimeType : " + mimeType)
-				throw new ServerException("SYSTEM_ERROR", "File Size is larger than allowed file size allowed in upload api for : " + event.identifier + " | File Size (MB): " + (size / 1048576) + " | mimeType : " + mimeType)
+				logger.info("ContentAutoCreator :: uploadContent :: File Size is larger than allowed file size allowed in upload api for : " + internalId + " | File Size (MB): " + (size / 1048576) + " | mimeType : " + mimeType)
+				throw new ServerException("SYSTEM_ERROR", "File Size is larger than allowed file size allowed in upload api for : " + internalId + " | File Size (MB): " + (size / 1048576) + " | mimeType : " + mimeType)
 			}
 
 			val urls = uploadArtifact(file, internalId, config, cloudStorageUtil)
@@ -249,30 +254,30 @@ trait ContentAutoCreator extends ObjectUpdater with ContentCollectionUpdater {
 				val sourceFileBlobUrl = urls(1)
 				logger.info("ContentAutoCreator :: uploadContent :: sourceUrl Uploaded Successfully to cloud for : " + internalId + " | sourceUrl : " + sourceUrl + " | sourceFileBlobUrl : " + sourceFileBlobUrl)
 
-				val headers = Map[String, String]("X-Channel-Id" -> event.channel)
+				val headers = Map[String, String]("X-Channel-Id" -> channel)
 				val requestUrl = config.getString(ContentAutoCreatorConstants.KP_CS_BASE_URL,"") + "/content/v4/update" + internalId
 				val httpResponse = httpUtil.postFilePath(requestUrl, "fileUrl", sourceFileBlobUrl, headers)
 				if (httpResponse.status == 200) {
 					val response = JSONUtil.deserialize[Map[String, AnyRef]](httpResponse.body)
 					val result = response.getOrElse("result", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
 					val artifactUrl = result.getOrElse("artifactUrl", "").asInstanceOf[String]
-					logger.info("ContentAutoCreator :: uploadContent :: Content Uploaded Successfully for identifier : " + event.identifier + " | artifactUrl: " + artifactUrl)
+					logger.info("ContentAutoCreator :: uploadContent :: Content Uploaded Successfully for identifier : " + internalId + " | artifactUrl: " + artifactUrl)
 				} else {
-					logger.info("ContentAutoCreator :: uploadContent :: Invalid Response received while uploading source file for content : " + event.identifier + getErrorDetails(httpResponse))
-					throw new ServerException("SYSTEM_ERROR", "Invalid Response received while uploading source file for content :" + event.identifier)
+					logger.info("ContentAutoCreator :: uploadContent :: Invalid Response received while uploading source file for content : " + internalId + getErrorDetails(httpResponse))
+					throw new ServerException("SYSTEM_ERROR", "Invalid Response received while uploading source file for content :" + internalId)
 				}
-			}	else throw new ServerException("SYSTEM_ERROR", "Artifact source file upload to cloud storage failed for :" + event.identifier)
-		} else throw new ServerException("SYSTEM_ERROR", "Artifact Source is not available for content : " + event.identifier)
+			}	else throw new ServerException("SYSTEM_ERROR", "Artifact source file upload to cloud storage failed for :" + internalId)
+		} else throw new ServerException("SYSTEM_ERROR", "Artifact Source is not available for content : " + internalId)
 	}
 
-	private def reviewContent(event: Event, identifier: String, config: ContentAutoCreatorConfig, httpUtil: HttpUtil): Unit = {
+	private def reviewContent(channel: String, identifier: String, config: ContentAutoCreatorConfig, httpUtil: HttpUtil): Unit = {
 		val requestUrl = config.getString(ContentAutoCreatorConstants.KP_CS_BASE_URL,"") + "/content/v4/review" + identifier
 		val reqMap = new java.util.HashMap[String, AnyRef]() {
 			put(ContentAutoCreatorConstants.REQUEST, new java.util.HashMap[String, AnyRef]() {
 				put(ContentAutoCreatorConstants.CONTENT, new java.util.HashMap[String, AnyRef]())
 			})
 		}
-		val headers = Map[String, String]("X-Channel-Id" -> event.channel, "Content-Type" -> ContentAutoCreatorConstants.APPLICATION_JSON)
+		val headers = Map[String, String]("X-Channel-Id" -> channel, "Content-Type" -> ContentAutoCreatorConstants.APPLICATION_JSON)
 		val httpResponse = httpUtil.post(requestUrl, JSONUtil.serialize(reqMap), headers)
 		if (httpResponse.status == 200) {
 			val response = JSONUtil.deserialize[Map[String, AnyRef]](httpResponse.body)
@@ -280,12 +285,12 @@ trait ContentAutoCreator extends ObjectUpdater with ContentCollectionUpdater {
 			val contentId = result.getOrElse("node_id", "").asInstanceOf[String]
 			logger.info("ContentAutoCreator :: reviewContent :: Content sent for Review Successfully with identifier : " + contentId)
 		} else {
-			logger.info("ContentAutoCreator :: reviewContent :: Invalid Response received while sending content for review for : " + event.identifier + getErrorDetails(httpResponse))
-			throw new ServerException("SYSTEM_ERROR", "Invalid Response received while sending content for review for :" + event.identifier)
+			logger.info("ContentAutoCreator :: reviewContent :: Invalid Response received while sending content for review for : " + identifier + getErrorDetails(httpResponse))
+			throw new ServerException("SYSTEM_ERROR", "Invalid Response received while sending content for review for :" + identifier)
 		}
 	}
 
-	private def publishContent(event: Event, identifier: String, lastPublishedBy: String, config: ContentAutoCreatorConfig, httpUtil: HttpUtil): Unit = {
+	private def publishContent(channel: String, identifier: String, lastPublishedBy: String, config: ContentAutoCreatorConfig, httpUtil: HttpUtil): Unit = {
 		val requestUrl = config.getString(ContentAutoCreatorConstants.LEARNING_SERVICE_BASE_URL,"") + "/content/v3/publish" + identifier
 		val reqMap = new java.util.HashMap[String, AnyRef]() {
 			put(ContentAutoCreatorConstants.REQUEST, new java.util.HashMap[String, AnyRef]() {
@@ -294,7 +299,7 @@ trait ContentAutoCreator extends ObjectUpdater with ContentCollectionUpdater {
 				})
 			})
 		}
-		val headers = Map[String, String]("X-Channel-Id" -> event.channel, "Content-Type" -> ContentAutoCreatorConstants.APPLICATION_JSON)
+		val headers = Map[String, String]("X-Channel-Id" -> channel, "Content-Type" -> ContentAutoCreatorConstants.APPLICATION_JSON)
 		val httpResponse = httpUtil.post(requestUrl, JSONUtil.serialize(reqMap), headers)
 		if (httpResponse.status == 200) {
 			val response = JSONUtil.deserialize[Map[String, AnyRef]](httpResponse.body)
@@ -305,8 +310,35 @@ trait ContentAutoCreator extends ObjectUpdater with ContentCollectionUpdater {
 			else
 				throw new ServerException("SYSTEM_ERROR", "Content Publish Call Failed For : " + identifier)
 		} else {
-			logger.info("ContentAutoCreator :: publishContent :: Invalid Response received while publishing content for : " + event.identifier + getErrorDetails(httpResponse))
-			throw new ServerException("SYSTEM_ERROR", "Invalid Response received while publishing content for :" + event.identifier)
+			logger.info("ContentAutoCreator :: publishContent :: Invalid Response received while publishing content for : " + identifier + getErrorDetails(httpResponse))
+			throw new ServerException("SYSTEM_ERROR", "Invalid Response received while publishing content for :" + identifier)
+		}
+	}
+
+	private def updateStatus(channel: String, identifier: String, message: String, config: ContentAutoCreatorConfig, httpUtil: HttpUtil): Unit = {
+		val errorMsg = if (message.nonEmpty) message	else "Processing Error"
+		val requestUrl = config.getString(ContentAutoCreatorConstants.LEARNING_SERVICE_BASE_URL,"") + "/system/v3/content/update/" + identifier
+		val reqMap = new java.util.HashMap[String, AnyRef]() {
+			put(ContentAutoCreatorConstants.REQUEST, new java.util.HashMap[String, AnyRef]() {
+				put(ContentAutoCreatorConstants.CONTENT, new java.util.HashMap[String, AnyRef]() {
+					put("status", "Failed")
+					put("importError", errorMsg)
+				})
+			})
+		}
+		val headers = Map[String, String]("X-Channel-Id" -> channel, "Content-Type" -> ContentAutoCreatorConstants.APPLICATION_JSON)
+		val httpResponse = httpUtil.patch(requestUrl, JSONUtil.serialize(reqMap), headers)
+		if (httpResponse.status == 200) {
+			val response = JSONUtil.deserialize[Map[String, AnyRef]](httpResponse.body)
+			val result = response.getOrElse("result", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
+			val nodeId = result.getOrElse("node_id", "").asInstanceOf[String]
+			if(nodeId !=null && nodeId.nonEmpty)
+				logger.info("ContentAutoCreator :: updateStatus :: Content failed status successfully updated for identifier : " + identifier)
+			else
+				throw new ServerException("SYSTEM_ERROR", "Content update status Call Failed For : " + identifier)
+		} else {
+			logger.info("ContentAutoCreator :: updateStatus :: Invalid Response received while updating failed status for : " + identifier + getErrorDetails(httpResponse))
+			throw new ServerException("SYSTEM_ERROR", "Invalid Response received while updating failed status for : " + identifier)
 		}
 	}
 
