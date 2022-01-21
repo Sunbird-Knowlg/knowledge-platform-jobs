@@ -39,17 +39,22 @@ class CollectionProgressCompleteFunction(config: ActivityAggregateUpdaterConfig)
   }
 
   override def processElement(events: List[CollectionProgress], context: ProcessFunction[List[CollectionProgress], String]#Context, metrics: Metrics): Unit = {
+    logger.info("events => "+events)
+
     val pendingEnrolments = if (config.filterCompletedEnrolments) events.filter {p =>
       val row = getEnrolment(p.userId, p.courseId, p.batchId)(metrics)
       (row != null && row.getInt("status") != 2)
     } else events
-    
+    logger.info("pendingEnrolments =>"+pendingEnrolments)
+
     val enrolmentQueries = pendingEnrolments.map(enrolmentComplete => getEnrolmentCompleteQuery(enrolmentComplete))
+    logger.info("enrolmentQueries => "+enrolmentQueries)
     updateDB(config.thresholdBatchWriteSize, enrolmentQueries)(metrics)
     pendingEnrolments.foreach(e => {
       createIssueCertEvent(e, context)(metrics)
       generateAuditEvent(e, context)(metrics)
     })
+    logger.info("posting events completed")
     // Create and update the checksum to DeDup store for the input events.
     if (config.dedupEnabled) {
       events.map(cp => cp.inputContents.map(c => DeDupHelper.getMessageId(cp.courseId, cp.batchId, cp.userId, c, 2)))
@@ -68,6 +73,7 @@ class CollectionProgressCompleteFunction(config: ActivityAggregateUpdaterConfig)
       context = EventContext(cdata = Array(Map("type" -> config.courseBatch, "id" -> data.batchId).asJava, Map("type" -> "Course", "id" -> data.courseId).asJava)),
       `object` = EventObject(id = data.userId, `type` = "User", rollup = Map[String, String]("l1" -> data.courseId).asJava)
     )
+    logger.info("audit event =>"+gson.toJson(auditEvent))
     context.output(config.auditEventOutputTag, gson.toJson(auditEvent))
 
   }
@@ -104,7 +110,9 @@ class CollectionProgressCompleteFunction(config: ActivityAggregateUpdaterConfig)
     groupedQueries.foreach(queries => {
       val cqlBatch = QueryBuilder.batch()
       queries.map(query => cqlBatch.add(query))
+      logger.info("is cassandra cluster available =>"+(null !=cassandraUtil.session))
       val result = cassandraUtil.upsert(cqlBatch.toString)
+      logger.info("result after update => "+result)
       if (result) {
         metrics.incCounter(config.dbUpdateCount)
         metrics.incCounter(config.enrolmentCompleteCount)
@@ -126,6 +134,7 @@ class CollectionProgressCompleteFunction(config: ActivityAggregateUpdaterConfig)
     val ets = System.currentTimeMillis
     val mid = s"""LP.${ets}.${UUID.randomUUID}"""
     val event = s"""{"eid": "BE_JOB_REQUEST","ets": ${ets},"mid": "${mid}","actor": {"id": "Course Certificate Generator","type": "System"},"context": {"pdata": {"ver": "1.0","id": "org.sunbird.platform"}},"object": {"id": "${enrolment.batchId}_${enrolment.courseId}","type": "CourseCertificateGeneration"},"edata": {"userIds": ["${enrolment.userId}"],"action": "issue-certificate","iteration": 1, "trigger": "auto-issue","batchId": "${enrolment.batchId}","reIssue": false,"courseId": "${enrolment.courseId}"}}"""
+    logger.info("o/p event:  "+event)
     context.output(config.certIssueOutputTag, event)
     metrics.incCounter(config.certIssueEventsCount)
   }
