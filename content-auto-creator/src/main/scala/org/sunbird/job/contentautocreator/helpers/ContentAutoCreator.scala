@@ -43,6 +43,8 @@ trait ContentAutoCreator extends ObjectUpdater with ContentCollectionUpdater {
 			}
 		}
 
+		var linkToCollection = false
+
 		try {
 			contentStage match {
 				case "create" =>
@@ -65,16 +67,27 @@ trait ContentAutoCreator extends ObjectUpdater with ContentCollectionUpdater {
 						reviewContent(event.channel, internalId, config, httpUtil)
 						publishContent(event.channel, internalId, event.metadata.get("lastPublishedBy").asInstanceOf[String], config, httpUtil)
 					}
+					linkToCollection = true
 				case "review" =>
 					reviewContent(event.channel, internalId, config, httpUtil)
 					delay(config.apiCallDelay)
 					if (!stage.equalsIgnoreCase("review")) {
 						publishContent(event.channel, internalId, event.metadata.get("lastPublishedBy").asInstanceOf[String], config, httpUtil)
 					}
+					linkToCollection = true
 				case "publish" =>
 					publishContent(event.channel, internalId, event.metadata.get("lastPublishedBy").asInstanceOf[String], config, httpUtil)
+					linkToCollection = true
 				case _ => logger.info("ContentAutoCreator :: process :: Event Skipped for operations (create, upload, publish) for: " + event.identifier + " | Content Stage : " + contentStage)
 			}
+
+			if(event.collection.nonEmpty && (linkToCollection || contentStage.equalsIgnoreCase("na"))) {
+
+			} else if(event.textbookInfo.nonEmpty && (linkToCollection || contentStage.equalsIgnoreCase("na"))) {
+
+			} else logger.info("ContentUtil :: process :: Textbook Linking Skipped because received empty collection/textbookInfo for : " + event.identifier)
+
+			logger.info("ContentUtil :: process :: finished processing for: " + event.identifier)
 		} catch {
 			case e: Exception => if(internalId.nonEmpty) updateStatus(event.channel, internalId, e.getMessage, config, httpUtil)
 				throw e
