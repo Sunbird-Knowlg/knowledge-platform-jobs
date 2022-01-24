@@ -13,7 +13,7 @@ import java.io.File
 import java.util
 import scala.collection.convert.ImplicitConversions.`map AsJavaMap`
 
-trait ContentAutoCreator extends ObjectUpdater with ContentCollectionUpdater {
+trait ContentAutoCreator extends ContentCollectionUpdater {
 
 	private[this] val logger = LoggerFactory.getLogger(classOf[ContentAutoCreator])
 
@@ -77,13 +77,13 @@ trait ContentAutoCreator extends ObjectUpdater with ContentCollectionUpdater {
 					linkToCollection = true
 				case "publish" =>
 					publishContent(event.channel, internalId, event.metadata.get("lastPublishedBy").asInstanceOf[String], config, httpUtil)
-					delay(config.apiCallDelay)
+					delay(config.apiCallDelay*2)
 					linkToCollection = true
 				case _ => logger.info("ContentAutoCreator :: process :: Event Skipped for operations (create, upload, publish) for: " + event.identifier + " | Content Stage : " + contentStage)
 			}
 
 			if(event.collection.nonEmpty && (linkToCollection || contentStage.equalsIgnoreCase("na"))) {
-
+				linkCollection(internalId, event.collection)(config, httpUtil)
 			} else logger.info("ContentUtil :: process :: Textbook Linking Skipped because received empty collection/textbookInfo for : " + event.identifier)
 
 			logger.info("ContentUtil :: process :: finished processing for: " + event.identifier)
