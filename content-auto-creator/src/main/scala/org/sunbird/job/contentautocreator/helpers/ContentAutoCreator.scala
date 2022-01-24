@@ -77,13 +77,12 @@ trait ContentAutoCreator extends ObjectUpdater with ContentCollectionUpdater {
 					linkToCollection = true
 				case "publish" =>
 					publishContent(event.channel, internalId, event.metadata.get("lastPublishedBy").asInstanceOf[String], config, httpUtil)
+					delay(config.apiCallDelay)
 					linkToCollection = true
 				case _ => logger.info("ContentAutoCreator :: process :: Event Skipped for operations (create, upload, publish) for: " + event.identifier + " | Content Stage : " + contentStage)
 			}
 
 			if(event.collection.nonEmpty && (linkToCollection || contentStage.equalsIgnoreCase("na"))) {
-
-			} else if(event.textbookInfo.nonEmpty && (linkToCollection || contentStage.equalsIgnoreCase("na"))) {
 
 			} else logger.info("ContentUtil :: process :: Textbook Linking Skipped because received empty collection/textbookInfo for : " + event.identifier)
 

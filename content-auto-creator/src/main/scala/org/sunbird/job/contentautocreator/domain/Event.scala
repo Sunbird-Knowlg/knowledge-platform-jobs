@@ -20,8 +20,6 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 
 	def collection: List[Map[String, String]] = readOrDefault("edata.collection", List(Map())).asInstanceOf[List[Map[String, String]]]
 
-	def textbookInfo: Map[String, String] = readOrDefault("edata.textbookInfo", Map()).asInstanceOf[Map[String, String]]
-
 	def action: String = readOrDefault[String]("edata.action", "")
 
 	def mimeType: String = readOrDefault[String]("edata.metadata.mimeType", "")
