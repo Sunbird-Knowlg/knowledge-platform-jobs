@@ -47,7 +47,7 @@ trait ObjectUpdater {
   def updateProcessingNode(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, definitionCache: DefinitionCache, config: DefinitionConfig): Unit = {
     val status = "Processing"
     val prevState = obj.getString("status", "Draft")
-    val identifier = obj.identifier
+    val identifier = obj.dbId
     val metadataUpdateQuery = metaDataQuery(obj)(definitionCache, config)
     val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$identifier"}) SET n.status="$status",n.prevState="$prevState",$metadataUpdateQuery,$auditPropsUpdateQuery;"""
     logger.info("ObjectUpdater:: updateProcessingNode:: Query: " + query)
