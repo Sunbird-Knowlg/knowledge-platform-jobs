@@ -33,7 +33,10 @@ trait CompositeSearchIndexerHelper {
       val addedProperties = transactionData.getOrElse("properties", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
       addedProperties.foreach(property => {
         if (!definition.externalProperties.contains(property._1)) {
-          val propertyNewValue: AnyRef = property._2.asInstanceOf[Map[String, AnyRef]].getOrElse("nv", null)
+          val propertyNewValue: AnyRef = property._2.asInstanceOf[Map[String, AnyRef]].getOrElse("nv", null) match {
+            case propVal: List[AnyRef] => if(propVal.isEmpty) null else propVal
+            case _ => property._2.asInstanceOf[Map[String, AnyRef]].getOrElse("nv", null)
+          }
           if (propertyNewValue == null) indexDocument.remove(property._1) else indexDocument.put(property._1, addMetadataToDocument(property._1, propertyNewValue, nestedFields))
         }
       })

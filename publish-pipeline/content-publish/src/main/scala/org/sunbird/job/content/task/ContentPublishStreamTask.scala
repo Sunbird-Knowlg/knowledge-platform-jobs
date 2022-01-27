@@ -6,7 +6,7 @@ import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.content.function.{ContentPublishFunction, PublishEventRouter}
+import org.sunbird.job.content.function.{CollectionPublishFunction, ContentPublishFunction, PublishEventRouter}
 import org.sunbird.job.content.publish.domain.Event
 import org.sunbird.job.util.{FlinkUtil, HttpUtil}
 
@@ -33,10 +33,13 @@ class ContentPublishStreamTask(config: ContentPublishConfig, kafkaConnector: Fli
       .name("content-publish-process").uid("content-publish-process").setParallelism(1)
 
     contentPublish.getSideOutput(config.generateVideoStreamingOutTag).addSink(kafkaConnector.kafkaStringSink(config.postPublishTopic))
+    contentPublish.getSideOutput(config.mvcProcessorTag).addSink(kafkaConnector.kafkaStringSink(config.mvcTopic))
     contentPublish.getSideOutput(config.failedEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
 
-    //		processStreamTask.getSideOutput(config.collectionPublishOutTag).process(new CollectionPublishFunction(config, httpUtil))
-    //		  .name("collection-publish-process").uid("collection-publish-process").setParallelism(1)
+   val collectionPublish = processStreamTask.getSideOutput(config.collectionPublishOutTag).process(new CollectionPublishFunction(config, httpUtil))
+    		  .name("collection-publish-process").uid("collection-publish-process").setParallelism(1)
+    collectionPublish.getSideOutput(config.generatePostPublishProcessTag).addSink(kafkaConnector.kafkaStringSink(config.postPublishTopic))
+
     env.execute(config.jobName)
   }
 }

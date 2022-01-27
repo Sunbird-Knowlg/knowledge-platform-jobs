@@ -38,6 +38,7 @@ class CollectionCertPreProcessorConfig(override val config: Config) extends Base
     val courseTable: String = config.getString("lms-cassandra.course_batch.table")
     val userEnrolmentsTable: String = config.getString("lms-cassandra.user_enrolments.table")
     val assessmentTable: String = config.getString("lms-cassandra.assessment_aggregator.table")
+    val useActivityAggTable: String = config.getString("lms-cassandra.user_activity_agg.table")
     val dbBatchId = "batchid"
     val dbCourseId = "courseid"
     val dbUserId = "userid"

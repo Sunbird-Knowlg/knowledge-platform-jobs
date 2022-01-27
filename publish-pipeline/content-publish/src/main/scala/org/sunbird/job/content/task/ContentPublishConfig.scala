@@ -22,6 +22,7 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
   // Kafka Topics Configuration
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
   val postPublishTopic: String = config.getString("kafka.post_publish.topic")
+  val mvcTopic: String = config.getString("kafka.mvc.topic")
   val kafkaErrorTopic: String = config.getString("kafka.error.topic")
   val inputConsumerName = "content-publish-consumer"
 
@@ -36,15 +37,19 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
   val contentPublishSuccessEventCount = "content-publish-success-count"
   val contentPublishFailedEventCount = "content-publish-failed-count"
   val videoStreamingGeneratorEventCount = "video-streaming-event-count"
-  //	val collectionPublishEventCount = "collection-publish-count"
-  //	val collectionPublishSuccessEventCount = "collection-publish-success-count"
-  //	val collectionPublishFailedEventCount = "collection-publish-failed-count"
+  val collectionPublishEventCount = "collection-publish-count"
+  val collectionPublishSuccessEventCount = "collection-publish-success-count"
+  val collectionPublishFailedEventCount = "collection-publish-failed-count"
+  val collectionPostPublishProcessEventCount = "collection-post-publish-process-count"
+  val mvProcessorEventCount = "mvc-processor-event-count"
 
   // Cassandra Configurations
   val cassandraHost: String = config.getString("lms-cassandra.host")
   val cassandraPort: Int = config.getInt("lms-cassandra.port")
   val contentKeyspaceName: String = config.getString("content.keyspace")
   val contentTableName: String = config.getString("content.table")
+  val hierarchyKeyspaceName: String = config.getString("hierarchy.keyspace")
+  val hierarchyTableName: String = config.getString("hierarchy.table")
 
   // Neo4J Configurations
   val graphRoutePath: String = config.getString("neo4j.routePath")
@@ -58,6 +63,8 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
   val collectionPublishOutTag: OutputTag[Event] = OutputTag[Event]("collection-publish")
   val generateVideoStreamingOutTag: OutputTag[String] = OutputTag[String]("video-streaming-generator-request")
   val failedEventOutTag: OutputTag[String] = OutputTag[String]("failed-event")
+  val generatePostPublishProcessTag: OutputTag[String] = OutputTag[String]("post-publish-process-request")
+  val mvcProcessorTag: OutputTag[String] = OutputTag[String]("mvc-processor-request")
 
   // Service Urls
   val printServiceBaseUrl: String = config.getString("service.print.basePath")
@@ -79,4 +86,11 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
   val bundleLocation: String = if (config.hasPath("content.bundleLocation")) config.getString("content.bundleLocation") else "/data/contentBundle/"
 
   val extractableMimeTypes = List("application/vnd.ekstep.ecml-archive", "application/vnd.ekstep.html-archive", "application/vnd.ekstep.plugin-archive", "application/vnd.ekstep.h5p-archive")
+
+  val categoryMap: java.util.Map[String, AnyRef] = if (config.hasPath("contentTypeToPrimaryCategory")) config.getAnyRef("contentTypeToPrimaryCategory").asInstanceOf[java.util.Map[String, AnyRef]] else new util.HashMap[String, AnyRef]()
+
+  val esConnectionInfo: String = config.getString("es.basePath")
+  val compositeSearchIndexName: String = if (config.hasPath("compositesearch.index.name")) config.getString("compositesearch.index.name") else "compositesearch";
+  val compositeSearchIndexType: String = if (config.hasPath("search.document.type")) config.getString("search.document.type") else "cs";
+  val nestedFields: util.List[String] = if (config.hasPath("content.nested.fields")) config.getStringList("content.nested.fields") else util.Arrays.asList[String]("badgeAssertions","targets","badgeAssociations")
 }

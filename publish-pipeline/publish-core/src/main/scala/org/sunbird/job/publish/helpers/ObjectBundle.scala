@@ -17,6 +17,7 @@ import java.util.zip.{ZipEntry, ZipOutputStream}
 import java.util.{Date, Optional}
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.collection.JavaConverters._
 
 trait ObjectBundle {
 
@@ -35,12 +36,13 @@ trait ObjectBundle {
     Slug.makeSlug(contentName, isTransliterate = true) + "_" + System.currentTimeMillis() + "_" + identifier + "_" + metadata.getOrElse("pkgVersion", "") + (if (StringUtils.equals(EcarPackageType.FULL.toString, pkgType)) ".ecar" else "_" + pkgType + ".ecar")
   }
 
-  def getManifestData(objIdentifier: String, pkgType: String, objList: List[Map[String, AnyRef]])(implicit defCache: DefinitionCache, defConfig: DefinitionConfig): (List[Map[String, AnyRef]], List[Map[AnyRef, String]]) = {
+  def getManifestData(objIdentifier: String, pkgType: String, objList: List[Map[String, AnyRef]])(implicit defCache: DefinitionCache, defConfig: DefinitionConfig, config: PublishConfig): (List[Map[String, AnyRef]], List[Map[AnyRef, String]]) = {
     objList.map(data => {
       val identifier = data.getOrElse("identifier", "").asInstanceOf[String].replaceAll(".img", "")
       val mimeType = data.getOrElse("mimeType", "").asInstanceOf[String]
       val objectType = data.getOrElse("objectType", "").asInstanceOf[String].replaceAll("Image", "")
       val contentDisposition = data.getOrElse("contentDisposition", "").asInstanceOf[String]
+      logger.info("ObjectBundle:: getManifestData:: identifier:: " + identifier + " || objectType:: " + objectType)
       val dUrlMap: Map[AnyRef, String] = getDownloadUrls(identifier, pkgType, isOnline(mimeType, contentDisposition), data)
       val updatedObj: Map[String, AnyRef] = data.map(entry =>
         if (dUrlMap.contains(entry._2)) {
@@ -69,7 +71,14 @@ trait ObjectBundle {
       val dUrl: String = if (StringUtils.isNotBlank(downloadUrl)) downloadUrl else updatedObj.getOrElse("artifactUrl", "").asInstanceOf[String]
       val dMap = if (StringUtils.equalsIgnoreCase(contentDisposition, "online-only")) Map("downloadUrl" -> null) else Map("downloadUrl" -> dUrl)
       val downloadUrls: Map[AnyRef, String] = dUrlMap.keys.flatMap(key => Map(key -> identifier)).toMap
-      val mergedMeta = updatedObj ++ dMap
+
+      // TODO: Addressing visibility "Parent" issue for collection children as expected by Mobile - ContentBundle.java line120 - start
+      val mergedMeta = if(!identifier.equalsIgnoreCase(objIdentifier) && (objectType.equalsIgnoreCase("Content")
+        || objectType.equalsIgnoreCase("Collection") || objectType.equalsIgnoreCase("QuestionSet"))) {
+          updatedObj + ("visibility" -> "Parent") ++ dMap
+        } else updatedObj ++ dMap
+      // TODO: Addressing visibility "Parent" issue for collection children as expected by Mobile - ContentBundle.java line120 - end
+
       val definition: ObjectDefinition = defCache.getDefinition(objectType, defConfig.supportedVersion.getOrElse(objectType.toLowerCase, "1.0").asInstanceOf[String], defConfig.basePath)
       val enMeta = mergedMeta.filter(x => null != x._2).map(element => (element._1, convertJsonProperties(element, definition.getJsonProps())))
       (enMeta, downloadUrls)
@@ -79,7 +88,8 @@ trait ObjectBundle {
   def getObjectBundle(obj: ObjectData, objList: List[Map[String, AnyRef]], pkgType: String)(implicit ec: ExecutionContext, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig): File = {
     val bundleFileName = bundleLocation + File.separator + getBundleFileName(obj.identifier, obj.metadata, pkgType)
     val bundlePath = bundleLocation + File.separator + System.currentTimeMillis + "_temp"
-    val objType = obj.getString("objectType", "").replaceAll("Image", "")
+    val objType = if(obj.getString("objectType", "").replaceAll("Image", "").equalsIgnoreCase("collection")) "content" else obj.getString("objectType", "").replaceAll("Image", "")
+    logger.info("ObjectBundle ::: getObjectBundle ::: input objList :::: " + objList)
     // create manifest data
     val (updatedObjList, dUrls) = getManifestData(obj.identifier, pkgType, objList)
     logger.info("ObjectBundle ::: getObjectBundle ::: updatedObjList :::: " + updatedObjList)
@@ -149,9 +159,11 @@ trait ObjectBundle {
     try {
       files.foreach(file => {
         val fileName = getFileName(file)
-        zipOutputStream.putNextEntry(new ZipEntry(fileName))
-        val fileInputStream = new FileInputStream(file)
-        IOUtils.copy(fileInputStream, zipOutputStream)
+        try {
+          zipOutputStream.putNextEntry(new ZipEntry(fileName))
+          val fileInputStream = new FileInputStream(file)
+          IOUtils.copy(fileInputStream, zipOutputStream)
+        } catch {case ze:java.util.zip.ZipException => logger.info("ObjectBundle:: getByteStream:: ", ze.getMessage) }
         zipOutputStream.closeEntry()
       })
 
@@ -173,8 +185,16 @@ trait ObjectBundle {
       file.getParent().substring(file.getParent().lastIndexOf(File.separator) + 1) + File.separator + file.getName()
   }
 
-  def getDownloadUrls(identifier: String, pkgType: String, isOnlineObj: Boolean, data: Map[String, AnyRef]): Map[AnyRef, String] = {
-    val urlFields = if (StringUtils.equals("ONLINE", pkgType)) List() else List("appIcon", "grayScaleAppIcon", "artifactUrl", "itemSetPreviewUrl", "media")
+  def getDownloadUrls(identifier: String, pkgType: String, isOnlineObj: Boolean, data: Map[String, AnyRef])(implicit config: PublishConfig): Map[AnyRef, String] = {
+		val urlFields = pkgType match {
+			case "ONLINE" => List.empty
+			case "SPINE" =>
+				val spineDownloadFiles: util.List[String] = if (config.getConfig().hasPath("content.downloadFiles.spine")) config.getConfig().getStringList("content.downloadFiles.spine") else util.Arrays.asList[String]("appIcon")
+				spineDownloadFiles.asScala.toList
+			case _ =>
+				val fullDownloadFiles: util.List[String] = if (config.getConfig().hasPath("content.downloadFiles.full")) config.getConfig().getStringList("content.downloadFiles.full") else util.Arrays.asList[String]("appIcon", "grayScaleAppIcon", "artifactUrl", "itemSetPreviewUrl", "media")
+				fullDownloadFiles.asScala.toList
+		}
     data.filter(en => urlFields.contains(en._1) && null != en._2).flatMap(entry => {
       isOnlineObj match {
         case true => {
@@ -295,5 +315,23 @@ trait ObjectBundle {
     }
     else entry._2
   }
+
+  def getFlatStructure(children: List[Map[String, AnyRef]], childrenList: List[Map[String, AnyRef]]): List[Map[String, AnyRef]] = {
+    children.flatMap(child => {
+      val innerChildren = getInnerChildren(child)
+      val updatedChild: Map[String, AnyRef] = if (innerChildren.nonEmpty) child ++ Map("children" -> innerChildren) else child
+      val finalChild = updatedChild.filter(p => !excludeBundleMeta.contains(p._1.asInstanceOf[String]))
+      val updatedChildren: List[Map[String, AnyRef]] = finalChild :: childrenList
+      val result = getFlatStructure(child.getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]], updatedChildren)
+      finalChild :: result
+    }).distinct
+  }
+
+  def getInnerChildren(child: Map[String, AnyRef]): List[Map[String, AnyRef]] = {
+    val metaList: List[String] = List("identifier", "name", "objectType", "description", "index", "depth")
+    child.getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
+      .map(ch => ch.filterKeys(key => metaList.contains(key)))
+  }
+
 
 }

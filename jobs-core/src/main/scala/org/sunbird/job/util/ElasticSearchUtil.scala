@@ -9,11 +9,12 @@ import org.apache.http.HttpHost
 import org.apache.http.client.config.RequestConfig
 import org.elasticsearch.action.admin.indices.alias.Alias
 import org.elasticsearch.action.admin.indices.create.CreateIndexRequest
+import org.elasticsearch.action.bulk.BulkRequest
 import org.elasticsearch.action.delete.DeleteRequest
 import org.elasticsearch.action.get.GetRequest
-import org.elasticsearch.action.index.IndexRequest
+import org.elasticsearch.action.index.{IndexRequest, IndexResponse}
 import org.elasticsearch.action.update.UpdateRequest
-import org.elasticsearch.client.{RestClient, RestClientBuilder, RestHighLevelClient}
+import org.elasticsearch.client.{Response, RestClient, RestClientBuilder, RestHighLevelClient}
 import org.elasticsearch.common.settings.Settings
 import org.elasticsearch.common.xcontent.XContentType
 import org.slf4j.LoggerFactory
@@ -49,7 +50,7 @@ class ElasticSearchUtil(connectionInfo: String, indexName: String, indexType: St
       response.getStatusLine.getStatusCode == 200
     } catch {
       case e: IOException => {
-        logger.error("Failed to check Index if Present or not. Exception : ", e)
+        logger.error("ElasticSearchUtil:: Failed to check Index if Present or not. Exception : ", e)
         false
       }
     }
@@ -78,7 +79,7 @@ class ElasticSearchUtil(connectionInfo: String, indexName: String, indexType: St
       logger.info(s"Added ${response.getId} to index ${response.getIndex}")
     } catch {
       case e: IOException =>
-        logger.error(s"Error while adding document to index : $indexName", e)
+        logger.error(s"ElasticSearchUtil:: Error while adding document to index : $indexName", e)
     }
   }
 
@@ -93,7 +94,7 @@ class ElasticSearchUtil(connectionInfo: String, indexName: String, indexType: St
       logger.info(s"Added ${response.getId} to index ${response.getIndex}")
     } catch {
       case e: IOException =>
-        logger.error(s"Error while adding document to index : $indexName : " + e.getMessage)
+        logger.error(s"ElasticSearchUtil:: Error while adding document to index : $indexName : " + e.getMessage)
         e.printStackTrace()
         throw e
     }
@@ -110,7 +111,7 @@ class ElasticSearchUtil(connectionInfo: String, indexName: String, indexType: St
       logger.info(s"Updated ${response.getId} to index ${response.getIndex}")
     } catch {
       case e: IOException =>
-        logger.error(s"Error while updating document to index : $indexName", e)
+        logger.error(s"ElasticSearchUtil:: Error while updating document to index : $indexName", e)
     }
   }
 
@@ -128,6 +129,39 @@ class ElasticSearchUtil(connectionInfo: String, indexName: String, indexType: St
     if (null != esClient) try esClient.close()
     catch {
       case e: IOException => e.printStackTrace()
+    }
+  }
+
+
+  @throws[Exception]
+  def bulkIndexWithIndexId(indexName: String, documentType: String, jsonObjects: Map[String, AnyRef]): Unit = {
+    if (isIndexExists(indexName)) {
+      if (jsonObjects.nonEmpty) {
+        var count = 0
+        val request = new BulkRequest
+        for (key <- jsonObjects.keySet) {
+          count += 1
+          val document = ScalaJsonUtil.serialize(jsonObjects(key).asInstanceOf[Map[String, AnyRef]])
+          logger.debug("ElasticSearchUtil:: bulkIndexWithIndexId:: document: " + document)
+          val doc: util.Map[String, AnyRef] = mapper.readValue(document, new TypeReference[util.Map[String, AnyRef]]() {})
+          logger.debug("ElasticSearchUtil:: bulkIndexWithIndexId:: doc: " + doc)
+          request.add(new IndexRequest(indexName, documentType, key).source(doc))
+          if (count % batchSize == 0 || (count % batchSize < batchSize && count == jsonObjects.size)) {
+            val bulkResponse = esClient.bulk(request)
+            if (bulkResponse.hasFailures) logger.info("ElasticSearchUtil:: bulkIndexWithIndexId:: Failures in Elasticsearch bulkIndex : " + bulkResponse.buildFailureMessage)
+          }
+        }
+      }
+    }
+    else throw new Exception("ElasticSearchUtil:: Index does not exist: " + indexName)
+  }
+
+  def isIndexExists(indexName: String): Boolean = {
+    try {
+      val response: Response = esClient.getLowLevelClient.performRequest("HEAD", "/" + indexName)
+      response.getStatusLine.getStatusCode == 200
+    } catch {
+      case e: IOException =>  false
     }
   }
 

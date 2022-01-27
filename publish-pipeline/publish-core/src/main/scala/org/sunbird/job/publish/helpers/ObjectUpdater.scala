@@ -21,12 +21,11 @@ trait ObjectUpdater {
   def saveOnSuccess(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, definitionCache: DefinitionCache, config: DefinitionConfig): Unit = {
     val publishType = obj.getString("publish_type", "Public")
     val status = if (StringUtils.equalsIgnoreCase("Unlisted", publishType)) "Unlisted" else "Live"
-    val prevStatus = obj.metadata.getOrElse("status","Processing").asInstanceOf[String]
     val editId = obj.dbId
     val identifier = obj.identifier
     val metadataUpdateQuery = metaDataQuery(obj)(definitionCache, config)
-    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$identifier"}) SET n.status="$status",n.pkgVersion=${obj.pkgVersion},n.prevStatus="$prevStatus",$metadataUpdateQuery,$auditPropsUpdateQuery;"""
-    logger.info("Query: " + query)
+    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$identifier"}) SET n.status="$status",n.pkgVersion=${obj.pkgVersion},n.prevStatus="Processing",$metadataUpdateQuery,$auditPropsUpdateQuery;"""
+    logger.info("ObjectUpdater:: saveOnSuccess:: Query: " + query)
 
     if (obj.mimeType.equalsIgnoreCase("application/vnd.ekstep.ecml-archive")) {
       val ecmlBody = getContentBody(identifier, readerConfig)
@@ -40,7 +39,7 @@ trait ObjectUpdater {
     }
     val result: StatementResult = neo4JUtil.executeQuery(query)
     if (null != result && result.hasNext)
-      logger.info(s"statement result : ${result.next().asMap()}")
+      logger.info(s"ObjectUpdater:: saveOnSuccess:: statement result : ${result.next().asMap()}")
     saveExternalData(obj, readerConfig)
   }
 
@@ -48,13 +47,13 @@ trait ObjectUpdater {
   def updateProcessingNode(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, definitionCache: DefinitionCache, config: DefinitionConfig): Unit = {
     val status = "Processing"
     val prevState = obj.getString("status", "Draft")
-    val identifier = obj.identifier
+    val identifier = obj.dbId
     val metadataUpdateQuery = metaDataQuery(obj)(definitionCache, config)
     val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$identifier"}) SET n.status="$status",n.prevState="$prevState",$metadataUpdateQuery,$auditPropsUpdateQuery;"""
-    logger.info("Query: " + query)
+    logger.info("ObjectUpdater:: updateProcessingNode:: Query: " + query)
     val result: StatementResult = neo4JUtil.executeQuery(query)
     if (null != result && result.hasNext)
-      logger.info(s"statement result : ${result.next().asMap()}")
+      logger.info(s"ObjectUpdater:: updateProcessingNode:: statement result : ${result.next().asMap()}")
   }
 
   def saveExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Unit
@@ -122,13 +121,13 @@ trait ObjectUpdater {
     val select = QueryBuilder.select()
     select.fcall("blobAsText", QueryBuilder.column("body")).as("body")
     val selectWhere: Select.Where = select.from(readerConfig.keyspace, readerConfig.table).where().and(QueryBuilder.eq("content_id", identifier + ".img"))
-    logger.info("Cassandra Fetch Query for image:: " + selectWhere.toString)
+    logger.info("ObjectUpdater:: getContentBody:: Cassandra Fetch Query for image:: " + selectWhere.toString)
     val row = cassandraUtil.findOne(selectWhere.toString)
     if (null != row) row.getString("body") else {
       val selectId = QueryBuilder.select()
       selectId.fcall("blobAsText", QueryBuilder.column("body")).as("body")
       val selectWhereId: Select.Where = selectId.from(readerConfig.keyspace, readerConfig.table).where().and(QueryBuilder.eq("content_id", identifier))
-      logger.info("Cassandra Fetch Query :: " + selectWhere.toString)
+      logger.info("ObjectUpdater:: getContentBody:: Cassandra Fetch Query :: " + selectWhere.toString)
       val rowId = cassandraUtil.findOne(selectWhereId.toString)
       if (null != rowId) rowId.getString("body") else ""
     }
@@ -138,11 +137,11 @@ trait ObjectUpdater {
     val updateQuery = QueryBuilder.update(readerConfig.keyspace, readerConfig.table)
       .where(QueryBuilder.eq("content_id", identifier))
       .`with`(QueryBuilder.set("body", QueryBuilder.fcall("textAsBlob", ecmlBody)))
-      logger.info(s"Updating Content Body in Cassandra For $identifier : ${updateQuery.toString}")
+      logger.info(s"ObjectUpdater:: updateContentBody:: Updating Content Body in Cassandra For $identifier : ${updateQuery.toString}")
       val result = cassandraUtil.upsert(updateQuery.toString)
-      if (result) logger.info(s"Content Body Updated Successfully For $identifier")
+      if (result) logger.info(s"ObjectUpdater:: updateContentBody:: Content Body Updated Successfully For $identifier")
       else {
-        logger.error(s"Content Body Update Failed For $identifier")
+        logger.error(s"ObjectUpdater:: updateContentBody:: Content Body Update Failed For $identifier")
         throw new InvalidInputException(s"Content Body Update Failed For $identifier")
       }
   }
