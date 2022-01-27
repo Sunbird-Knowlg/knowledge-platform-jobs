@@ -224,7 +224,14 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
           }
         } else keywords
         updatedKeywords.filter(record => record.trim.nonEmpty).distinct
-      } else obj.metadata.getOrElse("keywords", Array.empty).asInstanceOf[util.Collection[String]].asScala.toArray[String]
+      } else if(obj.metadata.contains("keywords")) {
+        obj.metadata("keywords") match {
+          case _: Array[String] => obj.metadata.getOrElse("keywords", Array.empty).asInstanceOf[Array[String]]
+          case kwValue: String => Array[String](kwValue)
+          case _: util.Collection[String] => obj.metadata.getOrElse("keywords", Array.empty).asInstanceOf[util.Collection[String]].asScala.toArray[String]
+          case _ => Array.empty[String]
+        }
+      } else Array.empty[String]
       new ObjectData(obj.identifier, obj.metadata ++ updatedMetadataMap + ("keywords" -> finalKeywords), obj.extData, obj.hierarchy)
     } else obj
 
