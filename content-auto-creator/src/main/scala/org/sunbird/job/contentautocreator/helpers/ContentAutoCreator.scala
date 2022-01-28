@@ -223,7 +223,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 				logger.info("ContentAutoCreator :: update :: Icon Uploaded Successfully to cloud for : " + internalId + " | appIconUrl : " + appIconUrl + " | appIconBlobUrl : " + appIconBlobUrl)
 				appIconBlobUrl
 			}
-			FileUtils.deleteQuietly(file.getParentFile.getParentFile)
+			FileUtils.deleteQuietly(file)
 		} else ""
 
 		val updateMetadataFields = updateMetadata + (ContentAutoCreatorConstants.VERSION_KEY -> readMetadata(ContentAutoCreatorConstants.VERSION_KEY).asInstanceOf[String], ContentAutoCreatorConstants.APP_ICON -> updatedAppIcon)
@@ -271,7 +271,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 			}
 
 			val urls = uploadArtifact(file, internalId, config, cloudStorageUtil)
-			FileUtils.deleteQuietly(file.getParentFile.getParentFile)
+			FileUtils.deleteQuietly(file.getParentFile)
 			if (null != urls && StringUtils.isNotBlank(urls(1))) {
 				val sourceFileBlobUrl = urls(1)
 				logger.info("ContentAutoCreator :: uploadContent :: sourceUrl Uploaded Successfully to cloud for : " + internalId + " | sourceUrl : " + sourceUrl + " | sourceFileBlobUrl : " + sourceFileBlobUrl)
