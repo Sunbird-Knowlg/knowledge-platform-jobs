@@ -14,7 +14,7 @@ class CollectionUpdaterSpec extends FlatSpec with BeforeAndAfterAll with Matcher
 
   val config: Config = ConfigFactory.load("test.conf").withFallback(ConfigFactory.systemEnvironment())
   val jobConfig: ContentAutoCreatorConfig = new ContentAutoCreatorConfig(config)
-  val mockHttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
+  val mockHttpUtil: HttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
 
   "linkCollection" should "validate and update the collection hierarchy" in {
     val collection: List[Map[String, AnyRef]] = List(Map("identifier" -> "do_234", "unitId" -> "do_345"))
