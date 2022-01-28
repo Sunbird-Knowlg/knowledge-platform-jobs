@@ -108,7 +108,6 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 
 	}
 
-
 	private def searchContent(identifier: String, config: ContentAutoCreatorConfig, httpUtil: HttpUtil): Map[String, AnyRef] = {
 		val reqMap = new java.util.HashMap[String, AnyRef]() {
 			put(ContentAutoCreatorConstants.REQUEST, new java.util.HashMap[String, AnyRef]() {

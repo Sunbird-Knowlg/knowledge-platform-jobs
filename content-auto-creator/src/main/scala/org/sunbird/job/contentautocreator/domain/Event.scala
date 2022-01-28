@@ -34,7 +34,7 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 
 	def stage: String = readOrDefault[String]("edata.stage", "")
 
-	def identifier: String = readOrDefault[String]("object.identifier", "")
+	def identifier: String = readOrDefault[String]("object.id", "")
 
 	def reqOriginData: Map[String, String] = readOrDefault("edata.originData", Map()).asInstanceOf[Map[String, String]]
 
