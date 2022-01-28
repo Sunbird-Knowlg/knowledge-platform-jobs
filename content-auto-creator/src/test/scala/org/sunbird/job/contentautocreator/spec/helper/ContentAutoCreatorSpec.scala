@@ -79,6 +79,9 @@ class ContentAutoCreatorSpec extends FlatSpec with Matchers with MockitoSugar {
 		when(mockHttpUtil.downloadFile(endsWith("mp4"),anyString())).thenReturn(httpUtil.downloadFile(artifactUrl, downloadPath))
 		new TestContentAutoCreator().process(jobConfig, event, mockHttpUtil, mockNeo4JUtil, cloudUtil)
 	}
+
+
+
 }
 
 class TestContentAutoCreator extends ContentAutoCreator {}

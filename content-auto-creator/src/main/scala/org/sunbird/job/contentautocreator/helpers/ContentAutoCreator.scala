@@ -53,16 +53,22 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 					if (!stage.equalsIgnoreCase("create")) {
 						uploadContent(event.channel, internalId, updateMetadata, config, httpUtil, cloudStorageUtil)
 						linkToCollection = true
+						delay(delayUpload)
 						reviewContent(event.channel, internalId, config, httpUtil)
+						delay(config.apiCallDelay)
 						publishContent(event.channel, internalId, event.metadata("lastPublishedBy").asInstanceOf[String], config, httpUtil)
+						delay(config.apiCallDelay*2)
 					}
 				case "update" =>
 					updateContent(event.channel, internalId, updateMetadata, config, httpUtil, cloudStorageUtil)
 					if (!stage.equalsIgnoreCase("update")) {
 						uploadContent(event.channel, internalId, updateMetadata, config, httpUtil, cloudStorageUtil)
 						linkToCollection = true
+						delay(delayUpload)
 						reviewContent(event.channel, internalId, config, httpUtil)
+						delay(config.apiCallDelay)
 						publishContent(event.channel, internalId, event.metadata("lastPublishedBy").asInstanceOf[String], config, httpUtil)
+						delay(config.apiCallDelay*2)
 					}
 				case "upload" =>
 					uploadContent(event.channel, internalId, event.metadata, config, httpUtil, cloudStorageUtil)
@@ -70,7 +76,9 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 					linkToCollection = true
 					if (!stage.equalsIgnoreCase("upload")) {
 						reviewContent(event.channel, internalId, config, httpUtil)
+						delay(config.apiCallDelay)
 						publishContent(event.channel, internalId, event.metadata("lastPublishedBy").asInstanceOf[String], config, httpUtil)
+						delay(config.apiCallDelay*2)
 					}
 				case "review" =>
 					linkToCollection = true
@@ -78,6 +86,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 					delay(config.apiCallDelay)
 					if (!stage.equalsIgnoreCase("review")) {
 						publishContent(event.channel, internalId, event.metadata("lastPublishedBy").asInstanceOf[String], config, httpUtil)
+						delay(config.apiCallDelay*2)
 					}
 				case "publish" =>
 					linkToCollection = true
@@ -400,9 +409,8 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 			folder = folder + "/" + Slug.makeSlug(identifier, isTransliterate = true) + "/" + config.artifactFolder
 			cloudStorageUtil.uploadFile(folder, uploadedFile, Option(true))
 		} catch {
-			case e: Exception =>
+			case e: Exception => e.printStackTrace()
 				logger.info("ContentAutoCreator :: uploadArtifact ::  Exception occurred while uploading artifact for : " + identifier + "Exception is : " + e.getMessage)
-				e.printStackTrace()
 				throw new ServerException("ERR_CONTENT_UPLOAD_FILE", "Error while uploading the File.", e)
 		}
 	}
