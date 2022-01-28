@@ -73,17 +73,6 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 						delay(config.apiCallDelay*2)
 						isContentPublished = true
 					}
-				case "upload" =>
-					uploadContent(event.channel, internalId, event.metadata, config, httpUtil, cloudStorageUtil)
-					delay(delayUpload)
-					linkToCollection = true
-					if (!stage.equalsIgnoreCase("upload")) {
-						reviewContent(event.channel, internalId, config, httpUtil)
-						delay(config.apiCallDelay)
-						publishContent(event.channel, internalId, event.metadata("lastPublishedBy").asInstanceOf[String], config, httpUtil)
-						delay(config.apiCallDelay*2)
-						isContentPublished = true
-					}
 				case "review" =>
 					linkToCollection = true
 					reviewContent(event.channel, internalId, config, httpUtil)
