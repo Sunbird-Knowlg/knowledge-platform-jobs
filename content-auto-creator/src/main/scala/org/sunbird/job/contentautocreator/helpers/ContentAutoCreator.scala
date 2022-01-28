@@ -17,7 +17,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 
 	private[this] val logger = LoggerFactory.getLogger(classOf[ContentAutoCreator])
 
-	def process(config: ContentAutoCreatorConfig, event: Event, httpUtil: HttpUtil, neo4JUtil: Neo4JUtil, cloudStorageUtil: CloudStorageUtil): Unit = {
+	def process(config: ContentAutoCreatorConfig, event: Event, httpUtil: HttpUtil, neo4JUtil: Neo4JUtil, cloudStorageUtil: CloudStorageUtil): Boolean = {
 		val stage = event.eData.getOrDefault("stage","").asInstanceOf[String]
 		val filteredMetadata = event.metadata.filter(x => !config.content_props_to_removed.contains(x._1))
 		val createMetadata = filteredMetadata.filter(x => config.content_create_props.contains(x._1))
@@ -44,6 +44,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 		}
 		logger.info("ContentAutoCreator :: process :: internalId: " + internalId + " || contentStage: " + contentStage)
 		var linkToCollection = false
+		var isContentPublished = false
 
 		try {
 			contentStage match {
@@ -58,6 +59,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 						delay(config.apiCallDelay)
 						publishContent(event.channel, internalId, event.metadata("lastPublishedBy").asInstanceOf[String], config, httpUtil)
 						delay(config.apiCallDelay*2)
+						isContentPublished = true
 					}
 				case "update" =>
 					updateContent(event.channel, internalId, updateMetadata, config, httpUtil, cloudStorageUtil)
@@ -69,6 +71,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 						delay(config.apiCallDelay)
 						publishContent(event.channel, internalId, event.metadata("lastPublishedBy").asInstanceOf[String], config, httpUtil)
 						delay(config.apiCallDelay*2)
+						isContentPublished = true
 					}
 				case "upload" =>
 					uploadContent(event.channel, internalId, event.metadata, config, httpUtil, cloudStorageUtil)
@@ -79,6 +82,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 						delay(config.apiCallDelay)
 						publishContent(event.channel, internalId, event.metadata("lastPublishedBy").asInstanceOf[String], config, httpUtil)
 						delay(config.apiCallDelay*2)
+						isContentPublished = true
 					}
 				case "review" =>
 					linkToCollection = true
@@ -87,11 +91,13 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 					if (!stage.equalsIgnoreCase("review")) {
 						publishContent(event.channel, internalId, event.metadata("lastPublishedBy").asInstanceOf[String], config, httpUtil)
 						delay(config.apiCallDelay*2)
+						isContentPublished = true
 					}
 				case "publish" =>
 					linkToCollection = true
 					publishContent(event.channel, internalId, event.metadata("lastPublishedBy").asInstanceOf[String], config, httpUtil)
 					delay(config.apiCallDelay*2)
+					isContentPublished = true
 				case _ => logger.info("ContentAutoCreator :: process :: Event Skipped for operations (create, upload, publish) for: " + event.identifier + " | Content Stage : " + contentStage)
 			}
 
@@ -100,6 +106,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 			} else logger.info("ContentAutoCreator :: process :: Textbook Linking Skipped because received empty collection/textbookInfo for : " + event.identifier)
 
 			logger.info("ContentAutoCreator :: process :: finished processing for: " + event.identifier)
+			isContentPublished
 		} catch {
 			case e: Exception => e.printStackTrace()
 				if(internalId.nonEmpty) updateStatus(event.channel, internalId, e.getMessage, config, httpUtil)
@@ -149,8 +156,8 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 	}
 
 	private def getContentStage(identifier: String, pkgVersion: Double, metadata: Map[String, AnyRef]): String = {
-		val status = metadata.get("status").asInstanceOf[String]
-		val artifactUrl = metadata.get("artifactUrl").asInstanceOf[String]
+		val status = metadata("status").asInstanceOf[String]
+		val artifactUrl = metadata("artifactUrl").asInstanceOf[String]
 		val pkgVer = metadata.getOrElse("pkgVersion", 0) match {
 			case _: Integer => metadata.getOrElse("pkgVersion", 0).asInstanceOf[Integer].doubleValue()
 			case _: Double => metadata.getOrElse("pkgVersion", 0).asInstanceOf[Double].doubleValue()
