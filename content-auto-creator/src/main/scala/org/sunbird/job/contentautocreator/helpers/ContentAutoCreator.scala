@@ -42,7 +42,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 				contentStage = getContentStage(event.identifier, event.pkgVersion, contentMetadata)
 			}
 		}
-		println("ContentAutoCreator :: process :: internalId: " + internalId + " || contentStage: " + contentStage)
+		logger.info("ContentAutoCreator :: process :: internalId: " + internalId + " || contentStage: " + contentStage)
 		var linkToCollection = false
 
 		try {
@@ -161,7 +161,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 		val requestUrl = config.getString(ContentAutoCreatorConstants.KP_CS_BASE_URL,"") + "/content/v4/read/" + identifier + "?mode=edit"
 		logger.info("ContentAutoCreator :: read :: Reading content having identifier : " + identifier)
 		val headers = Map[String, String]("X-Channel-Id" -> channelId, "Content-Type" -> ContentAutoCreatorConstants.APPLICATION_JSON)
-		println("ContentAutoCreator :: read :: Reading content - requestUrl : " + requestUrl)
+		logger.info("ContentAutoCreator :: read :: Reading content - requestUrl : " + requestUrl)
 		val httpResponse = httpUtil.get(requestUrl, headers)
 		if (httpResponse.status == 200) {
 			val response = JSONUtil.deserialize[Map[String, AnyRef]](httpResponse.body)
@@ -220,7 +220,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 			val urls = uploadArtifact(file, internalId, config, cloudStorageUtil)
 			if (null != urls && StringUtils.isNotBlank(urls(1))) {
 				val appIconBlobUrl = urls(1)
-				println("ContentAutoCreator :: update :: Icon Uploaded Successfully to cloud for : " + internalId + " | appIconUrl : " + appIconUrl + " | appIconBlobUrl : " + appIconBlobUrl)
+				logger.info("ContentAutoCreator :: update :: Icon Uploaded Successfully to cloud for : " + internalId + " | appIconUrl : " + appIconUrl + " | appIconBlobUrl : " + appIconBlobUrl)
 				appIconBlobUrl
 			}
 		} else ""
@@ -272,7 +272,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 			val urls = uploadArtifact(file, internalId, config, cloudStorageUtil)
 			if (null != urls && StringUtils.isNotBlank(urls(1))) {
 				val sourceFileBlobUrl = urls(1)
-				println("ContentAutoCreator :: uploadContent :: sourceUrl Uploaded Successfully to cloud for : " + internalId + " | sourceUrl : " + sourceUrl + " | sourceFileBlobUrl : " + sourceFileBlobUrl)
+				logger.info("ContentAutoCreator :: uploadContent :: sourceUrl Uploaded Successfully to cloud for : " + internalId + " | sourceUrl : " + sourceUrl + " | sourceFileBlobUrl : " + sourceFileBlobUrl)
 
 				val headers = Map[String, String]("X-Channel-Id" -> channel)
 				val requestUrl = config.getString(ContentAutoCreatorConstants.KP_CS_BASE_URL,"") + "/content/v4/upload" + internalId
