@@ -31,6 +31,7 @@ object ContentAutoCreatorConstants {
   val EXISTS = "exists"
   val FIELDS = "fields"
   val MIME_TYPE = "mimeType"
+  val APP_ICON = "appIcon"
   val X_AUTHENTICATED_USER_TOKEN = "x-authenticated-user-token"
   val CATEGORIES = "categories"
   val CODE = "code"

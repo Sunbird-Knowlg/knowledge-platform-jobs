@@ -15,7 +15,6 @@ import java.util
 
 class ContentAutoCreatorFunction(config: ContentAutoCreatorConfig, httpUtil: HttpUtil,
                                  @transient var neo4JUtil: Neo4JUtil = null,
-                                 @transient var cassandraUtil: CassandraUtil = null,
                                  @transient var cloudStorageUtil: CloudStorageUtil = null)
                                 (implicit mapTypeInfo: TypeInformation[util.Map[String, AnyRef]], stringTypeInfo: TypeInformation[String])
   extends BaseProcessFunction[Event, String](config) with ContentAutoCreator {
@@ -29,14 +28,12 @@ class ContentAutoCreatorFunction(config: ContentAutoCreatorConfig, httpUtil: Htt
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
-    cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort)
     neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName)
     cloudStorageUtil = new CloudStorageUtil(config)
   }
 
   override def close(): Unit = {
     super.close()
-    cassandraUtil.close()
   }
 
   override def processElement(event: Event,
@@ -48,7 +45,7 @@ class ContentAutoCreatorFunction(config: ContentAutoCreatorConfig, httpUtil: Htt
       logger.debug("ContentAutoCreatorFunction::processElement:: event edata : " + event.eData)
       if(event.validateStage(config)) {
         if(event.validateMetadata(config)) {
-          process(config, event, httpUtil, neo4JUtil, cassandraUtil, cloudStorageUtil)
+          process(config, event, httpUtil, neo4JUtil, cloudStorageUtil)
 
 
           logger.info("ContentAutoCreatorFunction::processElement:: Content auto creator upload/approval operation completed for : " + event.objectId)

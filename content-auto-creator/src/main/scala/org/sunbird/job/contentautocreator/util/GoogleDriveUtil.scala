@@ -37,7 +37,6 @@ object GoogleDriveUtil {
     } catch {
       case e: Exception =>
         logger.error("Error occurred while creating google drive client ::: " + e.getMessage, e)
-        e.printStackTrace()
         throw new Exception("Error occurred while creating google drive client ::: " + e.getMessage)
     }
   }
@@ -57,36 +56,34 @@ object GoogleDriveUtil {
       while(file == null && GoogleDriveUtil.BACKOFF_DELAY <= GoogleDriveUtil.MAXIMUM_BACKOFF_DELAY) {
       try {
         val drive = initialize(config)
-        println("GoogleDriveUtil:: downloadFile:: drive: " + drive + " || drive.files: " + drive.files().list())
+        logger.info("GoogleDriveUtil:: downloadFile:: drive: " + drive + " || drive.files: " + drive.files().list())
         val getFile = drive.files.get(fileId)
-        println("GoogleDriveUtil:: downloadFile:: getFile: " + getFile)
+        logger.info("GoogleDriveUtil:: downloadFile:: getFile: " + getFile)
         getFile.setFields("id,name,size,owners,mimeType,properties,permissionIds,webContentLink")
-        println("GoogleDriveUtil:: downloadFile:: getFile.setFields: ")
+        logger.info("GoogleDriveUtil:: downloadFile:: getFile.setFields: ")
         val googleDriveFile = getFile.execute
-        println("GoogleDriveUtil :: downloadFile ::: Drive File Details:: " + googleDriveFile)
-        val fileName = googleDriveFile.getName
+        logger.info("GoogleDriveUtil :: downloadFile ::: Drive File Details:: " + googleDriveFile)
+        val fileName = Slug.makeSlug(googleDriveFile.getName)
+        logger.info("GoogleDriveUtil :: downloadFile ::: Slug fileName :: " + fileName)
         val fileMimeType = googleDriveFile.getMimeType
-        println("GoogleDriveUtil :: downloadFile ::: Node mimeType :: " + mimeType + " | File mimeType :: " + fileMimeType)
+        logger.info("GoogleDriveUtil :: downloadFile ::: Node mimeType :: " + mimeType + " | File mimeType :: " + fileMimeType)
         if (!StringUtils.equalsIgnoreCase(mimeType, "image")) validateMimeType(fileId, mimeType, fileMimeType)
         val saveFile = new File(saveDir)
         if (!saveFile.exists) saveFile.mkdirs
         val saveFilePath: String = saveDir + File.separator + fileName
-        println("GoogleDriveUtil :: downloadFile :: File Id :" + fileId + " | Save File Path: " + saveFilePath)
+        logger.info("GoogleDriveUtil :: downloadFile :: File Id :" + fileId + " | Save File Path: " + saveFilePath)
         val outputStream = new FileOutputStream(saveFilePath)
         getFile.executeMediaAndDownloadTo(outputStream)
         outputStream.close()
         file = new File(saveFilePath)
         file = Slug.createSlugFile(file)
-        println("GoogleDriveUtil :: downloadFile :: File Downloaded Successfully. Sluggified File Name: " + file.getAbsolutePath)
+        logger.info("GoogleDriveUtil :: downloadFile :: File Downloaded Successfully. Sluggified File Name: " + file.getAbsolutePath)
         if (null != file && (BACKOFF_DELAY != INITIAL_BACKOFF_DELAY)) BACKOFF_DELAY = INITIAL_BACKOFF_DELAY
         return file
       } catch {
-        case ge: GoogleJsonResponseException =>
-          logger.error("GoogleDriveUtil :: downloadFile :: GoogleJsonResponseException :: Error Occurred while downloading file having id " + fileId + " | Error is ::" + ge.getDetails.toString, ge)
+        case ge: GoogleJsonResponseException => logger.error("GoogleDriveUtil :: downloadFile :: GoogleJsonResponseException :: Error Occurred while downloading file having id " + fileId + " | Error is ::" + ge.getDetails.toString, ge)
           throw new ServerException("ERR_INVALID_UPLOAD_FILE_URL", "Invalid Response Received From Google API for file Id : " + fileId + " | Error is : " + ge.getDetails.toString)
-        case he: HttpResponseException =>
-          logger.error("GoogleDriveUtil :: downloadFile :: HttpResponseException :: Error Occurred while downloading file having id " + fileId + " | Error is ::" + he.getContent, he)
-          he.printStackTrace()
+        case he: HttpResponseException => logger.error("GoogleDriveUtil :: downloadFile :: HttpResponseException :: Error Occurred while downloading file having id " + fileId + " | Error is ::" + he.getContent, he)
           if (he.getStatusCode == 403) {
             if (BACKOFF_DELAY <= MAXIMUM_BACKOFF_DELAY) delay(BACKOFF_DELAY)
             if (BACKOFF_DELAY == 2400000) BACKOFF_DELAY += 1500000
@@ -95,7 +92,6 @@ object GoogleDriveUtil {
           else throw new ServerException("ERR_INVALID_UPLOAD_FILE_URL", "Invalid Response Received From Google API for file Id : " + fileId + " | Error is : " + he.getContent)
         case e: Exception =>
           logger.error("GoogleDriveUtil :: downloadFile :: Exception :: Error Occurred While Downloading Google Drive File having Id " + fileId + " : " + e.getMessage, e)
-          e.printStackTrace()
           if (e.isInstanceOf[ServerException]) throw e
           else throw new ServerException("ERR_INVALID_UPLOAD_FILE_URL", "Invalid Response Received From Google API for file Id : " + fileId + " | Error is : " + e.getMessage)
       }
@@ -121,7 +117,7 @@ object GoogleDriveUtil {
   }
 
   def delay(time: Int): Unit = {
-    println("delay is called with : " + time)
+    logger.info("delay is called with : " + time)
     try Thread.sleep(time)
     catch {
       case e: Exception => e.printStackTrace();

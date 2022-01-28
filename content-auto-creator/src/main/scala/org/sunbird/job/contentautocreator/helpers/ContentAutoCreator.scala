@@ -17,7 +17,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 
 	private[this] val logger = LoggerFactory.getLogger(classOf[ContentAutoCreator])
 
-	def process(config: ContentAutoCreatorConfig, event: Event, httpUtil: HttpUtil, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, cloudStorageUtil: CloudStorageUtil): Unit = {
+	def process(config: ContentAutoCreatorConfig, event: Event, httpUtil: HttpUtil, neo4JUtil: Neo4JUtil, cloudStorageUtil: CloudStorageUtil): Unit = {
 		val stage = event.eData.getOrDefault("stage","").asInstanceOf[String]
 		val filteredMetadata = event.metadata.filter(x => !config.content_props_to_removed.contains(x._1))
 		val createMetadata = filteredMetadata.filter(x => config.content_create_props.contains(x._1))
@@ -42,53 +42,58 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 				contentStage = getContentStage(event.identifier, event.pkgVersion, contentMetadata)
 			}
 		}
-
+		println("ContentAutoCreator :: process :: internalId: " + internalId + " || contentStage: " + contentStage)
 		var linkToCollection = false
 
 		try {
 			contentStage match {
 				case "create" =>
-					createContent(event, createMetadata, config, httpUtil)
-					updateContent(event.channel, internalId, updateMetadata, config, httpUtil, cloudStorageUtil)
-					uploadContent(event.channel, internalId, updateMetadata, config, httpUtil, cloudStorageUtil)
-					reviewContent(event.channel, internalId, config, httpUtil)
-					publishContent(event.channel, internalId, event.metadata.get("lastPublishedBy").asInstanceOf[String], config, httpUtil)
-				case "update" =>
+					internalId = createContent(event, createMetadata, config, httpUtil)
 					updateContent(event.channel, internalId, updateMetadata, config, httpUtil, cloudStorageUtil)
 					if (!stage.equalsIgnoreCase("create")) {
 						uploadContent(event.channel, internalId, updateMetadata, config, httpUtil, cloudStorageUtil)
+						linkToCollection = true
 						reviewContent(event.channel, internalId, config, httpUtil)
-						publishContent(event.channel, internalId, event.metadata.get("lastPublishedBy").asInstanceOf[String], config, httpUtil)
+						publishContent(event.channel, internalId, event.metadata("lastPublishedBy").asInstanceOf[String], config, httpUtil)
+					}
+				case "update" =>
+					updateContent(event.channel, internalId, updateMetadata, config, httpUtil, cloudStorageUtil)
+					if (!stage.equalsIgnoreCase("update")) {
+						uploadContent(event.channel, internalId, updateMetadata, config, httpUtil, cloudStorageUtil)
+						linkToCollection = true
+						reviewContent(event.channel, internalId, config, httpUtil)
+						publishContent(event.channel, internalId, event.metadata("lastPublishedBy").asInstanceOf[String], config, httpUtil)
 					}
 				case "upload" =>
 					uploadContent(event.channel, internalId, event.metadata, config, httpUtil, cloudStorageUtil)
 					delay(delayUpload)
+					linkToCollection = true
 					if (!stage.equalsIgnoreCase("upload")) {
 						reviewContent(event.channel, internalId, config, httpUtil)
-						publishContent(event.channel, internalId, event.metadata.get("lastPublishedBy").asInstanceOf[String], config, httpUtil)
+						publishContent(event.channel, internalId, event.metadata("lastPublishedBy").asInstanceOf[String], config, httpUtil)
 					}
-					linkToCollection = true
 				case "review" =>
+					linkToCollection = true
 					reviewContent(event.channel, internalId, config, httpUtil)
 					delay(config.apiCallDelay)
 					if (!stage.equalsIgnoreCase("review")) {
-						publishContent(event.channel, internalId, event.metadata.get("lastPublishedBy").asInstanceOf[String], config, httpUtil)
+						publishContent(event.channel, internalId, event.metadata("lastPublishedBy").asInstanceOf[String], config, httpUtil)
 					}
-					linkToCollection = true
 				case "publish" =>
-					publishContent(event.channel, internalId, event.metadata.get("lastPublishedBy").asInstanceOf[String], config, httpUtil)
-					delay(config.apiCallDelay*2)
 					linkToCollection = true
+					publishContent(event.channel, internalId, event.metadata("lastPublishedBy").asInstanceOf[String], config, httpUtil)
+					delay(config.apiCallDelay*2)
 				case _ => logger.info("ContentAutoCreator :: process :: Event Skipped for operations (create, upload, publish) for: " + event.identifier + " | Content Stage : " + contentStage)
 			}
 
 			if(event.collection.nonEmpty && (linkToCollection || contentStage.equalsIgnoreCase("na"))) {
 				linkCollection(internalId, event.collection)(config, httpUtil)
-			} else logger.info("ContentUtil :: process :: Textbook Linking Skipped because received empty collection/textbookInfo for : " + event.identifier)
+			} else logger.info("ContentAutoCreator :: process :: Textbook Linking Skipped because received empty collection/textbookInfo for : " + event.identifier)
 
-			logger.info("ContentUtil :: process :: finished processing for: " + event.identifier)
+			logger.info("ContentAutoCreator :: process :: finished processing for: " + event.identifier)
 		} catch {
-			case e: Exception => if(internalId.nonEmpty) updateStatus(event.channel, internalId, e.getMessage, config, httpUtil)
+			case e: Exception => e.printStackTrace()
+				if(internalId.nonEmpty) updateStatus(event.channel, internalId, e.getMessage, config, httpUtil)
 				throw e
 		}
 
@@ -108,7 +113,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 			})
 		}
 
-		val requestUrl = config.getString(ContentAutoCreatorConstants.SUNBIRD_CONTENT_SEARCH_URL,"")
+		val requestUrl = config.getString(ContentAutoCreatorConstants.SUNBIRD_CONTENT_SEARCH_URL,"") + "/v3/search"
 		val httpResponse = httpUtil.post(requestUrl, JSONUtil.serialize(reqMap))
 		if (httpResponse.status == 200) {
 			val response = JSONUtil.deserialize[Map[String, AnyRef]](httpResponse.body)
@@ -153,9 +158,10 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 	}
 
 	private def read(channelId: String, identifier: String, config: ContentAutoCreatorConfig, httpUtil: HttpUtil) = {
-		val requestUrl = config.getString(ContentAutoCreatorConstants.KP_CS_BASE_URL,"") + "/content/v4/read/" + identifier + "mode=edit"
+		val requestUrl = config.getString(ContentAutoCreatorConstants.KP_CS_BASE_URL,"") + "/content/v4/read/" + identifier + "?mode=edit"
 		logger.info("ContentAutoCreator :: read :: Reading content having identifier : " + identifier)
 		val headers = Map[String, String]("X-Channel-Id" -> channelId, "Content-Type" -> ContentAutoCreatorConstants.APPLICATION_JSON)
+		println("ContentAutoCreator :: read :: Reading content - requestUrl : " + requestUrl)
 		val httpResponse = httpUtil.get(requestUrl, headers)
 		if (httpResponse.status == 200) {
 			val response = JSONUtil.deserialize[Map[String, AnyRef]](httpResponse.body)
@@ -172,7 +178,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 		}
 	}
 
-	private def createContent(event: Event, createMetadata: Map[String,AnyRef], config: ContentAutoCreatorConfig, httpUtil: HttpUtil): Unit = {
+	private def createContent(event: Event, createMetadata: Map[String,AnyRef], config: ContentAutoCreatorConfig, httpUtil: HttpUtil): String = {
 		val createMetadataFields = if(event.eData.getOrDefault(ContentAutoCreatorConstants.IDENTIFIER, "").asInstanceOf[String].nonEmpty) {
 			createMetadata + (ContentAutoCreatorConstants.IDENTIFIER -> event.eData.getOrDefault(ContentAutoCreatorConstants.IDENTIFIER, "")) - ContentAutoCreatorConstants.CONTENT_TYPE
 		} else {
@@ -195,6 +201,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 			val result = response.getOrElse("result", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
 			val contentId = result.getOrElse(ContentAutoCreatorConstants.IDENTIFIER, "").asInstanceOf[String]
 			logger.info("ContentAutoCreator :: createContent :: Content Created Successfully with identifier : " + contentId)
+			contentId
 		} else {
 			logger.info("ContentAutoCreator :: createContent :: Invalid Response received while creating content for : " + event.identifier + getErrorDetails(httpResponse))
 			throw new ServerException("SYSTEM_ERROR", "Invalid Response received while creating content for :" + event.identifier)
@@ -203,10 +210,9 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 
 	private def updateContent(channel: String, internalId: String, updateMetadata: Map[String,AnyRef], config: ContentAutoCreatorConfig, httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil): Unit = {
 		val readMetadata = read(channel, internalId, config, httpUtil)
-		val updateMetadataFields = updateMetadata + (ContentAutoCreatorConstants.VERSION_KEY -> readMetadata.get(ContentAutoCreatorConstants.VERSION_KEY).asInstanceOf[String])
 
 		val appIconUrl = updateMetadata.getOrDefault("appIcon", "").asInstanceOf[String].trim
-		if (appIconUrl != null && appIconUrl.nonEmpty) {
+		val updatedAppIcon = if (appIconUrl != null && appIconUrl.nonEmpty) {
 			logger.info("ContentAutoCreator :: update :: Initiating Icon download for : " + internalId + " | appIconUrl : " + appIconUrl)
 			val file = getFile(internalId, appIconUrl, "image", config, httpUtil)
 			logger.info("ContentAutoCreator :: update :: Icon downloaded for : " + internalId + " | appIconUrl : " + appIconUrl)
@@ -214,10 +220,12 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 			val urls = uploadArtifact(file, internalId, config, cloudStorageUtil)
 			if (null != urls && StringUtils.isNotBlank(urls(1))) {
 				val appIconBlobUrl = urls(1)
-				logger.info("ContentAutoCreator :: update :: Icon Uploaded Successfully to cloud for : " + internalId + " | appIconUrl : " + appIconUrl + " | appIconBlobUrl : " + appIconBlobUrl)
-				updateMetadata.put("appIcon", appIconBlobUrl)
+				println("ContentAutoCreator :: update :: Icon Uploaded Successfully to cloud for : " + internalId + " | appIconUrl : " + appIconUrl + " | appIconBlobUrl : " + appIconBlobUrl)
+				appIconBlobUrl
 			}
-		}
+		} else ""
+
+		val updateMetadataFields = updateMetadata + (ContentAutoCreatorConstants.VERSION_KEY -> readMetadata(ContentAutoCreatorConstants.VERSION_KEY).asInstanceOf[String], ContentAutoCreatorConstants.APP_ICON -> updatedAppIcon)
 
 		logger.info("ContentAutoCreator :: updateContent :: updateMetadataFields : " + updateMetadataFields)
 		val reqMap = new java.util.HashMap[String, AnyRef]() {
@@ -264,10 +272,10 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 			val urls = uploadArtifact(file, internalId, config, cloudStorageUtil)
 			if (null != urls && StringUtils.isNotBlank(urls(1))) {
 				val sourceFileBlobUrl = urls(1)
-				logger.info("ContentAutoCreator :: uploadContent :: sourceUrl Uploaded Successfully to cloud for : " + internalId + " | sourceUrl : " + sourceUrl + " | sourceFileBlobUrl : " + sourceFileBlobUrl)
+				println("ContentAutoCreator :: uploadContent :: sourceUrl Uploaded Successfully to cloud for : " + internalId + " | sourceUrl : " + sourceUrl + " | sourceFileBlobUrl : " + sourceFileBlobUrl)
 
 				val headers = Map[String, String]("X-Channel-Id" -> channel)
-				val requestUrl = config.getString(ContentAutoCreatorConstants.KP_CS_BASE_URL,"") + "/content/v4/update" + internalId
+				val requestUrl = config.getString(ContentAutoCreatorConstants.KP_CS_BASE_URL,"") + "/content/v4/upload" + internalId
 				val httpResponse = httpUtil.postFilePath(requestUrl, "fileUrl", sourceFileBlobUrl, headers)
 				if (httpResponse.status == 200) {
 					val response = JSONUtil.deserialize[Map[String, AnyRef]](httpResponse.body)
