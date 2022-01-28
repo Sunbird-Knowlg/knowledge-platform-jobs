@@ -374,17 +374,12 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 			} else {
 				val filePath = getBasePath(identifier, config)
 				httpUtil.downloadFile(fileUrl, filePath)
-				val downloadedFolder = new File(filePath)
-				if(downloadedFolder.exists() && downloadedFolder.listFiles().nonEmpty) downloadedFolder.listFiles().head else throw new ServerException("ERR_INVALID_UPLOAD_FILE_URL", "Invalid fileUrl received for : " + identifier + " | fileUrl : " + fileUrl)
 			}
 			file
 		} catch {
 			case e: ServerException =>
-				if (e.isInstanceOf[ServerException]) throw e
-				else {
 					logger.info("Invalid fileUrl received for : " + identifier + " | fileUrl : " + fileUrl + "Exception is : " + e.getMessage)
 					throw new ServerException("ERR_INVALID_UPLOAD_FILE_URL", "Invalid fileUrl received for : " + identifier + " | fileUrl : " + fileUrl)
-				}
 		}
 	}
 

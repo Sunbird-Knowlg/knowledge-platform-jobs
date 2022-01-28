@@ -19,11 +19,9 @@ class GetFileUtilSpec extends FlatSpec with BeforeAndAfterAll with Matchers with
     val fileUrl = "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_113252367947718656186/artifact/do_113252367947718656186_1617720706250_gitkraken.png"
     val httpUtil = new HttpUtil
     val downloadPath = "/tmp/content" + File.separator + "_temp_" + System.currentTimeMillis
-    httpUtil.downloadFile(fileUrl, downloadPath)
-    val downloadedFolder = new File(downloadPath)
-    assert(downloadedFolder.exists() && downloadedFolder.listFiles().nonEmpty)
-    println("File:: " + downloadedFolder.listFiles().head)
-    FileUtils.deleteDirectory(downloadedFolder)
+    val downloadedFile = httpUtil.downloadFile(fileUrl, downloadPath)
+    assert(downloadedFile.exists())
+    FileUtils.deleteDirectory(downloadedFile.getParentFile)
   }
 
   "GoogleDriveUtil.downloadFile" should "download non-GoogleDrive Url object" in {

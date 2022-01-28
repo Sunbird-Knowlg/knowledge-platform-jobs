@@ -59,12 +59,14 @@ class HttpUtil extends Serializable {
     }
   }
 
-  def downloadFile(url: String, downloadLocation: String): String = {
+  def downloadFile(url: String, downloadLocation: String): File = {
     val saveFile = new File(downloadLocation)
     if (!saveFile.exists) saveFile.mkdirs
     val urlObject = new URL(url)
     val filePath = downloadLocation + "/" + urlObject.getPath.replaceAll("/", "")
     urlObject #> new File(filePath) !!
+    val downloadedFile = new File(filePath)
+    downloadedFile
   }
 
   private def validateRequest(url: String, headerParam: Map[String, String]): Unit = {
