@@ -16,6 +16,7 @@ object ContentAutoCreatorConstants {
   val CONTENT = "content"
   val STATUS = "status"
   val ORIGIN = "origin"
+  val OBJECT_TYPE = "objectType"
   val ORIGIN_DATA = "originData"
   val VERSION_KEY = "versionKey"
   val REPOSITORY = "repository"

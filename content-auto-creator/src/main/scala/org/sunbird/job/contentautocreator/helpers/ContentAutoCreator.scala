@@ -113,7 +113,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 		val reqMap = new java.util.HashMap[String, AnyRef]() {
 			put(ContentAutoCreatorConstants.REQUEST, new java.util.HashMap[String, AnyRef]() {
 				put(ContentAutoCreatorConstants.FILTERS, new java.util.HashMap[String, AnyRef]() {
-					put(ContentAutoCreatorConstants.CONTENT, "Content")
+					put(ContentAutoCreatorConstants.OBJECT_TYPE, "Content")
 					put(ContentAutoCreatorConstants.STATUS, new util.ArrayList[String]())
 					put(ContentAutoCreatorConstants.ORIGIN, identifier)
 				})
