@@ -27,14 +27,6 @@ class ContentAutoCreatorSpec extends FlatSpec with Matchers with MockitoSugar {
 	implicit val cloudUtil : CloudStorageUtil = new CloudStorageUtil(jobConfig)
 	var mockHttpUtil: HttpUtil = mock[HttpUtil]
 
-	def delay(time: Long): Unit = {
-		try {
-			Thread.sleep(time)
-		} catch {
-			case ex: Exception => print("")
-		}
-	}
-
 	"process" should "not throw exception for dockEvent" in {
 		val contentResponse = """{"responseCode":"OK","result":{"content":{"identifier":"do_21344892893869670417014","name":"Aparna","description":"about water","source":"https://drive.google.com/uc?export=download&id=1ZAW528VDqHNV6R3lTXfDOxhu9hyAXVl1","artifactUrl":"https://drive.google.com/uc?export=download&id=1ZAW528VDqHNV6R3lTXfDOxhu9hyAXVl1","appIcon":"https://drive.google.com/uc?export=download&id=1-tWar0Kl6DsuUpZ36f-3yF1_fDBhxzNj","creator":"Aparna","author":"Aparna", "versionKey":"1587624624051","audience":["Student"],"code":"1ee4c91a-61a4-2b5e-e3bd-a19c567242fc","mimeType":"application/pdf","primaryCategory":"eTextbook","lastPublishedBy":"9cb68c8f-7c23-476e-a5bf-11978f07e28b","createdBy":"9cb68c8f-7c23-476e-a5bf-11978f07e28b","programId":"a4597550-7119-11ec-902a-3b5d30502ba5","copyright":"2013","attributions":["Nadiya Anusha"],"keywords":["Drop"],"contentPolicyCheck":true,"channel":"01329314824202649627","framework":"ekstep_ncert_k-12","board":"CBSE","medium":["English"],"gradeLevel":["Class 1"],"subject":["English"],"boardIds":["ekstep_ncert_k-12_board_cbse"],"mediumIds":["ekstep_ncert_k-12_medium_english"],"gradeLevelIds":["ekstep_ncert_k-12_gradelevel_class1"],"subjectIds":["ekstep_ncert_k-12_subject_english"],"targetFWIds":["ekstep_ncert_k-12"],"license":"CC BY 4.0","processId":"761fd6b4-1478-4e0e-9c00-fe5aba11173c","objectType":"Content","status":"Draft"}}}"""
 		val createResponse = """{"responseCode":"OK","result":{"identifier":"do_21344892893869670417014", "versionKey":"1587624624051"}}"""
