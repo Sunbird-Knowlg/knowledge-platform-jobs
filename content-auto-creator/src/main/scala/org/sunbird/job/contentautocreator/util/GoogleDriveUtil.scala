@@ -22,18 +22,18 @@ import java.util
 
 object GoogleDriveUtil {
   private[this] val logger = LoggerFactory.getLogger("GoogleDriveUtil")
-  val INITIAL_BACKOFF_DELAY: Int =  1200000 // 20 min
-  val MAXIMUM_BACKOFF_DELAY: Int = 3900000 // 65 min
-  val INCREMENT_BACKOFF_DELAY: Int = 300000 // 5 min
-  var BACKOFF_DELAY: Int = INITIAL_BACKOFF_DELAY
+  val initialBackoffDelay: Int =  1200000 // 20 min
+  val maximumBackoffDelay: Int = 3900000 // 65 min
+  val incrementBackoffDelay: Int = 300000 // 5 min
+  var currentBackOffDelay: Int = initialBackoffDelay
 
   private def initialize(config: ContentAutoCreatorConfig): Drive = {
-    val JSON_FACTORY = new JacksonFactory
-    val APP_NAME = config.getString("content_auto_creator.gdrive.application_name","drive-download-sunbird")
+    val jacksonFactory = new JacksonFactory
+    val gDriveAppName = config.getString("content_auto_creator.gdrive.application_name","drive-download-sunbird")
 
     try {
-      val HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport
-      new Drive.Builder(HTTP_TRANSPORT, JSON_FACTORY, getCredentials(config)).setApplicationName(APP_NAME).build
+      val httpTransport = GoogleNetHttpTransport.newTrustedTransport
+      new Drive.Builder(httpTransport, jacksonFactory, getCredentials(config)).setApplicationName(gDriveAppName).build
     } catch {
       case e: Exception =>
         logger.error("Error occurred while creating google drive client ::: " + e.getMessage, e)
@@ -43,17 +43,17 @@ object GoogleDriveUtil {
 
   @throws[Exception]
   private def getCredentials(config: ContentAutoCreatorConfig): GoogleCredential = {
-    val SCOPES = util.Arrays.asList(DriveScopes.DRIVE_FILE, DriveScopes.DRIVE, DriveScopes.DRIVE_METADATA)
-    val SERVICE_ACC_CRED = config.getString("content_auto_creator.g_service_acct_cred","")
-    val credentialsStream = new ByteArrayInputStream(SERVICE_ACC_CRED.getBytes(Charset.forName("UTF-8")))
-    val credential = GoogleCredential.fromStream(credentialsStream).createScoped(SCOPES)
+    val scope = util.Arrays.asList(DriveScopes.DRIVE_FILE, DriveScopes.DRIVE, DriveScopes.DRIVE_METADATA)
+    val gDriveCredentials = config.getString("content_auto_creator.g_service_acct_cred","")
+    val credentialsStream = new ByteArrayInputStream(gDriveCredentials.getBytes(Charset.forName("UTF-8")))
+    val credential = GoogleCredential.fromStream(credentialsStream).createScoped(scope)
     credential
   }
 
   @throws[Exception]
   def downloadFile(fileId: String, saveDir: String, mimeType: String)(implicit config: ContentAutoCreatorConfig): File = {
     var file: File = null
-      while(file == null && GoogleDriveUtil.BACKOFF_DELAY <= GoogleDriveUtil.MAXIMUM_BACKOFF_DELAY) {
+      while(file == null && currentBackOffDelay <= maximumBackoffDelay) {
       try {
         val drive = initialize(config)
         logger.info("GoogleDriveUtil:: downloadFile:: drive: " + drive + " || drive.files: " + drive.files().list())
@@ -78,16 +78,16 @@ object GoogleDriveUtil {
         file = new File(saveFilePath)
         file = Slug.createSlugFile(file)
         logger.info("GoogleDriveUtil :: downloadFile :: File Downloaded Successfully. Sluggified File Name: " + file.getAbsolutePath)
-        if (null != file && (BACKOFF_DELAY != INITIAL_BACKOFF_DELAY)) BACKOFF_DELAY = INITIAL_BACKOFF_DELAY
+        if (null != file && (currentBackOffDelay != initialBackoffDelay)) currentBackOffDelay = initialBackoffDelay
         return file
       } catch {
         case ge: GoogleJsonResponseException => logger.error("GoogleDriveUtil :: downloadFile :: GoogleJsonResponseException :: Error Occurred while downloading file having id " + fileId + " | Error is ::" + ge.getDetails.toString, ge)
           throw new ServerException("ERR_INVALID_UPLOAD_FILE_URL", "Invalid Response Received From Google API for file Id : " + fileId + " | Error is : " + ge.getDetails.toString)
         case he: HttpResponseException => logger.error("GoogleDriveUtil :: downloadFile :: HttpResponseException :: Error Occurred while downloading file having id " + fileId + " | Error is ::" + he.getContent, he)
           if (he.getStatusCode == 403) {
-            if (BACKOFF_DELAY <= MAXIMUM_BACKOFF_DELAY) delay(BACKOFF_DELAY)
-            if (BACKOFF_DELAY == 2400000) BACKOFF_DELAY += 1500000
-            else BACKOFF_DELAY = BACKOFF_DELAY * INCREMENT_BACKOFF_DELAY
+            if (currentBackOffDelay <= maximumBackoffDelay) delay(currentBackOffDelay)
+            if (currentBackOffDelay == 2400000) currentBackOffDelay += 1500000
+            else currentBackOffDelay = currentBackOffDelay * incrementBackoffDelay
           }
           else throw new ServerException("ERR_INVALID_UPLOAD_FILE_URL", "Invalid Response Received From Google API for file Id : " + fileId + " | Error is : " + he.getContent)
         case e: Exception =>
