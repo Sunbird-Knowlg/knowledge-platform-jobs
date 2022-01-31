@@ -5,13 +5,11 @@ import com.typesafe.config.{Config, ConfigFactory}
 import net.manub.embeddedkafka.EmbeddedKafka._
 import net.manub.embeddedkafka.{EmbeddedKafka, EmbeddedKafkaConfig}
 import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
-import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.test.util.MiniClusterWithClientResource
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.scalatest.Matchers
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.domain.reader.JobRequest
 import org.sunbird.job.util.FlinkUtil
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -81,7 +79,7 @@ class BaseProcessFunctionTestSpec extends BaseSpec with Matchers {
   val customKafkaConsumerProperties: Map[String, String] =
     Map[String, String]("auto.offset.reset" -> "earliest", "group.id" -> "test-event-schema-group")
   implicit val embeddedKafkaConfig: EmbeddedKafkaConfig =
-    EmbeddedKafkaConfig (
+    EmbeddedKafkaConfig(
       kafkaPort = 9093,
       zooKeeperPort = 2183,
       customConsumerProperties = customKafkaConsumerProperties
@@ -126,7 +124,7 @@ class BaseProcessFunctionTestSpec extends BaseSpec with Matchers {
 
     val stringStream =
       env.addSource(kafkaConnector.kafkaStringSource(bsConfig.kafkaStringInputTopic)).name("string-event-consumer")
-      .process(new TestStringStreamFunc(bsConfig)).name("TestStringEventStream")
+        .process(new TestStringStreamFunc(bsConfig)).name("TestStringEventStream")
 
     stringStream.getSideOutput(bsConfig.stringOutputTag)
       .addSink(kafkaConnector.kafkaStringSink(bsConfig.kafkaStringOutputTopic))
@@ -148,9 +146,9 @@ class BaseProcessFunctionTestSpec extends BaseSpec with Matchers {
     val stringSchemaMessages = consumeNumberMessagesFrom[String](bsConfig.kafkaStringOutputTopic, 1)
     val jobRequestSchemaMessages = consumeNumberMessagesFrom[String](bsConfig.kafkaJobReqOutputTopic, 1)
 
-    mapSchemaMessages.size should be (1)
-    stringSchemaMessages.size should be (1)
-    jobRequestSchemaMessages.size should be (1)
+    mapSchemaMessages.size should be(1)
+    stringSchemaMessages.size should be(1)
+    jobRequestSchemaMessages.size should be(1)
   }
 
 }

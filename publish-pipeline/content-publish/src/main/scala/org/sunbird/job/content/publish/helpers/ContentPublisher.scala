@@ -1,33 +1,45 @@
 package org.sunbird.job.content.publish.helpers
 
+import org.apache.commons.io.FilenameUtils
 import org.apache.commons.lang3.StringUtils
+import org.apache.tika.Tika
 import org.slf4j.LoggerFactory
 import org.sunbird.job.content.task.ContentPublishConfig
 import org.sunbird.job.domain.`object`.DefinitionCache
+import org.sunbird.job.exception.InvalidInputException
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData, ObjectExtData}
 import org.sunbird.job.publish.helpers._
-import org.sunbird.job.publish.util.CloudStorageUtil
-import org.sunbird.job.util.{CassandraUtil, HttpUtil, Neo4JUtil}
+import org.sunbird.job.util._
 
-import java.io.File
+import java.io.{File, IOException}
 import java.nio.file.Files
+import java.util
+import java.util.regex.Pattern
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext
-import scala.util.control.Breaks.break
 
 trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnrichment with EcarGenerator with ObjectUpdater {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[ContentPublisher])
-  private val level4MimeTypes = List("video/x-youtube", "application/pdf", "application/msword", "application/epub", "application/vnd.ekstep.h5p-archive", "text/x-url")
+  private val level4MimeTypes = List(MimeType.X_Youtube, MimeType.PDF, MimeType.MSWORD, MimeType.EPUB, MimeType.H5P_Archive, MimeType.X_URL)
   private val level4ContentTypes = List("Course", "CourseUnit", "LessonPlan", "LessonPlanUnit")
-  private val pragmaMimeTypes = List("video/x-youtube", "application/pdf")
-  private val extractableMimeTypes = List("application/vnd.ekstep.ecml-archive", "application/vnd.ekstep.html-archive", "application/vnd.ekstep.plugin-archive", "application/vnd.ekstep.h5p-archive")
-  private val tempFileLocation = "/data/contentBundle/"
-  private val extractablePackageExtensions = List(".zip", ".h5p", ".epub")
+  private val pragmaMimeTypes = List(MimeType.X_Youtube, MimeType.PDF) // Ne to check for other mimetype
+  private val youtubeMimetypes = List(MimeType.X_Youtube, MimeType.Youtube)
+  private val validateArtifactUrlMimetypes = List(MimeType.PDF, MimeType.EPUB, MimeType.MSWORD)
+  private val ignoreValidationMimeType = List(MimeType.Collection, MimeType.Plugin_Archive, MimeType.ASSETS)
+  private val YOUTUBE_REGEX = "^(http(s)?:\\/\\/)?((w){3}.)?youtu(be|.be)?(\\.com)?\\/.+"
 
-  override def getExtData(identifier: String, pkgVersion: Double, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[ObjectExtData] = None
+  override def getExtData(identifier: String, pkgVersion: Double, mimeType: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[ObjectExtData] = {
+    mimeType match {
+      case MimeType.ECML_Archive =>
+        val ecmlBody = getContentBody(identifier, readerConfig)
+        Some(ObjectExtData(Some(Map[String, AnyRef]("body" -> ecmlBody))))
+      case _ =>
+        None
+    }
+  }
 
   override def getHierarchy(identifier: String, pkgVersion: Double, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = None
 
@@ -35,54 +47,132 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
 
   override def getHierarchies(identifiers: List[String], readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = None
 
-  override def enrichObjectMetadata(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig, definitionCache: DefinitionCache, definitionConfig: DefinitionConfig): Option[ObjectData] = {
+  override def enrichObjectMetadata(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig,
+                                                     cloudStorageUtil: CloudStorageUtil, config: PublishConfig, definitionCache: DefinitionCache,
+                                                     definitionConfig: DefinitionConfig): Option[ObjectData] = {
+    val contentConfig = config.asInstanceOf[ContentPublishConfig]
     val extraMeta = Map("pkgVersion" -> (obj.pkgVersion + 1).asInstanceOf[AnyRef], "lastPublishedOn" -> getTimeStamp,
       "flagReasons" -> null, "body" -> null, "publishError" -> null, "variants" -> null, "downloadUrl" -> null)
     val contentSize = obj.metadata.getOrElse("size", 0).toString.toDouble
-    val configSize = config.asInstanceOf[ContentPublishConfig].artifactSizeForOnline
-    val updatedMeta: Map[String, AnyRef] = if (contentSize > configSize) obj.metadata ++ extraMeta ++ Map("contentDisposition" -> "online-only") else obj.metadata ++ extraMeta
+    val configSize = contentConfig.artifactSizeForOnline
+    val publishType = obj.getString("publish_type", "Public")
+    val status = if (StringUtils.equalsIgnoreCase("Unlisted", publishType)) "Unlisted" else "Live"
+    val updatedMeta: Map[String, AnyRef] = if (contentSize > configSize) obj.metadata ++ extraMeta ++ Map("contentDisposition" -> "online-only", "status" -> status) else obj.metadata ++ extraMeta ++ Map("status" -> status)
 
     val updatedCompatibilityLevel = setCompatibilityLevel(obj, updatedMeta).getOrElse(updatedMeta)
     val updatedPragma = setPragma(obj, updatedCompatibilityLevel).getOrElse(updatedCompatibilityLevel)
 
     //delete basePath if exists
-    Files.deleteIfExists(new File(getBasePath(obj.identifier)).toPath)
+    Files.deleteIfExists(new File(ExtractableMimeTypeHelper.getBasePath(obj.identifier, contentConfig.bundleLocation)).toPath)
 
-    val contentConfig = config.asInstanceOf[ContentPublishConfig]
-    if (contentConfig.isECARExtractionEnabled && extractableMimeTypes.contains(obj.mimeType)) {
-      copyExtractedContentPackage(obj, contentConfig, "version", cloudStorageUtil)
-      copyExtractedContentPackage(obj, contentConfig, "latest", cloudStorageUtil)
+    if (contentConfig.isECARExtractionEnabled && contentConfig.extractableMimeTypes.contains(obj.mimeType)) {
+      ExtractableMimeTypeHelper.copyExtractedContentPackage(obj, contentConfig, "version", cloudStorageUtil)
+      ExtractableMimeTypeHelper.copyExtractedContentPackage(obj, contentConfig, "latest", cloudStorageUtil)
     }
     val updatedPreviewUrl = updatePreviewUrl(obj, updatedPragma, cloudStorageUtil, contentConfig).getOrElse(updatedPragma)
     Some(new ObjectData(obj.identifier, updatedPreviewUrl, obj.extData, obj.hierarchy))
   }
 
   override def getDataForEcar(obj: ObjectData): Option[List[Map[String, AnyRef]]] = {
-    Some(List(obj.metadata ++ obj.extData.getOrElse(Map()).filter(p => !excludeBundleMeta.contains(p._1.asInstanceOf[String]))))
+    Some(List(obj.metadata ++ obj.extData.getOrElse(Map()).filter(p => !excludeBundleMeta.contains(p._1))))
   }
 
   override def saveExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Unit = None
 
   override def deleteExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Unit = None
 
-  def validateMetadata(obj: ObjectData, identifier: String): List[String] = {
+  def validateMetadata(obj: ObjectData, identifier: String, config: PublishConfig): List[String] = {
     logger.info("Validating Content metadata for : " + obj.identifier)
     val messages = ListBuffer[String]()
-    if (obj.mimeType.equalsIgnoreCase("application/vnd.ekstep.ecml-archive") && (obj.extData.getOrElse("body", "") == null || obj.extData.getOrElse("body", "").asInstanceOf[Map[String, AnyRef]].isEmpty))
-      messages += s"""There is no body available for : $identifier"""
-    else if (StringUtils.isBlank(obj.getString("artifactUrl", "")))
-      messages += s"""There is no artifactUrl available for : $identifier"""
+    val artifactUtl = obj.getString("artifactUrl", "")
+    if (ignoreValidationMimeType.contains(obj.mimeType)) {
+      // Validation not required. Nothing to do.
+    } else if (obj.mimeType.equalsIgnoreCase(MimeType.ECML_Archive)) { // Either 'body' or 'artifactUrl' is needed
+      if (obj.extData.nonEmpty && ((obj.extData.get.getOrElse("body", Map.empty).isInstanceOf[Map[String, AnyRef]] && obj.extData.get.getOrElse("body", Map.empty).asInstanceOf[Map[String, AnyRef]].nonEmpty) || StringUtils.isNotBlank(artifactUtl))) {
+        //  Do nothing.
+      } else messages += s"""Either 'body' or 'artifactUrl' are required for processing of ECML content for : $identifier"""
+    } else {
+      val allowedExtensionsWord: util.List[String] = config.asInstanceOf[ContentPublishConfig].allowedExtensionsWord
 
+      if (StringUtils.isBlank(artifactUtl))
+        messages += s"""There is no artifactUrl available for : $identifier"""
+      else if (youtubeMimetypes.contains(obj.mimeType) && !isValidYouTubeUrl(artifactUtl))
+        messages += s"""Invalid youtube Url = $artifactUtl for : $identifier"""
+      else if (validateArtifactUrlMimetypes.contains(obj.mimeType) && !isValidUrl(artifactUtl, obj.mimeType, allowedExtensionsWord)) { // valid url check by downloading the file and then delete it
+        // artifactUrl + valid url check by downloading the file
+        obj.mimeType match {
+          case MimeType.PDF =>
+            messages += s"""Error! Invalid File Extension. Uploaded file $artifactUtl is not a pdf file for : $identifier"""
+          case MimeType.EPUB =>
+            messages += s"""Error! Invalid File Extension. Uploaded file $artifactUtl is not a epub file for : $identifier"""
+          case MimeType.MSWORD =>
+            messages += s"""Error! Invalid File Extension. | Uploaded file $artifactUtl should be among the Allowed_file_extensions for mimeType doc $allowedExtensionsWord for : $identifier"""
+        }
+      }
+    }
     messages.toList
   }
 
-  def getObjectWithEcar(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
-    logger.info("ContentPublisher:getObjectWithEcar: Ecar generation done for Content: " + data.identifier)
-    val ecarMap: Map[String, String] = generateEcar(data, pkgTypes)
-    val variants: java.util.Map[String, java.util.Map[String, String]] = ecarMap.map { case (key, value) => key.toLowerCase -> Map[String, String]("ecarUrl" -> value, "size" -> httpUtil.getSize(value).toString).asJava }.asJava
-    logger.info("ContentPublisher ::: getObjectWithEcar ::: ecar map ::: " + ecarMap)
-    val meta: Map[String, AnyRef] = Map("downloadUrl" -> ecarMap.getOrElse(EcarPackageType.FULL.toString, ""), "variants" -> variants)
-    new ObjectData(data.identifier, data.metadata ++ meta, data.extData, data.hierarchy)
+  private def isValidYouTubeUrl(artifactUrl: String): Boolean = {
+    logger.info(s"Validating if the given youtube url = $artifactUrl is valid or not.")
+    Pattern.matches(YOUTUBE_REGEX, artifactUrl)
+  }
+
+  private def isValidUrl(url: String, mimeType: String, allowedExtensionsWord: util.List[String]): Boolean = {
+    val destPath = s"""${File.separator}tmp${File.separator}validUrl"""
+    //    val destPath = s"""$bundlePath${File.separator}${StringUtils.replace(id, ".img", "")}"""
+    var isValid = false
+    try {
+      val file: File = FileUtils.downloadFile(url, destPath)
+      if (exceptionChecks(mimeType, file, allowedExtensionsWord)) isValid = true
+    } catch {
+      case e: Exception =>
+        logger.error("isValidUrl: Error while checking mimeType.")
+        e.printStackTrace()
+        throw new InvalidInputException("isValidUrl: Error while checking mimeType ", e)
+    } finally {
+      FileUtils.deleteQuietly(destPath)
+    }
+    isValid
+  }
+
+  private def exceptionChecks(mimeType: String, file: File, allowedExtensionsWord: util.List[String]): Boolean = {
+    try {
+      val extension = FilenameUtils.getExtension(file.getPath)
+      logger.info("Validating File For MimeType: " + file.getName)
+      if (extension.nonEmpty) {
+        val tika = new Tika
+        val fileType = tika.detect(file)
+        mimeType match {
+          case MimeType.PDF =>
+            if (StringUtils.equalsIgnoreCase(extension, "pdf") && fileType == MimeType.PDF) return true
+          case MimeType.EPUB =>
+            if (StringUtils.equalsIgnoreCase(extension, "epub") && fileType == "application/epub+zip") return true
+          case MimeType.MSWORD =>
+            if (allowedExtensionsWord.contains(extension)) return true
+        }
+      }
+    } catch {
+      case e: IOException =>
+        logger.error("exceptionChecks: Error while checking mimeType.")
+        e.printStackTrace()
+        throw new InvalidInputException("exceptionChecks: Error while checking mimeType ", e)
+    }
+    false
+  }
+
+  def getObjectWithEcar(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil,
+                                                                  config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
+    try {
+      logger.info("ContentPublisher:getObjectWithEcar: Ecar generation done for Content: " + data.identifier)
+      val ecarMap: Map[String, String] = generateEcar(data, pkgTypes)
+      val variants: java.util.Map[String, java.util.Map[String, String]] = ecarMap.map { case (key, value) => key.toLowerCase -> Map[String, String]("ecarUrl" -> value, "size" -> httpUtil.getSize(value).toString).asJava }.asJava
+      logger.info("ContentPublisher ::: getObjectWithEcar ::: ecar map ::: " + ecarMap)
+      val meta: Map[String, AnyRef] = Map("downloadUrl" -> ecarMap.getOrElse(EcarPackageType.FULL, ""), "variants" -> variants)
+      new ObjectData(data.identifier, data.metadata ++ meta, data.extData, data.hierarchy)
+    } catch {
+      case _: java.lang.IllegalArgumentException => throw new InvalidInputException(s"Invalid input found For $data.identifier")
+    }
   }
 
   private def setCompatibilityLevel(obj: ObjectData, updatedMeta: Map[String, AnyRef]): Option[Map[String, AnyRef]] = {
@@ -108,55 +198,17 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
     if (StringUtils.isNotBlank(obj.mimeType)) {
       logger.debug("Checking Required Fields For: " + obj.mimeType)
       obj.mimeType match {
-        case "application/vnd.ekstep.content-collection" | "application/vnd.ekstep.plugin-archive"
-             | "application/vnd.android.package-archive" | "assets" =>
+        case MimeType.Collection | MimeType.Plugin_Archive | MimeType.Android_Package | MimeType.ASSETS =>
           None
-        case "application/vnd.ekstep.ecml-archive" | "application/vnd.ekstep.html-archive" | "application/vnd.ekstep.h5p-archive" =>
-          val latestFolderS3Url = getS3URL(obj, cloudStorageUtil, config)
+        case MimeType.ECML_Archive | MimeType.HTML_Archive | MimeType.H5P_Archive =>
+          val latestFolderS3Url = ExtractableMimeTypeHelper.getCloudStoreURL(obj, cloudStorageUtil, config)
           val updatedPreviewUrl = updatedMeta ++ Map("previewUrl" -> latestFolderS3Url, "streamingUrl" -> latestFolderS3Url)
           Some(updatedPreviewUrl)
         case _ =>
           val artifactUrl = obj.getString("artifactUrl", null)
           val updatedPreviewUrl = updatedMeta ++ Map("previewUrl" -> artifactUrl)
-          if (config.streamableMimeType.contains(obj.mimeType)) Some(updatedPreviewUrl ++ Map("streamingUrl" -> artifactUrl)) else Some(updatedPreviewUrl)
+          if (config.isStreamingEnabled && !config.streamableMimeType.contains(obj.mimeType)) Some(updatedPreviewUrl ++ Map("streamingUrl" -> artifactUrl)) else Some(updatedPreviewUrl)
       }
     } else None
   }
-
-
-  private def getS3URL(obj: ObjectData, cloudStorageUtil: CloudStorageUtil, config: ContentPublishConfig): String = {
-    val path = getExtractionPath(obj, config, "latest")
-    cloudStorageUtil.getURI(path, Option.apply(extractableMimeTypes.contains(obj.mimeType)))
-  }
-
-  private def getExtractionPath(obj: ObjectData, config: ContentPublishConfig, prefix: String): String = {
-    obj.mimeType match {
-      case "application/vnd.ekstep.ecml-archive" => config.contentFolder + File.separator + "ecml" + File.separator + obj.identifier + "-" + prefix
-      case "application/vnd.ekstep.html-archive" => config.contentFolder + File.separator + "html" + File.separator + obj.identifier + "-" + prefix
-      case "application/vnd.ekstep.h5p-archive" => config.contentFolder + File.separator + "h5p" + File.separator + obj.identifier + "-" + prefix
-      case _ => ""
-    }
-  }
-
-  private def getBasePath(objectId: String): String = {
-    if (!StringUtils.isBlank(objectId)) tempFileLocation + File.separator + System.currentTimeMillis + "_temp" + File.separator + objectId else ""
-  }
-
-  private def copyExtractedContentPackage(obj: ObjectData, contentConfig: ContentPublishConfig, extractionType: String, cloudStorageUtil: CloudStorageUtil): Unit = {
-    if (!isExtractedSnapshotExist(obj)) throw new Exception("Error! Snapshot Type Extraction doesn't Exists.")
-    val sourcePrefix = getExtractionPath(obj, contentConfig, "snapshot")
-    val destinationPrefix = getExtractionPath(obj, contentConfig, extractionType)
-    cloudStorageUtil.copyObjectsByPrefix(sourcePrefix, destinationPrefix)
-  }
-
-  private def isExtractedSnapshotExist(obj: ObjectData): Boolean = {
-    val artifactUrl = obj.getString("artifactUrl", "")
-    isValidSnapshotFile(artifactUrl)
-  }
-
-  private def isValidSnapshotFile(artifactUrl: String): Boolean = {
-    val isValidSnapshot = extractablePackageExtensions.filter(key => StringUtils.endsWithIgnoreCase(artifactUrl, key))
-    isValidSnapshot.nonEmpty
-  }
-
 }

@@ -12,11 +12,11 @@ import org.sunbird.job.assetenricment.domain.Event
 import org.sunbird.job.assetenricment.functions.{ImageEnrichmentFunction, VideoEnrichmentFunction}
 import org.sunbird.job.assetenricment.models.Asset
 import org.sunbird.job.assetenricment.task.AssetEnrichmentConfig
-import org.sunbird.job.assetenricment.util.{AssetFileUtils, CloudStorageUtil, ImageResizerUtil, YouTubeUtil}
+import org.sunbird.job.assetenricment.util.{AssetFileUtils, ImageResizerUtil, YouTubeUtil}
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.fixture.EventFixture
-import org.sunbird.job.util.{JSONUtil, Neo4JUtil, ScalaJsonUtil}
+import org.sunbird.job.util.{CloudStorageUtil, FileUtils, JSONUtil, Neo4JUtil, ScalaJsonUtil}
 import org.sunbird.spec.BaseTestSpec
 
 import java.io.File
@@ -174,14 +174,13 @@ class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
   "ImageResizerUtil" should " replace the provided files " in {
     val imageUrl = "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_113233717480390656195/artifact/bitcoin-4_1545114579639.jpg"
     try {
-      val file = AssetFileUtils.copyURLToFile("do_113233717480390656195", imageUrl, imageUrl.substring(imageUrl.lastIndexOf("/") + 1))
+      val file = FileUtils.copyURLToFile("do_113233717480390656195", imageUrl, imageUrl.substring(imageUrl.lastIndexOf("/") + 1))
       val newFile = new File("/tmp/do_113233717480390656195/1617194149349_temp/bitcoin-4_1545114579640.jpg")
       val result = new ImageResizerUtil().replace(file.get, newFile)
       result.getAbsolutePath should endWith("bitcoin-4_1545114579640.jpg")
     } finally {
-      AssetFileUtils.deleteDirectory(new File(s"/tmp/do_113233717480390656195"))
+      FileUtils.deleteDirectory(new File(s"/tmp/do_113233717480390656195"))
     }
-
   }
 
   def getAsset(event: String, metadata: Map[String, AnyRef]): Asset = {

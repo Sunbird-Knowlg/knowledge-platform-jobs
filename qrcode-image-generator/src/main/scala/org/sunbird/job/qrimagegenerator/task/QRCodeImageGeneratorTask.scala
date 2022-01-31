@@ -1,7 +1,5 @@
 package org.sunbird.job.qrimagegenerator.task
 
-import java.io.File
-
 import com.typesafe.config.ConfigFactory
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
@@ -12,6 +10,8 @@ import org.sunbird.job.qrimagegenerator.domain.Event
 import org.sunbird.job.qrimagegenerator.functions.QRCodeImageGeneratorFunction
 import org.sunbird.job.util.FlinkUtil
 
+import java.io.File
+
 
 class QRCodeImageGeneratorTask(config: QRCodeImageGeneratorConfig, kafkaConnector: FlinkKafkaConnector) {
   def process(): Unit = {
@@ -19,23 +19,18 @@ class QRCodeImageGeneratorTask(config: QRCodeImageGeneratorConfig, kafkaConnecto
     implicit val eventTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
 
-   try {
-     val source = kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)
-     env.addSource(source)
-       .name(config.eventConsumer)
-       .uid(config.eventConsumer)
-       .rebalance
-       .process(new QRCodeImageGeneratorFunction(config))
-       .setParallelism(config.kafkaConsumerParallelism)
-       .name(config.qrCodeImageGeneratorFunction)
-       .uid(config.qrCodeImageGeneratorFunction)
-       .setParallelism(config.parallelism)
+    val source = kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)
+    env.addSource(source)
+      .name(config.eventConsumer)
+      .uid(config.eventConsumer)
+      .rebalance
+      .process(new QRCodeImageGeneratorFunction(config))
+      .setParallelism(config.kafkaConsumerParallelism)
+      .name(config.qrCodeImageGeneratorFunction)
+      .uid(config.qrCodeImageGeneratorFunction)
+      .setParallelism(config.parallelism)
 
-     env.execute(config.jobName)
-   } catch {
-     case e => println("Exception in task:  " + e.getMessage())
-       e.printStackTrace()
-   }
+    env.execute(config.jobName)
   }
 }
 

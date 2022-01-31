@@ -4,13 +4,12 @@ import org.im4java.core.Info
 import org.slf4j.LoggerFactory
 import org.sunbird.job.assetenricment.models.Asset
 import org.sunbird.job.assetenricment.task.AssetEnrichmentConfig
-import org.sunbird.job.assetenricment.util.{AssetFileUtils, CloudStorageUtil, ImageResizerUtil, Slug}
+import org.sunbird.job.assetenricment.util.{AssetFileUtils, ImageResizerUtil}
 import org.sunbird.job.domain.`object`.DefinitionCache
-import org.sunbird.job.util.{Neo4JUtil, ScalaJsonUtil}
+import org.sunbird.job.util.{CloudStorageUtil, FileUtils, Neo4JUtil, ScalaJsonUtil, Slug}
 
 import java.io.File
 import scala.collection.mutable
-
 
 trait ImageEnrichmentHelper {
 
@@ -36,7 +35,7 @@ trait ImageEnrichmentHelper {
   def optimizeImage(contentId: String, originalURL: String)(implicit config: AssetEnrichmentConfig, definitionCache: DefinitionCache, cloudStorageUtil: CloudStorageUtil): Map[String, String] = {
     val variantsMap = mutable.Map[String, String]()
     val variants = getVariant()(definitionCache, config)
-    val originalFile = AssetFileUtils.copyURLToFile(contentId, originalURL, originalURL.substring(originalURL.lastIndexOf("/") + 1, originalURL.length))
+    val originalFile = FileUtils.copyURLToFile(contentId, originalURL, originalURL.substring(originalURL.lastIndexOf("/") + 1, originalURL.length))
     try {
       originalFile match {
         case Some(file: File) => variants.foreach(variant => {
@@ -54,11 +53,11 @@ trait ImageEnrichmentHelper {
             }
           } else variantsMap.put(resolution, originalURL)
         })
-        case _ => logger.error("ERR_INVALID_FILE_URL", s"Please Provide Valid File Url for identifier: ${contentId}!")
-          throw new Exception(s"Please Provide Valid File Url for identifier : ${contentId} and URL : ${originalURL}.")
+        case _ => logger.error("ERR_INVALID_FILE_URL", s"Please Provide Valid File Url for identifier: $contentId!")
+          throw new Exception(s"Please Provide Valid File Url for identifier : $contentId and URL : $originalURL.")
       }
     } finally {
-      AssetFileUtils.deleteDirectory(new File(s"/tmp/${contentId}"))
+      FileUtils.deleteDirectory(new File(s"/tmp/$contentId"))
     }
     if (variantsMap.getOrElse("medium", "").isEmpty && originalURL.nonEmpty) variantsMap.put("medium", originalURL)
     variantsMap.toMap
@@ -99,7 +98,7 @@ trait ImageEnrichmentHelper {
   }
 
   def saveImageVariants(variantsMap: Map[String, String], asset: Asset)(implicit neo4JUtil: Neo4JUtil): Unit = {
-    if(variantsMap.nonEmpty) asset.put("variants", ScalaJsonUtil.serialize(variantsMap))
+    if (variantsMap.nonEmpty) asset.put("variants", ScalaJsonUtil.serialize(variantsMap))
     asset.put("status", "Live")
     logger.info(s"Processed Image for identifier: ${asset.identifier}. Updating metadata.")
     neo4JUtil.updateNode(asset.identifier, asset.getMetadata)
@@ -107,12 +106,12 @@ trait ImageEnrichmentHelper {
 
   def upload(file: File, identifier: String)(implicit cloudStorageUtil: CloudStorageUtil): Array[String] = {
     try {
-      val slug = Slug.makeSlug(identifier, true)
-      val folder = s"${CONTENT_FOLDER}/${slug}/${ARTIFACT_FOLDER}"
+      val slug = Slug.makeSlug(identifier, isTransliterate = true)
+      val folder = s"$CONTENT_FOLDER/$slug/$ARTIFACT_FOLDER"
       cloudStorageUtil.uploadFile(folder, file, Some(true))
     } catch {
       case e: Exception =>
-        throw new Exception(s"Error while uploading the File for identifier : ${identifier}.", e)
+        throw new Exception(s"Error while uploading the File for identifier : $identifier.", e)
     }
   }
 

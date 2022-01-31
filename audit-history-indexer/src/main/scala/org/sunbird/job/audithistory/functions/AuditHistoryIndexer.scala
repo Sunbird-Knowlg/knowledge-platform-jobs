@@ -2,19 +2,19 @@ package org.sunbird.job.audithistory.functions
 
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
-import org.apache.flink.streaming.api.functions.ProcessFunction
+import org.apache.flink.streaming.api.functions.KeyedProcessFunction
 import org.sunbird.job.audithistory.domain.Event
 import org.sunbird.job.audithistory.service.AuditHistoryIndexerService
 import org.sunbird.job.audithistory.task.AuditHistoryIndexerConfig
 import org.sunbird.job.util.ElasticSearchUtil
-import org.sunbird.job.{BaseProcessFunction, Metrics}
+import org.sunbird.job.{BaseProcessKeyedFunction, Metrics}
 
 import java.util
 
 class AuditHistoryIndexer(config: AuditHistoryIndexerConfig, var esUtil: ElasticSearchUtil)
                           (implicit mapTypeInfo: TypeInformation[util.Map[String, Any]],
                            stringTypeInfo: TypeInformation[String])
-                          extends BaseProcessFunction[Event, String](config) with AuditHistoryIndexerService{
+                          extends BaseProcessKeyedFunction[String, Event, String](config) with AuditHistoryIndexerService{
 
     override def metricsList(): List[String] = {
         List(config.totalEventsCount, config.successEventCount, config.failedEventCount, config.esFailedEventCount, config.skippedEventCount)
@@ -33,7 +33,7 @@ class AuditHistoryIndexer(config: AuditHistoryIndexerConfig, var esUtil: Elastic
     }
 
     override def processElement(event: Event,
-                                context: ProcessFunction[Event, String]#Context,
+                                context: KeyedProcessFunction[String, Event, String]#Context,
                                 metrics: Metrics): Unit = {
         metrics.incCounter(config.totalEventsCount)
         if(event.isValid) {

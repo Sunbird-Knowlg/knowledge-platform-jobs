@@ -9,8 +9,7 @@ import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData, ObjectExtData}
 import org.sunbird.job.publish.helpers._
-import org.sunbird.job.publish.util.CloudStorageUtil
-import org.sunbird.job.util.{CassandraUtil, JSONUtil, Neo4JUtil, ScalaJsonUtil}
+import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, JSONUtil, Neo4JUtil, ScalaJsonUtil}
 
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
@@ -20,7 +19,7 @@ trait QuestionSetPublisher extends ObjectReader with ObjectValidator with Object
 	private[this] val logger = LoggerFactory.getLogger(classOf[QuestionSetPublisher])
 	val extProps = List("body", "editorState", "answer", "solutions", "instructions", "hints", "media", "responseDeclaration", "interactions", "identifier")
 
-	override def getExtData(identifier: String, pkgVersion: Double, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[ObjectExtData] = {
+	override def getExtData(identifier: String, pkgVersion: Double, mimeType: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[ObjectExtData] = {
 		val row: Row = Option(getQuestionSetData(getEditableObjId(identifier, pkgVersion), readerConfig)).getOrElse(getQuestionSetData(identifier, readerConfig))
 		val data: Map[String, AnyRef] = if (null != row) readerConfig.propsMapping.keySet.map(prop => prop -> row.getString(prop.toLowerCase())).toMap.filter(p => StringUtils.isNotBlank(p._2.asInstanceOf[String])) else Map[String, AnyRef]()
 		val hierarchy: Map[String, AnyRef] = if(data.contains("hierarchy")) ScalaJsonUtil.deserialize[Map[String, AnyRef]](data.getOrElse("hierarchy", "{}").asInstanceOf[String]) else Map[String, AnyRef]()
@@ -51,9 +50,9 @@ trait QuestionSetPublisher extends ObjectReader with ObjectValidator with Object
 	def validateQuestionSet(obj: ObjectData, identifier: String): List[String] = {
 		val messages = ListBuffer[String]()
 		if (obj.hierarchy.getOrElse(Map()).isEmpty) messages += s"""There is no hierarchy available for : $identifier"""
-		if (!StringUtils.equalsIgnoreCase(obj.metadata.getOrElse("mimeType", "").asInstanceOf[String], "application/vnd.sunbird.questionset"))
+		if (!StringUtils.equalsIgnoreCase(obj.getString("mimeType", ""), "application/vnd.sunbird.questionset"))
 			messages += s"""mimeType is invalid for : $identifier"""
-		if (obj.metadata.getOrElse("visibility", "").asInstanceOf[String].isEmpty) messages += s"""There is no visibility available for : $identifier"""
+		if (obj.getString("visibility", "").isEmpty) messages += s"""There is no visibility available for : $identifier"""
 		//TODO: Add any more check, if required.
 		messages.toList
 	}
@@ -157,23 +156,6 @@ trait QuestionSetPublisher extends ObjectReader with ObjectValidator with Object
 		Some(getFlatStructure(List(obj.metadata ++ obj.extData.getOrElse(Map()) ++ Map("children" -> hChildren)), List()))
 	}
 
-	def getFlatStructure(children: List[Map[String, AnyRef]], childrenList: List[Map[String, AnyRef]]): List[Map[String, AnyRef]] = {
-		children.flatMap(child => {
-			val innerChildren = getInnerChildren(child)
-			val updatedChild: Map[String, AnyRef] = if (innerChildren.nonEmpty) child ++ Map("children" -> innerChildren) else child
-			val finalChild = updatedChild.filter(p => !excludeBundleMeta.contains(p._1.asInstanceOf[String]))
-			val updatedChildren: List[Map[String, AnyRef]] = finalChild :: childrenList
-			val result = getFlatStructure(child.getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]], updatedChildren)
-			finalChild :: result
-		}).distinct
-	}
-
-	def getInnerChildren(child: Map[String, AnyRef]): List[Map[String, AnyRef]] = {
-		val metaList: List[String] = List("identifier", "name", "objectType", "description", "index")
-		child.getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
-		  .map(ch => ch.filterKeys(key => metaList.contains(key)))
-	}
-
 	override def enrichObjectMetadata(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig, definitionCache: DefinitionCache, definitionConfig: DefinitionConfig): Option[ObjectData] = {
 		val newMetadata: Map[String, AnyRef] = obj.metadata ++ Map("identifier"-> obj.identifier, "pkgVersion" -> (obj.pkgVersion + 1).asInstanceOf[AnyRef], "lastPublishedOn" -> getTimeStamp,
 			"publishError" -> null, "variants" -> null, "downloadUrl" -> null, "compatibilityLevel" -> 5.asInstanceOf[AnyRef], "status" -> "Live")
@@ -197,7 +179,7 @@ trait QuestionSetPublisher extends ObjectReader with ObjectValidator with Object
 			val childHierarchy: Map[String, AnyRef] = getHierarchy(element.getOrElse("identifier", "").toString, 0.asInstanceOf[Double], readerConfig).getOrElse(Map())
 			childHierarchy ++ Map("index" -> element.getOrElse("index", 0).asInstanceOf[AnyRef], "depth" -> element.getOrElse("depth", 0).asInstanceOf[AnyRef], "parent" -> element.getOrElse("parent", ""))
 		} else if (StringUtils.equalsIgnoreCase(element.getOrElse("objectType", "").toString, "Question")) {
-			val newObject: ObjectData = getObject(element.getOrElse("identifier", "").toString, 0.asInstanceOf[Double], readerConfig)
+			val newObject: ObjectData = getObject(element.getOrElse("identifier", "").toString, 0.asInstanceOf[Double], element.getOrElse("mimeType", "").toString, element.getOrElse("publish_type", "Public").toString, readerConfig)
 			val definition: ObjectDefinition = definitionCache.getDefinition("Question", definitionConfig.supportedVersion.getOrElse("question", "1.0").asInstanceOf[String], definitionConfig.basePath)
 			val enMeta = newObject.metadata.filter(x => null != x._2).map(element => (element._1, convertJsonProperties(element, definition.getJsonProps())))
 			logger.info("enrichMeta :::: question object meta ::: " + enMeta)

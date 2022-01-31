@@ -12,7 +12,10 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
   def index: Boolean = {
     val index = eventMap.get("index")
     if (index == null) true else {
-      if (index.isInstanceOf[Boolean]) index.asInstanceOf[Boolean] else BooleanUtils.toBoolean(index.toString)
+      index match {
+        case bool: Boolean => bool
+        case _ => BooleanUtils.toBoolean(index.toString)
+      }
     }
   }
 

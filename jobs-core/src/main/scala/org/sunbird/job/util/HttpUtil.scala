@@ -5,7 +5,9 @@ import org.apache.commons.collections.CollectionUtils
 
 import scala.collection.JavaConverters._
 
-case class HTTPResponse(status: Int, body: String) extends Serializable
+case class HTTPResponse(status: Int, body: String) extends Serializable {
+  def isSuccess:Boolean = Array(200, 201) contains status
+}
 
 class HttpUtil extends Serializable {
 

@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS sunbird_courses.user_activity_agg (
     activity_type text,
     context_id text,
     agg Map<text, int>,
+    aggregates Map<text, double>,
     agg_last_updated Map<text, timestamp>,
     PRIMARY KEY ((activity_type, activity_id), context_id, user_id)
 );

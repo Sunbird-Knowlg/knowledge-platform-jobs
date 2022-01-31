@@ -45,7 +45,7 @@ class CreateUserFeedFunctionTest extends BaseTestSpec {
 
   "UserFeedFunction " should "should send user feed" in {
     implicit val userFeedMetaTypeInfo: TypeInformation[UserFeedMetaData] = TypeExtractor.getForClass(classOf[UserFeedMetaData])
-    new CreateUserFeedFunction(userFeedConfig, mockHttpUtil).processElement(UserFeedMetaData("userId", "CourseName", new Date(), "courseId"), null, metrics)
+    new CreateUserFeedFunction(userFeedConfig, mockHttpUtil).processElement(UserFeedMetaData("userId", "CourseName", new Date(), "courseId", 0, 0), null, metrics)
     metrics.get(s"${userFeedConfig.userFeedCount}") should be(1)
 
   }

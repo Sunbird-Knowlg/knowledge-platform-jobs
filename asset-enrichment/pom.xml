@@ -60,11 +60,6 @@
             </exclusions>
         </dependency>
         <dependency>
-            <groupId>com.moparisthebest</groupId>
-            <artifactId>junidecode</artifactId>
-            <version>0.1.1</version>
-        </dependency>
-        <dependency>
             <groupId>org.imgscalr</groupId>
             <artifactId>imgscalr-lib</artifactId>
             <version>4.2</version>
@@ -76,21 +71,6 @@
             <version>1.0.0</version>
             <type>test-jar</type>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.sunbird</groupId>
-            <artifactId>cloud-store-sdk_2.12</artifactId>
-            <version>1.2.9</version>
-            <exclusions>
-                <exclusion>
-                    <artifactId>log4j</artifactId>
-                    <groupId>log4j</groupId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>slf4j-log4j12</artifactId>
-                    <groupId>org.slf4j</groupId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.apache.flink</groupId>

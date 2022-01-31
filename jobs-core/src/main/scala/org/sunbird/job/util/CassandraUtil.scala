@@ -1,11 +1,14 @@
 package org.sunbird.job.util
 
-import java.util
-
 import com.datastax.driver.core._
 import com.datastax.driver.core.exceptions.DriverException
+import org.slf4j.LoggerFactory
+
+import java.util
 
 class CassandraUtil(host: String, port: Int) {
+
+  private[this] val logger = LoggerFactory.getLogger("CassandraUtil")
 
   val cluster = {
     Cluster.builder()
@@ -22,6 +25,7 @@ class CassandraUtil(host: String, port: Int) {
       rs.one
     } catch {
       case ex: DriverException =>
+        logger.error(s"findOne - Error while executing query $query :: ", ex)
         this.reconnect()
         this.findOne(query)
     }
@@ -65,7 +69,8 @@ class CassandraUtil(host: String, port: Int) {
   }
 
   def executePreparedStatement(query: String, params: Object*): util.List[Row] = {
-    val rs: ResultSet = session.execute(session.prepare(query).bind(params : _*))
+    val rs: ResultSet = session.execute(session.prepare(query).bind(params: _*))
     rs.all()
   }
+
 }

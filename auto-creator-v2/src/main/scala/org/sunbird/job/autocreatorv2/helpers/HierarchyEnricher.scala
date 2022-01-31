@@ -60,4 +60,11 @@ trait HierarchyEnricher {
 		val props = config.cloudProps ++ List("objectType")
 		props.filter(x => data.get(x).nonEmpty).map(prop => (prop, data.getOrElse(prop, ""))).toMap
 	}
+
+	def filterChildren(childrenMap: Map[String, AnyRef], obj: ObjectData): Map[String, AnyRef] = {
+		val acceptedContributions: List[String] = obj.metadata.getOrElse("acceptedContributions",List()).asInstanceOf[List[String]]
+		if (acceptedContributions.nonEmpty) {
+			childrenMap.filterKeys(ch => acceptedContributions.contains(ch))
+		} else childrenMap
+	}
 }

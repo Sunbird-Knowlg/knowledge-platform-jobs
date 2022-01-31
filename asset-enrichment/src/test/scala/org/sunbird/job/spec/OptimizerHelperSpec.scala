@@ -7,9 +7,8 @@ import org.mockito.Mockito.{doNothing, when}
 import org.sunbird.job.assetenricment.functions.ImageEnrichmentFunction
 import org.sunbird.job.assetenricment.models.Asset
 import org.sunbird.job.assetenricment.task.AssetEnrichmentConfig
-import org.sunbird.job.assetenricment.util.CloudStorageUtil
 import org.sunbird.job.fixture.EventFixture
-import org.sunbird.job.util.JSONUtil
+import org.sunbird.job.util.{CloudStorageUtil, JSONUtil}
 import org.sunbird.spec.BaseTestSpec
 
 import java.util
@@ -37,7 +36,6 @@ class OptimizerHelperSpec extends BaseTestSpec {
       new ImageEnrichmentFunction(jobConfig).replaceArtifactUrl(asset)(mockCloudUtil)
     }
   }
-
 
   def getAsset(event: String, metadata: Map[String, AnyRef]): Asset = {
     val eventMap = JSONUtil.deserialize[util.Map[String, Any]](event)

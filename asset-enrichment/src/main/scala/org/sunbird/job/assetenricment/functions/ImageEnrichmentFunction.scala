@@ -8,10 +8,9 @@ import org.sunbird.job.assetenricment.domain.Event
 import org.sunbird.job.assetenricment.helpers.{ImageEnrichmentHelper, OptimizerHelper}
 import org.sunbird.job.assetenricment.models.Asset
 import org.sunbird.job.assetenricment.task.AssetEnrichmentConfig
-import org.sunbird.job.assetenricment.util.CloudStorageUtil
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.exception.InvalidEventException
-import org.sunbird.job.util.Neo4JUtil
+import org.sunbird.job.util.{CloudStorageUtil, Neo4JUtil}
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import scala.collection.JavaConverters._
@@ -33,6 +32,7 @@ class ImageEnrichmentFunction(config: AssetEnrichmentConfig,
   override def close(): Unit = {
     super.close()
   }
+
   @throws(classOf[InvalidEventException])
   override def processElement(event: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
     logger.info(s"Received message for Image Enrichment for identifier : ${event.id}.")
@@ -42,7 +42,7 @@ class ImageEnrichmentFunction(config: AssetEnrichmentConfig,
       if (asset.validate(config.contentUploadContextDriven)) replaceArtifactUrl(asset)(cloudStorageUtil)
       asset.putAll(getMetadata(event.id)(neo4JUtil))
       val mimeType = asset.get("mimeType", "").asInstanceOf[String]
-      if(config.unsupportedMimeTypes.contains(mimeType) || !StringUtils.startsWithIgnoreCase(mimeType, "image")) {
+      if (config.unsupportedMimeTypes.contains(mimeType) || !StringUtils.startsWithIgnoreCase(mimeType, "image")) {
         saveImageVariants(Map(), asset)(neo4JUtil)
         metrics.incCounter(config.ignoredImageEnrichmentEventCount)
       } else {
