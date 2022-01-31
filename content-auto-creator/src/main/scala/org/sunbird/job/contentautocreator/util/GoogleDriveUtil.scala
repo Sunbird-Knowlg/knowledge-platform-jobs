@@ -86,7 +86,7 @@ object GoogleDriveUtil {
         case he: HttpResponseException => logger.error("GoogleDriveUtil :: downloadFile :: HttpResponseException :: Error Occurred while downloading file having id " + fileId + " | Error is ::" + he.getContent, he)
           if (he.getStatusCode == 403) {
             if (currentBackOffDelay <= maximumBackoffDelay) delay(currentBackOffDelay)
-            if (currentBackOffDelay == 2400000) currentBackOffDelay += 1500000
+            else if (currentBackOffDelay == 2400000) currentBackOffDelay += 1500000
             else currentBackOffDelay = currentBackOffDelay * incrementBackoffDelay
           }
           else throw new ServerException("ERR_INVALID_UPLOAD_FILE_URL", "Invalid Response Received From Google API for file Id : " + fileId + " | Error is : " + he.getContent)
