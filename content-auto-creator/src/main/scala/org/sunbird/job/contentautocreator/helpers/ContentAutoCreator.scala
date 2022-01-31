@@ -164,7 +164,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 	private def read(channelId: String, identifier: String, config: ContentAutoCreatorConfig, httpUtil: HttpUtil) = {
 		val requestUrl = config.getString(ContentAutoCreatorConstants.KP_CS_BASE_URL,"") + "/content/v4/read/" + identifier + "?mode=edit"
 		logger.info("ContentAutoCreator :: read :: Reading content having identifier : " + identifier)
-		val headers = Map[String, String]("X-Channel-Id" -> channelId, "Content-Type" -> ContentAutoCreatorConstants.APPLICATION_JSON)
+		val headers = Map[String, String](ContentAutoCreatorConstants.X_CHANNEL_ID -> channelId, ContentAutoCreatorConstants.CONTENT_TYPE_HEADER -> ContentAutoCreatorConstants.APPLICATION_JSON)
 		logger.info("ContentAutoCreator :: read :: Reading content - requestUrl : " + requestUrl)
 		val httpResponse = httpUtil.get(requestUrl, headers)
 		if (httpResponse.status == 200) {
@@ -197,7 +197,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 			})
 		}
 
-		val headers = Map[String, String]("X-Channel-Id" -> event.channel, "Content-Type" -> ContentAutoCreatorConstants.APPLICATION_JSON)
+		val headers = Map[String, String](ContentAutoCreatorConstants.X_CHANNEL_ID -> event.channel, ContentAutoCreatorConstants.CONTENT_TYPE_HEADER -> ContentAutoCreatorConstants.APPLICATION_JSON)
 		val requestUrl = config.getString(ContentAutoCreatorConstants.KP_CS_BASE_URL,"") + "/content/v4/create"
 		val httpResponse = httpUtil.post(requestUrl, JSONUtil.serialize(reqMap), headers)
 		if (httpResponse.status == 200) {
@@ -239,7 +239,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 			})
 		}
 
-		val headers = Map[String, String]("X-Channel-Id" -> channel, "Content-Type" -> ContentAutoCreatorConstants.APPLICATION_JSON)
+		val headers = Map[String, String](ContentAutoCreatorConstants.X_CHANNEL_ID -> channel, ContentAutoCreatorConstants.CONTENT_TYPE_HEADER -> ContentAutoCreatorConstants.APPLICATION_JSON)
 		val requestUrl = config.getString(ContentAutoCreatorConstants.KP_CS_BASE_URL,"") + "/content/v4/update" + internalId
 		val httpResponse = httpUtil.patch(requestUrl, JSONUtil.serialize(reqMap), headers)
 		if (httpResponse.status == 200) {
@@ -280,7 +280,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 				val sourceFileBlobUrl = urls(1)
 				logger.info("ContentAutoCreator :: uploadContent :: sourceUrl Uploaded Successfully to cloud for : " + internalId + " | sourceUrl : " + sourceUrl + " | sourceFileBlobUrl : " + sourceFileBlobUrl)
 
-				val headers = Map[String, String]("X-Channel-Id" -> channel)
+				val headers = Map[String, String](ContentAutoCreatorConstants.X_CHANNEL_ID -> channel)
 				val requestUrl = config.getString(ContentAutoCreatorConstants.KP_CS_BASE_URL,"") + "/content/v4/upload" + internalId
 				val httpResponse = httpUtil.postFilePath(requestUrl, "fileUrl", sourceFileBlobUrl, headers)
 				if (httpResponse.status == 200) {
@@ -303,7 +303,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 				put(ContentAutoCreatorConstants.CONTENT, new java.util.HashMap[String, AnyRef]())
 			})
 		}
-		val headers = Map[String, String]("X-Channel-Id" -> channel, "Content-Type" -> ContentAutoCreatorConstants.APPLICATION_JSON)
+		val headers = Map[String, String](ContentAutoCreatorConstants.X_CHANNEL_ID -> channel, ContentAutoCreatorConstants.CONTENT_TYPE_HEADER -> ContentAutoCreatorConstants.APPLICATION_JSON)
 		val httpResponse = httpUtil.post(requestUrl, JSONUtil.serialize(reqMap), headers)
 		if (httpResponse.status == 200) {
 			val response = JSONUtil.deserialize[Map[String, AnyRef]](httpResponse.body)
@@ -325,7 +325,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 				})
 			})
 		}
-		val headers = Map[String, String]("X-Channel-Id" -> channel, "Content-Type" -> ContentAutoCreatorConstants.APPLICATION_JSON)
+		val headers = Map[String, String](ContentAutoCreatorConstants.X_CHANNEL_ID -> channel, ContentAutoCreatorConstants.CONTENT_TYPE_HEADER -> ContentAutoCreatorConstants.APPLICATION_JSON)
 		val httpResponse = httpUtil.post(requestUrl, JSONUtil.serialize(reqMap), headers)
 		if (httpResponse.status == 200) {
 			val response = JSONUtil.deserialize[Map[String, AnyRef]](httpResponse.body)
@@ -352,7 +352,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 				})
 			})
 		}
-		val headers = Map[String, String]("X-Channel-Id" -> channel, "Content-Type" -> ContentAutoCreatorConstants.APPLICATION_JSON)
+		val headers = Map[String, String](ContentAutoCreatorConstants.X_CHANNEL_ID -> channel, ContentAutoCreatorConstants.CONTENT_TYPE_HEADER -> ContentAutoCreatorConstants.APPLICATION_JSON)
 		val httpResponse = httpUtil.patch(requestUrl, JSONUtil.serialize(reqMap), headers)
 		if (httpResponse.status == 200) {
 			val response = JSONUtil.deserialize[Map[String, AnyRef]](httpResponse.body)
