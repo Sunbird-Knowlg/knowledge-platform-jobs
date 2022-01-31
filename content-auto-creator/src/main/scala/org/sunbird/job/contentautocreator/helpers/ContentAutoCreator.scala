@@ -343,7 +343,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 
 	private def updateStatus(channel: String, identifier: String, message: String, config: ContentAutoCreatorConfig, httpUtil: HttpUtil): Unit = {
 		val errorMsg = if (message.nonEmpty) message	else "Processing Error"
-		val requestUrl = config.getString(ContentAutoCreatorConstants.LEARNING_SERVICE_BASE_URL,"") + "/system/v3/content/update/" + identifier
+		val requestUrl = config.getString(ContentAutoCreatorConstants.KP_CS_BASE_URL,"") + "/content/v4/system/update" + identifier
 		val reqMap = new java.util.HashMap[String, AnyRef]() {
 			put(ContentAutoCreatorConstants.REQUEST, new java.util.HashMap[String, AnyRef]() {
 				put(ContentAutoCreatorConstants.CONTENT, new java.util.HashMap[String, AnyRef]() {
