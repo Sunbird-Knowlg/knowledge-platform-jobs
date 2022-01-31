@@ -24,7 +24,7 @@ class GetFileUtilSpec extends FlatSpec with BeforeAndAfterAll with Matchers with
     FileUtils.deleteDirectory(downloadedFile.getParentFile)
   }
 
-  "GoogleDriveUtil.downloadFile" should "download non-GoogleDrive Url object" in {
+  "GoogleDriveUtil.downloadFile" should "download GoogleDrive Url object" in {
     val contentConfig = new ContentAutoCreatorConfig(config)
     val fileId = "1ZUSXrODwNK52pzDJZ_fuNKK9lXBzxCsS"
     val downloadPath = "/tmp/content" + File.separator + "_temp_" + System.currentTimeMillis
