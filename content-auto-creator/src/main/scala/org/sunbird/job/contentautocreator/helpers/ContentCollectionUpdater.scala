@@ -21,7 +21,7 @@ trait ContentCollectionUpdater {
 	def isValidHierarchy(collId: String, unitId: String)(implicit config: ContentAutoCreatorConfig, httpUtil: HttpUtil): Boolean = {
 		val hierarchy = getHierarchy(collId)
 		val childNodes: List[String] = hierarchy.getOrElse("childNodes", List()).asInstanceOf[List[String]]
-		if (childNodes.nonEmpty && childNodes.contains(unitId)) true else false
+		childNodes.nonEmpty && childNodes.contains(unitId)
 	}
 
 	def getHierarchy(identifier: String)(implicit config: ContentAutoCreatorConfig, httpUtil: HttpUtil): Map[String, AnyRef] = {
