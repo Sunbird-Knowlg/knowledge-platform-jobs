@@ -30,6 +30,7 @@
 		<module>search-indexer</module>
 		<module>enrolment-reconciliation</module>
 		<module>auto-creator-v2</module>
+		<module>content-auto-creator</module>
 		<module>asset-enrichment</module>
 		<module>audit-history-indexer</module>
 		<module>audit-event-generator</module>
