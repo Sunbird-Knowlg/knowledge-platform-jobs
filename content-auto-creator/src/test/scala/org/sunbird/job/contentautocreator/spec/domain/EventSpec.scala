@@ -4,7 +4,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 import org.scalatest.{FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
 import org.sunbird.job.contentautocreator.domain.Event
-import org.sunbird.job.task.ContentAutoCreatorConfig
+import org.sunbird.job.contentautocreator.task.ContentAutoCreatorConfig
 import org.sunbird.job.util.JSONUtil
 
 class EventSpec extends FlatSpec with Matchers with MockitoSugar {

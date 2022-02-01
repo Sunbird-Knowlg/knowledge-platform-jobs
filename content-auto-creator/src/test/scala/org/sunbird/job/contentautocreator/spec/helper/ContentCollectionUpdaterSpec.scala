@@ -7,7 +7,7 @@ import org.mockito.Mockito.when
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
 import org.sunbird.job.contentautocreator.helpers.ContentCollectionUpdater
-import org.sunbird.job.task.ContentAutoCreatorConfig
+import org.sunbird.job.contentautocreator.task.ContentAutoCreatorConfig
 import org.sunbird.job.util.{HTTPResponse, HttpUtil}
 
 class CollectionUpdaterSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {

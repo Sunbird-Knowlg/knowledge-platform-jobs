@@ -5,8 +5,8 @@ import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.commons.io.FileUtils
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
+import org.sunbird.job.contentautocreator.task.ContentAutoCreatorConfig
 import org.sunbird.job.contentautocreator.util.GoogleDriveUtil
-import org.sunbird.job.task.ContentAutoCreatorConfig
 import org.sunbird.job.util.HttpUtil
 
 import java.io.File

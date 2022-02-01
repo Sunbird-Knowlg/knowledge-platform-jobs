@@ -163,7 +163,7 @@
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
                                 <transformer
                                         implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
-                                    <mainClass>org.sunbird.job.task.ContentAutoCreatorStreamTask</mainClass>
+                                    <mainClass>org.sunbird.job.contentautocreator.task.ContentAutoCreatorStreamTask</mainClass>
                                 </transformer>
                                 <!-- append default configs -->
                                 <transformer

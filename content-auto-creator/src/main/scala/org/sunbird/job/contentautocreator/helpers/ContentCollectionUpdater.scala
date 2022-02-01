@@ -2,7 +2,7 @@ package org.sunbird.job.contentautocreator.helpers
 
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
-import org.sunbird.job.task.ContentAutoCreatorConfig
+import org.sunbird.job.contentautocreator.task.ContentAutoCreatorConfig
 import org.sunbird.job.util.{HTTPResponse, HttpUtil, JSONUtil}
 
 trait ContentCollectionUpdater {

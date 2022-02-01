@@ -4,9 +4,9 @@ import org.apache.commons.io.FileUtils
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.contentautocreator.domain.Event
+import org.sunbird.job.contentautocreator.task.ContentAutoCreatorConfig
 import org.sunbird.job.contentautocreator.util.{ContentAutoCreatorConstants, GoogleDriveUtil}
 import org.sunbird.job.exception.ServerException
-import org.sunbird.job.task.ContentAutoCreatorConfig
 import org.sunbird.job.util._
 
 import java.io.File
