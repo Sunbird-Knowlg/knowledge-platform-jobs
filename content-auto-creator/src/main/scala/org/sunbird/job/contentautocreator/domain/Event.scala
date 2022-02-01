@@ -1,8 +1,8 @@
 package org.sunbird.job.contentautocreator.domain
 
 import org.apache.commons.lang3.StringUtils
+import org.sunbird.job.contentautocreator.task.ContentAutoCreatorConfig
 import org.sunbird.job.domain.reader.JobRequest
-import org.sunbird.job.task.ContentAutoCreatorConfig
 
 class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) extends JobRequest(eventMap, partition, offset) {
 

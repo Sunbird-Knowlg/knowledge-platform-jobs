@@ -1,6 +1,5 @@
-package org.sunbird.job.task
+package org.sunbird.job.contentautocreator.task
 
-import java.util
 import com.typesafe.config.Config
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
@@ -8,6 +7,7 @@ import org.apache.flink.streaming.api.scala.OutputTag
 import org.sunbird.job.BaseJobConfig
 import org.sunbird.job.contentautocreator.domain.Event
 
+import java.util
 import scala.collection.JavaConverters._
 
 class ContentAutoCreatorConfig(override val config: Config) extends BaseJobConfig(config, "content-auto-creator") {

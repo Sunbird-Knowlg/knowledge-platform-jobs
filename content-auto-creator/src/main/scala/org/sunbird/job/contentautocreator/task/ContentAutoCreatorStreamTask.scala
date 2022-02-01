@@ -1,16 +1,17 @@
-package org.sunbird.job.task
+package org.sunbird.job.contentautocreator.task
 
-import java.io.File
-import java.util
 import com.typesafe.config.ConfigFactory
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.util.{FlinkUtil, HttpUtil}
 import org.sunbird.job.contentautocreator.domain.Event
 import org.sunbird.job.contentautocreator.functions.ContentAutoCreatorFunction
+import org.sunbird.job.util.{FlinkUtil, HttpUtil}
+
+import java.io.File
+import java.util
 
 
 class ContentAutoCreatorStreamTask(config: ContentAutoCreatorConfig, kafkaConnector: FlinkKafkaConnector, httpUtil: HttpUtil) {

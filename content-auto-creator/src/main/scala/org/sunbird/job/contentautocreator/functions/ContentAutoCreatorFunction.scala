@@ -6,8 +6,8 @@ import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.contentautocreator.domain.Event
 import org.sunbird.job.contentautocreator.helpers.ContentAutoCreator
+import org.sunbird.job.contentautocreator.task.ContentAutoCreatorConfig
 import org.sunbird.job.domain.`object`.DefinitionCache
-import org.sunbird.job.task.ContentAutoCreatorConfig
 import org.sunbird.job.util._
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 

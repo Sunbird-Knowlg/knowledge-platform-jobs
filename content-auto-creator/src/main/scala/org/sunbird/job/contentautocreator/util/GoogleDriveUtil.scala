@@ -9,8 +9,8 @@ import com.google.api.services.drive.Drive
 import com.google.api.services.drive.DriveScopes
 import org.apache.commons.lang.StringUtils
 import org.slf4j.LoggerFactory
+import org.sunbird.job.contentautocreator.task.ContentAutoCreatorConfig
 import org.sunbird.job.exception.ServerException
-import org.sunbird.job.task.ContentAutoCreatorConfig
 import org.sunbird.job.util.Slug
 
 import java.io.ByteArrayInputStream
