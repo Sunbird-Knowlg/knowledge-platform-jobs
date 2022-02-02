@@ -22,16 +22,13 @@ class ContentAutoCreatorStreamTask(config: ContentAutoCreatorConfig, kafkaConnec
     implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
 
-    val contentAutoCreatorStream = env.addSource(kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)).name(config.eventConsumer)
+    env.addSource(kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)).name(config.eventConsumer)
       .uid(config.eventConsumer).setParallelism(config.kafkaConsumerParallelism)
       .rebalance
       .process(new ContentAutoCreatorFunction(config, httpUtil))
       .name(config.contentAutoCreatorFunction)
       .uid(config.contentAutoCreatorFunction)
       .setParallelism(config.parallelism)
-
-    contentAutoCreatorStream.getSideOutput(config.contentAutoCreatorOutputTag).process(new ContentAutoCreatorFunction(config, httpUtil))
-      .name(config.contentAutoCreatorFunction).uid(config.contentAutoCreatorFunction).setParallelism(config.contentAutoCreatorParallelism)
 
     env.execute(config.jobName)
   }
