@@ -34,7 +34,7 @@ class QRCodeImageGeneratorTaskTestSpec extends BaseTestSpec {
   val mockKafkaUtil: FlinkKafkaConnector = mock[FlinkKafkaConnector](Mockito.withSettings().serializable())
   val config: Config = ConfigFactory.load("test.conf")
   val jobConfig: QRCodeImageGeneratorConfig = new QRCodeImageGeneratorConfig(config)
-  val cloudStorageUtil:CloudStorageUtil = new CloudStorageUtil(jobConfig.cloudStorageType, jobConfig.storageKey, jobConfig.storageSecret)
+  val cloudStorageUtil:CloudStorageUtil = new CloudStorageUtil(jobConfig)
   var cassandraUtils: CassandraUtil = _
 
   var currentMilliSecond = 1605816926271L

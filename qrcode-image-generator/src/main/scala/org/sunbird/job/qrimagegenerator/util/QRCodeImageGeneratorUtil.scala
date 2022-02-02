@@ -1,26 +1,26 @@
 package org.sunbird.job.qrimagegenerator.util
 
-import java.awt._
-import java.awt.font.TextAttribute
-import java.awt.image.BufferedImage
-import java.io.{File, IOException, InputStream}
-import java.util
-import java.util.UUID
-
 import com.datastax.driver.core.querybuilder.QueryBuilder
 import com.google.zxing.client.j2se.BufferedImageLuminanceSource
 import com.google.zxing.common.{BitMatrix, HybridBinarizer}
 import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import com.google.zxing.{BarcodeFormat, EncodeHintType, NotFoundException, WriterException}
-import javax.imageio.ImageIO
 import org.slf4j.LoggerFactory
 import org.sunbird.job.Metrics
 import org.sunbird.job.qrimagegenerator.functions.QRCodeImageGenerator
 import org.sunbird.job.qrimagegenerator.task.QRCodeImageGeneratorConfig
 import org.sunbird.job.util._
 
-class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil: CassandraUtil, cloudStorageUtil: org.sunbird.job.util.CloudStorageUtil) {
+import java.awt._
+import java.awt.font.TextAttribute
+import java.awt.image.BufferedImage
+import java.io.{File, IOException, InputStream}
+import java.util
+import java.util.UUID
+import javax.imageio.ImageIO
+
+class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil: CassandraUtil, cloudStorageUtil: CloudStorageUtil) {
   private val qrCodeWriter = new QRCodeWriter()
   private val fontStore: util.HashMap[String, Font] = new util.HashMap[String, Font]()
   private val LOGGER = LoggerFactory.getLogger(classOf[QRCodeImageGeneratorUtil])
@@ -47,7 +47,7 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
     val imageMargin = qrGenRequest.imageMargin
     val tempFilePath = qrGenRequest.tempFilePath
 
-    for(i <- 0 to (dataList.size()-1)) {
+    for (i <- 0 to (dataList.size() - 1)) {
       val data = dataList.get(i)
       val text = textList.get(i)
       val fileName = fileNameList.get(i)
@@ -65,8 +65,8 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
       ImageIO.write(qrImage, imageFormat, finalImageFile)
       fileList.add(finalImageFile)
       try {
-        val imageDownloadUrl = cloudStorageUtil.uploadFile(container, path, finalImageFile, false)
-        updateCassandra(config.cassandraDialCodeImageTable, 2, imageDownloadUrl, "filename", fileName, metrics)
+        val imageDownloadUrl = cloudStorageUtil.uploadFile(path, finalImageFile, Some(false), container = container)
+        updateCassandra(config.cassandraDialCodeImageTable, 2, imageDownloadUrl(1), "filename", fileName, metrics)
       } catch {
         case e: Exception =>
           metrics.incCounter(config.dbFailureEventCount)
@@ -78,7 +78,7 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
 
   def updateCassandra(table: String, status: Int, downloadURL: String, whereClauseKey: String, whereClauseValue: String, metrics: Metrics): Unit = {
     val value = if (whereClauseKey.equalsIgnoreCase("processid")) UUID.fromString(whereClauseValue) else whereClauseValue
-    val updateQuery: String  = QueryBuilder.update(config.cassandraKeyspace, table)
+    val updateQuery: String = QueryBuilder.update(config.cassandraKeyspace, table)
       .`with`(QueryBuilder.set("status", status))
       .and(QueryBuilder.set("url", downloadURL))
       .where(QueryBuilder.eq(whereClauseKey, value)).toString
@@ -129,14 +129,14 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
     val marginToBeRemoved = if (qrMarginBottom > defaultBottomMargin) 0
     else defaultBottomMargin - qrMarginBottom
     val mergedMatrix = new BitMatrix(mergedWidth, mergedHeight - marginToBeRemoved)
-    for(x <- 0 to (firstMatrix.getWidth-1)) {
-      for(y <- 0 to (firstMatrix.getHeight-1)) {
+    for (x <- 0 to (firstMatrix.getWidth - 1)) {
+      for (y <- 0 to (firstMatrix.getHeight - 1)) {
         if (firstMatrix.get(x, y)) mergedMatrix.set(x + imageMargin, y + imageMargin)
       }
     }
 
-    for(x <- 0 to (secondMatrix.getWidth-1)) {
-      for(y <- 0 to (secondMatrix.getHeight-1)) {
+    for (x <- 0 to (secondMatrix.getWidth - 1)) {
+      for (y <- 0 to (secondMatrix.getHeight - 1)) {
         if (secondMatrix.get(x, y)) mergedMatrix.set(x + imageMargin, y + firstMatrix.getHeight - marginToBeRemoved + imageMargin)
       }
     }
@@ -147,8 +147,8 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
     val widthDiff = toMatrix.getWidth - fromMatrix.getWidth
     val leftMargin = widthDiff / 2
 
-    for(x <- 0 to (fromMatrix.getWidth-1)) {
-      for(y <- 0 to (fromMatrix.getHeight-1)) {
+    for (x <- 0 to (fromMatrix.getWidth - 1)) {
+      for (y <- 0 to (fromMatrix.getHeight - 1)) {
         if (fromMatrix.get(x, y)) toMatrix.set(x + leftMargin, y)
       }
     }
@@ -158,7 +158,7 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
     image.createGraphics
     val graphics = image.getGraphics.asInstanceOf[Graphics2D]
     graphics.setColor(Color.BLACK)
-    for(i <- 0 to (borderSize-1)) {
+    for (i <- 0 to (borderSize - 1)) {
       graphics.drawRect(i + imageMargin, i + imageMargin, image.getWidth - 1 - (2 * i) - (2 * imageMargin), image.getHeight - 1 - (2 * i) - (2 * imageMargin))
     }
     graphics.dispose()
@@ -176,8 +176,8 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
     graphics.setColor(Color.BLACK)
     println("imageWidth: " + imageWidth)
     println("imageWidth: " + imageHeight)
-    for(i <- 0 to (imageWidth-1)) {
-      for(j <- 0 to (imageHeight-1)) {
+    for (i <- 0 to (imageWidth - 1)) {
+      for (j <- 0 to (imageHeight - 1)) {
         if (bitMatrix.get(i, j)) {
           graphics.fillRect(i, j, 1, 1)
         }

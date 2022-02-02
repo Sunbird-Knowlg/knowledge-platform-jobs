@@ -3,35 +3,37 @@ package org.sunbird.job.qrimagegenerator.domain
 import org.apache.commons.lang3.StringUtils
 import org.sunbird.job.domain.reader.JobRequest
 import org.sunbird.job.qrimagegenerator.functions.Config
+import org.sunbird.job.qrimagegenerator.task.QRCodeImageGeneratorConfig
 import org.sunbird.job.util.JSONUtil
 
-class Event (eventMap: java.util.Map[String, Any], partition: Int, offset: Long) extends JobRequest(eventMap, partition, offset) {
+import java.util
+import scala.collection.JavaConverters._
 
-  private val jobName = "qrcode-image-generator"
+class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) extends JobRequest(eventMap, partition, offset) {
 
-  def eid = read[String]("eid").get
+  val jobName = "qrcode-image-generator"
 
-  def processId = readOrDefault[String]("processId", "")
+  def eid: String = readOrDefault[String]("eid", "")
 
-  def objectId = readOrDefault[String]("objectId", "")
+  def processId: String = readOrDefault[String]("processId", "")
 
-  def storageContainer = readOrDefault[String]("storage.container", "")
+  def objectId: String = readOrDefault[String]("objectId", "")
 
-  def storagePath = readOrDefault[String]("storage.path", "")
+  def storageContainer: String = readOrDefault[String]("storage.container", "")
 
-  def storageFileName = readOrDefault[String]("storage.fileName", "")
+  def storagePath: String = readOrDefault[String]("storage.path", "")
 
-  def imageConfig = JSONUtil.deserialize[Config](JSONUtil.serialize(readOrDefault[Map[String, AnyRef]]("config", Map())))
+  def storageFileName: String = readOrDefault[String]("storage.fileName", "")
 
-  def dialCodes = readOrDefault[List[Map[String, AnyRef]]]("dialcodes", List())
+  def imageConfig: Config = JSONUtil.deserialize[Config](JSONUtil.serialize(readOrDefault[Map[String, AnyRef]]("config", Map())))
+//  def imageConfig: Map[String, AnyRef] = readOrDefault("config", new util.HashMap[String, AnyRef]()).asScala.toMap
 
-  def imageFormat = imageConfig.imageFormat.getOrElse("png")
+  def dialCodes: List[Map[String, AnyRef]] = readOrDefault[List[Map[String, AnyRef]]]("dialcodes", List())
 
-  def isValid(): Boolean = {
-    ( null != eid ) && ( !eid.isEmpty ) && ( StringUtils.equals("BE_QR_IMAGE_GENERATOR", eid))
+  def imageFormat: String = readOrDefault[String]("config.imageFormat","png")
+
+  def isValid(config: QRCodeImageGeneratorConfig): Boolean = {
+    eid.nonEmpty && StringUtils.equalsIgnoreCase(config.eid, eid) && dialCodes.nonEmpty
   }
 
-  def isValidDialcodes = {
-    (null != dialCodes) && (dialCodes.size > 0)
-  }
 }
