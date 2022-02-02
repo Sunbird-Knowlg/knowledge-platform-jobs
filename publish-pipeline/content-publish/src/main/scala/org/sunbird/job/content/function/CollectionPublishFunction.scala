@@ -148,9 +148,14 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
   }
 
   private def pushPostProcessEvent(obj: ObjectData, context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
+    try {
       val event = getPostProcessEvent(obj)
       context.output(config.generatePostPublishProcessTag, event)
       metrics.incCounter(config.collectionPostPublishProcessEventCount)
+    } catch  {
+      case ex: Exception =>  ex.printStackTrace()
+        throw new InvalidInputException("CollectionPublisher:: pushPostProcessEvent:: Error while pushing post process event.", ex)
+    }
   }
 
   def getPostProcessEvent(obj: ObjectData): String = {
