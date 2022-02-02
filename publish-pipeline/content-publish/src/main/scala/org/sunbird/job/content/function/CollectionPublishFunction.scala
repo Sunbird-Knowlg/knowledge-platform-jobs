@@ -76,13 +76,14 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
         metrics.incCounter(config.skippedEventCount)
         logger.info(s"""pkgVersion should be greater than or equal to the obj.pkgVersion for : ${obj.identifier}""")
       } else {
+        val updObj = new ObjectData(obj.identifier, obj.metadata ++ Map("lastPublishedBy" -> data.lastPublishedBy, "dialcodes" -> obj.metadata.getOrElse("dialcodes",null)), obj.extData, obj.hierarchy)
         val messages: List[String] = List.empty[String] // validate(obj, obj.identifier, validateMetadata)
         if (messages.isEmpty) {
           // Pre-publish update
-          updateProcessingNode(new ObjectData(obj.identifier, obj.metadata ++ Map("lastPublishedBy" -> data.lastPublishedBy, "dialcodes" -> obj.metadata.getOrElse("dialcodes",null)), obj.extData, obj.hierarchy))(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
+          updateProcessingNode(updObj)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
 
-          val isCollectionShallowCopy = isContentShallowCopy(obj)
-          val updatedObj = if (isCollectionShallowCopy) updateOriginPkgVersion(obj)(neo4JUtil) else obj
+          val isCollectionShallowCopy = isContentShallowCopy(updObj)
+          val updatedObj = if (isCollectionShallowCopy) updateOriginPkgVersion(updObj)(neo4JUtil) else updObj
 
           // Clear redis cache
           cache.del(data.identifier)
