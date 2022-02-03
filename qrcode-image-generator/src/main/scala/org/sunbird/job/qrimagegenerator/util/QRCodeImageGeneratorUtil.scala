@@ -40,7 +40,7 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
       val fileName = dialcode("id").asInstanceOf[String]
 
       var qrImage = generateBaseImage(data, imageConfig.errorCorrectionLevel, imageConfig.pixelsPerBlock, imageConfig.qrCodeMargin, imageConfig.colourModel)
-      if (null != text || text.nonEmpty) {
+      if (null != text || !text.isBlank) {
         val textImage = getTextImage(text, imageConfig.textFontName, imageConfig.textFontSize, imageConfig.textCharacterSpacing, imageConfig.colourModel)
         qrImage = addTextToBaseImage(qrImage, textImage, imageConfig.colourModel, imageConfig.qrCodeMargin, imageConfig.pixelsPerBlock, imageConfig.qrCodeMarginBottom, imageConfig.imageMargin)
       }

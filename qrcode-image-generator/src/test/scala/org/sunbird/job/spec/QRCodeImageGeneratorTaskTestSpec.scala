@@ -32,7 +32,7 @@ class QRCodeImageGeneratorTaskTestSpec extends BaseTestSpec {
     .setNumberTaskManagers(1)
     .build)
   val mockKafkaUtil: FlinkKafkaConnector = mock[FlinkKafkaConnector](Mockito.withSettings().serializable())
-  val config: Config = ConfigFactory.load("test.conf")
+  val config: Config = ConfigFactory.load("test.conf").withFallback(ConfigFactory.systemEnvironment())
   val jobConfig: QRCodeImageGeneratorConfig = new QRCodeImageGeneratorConfig(config)
   val cloudStorageUtil:CloudStorageUtil = new CloudStorageUtil(jobConfig)
   var cassandraUtils: CassandraUtil = _
@@ -67,7 +67,7 @@ class QRCodeImageGeneratorTaskTestSpec extends BaseTestSpec {
 
 class QRCodeImageGeneratorMapSource extends SourceFunction[Event] {
 
-  override def run(ctx: SourceContext[Event]) {
+  override def run(ctx: SourceContext[Event]): Unit = {
     // Valid event
     ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_1), 0, 10))
     ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_2), 0, 11))

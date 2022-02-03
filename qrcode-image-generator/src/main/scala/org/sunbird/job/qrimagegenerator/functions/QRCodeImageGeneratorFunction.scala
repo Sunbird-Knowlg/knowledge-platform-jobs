@@ -1,6 +1,5 @@
 package org.sunbird.job.qrimagegenerator.functions
 
-import org.apache.commons.lang3.StringUtils
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
@@ -54,17 +53,20 @@ class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig,
       logger.info("QRCodeImageGeneratorService:processMessage: Starting message processing at " + System.currentTimeMillis())
       if (event.isValid(config)) {
         val tempFilePath = config.lpTempFileLocation
+        val imageConfig: ImageConfig = initImageConfig(event.imageConfig)
 
-        event.dialCodes.filter(f => !StringUtils.equals(f.getOrElse("location", "").asInstanceOf[String], ""))
+        event.dialCodes.filter(f => !f.getOrElse("location", "").asInstanceOf[String].isBlank)
           .foreach { dialcode =>
             try {
-              val fileName = dialcode.getOrElse("id", "")
-              val destPath = s"""$tempFilePath${File.separator}$fileName.${event.imageFormat}"""
+              val fileName = dialcode("id").asInstanceOf[String]
               val downloadUrl = dialcode("location").asInstanceOf[String]
-              val file: File = FileUtils.downloadFile(downloadUrl, destPath)
-              logger.info("QRCodeImageGeneratorService:processMessage: created file - " + file.getAbsolutePath)
+              val file: File = FileUtils.downloadFile(downloadUrl, tempFilePath)
+              val newFile: File = new File(s"""$tempFilePath${File.separator}$fileName.${imageConfig.imageFormat}""")
+              FileUtils.copyFile(file, newFile)
+              file.delete()
+              logger.info("QRCodeImageGeneratorService:processMessage: created file - " + newFile.getAbsolutePath)
               metrics.incCounter(config.cloudDbHitCount)
-              availableImages += file
+              availableImages += newFile
             } catch {
               case e: Exception =>
                 metrics.incCounter(config.cloudDbFailCount)
@@ -74,15 +76,14 @@ class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig,
         logger.info("availableImages after W/0 Loc: " + availableImages)
 
         val dialCodes: List[Map[String, AnyRef]] = event.dialCodes.filter(dialcode => dialcode.getOrElse("location", "").asInstanceOf[String].isEmpty)
-
-        val qrGenRequest: QRCodeImageGeneratorRequest = getQRCodeGenerationRequest(dialCodes, event.imageConfig)
+        val qrGenRequest: QRCodeImageGeneratorRequest = QRCodeImageGeneratorRequest(dialCodes, imageConfig, config.lpTempFileLocation)
         logger.info("QRCodeImageGeneratorRequest: " + qrGenRequest)
         val generatedImages: ListBuffer[File] = qRCodeImageGeneratorUtil.createQRImages(qrGenRequest, event.storageContainer, event.storagePath, metrics)
 
-        if (!StringUtils.isBlank(event.processId)) {
+        if (!event.processId.isBlank) {
           var storageFileName = event.storageFileName
           logger.info("QRCodeImageGeneratorService:processMessage: Generating zip for QR codes with processId " + event.processId)
-          if (StringUtils.isBlank(storageFileName)) storageFileName = event.processId
+          if (storageFileName.isBlank) storageFileName = event.processId
 
           // Merge available and generated image list
           generatedImages.foreach(f => availableImages += f)
@@ -120,8 +121,8 @@ class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig,
     }
   }
 
-  def getQRCodeGenerationRequest(dialCodes: List[Map[String, AnyRef]], imageConfigMap: Map[String, AnyRef]): QRCodeImageGeneratorRequest = {
-    val imageConfig: ImageConfig = ImageConfig(
+  private def initImageConfig(imageConfigMap: Map[String, AnyRef]): ImageConfig = {
+    ImageConfig(
       imageConfigMap.getOrElse("errorCorrectionLevel", "").asInstanceOf[String],
       imageConfigMap.getOrElse("pixelsPerBlock", 0).asInstanceOf[Int],
       imageConfigMap.getOrElse("qrCodeMargin", 0).asInstanceOf[Int],
@@ -134,7 +135,5 @@ class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig,
       imageConfigMap.getOrElse("qrCodeMarginBottom", config.imageMarginBottom).asInstanceOf[Int],
       imageConfigMap.getOrElse("imageMargin", config.imageMargin).asInstanceOf[Int]
     )
-
-    QRCodeImageGeneratorRequest(dialCodes, imageConfig, config.lpTempFileLocation)
   }
 }
