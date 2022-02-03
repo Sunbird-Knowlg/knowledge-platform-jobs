@@ -40,7 +40,7 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
   private val COLLECTION_CACHE_KEY_SUFFIX = ":leafnodes"
 
   @transient var ec: ExecutionContext = _
-  private val pkgTypes = List(EcarPackageType.SPINE.toString, EcarPackageType.ONLINE.toString)
+  private val pkgTypes = List(EcarPackageType.SPINE, EcarPackageType.ONLINE)
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
@@ -76,13 +76,14 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
         metrics.incCounter(config.skippedEventCount)
         logger.info(s"""pkgVersion should be greater than or equal to the obj.pkgVersion for : ${obj.identifier}""")
       } else {
+        val updObj = new ObjectData(obj.identifier, obj.metadata ++ Map("lastPublishedBy" -> data.lastPublishedBy, "dialcodes" -> obj.metadata.getOrElse("dialcodes",null)), obj.extData, obj.hierarchy)
         val messages: List[String] = List.empty[String] // validate(obj, obj.identifier, validateMetadata)
         if (messages.isEmpty) {
           // Pre-publish update
-          updateProcessingNode(new ObjectData(obj.identifier, obj.metadata ++ Map("lastPublishedBy" -> data.lastPublishedBy, "dialcodes" -> obj.metadata.getOrElse("dialcodes",null)), obj.extData, obj.hierarchy))(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
+          updateProcessingNode(updObj)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
 
-          val isCollectionShallowCopy = isContentShallowCopy(obj)
-          val updatedObj = if (isCollectionShallowCopy) updateOriginPkgVersion(obj)(neo4JUtil) else obj
+          val isCollectionShallowCopy = isContentShallowCopy(updObj)
+          val updatedObj = if (isCollectionShallowCopy) updateOriginPkgVersion(updObj)(neo4JUtil) else updObj
 
           // Clear redis cache
           cache.del(data.identifier)
@@ -100,6 +101,9 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
           logger.info("CollectionPublishFunction:: Collection Object Enriched: " + enrichedObj.identifier)
           val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
           logger.info("CollectionPublishFunction:: ECAR generation completed for Collection Object: " + objWithEcar.identifier)
+
+          val collRelationalMetadata = getRelationalMetadata(obj.identifier, obj.pkgVersion-1, readerConfig)(cassandraUtil).get
+
           saveOnSuccess(new ObjectData(objWithEcar.identifier, objWithEcar.metadata.-("children"), objWithEcar.extData, objWithEcar.hierarchy))(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
           logger.info("CollectionPublishFunction:: Published Collection Object metadata saved successfully to graph DB: " + objWithEcar.identifier)
 
@@ -109,9 +113,14 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
           val children = successObj.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
 
           // Collection - update and publish children - line 418 in PublishFinalizer
-          val updatedChildren = updateHierarchyMetadata(children, successObj.metadata)(config)
+          val updatedChildren = updateHierarchyMetadata(children, successObj.metadata, collRelationalMetadata)(config)
           logger.info("CollectionPublishFunction:: Hierarchy Metadata updated for Collection Object: " + successObj.identifier + " || updatedChildren:: " + updatedChildren)
           publishHierarchy(updatedChildren, successObj, readerConfig, config)(cassandraUtil)
+
+          //TODO: Save IMAGE Object with enrichedObj children and collRelationalMetadata when pkgVersion is 1 - verify with MaheshG
+          if(data.pkgVersion == 1) {
+            saveImageHierarchy(enrichedObj, readerConfig, collRelationalMetadata)(cassandraUtil)
+          }
 
           if (!isCollectionShallowCopy) syncNodes(successObj, updatedChildren, unitNodes)(esUtil, neo4JUtil, cassandraUtil, readerConfig, definition, config)
           pushPostProcessEvent(successObj, context)(metrics)
@@ -156,7 +165,7 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
     val ver = obj.metadata("versionKey")
     val contentType = obj.metadata("contentType")
     val status = obj.metadata("status")
-     //TODO: deprecate using contentType in the event.
+    //TODO: deprecate using contentType in the event.
     val event = s"""{"eid":"BE_JOB_REQUEST", "ets": $ets, "mid": "$mid", "actor": {"id": "Post Publish Processor", "type": "System"}, "context":{"pdata":{"ver":"1.0","id":"org.sunbird.platform"}, "channel":"$channelId","env":"${config.jobEnv}"},"object":{"ver":"$ver","id":"${obj.identifier}"},"edata": {"action":"post-publish-process","iteration":1,"identifier":"${obj.identifier}","channel":"$channelId","mimeType":"${obj.mimeType}","contentType":"$contentType","pkgVersion":${obj.pkgVersion},"status":"$status","name":"${obj.metadata("name")}","trackable":${obj.metadata.getOrElse("trackable",Map.empty)}}}""".stripMargin
     logger.info(s"Post Publish Process Event for identifier ${obj.identifier}  is  : $event")
     event
