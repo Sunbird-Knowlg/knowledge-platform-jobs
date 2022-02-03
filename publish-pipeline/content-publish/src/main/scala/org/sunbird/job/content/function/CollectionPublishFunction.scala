@@ -102,8 +102,6 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
           val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
           logger.info("CollectionPublishFunction:: ECAR generation completed for Collection Object: " + objWithEcar.identifier)
 
-          val collRelationalMetadata = getRelationalMetadata(obj.identifier, obj.pkgVersion-1, readerConfig)(cassandraUtil).get
-
           saveOnSuccess(new ObjectData(objWithEcar.identifier, objWithEcar.metadata.-("children"), objWithEcar.extData, objWithEcar.hierarchy))(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
           logger.info("CollectionPublishFunction:: Published Collection Object metadata saved successfully to graph DB: " + objWithEcar.identifier)
 
@@ -113,14 +111,9 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
           val children = successObj.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
 
           // Collection - update and publish children - line 418 in PublishFinalizer
-          val updatedChildren = updateHierarchyMetadata(children, successObj.metadata, collRelationalMetadata)(config)
+          val updatedChildren = updateHierarchyMetadata(children, successObj.metadata)(config)
           logger.info("CollectionPublishFunction:: Hierarchy Metadata updated for Collection Object: " + successObj.identifier + " || updatedChildren:: " + updatedChildren)
           publishHierarchy(updatedChildren, successObj, readerConfig, config)(cassandraUtil)
-
-          //TODO: Save IMAGE Object with enrichedObj children and collRelationalMetadata when pkgVersion is 1 - verify with MaheshG
-          if(data.pkgVersion == 1) {
-            saveImageHierarchy(enrichedObj, readerConfig, collRelationalMetadata)(cassandraUtil)
-          }
 
           if (!isCollectionShallowCopy) syncNodes(successObj, updatedChildren, unitNodes)(esUtil, neo4JUtil, cassandraUtil, readerConfig, definition, config)
           pushPostProcessEvent(successObj, context)(metrics)
