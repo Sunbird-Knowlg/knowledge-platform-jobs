@@ -226,13 +226,13 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 			logger.info("ContentAutoCreator :: update :: Icon downloaded for : " + internalId + " | appIconUrl : " + appIconUrl)
 			if (null == file || !file.exists) throw new Exception("Error Occurred while downloading appIcon file for " + internalId + " | File Url : " + appIconUrl)
 			val urls = uploadArtifact(file, internalId, config, cloudStorageUtil)
-			val appIconBlobUrl = if (null != urls && StringUtils.isNotBlank(urls(1))) {
+			val updatedAppIcon = if (null != urls && StringUtils.isNotBlank(urls(1))) {
 				val appIconBlobUrl = urls(1)
 				logger.info("ContentAutoCreator :: update :: Icon Uploaded Successfully to cloud for : " + internalId + " | appIconUrl : " + appIconUrl + " | appIconBlobUrl : " + appIconBlobUrl)
 				appIconBlobUrl
 			}
 			FileUtils.deleteQuietly(file)
-			appIconBlobUrl
+			updatedAppIcon
 		} else ""
 
 		val updateMetadataFields = updateMetadata + (ContentAutoCreatorConstants.VERSION_KEY -> readMetadata(ContentAutoCreatorConstants.VERSION_KEY).asInstanceOf[String], ContentAutoCreatorConstants.APP_ICON -> updatedAppIcon)
