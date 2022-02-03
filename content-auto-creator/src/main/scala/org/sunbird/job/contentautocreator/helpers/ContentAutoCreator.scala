@@ -244,7 +244,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 		}
 
 		val headers = Map[String, String](ContentAutoCreatorConstants.X_CHANNEL_ID -> channel, ContentAutoCreatorConstants.CONTENT_TYPE_HEADER -> ContentAutoCreatorConstants.APPLICATION_JSON)
-		val requestUrl = config.getString(ContentAutoCreatorConstants.KP_CS_BASE_URL,"") + "/content/v4/update" + internalId
+		val requestUrl = config.getString(ContentAutoCreatorConstants.KP_CS_BASE_URL,"") + "/content/v4/update/" + internalId
 		logger.info("ContentAutoCreator :: updateContent :: Update Content requestUrl: " + requestUrl)
 		logger.info("ContentAutoCreator :: updateContent :: Update Content reqMap: " + reqMap)
 		val httpResponse = httpUtil.patch(requestUrl, JSONUtil.serialize(reqMap), headers)
@@ -287,7 +287,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 				logger.info("ContentAutoCreator :: uploadContent :: sourceUrl Uploaded Successfully to cloud for : " + internalId + " | sourceUrl : " + sourceUrl + " | sourceFileBlobUrl : " + sourceFileBlobUrl)
 
 				val headers = Map[String, String](ContentAutoCreatorConstants.X_CHANNEL_ID -> channel)
-				val requestUrl = config.getString(ContentAutoCreatorConstants.KP_CS_BASE_URL,"") + "/content/v4/upload" + internalId
+				val requestUrl = config.getString(ContentAutoCreatorConstants.KP_CS_BASE_URL,"") + "/content/v4/upload/" + internalId
 				logger.info("ContentAutoCreator :: uploadContent :: Upload Content requestUrl: " + requestUrl)
 				logger.info("ContentAutoCreator :: uploadContent :: Upload Content sourceFileBlobUrl: " + sourceFileBlobUrl)
 				val httpResponse = httpUtil.postFilePath(requestUrl, "fileUrl", sourceFileBlobUrl, headers)
@@ -305,7 +305,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 	}
 
 	private def reviewContent(channel: String, identifier: String, config: ContentAutoCreatorConfig, httpUtil: HttpUtil): Unit = {
-		val requestUrl = config.getString(ContentAutoCreatorConstants.KP_CS_BASE_URL,"") + "/content/v4/review" + identifier
+		val requestUrl = config.getString(ContentAutoCreatorConstants.KP_CS_BASE_URL,"") + "/content/v4/review/" + identifier
 		val reqMap = new java.util.HashMap[String, AnyRef]() {
 			put(ContentAutoCreatorConstants.REQUEST, new java.util.HashMap[String, AnyRef]() {
 				put(ContentAutoCreatorConstants.CONTENT, new java.util.HashMap[String, AnyRef]())
@@ -327,7 +327,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 	}
 
 	private def publishContent(channel: String, identifier: String, lastPublishedBy: String, config: ContentAutoCreatorConfig, httpUtil: HttpUtil): Unit = {
-		val requestUrl = config.getString(ContentAutoCreatorConstants.LEARNING_SERVICE_BASE_URL,"") + "/content/v3/publish" + identifier
+		val requestUrl = config.getString(ContentAutoCreatorConstants.LEARNING_SERVICE_BASE_URL,"") + "/content/v3/publish/" + identifier
 		val reqMap = new java.util.HashMap[String, AnyRef]() {
 			put(ContentAutoCreatorConstants.REQUEST, new java.util.HashMap[String, AnyRef]() {
 				put(ContentAutoCreatorConstants.CONTENT, new java.util.HashMap[String, AnyRef]() {
@@ -355,7 +355,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 
 	private def updateStatus(channel: String, identifier: String, message: String, config: ContentAutoCreatorConfig, httpUtil: HttpUtil): Unit = {
 		val errorMsg = if (message.nonEmpty) message	else "Processing Error"
-		val requestUrl = config.getString(ContentAutoCreatorConstants.KP_CS_BASE_URL,"") + "/content/v4/system/update" + identifier
+		val requestUrl = config.getString(ContentAutoCreatorConstants.KP_CS_BASE_URL,"") + "/content/v4/system/update/" + identifier
 		val reqMap = new java.util.HashMap[String, AnyRef]() {
 			put(ContentAutoCreatorConstants.REQUEST, new java.util.HashMap[String, AnyRef]() {
 				put(ContentAutoCreatorConstants.CONTENT, new java.util.HashMap[String, AnyRef]() {
