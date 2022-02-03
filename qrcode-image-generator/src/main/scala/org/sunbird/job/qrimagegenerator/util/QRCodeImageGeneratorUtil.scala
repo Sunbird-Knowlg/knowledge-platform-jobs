@@ -8,29 +8,28 @@ import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import com.google.zxing.{BarcodeFormat, EncodeHintType, NotFoundException, WriterException}
 import org.slf4j.LoggerFactory
 import org.sunbird.job.Metrics
-import org.sunbird.job.qrimagegenerator.functions.QRCodeImageGenerator
+import org.sunbird.job.qrimagegenerator.domain.QRCodeImageGenerator
 import org.sunbird.job.qrimagegenerator.task.QRCodeImageGeneratorConfig
 import org.sunbird.job.util._
 
-import java.awt._
 import java.awt.font.TextAttribute
 import java.awt.image.BufferedImage
 import java.io.{File, IOException, InputStream}
-import java.util
 import java.util.UUID
 import javax.imageio.ImageIO
+import scala.collection.mutable.ListBuffer
 
 class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil: CassandraUtil, cloudStorageUtil: CloudStorageUtil) {
   private val qrCodeWriter = new QRCodeWriter()
-  private val fontStore: util.HashMap[String, Font] = new util.HashMap[String, Font]()
-  private val LOGGER = LoggerFactory.getLogger(classOf[QRCodeImageGeneratorUtil])
+  private val fontStore: java.util.HashMap[String, java.awt.Font] = new java.util.HashMap[String, java.awt.Font]()
+  private val logger = LoggerFactory.getLogger(classOf[QRCodeImageGeneratorUtil])
 
   @throws[WriterException]
   @throws[IOException]
   @throws[NotFoundException]
-  @throws[FontFormatException]
-  def createQRImages(qrGenRequest: QRCodeImageGenerator, appConfig: QRCodeImageGeneratorConfig, container: String, path: String, metrics: Metrics): util.List[File] = {
-    val fileList = new util.ArrayList[File]
+  @throws[java.awt.FontFormatException]
+  def createQRImages(qrGenRequest: QRCodeImageGenerator, container: String, path: String, metrics: Metrics): ListBuffer[File] = {
+    val fileList = ListBuffer[File]()
     val dataList = qrGenRequest.data
     val textList = qrGenRequest.text
     val fileNameList = qrGenRequest.fileName
@@ -47,30 +46,30 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
     val imageMargin = qrGenRequest.imageMargin
     val tempFilePath = qrGenRequest.tempFilePath
 
-    for (i <- 0 to (dataList.size() - 1)) {
-      val data = dataList.get(i)
-      val text = textList.get(i)
-      val fileName = fileNameList.get(i)
+    for (i <- dataList.indices) {
+      val data = dataList(i)
+      val text = textList(i)
+      val fileName = fileNameList(i)
       var qrImage = generateBaseImage(data, errorCorrectionLevel, pixelsPerBlock, qrMargin, colorModel)
-      if (null != text || !(text.isEmpty)) {
+      if (null != text || text.nonEmpty) {
         val textImage = getTextImage(text, fontName, fontSize, tracking, colorModel)
         qrImage = addTextToBaseImage(qrImage, textImage, colorModel, qrMargin, pixelsPerBlock, qrMarginBottom, imageMargin)
       }
       if (borderSize > 0) drawBorder(qrImage, borderSize, imageMargin)
       val finalImageFile = new File(tempFilePath + File.separator + fileName + "." + imageFormat)
-      LOGGER.info("QRCodeImageGeneratorUtil:createQRImages: creating file - " + finalImageFile.getAbsolutePath)
+      logger.info("QRCodeImageGeneratorUtil:createQRImages: creating file - " + finalImageFile.getAbsolutePath)
       finalImageFile.createNewFile
-      LOGGER.info("QRCodeImageGeneratorUtil:createQRImages: created file - " + finalImageFile.getAbsolutePath)
-      println("QRCodeImageGeneratorUtil:createQRImages: created file - " + finalImageFile.getAbsolutePath)
+      logger.info("QRCodeImageGeneratorUtil:createQRImages: created file - " + finalImageFile.getAbsolutePath)
       ImageIO.write(qrImage, imageFormat, finalImageFile)
-      fileList.add(finalImageFile)
+      fileList += finalImageFile
       try {
         val imageDownloadUrl = cloudStorageUtil.uploadFile(path, finalImageFile, Some(false), container = container)
         updateCassandra(config.cassandraDialCodeImageTable, 2, imageDownloadUrl(1), "filename", fileName, metrics)
       } catch {
         case e: Exception =>
           metrics.incCounter(config.dbFailureEventCount)
-          LOGGER.info("QRCodeImageGeneratorUtil: Failure while uploading download URL Query:: " + e.getMessage)
+          e.printStackTrace()
+          logger.info("QRCodeImageGeneratorUtil: Failure while uploading download URL Query:: " + e.getMessage)
       }
     }
     fileList
@@ -112,10 +111,9 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
   private def generateBaseImage(data: String, errorCorrectionLevel: String, pixelsPerBlock: Int, qrMargin: Int, colorModel: String) = {
     val hintsMap = getHintsMap(errorCorrectionLevel, qrMargin)
     val defaultBitMatrix = getDefaultBitMatrix(data, hintsMap)
-    println("defaultBitMatrix: " + defaultBitMatrix.getWidth + " " + defaultBitMatrix.getHeight)
+    logger.info(s"defaultBitMatrix: width= ${defaultBitMatrix.getWidth}, height= ${defaultBitMatrix.getHeight}")
     val largeBitMatrix = getBitMatrix(data, defaultBitMatrix.getWidth * pixelsPerBlock, defaultBitMatrix.getHeight * pixelsPerBlock, hintsMap)
-    println("largeBitMatrix width: " + largeBitMatrix.getWidth)
-    println("largeBitMatrix width: " + largeBitMatrix.getHeight)
+    logger.info(s"largeBitMatrix: width=  ${largeBitMatrix.getWidth}, height= ${largeBitMatrix.getHeight}")
     getImage(largeBitMatrix, colorModel)
   }
 
@@ -129,14 +127,14 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
     val marginToBeRemoved = if (qrMarginBottom > defaultBottomMargin) 0
     else defaultBottomMargin - qrMarginBottom
     val mergedMatrix = new BitMatrix(mergedWidth, mergedHeight - marginToBeRemoved)
-    for (x <- 0 to (firstMatrix.getWidth - 1)) {
-      for (y <- 0 to (firstMatrix.getHeight - 1)) {
+    for (x <- 0 until firstMatrix.getWidth) {
+      for (y <- 0 until firstMatrix.getHeight) {
         if (firstMatrix.get(x, y)) mergedMatrix.set(x + imageMargin, y + imageMargin)
       }
     }
 
-    for (x <- 0 to (secondMatrix.getWidth - 1)) {
-      for (y <- 0 to (secondMatrix.getHeight - 1)) {
+    for (x <- 0 until secondMatrix.getWidth) {
+      for (y <- 0 until secondMatrix.getHeight) {
         if (secondMatrix.get(x, y)) mergedMatrix.set(x + imageMargin, y + firstMatrix.getHeight - marginToBeRemoved + imageMargin)
       }
     }
@@ -147,8 +145,8 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
     val widthDiff = toMatrix.getWidth - fromMatrix.getWidth
     val leftMargin = widthDiff / 2
 
-    for (x <- 0 to (fromMatrix.getWidth - 1)) {
-      for (y <- 0 to (fromMatrix.getHeight - 1)) {
+    for (x <- 0 until fromMatrix.getWidth) {
+      for (y <- 0 until fromMatrix.getHeight) {
         if (fromMatrix.get(x, y)) toMatrix.set(x + leftMargin, y)
       }
     }
@@ -156,9 +154,9 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
 
   private def drawBorder(image: BufferedImage, borderSize: Int, imageMargin: Int): Unit = {
     image.createGraphics
-    val graphics = image.getGraphics.asInstanceOf[Graphics2D]
-    graphics.setColor(Color.BLACK)
-    for (i <- 0 to (borderSize - 1)) {
+    val graphics = image.getGraphics.asInstanceOf[java.awt.Graphics2D]
+    graphics.setColor(java.awt.Color.BLACK)
+    for (i <- 0 until borderSize) {
       graphics.drawRect(i + imageMargin, i + imageMargin, image.getWidth - 1 - (2 * i) - (2 * imageMargin), image.getHeight - 1 - (2 * i) - (2 * imageMargin))
     }
     graphics.dispose()
@@ -169,15 +167,14 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
     val imageHeight = bitMatrix.getHeight()
     val image = new BufferedImage(imageWidth, imageHeight, getImageType(colorModel))
     image.createGraphics()
-    val graphics = image.getGraphics.asInstanceOf[Graphics2D]
-    graphics.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF)
-    graphics.setColor(Color.WHITE)
+    val graphics = image.getGraphics.asInstanceOf[java.awt.Graphics2D]
+    graphics.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_OFF)
+    graphics.setColor(java.awt.Color.WHITE)
     graphics.fillRect(0, 0, imageWidth, imageHeight)
-    graphics.setColor(Color.BLACK)
-    println("imageWidth: " + imageWidth)
-    println("imageWidth: " + imageHeight)
-    for (i <- 0 to (imageWidth - 1)) {
-      for (j <- 0 to (imageHeight - 1)) {
+    graphics.setColor(java.awt.Color.BLACK)
+    logger.info(s"imageWidth: $imageWidth, imageHeight: $imageHeight")
+    for (i <- 0 until imageWidth) {
+      for (j <- 0 until imageHeight) {
         if (bitMatrix.get(i, j)) {
           graphics.fillRect(i, j, 1, 1)
         }
@@ -188,17 +185,17 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
   }
 
   @throws[WriterException]
-  private def getBitMatrix(data: String, width: Int, height: Int, hintsMap: util.Map[_, _]) = {
-    qrCodeWriter.encode(data, BarcodeFormat.QR_CODE, width, height, hintsMap.asInstanceOf[util.Map[EncodeHintType, _]])
+  private def getBitMatrix(data: String, width: Int, height: Int, hintsMap: java.util.Map[_, _]) = {
+    qrCodeWriter.encode(data, BarcodeFormat.QR_CODE, width, height, hintsMap.asInstanceOf[java.util.Map[EncodeHintType, _]])
   }
 
   @throws[WriterException]
-  private def getDefaultBitMatrix(data: String, hintsMap: util.Map[_, _]) = {
-    qrCodeWriter.encode(data, BarcodeFormat.QR_CODE, 0, 0, hintsMap.asInstanceOf[util.Map[EncodeHintType, _]])
+  private def getDefaultBitMatrix(data: String, hintsMap: java.util.Map[_, _]) = {
+    qrCodeWriter.encode(data, BarcodeFormat.QR_CODE, 0, 0, hintsMap.asInstanceOf[java.util.Map[EncodeHintType, _]])
   }
 
   private def getHintsMap(errorCorrectionLevel: String, qrMargin: Int) = {
-    val hintsMap = new util.HashMap[EncodeHintType, AnyRef]()
+    val hintsMap = new java.util.HashMap[EncodeHintType, AnyRef]()
     errorCorrectionLevel match {
       case "H" => hintsMap.put(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.H)
       case "Q" => hintsMap.put(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.Q)
@@ -211,7 +208,7 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
 
   //Sample = 2A42UH , Verdana, 11, 0.1, Grayscale
   @throws[IOException]
-  @throws[FontFormatException]
+  @throws[java.awt.FontFormatException]
   private def getTextImage(text: String, fontName: String, fontSize: Int, tracking: Double, colorModel: String) = {
     var image = new BufferedImage(1, 1, getImageType(colorModel))
     val basicFont = getFontFromStore(fontName)
@@ -219,7 +216,7 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
     attributes.put(TextAttribute.TRACKING, tracking)
     attributes.put(TextAttribute.WEIGHT, TextAttribute.WEIGHT_BOLD)
     attributes.put(TextAttribute.SIZE, fontSize)
-    println("attributes: " + attributes)
+    logger.info("attributes: " + attributes)
     val font = basicFont.deriveFont(attributes)
     var graphics2d = image.createGraphics
     graphics2d.setFont(font)
@@ -229,13 +226,13 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
     graphics2d.dispose()
     image = new BufferedImage(width, height, getImageType(colorModel))
     graphics2d = image.createGraphics
-    graphics2d.setRenderingHint(RenderingHints.KEY_ALPHA_INTERPOLATION, RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY)
-    graphics2d.setRenderingHint(RenderingHints.KEY_COLOR_RENDERING, RenderingHints.VALUE_COLOR_RENDER_QUALITY)
-    graphics2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_OFF)
-    graphics2d.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_OFF)
-    graphics2d.setColor(Color.WHITE)
+    graphics2d.setRenderingHint(java.awt.RenderingHints.KEY_ALPHA_INTERPOLATION, java.awt.RenderingHints.VALUE_ALPHA_INTERPOLATION_QUALITY)
+    graphics2d.setRenderingHint(java.awt.RenderingHints.KEY_COLOR_RENDERING, java.awt.RenderingHints.VALUE_COLOR_RENDER_QUALITY)
+    graphics2d.setRenderingHint(java.awt.RenderingHints.KEY_TEXT_ANTIALIASING, java.awt.RenderingHints.VALUE_TEXT_ANTIALIAS_OFF)
+    graphics2d.setRenderingHint(java.awt.RenderingHints.KEY_ANTIALIASING, java.awt.RenderingHints.VALUE_ANTIALIAS_OFF)
+    graphics2d.setColor(java.awt.Color.WHITE)
     graphics2d.fillRect(0, 0, image.getWidth, image.getHeight)
-    graphics2d.setColor(Color.BLACK)
+    graphics2d.setColor(java.awt.Color.BLACK)
     graphics2d.setFont(font)
     fontmetrics = graphics2d.getFontMetrics
     graphics2d.drawString(text, 0, fontmetrics.getAscent)
@@ -247,32 +244,30 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
   else BufferedImage.TYPE_BYTE_GRAY
 
   @throws[IOException]
-  @throws[FontFormatException]
+  @throws[java.awt.FontFormatException]
   //load the packaged font file from the root dir
   private def loadFontStore(fontName: String) = {
     val fontFile = fontName + ".ttf"
-    println("fontFile: " + fontFile)
-    var basicFont: Font = null
+    logger.info("fontFile: " + fontFile)
+    var basicFont: java.awt.Font = null
     var fontStream: InputStream = null
     val classLoader: ClassLoader = this.getClass.getClassLoader
     try {
       fontStream = classLoader.getResourceAsStream(fontFile)
-      println("input stream value is not null for fontfile " + fontFile + " " + fontStream)
-      LOGGER.info("input stream value is not null for fontfile " + fontFile + " " + fontStream)
-      basicFont = Font.createFont(Font.TRUETYPE_FONT, fontStream)
+      logger.info("input stream value is not null for fontfile " + fontFile + " " + fontStream)
+      basicFont = java.awt.Font.createFont(java.awt.Font.TRUETYPE_FONT, fontStream)
     } catch {
       case e: Exception =>
-        println("Exception occurred during font creation " + e.getMessage)
         e.printStackTrace()
-        LOGGER.debug("Exception occurred during font creation " + e.getMessage)
+        logger.debug("Exception occurred during font creation " + e.getMessage)
     }
     fontStore.put(fontName, basicFont)
     basicFont
   }
 
   @throws[IOException]
-  @throws[FontFormatException]
-  private def getFontFromStore(fontName: String): Font = {
+  @throws[java.awt.FontFormatException]
+  private def getFontFromStore(fontName: String): java.awt.Font = {
     fontStore.getOrDefault(fontName, loadFontStore(fontName))
   }
 }

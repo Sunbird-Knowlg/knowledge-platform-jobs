@@ -2,7 +2,6 @@ package org.sunbird.job.qrimagegenerator.domain
 
 import org.apache.commons.lang3.StringUtils
 import org.sunbird.job.domain.reader.JobRequest
-import org.sunbird.job.qrimagegenerator.functions.Config
 import org.sunbird.job.qrimagegenerator.task.QRCodeImageGeneratorConfig
 import org.sunbird.job.util.JSONUtil
 
