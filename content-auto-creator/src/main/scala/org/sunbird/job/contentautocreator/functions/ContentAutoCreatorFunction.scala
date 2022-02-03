@@ -42,12 +42,10 @@ class ContentAutoCreatorFunction(config: ContentAutoCreatorConfig, httpUtil: Htt
     metrics.incCounter(config.totalEventsCount)
     if (event.isValid(config)) {
       logger.info("ContentAutoCreatorFunction::processElement:: Processing event for auto creator content upload/approval operation having identifier : " + event.objectId)
-      logger.debug("ContentAutoCreatorFunction::processElement:: event edata : " + event.eData)
+      logger.info("ContentAutoCreatorFunction::processElement:: event edata : " + event.eData)
       if(event.validateStage(config)) {
         if(event.validateMetadata(config)) {
           process(config, event, httpUtil, neo4JUtil, cloudStorageUtil)
-
-
           logger.info("ContentAutoCreatorFunction::processElement:: Content auto creator upload/approval operation completed for : " + event.objectId)
           metrics.incCounter(config.successEventCount)
         } else{

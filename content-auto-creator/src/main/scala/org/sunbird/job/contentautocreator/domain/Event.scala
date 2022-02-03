@@ -51,7 +51,7 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 	}
 
 	def validateStage(config: ContentAutoCreatorConfig): Boolean = {
-		StringUtils.isNotBlank(stage) && config.allowedContentStages.contains(stage)
+		stage.isEmpty || (StringUtils.isNotBlank(stage) && config.allowedContentStages.contains(stage))
 	}
 
 	def validateMetadata(config: ContentAutoCreatorConfig): Boolean = {
