@@ -30,11 +30,12 @@ class QRCodeImageGeneratorConfig(override val config: Config) extends BaseJobCon
   val configVersion = "1.0"
 
   val eid = "BE_QR_IMAGE_GENERATOR"
-  val lpTempFileLocation: String = config.getString("lp.tmp.file.location")
+  val lpTempFileLocation: String = if (config.hasPath("lp.tmp.file.location")) config.getString("lp.tmp.file.location") else "/tmp"
 
-  //image Margins
-  val qrImageBottomMargin: Int = config.getInt("qr.image.bottom.margin")
-  val qrImageMargin: Int = config.getInt("qr.image.margin")
+  // default image config
+  val imageFormat: String = if (config.hasPath("imageFormat")) config.getString("imageFormat") else "png"
+  val imageMarginBottom: Int = if (config.hasPath("qr.image.bottomMargin")) config.getInt("qr.image.bottomMargin") else 0
+  val imageMargin: Int = if (config.hasPath("qr.image.margin")) config.getInt("qr.image.margin") else 1
 
   //cassandra config
   val cassandraHost: String = config.getString("lms-cassandra.host")

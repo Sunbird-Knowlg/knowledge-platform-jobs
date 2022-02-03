@@ -6,7 +6,7 @@ import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.exception.InvalidEventException
-import org.sunbird.job.qrimagegenerator.domain.{Config, Event, QRCodeImageGenerator}
+import org.sunbird.job.qrimagegenerator.domain.{Event, ImageConfig, QRCodeImageGeneratorRequest}
 import org.sunbird.job.qrimagegenerator.task.QRCodeImageGeneratorConfig
 import org.sunbird.job.qrimagegenerator.util.QRCodeImageGeneratorUtil
 import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, FileUtils}
@@ -73,17 +73,10 @@ class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig,
           }
         logger.info("availableImages after W/0 Loc: " + availableImages)
 
-        val dataList = ListBuffer[String]()
-        val textList = ListBuffer[String]()
-        val fileNameList = ListBuffer[String]()
-        event.dialCodes.map { dialcode =>
-          dataList += dialcode("data").asInstanceOf[String]
-          textList += dialcode("text").asInstanceOf[String]
-          fileNameList += dialcode("id").asInstanceOf[String]
-        }
+        val dialCodes: List[Map[String, AnyRef]] = event.dialCodes.filter(dialcode => dialcode.getOrElse("location", "").asInstanceOf[String].isEmpty)
 
-        val qrGenRequest: QRCodeImageGenerator = getQRCodeGenerationRequest(event.imageConfig, dataList, textList, fileNameList)
-        logger.info("qrGenRequest: " + qrGenRequest)
+        val qrGenRequest: QRCodeImageGeneratorRequest = getQRCodeGenerationRequest(dialCodes, event.imageConfig)
+        logger.info("QRCodeImageGeneratorRequest: " + qrGenRequest)
         val generatedImages: ListBuffer[File] = qRCodeImageGeneratorUtil.createQRImages(qrGenRequest, event.storageContainer, event.storagePath, metrics)
 
         if (!StringUtils.isBlank(event.processId)) {
@@ -94,7 +87,6 @@ class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig,
           // Merge available and generated image list
           generatedImages.foreach(f => availableImages += f)
 
-//          zipFile = ZipEditorUtil.zipFiles(availableImages.toList, storageFileName, tempFilePath)
           val zipFileName: String = tempFilePath + File.separator + storageFileName + ".zip"
           val fileList: List[String] = availableImages.map(f => f.getName).toList
           FileUtils.zipIt(zipFileName, fileList, tempFilePath)
@@ -128,24 +120,21 @@ class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig,
     }
   }
 
-  //Case class for QRCodeImageGenerator
-  def getQRCodeGenerationRequest(qrImageconfig: Config, dataList: ListBuffer[String], textList: ListBuffer[String], fileNameList: ListBuffer[String]): QRCodeImageGenerator = {
-    val output = QRCodeImageGenerator(dataList,
-      qrImageconfig.errorCorrectionLevel.get,
-      qrImageconfig.pixelsPerBlock.get.asInstanceOf[Integer],
-      qrImageconfig.qrCodeMargin.get.asInstanceOf[Integer],
-      textList,
-      qrImageconfig.textFontName.get,
-      qrImageconfig.textFontSize.get,
-      qrImageconfig.textCharacterSpacing.get,
-      qrImageconfig.imageBorderSize.get,
-      qrImageconfig.colourModel.get,
-      fileNameList,
-      qrImageconfig.imageFormat.get,
-      qrImageconfig.qrCodeMarginBottom.getOrElse(0),
-      qrImageconfig.imageMargin.getOrElse(0),
-      config.lpTempFileLocation)
-    logger.info("output: " + output)
-    output
+  def getQRCodeGenerationRequest(dialCodes: List[Map[String, AnyRef]], imageConfigMap: Map[String, AnyRef]): QRCodeImageGeneratorRequest = {
+    val imageConfig: ImageConfig = ImageConfig(
+      imageConfigMap.getOrElse("errorCorrectionLevel", "").asInstanceOf[String],
+      imageConfigMap.getOrElse("pixelsPerBlock", 0).asInstanceOf[Int],
+      imageConfigMap.getOrElse("qrCodeMargin", 0).asInstanceOf[Int],
+      imageConfigMap.getOrElse("textFontName", "").asInstanceOf[String],
+      imageConfigMap.getOrElse("textFontSize", 0).asInstanceOf[Int],
+      imageConfigMap.getOrElse("textCharacterSpacing", 0).asInstanceOf[Double],
+      imageConfigMap.getOrElse("imageFormat", config.imageFormat).asInstanceOf[String],
+      imageConfigMap.getOrElse("colourModel", "").asInstanceOf[String],
+      imageConfigMap.getOrElse("imageBorderSize", 0).asInstanceOf[Int],
+      imageConfigMap.getOrElse("qrCodeMarginBottom", config.imageMarginBottom).asInstanceOf[Int],
+      imageConfigMap.getOrElse("imageMargin", config.imageMargin).asInstanceOf[Int]
+    )
+
+    QRCodeImageGeneratorRequest(dialCodes, imageConfig, config.lpTempFileLocation)
   }
 }
