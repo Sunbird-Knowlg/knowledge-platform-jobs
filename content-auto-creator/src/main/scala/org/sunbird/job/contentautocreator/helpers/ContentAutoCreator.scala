@@ -118,6 +118,8 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 		}
 
 		val requestUrl = config.getString(ContentAutoCreatorConstants.SUNBIRD_CONTENT_SEARCH_URL,"") + "/v3/search"
+		logger.info("ContentAutoCreator :: searchContent :: Search Content requestUrl: " + requestUrl)
+		logger.info("ContentAutoCreator :: searchContent :: Search Content reqMap: " + reqMap)
 		val httpResponse = httpUtil.post(requestUrl, JSONUtil.serialize(reqMap))
 		if (httpResponse.status == 200) {
 			val response = JSONUtil.deserialize[Map[String, AnyRef]](httpResponse.body)
@@ -199,6 +201,8 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 
 		val headers = Map[String, String](ContentAutoCreatorConstants.X_CHANNEL_ID -> event.channel, ContentAutoCreatorConstants.CONTENT_TYPE_HEADER -> ContentAutoCreatorConstants.APPLICATION_JSON)
 		val requestUrl = config.getString(ContentAutoCreatorConstants.KP_CS_BASE_URL,"") + "/content/v4/create"
+		logger.info("ContentAutoCreator :: createContent :: Create Content requestUrl: " + requestUrl)
+		logger.info("ContentAutoCreator :: createContent :: Create Content reqMap: " + reqMap)
 		val httpResponse = httpUtil.post(requestUrl, JSONUtil.serialize(reqMap), headers)
 		if (httpResponse.status == 200) {
 			val response = JSONUtil.deserialize[Map[String, AnyRef]](httpResponse.body)
@@ -241,6 +245,8 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 
 		val headers = Map[String, String](ContentAutoCreatorConstants.X_CHANNEL_ID -> channel, ContentAutoCreatorConstants.CONTENT_TYPE_HEADER -> ContentAutoCreatorConstants.APPLICATION_JSON)
 		val requestUrl = config.getString(ContentAutoCreatorConstants.KP_CS_BASE_URL,"") + "/content/v4/update" + internalId
+		logger.info("ContentAutoCreator :: updateContent :: Update Content requestUrl: " + requestUrl)
+		logger.info("ContentAutoCreator :: updateContent :: Update Content reqMap: " + reqMap)
 		val httpResponse = httpUtil.patch(requestUrl, JSONUtil.serialize(reqMap), headers)
 		if (httpResponse.status == 200) {
 			val response = JSONUtil.deserialize[Map[String, AnyRef]](httpResponse.body)
@@ -282,6 +288,8 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 
 				val headers = Map[String, String](ContentAutoCreatorConstants.X_CHANNEL_ID -> channel)
 				val requestUrl = config.getString(ContentAutoCreatorConstants.KP_CS_BASE_URL,"") + "/content/v4/upload" + internalId
+				logger.info("ContentAutoCreator :: uploadContent :: Upload Content requestUrl: " + requestUrl)
+				logger.info("ContentAutoCreator :: uploadContent :: Upload Content sourceFileBlobUrl: " + sourceFileBlobUrl)
 				val httpResponse = httpUtil.postFilePath(requestUrl, "fileUrl", sourceFileBlobUrl, headers)
 				if (httpResponse.status == 200) {
 					val response = JSONUtil.deserialize[Map[String, AnyRef]](httpResponse.body)
@@ -304,6 +312,8 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 			})
 		}
 		val headers = Map[String, String](ContentAutoCreatorConstants.X_CHANNEL_ID -> channel, ContentAutoCreatorConstants.CONTENT_TYPE_HEADER -> ContentAutoCreatorConstants.APPLICATION_JSON)
+		logger.info("ContentAutoCreator :: reviewContent :: Review Content requestUrl: " + requestUrl)
+		logger.info("ContentAutoCreator :: reviewContent :: Review Content reqMap: " + reqMap)
 		val httpResponse = httpUtil.post(requestUrl, JSONUtil.serialize(reqMap), headers)
 		if (httpResponse.status == 200) {
 			val response = JSONUtil.deserialize[Map[String, AnyRef]](httpResponse.body)
@@ -326,6 +336,8 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 			})
 		}
 		val headers = Map[String, String](ContentAutoCreatorConstants.X_CHANNEL_ID -> channel, ContentAutoCreatorConstants.CONTENT_TYPE_HEADER -> ContentAutoCreatorConstants.APPLICATION_JSON)
+		logger.info("ContentAutoCreator :: publishContent :: Publish Content requestUrl: " + requestUrl)
+		logger.info("ContentAutoCreator :: publishContent :: Publish Content reqMap: " + reqMap)
 		val httpResponse = httpUtil.post(requestUrl, JSONUtil.serialize(reqMap), headers)
 		if (httpResponse.status == 200) {
 			val response = JSONUtil.deserialize[Map[String, AnyRef]](httpResponse.body)
