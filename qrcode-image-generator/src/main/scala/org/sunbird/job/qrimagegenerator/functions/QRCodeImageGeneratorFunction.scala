@@ -53,7 +53,7 @@ class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig,
       logger.info("QRCodeImageGeneratorService:processMessage: Starting message processing at " + System.currentTimeMillis())
       if (event.isValid(config)) {
         val tempFilePath = config.lpTempFileLocation
-        val imageConfig: ImageConfig = initImageConfig(event.imageConfig)
+        val imageConfig: ImageConfig = event.imageConfig(config)
 
         event.dialCodes.filter(f => !f.getOrElse("location", "").asInstanceOf[String].isBlank)
           .foreach { dialcode =>
@@ -81,9 +81,8 @@ class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig,
         val generatedImages: ListBuffer[File] = qRCodeImageGeneratorUtil.createQRImages(qrGenRequest, event.storageContainer, event.storagePath, metrics)
 
         if (!event.processId.isBlank) {
-          var storageFileName = event.storageFileName
           logger.info("QRCodeImageGeneratorService:processMessage: Generating zip for QR codes with processId " + event.processId)
-          if (storageFileName.isBlank) storageFileName = event.processId
+          val storageFileName = if (event.storageFileName.isBlank) event.processId else event.storageFileName
 
           // Merge available and generated image list
           generatedImages.foreach(f => availableImages += f)
@@ -93,7 +92,6 @@ class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig,
           FileUtils.zipIt(zipFileName, fileList, tempFilePath)
 
           zipFile = new File(zipFileName)
-
           val zipDownloadUrl = cloudStorageUtil.uploadFile(event.storagePath, zipFile, Some(false), container = event.storageContainer)
           metrics.incCounter(config.cloudDbHitCount)
           qRCodeImageGeneratorUtil.updateCassandra(config.cassandraDialCodeBatchTable, 2, zipDownloadUrl(1), "processid", event.processId, metrics)
@@ -121,19 +119,4 @@ class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig,
     }
   }
 
-  private def initImageConfig(imageConfigMap: Map[String, AnyRef]): ImageConfig = {
-    ImageConfig(
-      imageConfigMap.getOrElse("errorCorrectionLevel", "").asInstanceOf[String],
-      imageConfigMap.getOrElse("pixelsPerBlock", 0).asInstanceOf[Int],
-      imageConfigMap.getOrElse("qrCodeMargin", 0).asInstanceOf[Int],
-      imageConfigMap.getOrElse("textFontName", "").asInstanceOf[String],
-      imageConfigMap.getOrElse("textFontSize", 0).asInstanceOf[Int],
-      imageConfigMap.getOrElse("textCharacterSpacing", 0).asInstanceOf[Double],
-      imageConfigMap.getOrElse("imageFormat", config.imageFormat).asInstanceOf[String],
-      imageConfigMap.getOrElse("colourModel", "").asInstanceOf[String],
-      imageConfigMap.getOrElse("imageBorderSize", 0).asInstanceOf[Int],
-      imageConfigMap.getOrElse("qrCodeMarginBottom", config.imageMarginBottom).asInstanceOf[Int],
-      imageConfigMap.getOrElse("imageMargin", config.imageMargin).asInstanceOf[Int]
-    )
-  }
 }
