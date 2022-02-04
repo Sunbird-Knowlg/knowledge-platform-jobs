@@ -370,7 +370,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 		if (httpResponse.status == 200) {
 			val response = JSONUtil.deserialize[Map[String, AnyRef]](httpResponse.body)
 			val result = response.getOrElse("result", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
-			val nodeId = result.getOrElse("node_id", "").asInstanceOf[String]
+			val nodeId = result.getOrElse("identifier", "").asInstanceOf[String]
 			if(nodeId !=null && nodeId.nonEmpty)
 				logger.info("ContentAutoCreator :: updateStatus :: Content failed status successfully updated for identifier : " + identifier)
 			else
