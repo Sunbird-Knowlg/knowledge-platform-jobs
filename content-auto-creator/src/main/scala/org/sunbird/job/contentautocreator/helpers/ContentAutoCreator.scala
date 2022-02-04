@@ -179,8 +179,9 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 			content
 		}
 		else {
-			logger.info("ContentAutoCreator :: read :: Invalid Response received while reading content for : " + identifier + getErrorDetails(httpResponse))
-			throw new ServerException("SYSTEM_ERROR", "Invalid Response received while reading content for : " + identifier + getErrorDetails(httpResponse))
+			val errMsg = getErrorDetails(httpResponse)
+			logger.info("ContentAutoCreator :: read :: Invalid Response received while reading content for : " + identifier + errMsg)
+			throw new ServerException("SYSTEM_ERROR", "Invalid Response received while reading content for : " + identifier + errMsg)
 		}
 	}
 
@@ -211,8 +212,9 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 			logger.info("ContentAutoCreator :: createContent :: Content Created Successfully with identifier : " + contentId)
 			contentId
 		} else {
-			logger.info("ContentAutoCreator :: createContent :: Invalid Response received while creating content for : " + event.identifier + getErrorDetails(httpResponse))
-			throw new ServerException("SYSTEM_ERROR", "Invalid Response received while creating content for :" + event.identifier)
+			val errMsg = getErrorDetails(httpResponse)
+			logger.info("ContentAutoCreator :: createContent :: Invalid Response received while creating content for : " + event.identifier + errMsg)
+			if (errMsg.contains("Object already exists with identifier")) event.identifier else throw new ServerException("SYSTEM_ERROR", "Invalid Response received while creating content for :" + event.identifier + errMsg)
 		}
 	}
 
@@ -256,7 +258,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 			logger.info("ContentAutoCreator :: updateContent :: Content Updated Successfully with identifier : " + contentId)
 		} else {
 			logger.info("ContentAutoCreator :: updateContent :: Invalid Response received while updating content for : " + internalId + getErrorDetails(httpResponse))
-			throw new ServerException("SYSTEM_ERROR", "Invalid Response received while creating content for :" + internalId)
+			throw new ServerException("SYSTEM_ERROR", "Invalid Response received while updating content for :" + internalId)
 		}
 	}
 
@@ -400,7 +402,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 		}
 	}
 
-	private def getErrorDetails(httpResponse: HTTPResponse) = {
+	private def getErrorDetails(httpResponse: HTTPResponse): String = {
 		val response = JSONUtil.deserialize[Map[String, AnyRef]](httpResponse.body)
 		if (null != response) " | Response Code :" + httpResponse.status + " | Result : " + response.getOrElse("result", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]] + " | Error Message : " + response.getOrElse("params", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
 		else " | Null Response Received."
