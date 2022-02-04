@@ -36,7 +36,7 @@ object GoogleDriveUtil {
       new Drive.Builder(httpTransport, jacksonFactory, getCredentials(config)).setApplicationName(gDriveAppName).build
     } catch {
       case e: Exception =>
-        logger.error("Error occurred while creating google drive client ::: " + e.getMessage, e)
+        logger.error("GoogleDriveUtil:: Error occurred while creating google drive client ::: " + e.getMessage, e)
         throw new Exception("Error occurred while creating google drive client ::: " + e.getMessage)
     }
   }
@@ -45,6 +45,7 @@ object GoogleDriveUtil {
   private def getCredentials(config: ContentAutoCreatorConfig): GoogleCredential = {
     val scope = util.Arrays.asList(DriveScopes.DRIVE_FILE, DriveScopes.DRIVE, DriveScopes.DRIVE_METADATA)
     val gDriveCredentials = config.getString("content_auto_creator.g_service_acct_cred","")
+    logger.info("GoogleDriveUtil:: getCredentials:: gDriveCredentials:: " + gDriveCredentials)
     val credentialsStream = new ByteArrayInputStream(gDriveCredentials.getBytes(Charset.forName("UTF-8")))
     val credential = GoogleCredential.fromStream(credentialsStream).createScoped(scope)
     credential

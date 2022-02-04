@@ -40,7 +40,7 @@ class ContentAutoCreatorFunction(config: ContentAutoCreatorConfig, httpUtil: Htt
                               context: ProcessFunction[Event, String]#Context,
                               metrics: Metrics): Unit = {
     metrics.incCounter(config.totalEventsCount)
-    logger.info("ContentAutoCreatorFunction::processElement:: event object : " + event.obj)
+    logger.info("ContentAutoCreatorFunction::processElement:: Processing event for auto creator content upload/approval operation for event object : " + event.obj)
     logger.info("ContentAutoCreatorFunction::processElement:: event context : " + event.context)
     logger.info("ContentAutoCreatorFunction::processElement:: event edata : " + event.eData)
     if (event.isValid(config)) {
