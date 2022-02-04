@@ -193,7 +193,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 				ContentAutoCreatorConstants.ORIGIN_DATA -> Map[String,AnyRef](ContentAutoCreatorConstants.IDENTIFIER -> event.identifier,
 					ContentAutoCreatorConstants.REPOSITORY -> event.repository)) - ContentAutoCreatorConstants.CONTENT_TYPE
 		}
-		logger.info("ContentAutoCreator :: createContent :: updateMetadataFields : " + createMetadataFields)
+		logger.info("ContentAutoCreator :: createContent :: createMetadataFields : " + createMetadataFields)
 		val reqMap = new java.util.HashMap[String, AnyRef]() {
 			put(ContentAutoCreatorConstants.REQUEST, new java.util.HashMap[String, AnyRef]() {
 					put(ContentAutoCreatorConstants.CONTENT, createMetadataFields)
