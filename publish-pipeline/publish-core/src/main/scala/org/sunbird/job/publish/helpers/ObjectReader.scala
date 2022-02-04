@@ -15,6 +15,7 @@ trait ObjectReader {
     val metadata = getMetadata(identifier, mimeType, publishType, pkgVersion)
     logger.info("Reading metadata for: " + identifier + " with metadata: " + metadata)
     val extData = getExtData(identifier, pkgVersion, mimeType, readerConfig)
+    logger.info("Reading extData for: " + identifier + " with extData: " + extData)
     new ObjectData(identifier, metadata, extData.getOrElse(ObjectExtData()).data, extData.getOrElse(ObjectExtData()).hierarchy)
   }
 
