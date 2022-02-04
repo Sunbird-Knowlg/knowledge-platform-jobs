@@ -52,7 +52,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 					internalId = createContent(event, createMetadata, config, httpUtil)
 					updateContent(event.channel, internalId, updateMetadata, config, httpUtil, cloudStorageUtil)
 					if (!stage.equalsIgnoreCase("create")) {
-						uploadContent(event.channel, internalId, updateMetadata, config, httpUtil, cloudStorageUtil)
+						uploadContent(event.channel, internalId, event.artifactUrl, event.mimeType, config, httpUtil, cloudStorageUtil)
 						linkToCollection = true
 						delay(delayUpload)
 						reviewContent(event.channel, internalId, config, httpUtil)
@@ -64,7 +64,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 				case "update" =>
 					updateContent(event.channel, internalId, updateMetadata, config, httpUtil, cloudStorageUtil)
 					if (!stage.equalsIgnoreCase("update")) {
-						uploadContent(event.channel, internalId, updateMetadata, config, httpUtil, cloudStorageUtil)
+						uploadContent(event.channel, internalId, event.artifactUrl, event.mimeType, config, httpUtil, cloudStorageUtil)
 						linkToCollection = true
 						delay(delayUpload)
 						reviewContent(event.channel, internalId, config, httpUtil)
@@ -262,9 +262,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 		}
 	}
 
-	private def uploadContent(channel: String, internalId: String, updateMetadata: Map[String,AnyRef], config: ContentAutoCreatorConfig, httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil): Unit = {
-		val sourceUrl: String = updateMetadata.getOrDefault("artifactUrl", "").asInstanceOf[String].trim
-		val mimeType: String = updateMetadata.getOrDefault("mimeType", "").asInstanceOf[String]
+	private def uploadContent(channel: String, internalId: String, sourceUrl: String, mimeType: String, config: ContentAutoCreatorConfig, httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil): Unit = {
 		val allowedArtifactSources: List[String] = config.artifactAllowedSources
 
 		if(allowedArtifactSources.nonEmpty && !allowedArtifactSources.exists(x => sourceUrl.contains(x)))
