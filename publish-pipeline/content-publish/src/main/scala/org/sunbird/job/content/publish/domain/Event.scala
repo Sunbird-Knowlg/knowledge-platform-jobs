@@ -21,6 +21,8 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 
   def objectType: String = readOrDefault[String]("edata.metadata.objectType", "")
 
+  def contentType: String = readOrDefault[String]("edata.contentType", "")
+
   def publishType: String = readOrDefault[String]("edata.publish_type", "")
 
   def lastPublishedBy: String = readOrDefault[String]("edata.metadata.lastPublishedBy", "")
@@ -31,6 +33,8 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
   }
 
   def validEvent(config: ContentPublishConfig): Boolean = {
-    (StringUtils.equals("publish", action) && StringUtils.isNotBlank(identifier)) && (config.supportedObjectType.contains(objectType) && config.supportedMimeType.contains(mimeType))
+    ((StringUtils.equals("publish", action) && StringUtils.isNotBlank(identifier))
+      && (config.supportedObjectType.contains(objectType) && config.supportedMimeType.contains(mimeType))
+      && !StringUtils.equalsIgnoreCase("Asset", contentType))
   }
 }

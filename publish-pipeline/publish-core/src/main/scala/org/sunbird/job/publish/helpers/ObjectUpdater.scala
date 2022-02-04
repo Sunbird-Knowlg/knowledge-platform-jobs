@@ -127,7 +127,7 @@ trait ObjectUpdater {
       val selectId = QueryBuilder.select()
       selectId.fcall("blobAsText", QueryBuilder.column("body")).as("body")
       val selectWhereId: Select.Where = selectId.from(readerConfig.keyspace, readerConfig.table).where().and(QueryBuilder.eq("content_id", identifier))
-      logger.info("ObjectUpdater:: getContentBody:: Cassandra Fetch Query :: " + selectWhere.toString)
+      logger.info("ObjectUpdater:: getContentBody:: Cassandra Fetch Query :: " + selectWhereId.toString)
       val rowId = cassandraUtil.findOne(selectWhereId.toString)
       if (null != rowId) rowId.getString("body") else ""
     }
