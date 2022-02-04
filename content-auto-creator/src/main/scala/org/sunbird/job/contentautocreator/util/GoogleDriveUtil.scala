@@ -45,7 +45,6 @@ object GoogleDriveUtil {
   private def getCredentials(config: ContentAutoCreatorConfig): GoogleCredential = {
     val scope = util.Arrays.asList(DriveScopes.DRIVE_FILE, DriveScopes.DRIVE, DriveScopes.DRIVE_METADATA)
     val gDriveCredentials = config.getString("content_auto_creator.g_service_acct_cred","")
-    logger.info("GoogleDriveUtil:: getCredentials:: gDriveCredentials:: " + gDriveCredentials)
     val credentialsStream = new ByteArrayInputStream(gDriveCredentials.getBytes(Charset.forName("UTF-8")))
     val credential = GoogleCredential.fromStream(credentialsStream).createScoped(scope)
     credential
