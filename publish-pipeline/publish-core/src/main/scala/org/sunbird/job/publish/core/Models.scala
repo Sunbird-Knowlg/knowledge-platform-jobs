@@ -1,5 +1,7 @@
 package org.sunbird.job.publish.core
 
+import java.util
+
 class ObjectData(val identifier: String, val metadata: Map[String, AnyRef], val extData: Option[Map[String, AnyRef]] = None, val hierarchy: Option[Map[String, AnyRef]] = None) {
 
   val dbId: String = metadata.getOrElse("identifier", identifier).asInstanceOf[String]
@@ -19,3 +21,8 @@ case class ExtDataConfig(keyspace: String, table: String, primaryKey: List[Strin
 case class DefinitionConfig(supportedVersion: Map[String, AnyRef], basePath: String)
 
 case class ObjectExtData(data: Option[Map[String, AnyRef]] = None, hierarchy: Option[Map[String, AnyRef]] = None)
+
+case class PublishCoreMetadata(identifier: String, pkgVersion: String, publishType: String, eData: Map[String, AnyRef], context: Map[String, AnyRef], obj: Map[String, AnyRef], publishChain: List[Map[String, AnyRef]])
+
+case class PublishChainEvent(eid: String, ets: Long, mid: String, actor: util.Map[String, AnyRef], context: util.Map[String, AnyRef], obj: util.Map[String, AnyRef], edata: util.Map[String, AnyRef])
+

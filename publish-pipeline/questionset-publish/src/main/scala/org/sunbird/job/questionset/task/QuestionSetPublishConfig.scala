@@ -23,6 +23,8 @@ class QuestionSetPublishConfig(override val config: Config) extends PublishConfi
 	val kafkaInputTopic: String = config.getString("kafka.input.topic")
 	val postPublishTopic: String = config.getString("kafka.post_publish.topic")
 	val inputConsumerName = "questionset-publish-consumer"
+	val interactiveContentPublishTopic : String = config.getString("kafka.interactive_content_publish.topic")
+
 
 	// Parallelism
 	override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")

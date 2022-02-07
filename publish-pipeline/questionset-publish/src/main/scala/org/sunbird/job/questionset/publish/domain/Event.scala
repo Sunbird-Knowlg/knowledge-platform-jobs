@@ -30,6 +30,9 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
     pkgVersion.toDouble
   }
 
+	def publishChainMetadata : String = readOrDefault[String]("edata.metadata.publishChainMetadata", "");
+
+
 	def validEvent(): Boolean = {
 		(StringUtils.equals("publish", action) && StringUtils.isNotBlank(objectId)) && (objectTypes.contains(objectType) && mimeTypes.contains(mimeType))
 	}

@@ -2,6 +2,7 @@ package org.sunbird.job.content.function
 
 import akka.dispatch.ExecutionContexts
 import com.google.gson.reflect.TypeToken
+import org.apache.commons.lang3.StringUtils
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
@@ -16,7 +17,7 @@ import org.sunbird.job.exception.InvalidInputException
 import org.sunbird.job.helper.FailedEventHelper
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
 import org.sunbird.job.publish.helpers.EcarPackageType
-import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, Neo4JUtil}
+import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, JSONUtil, Neo4JUtil}
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import java.lang.reflect.Type
@@ -85,7 +86,8 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
           // Clear redis cache
           cache.del(data.identifier)
           val enrichedObj = enrichObject(ecmlVerifiedObj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
-          val objWithEcar = getObjectWithEcar(enrichedObj, if (enrichedObj.getString("contentDisposition", "").equalsIgnoreCase("online-only")) List(EcarPackageType.SPINE) else pkgTypes)(ec, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
+          val objectWithPublishChain = getObjectWithPublishChain(data, enrichedObj)
+          val objWithEcar = getObjectWithEcar(objectWithPublishChain, if (enrichedObj.getString("contentDisposition", "").equalsIgnoreCase("online-only")) List(EcarPackageType.SPINE) else pkgTypes)(ec, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
           logger.info("Ecar generation done for Content: " + objWithEcar.identifier)
           saveOnSuccess(objWithEcar)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
           pushStreamingUrlEvent(enrichedObj, context)(metrics)
@@ -160,5 +162,15 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
     val failedEvent = if (error == null) getFailedEvent(event.jobName, event.getMap(), errorMessage) else getFailedEvent(event.jobName, event.getMap(), error)
     context.output(config.failedEventOutTag, failedEvent)
     metrics.incCounter(config.contentPublishFailedEventCount)
+  }
+
+  def getObjectWithPublishChain(data: Event, obj: ObjectData) : ObjectData = {
+    if (StringUtils.isNotEmpty(data.publishChainMetadata)) {
+      val publishChainEvent: Map[String, AnyRef] = JSONUtil.deserialize[Map[String, AnyRef]](data.publishChainMetadata)
+      val eData: Map[String, AnyRef] = publishChainEvent.getOrElse("eData", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
+      val publishChain: List[Map[String, AnyRef]] = eData.getOrElse("publishchain", List[Map[String, AnyRef]]()).asInstanceOf[List[Map[String, AnyRef]]]
+      return new ObjectData(obj.identifier, obj.metadata ++ Map("publishchain" -> publishChain), obj.extData, obj.hierarchy)
+    }
+    else obj
   }
 }
