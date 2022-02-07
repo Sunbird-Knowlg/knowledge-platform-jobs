@@ -17,7 +17,7 @@
         <module>publish-core</module>
         <module>questionset-publish</module>
         <module>content-publish</module>
-        <module>interactivecontent-publish</module>
+        <module>interactive-content-publish</module>
     </modules>
 
     <build>
