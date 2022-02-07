@@ -77,7 +77,7 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
     messages.toList
   }
 
-  def getObjectWithEcar(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
+  def getObjectWithEcar(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, neo4JUtil: Neo4JUtil, cloudStorageUtil: CloudStorageUtil, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
     try {
       logger.info("ContentPublisher:getObjectWithEcar: Ecar generation done for Content: " + data.identifier)
 
