@@ -86,7 +86,7 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
         logger.info("processElement :::  obj metadata post enrichment :: " + ScalaJsonUtil.serialize(enrichedObj.metadata))
         logger.info("processElement :::  obj hierarchy post enrichment :: " + ScalaJsonUtil.serialize(enrichedObj.hierarchy.get))
         // Generate ECAR
-        val objWithEcar = generateECAR(enrichedObj, pkgTypes)(ec, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
+        val objWithEcar = generateECAR(enrichedObj, pkgTypes)(ec, neo4JUtil, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
         // Generate PDF URL
         val updatedObj = generatePreviewUrl(objWithEcar, qList)(httpUtil, cloudStorageUtil)
         saveOnSuccess(updatedObj)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
@@ -119,7 +119,7 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
     messages.toList
   }
 
-  def generateECAR(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
+  def generateECAR(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, neo4JUtil: Neo4JUtil, cloudStorageUtil: CloudStorageUtil, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
     val ecarMap: Map[String, String] = generateEcar(data, pkgTypes)
     val variants: java.util.Map[String, java.util.Map[String, String]] = ecarMap.map { case (key, value) => key.toLowerCase -> Map[String, String]("ecarUrl" -> value, "size" -> httpUtil.getSize(value).toString).asJava }.asJava
     logger.info("QuestionSetPublishFunction ::: generateECAR ::: ecar map ::: " + ecarMap)
