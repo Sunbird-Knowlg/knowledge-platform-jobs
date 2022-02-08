@@ -1,9 +1,11 @@
 package org.sunbird.job.publish.spec
 
 import com.typesafe.config.{Config, ConfigFactory}
+import org.mockito.Mockito
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
+import org.scalatestplus.mockito.MockitoSugar.mock
 import org.sunbird.job.domain.`object`.DefinitionCache
-import org.sunbird.job.util.{CloudStorageUtil, ScalaJsonUtil}
+import org.sunbird.job.util.{CloudStorageUtil, Neo4JUtil, ScalaJsonUtil}
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ObjectData}
 import org.sunbird.job.publish.helpers.EcarGenerator
@@ -24,6 +26,7 @@ class EcarGeneratorSpec extends FlatSpec with BeforeAndAfterAll with Matchers {
   val config: Config = ConfigFactory.load("test.conf").withFallback(ConfigFactory.systemEnvironment())
   implicit val publishConfig: PublishConfig = new PublishConfig(config, "")
   implicit val cloudStorageUtil: CloudStorageUtil = new CloudStorageUtil(publishConfig)
+  implicit val mockNeo4JUtil: Neo4JUtil = mock[Neo4JUtil](Mockito.withSettings().serializable())
   val definitionBasePath: String = if (config.hasPath("schema.basePath")) config.getString("schema.basePath") else "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local"
   val schemaSupportVersionMap = if (config.hasPath("schema.supportedVersion")) config.getObject("schema.supportedVersion").unwrapped().asScala.toMap else Map[String, AnyRef]()
   implicit val defCache = new DefinitionCache()

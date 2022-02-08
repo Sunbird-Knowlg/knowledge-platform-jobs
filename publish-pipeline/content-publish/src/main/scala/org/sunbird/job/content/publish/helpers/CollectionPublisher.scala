@@ -448,11 +448,10 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     val categoryMap = contentConfig.categoryMap
     val contentType = input.getOrElse("contentType", "").asInstanceOf[String]
     val primaryCategory = input.getOrElse("primaryCategory","").asInstanceOf[String]
-    val (updatedContentType, updatedPrimaryCategory): (String, String) = (contentType, primaryCategory) match {
-      case (x: String, _) => (x, categoryMap.getOrDefault(x,"").asInstanceOf[String])
-      case (_, y: String) => (categoryMap.asScala.filter(entry => StringUtils.equalsIgnoreCase(entry._2.asInstanceOf[String], y)).keys.headOption.getOrElse(""), y)
-      case _ => (contentType, primaryCategory)
-    }
+    val (updatedContentType, updatedPrimaryCategory): (String, String) =
+      if(contentType.nonEmpty && (primaryCategory.isEmpty || primaryCategory.isBlank)) { (contentType, categoryMap.getOrDefault(contentType,"").asInstanceOf[String]) }
+      else if((contentType.isEmpty || contentType.isBlank) && primaryCategory.nonEmpty) { (categoryMap.asScala.filter(entry => StringUtils.equalsIgnoreCase(entry._2.asInstanceOf[String], primaryCategory)).keys.headOption.getOrElse(""), primaryCategory) }
+      else (contentType, primaryCategory)
 
     input ++ Map("contentType" -> updatedContentType, "primaryCategory" -> updatedPrimaryCategory)
   }
