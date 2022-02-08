@@ -88,7 +88,7 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
     if (ignoreValidationMimeType.contains(obj.mimeType)) {
       // Validation not required. Nothing to do.
     } else if (obj.mimeType.equalsIgnoreCase(MimeType.ECML_Archive)) { // Either 'body' or 'artifactUrl' is needed
-     if ((obj.extData.isEmpty || !obj.extData.get.contains("body") || obj.extData.get.getOrElse("body", "").asInstanceOf[String].isEmpty || obj.extData.get.getOrElse("body", "").asInstanceOf[String].isBlank) && (artifactUrl.isEmpty || artifactUrl.isBlank)) {
+     if ((obj.extData.isEmpty || !obj.extData.get.contains("body") || obj.extData.get.get("body") == null || obj.extData.get.getOrElse("body", "").asInstanceOf[String].isEmpty || obj.extData.get.getOrElse("body", "").asInstanceOf[String].isBlank) && (artifactUrl.isEmpty || artifactUrl.isBlank)) {
        messages += s"""Either 'body' or 'artifactUrl' are required for processing of ECML content for : $identifier"""
      }
     } else {
