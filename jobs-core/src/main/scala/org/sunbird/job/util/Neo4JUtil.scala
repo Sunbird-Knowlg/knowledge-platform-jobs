@@ -1,17 +1,17 @@
 package org.sunbird.job.util
 
-import java.util
-
-import org.neo4j.driver.v1.{Config, GraphDatabase}
+import org.neo4j.driver.v1.{Config, Driver, GraphDatabase, StatementResult}
 import org.slf4j.LoggerFactory
+
+import java.util
 import scala.collection.JavaConverters._
 
-class Neo4JUtil(routePath: String, graphId: String) {
+class Neo4JUtil(routePath: String, graphId: String) extends Serializable {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[Neo4JUtil])
 
   val maxIdleSession = 20
-  val driver = GraphDatabase.driver(routePath, getConfig)
+  val driver: Driver = GraphDatabase.driver(routePath, getConfig)
 
   def getConfig: Config = {
     val config = Config.build
@@ -33,7 +33,7 @@ class Neo4JUtil(routePath: String, graphId: String) {
 
   def getNodeProperties(identifier: String): java.util.Map[String, AnyRef] = {
     val session = driver.session()
-    val query = s"""MATCH (n:${graphId}{IL_UNIQUE_ID:"${identifier}"}) return n;"""
+    val query = s"""MATCH (n:$graphId{IL_UNIQUE_ID:"$identifier"}) return n;"""
     val statementResult = session.run(query)
     if (statementResult.hasNext)
       statementResult.single().get("n").asMap()
@@ -42,7 +42,7 @@ class Neo4JUtil(routePath: String, graphId: String) {
 
   def getNodePropertiesWithObjectType(objectType: String): util.List[util.Map[String, AnyRef]] = {
     val session = driver.session()
-    val query = s"""MATCH (n:${graphId}) where n.IL_FUNC_OBJECT_TYPE = "${objectType}" AND n.IL_SYS_NODE_TYPE="DATA_NODE" return n;"""
+    val query = s"""MATCH (n:$graphId) where n.IL_FUNC_OBJECT_TYPE = "$objectType" AND n.IL_SYS_NODE_TYPE="DATA_NODE" return n;"""
     val statementResult = session.run(query)
     if (statementResult.hasNext)
       statementResult.list().asScala.toList.map(record => record.get("n").asMap()).asJava
@@ -71,7 +71,7 @@ class Neo4JUtil(routePath: String, graphId: String) {
     else throw new Exception(s"Unable to update the node with identifier: $identifier")
   }
 
-  def executeQuery(query: String) = {
+  def executeQuery(query: String): StatementResult = {
     val session = driver.session()
     session.run(query)
   }
@@ -83,7 +83,7 @@ class Neo4JUtil(routePath: String, graphId: String) {
 
   def updateNode(identifier: String, metadata: Map[String, AnyRef]): Unit = {
     val query = s"""MATCH (n:$graphId {IL_UNIQUE_ID:"$identifier"}) SET n = """ + "$properties return n;"
-    logger.info(s"Query for updating metadata for identifier : ${identifier} is : ${query}")
+    logger.info(s"Query for updating metadata for identifier : $identifier is : $query")
     val session = driver.session()
     val properties: java.util.Map[String, AnyRef] = Map[String, AnyRef]("properties" -> metadata.asJava).asJava
     val result = session.run(query, properties)
