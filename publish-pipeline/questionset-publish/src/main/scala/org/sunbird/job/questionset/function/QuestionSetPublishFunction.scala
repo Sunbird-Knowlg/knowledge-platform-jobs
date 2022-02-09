@@ -34,6 +34,7 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 
   private[this] val logger = LoggerFactory.getLogger(classOf[QuestionSetPublishFunction])
   val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
+  val liveStatus = List("Live", "Unlisted")
 
   @transient var ec: ExecutionContext = _
   private val pkgTypes = List(EcarPackageType.SPINE.toString, EcarPackageType.ONLINE.toString, EcarPackageType.FULL.toString)
@@ -135,7 +136,7 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
   }
 
   def isValidChildQuestion(obj: ObjectData, createdBy: String): Boolean = {
-    StringUtils.equalsIgnoreCase("Parent", obj.getString("visibility", "")) || (StringUtils.equalsIgnoreCase("Default", obj.getString("visibility", "")) && !StringUtils.equalsIgnoreCase("Live", obj.getString("status", "")) && StringUtils.equalsIgnoreCase(createdBy, obj.getString("createdBy", "")))
+    StringUtils.equalsIgnoreCase("Parent", obj.getString("visibility", "")) || (StringUtils.equalsIgnoreCase("Default", obj.getString("visibility", "")) && !liveStatus.contains(obj.getString("status", "")) && StringUtils.equalsIgnoreCase(createdBy, obj.getString("createdBy", "")))
   }
 
 }
