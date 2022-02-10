@@ -1,10 +1,10 @@
-package org.sunbird.job.content.task
+package org.sunbird.job.interactivecontent.task
 
 import com.typesafe.config.Config
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.streaming.api.scala.OutputTag
-import org.sunbird.job.content.publish.domain.Event
+import org.sunbird.job.interactivecontent.publish.domain.Event
 import org.sunbird.job.publish.config.PublishConfig
 
 import java.util
@@ -20,9 +20,10 @@ class InteractiveContentPublishConfig(override val config: Config) extends Publi
 
   // Kafka Topics Configuration
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
-  val postPublishTopic: String = config.getString("kafka.post_publish.topic")
+  val questionSetTopic : String = config.getString("kafka.questionset_publish.topic")
+  val contentPublishTopic : String = config.getString("kafka.content_publish.topic")
   val kafkaErrorTopic: String = config.getString("kafka.error.topic")
-  val inputConsumerName = "content-publish-consumer"
+  val inputConsumerName = "interactive-content-publish-consumer"
 
   // Parallelism
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
@@ -36,15 +37,9 @@ class InteractiveContentPublishConfig(override val config: Config) extends Publi
   val publishChainFailedEventCount = "publish-chain-event-failed-count"
 
 
-  // Redis Configurations
-  val nodeStore: Int = config.getInt("redis.database.contentCache.id")
-
   // Out Tags
-  val publishChainEventOutTag: OutputTag[Event] = OutputTag[Event]("event-publish")
+  val publishChainEventOutTag: OutputTag[Event] = OutputTag[Event]("interactive-content-publish")
   val failedEventOutTag: OutputTag[String] = OutputTag[String]("failed-event")
 
-  // Publish Chain Event Topics
-  val questionSetTopic : String = config.getString("kafka.questionset_publish.topic")
-  val contentPublishTopic : String = config.getString("kafka.content_publish.topic")
 
 }

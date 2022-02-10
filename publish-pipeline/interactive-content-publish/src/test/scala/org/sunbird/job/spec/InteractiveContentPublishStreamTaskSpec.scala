@@ -15,8 +15,8 @@ import org.mockito.ArgumentMatchers.anyString
 import org.mockito.Mockito
 import org.mockito.Mockito.when
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.content.publish.domain.Event
-import org.sunbird.job.content.task.{InteractiveContentPublishConfig, InteractiveContentPublishStreamTask}
+import org.sunbird.job.interactivecontent.publish.domain.Event
+import org.sunbird.job.interactivecontent.task.{InteractiveContentPublishConfig, InteractiveContentPublishStreamTask}
 import org.sunbird.job.fixture.EventFixture
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, Neo4JUtil}

@@ -166,10 +166,10 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
 
   def getObjectWithPublishChain(data: Event, obj: ObjectData) : ObjectData = {
     if (StringUtils.isNotEmpty(data.publishChainMetadata)) {
-      val publishChainEvent: Map[String, AnyRef] = JSONUtil.deserialize[Map[String, AnyRef]](data.publishChainMetadata)
-      val eData: Map[String, AnyRef] = publishChainEvent.getOrElse("eData", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
+      val publishChainMetadata: Map[String, AnyRef] = JSONUtil.deserialize[Map[String, AnyRef]](data.publishChainMetadata)
+      val eData: Map[String, AnyRef] = publishChainMetadata.getOrElse("edata", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
       val publishChain: List[Map[String, AnyRef]] = eData.getOrElse("publishchain", List[Map[String, AnyRef]]()).asInstanceOf[List[Map[String, AnyRef]]]
-      return new ObjectData(obj.identifier, obj.metadata ++ Map("publishchain" -> publishChain), obj.extData, obj.hierarchy)
+      new ObjectData(obj.identifier, obj.metadata ++ Map("publishchain" -> publishChain), obj.extData, obj.hierarchy)
     }
     else obj
   }

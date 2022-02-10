@@ -1,4 +1,4 @@
-package org.sunbird.job.content.task
+package org.sunbird.job.interactivecontent.task
 
 import com.typesafe.config.ConfigFactory
 import org.apache.flink.api.common.typeinfo.TypeInformation
@@ -6,9 +6,9 @@ import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.content.function.{InteractiveContentFunction, PublishEventRouter}
-import org.sunbird.job.content.publish.domain.Event
-import org.sunbird.job.util.{FlinkUtil, HttpUtil}
+import org.sunbird.job.interactivecontent.function.{InteractiveContentFunction, PublishEventRouter}
+import org.sunbird.job.interactivecontent.publish.domain.Event
+import org.sunbird.job.util.HttpUtil
 
 import java.io.File
 import java.util
@@ -30,7 +30,7 @@ class InteractiveContentPublishStreamTask(config: InteractiveContentPublishConfi
       .setParallelism(config.eventRouterParallelism)
 
     val publishChain = processStreamTask.getSideOutput(config.publishChainEventOutTag).process(new InteractiveContentFunction(config))
-      .name("event-publish-process").uid("event-publish-process").setParallelism(1)
+      .name("interactive-content-publish-process").uid("interactive-content-publish-process").setParallelism(1)
     publishChain.getSideOutput(config.failedEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
 
     env.execute(config.jobName)

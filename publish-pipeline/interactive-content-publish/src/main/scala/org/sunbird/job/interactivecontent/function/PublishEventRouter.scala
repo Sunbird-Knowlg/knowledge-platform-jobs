@@ -1,11 +1,11 @@
-package org.sunbird.job.content.function
+package org.sunbird.job.interactivecontent.function
 
 import com.google.gson.reflect.TypeToken
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
-import org.sunbird.job.content.publish.domain.Event
-import org.sunbird.job.content.task.InteractiveContentPublishConfig
+import org.sunbird.job.interactivecontent.publish.domain.Event
+import org.sunbird.job.interactivecontent.task.InteractiveContentPublishConfig
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import java.lang.reflect.Type

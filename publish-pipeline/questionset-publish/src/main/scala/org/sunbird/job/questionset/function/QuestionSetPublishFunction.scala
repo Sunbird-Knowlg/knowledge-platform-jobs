@@ -91,7 +91,7 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
         // Generate PDF URL
         val updatedObj = generatePreviewUrl(objWithEcar, qList)(httpUtil, cloudStorageUtil)
         saveOnSuccess(updatedObj)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
-        publishNextEvent(data,objWithEcar.metadata.getOrElse("downloadUrl","").toString)
+        publishNextEvent(data, objWithEcar.metadata.getOrElse("downloadUrl", "").toString)
         logger.info("QuestionSet publishing completed successfully for : " + data.identifier)
         metrics.incCounter(config.questionSetPublishSuccessEventCount)
       } else {
@@ -140,18 +140,18 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
     StringUtils.equalsIgnoreCase("Parent", obj.getString("visibility", ""))
   }
 
-  def publishNextEvent(data: PublishMetadata,downloadUrl:String) = {
+  def publishNextEvent(data: PublishMetadata, downloadUrl: String) = {
     if (StringUtils.isNotEmpty(data.publishChainMetadata)) {
       implicit val oec = new OntologyEngineContext()
       val publishChainEvent: Map[String, AnyRef] = JSONUtil.deserialize[Map[String, AnyRef]](data.publishChainMetadata)
-      val eData: Map[String, AnyRef] = publishChainEvent.getOrElse("eData", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
+      val eData: Map[String, AnyRef] = publishChainEvent.getOrElse("edata", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
       val publishChain: List[Map[String, AnyRef]] = eData.getOrElse("publishchain", List[Map[String, AnyRef]]()).asInstanceOf[List[Map[String, AnyRef]]]
       val updatedList = ListBuffer[mutable.Map[String, AnyRef]]()
       for (publishObject: Map[String, AnyRef] <- publishChain) {
         val publishObj: mutable.Map[String, AnyRef] = collection.mutable.Map(publishObject.toSeq: _*)
         if (StringUtils.equals(publishObject.getOrElse("identifier", "").toString, data.identifier)) {
           publishObj.put("state", "Live")
-          publishObj.put("downloadUrl",downloadUrl)
+          publishObj.put("downloadUrl", downloadUrl)
         }
         updatedList += publishObj;
 
@@ -161,7 +161,7 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
       val updatedPublishChainEvent: mutable.Map[String, AnyRef] = collection.mutable.Map(publishChainEvent.toSeq: _*)
       updatedEData.put("publishchain", updatedList.toList)
       updatedPublishChainEvent.put("edata", updatedEData)
-      EventGenerator.pushPublishChainEvent(updatedPublishChainEvent,updatedList.toList, config.interactiveContentPublishTopic)
+      EventGenerator.pushPublishChainEvent(updatedPublishChainEvent, updatedList.toList, config.interactiveContentPublishTopic)
     }
   }
 

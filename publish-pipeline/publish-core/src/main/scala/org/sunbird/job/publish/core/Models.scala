@@ -22,7 +22,5 @@ case class DefinitionConfig(supportedVersion: Map[String, AnyRef], basePath: Str
 
 case class ObjectExtData(data: Option[Map[String, AnyRef]] = None, hierarchy: Option[Map[String, AnyRef]] = None)
 
-case class PublishCoreMetadata(identifier: String, pkgVersion: String, publishType: String, eData: Map[String, AnyRef], context: Map[String, AnyRef], obj: Map[String, AnyRef], publishChain: List[Map[String, AnyRef]])
-
-case class PublishChainEvent(eid: String, ets: Long, mid: String, actor: util.Map[String, AnyRef], context: util.Map[String, AnyRef], obj: util.Map[String, AnyRef], edata: util.Map[String, AnyRef])
+case class Event(eid: String, ets: Long, mid: String, actor: util.Map[String, Any], context: util.Map[String, Any], obj: util.Map[String, Any], edata: util.Map[String, AnyRef])
 

@@ -6,9 +6,9 @@ import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.junit.Assert.assertNotNull
 import org.mockito.{ArgumentMatchers, Mockito}
 import org.sunbird.job.Metrics
-import org.sunbird.job.content.function.InteractiveContentFunction
-import org.sunbird.job.content.publish.domain.Event
-import org.sunbird.job.content.task.InteractiveContentPublishConfig
+import org.sunbird.job.interactivecontent.function.InteractiveContentFunction
+import org.sunbird.job.interactivecontent.publish.domain.Event
+import org.sunbird.job.interactivecontent.task.InteractiveContentPublishConfig
 import org.sunbird.job.exception.KafkaClientException
 import org.sunbird.job.fixture.EventFixture
 import org.sunbird.job.util.{JSONUtil, KafkaClientUtil}

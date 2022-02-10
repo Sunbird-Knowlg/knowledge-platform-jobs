@@ -1,4 +1,4 @@
-package org.sunbird.job.content.publish.domain
+package org.sunbird.job.interactivecontent.publish.domain
 
 import org.apache.commons.lang3.StringUtils
 import org.sunbird.job.domain.reader.JobRequest
@@ -21,12 +21,7 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 
   def publishChainMetadata : String = readOrDefault[String]("edata.metadata.publishChainMetadata", "");
 
-  def pkgVersion: Double = {
-    val pkgVersion: Number = readOrDefault[Number]("edata.metadata.pkgVersion", 0)
-    pkgVersion.doubleValue()
-  }
-
   def validPublishChainEvent(): Boolean = {
-    (StringUtils.equals("publishchain", action) && !publishChain.isEmpty)
+    (StringUtils.equals("publishchain", action) && publishChain.nonEmpty)
   }
 }
