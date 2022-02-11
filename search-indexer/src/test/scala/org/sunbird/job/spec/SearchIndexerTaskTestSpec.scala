@@ -46,7 +46,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
     super.beforeAll()
 
     embeddedElastic = EmbeddedElastic.builder()
-      .withElasticVersion("6.2.4")
+      .withElasticVersion("6.8.22")
       .withEsJavaOpts("-Xms128m -Xmx512m")
       .build()
       .start()
