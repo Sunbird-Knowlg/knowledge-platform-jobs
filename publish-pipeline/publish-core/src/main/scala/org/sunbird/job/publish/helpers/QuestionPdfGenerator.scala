@@ -95,7 +95,8 @@ trait QuestionPdfGenerator extends ObjectTemplateGenerator {
 
   private def generateHtmlString(questionsMap: Map[String, AnyRef], title: String, templateName: String): String = {
     logger.info("D:: QuestionPdfGenerator ::: generateHtmlString :: questionsMap ::: "+questionsMap)
-    if (questionsMap.isEmpty) return ""
+    val filteredQMap = questionsMap.filter(entry => entry._2.asInstanceOf[Map[String, AnyRef]].nonEmpty)
+    if(filteredQMap.isEmpty) return ""
     val questionString: String = questionsMap.map(entry =>
       s"""
          |<div class='question-section'>
@@ -115,7 +116,7 @@ trait QuestionPdfGenerator extends ObjectTemplateGenerator {
          |${entry._2.asInstanceOf[Map[String, AnyRef]].getOrElse("question", "")}
          |</div>
          |<div class='answer'>
-         |${entry._2.asInstanceOf[Map[String, AnyRef]].getOrElse("answer", "").asInstanceOf[List[String]].mkString(", ")}
+         |${entry._2.asInstanceOf[Map[String, AnyRef]].getOrElse("answer", List()).asInstanceOf[List[String]].mkString(", ")}
          |</div>
             """.stripMargin
     ).reduce(_ + _)
