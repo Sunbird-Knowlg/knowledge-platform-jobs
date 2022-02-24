@@ -47,7 +47,7 @@
             <scope>test</scope>
             <exclusions>
                 <exclusion>
-                    <artifactId>jackson-module-scala_2.12</artifactId>
+                    <artifactId>jackson-module-scala_${scala.version}</artifactId>
                     <groupId>com.fasterxml.jackson.module</groupId>
                 </exclusion>
             </exclusions>
