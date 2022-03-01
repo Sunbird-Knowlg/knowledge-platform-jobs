@@ -1,4 +1,4 @@
-FROM anandp504/flink:1.13.6-scala_2.12-java11
+FROM anandp504/flink:1.12.0-scala_2.12-java11
 
 USER root
 RUN apt-get update
