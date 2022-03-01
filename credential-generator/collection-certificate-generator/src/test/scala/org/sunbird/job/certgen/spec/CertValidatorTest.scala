@@ -16,7 +16,7 @@ import org.sunbird.spec.BaseTestSpec
 class CertValidatorTest extends BaseTestSpec{
   var cassandraUtil: CassandraUtil = _
   val config: Config = ConfigFactory.load("test.conf")
-  lazy val jobConfig: CertificateGeneratorConfig = new CertificateGeneratorConfig(config)
+  val jobConfig: CertificateGeneratorConfig = new CertificateGeneratorConfig(config)
   val httpUtil: HttpUtil = new HttpUtil
   val mockHttpUtil:HttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
   val metricJson = s"""{"${jobConfig.enrollmentDbReadCount}": 0, "${jobConfig.skippedEventCount}": 0}"""
@@ -44,13 +44,13 @@ class CertValidatorTest extends BaseTestSpec{
   
   "CertValidator isNotIssued" should "return true if re-Issued" in {
     val event = new Event(JSONUtil.deserialize[java.util.Map[String, Any]](EventFixture.EVENT_1), 0, 0)
-    val isCertificateIssued = new CertValidator().isNotIssued(event)(jobConfig, mockMetrics, cassandraUtil)
+    val isCertificateIssued = new CertValidator(jobConfig).isNotIssued(event)(jobConfig, mockMetrics, cassandraUtil)
     assert(true == isCertificateIssued)
   }
 
   "CertValidator isNotIssued" should "return false if already issued" in {
     val event = new Event(JSONUtil.deserialize[java.util.Map[String, Any]](EventFixture.EVENT_3), 0, 0)
-    val isCertificateIssued = new CertValidator().isNotIssued(event)(jobConfig, mockMetrics, cassandraUtil)
+    val isCertificateIssued = new CertValidator(jobConfig).isNotIssued(event)(jobConfig, mockMetrics, cassandraUtil)
     assert(false == isCertificateIssued)
   }
 

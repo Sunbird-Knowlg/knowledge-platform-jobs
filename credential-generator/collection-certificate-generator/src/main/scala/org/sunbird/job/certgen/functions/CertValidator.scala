@@ -20,7 +20,7 @@ import scala.collection.JavaConverters._
   * This class contains method to validate certificate api request
   */
 
-class CertValidator {
+class CertValidator(config: CertificateGeneratorConfig) {
 
   private var publicKeys: List[String] = _
   private val TAG_REGX: String = "[!@#$%^&*()+=,.?/\":;'{}|<>\\s-]"
@@ -35,7 +35,9 @@ class CertValidator {
     checkMandatoryParamsPresent(event.eData, "edata", List(JsonKeys.NAME, JsonKeys.SVG_TEMPLATE))
     validateCertData(event.data)
     validateCertIssuer(event.issuer)
-    validateCertSignatoryList(event.signatoryList)
+    if (config.enableSignatoryListValidation){
+      validateCertSignatoryList(event.signatoryList)
+    }
     validateCriteria(event.criteria)
     validateTagId(event.tag)
     val basePath: String = event.basePath

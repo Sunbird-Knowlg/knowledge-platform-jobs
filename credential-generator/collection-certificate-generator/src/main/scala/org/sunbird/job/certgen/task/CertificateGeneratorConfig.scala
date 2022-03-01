@@ -22,6 +22,7 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
   val kafkaAuditEventTopic: String = config.getString("kafka.output.audit.topic")
 
+  val enableSignatoryListValidation: Boolean = if(config.hasPath("validation.signatorylist.enabled")) config.getBoolean("validation.signatorylist.enabled") else true
 
   // Producers
   val certificateGeneratorAuditProducer = "collection-certificate-generator-audit-events-sink"
