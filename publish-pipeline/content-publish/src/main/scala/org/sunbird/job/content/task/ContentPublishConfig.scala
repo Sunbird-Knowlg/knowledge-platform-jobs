@@ -90,8 +90,8 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
   val categoryMap: java.util.Map[String, AnyRef] = if (config.hasPath("contentTypeToPrimaryCategory")) config.getAnyRef("contentTypeToPrimaryCategory").asInstanceOf[java.util.Map[String, AnyRef]] else new util.HashMap[String, AnyRef]()
 
   val esConnectionInfo: String = config.getString("es.basePath")
-  val compositeSearchIndexName: String = if (config.hasPath("compositesearch.index.name")) config.getString("compositesearch.index.name") else "compositesearch";
-  val compositeSearchIndexType: String = if (config.hasPath("search.document.type")) config.getString("search.document.type") else "cs";
+  val compositeSearchIndexName: String = if (config.hasPath("compositesearch.index.name")) config.getString("compositesearch.index.name") else "compositesearch"
+  val compositeSearchIndexType: String = if (config.hasPath("search.document.type")) config.getString("search.document.type") else "cs"
   val nestedFields: util.List[String] = if (config.hasPath("content.nested.fields")) config.getStringList("content.nested.fields") else util.Arrays.asList[String]("badgeAssertions","targets","badgeAssociations")
 
   val allowedExtensionsWord: util.List[String] = if (config.hasPath("mimetype.allowed_extensions.word")) config.getStringList("mimetype.allowed_extensions.word") else util.Arrays.asList[String]("doc", "docx", "ppt", "pptx", "key", "odp", "pps", "odt", "wpd", "wps", "wks")
