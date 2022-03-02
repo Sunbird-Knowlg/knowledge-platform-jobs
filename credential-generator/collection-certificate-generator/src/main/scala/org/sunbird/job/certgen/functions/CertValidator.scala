@@ -7,6 +7,7 @@ import java.net.{MalformedURLException, URI, URISyntaxException, URL}
 import java.text.MessageFormat
 import java.util.regex.Pattern
 import org.apache.commons.lang3.StringUtils
+import org.slf4j.LoggerFactory
 import org.sunbird.incredible.JsonKeys
 import org.sunbird.job.Metrics
 import org.sunbird.job.certgen.domain.Event
@@ -24,6 +25,8 @@ class CertValidator(config: CertificateGeneratorConfig) {
 
   private var publicKeys: List[String] = _
   private val TAG_REGX: String = "[!@#$%^&*()+=,.?/\":;'{}|<>\\s-]"
+  private[this] val logger = LoggerFactory.getLogger(classOf[CertValidator])
+
 
 
   /**
@@ -35,8 +38,13 @@ class CertValidator(config: CertificateGeneratorConfig) {
     checkMandatoryParamsPresent(event.eData, "edata", List(JsonKeys.NAME, JsonKeys.SVG_TEMPLATE))
     validateCertData(event.data)
     validateCertIssuer(event.issuer)
-    if (config.enableSignatoryListValidation){
+    try{
       validateCertSignatoryList(event.signatoryList)
+    }catch {
+      case e: Exception =>
+        if(config.enableSuppressException)
+          logger.error("SignatoryList Validation failed :: "+e.getMessage, e)
+        else throw e
     }
     validateCriteria(event.criteria)
     validateTagId(event.tag)

@@ -47,7 +47,7 @@ class CertificateGeneratorFunctionTest extends BaseTestSpec {
     }
   }
 
-  "Certificate generation process " should " not throw exception on disabled validation for signatorylist empty field values" in {
+  "Certificate generation process " should " not throw exception on enabled suppress exception for signatorylist with empty field values" in {
     val event = new Event(JSONUtil.deserialize[java.util.Map[String, Any]](EventFixture.EVENT_4), 0, 0)
     noException should be thrownBy new CertificateGeneratorFunction(jobConfig, httpUtil, storageService, cassandraUtil).processElement(event, null, mockMetrics)
   }

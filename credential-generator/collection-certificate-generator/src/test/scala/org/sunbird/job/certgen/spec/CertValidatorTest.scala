@@ -54,7 +54,7 @@ class CertValidatorTest extends BaseTestSpec{
     assert(false == isCertificateIssued)
   }
 
-  "CertValidator with signatoryList empty field values" should "not throw exception" in {
+  "CertValidator with enabled suppress exception on signatoryList with empty field values" should "not throw exception" in {
     val event = new Event(JSONUtil.deserialize[java.util.Map[String, Any]](EventFixture.EVENT_4), 0, 0)
     noException should be thrownBy new CertValidator(jobConfig).validateGenerateCertRequest(event)
   }
