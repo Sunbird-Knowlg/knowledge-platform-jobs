@@ -21,7 +21,7 @@ import scala.collection.JavaConverters._
   * This class contains method to validate certificate api request
   */
 
-class CertValidator(config: CertificateGeneratorConfig) {
+class CertValidator() {
 
   private var publicKeys: List[String] = _
   private val TAG_REGX: String = "[!@#$%^&*()+=,.?/\":;'{}|<>\\s-]"
@@ -34,7 +34,7 @@ class CertValidator(config: CertificateGeneratorConfig) {
     *
     */
   @throws[ValidationException]
-  def validateGenerateCertRequest(event: Event): Unit = {
+  def validateGenerateCertRequest(event: Event, enableSuppressException: Boolean): Unit = {
     checkMandatoryParamsPresent(event.eData, "edata", List(JsonKeys.NAME, JsonKeys.SVG_TEMPLATE))
     validateCertData(event.data)
     validateCertIssuer(event.issuer)
@@ -42,7 +42,7 @@ class CertValidator(config: CertificateGeneratorConfig) {
       validateCertSignatoryList(event.signatoryList)
     } catch {
       case e: Exception =>
-        if (config.enableSuppressException) logger.error("SignatoryList Validation failed :: " + e.getMessage, e)
+        if (enableSuppressException) logger.error("SignatoryList Validation failed :: " + e.getMessage, e)
         else throw e
     }
     validateCriteria(event.criteria)
