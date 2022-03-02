@@ -60,8 +60,8 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
     println("Certificate data: " + event)
     metrics.incCounter(config.totalEventsCount)
     try {
-      val certValidator = new CertValidator() 
-      certValidator.validateGenerateCertRequest(event)
+      val certValidator = new CertValidator()
+      certValidator.validateGenerateCertRequest(event, config.enableSuppressException)
       if(certValidator.isNotIssued(event)(config, metrics, cassandraUtil))
         generateCertificate(event, context)(metrics)
       else {

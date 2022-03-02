@@ -5,23 +5,25 @@ import org.cassandraunit.CQLDataLoader
 import org.cassandraunit.dataset.cql.FileCQLDataSet
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
 import org.mockito.Mockito
+import org.sunbird.incredible.StorageParams
+import org.sunbird.incredible.processor.store.StorageService
 import org.sunbird.job.Metrics
 import org.sunbird.job.certgen.domain.Event
-import org.sunbird.job.certgen.exceptions.ValidationException
 import org.sunbird.job.certgen.fixture.EventFixture
-import org.sunbird.job.certgen.functions.CertValidator
+import org.sunbird.job.certgen.functions.{CertValidator, CertificateGeneratorFunction}
 import org.sunbird.job.certgen.task.CertificateGeneratorConfig
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, JSONUtil}
 import org.sunbird.spec.BaseTestSpec
 
-import java.util
+class CertificateGeneratorFunctionTest extends BaseTestSpec {
 
-class CertValidatorTest extends BaseTestSpec{
   var cassandraUtil: CassandraUtil = _
   val config: Config = ConfigFactory.load("test.conf")
   lazy val jobConfig: CertificateGeneratorConfig = new CertificateGeneratorConfig(config)
   val httpUtil: HttpUtil = new HttpUtil
   val mockHttpUtil:HttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
+  val storageParams: StorageParams = StorageParams(jobConfig.storageType, jobConfig.azureStorageKey, jobConfig.azureStorageSecret, jobConfig.containerName)
+  val storageService: StorageService = new StorageService(storageParams)
   val metricJson = s"""{"${jobConfig.enrollmentDbReadCount}": 0, "${jobConfig.skippedEventCount}": 0}"""
   val mockMetrics = mock[Metrics](Mockito.withSettings().serializable())
 
@@ -44,27 +46,10 @@ class CertValidatorTest extends BaseTestSpec{
       case ex: Exception => ex.printStackTrace()
     }
   }
-  
-  "CertValidator isNotIssued" should "return true if re-Issued" in {
-    val event = new Event(JSONUtil.deserialize[java.util.Map[String, Any]](EventFixture.EVENT_1), 0, 0)
-    val isCertificateIssued = new CertValidator().isNotIssued(event)(jobConfig, mockMetrics, cassandraUtil)
-    assert(true == isCertificateIssued)
-  }
 
-  "CertValidator isNotIssued" should "return false if already issued" in {
-    val event = new Event(JSONUtil.deserialize[java.util.Map[String, Any]](EventFixture.EVENT_3), 0, 0)
-    val isCertificateIssued = new CertValidator().isNotIssued(event)(jobConfig, mockMetrics, cassandraUtil)
-    assert(false == isCertificateIssued)
-  }
-
-  "CertValidator with enabled suppress exception on signatoryList with empty field values" should "not throw exception" in {
+  "Certificate generation process " should " not throw exception on enabled suppress exception for signatorylist with empty field values" in {
     val event = new Event(JSONUtil.deserialize[java.util.Map[String, Any]](EventFixture.EVENT_4), 0, 0)
-    noException should be thrownBy new CertValidator().validateGenerateCertRequest(event, true)
-  }
-
-  "CertValidator on signatoryList with empty field values" should " throw exception" in {
-    val event = new Event(JSONUtil.deserialize[java.util.Map[String, Any]](EventFixture.EVENT_4), 0, 0)
-    an [ValidationException] should be thrownBy new CertValidator().validateGenerateCertRequest(event, false)
+    noException should be thrownBy new CertificateGeneratorFunction(jobConfig, httpUtil, storageService, cassandraUtil).processElement(event, null, mockMetrics)
   }
 
 }
