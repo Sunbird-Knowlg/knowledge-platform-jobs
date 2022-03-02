@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
-import org.sunbird.job.publish.helpers.EcarPackageType
+import org.sunbird.job.publish.helpers.{EcarPackageType, EventGenerator}
 import org.sunbird.job.questionset.publish.domain.PublishMetadata
 import org.sunbird.job.questionset.publish.helpers.QuestionSetPublisher
 import org.sunbird.job.questionset.publish.util.QuestionPublishUtil
@@ -20,6 +20,7 @@ import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import java.lang.reflect.Type
 import scala.collection.JavaConverters._
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext
 
@@ -91,6 +92,7 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
         // Generate PDF URL
         val updatedObj = generatePreviewUrl(objWithEcar, qList)(httpUtil, cloudStorageUtil)
         saveOnSuccess(updatedObj)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
+        publishNextEvent(data, objWithEcar.metadata.getOrElse("downloadUrl", "").toString)
         logger.info("QuestionSet publishing completed successfully for : " + data.identifier)
         metrics.incCounter(config.questionSetPublishSuccessEventCount)
       } else {
@@ -137,6 +139,31 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 
   def isValidChildQuestion(obj: ObjectData, createdBy: String): Boolean = {
     StringUtils.equalsIgnoreCase("Parent", obj.getString("visibility", "")) || (StringUtils.equalsIgnoreCase("Default", obj.getString("visibility", "")) && !liveStatus.contains(obj.getString("status", "")) && StringUtils.equalsIgnoreCase(createdBy, obj.getString("createdBy", "")))
+  }
+
+  def publishNextEvent(data: PublishMetadata, downloadUrl: String) = {
+    if (StringUtils.isNotEmpty(data.publishChainMetadata)) {
+      implicit val oec = new OntologyEngineContext()
+      val publishChainEvent: Map[String, AnyRef] = JSONUtil.deserialize[Map[String, AnyRef]](data.publishChainMetadata)
+      val eData: Map[String, AnyRef] = publishChainEvent.getOrElse("edata", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
+      val publishChain: List[Map[String, AnyRef]] = eData.getOrElse("publishchain", List[Map[String, AnyRef]]()).asInstanceOf[List[Map[String, AnyRef]]]
+      val updatedList = ListBuffer[mutable.Map[String, AnyRef]]()
+      for (publishObject: Map[String, AnyRef] <- publishChain) {
+        val publishObj: mutable.Map[String, AnyRef] = collection.mutable.Map(publishObject.toSeq: _*)
+        if (StringUtils.equals(publishObject.getOrElse("identifier", "").toString, data.identifier)) {
+          publishObj.put("state", "Live")
+          publishObj.put("downloadUrl", downloadUrl)
+        }
+        updatedList += publishObj;
+
+      }
+
+      val updatedEData: mutable.Map[String, AnyRef] = collection.mutable.Map(eData.toSeq: _*)
+      val updatedPublishChainEvent: mutable.Map[String, AnyRef] = collection.mutable.Map(publishChainEvent.toSeq: _*)
+      updatedEData.put("publishchain", updatedList.toList)
+      updatedPublishChainEvent.put("edata", updatedEData)
+      EventGenerator.pushPublishChainEvent(updatedPublishChainEvent, updatedList.toList, config.interactiveContentPublishTopic)
+    }
   }
 
 }

@@ -1,5 +1,7 @@
 package org.sunbird.job.publish.core
 
+import java.util
+
 class ObjectData(val identifier: String, val metadata: Map[String, AnyRef], val extData: Option[Map[String, AnyRef]] = None, val hierarchy: Option[Map[String, AnyRef]] = None) {
 
   val dbId: String = metadata.getOrElse("identifier", identifier).asInstanceOf[String]
@@ -19,3 +21,6 @@ case class ExtDataConfig(keyspace: String, table: String, primaryKey: List[Strin
 case class DefinitionConfig(supportedVersion: Map[String, AnyRef], basePath: String)
 
 case class ObjectExtData(data: Option[Map[String, AnyRef]] = None, hierarchy: Option[Map[String, AnyRef]] = None)
+
+case class Event(eid: String, ets: Long, mid: String, actor: util.Map[String, Any], context: util.Map[String, Any], obj: util.Map[String, Any], edata: util.Map[String, AnyRef])
+

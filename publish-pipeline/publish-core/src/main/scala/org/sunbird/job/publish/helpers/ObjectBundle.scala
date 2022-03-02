@@ -18,6 +18,8 @@ import java.util.{Date, Optional}
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.collection.JavaConverters._
+import scala.collection.mutable
+import scala.collection.mutable.ListBuffer
 
 trait ObjectBundle {
 
@@ -105,7 +107,8 @@ trait ObjectBundle {
     val manifestFile: File = getManifestFile(obj.identifier, objType, bundlePath, updatedObjList)
     val hierarchyFile: File = getHierarchyFile(obj, bundlePath).getOrElse(new File(bundlePath))
     val fList = if (obj.hierarchy.getOrElse(Map()).nonEmpty) List(manifestFile, hierarchyFile) else List(manifestFile)
-    createBundle(obj.identifier, bundleFileName, bundlePath, pkgType, downloadedMedias ::: fList)
+    val fileMap = extractPublishChainDataZip(obj)
+    createBundle(obj.identifier, bundleFileName, bundlePath, pkgType, downloadedMedias ::: fList,fileMap.toMap)
   }
 
   //TODO: Enhance this method of .ecar & .zip extension
@@ -139,10 +142,10 @@ trait ObjectBundle {
     Future.sequence(futures)
   }
 
-  def createBundle(identifier: String, bundleFileName: String, bundlePath: String, pkgType: String, downloadedFiles: List[File]): File = {
+  def createBundle(identifier: String, bundleFileName: String, bundlePath: String, pkgType: String, downloadedFiles: List[File], publishChainFiles: Map[String,List[File]]): File = {
     try {
       val stream = new FileOutputStream(bundleFileName)
-      stream.write(getByteStream(identifier, downloadedFiles))
+      stream.write(getByteStream(identifier, downloadedFiles,publishChainFiles))
       stream.flush()
       stream.close()
       new File(bundleFileName)
@@ -155,7 +158,8 @@ trait ObjectBundle {
     }
   }
 
-  def getByteStream(identifier: String, files: List[File]): Array[Byte] = {
+  def getByteStream(identifier: String, files: List[File],
+                    publishChainFiles: Map[String,List[File]]): Array[Byte] = {
     val byteArrayOutputStream = new ByteArrayOutputStream
     val bufferedOutputStream = new BufferedOutputStream(byteArrayOutputStream)
     val zipOutputStream = new ZipOutputStream(bufferedOutputStream)
@@ -168,6 +172,16 @@ trait ObjectBundle {
           IOUtils.copy(fileInputStream, zipOutputStream)
         } catch {case ze:java.util.zip.ZipException => logger.info("ObjectBundle:: getByteStream:: ", ze.getMessage) }
         zipOutputStream.closeEntry()
+      })
+
+      publishChainFiles.foreach(fileMap => {
+        fileMap._2.foreach(fileList => {
+          val fileName = getPublishChainFileName(fileList, fileMap._1)
+          zipOutputStream.putNextEntry(new ZipEntry(fileName))
+          val fileInputStream = new FileInputStream(fileList)
+          IOUtils.copy(fileInputStream, zipOutputStream)
+          zipOutputStream.closeEntry()
+        })
       })
 
       if (zipOutputStream != null) {
@@ -334,6 +348,34 @@ trait ObjectBundle {
     val metaList: List[String] = List("identifier", "name", "objectType", "description", "index", "depth")
     child.getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
       .map(ch => ch.filterKeys(key => metaList.contains(key)))
+  }
+
+  def extractPublishChainDataZip(objectData: ObjectData): mutable.Map[String, List[File]] = {
+    val questionSetMap = mutable.Map[String, List[File]]()
+
+    for (publishObject <- objectData.metadata.getOrElse("publishchain", List[Map[String,AnyRef]]()).asInstanceOf[List[Map[String, AnyRef]]]) {
+      if(publishObject.getOrElse("objectType","").equals("QuestionSet")) {
+        val totalFiles : ListBuffer[File] = new ListBuffer();
+        val suffix = FilenameUtils.getName(publishObject.getOrElse("downloadUrl","").toString).replace(".ecar", ".zip")
+        val zipFile: File = FileUtils.copyURLToFile(publishObject.getOrElse("identifier","").toString, publishObject.getOrElse("downloadUrl","").toString, suffix).get
+        logger.debug("zip file path :: " + zipFile.getAbsolutePath)
+        val extractPath = FileUtils.getBasePath(publishObject.getOrElse("identifier","").toString)
+        logger.debug("zip extracted path :: " + extractPath)
+        val listOfFiles : List[File] = FileUtils.extractFiles(zipFile, extractPath)
+
+        for(file <- listOfFiles) {
+          totalFiles+= file;
+        }
+        questionSetMap.put(publishObject.getOrElse("identifier","").toString,totalFiles.toList)
+      }
+
+    }
+    questionSetMap
+  }
+
+  def getPublishChainFileName(file: File,questionSetIdentifier:String): String = {
+    if (file.getName().toLowerCase().endsWith(manifestFileName) || file.getName().endsWith(hierarchyFileName)) "interactions" + File.separator + questionSetIdentifier + File.separator +file.getName else
+      "interactions" + File.separator + questionSetIdentifier + File.separator +file.getParent().substring(file.getParent().lastIndexOf(File.separator) + 1) + File.separator + file.getName()
   }
 
 

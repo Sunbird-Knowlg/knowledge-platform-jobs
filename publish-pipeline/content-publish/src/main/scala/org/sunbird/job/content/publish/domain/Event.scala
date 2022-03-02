@@ -27,6 +27,15 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 
   def lastPublishedBy: String = readOrDefault[String]("edata.metadata.lastPublishedBy", "")
 
+  def context: Map[String, AnyRef] = readOrDefault("context", Map[String, AnyRef]())
+
+  def obj: Map[String, AnyRef] = readOrDefault("object",Map[String, AnyRef]())
+
+  def publishChain : List[Map[String, AnyRef]]  = readOrDefault("edata.publishchain",List[Map[String, AnyRef]]()).map(m => m.toMap).toList
+
+  def publishChainMetadata : String = readOrDefault[String]("edata.metadata.publishChainMetadata", "");
+
+
   def pkgVersion: Double = {
     val pkgVersion: Number = readOrDefault[Number]("edata.metadata.pkgVersion", 0)
     pkgVersion.doubleValue()

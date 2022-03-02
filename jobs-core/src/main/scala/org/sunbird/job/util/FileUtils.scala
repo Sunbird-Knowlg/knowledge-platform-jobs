@@ -9,6 +9,7 @@ import java.net.{HttpURLConnection, URL}
 import java.nio.file.{Files, Path, Paths}
 import java.util.zip.{ZipEntry, ZipFile, ZipOutputStream}
 import scala.collection.JavaConverters._
+import scala.collection.mutable.ListBuffer
 
 object FileUtils {
 
@@ -147,6 +148,24 @@ object FileUtils {
         throw new Exception("Something Went Wrong While Creating the ZIP File", e)
     } finally if (zos != null) zos.close()
   }
+
+  def extractFiles(file: File, basePath: String): List[File]  = {
+    val list : ListBuffer[File] = new ListBuffer();
+    val zipFile = new ZipFile(file)
+    for (entry <- zipFile.entries().asScala) {
+      val path = Paths.get(basePath + File.separator + entry.getName)
+      if (entry.isDirectory) Files.createDirectories(path)
+      else {
+        Files.createDirectories(path.getParent)
+        Files.copy(zipFile.getInputStream(entry), path)
+        val file = new File(basePath + File.separator + entry.getName)
+        list += file;
+      }
+    }
+
+    list.toList
+  }
 }
+
 
 class FileUtils {}
