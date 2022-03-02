@@ -38,12 +38,11 @@ class CertValidator(config: CertificateGeneratorConfig) {
     checkMandatoryParamsPresent(event.eData, "edata", List(JsonKeys.NAME, JsonKeys.SVG_TEMPLATE))
     validateCertData(event.data)
     validateCertIssuer(event.issuer)
-    try{
+    try {
       validateCertSignatoryList(event.signatoryList)
-    }catch {
+    } catch {
       case e: Exception =>
-        if(config.enableSuppressException)
-          logger.error("SignatoryList Validation failed :: "+e.getMessage, e)
+        if (config.enableSuppressException) logger.error("SignatoryList Validation failed :: " + e.getMessage, e)
         else throw e
     }
     validateCriteria(event.criteria)
