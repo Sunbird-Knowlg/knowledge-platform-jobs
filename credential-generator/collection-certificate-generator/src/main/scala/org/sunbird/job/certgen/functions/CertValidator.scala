@@ -7,6 +7,7 @@ import java.net.{MalformedURLException, URI, URISyntaxException, URL}
 import java.text.MessageFormat
 import java.util.regex.Pattern
 import org.apache.commons.lang3.StringUtils
+import org.slf4j.LoggerFactory
 import org.sunbird.incredible.JsonKeys
 import org.sunbird.job.Metrics
 import org.sunbird.job.certgen.domain.Event
@@ -20,10 +21,12 @@ import scala.collection.JavaConverters._
   * This class contains method to validate certificate api request
   */
 
-class CertValidator {
+class CertValidator() {
 
   private var publicKeys: List[String] = _
   private val TAG_REGX: String = "[!@#$%^&*()+=,.?/\":;'{}|<>\\s-]"
+  private[this] val logger = LoggerFactory.getLogger(classOf[CertValidator])
+
 
 
   /**
@@ -31,11 +34,17 @@ class CertValidator {
     *
     */
   @throws[ValidationException]
-  def validateGenerateCertRequest(event: Event): Unit = {
+  def validateGenerateCertRequest(event: Event, enableSuppressException: Boolean): Unit = {
     checkMandatoryParamsPresent(event.eData, "edata", List(JsonKeys.NAME, JsonKeys.SVG_TEMPLATE))
     validateCertData(event.data)
     validateCertIssuer(event.issuer)
-    validateCertSignatoryList(event.signatoryList)
+    try {
+      validateCertSignatoryList(event.signatoryList)
+    } catch {
+      case e: Exception =>
+        if (enableSuppressException) logger.error("SignatoryList Validation failed :: " + e.getMessage, e)
+        else throw e
+    }
     validateCriteria(event.criteria)
     validateTagId(event.tag)
     val basePath: String = event.basePath

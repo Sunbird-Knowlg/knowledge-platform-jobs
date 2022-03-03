@@ -114,7 +114,7 @@ class QuestionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matcher
 
   "getObjectWithEcar" should "return object with ecar url" in {
     val data = new ObjectData("do_123", Map("objectType" -> "Question", "identifier" -> "do_123", "name" -> "Test Question"), Some(Map("responseDeclaration" -> "test", "media" -> "[{\"id\":\"do_1127129497561497601326\",\"type\":\"image\",\"src\":\"/content/do_1127129497561497601326.img/artifact/sunbird_1551961194254.jpeg\",\"baseUrl\":\"https://sunbirddev.blob.core.windows.net/sunbird-content-dev\"}]")), Some(Map()))
-    val result = new TestQuestionPublisher().getObjectWithEcar(data, List(EcarPackageType.FULL.toString, EcarPackageType.ONLINE.toString))(ec, cloudStorageUtil, jobConfig, defCache, defConfig, httpUtil)
+    val result = new TestQuestionPublisher().getObjectWithEcar(data, List(EcarPackageType.FULL.toString, EcarPackageType.ONLINE.toString))(ec, mockNeo4JUtil, cloudStorageUtil, jobConfig, defCache, defConfig, httpUtil)
     StringUtils.isNotBlank(result.metadata.getOrElse("downloadUrl", "").asInstanceOf[String])
 
   }

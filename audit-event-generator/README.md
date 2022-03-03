@@ -7,7 +7,7 @@ Audit Event Generator job generates an audit event for every transaction in Grap
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a yarn or kubernetes.
 ### Prerequisites
 
-1. Download flink-1.10.0-scala_2.12 from [apache-flink-downloads](https://www.apache.org/dyn/closer.lua/flink/flink-1.10.0/flink-1.10.0-bin-scala_2.12.tgz). 
+1. Download flink-1.13.6-scala_2.12 from [apache-flink-downloads](https://www.apache.org/dyn/closer.lua/flink/flink-1.13.6/flink-1.13.6-bin-scala_2.12.tgz). 
 2. Download [hadoop dependencies](https://repo.maven.apache.org/maven2/org/apache/flink/flink-shaded-hadoop-2-uber/2.8.3-10.0/flink-shaded-hadoop-2-uber-2.8.3-10.0.jar) (only for running on Yarn). Copy the hadoop dependency jar under lib folder of the flink download.
 3. export HADOOP_CLASSPATH=`<hadoop-executable-dir>/hadoop classpath` either in .bashrc or current execution shell.
 4. Docker installed.

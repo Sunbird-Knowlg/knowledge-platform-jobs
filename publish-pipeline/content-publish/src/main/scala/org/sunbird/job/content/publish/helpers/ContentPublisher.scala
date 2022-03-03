@@ -84,29 +84,29 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
   def validateMetadata(obj: ObjectData, identifier: String, config: PublishConfig): List[String] = {
     logger.info("Validating Content metadata for : " + obj.identifier)
     val messages = ListBuffer[String]()
-    val artifactUtl = obj.getString("artifactUrl", "")
+    val artifactUrl = obj.getString("artifactUrl", "")
     if (ignoreValidationMimeType.contains(obj.mimeType)) {
       // Validation not required. Nothing to do.
     } else if (obj.mimeType.equalsIgnoreCase(MimeType.ECML_Archive)) { // Either 'body' or 'artifactUrl' is needed
-      if (obj.extData.nonEmpty && ((obj.extData.get.getOrElse("body", Map.empty).isInstanceOf[Map[String, AnyRef]] && obj.extData.get.getOrElse("body", Map.empty).asInstanceOf[Map[String, AnyRef]].nonEmpty) || StringUtils.isNotBlank(artifactUtl))) {
-        //  Do nothing.
-      } else messages += s"""Either 'body' or 'artifactUrl' are required for processing of ECML content for : $identifier"""
+     if ((obj.extData.isEmpty || !obj.extData.get.contains("body") || obj.extData.get.getOrElse("body",null) == null || obj.extData.get.getOrElse("body", "").asInstanceOf[String].isEmpty || obj.extData.get.getOrElse("body", "").asInstanceOf[String].isBlank) && (artifactUrl.isEmpty || artifactUrl.isBlank)) {
+       messages += s"""Either 'body' or 'artifactUrl' are required for processing of ECML content for : $identifier"""
+     }
     } else {
       val allowedExtensionsWord: util.List[String] = config.asInstanceOf[ContentPublishConfig].allowedExtensionsWord
 
-      if (StringUtils.isBlank(artifactUtl))
+      if (StringUtils.isBlank(artifactUrl))
         messages += s"""There is no artifactUrl available for : $identifier"""
-      else if (youtubeMimetypes.contains(obj.mimeType) && !isValidYouTubeUrl(artifactUtl))
-        messages += s"""Invalid youtube Url = $artifactUtl for : $identifier"""
-      else if (validateArtifactUrlMimetypes.contains(obj.mimeType) && !isValidUrl(artifactUtl, obj.mimeType, allowedExtensionsWord)) { // valid url check by downloading the file and then delete it
+      else if (youtubeMimetypes.contains(obj.mimeType) && !isValidYouTubeUrl(artifactUrl))
+        messages += s"""Invalid youtube Url = $artifactUrl for : $identifier"""
+      else if (validateArtifactUrlMimetypes.contains(obj.mimeType) && !isValidUrl(artifactUrl, obj.mimeType, allowedExtensionsWord)) { // valid url check by downloading the file and then delete it
         // artifactUrl + valid url check by downloading the file
         obj.mimeType match {
           case MimeType.PDF =>
-            messages += s"""Error! Invalid File Extension. Uploaded file $artifactUtl is not a pdf file for : $identifier"""
+            messages += s"""Error! Invalid File Extension. Uploaded file $artifactUrl is not a pdf file for : $identifier"""
           case MimeType.EPUB =>
-            messages += s"""Error! Invalid File Extension. Uploaded file $artifactUtl is not a epub file for : $identifier"""
+            messages += s"""Error! Invalid File Extension. Uploaded file $artifactUrl is not a epub file for : $identifier"""
           case MimeType.MSWORD =>
-            messages += s"""Error! Invalid File Extension. | Uploaded file $artifactUtl should be among the Allowed_file_extensions for mimeType doc $allowedExtensionsWord for : $identifier"""
+            messages += s"""Error! Invalid File Extension. | Uploaded file $artifactUrl should be among the Allowed_file_extensions for mimeType doc $allowedExtensionsWord for : $identifier"""
         }
       }
     }
@@ -161,8 +161,7 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
     false
   }
 
-  def getObjectWithEcar(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil,
-                                                                  config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
+  def getObjectWithEcar(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, neo4JUtil: Neo4JUtil, cloudStorageUtil: CloudStorageUtil, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
     try {
       logger.info("ContentPublisher:getObjectWithEcar: Ecar generation done for Content: " + data.identifier)
       val ecarMap: Map[String, String] = generateEcar(data, pkgTypes)
