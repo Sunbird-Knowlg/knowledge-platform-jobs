@@ -41,6 +41,6 @@ class QRCodeImageGeneratorConfig(override val config: Config) extends BaseJobCon
   val cassandraHost: String = config.getString("lms-cassandra.host")
   val cassandraPort: Int = config.getInt("lms-cassandra.port")
   val cassandraKeyspace: String = config.getString("lms-cassandra.keyspace")
-  val cassandraDialCodeImageTable: String = config.getString("lms-cassandra.dialcode.imageTable")
-  val cassandraDialCodeBatchTable: String = config.getString("lms-cassandra.dialcode.batchTable")
+  val cassandraDialCodeImageTable: String = config.getString("lms-cassandra.table.image")
+  val cassandraDialCodeBatchTable: String = config.getString("lms-cassandra.table.batch")
 }
