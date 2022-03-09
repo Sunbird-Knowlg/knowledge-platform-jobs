@@ -73,5 +73,10 @@ class HttpUtil extends Serializable {
     if (url.isEmpty) throw new ServerException("ERR_INVALID_URL", "Url Parameter is Missing!")
     if (null == headerParam || headerParam.isEmpty) throw new ServerException("ERR_INVALID_HEADER_PARAM", "Header Parameter is Missing!")
   }
+
+  def delete(url: String): HTTPResponse = {
+    val response = Unirest.delete(url).header("Content-Type", "application/json").asString()
+    HTTPResponse(response.getStatus, response.getBody)
+  }
 }
 

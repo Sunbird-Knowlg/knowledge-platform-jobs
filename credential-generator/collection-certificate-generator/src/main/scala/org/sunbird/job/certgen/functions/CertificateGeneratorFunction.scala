@@ -3,16 +3,13 @@ package org.sunbird.job.certgen.functions
 import com.datastax.driver.core.querybuilder.{QueryBuilder, Update}
 import com.datastax.driver.core.{Row, TypeTokens}
 import com.google.gson.reflect.TypeToken
-import org.apache.commons.io.FileUtils
 import org.apache.commons.lang.StringUtils
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.KeyedProcessFunction
 import org.slf4j.LoggerFactory
-import org.sunbird.incredible.pojos.ob.CertificateExtension
 import org.sunbird.incredible.processor.CertModel
 import org.sunbird.incredible.processor.store.StorageService
-import org.sunbird.incredible.processor.views.SvgGenerator
-import org.sunbird.incredible.{CertificateConfig, CertificateGenerator, JsonKeys, ScalaModuleJsonUtils}
+import org.sunbird.incredible.{CertificateConfig, JsonKeys, ScalaModuleJsonUtils}
 import org.sunbird.job.certgen.domain._
 import org.sunbird.job.certgen.exceptions.ServerException
 import org.sunbird.job.certgen.task.CertificateGeneratorConfig
@@ -20,12 +17,12 @@ import org.sunbird.job.exception.InvalidEventException
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, ScalaJsonUtil}
 import org.sunbird.job.{BaseProcessKeyedFunction, Metrics}
 
-import java.io.{File, IOException}
+import java.io.File
 import java.lang.reflect.Type
 import java.text.SimpleDateFormat
 import java.util
 import java.util.stream.Collectors
-import java.util.{Base64, Date}
+import java.util.Date
 import scala.collection.JavaConverters._
 
 class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil: HttpUtil, storageService: StorageService, @transient var cassandraUtil: CassandraUtil = null)
@@ -78,30 +75,34 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
   @throws[Exception]
   def generateCertificate(event: Event, context: KeyedProcessFunction[String, Event, String]#Context)(implicit metrics: Metrics): Unit = {
     val certModelList: List[CertModel] = new CertMapper(certificateConfig).mapReqToCertModel(event)
-    val certificateGenerator = new CertificateGenerator
     certModelList.foreach(certModel => {
       var uuid: String = null
+      val reIssue: Boolean = !event.oldId.isEmpty
       try {
-        val certificateExtension: CertificateExtension = certificateGenerator.getCertificateExtension(certModel)
-        uuid = certificateGenerator.getUUID(certificateExtension)
-        val qrMap = certificateGenerator.generateQrCode(uuid, directory, certificateConfig.basePath)
-        val encodedQrCode: String = encodeQrCode(qrMap.qrFile)
-        val printUri = SvgGenerator.generate(certificateExtension, encodedQrCode, event.svgTemplate)
-        certificateExtension.printUri = Option(printUri)
-        val jsonUrl = uploadJson(certificateExtension, directory.concat(uuid).concat(".json"), event.tag.concat("/"))
-        //adding certificate to registry
-        val addReq = Map[String, AnyRef](JsonKeys.REQUEST -> {Map[String, AnyRef](
-          JsonKeys.ID -> uuid, JsonKeys.JSON_URL -> certificateConfig.basePath.concat(jsonUrl),
-          JsonKeys.JSON_DATA -> certificateExtension, JsonKeys.ACCESS_CODE -> qrMap.accessCode,
-          JsonKeys.RECIPIENT_NAME -> certModel.recipientName, JsonKeys.RECIPIENT_ID -> certModel.identifier,
-          config.RELATED -> event.related
-        ) ++ {if (!event.oldId.isEmpty) Map[String, AnyRef](config.OLD_ID -> event.oldId) else Map[String, AnyRef]()}})
-        addCertToRegistry(event, addReq, context)(metrics)
-        //cert-registry end
+        //prepare the request body for rc create api
+        val createCertReq = Map[String, AnyRef](
+          JsonKeys.NAME -> certModel.certificateName,
+          JsonKeys.CERTIFICATE_NAME -> certModel.certificateName,
+          JsonKeys.CERTIFICATE_DESCIPTION -> certModel.certificateDescription,
+          JsonKeys.RECIPIENT_NAME -> certModel.recipientName,
+          JsonKeys.RECIPIENT_ID -> certModel.identifier
+        ) ++ {if (reIssue) Map[String, AnyRef](config.OLD_ID -> event.oldId) else Map[String, AnyRef]()}
+        //make api call to registry with identifier
+        uuid = callCertificateRc(config.rcCreateApi, null, createCertReq)
+        //if reissue then read rc for oldId and call rc delete api
+        if(reIssue) {
+          try {
+            callCertificateRc(config.rcReadApi, event.oldId, null)
+            callCertificateRc(config.rcDeleteApi, event.oldId, null)
+          } catch {
+            case e: ServerException =>
+              logger.error("On removing old certificate id exception:: " + e.getMessage, e)
+          }
+        }
         val related = event.related
         val userEnrollmentData = UserEnrollmentData(related.getOrElse(config.BATCH_ID, "").asInstanceOf[String], certModel.identifier,
           related.getOrElse(config.COURSE_ID, "").asInstanceOf[String], event.courseName, event.templateId,
-          Certificate(uuid, event.name, qrMap.accessCode, formatter.format(new Date())))
+          Certificate(uuid, event.name, "", formatter.format(new Date())))
         updateUserEnrollmentTable(event, userEnrollmentData, context)
         metrics.incCounter(config.successEventCount)
       } finally {
@@ -111,31 +112,26 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
   }
 
   @throws[ServerException]
-  def addCertToRegistry(certReq: Event, request: Map[String, AnyRef], context: KeyedProcessFunction[String, Event, String]#Context)(implicit metrics: Metrics): Unit = {
-    logger.info("adding certificate to the registry")
-    val httpRequest = ScalaModuleJsonUtils.serialize(request)
-    val httpResponse = httpUtil.post(config.certRegistryBaseUrl + config.addCertRegApi, httpRequest)
-    if (httpResponse.status == 200) {
-      logger.info("certificate added successfully to the registry " + httpResponse.body)
-    } else {
-      logger.error("certificate addition to registry failed: " + httpResponse.status + " :: " + httpResponse.body)
-      throw ServerException("ERR_API_CALL", "Something Went Wrong While Making API Call | Status is: " + httpResponse.status + " :: " + httpResponse.body)
+  def callCertificateRc(api: String, identifier: String, request: Map[String, AnyRef]): String = {
+    logger.info("Certificate rc called | Api:: " + api)
+    var id: String = null
+    val status = api match {
+      case config.rcDeleteApi => httpUtil.delete(config.rcBaseUrl + "/" + config.rcEntity + "/" + config.rcDeleteApi + "/" +identifier).status
+      case config.rcReadApi => httpUtil.get(config.rcBaseUrl + "/" + config.rcEntity + "/" + config.rcReadApi + "/" +identifier, Map[String, String]("Accept"-> "application/vc+ld+json")).status
+      case config.rcCreateApi =>
+        val httpResponse = httpUtil.post(config.rcBaseUrl + "/" + config.rcEntity + "/" + config.rcCreateApi, ScalaModuleJsonUtils.serialize(request))
+        if(httpResponse.status == 200)
+          id = httpResponse.body.asInstanceOf[Map[String, AnyRef]].get("result").asInstanceOf[Map[String, AnyRef]].get(config.rcEntity).asInstanceOf[Map[String, AnyRef]].get("osid").asInstanceOf[String]
+        httpResponse.status
+
     }
-  }
-
-  @throws[IOException]
-  private def encodeQrCode(file: File): String = {
-    val fileContent = FileUtils.readFileToByteArray(file)
-    file.delete
-    Base64.getEncoder.encodeToString(fileContent)
-  }
-
-  @throws[IOException]
-  private def uploadJson(certificateExtension: CertificateExtension, fileName: String, cloudPath: String): String = {
-    logger.info("uploadJson: uploading json file started {}", fileName)
-    val file = new File(fileName)
-    ScalaModuleJsonUtils.writeToJsonFile(file, certificateExtension)
-    storageService.uploadFile(cloudPath, file)
+    if (status == 200) {
+      logger.info("certificate rc successfully executed for api: " + api)
+    } else {
+      logger.error("certificate rc failed for api: " + api +  " | Status is: " + status)
+      throw ServerException("ERR_API_CALL", "Something Went Wrong While Making API Call:  " + api +  " | Status is: " + status)
+    }
+    id
   }
 
   private def cleanUp(fileName: String, path: String): Unit = {
