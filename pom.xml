@@ -35,6 +35,7 @@
 		<module>audit-history-indexer</module>
 		<module>audit-event-generator</module>
 		<module>metrics-data-transformer</module>
+		<module>qrcode-image-generator</module>
 	</modules>
 
 	<properties>
