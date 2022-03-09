@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory
 import org.sunbird.incredible.processor.CertModel
 import org.sunbird.incredible.processor.store.StorageService
 import org.sunbird.incredible.{CertificateConfig, JsonKeys, ScalaModuleJsonUtils}
+import org.sunbird.job.certgen.domain.Issuer
 import org.sunbird.job.certgen.domain._
 import org.sunbird.job.certgen.exceptions.ServerException
 import org.sunbird.job.certgen.task.CertificateGeneratorConfig
@@ -79,13 +80,15 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
       var uuid: String = null
       val reIssue: Boolean = !event.oldId.isEmpty
       try {
-        //prepare the request body for rc create api
+        //TODO: add more data: prepare the request body for rc create api
+        val related = event.related
         val createCertReq = Map[String, AnyRef](
-          JsonKeys.NAME -> certModel.certificateName,
-          JsonKeys.CERTIFICATE_NAME -> certModel.certificateName,
-          JsonKeys.CERTIFICATE_DESCIPTION -> certModel.certificateDescription,
-          JsonKeys.RECIPIENT_NAME -> certModel.recipientName,
-          JsonKeys.RECIPIENT_ID -> certModel.identifier
+          "certificateLabel" -> certModel.certificateName,
+          "status" -> "ACTIVE",
+          "training" -> Training(related.getOrElse(config.COURSE_ID, "").asInstanceOf[String], event.courseName, "Course", related.getOrElse(config.BATCH_ID, "").asInstanceOf[String]),
+          "recipient" -> Recipient(certModel.recipientId.get, certModel.recipientName, null),
+          "issuer" -> Issuer(certModel.issuer.url, certModel.issuer.name, certModel.issuer.id.get, certModel.issuer.publicKey),
+          "signatory" -> certModel.signatoryList
         ) ++ {if (reIssue) Map[String, AnyRef](config.OLD_ID -> event.oldId) else Map[String, AnyRef]()}
         //make api call to registry with identifier
         uuid = callCertificateRc(config.rcCreateApi, null, createCertReq)
@@ -94,12 +97,14 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
           try {
             callCertificateRc(config.rcReadApi, event.oldId, null)
             callCertificateRc(config.rcDeleteApi, event.oldId, null)
+            logger.info("Removed old certificate id :: {}" , event.oldId)
+
           } catch {
             case e: ServerException =>
               logger.error("On removing old certificate id exception:: " + e.getMessage, e)
           }
         }
-        val related = event.related
+
         val userEnrollmentData = UserEnrollmentData(related.getOrElse(config.BATCH_ID, "").asInstanceOf[String], certModel.identifier,
           related.getOrElse(config.COURSE_ID, "").asInstanceOf[String], event.courseName, event.templateId,
           Certificate(uuid, event.name, "", formatter.format(new Date())))
@@ -120,8 +125,10 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
       case config.rcReadApi => httpUtil.get(config.rcBaseUrl + "/" + config.rcEntity + "/" + config.rcReadApi + "/" +identifier, Map[String, String]("Accept"-> "application/vc+ld+json")).status
       case config.rcCreateApi =>
         val httpResponse = httpUtil.post(config.rcBaseUrl + "/" + config.rcEntity + "/" + config.rcCreateApi, ScalaModuleJsonUtils.serialize(request))
-        if(httpResponse.status == 200)
-          id = httpResponse.body.asInstanceOf[Map[String, AnyRef]].get("result").asInstanceOf[Map[String, AnyRef]].get(config.rcEntity).asInstanceOf[Map[String, AnyRef]].get("osid").asInstanceOf[String]
+        if(httpResponse.status == 200) {
+          val response = ScalaJsonUtil.deserialize[Map[String, AnyRef]](httpResponse.body)
+          id = response.getOrElse("result", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]].getOrElse(config.rcEntity, Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]].getOrElse("osid","").asInstanceOf[String]
+        }
         httpResponse.status
 
     }
