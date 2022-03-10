@@ -1,26 +1,32 @@
 package org.sunbird.job.certgen.spec
 
+import com.datastax.driver.core.Row
 import com.typesafe.config.{Config, ConfigFactory}
 import org.cassandraunit.CQLDataLoader
 import org.cassandraunit.dataset.cql.FileCQLDataSet
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
-import org.mockito.ArgumentMatchers.any
+import org.mockito.ArgumentMatchers.{any, anyString}
 import org.mockito.Mockito
 import org.mockito.Mockito.when
-import org.sunbird.incredible.{JsonKeys, ScalaModuleJsonUtils, StorageParams}
+import org.sunbird.incredible.processor.CertModel
+import org.sunbird.incredible.{CertificateConfig, JsonKeys, ScalaModuleJsonUtils, StorageParams}
 import org.sunbird.incredible.processor.store.StorageService
 import org.sunbird.job.Metrics
-import org.sunbird.job.certgen.domain.Event
+import org.sunbird.job.certgen.domain.{Event, Issuer, Recipient, Training}
 import org.sunbird.job.certgen.exceptions.ServerException
 import org.sunbird.job.certgen.fixture.EventFixture
-import org.sunbird.job.certgen.functions.{CertValidator, CertificateGeneratorFunction}
+import org.sunbird.job.certgen.functions.{CertMapper, CertValidator, CertificateGeneratorFunction}
 import org.sunbird.job.certgen.task.CertificateGeneratorConfig
 import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, JSONUtil}
 import org.sunbird.spec.BaseTestSpec
 
+import java.io.Serializable
+import java.util
+
 class CertificateGeneratorFunctionTest extends BaseTestSpec {
 
   var cassandraUtil: CassandraUtil = _
+  val mockCassandraUtil = mock[CassandraUtil]
   val config: Config = ConfigFactory.load("test.conf")
   lazy val jobConfig: CertificateGeneratorConfig = new CertificateGeneratorConfig(config)
   val httpUtil: HttpUtil = new HttpUtil
@@ -29,6 +35,8 @@ class CertificateGeneratorFunctionTest extends BaseTestSpec {
   val storageService: StorageService = new StorageService(storageParams)
   val metricJson = s"""{"${jobConfig.enrollmentDbReadCount}": 0, "${jobConfig.skippedEventCount}": 0}"""
   val mockMetrics = mock[Metrics](Mockito.withSettings().serializable())
+  val certificateConfig: CertificateConfig = CertificateConfig(basePath = jobConfig.basePath, encryptionServiceUrl = jobConfig.encServiceUrl, contextUrl = jobConfig.CONTEXT, issuerUrl = jobConfig.ISSUER_URL,
+    evidenceUrl = jobConfig.EVIDENCE_URL, signatoryExtension = jobConfig.SIGNATORY_EXTENSION)
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
@@ -96,6 +104,33 @@ class CertificateGeneratorFunctionTest extends BaseTestSpec {
     when(mockHttpUtil.post(jobConfig.rcBaseUrl + "/" + jobConfig.rcEntity + "/" + jobConfig.rcCreateApi, ScalaModuleJsonUtils.serialize(certReq))).thenReturn(HTTPResponse(500, """{}"""))
     var id: String = null
     an [ServerException] should be thrownBy new CertificateGeneratorFunction(jobConfig, mockHttpUtil, storageService, cassandraUtil).callCertificateRc(jobConfig.rcCreateApi, null,  certReq)
+  }
+
+  "Certificate generation with valid event " should " not throw exception " in {
+    val event = new Event(JSONUtil.deserialize[java.util.Map[String, Any]](EventFixture.EVENT_3), 0, 0)
+    val createCertReq = generateRequest(event)
+    val batchId = event.related.getOrElse(jobConfig.COURSE_ID, "").asInstanceOf[String]
+    val courseId = event.related.getOrElse(jobConfig.BATCH_ID, "").asInstanceOf[String]
+    when(mockHttpUtil.post(jobConfig.rcBaseUrl + "/" + jobConfig.rcEntity + "/" + jobConfig.rcCreateApi, ScalaModuleJsonUtils.serialize(createCertReq))).thenReturn(HTTPResponse(200, """{"id":"sunbird-rc.registry.create","ver":"1.0","ets":1646765130993,"params":{"resmsgid":"","msgid":"cca2e242-fce7-47ec-b5d0-61cebe56c31d","err":"","status":"SUCCESSFUL","errmsg":""},"responseCode":"OK","result":{"TrainingCertificate":{"osid":"validId"}}}"""))
+    when(mockCassandraUtil.find("SELECT * FROM sunbird_courses.user_enrolments WHERE userid='"+event.userId+"' AND batchid='"+batchId+"' AND courseid='"+courseId+"';")).thenReturn(new util.ArrayList[Row]())
+    noException should be thrownBy new CertificateGeneratorFunction(jobConfig, mockHttpUtil, storageService, mockCassandraUtil).generateCertificate(event, null)(mockMetrics)
+
+  }
+
+  private def generateRequest(event: Event):  Map[String, AnyRef] = {
+    val certModel: CertModel = new CertMapper(certificateConfig).mapReqToCertModel(event).head
+    val reIssue: Boolean = !event.oldId.isEmpty
+    val related = event.related
+    val createCertReq = Map[String, AnyRef](
+      "certificateLabel" -> certModel.certificateName,
+      "status" -> "ACTIVE",
+      "templateUrl" -> event.svgTemplate,
+      "training" -> Training(related.getOrElse(jobConfig.COURSE_ID, "").asInstanceOf[String], event.courseName, "Course", related.getOrElse(jobConfig.BATCH_ID, "").asInstanceOf[String]),
+      "recipient" -> Recipient(certModel.identifier, certModel.recipientName, null),
+      "issuer" -> Issuer(certModel.issuer.url, certModel.issuer.name, "", certModel.issuer.publicKey),
+      "signatory" -> event.signatoryList
+    ) ++ {if (reIssue) Map[String, AnyRef](jobConfig.OLD_ID -> event.oldId) else Map[String, AnyRef]()}
+    createCertReq
   }
 
 

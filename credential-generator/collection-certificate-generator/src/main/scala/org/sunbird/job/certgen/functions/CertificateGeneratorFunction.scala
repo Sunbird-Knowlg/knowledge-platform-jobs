@@ -85,10 +85,11 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
         val createCertReq = Map[String, AnyRef](
           "certificateLabel" -> certModel.certificateName,
           "status" -> "ACTIVE",
+          "templateUrl" -> event.svgTemplate,
           "training" -> Training(related.getOrElse(config.COURSE_ID, "").asInstanceOf[String], event.courseName, "Course", related.getOrElse(config.BATCH_ID, "").asInstanceOf[String]),
-          "recipient" -> Recipient(certModel.recipientId.get, certModel.recipientName, null),
-          "issuer" -> Issuer(certModel.issuer.url, certModel.issuer.name, certModel.issuer.id.get, certModel.issuer.publicKey),
-          "signatory" -> certModel.signatoryList
+          "recipient" -> Recipient(certModel.identifier, certModel.recipientName, null),
+          "issuer" -> Issuer(certModel.issuer.url, certModel.issuer.name, "", certModel.issuer.publicKey),
+          "signatory" -> event.signatoryList
         ) ++ {if (reIssue) Map[String, AnyRef](config.OLD_ID -> event.oldId) else Map[String, AnyRef]()}
         //make api call to registry with identifier
         uuid = callCertificateRc(config.rcCreateApi, null, createCertReq)
@@ -124,7 +125,8 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
       case config.rcDeleteApi => httpUtil.delete(config.rcBaseUrl + "/" + config.rcEntity + "/" + config.rcDeleteApi + "/" +identifier).status
       case config.rcReadApi => httpUtil.get(config.rcBaseUrl + "/" + config.rcEntity + "/" + config.rcReadApi + "/" +identifier, Map[String, String]("Accept"-> "application/vc+ld+json")).status
       case config.rcCreateApi =>
-        val httpResponse = httpUtil.post(config.rcBaseUrl + "/" + config.rcEntity + "/" + config.rcCreateApi, ScalaModuleJsonUtils.serialize(request))
+        val req: String = ScalaModuleJsonUtils.serialize(request)
+        val httpResponse = httpUtil.post(config.rcBaseUrl + "/" + config.rcEntity + "/" + config.rcCreateApi, req)
         if(httpResponse.status == 200) {
           val response = ScalaJsonUtil.deserialize[Map[String, AnyRef]](httpResponse.body)
           id = response.getOrElse("result", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]].getOrElse(config.rcEntity, Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]].getOrElse("osid","").asInstanceOf[String]
