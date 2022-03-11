@@ -76,9 +76,8 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   val notificationEndPoint: String = "/v2/notification"
   val rcBaseUrl: String = config.getString("service.rc.basePath")
   val rcEntity: String = config.getString("service.rc.entity")
-  val rcReadApi: String = config.getString("service.rc.read.api")
-  val rcCreateApi: String = config.getString("service.rc.create.api")
-  val rcDeleteApi: String = config.getString("service.rc.delete.api")
+  val rcCreateApi: String = "service.rc.create.api"
+  val rcDeleteApi: String = "service.rc.delete.api"
 
   //constant
   val DATA: String = "data"

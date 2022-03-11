@@ -82,33 +82,14 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
       try {
         //TODO: add more data: prepare the request body for rc create api
         val related = event.related
-        val createCertReq = Map[String, AnyRef](
-          "certificateLabel" -> certModel.certificateName,
-          "status" -> "ACTIVE",
-          "templateUrl" -> event.svgTemplate,
-          "training" -> Training(related.getOrElse(config.COURSE_ID, "").asInstanceOf[String], event.courseName, "Course", related.getOrElse(config.BATCH_ID, "").asInstanceOf[String]),
-          "recipient" -> Recipient(certModel.identifier, certModel.recipientName, null),
-          "issuer" -> Issuer(certModel.issuer.url, certModel.issuer.name, "", certModel.issuer.publicKey),
-          "signatory" -> event.signatoryList
-        ) ++ {if (reIssue) Map[String, AnyRef](config.OLD_ID -> event.oldId) else Map[String, AnyRef]()}
+        val certReq = generateRequest(event, certModel, reIssue)
         //make api call to registry with identifier
-        uuid = callCertificateRc(config.rcCreateApi, null, createCertReq)
+        uuid = callCertificateRc(config.rcCreateApi, null, certReq)
         //if reissue then read rc for oldId and call rc delete api
-        if(reIssue) {
-          try {
-            callCertificateRc(config.rcReadApi, event.oldId, null)
-            callCertificateRc(config.rcDeleteApi, event.oldId, null)
-            logger.info("Removed old certificate id :: {}" , event.oldId)
-
-          } catch {
-            case e: ServerException =>
-              logger.error("On removing old certificate id exception:: " + e.getMessage, e)
-          }
-        }
-
+        //TODO: reissue
         val userEnrollmentData = UserEnrollmentData(related.getOrElse(config.BATCH_ID, "").asInstanceOf[String], certModel.identifier,
           related.getOrElse(config.COURSE_ID, "").asInstanceOf[String], event.courseName, event.templateId,
-          Certificate(uuid, event.name, "", formatter.format(new Date())))
+          Certificate(uuid, config.rcEntity, "", formatter.format(new Date())))
         updateUserEnrollmentTable(event, userEnrollmentData, context)
         metrics.incCounter(config.successEventCount)
       } finally {
@@ -117,16 +98,29 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
     })
   }
 
+  def generateRequest(event: Event, certModel: CertModel, reIssue: Boolean):  Map[String, AnyRef] = {
+    val createCertReq = Map[String, AnyRef](
+      "certificateLabel" -> certModel.certificateName,
+      "status" -> "ACTIVE",
+      "templateUrl" -> event.svgTemplate,
+      "training" -> Training(event.related.getOrElse(config.COURSE_ID, "").asInstanceOf[String], event.courseName, "Course", event.related.getOrElse(config.BATCH_ID, "").asInstanceOf[String]),
+      "recipient" -> Recipient(certModel.identifier, certModel.recipientName, null),
+      "issuer" -> Issuer(certModel.issuer.url, certModel.issuer.name, "", certModel.issuer.publicKey),
+      "signatory" -> event.signatoryList,
+    ) ++ {if (reIssue) Map[String, AnyRef](config.OLD_ID -> event.oldId) else Map[String, AnyRef]()}
+    createCertReq
+  }
+
   @throws[ServerException]
   def callCertificateRc(api: String, identifier: String, request: Map[String, AnyRef]): String = {
     logger.info("Certificate rc called | Api:: " + api)
     var id: String = null
+    val uri: String = config.rcBaseUrl + "/" + config.rcEntity
     val status = api match {
-      case config.rcDeleteApi => httpUtil.delete(config.rcBaseUrl + "/" + config.rcEntity + "/" + config.rcDeleteApi + "/" +identifier).status
-      case config.rcReadApi => httpUtil.get(config.rcBaseUrl + "/" + config.rcEntity + "/" + config.rcReadApi + "/" +identifier, Map[String, String]("Accept"-> "application/vc+ld+json")).status
+      case config.rcDeleteApi => httpUtil.delete(uri + "/" +identifier).status
       case config.rcCreateApi =>
         val req: String = ScalaModuleJsonUtils.serialize(request)
-        val httpResponse = httpUtil.post(config.rcBaseUrl + "/" + config.rcEntity + "/" + config.rcCreateApi, req)
+        val httpResponse = httpUtil.post(uri, req)
         if(httpResponse.status == 200) {
           val response = ScalaJsonUtil.deserialize[Map[String, AnyRef]](httpResponse.body)
           id = response.getOrElse("result", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]].getOrElse(config.rcEntity, Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]].getOrElse("osid","").asInstanceOf[String]
