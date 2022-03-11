@@ -25,10 +25,11 @@ class ContentAutoCreatorConfig(override val config: Config) extends BaseJobConfi
     config.getInt("task.content-auto-creator.parallelism") else 1
 
   // Metric List
-  val totalEventsCount = "total-events-count"
-  val successEventCount = "success-events-count"
-  val failedEventCount = "failed-events-count"
-  val skippedEventCount = "skipped-events-count"
+  val totalEventsCount = "total-message-count"
+  val successEventCount = "success-message-count"
+  val failedEventCount = "failed-message-count"
+  val skippedEventCount = "skipped-message-count"
+  val errorEventCount = "error-message-count"
 
   // Consumers
   val eventConsumer = "content-auto-creator-consumer"
