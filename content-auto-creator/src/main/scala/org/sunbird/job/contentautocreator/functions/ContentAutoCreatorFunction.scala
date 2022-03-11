@@ -68,7 +68,7 @@ class ContentAutoCreatorFunction(config: ContentAutoCreatorConfig, httpUtil: Htt
     } catch {
       case e: ServerException =>
         logger.error("ContentAutoCreatorFunction :: Message processing failed for mid : " + event.mid() + " || " + event , e)
-        metrics.incCounter(config.errorEventCount)
+        metrics.incCounter(config.failedEventCount)
         val currentIteration = event.currentIteration
         if (currentIteration < config.maxIteration) {
           val newEventMap = new util.HashMap[String, Any]()
