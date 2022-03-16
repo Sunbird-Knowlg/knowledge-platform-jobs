@@ -23,6 +23,8 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   val kafkaAuditEventTopic: String = config.getString("kafka.output.audit.topic")
 
   val enableSuppressException: Boolean = if(config.hasPath("enable.suppress.exception")) config.getBoolean("enable.suppress.exception") else false
+  val enableRcCertificate: Boolean = if(config.hasPath("enable.rc.certificate")) config.getBoolean("enable.rc.certificate") else false
+
 
   // Producers
   val certificateGeneratorAuditProducer = "collection-certificate-generator-audit-events-sink"
