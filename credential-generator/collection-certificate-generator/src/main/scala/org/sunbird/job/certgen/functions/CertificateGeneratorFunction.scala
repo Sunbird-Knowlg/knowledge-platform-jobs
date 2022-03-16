@@ -46,7 +46,7 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
     super.open(parameters)
     cassandraUtil = new CassandraUtil(config.dbHost, config.dbPort)
     if(esUtil==null)
-      esUtil = new ElasticSearchUtil("config.esConnectionInfo", "config.auditHistoryIndex", "config.auditHistoryIndexType")
+      esUtil = new ElasticSearchUtil(config.esConnection, config.certIndex, "config.auditHistoryIndexType")
   }
 
   override def close(): Unit = {
@@ -163,7 +163,7 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
   }
 
   def deleteCassandraRecord(id: String): Unit = {
-    val query = QueryBuilder.delete().from("config.sbKeySpace", "config.certreg.table")
+    val query = QueryBuilder.delete().from(config.sbKeyspace, config.certRegTable)
       .where(QueryBuilder.eq("identifier", id))
       .ifExists
     cassandraUtil.session.execute(query.toString)
