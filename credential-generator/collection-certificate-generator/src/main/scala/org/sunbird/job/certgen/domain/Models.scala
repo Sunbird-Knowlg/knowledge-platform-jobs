@@ -59,5 +59,6 @@ case class UserEnrollmentData(batchId: String,
   def this() = this("", "", "", "", "", null)
 }
 
-
-
+case class Recipient(id: String, name: String, `type`: String)
+case class Training(id: String, name: String, `type`: String, batchId: String)
+case class Issuer(url: String, name: String, kid: String, publicKey: Option[Array[String]])

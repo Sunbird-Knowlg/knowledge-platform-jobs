@@ -13,6 +13,7 @@ import org.sunbird.incredible.processor.CertModel
 import org.sunbird.incredible.processor.store.StorageService
 import org.sunbird.incredible.processor.views.SvgGenerator
 import org.sunbird.incredible.{CertificateConfig, CertificateGenerator, JsonKeys, ScalaModuleJsonUtils}
+import org.sunbird.job.certgen.domain.Issuer
 import org.sunbird.job.certgen.domain._
 import org.sunbird.job.certgen.exceptions.ServerException
 import org.sunbird.job.certgen.task.CertificateGeneratorConfig
@@ -62,9 +63,11 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
     try {
       val certValidator = new CertValidator()
       certValidator.validateGenerateCertRequest(event, config.enableSuppressException)
-      if(certValidator.isNotIssued(event)(config, metrics, cassandraUtil))
-        generateCertificate(event, context)(metrics)
-      else {
+      if(certValidator.isNotIssued(event)(config, metrics, cassandraUtil)) {
+        if(config.enableRcCertificate) generateCertificateUsingRC(event, context)(metrics)
+        else generateCertificate(event, context)(metrics)
+
+      } else {
         metrics.incCounter(config.skippedEventCount)
         logger.info(s"Certificate already issued for: ${event.eData.getOrElse("userId", "")} ${event.related}")
       }
@@ -110,6 +113,27 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
     })
   }
 
+  @throws[Exception]
+  def generateCertificateUsingRC(event: Event, context: KeyedProcessFunction[String, Event, String]#Context)(implicit metrics: Metrics): Unit = {
+    val certModelList: List[CertModel] = new CertMapper(certificateConfig).mapReqToCertModel(event)
+    certModelList.foreach(certModel => {
+      var uuid: String = null
+      val reIssue: Boolean = !event.oldId.isEmpty
+      try {
+        val related = event.related
+        val certReq = generateRequest(event, certModel, reIssue)
+        //make api call to registry with identifier
+        uuid = callCertificateRc(config.rcCreateApi, null, certReq)
+        val userEnrollmentData = UserEnrollmentData(related.getOrElse(config.BATCH_ID, "").asInstanceOf[String], certModel.identifier,
+          related.getOrElse(config.COURSE_ID, "").asInstanceOf[String], event.courseName, event.templateId,
+          Certificate(uuid, config.rcEntity, "", formatter.format(new Date())))
+        updateUserEnrollmentTable(event, userEnrollmentData, context)
+        metrics.incCounter(config.successEventCount)
+      } finally {
+        cleanUp(uuid, directory)
+      }
+    })
+  }
   @throws[ServerException]
   def addCertToRegistry(certReq: Event, request: Map[String, AnyRef], context: KeyedProcessFunction[String, Event, String]#Context)(implicit metrics: Metrics): Unit = {
     logger.info("adding certificate to the registry")
@@ -136,6 +160,45 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
     val file = new File(fileName)
     ScalaModuleJsonUtils.writeToJsonFile(file, certificateExtension)
     storageService.uploadFile(cloudPath, file)
+  }
+
+  def generateRequest(event: Event, certModel: CertModel, reIssue: Boolean):  Map[String, AnyRef] = {
+    val createCertReq = Map[String, AnyRef](
+      "certificateLabel" -> certModel.certificateName,
+      "status" -> "ACTIVE",
+      "templateUrl" -> event.svgTemplate,
+      "training" -> Training(event.related.getOrElse(config.COURSE_ID, "").asInstanceOf[String], event.courseName, "Course", event.related.getOrElse(config.BATCH_ID, "").asInstanceOf[String]),
+      "recipient" -> Recipient(certModel.identifier, certModel.recipientName, null),
+      "issuer" -> Issuer(certModel.issuer.url, certModel.issuer.name, "", certModel.issuer.publicKey),
+      "signatory" -> event.signatoryList,
+    ) ++ {if (reIssue) Map[String, AnyRef](config.OLD_ID -> event.oldId) else Map[String, AnyRef]()}
+    createCertReq
+  }
+
+  @throws[ServerException]
+  def callCertificateRc(api: String, identifier: String, request: Map[String, AnyRef]): String = {
+    logger.info("Certificate rc called | Api:: " + api)
+    var id: String = null
+    val uri: String = config.rcBaseUrl + "/" + config.rcEntity
+    val status = api match {
+      case config.rcDeleteApi => httpUtil.delete(uri + "/" +identifier).status
+      case config.rcCreateApi =>
+        val req: String = ScalaModuleJsonUtils.serialize(request)
+        val httpResponse = httpUtil.post(uri, req)
+        if(httpResponse.status == 200) {
+          val response = ScalaJsonUtil.deserialize[Map[String, AnyRef]](httpResponse.body)
+          id = response.getOrElse("result", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]].getOrElse(config.rcEntity, Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]].getOrElse("osid","").asInstanceOf[String]
+        }
+        httpResponse.status
+
+    }
+    if (status == 200) {
+      logger.info("certificate rc successfully executed for api: " + api)
+    } else {
+      logger.error("certificate rc failed for api: " + api +  " | Status is: " + status)
+      throw ServerException("ERR_API_CALL", "Something Went Wrong While Making API Call:  " + api +  " | Status is: " + status)
+    }
+    id
   }
 
   private def cleanUp(fileName: String, path: String): Unit = {
