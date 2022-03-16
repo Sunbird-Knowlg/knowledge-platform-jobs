@@ -2,6 +2,8 @@ package org.sunbird.job.certgen.spec
 
 import com.datastax.driver.core.Row
 import com.typesafe.config.{Config, ConfigFactory}
+import kong.unirest.UnirestException
+import org.apache.http.conn.HttpHostConnectException
 import org.cassandraunit.CQLDataLoader
 import org.cassandraunit.dataset.cql.FileCQLDataSet
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
@@ -143,5 +145,26 @@ class CertificateGeneratorFunctionTest extends BaseTestSpec {
     assert(id == null)
   }*/
 
+  "Certificate rc delete api call for for missing id " should " throw no Exception " in {
+    an [ServerException] should be thrownBy {
+      new CertificateGeneratorFunction(jobConfig, httpUtil, storageService, cassandraUtil).callCertificateRc(jobConfig.rcCreateApi, "missingId",  null)
+    }
+  }
+
+  "Certificate rc delete api call for for missing id " should " throw serverException " in {
+    an [ServerException] should be thrownBy {
+      new CertificateGeneratorFunction(jobConfig, httpUtil, storageService, cassandraUtil).deleteOldRegistry("missingId")
+    }
+  }
+
+  "Certificate generation for event with missing oldId in rc and old registry " should " throw server exception while re issuing" in {
+    val event = new Event(JSONUtil.deserialize[java.util.Map[String, Any]](EventFixture.EVENT_1), 0, 0)
+    val batchId = event.related.getOrElse(jobConfig.COURSE_ID, "").asInstanceOf[String]
+    val courseId = event.related.getOrElse(jobConfig.BATCH_ID, "").asInstanceOf[String]
+    when(mockHttpUtil.delete(jobConfig.rcBaseUrl + "/" + jobConfig.rcEntity + "/" +event.oldId)).thenReturn(HTTPResponse(500, """{}"""))
+    when(mockCassandraUtil.find("SELECT * FROM sunbird_courses.user_enrolments WHERE userid='"+event.userId+"' AND batchid='"+batchId+"' AND courseid='"+courseId+"';")).thenReturn(new util.ArrayList[Row]())
+    an [ServerException] should be thrownBy new CertificateGeneratorFunction(jobConfig, mockHttpUtil, storageService, mockCassandraUtil).generateCertificateUsingRC(event, null)(mockMetrics)
+
+  }
 
 }
