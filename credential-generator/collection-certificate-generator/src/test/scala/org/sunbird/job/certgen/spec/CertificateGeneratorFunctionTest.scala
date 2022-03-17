@@ -150,7 +150,7 @@ class CertificateGeneratorFunctionTest extends BaseTestSpec {
   "Certificate rc delete api call for for missing id " should " throw server Exception " in {
     when(mockHttpUtil.delete(jobConfig.rcBaseUrl + "/" + jobConfig.rcEntity + "/" +"missingId")).thenReturn(HTTPResponse(500, """{}"""))
     an [ServerException] should be thrownBy {
-      new CertificateGeneratorFunction(jobConfig, httpUtil, storageService, cassandraUtil).callCertificateRc(jobConfig.rcCreateApi, "missingId",  null)
+      new CertificateGeneratorFunction(jobConfig, mockHttpUtil, storageService, cassandraUtil).callCertificateRc(jobConfig.rcDeleteApi, "missingId",  null)
     }
   }
 

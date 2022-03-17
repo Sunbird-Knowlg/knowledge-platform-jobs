@@ -241,23 +241,6 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
     id
   }
 
-/*
-  @throws[Exception]
-  def callme(id: String) ={
-    try {
-      callCertificateRc(config.rcDeleteApi, id, null)
-
-    } catch {
-      case ex: ServerException =>
-        logger.error("Rc deletion failed | old id is not present :: identifier" + id + " :: " + ex.getMessage)
-      case e: UnirestException =>
-        logger.error("Rc deletion failed due to connection :: identifier" + id + " :: " + e.getMessage)
-        throw ServerException("ERR_CONNECTION_ERROR", "Rc deletion failed | error msg: " + e.getMessage)
-    }
-  }
-
-*/
-
   private def cleanUp(fileName: String, path: String): Unit = {
     try {
       val directory = new File(path)
@@ -272,7 +255,6 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
         logger.error(ex.getMessage, ex)
     }
   }
-
 
   def updateUserEnrollmentTable(event: Event, certMetaData: UserEnrollmentData, context: KeyedProcessFunction[String, Event, String]#Context)(implicit metrics: Metrics): Unit = {
     logger.info("updating user enrollment table {}", certMetaData)
