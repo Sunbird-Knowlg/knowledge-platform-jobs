@@ -138,7 +138,7 @@ class CertificateGeneratorFunctionTest extends BaseTestSpec {
       id = new CertificateGeneratorFunction(jobConfig, httpUtil, storageService, cassandraUtil).callCertificateRc(jobConfig.rcCreateApi, null,  createCertReq)
     }
     assert(id != null)
-  }*/
+  }
 
   "Certificate rc create api call for for empty request " should " throw serverException and returns null" in {
     val createCertReq = Map[String, AnyRef]()
@@ -147,7 +147,7 @@ class CertificateGeneratorFunctionTest extends BaseTestSpec {
       id = new CertificateGeneratorFunction(jobConfig, httpUtil, storageService, cassandraUtil).callCertificateRc(jobConfig.rcCreateApi, null,  createCertReq)
     }
     assert(id == null)
-  }
+  }*/
 
   "Certificate rc delete api call for for missing id " should " throw server Exception " in {
     when(mockHttpUtil.delete(jobConfig.rcBaseUrl + "/" + jobConfig.rcEntity + "/" +"missingId")).thenReturn(HTTPResponse(500, """{}"""))
@@ -192,9 +192,9 @@ class CertificateGeneratorFunctionTest extends BaseTestSpec {
   }
 
   //Functional test case for search service
-  "Certificate rc search api call for publicKey with invalid request" should " returns id" in {
+/*  "Certificate rc search api call for publicKey with invalid request" should " returns id" in {
     val req = Map("filters" -> Map())
     val id: String = new CertificateGeneratorFunction(jobConfig, httpUtil, storageService, mockCassandraUtil).callCertificateRc(jobConfig.rcSearchApi, null,  req)
     assert(id != null)
-  }
+  }*/
 }
