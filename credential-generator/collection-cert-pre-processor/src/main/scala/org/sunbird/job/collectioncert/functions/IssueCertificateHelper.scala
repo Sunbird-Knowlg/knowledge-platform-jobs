@@ -165,7 +165,7 @@ trait IssueCertificateHelper {
             ScalaJsonUtil.deserialize[Map[String, AnyRef]](response.body)
               .getOrElse("result", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
               .getOrElse(responseParam, Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
-        } else if(400 == response.status && response.body.contains("UOS_USRRED0006")) {
+        } else if(400 == response.status && response.body.contains(config.userAccBlockedErrCode)) {
             metrics.incCounter(config.skippedEventCount)
             logger.error(s"Error while fetching user details for ${url}: " + response.status + " :: " + response.body)
             Map[String, AnyRef]()
