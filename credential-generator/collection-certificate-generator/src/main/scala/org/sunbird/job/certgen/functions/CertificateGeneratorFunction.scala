@@ -166,7 +166,7 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
     val query = QueryBuilder.delete().from(config.sbKeyspace, config.certRegTable)
       .where(QueryBuilder.eq("identifier", id))
       .ifExists
-    cassandraUtil.session.execute(query.toString)
+    cassandraUtil.executePreparedStatement(query.toString)
   }
 
   def deleteEsRecord(id: String): Unit = {

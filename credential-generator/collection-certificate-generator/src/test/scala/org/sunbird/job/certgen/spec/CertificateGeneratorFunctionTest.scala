@@ -1,6 +1,7 @@
 package org.sunbird.job.certgen.spec
 
-import com.datastax.driver.core.Row
+import com.datastax.driver.core.{ResultSet, Row}
+import com.datastax.driver.core.querybuilder.QueryBuilder
 import com.typesafe.config.{Config, ConfigFactory}
 import kong.unirest.UnirestException
 import org.apache.http.conn.HttpHostConnectException
@@ -19,7 +20,7 @@ import org.sunbird.job.certgen.exceptions.ServerException
 import org.sunbird.job.certgen.fixture.EventFixture
 import org.sunbird.job.certgen.functions.{CertMapper, CertValidator, CertificateGeneratorFunction}
 import org.sunbird.job.certgen.task.CertificateGeneratorConfig
-import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, JSONUtil}
+import org.sunbird.job.util.{CassandraUtil, ElasticSearchUtil, HTTPResponse, HttpUtil, JSONUtil}
 import org.sunbird.spec.BaseTestSpec
 
 import java.util
@@ -38,6 +39,7 @@ class CertificateGeneratorFunctionTest extends BaseTestSpec {
   val mockMetrics = mock[Metrics](Mockito.withSettings().serializable())
   val certificateConfig: CertificateConfig = CertificateConfig(basePath = jobConfig.basePath, encryptionServiceUrl = jobConfig.encServiceUrl, contextUrl = jobConfig.CONTEXT, issuerUrl = jobConfig.ISSUER_URL,
     evidenceUrl = jobConfig.EVIDENCE_URL, signatoryExtension = jobConfig.SIGNATORY_EXTENSION)
+  //val mockEsUtil: ElasticSearchUtil = mock[ElasticSearchUtil](Mockito.withSettings().serializable())
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
@@ -143,19 +145,25 @@ class CertificateGeneratorFunctionTest extends BaseTestSpec {
       id = new CertificateGeneratorFunction(jobConfig, httpUtil, storageService, cassandraUtil).callCertificateRc(jobConfig.rcCreateApi, null,  createCertReq)
     }
     assert(id == null)
-  }
+  }*/
 
-  "Certificate rc delete api call for for missing id " should " throw no Exception " in {
+  "Certificate rc delete api call for for missing id " should " throw server Exception " in {
+    when(mockHttpUtil.delete(jobConfig.rcBaseUrl + "/" + jobConfig.rcEntity + "/" +"missingId")).thenReturn(HTTPResponse(500, """{}"""))
     an [ServerException] should be thrownBy {
       new CertificateGeneratorFunction(jobConfig, httpUtil, storageService, cassandraUtil).callCertificateRc(jobConfig.rcCreateApi, "missingId",  null)
     }
   }
 
-  "Certificate rc delete api call for for missing id " should " throw serverException " in {
+  "Certificate old registry delete api call for for missing id " should " throw serverException " in {
+
+    val query = QueryBuilder.delete().from(jobConfig.sbKeyspace, jobConfig.certRegTable)
+      .where(QueryBuilder.eq("identifier", "missingId"))
+      .ifExists
+    when(mockCassandraUtil.executePreparedStatement(query.toString)).thenReturn(new util.ArrayList[Row]())
     an [ServerException] should be thrownBy {
-      new CertificateGeneratorFunction(jobConfig, httpUtil, storageService, cassandraUtil).deleteOldRegistry("missingId")
+      new CertificateGeneratorFunction(jobConfig, mockHttpUtil, storageService, mockCassandraUtil).deleteOldRegistry("missingId")
     }
-  }*/
+  }
 
   "Certificate generation for event with missing oldId in rc and old registry " should " throw server exception while re issuing" in {
     val event = new Event(JSONUtil.deserialize[java.util.Map[String, Any]](EventFixture.EVENT_1), 0, 0)
