@@ -100,9 +100,11 @@ class CertificateGeneratorFunctionTest extends BaseTestSpec {
 
   "Certificate generation with valid event " should " not throw exception " in {
     val event = new Event(JSONUtil.deserialize[java.util.Map[String, Any]](EventFixture.EVENT_3), 0, 0)
-    val createCertReq = generateRequest(event)
+    val createCertReq = generateRequest(event,"1-25a8c96b-b254-4720-bbc9-29b37c3c2bec")
     val batchId = event.related.getOrElse(jobConfig.COURSE_ID, "").asInstanceOf[String]
     val courseId = event.related.getOrElse(jobConfig.BATCH_ID, "").asInstanceOf[String]
+    val req = Map("filters" -> Map())
+    when(mockHttpUtil.post(jobConfig.rcBaseUrl + "/PublicKey/search", ScalaModuleJsonUtils.serialize(req))).thenReturn(HTTPResponse(200, """[{"osUpdatedAt":"2022-03-17T06:43:48.070698Z","osCreatedAt":"2022-03-17T06:43:48.070698Z","osUpdatedBy":"anonymous","osCreatedBy":"anonymous","osid":"1-25a8c96b-b254-4720-bbc9-29b37c3c2bec","value":"keyvalue","alg":"RSA"}]"""))
     when(mockHttpUtil.post(jobConfig.rcBaseUrl + "/" + jobConfig.rcEntity, ScalaModuleJsonUtils.serialize(createCertReq))).thenReturn(HTTPResponse(200, """{"id":"sunbird-rc.registry.create","ver":"1.0","ets":1646765130993,"params":{"resmsgid":"","msgid":"cca2e242-fce7-47ec-b5d0-61cebe56c31d","err":"","status":"SUCCESSFUL","errmsg":""},"responseCode":"OK","result":{"TrainingCertificate":{"osid":"validId"}}}"""))
     when(mockCassandraUtil.find("SELECT * FROM sunbird_courses.user_enrolments WHERE userid='"+event.userId+"' AND batchid='"+batchId+"' AND courseid='"+courseId+"';")).thenReturn(new util.ArrayList[Row]())
     noException should be thrownBy new CertificateGeneratorFunction(jobConfig, mockHttpUtil, storageService, mockCassandraUtil).generateCertificateUsingRC(event, null)(mockMetrics)
@@ -110,7 +112,7 @@ class CertificateGeneratorFunctionTest extends BaseTestSpec {
   }
 
 
-  private def generateRequest(event: Event):  Map[String, AnyRef] = {
+  private def generateRequest(event: Event, kid: String):  Map[String, AnyRef] = {
     val certModel: CertModel = new CertMapper(certificateConfig).mapReqToCertModel(event).head
     val reIssue: Boolean = !event.oldId.isEmpty
     val related = event.related
@@ -120,7 +122,7 @@ class CertificateGeneratorFunctionTest extends BaseTestSpec {
       "templateUrl" -> event.svgTemplate,
       "training" -> Training(related.getOrElse(jobConfig.COURSE_ID, "").asInstanceOf[String], event.courseName, "Course", related.getOrElse(jobConfig.BATCH_ID, "").asInstanceOf[String]),
       "recipient" -> Recipient(certModel.identifier, certModel.recipientName, null),
-      "issuer" -> Issuer(certModel.issuer.url, certModel.issuer.name, "certModel.issuer.publicKey"),
+      "issuer" -> Issuer(certModel.issuer.url, certModel.issuer.name, kid),
       "signatory" -> event.signatoryList,
     ) ++ {if (reIssue) Map[String, AnyRef](jobConfig.OLD_ID -> event.oldId) else Map[String, AnyRef]()}
     createCertReq
@@ -128,7 +130,7 @@ class CertificateGeneratorFunctionTest extends BaseTestSpec {
 
   // functional test cases commented.
   // To be used while running locally
-/*  "Certificate rc create api call for for valid request " should " not throw serverException and returns id" in {
+/* "Certificate rc create api call for for valid request " should " not throw serverException and returns id" in {
     val event = new Event(JSONUtil.deserialize[java.util.Map[String, Any]](EventFixture.EVENT_3), 0, 0)
     val createCertReq = generateRequest(event)
     var id: String = null
