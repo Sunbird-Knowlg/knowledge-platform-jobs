@@ -4,13 +4,15 @@ import com.datastax.driver.core.{ResultSet, Row}
 import com.datastax.driver.core.querybuilder.QueryBuilder
 import com.typesafe.config.{Config, ConfigFactory}
 import kong.unirest.UnirestException
+import okhttp3.mockwebserver.MockWebServer
 import org.apache.http.conn.HttpHostConnectException
 import org.cassandraunit.CQLDataLoader
 import org.cassandraunit.dataset.cql.FileCQLDataSet
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
 import org.mockito.ArgumentMatchers.{any, anyString}
 import org.mockito.Mockito
-import org.mockito.Mockito.when
+import org.mockito.Mockito.{doNothing, when}
+import org.mockito.stubbing.Answer
 import org.sunbird.incredible.processor.CertModel
 import org.sunbird.incredible.{CertificateConfig, JsonKeys, ScalaModuleJsonUtils, StorageParams}
 import org.sunbird.incredible.processor.store.StorageService
@@ -39,7 +41,8 @@ class CertificateGeneratorFunctionTest extends BaseTestSpec {
   val mockMetrics = mock[Metrics](Mockito.withSettings().serializable())
   val certificateConfig: CertificateConfig = CertificateConfig(basePath = jobConfig.basePath, encryptionServiceUrl = jobConfig.encServiceUrl, contextUrl = jobConfig.CONTEXT, issuerUrl = jobConfig.ISSUER_URL,
     evidenceUrl = jobConfig.EVIDENCE_URL, signatoryExtension = jobConfig.SIGNATORY_EXTENSION)
-  //val mockEsUtil: ElasticSearchUtil = mock[ElasticSearchUtil](Mockito.withSettings().serializable())
+  val mockEsUtil: ElasticSearchUtil = mock[ElasticSearchUtil](Mockito.withSettings().serializable())
+
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
@@ -164,6 +167,18 @@ class CertificateGeneratorFunctionTest extends BaseTestSpec {
     when(mockCassandraUtil.executePreparedStatement(query.toString)).thenReturn(new util.ArrayList[Row]())
     an [ServerException] should be thrownBy {
       new CertificateGeneratorFunction(jobConfig, mockHttpUtil, storageService, mockCassandraUtil).deleteOldRegistry("missingId")
+    }
+  }
+
+  "Certificate old registry delete api call with valid id " should " throw exception " in {
+
+    doNothing().when(mockEsUtil).deleteDocument("validId")
+    val query = QueryBuilder.delete().from(jobConfig.sbKeyspace, jobConfig.certRegTable)
+      .where(QueryBuilder.eq("identifier", "validId"))
+      .ifExists
+    when(mockCassandraUtil.executePreparedStatement(query.toString)).thenReturn(new util.ArrayList[Row]())
+    an[ServerException] should be thrownBy {
+      new CertificateGeneratorFunction(jobConfig, mockHttpUtil, storageService, mockCassandraUtil).deleteOldRegistry("validId")
     }
   }
 
