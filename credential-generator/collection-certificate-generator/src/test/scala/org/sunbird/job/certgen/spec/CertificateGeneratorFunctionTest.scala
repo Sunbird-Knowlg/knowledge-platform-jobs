@@ -143,7 +143,7 @@ class CertificateGeneratorFunctionTest extends BaseTestSpec {
       id = new CertificateGeneratorFunction(jobConfig, httpUtil, storageService, cassandraUtil).callCertificateRc(jobConfig.rcCreateApi, null,  createCertReq)
     }
     assert(id == null)
-  }*/
+  }
 
   "Certificate rc delete api call for for missing id " should " throw no Exception " in {
     an [ServerException] should be thrownBy {
@@ -155,7 +155,7 @@ class CertificateGeneratorFunctionTest extends BaseTestSpec {
     an [ServerException] should be thrownBy {
       new CertificateGeneratorFunction(jobConfig, httpUtil, storageService, cassandraUtil).deleteOldRegistry("missingId")
     }
-  }
+  }*/
 
   "Certificate generation for event with missing oldId in rc and old registry " should " throw server exception while re issuing" in {
     val event = new Event(JSONUtil.deserialize[java.util.Map[String, Any]](EventFixture.EVENT_1), 0, 0)
