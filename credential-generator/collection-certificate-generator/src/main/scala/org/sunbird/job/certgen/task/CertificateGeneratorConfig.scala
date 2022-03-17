@@ -86,6 +86,8 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   val rcEntity: String = config.getString("service.rc.entity")
   val rcCreateApi: String = "service.rc.create.api"
   val rcDeleteApi: String = "service.rc.delete.api"
+  val rcSearchApi: String = "service.rc.search.api"
+
 
   //constant
   val DATA: String = "data"

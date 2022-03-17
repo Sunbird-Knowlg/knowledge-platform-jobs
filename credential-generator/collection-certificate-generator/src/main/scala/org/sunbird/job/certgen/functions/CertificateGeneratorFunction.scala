@@ -202,13 +202,15 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
   }
 
   def generateRequest(event: Event, certModel: CertModel, reIssue: Boolean):  Map[String, AnyRef] = {
+    val req = Map("filters" -> Map())
+    val publicKeyId: String = callCertificateRc(config.rcSearchApi, null, req)
     val createCertReq = Map[String, AnyRef](
       "certificateLabel" -> certModel.certificateName,
       "status" -> "ACTIVE",
       "templateUrl" -> event.svgTemplate,
       "training" -> Training(event.related.getOrElse(config.COURSE_ID, "").asInstanceOf[String], event.courseName, "Course", event.related.getOrElse(config.BATCH_ID, "").asInstanceOf[String]),
       "recipient" -> Recipient(certModel.identifier, certModel.recipientName, null),
-      "issuer" -> Issuer(certModel.issuer.url, certModel.issuer.name, "", certModel.issuer.publicKey),
+      "issuer" -> Issuer(certModel.issuer.url, certModel.issuer.name, publicKeyId),
       "signatory" -> event.signatoryList,
     ) ++ {if (reIssue) Map[String, AnyRef](config.OLD_ID -> event.oldId) else Map[String, AnyRef]()}
     createCertReq
@@ -230,7 +232,15 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
           id = response.getOrElse("result", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]].getOrElse(config.rcEntity, Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]].getOrElse("osid","").asInstanceOf[String]
         }
         httpResponse.status
-
+      case config.rcSearchApi =>
+        val req: String = ScalaModuleJsonUtils.serialize(request)
+        val searchUri = config.rcBaseUrl + "/" + "PublicKey" + "/search"
+        val httpResponse = httpUtil.post(searchUri, req)
+        if(httpResponse.status == 200) {
+          val resp = ScalaJsonUtil.deserialize[List[Map[String, AnyRef]]](httpResponse.body)
+          id = resp.head.getOrElse("osid", null).asInstanceOf[String]
+        }
+        httpResponse.status
     }
     if (status == 200) {
       logger.info("certificate rc successfully executed for api: " + api)
