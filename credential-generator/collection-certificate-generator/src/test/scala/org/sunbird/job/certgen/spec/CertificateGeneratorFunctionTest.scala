@@ -4,15 +4,12 @@ import com.datastax.driver.core.{ResultSet, Row}
 import com.datastax.driver.core.querybuilder.QueryBuilder
 import com.typesafe.config.{Config, ConfigFactory}
 import kong.unirest.UnirestException
-import okhttp3.mockwebserver.MockWebServer
-import org.apache.http.conn.HttpHostConnectException
 import org.cassandraunit.CQLDataLoader
 import org.cassandraunit.dataset.cql.FileCQLDataSet
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
 import org.mockito.ArgumentMatchers.{any, anyString}
 import org.mockito.Mockito
 import org.mockito.Mockito.{doNothing, when}
-import org.mockito.stubbing.Answer
 import org.sunbird.incredible.processor.CertModel
 import org.sunbird.incredible.{CertificateConfig, JsonKeys, ScalaModuleJsonUtils, StorageParams}
 import org.sunbird.incredible.processor.store.StorageService
@@ -188,6 +185,13 @@ class CertificateGeneratorFunctionTest extends BaseTestSpec {
     val courseId = event.related.getOrElse(jobConfig.BATCH_ID, "").asInstanceOf[String]
     when(mockHttpUtil.delete(jobConfig.rcBaseUrl + "/" + jobConfig.rcEntity + "/" +event.oldId)).thenReturn(HTTPResponse(500, """{}"""))
     when(mockCassandraUtil.find("SELECT * FROM sunbird_courses.user_enrolments WHERE userid='"+event.userId+"' AND batchid='"+batchId+"' AND courseid='"+courseId+"';")).thenReturn(new util.ArrayList[Row]())
+    an [ServerException] should be thrownBy new CertificateGeneratorFunction(jobConfig, mockHttpUtil, storageService, mockCassandraUtil).generateCertificateUsingRC(event, null)(mockMetrics)
+
+  }
+
+  "Certificate generation for event with connection issue on rc " should " throw unirest exception while re issuing" in {
+    val event = new Event(JSONUtil.deserialize[java.util.Map[String, Any]](EventFixture.EVENT_1), 0, 0)
+    when(mockHttpUtil.delete(jobConfig.rcBaseUrl + "/" + jobConfig.rcEntity + "/" +event.oldId)).thenThrow(new UnirestException(""))
     an [ServerException] should be thrownBy new CertificateGeneratorFunction(jobConfig, mockHttpUtil, storageService, mockCassandraUtil).generateCertificateUsingRC(event, null)(mockMetrics)
 
   }
