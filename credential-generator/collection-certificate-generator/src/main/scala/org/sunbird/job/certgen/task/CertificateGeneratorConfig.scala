@@ -33,9 +33,15 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   val notifierParallelism: Int = if(config.hasPath("task.notifier.parallelism")) config.getInt("task.notifier.parallelism") else 1
   val userFeedParallelism: Int = if(config.hasPath("task.userfeed.parallelism")) config.getInt("task.userfeed.parallelism") else 1
 
+  //ES configuration
+  val esConnection: String = config.getString("es.basePath")
+  val certIndex: String = "certs"
+  val certIndexType: String = "_doc"
 
 
   // Cassandra Configurations
+  val sbKeyspace: String = config.getString("lms-cassandra.sbkeyspace")
+  val certRegTable: String = config.getString("lms-cassandra.certreg.table")
   val dbEnrollmentTable: String = config.getString("lms-cassandra.user_enrolments.table")
   val dbKeyspace: String = config.getString("lms-cassandra.keyspace")
   val dbHost: String = config.getString("lms-cassandra.host")
@@ -80,6 +86,8 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   val rcEntity: String = config.getString("service.rc.entity")
   val rcCreateApi: String = "service.rc.create.api"
   val rcDeleteApi: String = "service.rc.delete.api"
+  val rcSearchApi: String = "service.rc.search.api"
+
 
   //constant
   val DATA: String = "data"
