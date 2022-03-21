@@ -68,13 +68,12 @@ class ContentAutoCreatorFunction(config: ContentAutoCreatorConfig, httpUtil: Htt
     } catch {
       case e: ServerException =>
         logger.error("ContentAutoCreatorFunction :: Message processing failed for mid : " + event.mid() + " || " + event , e)
-        metrics.incCounter(config.errorEventCount)
         val currentIteration = event.currentIteration
         if (currentIteration < config.maxIteration) {
           val newEventMap = new util.HashMap[String, Any]()
           newEventMap.putAll(event.getMap())
           newEventMap.get("edata").asInstanceOf[util.HashMap[String, Any]].put("iteration",currentIteration+1)
-          pushEventForRetry(event, e, context)
+          pushEventForRetry(event, e, metrics, context)
           logger.info("Failed Event Sent To Kafka Topic : " + config.kafkaFailedTopic + " | for mid : " + event.mid(), event)
         }
         else logger.info("Event Reached Maximum Retry Limit having mid : " + event.mid() + "| " +  event)
@@ -83,9 +82,10 @@ class ContentAutoCreatorFunction(config: ContentAutoCreatorConfig, httpUtil: Htt
 
 
 
-  private def pushEventForRetry(event: Event, error: Throwable, context: ProcessFunction[Event, String]#Context): Unit = {
+  private def pushEventForRetry(event: Event, error: Throwable, metrics: Metrics, context: ProcessFunction[Event, String]#Context): Unit = {
     val failedEvent = getFailedEvent(event.jobName, event.getMap(), error)
     context.output(config.failedEventOutTag, failedEvent)
+    metrics.incCounter(config.errorEventCount)
   }
 
 }
