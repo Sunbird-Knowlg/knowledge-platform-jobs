@@ -38,7 +38,7 @@ class ContentAutoCreatorConfig(override val config: Config) extends BaseJobConfi
 
   // Tags
   val contentAutoCreatorOutputTag: OutputTag[Event] = OutputTag[Event]("content-auto-creator")
-  val failedEventOutTag: OutputTag[String] = OutputTag[String]("failed-event")
+  val failedEventOutTag: OutputTag[String] = OutputTag[String]("content-auto-creator-failed-event")
 
   val configVersion = "1.0"
 
