@@ -109,7 +109,7 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
         val related = event.related
         val userEnrollmentData = UserEnrollmentData(related.getOrElse(config.BATCH_ID, "").asInstanceOf[String], certModel.identifier,
           related.getOrElse(config.COURSE_ID, "").asInstanceOf[String], event.courseName, event.templateId,
-          Certificate(uuid, event.name, qrMap.accessCode, formatter.format(new Date())))
+          Certificate(uuid, event.name, qrMap.accessCode, formatter.format(new Date()), "", ""))
         updateUserEnrollmentTable(event, userEnrollmentData, context)
         metrics.incCounter(config.successEventCount)
       } finally {
@@ -144,7 +144,7 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
       uuid = callCertificateRc(config.rcCreateApi, null, certReq)
       val userEnrollmentData = UserEnrollmentData(related.getOrElse(config.BATCH_ID, "").asInstanceOf[String], certModel.identifier,
         related.getOrElse(config.COURSE_ID, "").asInstanceOf[String], event.courseName, event.templateId,
-        Certificate(uuid, config.rcEntity, "", formatter.format(new Date())))
+        Certificate(uuid, event.name, "", formatter.format(new Date()), event.svgTemplate, config.rcEntity))
       updateUserEnrollmentTable(event, userEnrollmentData, context)
       metrics.incCounter(config.successEventCount)
     })
@@ -283,7 +283,10 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
           config.identifier -> certMetaData.certificate.id,
           config.token -> certMetaData.certificate.token,
         ) ++ {if(!certMetaData.certificate.lastIssuedOn.isEmpty) Map[String, String](config.lastIssuedOn -> certMetaData.certificate.lastIssuedOn)
-        else Map[String, String]()}))
+        else Map[String, String]()}
+        ++ {if(config.enableRcCertificate) Map[String, String](config.templateUrl -> certMetaData.certificate.templateUrl, config.`type`->certMetaData.certificate.`type`)
+        else Map[String, String]()}
+        ))
         
         val query = getUpdateIssuedCertQuery(updatedCerts, certMetaData.userId, certMetaData.courseId, certMetaData.batchId, config)
         logger.info("update query {}", query.toString)

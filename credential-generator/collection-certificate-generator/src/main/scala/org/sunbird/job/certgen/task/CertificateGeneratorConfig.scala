@@ -129,6 +129,8 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   val name = "name"
   val token = "token"
   val lastIssuedOn = "lastIssuedOn"
+  val templateUrl = "templateUrl"
+  val `type` = "type"
   val certificate = "certificate"
   val action = "action"
   val courseName = "courseName"

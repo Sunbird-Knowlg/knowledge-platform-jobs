@@ -35,8 +35,10 @@ case class CertificateAuditEvent(eid: String = "AUDIT",
 case class Certificate(id: String,
                        name: String,
                        token: String,
-                       lastIssuedOn: String) {
-  def this() = this("", "", "", "")
+                       lastIssuedOn: String,
+                       templateUrl: String,
+                       `type`: String) {
+  def this() = this("", "", "", "", "", "")
 }
 
 case class FailedEvent(errorCode: String,

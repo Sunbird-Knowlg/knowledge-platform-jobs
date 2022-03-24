@@ -14,7 +14,7 @@ import org.sunbird.incredible.processor.CertModel
 import org.sunbird.incredible.{CertificateConfig, JsonKeys, ScalaModuleJsonUtils, StorageParams}
 import org.sunbird.incredible.processor.store.StorageService
 import org.sunbird.job.Metrics
-import org.sunbird.job.certgen.domain.{Event, Issuer, Recipient, Training}
+import org.sunbird.job.certgen.domain.{Certificate, Event, Issuer, Recipient, Training, UserEnrollmentData}
 import org.sunbird.job.certgen.exceptions.ServerException
 import org.sunbird.job.certgen.fixture.EventFixture
 import org.sunbird.job.certgen.functions.{CertMapper, CertValidator, CertificateGeneratorFunction}
@@ -22,7 +22,9 @@ import org.sunbird.job.certgen.task.CertificateGeneratorConfig
 import org.sunbird.job.util.{CassandraUtil, ElasticSearchUtil, HTTPResponse, HttpUtil, JSONUtil}
 import org.sunbird.spec.BaseTestSpec
 
+import java.text.SimpleDateFormat
 import java.util
+import java.util.Date
 
 class CertificateGeneratorFunctionTest extends BaseTestSpec {
 
@@ -39,6 +41,8 @@ class CertificateGeneratorFunctionTest extends BaseTestSpec {
   val certificateConfig: CertificateConfig = CertificateConfig(basePath = jobConfig.basePath, encryptionServiceUrl = jobConfig.encServiceUrl, contextUrl = jobConfig.CONTEXT, issuerUrl = jobConfig.ISSUER_URL,
     evidenceUrl = jobConfig.EVIDENCE_URL, signatoryExtension = jobConfig.SIGNATORY_EXTENSION)
   val mockEsUtil: ElasticSearchUtil = mock[ElasticSearchUtil](Mockito.withSettings().serializable())
+  val formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ")
+
 
 
   override protected def beforeAll(): Unit = {
@@ -96,6 +100,23 @@ class CertificateGeneratorFunctionTest extends BaseTestSpec {
     )
     when(mockHttpUtil.post(jobConfig.rcBaseUrl + "/" + jobConfig.rcEntity, ScalaModuleJsonUtils.serialize(certReq))).thenReturn(HTTPResponse(500, """{}"""))
     an [ServerException] should be thrownBy new CertificateGeneratorFunction(jobConfig, mockHttpUtil, storageService, cassandraUtil).callCertificateRc(jobConfig.rcCreateApi, null,  certReq)
+  }
+
+  "Certificate Update enrolment with valid event " should " not throw exception " in {
+    val event = new Event(JSONUtil.deserialize[java.util.Map[String, Any]](EventFixture.EVENT_3), 0, 0)
+    val createCertReq = generateRequest(event,"1-25a8c96b-b254-4720-bbc9-29b37c3c2bec")
+    val recipient = createCertReq.getOrElse("recipient", null).asInstanceOf[Recipient]
+    val userEnrollmentData = UserEnrollmentData(event.related.getOrElse(jobConfig.BATCH_ID, "").asInstanceOf[String], recipient.id,
+      event.related.getOrElse(jobConfig.COURSE_ID, "").asInstanceOf[String], event.courseName, event.templateId,
+      Certificate("validId", event.name, "", formatter.format(new Date()), event.svgTemplate, jobConfig.rcEntity))
+    val batchId = event.related.getOrElse(jobConfig.COURSE_ID, "").asInstanceOf[String]
+    val courseId = event.related.getOrElse(jobConfig.BATCH_ID, "").asInstanceOf[String]
+    val req = Map("filters" -> Map())
+
+    when(mockHttpUtil.post(jobConfig.rcBaseUrl + "/PublicKey/search", ScalaModuleJsonUtils.serialize(req))).thenReturn(HTTPResponse(200, """[{"osUpdatedAt":"2022-03-17T06:43:48.070698Z","osCreatedAt":"2022-03-17T06:43:48.070698Z","osUpdatedBy":"anonymous","osCreatedBy":"anonymous","osid":"1-25a8c96b-b254-4720-bbc9-29b37c3c2bec","value":"keyvalue","alg":"RSA"}]"""))
+    when(mockHttpUtil.post(jobConfig.rcBaseUrl + "/" + jobConfig.rcEntity, ScalaModuleJsonUtils.serialize(createCertReq))).thenReturn(HTTPResponse(200, """{"id":"sunbird-rc.registry.create","ver":"1.0","ets":1646765130993,"params":{"resmsgid":"","msgid":"cca2e242-fce7-47ec-b5d0-61cebe56c31d","err":"","status":"SUCCESSFUL","errmsg":""},"responseCode":"OK","result":{"TrainingCertificate":{"osid":"validId"}}}"""))
+    when(mockCassandraUtil.find("SELECT * FROM sunbird_courses.user_enrolments WHERE userid='"+event.userId+"' AND batchid='"+batchId+"' AND courseid='"+courseId+"';")).thenReturn(new util.ArrayList[Row]())
+    noException should be thrownBy new CertificateGeneratorFunction(jobConfig, mockHttpUtil, storageService, mockCassandraUtil).updateUserEnrollmentTable(event,userEnrollmentData,null )(mockMetrics)
   }
 
   "Certificate generation with valid event " should " not throw exception " in {
