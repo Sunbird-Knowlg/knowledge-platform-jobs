@@ -102,7 +102,7 @@ class CertificateGeneratorFunctionTest extends BaseTestSpec {
     an [ServerException] should be thrownBy new CertificateGeneratorFunction(jobConfig, mockHttpUtil, storageService, cassandraUtil).callCertificateRc(jobConfig.rcCreateApi, null,  certReq)
   }
 
-  "Update enrolment with valid event " should " not throw exception " in {
+  "Certificate Update enrolment with valid event " should " not throw exception " in {
     val event = new Event(JSONUtil.deserialize[java.util.Map[String, Any]](EventFixture.EVENT_3), 0, 0)
     val createCertReq = generateRequest(event,"1-25a8c96b-b254-4720-bbc9-29b37c3c2bec")
     val recipient = createCertReq.getOrElse("recipient", null).asInstanceOf[Recipient]
