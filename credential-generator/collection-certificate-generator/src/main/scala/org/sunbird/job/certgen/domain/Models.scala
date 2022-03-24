@@ -36,8 +36,9 @@ case class Certificate(id: String,
                        name: String,
                        token: String,
                        lastIssuedOn: String,
-                       templateUrl: String) {
-  def this() = this("", "", "", "", "")
+                       templateUrl: String,
+                       `type`: String) {
+  def this() = this("", "", "", "", "", "")
 }
 
 case class FailedEvent(errorCode: String,

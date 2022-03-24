@@ -108,7 +108,7 @@ class CertificateGeneratorFunctionTest extends BaseTestSpec {
     val recipient = createCertReq.getOrElse("recipient", null).asInstanceOf[Recipient]
     val userEnrollmentData = UserEnrollmentData(event.related.getOrElse(jobConfig.BATCH_ID, "").asInstanceOf[String], recipient.id,
       event.related.getOrElse(jobConfig.COURSE_ID, "").asInstanceOf[String], event.courseName, event.templateId,
-      Certificate("validId", event.name, "", formatter.format(new Date()), event.svgTemplate))
+      Certificate("validId", event.name, "", formatter.format(new Date()), event.svgTemplate, jobConfig.rcEntity))
     val batchId = event.related.getOrElse(jobConfig.COURSE_ID, "").asInstanceOf[String]
     val courseId = event.related.getOrElse(jobConfig.BATCH_ID, "").asInstanceOf[String]
     val req = Map("filters" -> Map())
