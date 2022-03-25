@@ -270,15 +270,13 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 
 		if (sourceUrl != null && sourceUrl.nonEmpty) {
 			logger.info("ContentAutoCreator :: uploadContent :: Initiating sourceFile download for : " + internalId + " | sourceUrl : " + sourceUrl)
-			val file = getFile(internalId, sourceUrl, mimeType, config, httpUtil)
+			val file: File = getFile(internalId, sourceUrl, mimeType, config, httpUtil)
 			logger.info("ContentAutoCreator :: uploadContent :: sourceFile downloaded for : " + internalId + " | sourceUrl : " + sourceUrl)
 			if (null == file || !file.exists) throw new Exception("Error Occurred while downloading sourceUrl file for " + internalId + " | File Url : " + sourceUrl)
-			logger.info("ContentAutoCreator :: uploadContent :: File Path for " + internalId + "is : " + file.getAbsolutePath + " | File Size : " + file.length)
-			val size = FileUtils.sizeOf(file)
-			logger.info("ContentAutoCreator :: uploadContent :: file size (MB): " + (size / 1048576))
-			if (size > config.artifactMaxSize && !config.bulkUploadMimeTypes.contains(mimeType)) {
-				logger.info("ContentAutoCreator :: uploadContent :: File Size is larger than allowed file size allowed in upload api for : " + internalId + " | File Size (MB): " + (size / 1048576) + " | mimeType : " + mimeType)
-				throw new ServerException("SYSTEM_ERROR", "File Size is larger than allowed file size allowed in upload api for : " + internalId + " | File Size (MB): " + (size / 1048576) + " | mimeType : " + mimeType)
+			logger.info("ContentAutoCreator :: uploadContent :: File Path for " + internalId + " is : " + file.getAbsolutePath + " | File Size : " + file.length)
+			if (file.length > config.artifactMaxSize && !config.bulkUploadMimeTypes.contains(mimeType)) {
+				logger.info("ContentAutoCreator :: uploadContent :: File Size is larger than allowed file size allowed in upload api for : " + internalId + " | File Size (MB): " + (file.length / 1048576) + " | mimeType : " + mimeType)
+				throw new ServerException("SYSTEM_ERROR", "File Size is larger than allowed file size allowed in upload api for : " + internalId + " | File Size (MB): " + (file.length / 1048576) + " | mimeType : " + mimeType)
 			}
 
 			val urls = uploadArtifact(file, internalId, config, cloudStorageUtil)
@@ -390,7 +388,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 				GoogleDriveUtil.downloadFile(fileId, getBasePath(identifier, config), mimeType)(config)
 			} else {
 				val filePath = getBasePath(identifier, config)
-				httpUtil.downloadFile(fileUrl, filePath)
+				httpUtil.downloadFile(fileUrl.substring(fileUrl.lastIndexOf("/")), filePath)
 			}
 			file
 		} catch {
