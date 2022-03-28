@@ -56,13 +56,15 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 							uploadContent(event.channel, internalId, event.artifactUrl, event.mimeType, config, httpUtil, cloudStorageUtil)
 							linkToCollection = true
 							delay(delayUpload)
-							reviewContent(event.channel, internalId, config, httpUtil)
-							delay(config.apiCallDelay)
-							if (!stage.equalsIgnoreCase("review")) {
-								publishContent(event.channel, internalId, event.metadata("lastPublishedBy").asInstanceOf[String], config, httpUtil)
-								delay(config.apiCallDelay * 2)
+							if (!stage.equalsIgnoreCase("upload")) {
+								reviewContent(event.channel, internalId, config, httpUtil)
+								delay(config.apiCallDelay)
+								if (!stage.equalsIgnoreCase("review")) {
+									publishContent(event.channel, internalId, event.metadata("lastPublishedBy").asInstanceOf[String], config, httpUtil)
+									delay(config.apiCallDelay * 2)
+								}
+								isContentPublished = true
 							}
-							isContentPublished = true
 						}
 					}
 				case "update" =>
@@ -71,11 +73,13 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 						uploadContent(event.channel, internalId, event.artifactUrl, event.mimeType, config, httpUtil, cloudStorageUtil)
 						linkToCollection = true
 						delay(delayUpload)
-						reviewContent(event.channel, internalId, config, httpUtil)
-						delay(config.apiCallDelay)
-						if (!stage.equalsIgnoreCase("review")) {
-							publishContent(event.channel, internalId, event.metadata("lastPublishedBy").asInstanceOf[String], config, httpUtil)
-							delay(config.apiCallDelay * 2)
+						if (!stage.equalsIgnoreCase("upload")) {
+							reviewContent(event.channel, internalId, config, httpUtil)
+							delay(config.apiCallDelay)
+							if (!stage.equalsIgnoreCase("review")) {
+								publishContent(event.channel, internalId, event.metadata("lastPublishedBy").asInstanceOf[String], config, httpUtil)
+								delay(config.apiCallDelay * 2)
+							}
 						}
 						isContentPublished = true
 					}
