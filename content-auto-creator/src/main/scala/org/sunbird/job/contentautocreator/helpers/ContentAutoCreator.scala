@@ -63,6 +63,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 							delay(config.apiCallDelay)
 							logger.info("ContentAutoCreator :: contentStage 'create' after reviewContent:: internalId: " + internalId + " || event.stage:: " + stage)
 							if (!stage.equalsIgnoreCase("review")) {
+								logger.info("ContentAutoCreator :: contentStage 'create' publishing Content:: internalId: " + internalId + " || event.stage:: " + stage)
 								publishContent(event.channel, internalId, event.metadata("lastPublishedBy").asInstanceOf[String], config, httpUtil)
 							}
 							isContentPublished = true
