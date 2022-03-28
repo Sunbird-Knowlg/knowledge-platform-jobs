@@ -55,22 +55,43 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 						uploadContent(event.channel, internalId, event.artifactUrl, event.mimeType, config, httpUtil, cloudStorageUtil)
 						linkToCollection = true
 						delay(delayUpload)
-						reviewContent(event.channel, internalId, config, httpUtil)
-						delay(config.apiCallDelay)
-						publishContent(event.channel, internalId, event.metadata("lastPublishedBy").asInstanceOf[String], config, httpUtil)
-						delay(config.apiCallDelay*2)
-						isContentPublished = true
+						if (!stage.equalsIgnoreCase("upload")) {
+							reviewContent(event.channel, internalId, config, httpUtil)
+							delay(config.apiCallDelay)
+							if (!stage.equalsIgnoreCase("review")) {
+								publishContent(event.channel, internalId, event.metadata("lastPublishedBy").asInstanceOf[String], config, httpUtil)
+								delay(config.apiCallDelay * 2)
+							}
+							isContentPublished = true
+						}
 					}
 				case "update" =>
 					updateContent(event.channel, internalId, updateMetadata, config, httpUtil, cloudStorageUtil)
-					if (!stage.equalsIgnoreCase("update")) {
+					if (!stage.equalsIgnoreCase("create")) {
 						uploadContent(event.channel, internalId, event.artifactUrl, event.mimeType, config, httpUtil, cloudStorageUtil)
 						linkToCollection = true
 						delay(delayUpload)
+						if (!stage.equalsIgnoreCase("upload")) {
+							reviewContent(event.channel, internalId, config, httpUtil)
+							delay(config.apiCallDelay)
+							if (!stage.equalsIgnoreCase("review")) {
+								publishContent(event.channel, internalId, event.metadata("lastPublishedBy").asInstanceOf[String], config, httpUtil)
+								delay(config.apiCallDelay * 2)
+							}
+							isContentPublished = true
+						}
+					}
+				case "upload" =>
+					uploadContent(event.channel, internalId, event.artifactUrl, event.mimeType, config, httpUtil, cloudStorageUtil)
+					linkToCollection = true
+					delay(delayUpload)
+					if (!stage.equalsIgnoreCase("upload")) {
 						reviewContent(event.channel, internalId, config, httpUtil)
 						delay(config.apiCallDelay)
-						publishContent(event.channel, internalId, event.metadata("lastPublishedBy").asInstanceOf[String], config, httpUtil)
-						delay(config.apiCallDelay*2)
+						if (!stage.equalsIgnoreCase("review")) {
+							publishContent(event.channel, internalId, event.metadata("lastPublishedBy").asInstanceOf[String], config, httpUtil)
+							delay(config.apiCallDelay * 2)
+						}
 						isContentPublished = true
 					}
 				case "review" =>
@@ -80,8 +101,8 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 					if (!stage.equalsIgnoreCase("review")) {
 						publishContent(event.channel, internalId, event.metadata("lastPublishedBy").asInstanceOf[String], config, httpUtil)
 						delay(config.apiCallDelay*2)
-						isContentPublished = true
 					}
+					isContentPublished = true
 				case "publish" =>
 					linkToCollection = true
 					publishContent(event.channel, internalId, event.metadata("lastPublishedBy").asInstanceOf[String], config, httpUtil)
