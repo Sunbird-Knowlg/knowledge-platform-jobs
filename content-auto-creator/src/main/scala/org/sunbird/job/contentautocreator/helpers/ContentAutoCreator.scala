@@ -18,7 +18,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 	private[this] val logger = LoggerFactory.getLogger(classOf[ContentAutoCreator])
 
 	def process(config: ContentAutoCreatorConfig, event: Event, httpUtil: HttpUtil, neo4JUtil: Neo4JUtil, cloudStorageUtil: CloudStorageUtil): Boolean = {
-		val stage = event.eData.getOrDefault("stage","").asInstanceOf[String]
+		val stage = event.eData.getOrDefault("stage","").asInstanceOf[String].trim
 		val filteredMetadata = event.metadata.filter(x => !config.content_props_to_removed.contains(x._1))
 		val createMetadata = filteredMetadata.filter(x => config.content_create_props.contains(x._1))
 		val updateMetadata = filteredMetadata.filter(x => !config.content_create_props.contains(x._1))
@@ -39,33 +39,38 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 			val contentMetadata = searchContent(event.identifier, config, httpUtil)
 			if(contentMetadata.isEmpty) contentStage = "create" else {
 				internalId = contentMetadata("contentId").asInstanceOf[String]
-				contentStage = getContentStage(event.identifier, event.pkgVersion, contentMetadata)
+				contentStage = getContentStage(event.identifier, event.pkgVersion, contentMetadata).trim
 			}
 		}
-		logger.info("ContentAutoCreator :: process :: internalId: " + internalId + " || contentStage: " + contentStage)
+		logger.info("ContentAutoCreator :: process :: internalId: " + internalId + " || contentStage: " + contentStage + " || event.stage:: " + stage)
 		var linkToCollection = false
 		var isContentPublished = false
 
 		try {
 			contentStage match {
 				case "create" =>
+					logger.info("ContentAutoCreator :: contentStage 'create'")
 					internalId = createContent(event, createMetadata, config, httpUtil)
+					logger.info("ContentAutoCreator :: contentStage 'create' after createContent:: internalId: " + internalId + " || event.stage:: " + stage)
 					updateContent(event.channel, internalId, updateMetadata, config, httpUtil, cloudStorageUtil)
 					if (!stage.equalsIgnoreCase("create")) {
 						uploadContent(event.channel, internalId, event.artifactUrl, event.mimeType, config, httpUtil, cloudStorageUtil)
 						linkToCollection = true
 						delay(delayUpload)
+						logger.info("ContentAutoCreator :: contentStage 'create' after uploadContent:: internalId: " + internalId + " || event.stage:: " + stage)
 						if (!stage.equalsIgnoreCase("upload")) {
 							reviewContent(event.channel, internalId, config, httpUtil)
 							delay(config.apiCallDelay)
+							logger.info("ContentAutoCreator :: contentStage 'create' after reviewContent:: internalId: " + internalId + " || event.stage:: " + stage)
 							if (!stage.equalsIgnoreCase("review")) {
+								logger.info("ContentAutoCreator :: contentStage 'create' publishing Content:: internalId: " + internalId + " || event.stage:: " + stage)
 								publishContent(event.channel, internalId, event.metadata("lastPublishedBy").asInstanceOf[String], config, httpUtil)
-								delay(config.apiCallDelay * 2)
 							}
 							isContentPublished = true
 						}
 					}
 				case "update" =>
+					logger.info("ContentAutoCreator :: contentStage 'update'")
 					updateContent(event.channel, internalId, updateMetadata, config, httpUtil, cloudStorageUtil)
 					if (!stage.equalsIgnoreCase("create")) {
 						uploadContent(event.channel, internalId, event.artifactUrl, event.mimeType, config, httpUtil, cloudStorageUtil)
@@ -76,12 +81,12 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 							delay(config.apiCallDelay)
 							if (!stage.equalsIgnoreCase("review")) {
 								publishContent(event.channel, internalId, event.metadata("lastPublishedBy").asInstanceOf[String], config, httpUtil)
-								delay(config.apiCallDelay * 2)
 							}
 							isContentPublished = true
 						}
 					}
 				case "upload" =>
+					logger.info("ContentAutoCreator :: contentStage 'upload'")
 					uploadContent(event.channel, internalId, event.artifactUrl, event.mimeType, config, httpUtil, cloudStorageUtil)
 					linkToCollection = true
 					delay(delayUpload)
@@ -90,23 +95,22 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 						delay(config.apiCallDelay)
 						if (!stage.equalsIgnoreCase("review")) {
 							publishContent(event.channel, internalId, event.metadata("lastPublishedBy").asInstanceOf[String], config, httpUtil)
-							delay(config.apiCallDelay * 2)
 						}
 						isContentPublished = true
 					}
 				case "review" =>
+					logger.info("ContentAutoCreator :: contentStage 'review'")
 					linkToCollection = true
 					reviewContent(event.channel, internalId, config, httpUtil)
 					delay(config.apiCallDelay)
 					if (!stage.equalsIgnoreCase("review")) {
 						publishContent(event.channel, internalId, event.metadata("lastPublishedBy").asInstanceOf[String], config, httpUtil)
-						delay(config.apiCallDelay*2)
 					}
 					isContentPublished = true
 				case "publish" =>
+					logger.info("ContentAutoCreator :: contentStage 'publish'")
 					linkToCollection = true
 					publishContent(event.channel, internalId, event.metadata("lastPublishedBy").asInstanceOf[String], config, httpUtil)
-					delay(config.apiCallDelay*2)
 					isContentPublished = true
 				case _ => logger.info("ContentAutoCreator :: process :: Event Skipped for operations (create, upload, publish) for: " + event.identifier + " | Content Stage : " + contentStage)
 			}
