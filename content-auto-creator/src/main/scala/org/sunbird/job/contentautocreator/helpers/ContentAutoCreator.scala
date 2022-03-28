@@ -51,14 +51,16 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 				case "create" =>
 					internalId = createContent(event, createMetadata, config, httpUtil)
 					updateContent(event.channel, internalId, updateMetadata, config, httpUtil, cloudStorageUtil)
-					if (!stage.equalsIgnoreCase("create")) {
+					if (!stage.equalsIgnoreCase("create") && !stage.equalsIgnoreCase("update")) {
 						uploadContent(event.channel, internalId, event.artifactUrl, event.mimeType, config, httpUtil, cloudStorageUtil)
 						linkToCollection = true
 						delay(delayUpload)
 						reviewContent(event.channel, internalId, config, httpUtil)
 						delay(config.apiCallDelay)
-						publishContent(event.channel, internalId, event.metadata("lastPublishedBy").asInstanceOf[String], config, httpUtil)
-						delay(config.apiCallDelay*2)
+						if (!stage.equalsIgnoreCase("review")) {
+							publishContent(event.channel, internalId, event.metadata("lastPublishedBy").asInstanceOf[String], config, httpUtil)
+							delay(config.apiCallDelay * 2)
+						}
 						isContentPublished = true
 					}
 				case "update" =>
@@ -69,8 +71,10 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 						delay(delayUpload)
 						reviewContent(event.channel, internalId, config, httpUtil)
 						delay(config.apiCallDelay)
-						publishContent(event.channel, internalId, event.metadata("lastPublishedBy").asInstanceOf[String], config, httpUtil)
-						delay(config.apiCallDelay*2)
+						if (!stage.equalsIgnoreCase("review")) {
+							publishContent(event.channel, internalId, event.metadata("lastPublishedBy").asInstanceOf[String], config, httpUtil)
+							delay(config.apiCallDelay * 2)
+						}
 						isContentPublished = true
 					}
 				case "review" =>
@@ -80,8 +84,8 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 					if (!stage.equalsIgnoreCase("review")) {
 						publishContent(event.channel, internalId, event.metadata("lastPublishedBy").asInstanceOf[String], config, httpUtil)
 						delay(config.apiCallDelay*2)
-						isContentPublished = true
 					}
+					isContentPublished = true
 				case "publish" =>
 					linkToCollection = true
 					publishContent(event.channel, internalId, event.metadata("lastPublishedBy").asInstanceOf[String], config, httpUtil)
