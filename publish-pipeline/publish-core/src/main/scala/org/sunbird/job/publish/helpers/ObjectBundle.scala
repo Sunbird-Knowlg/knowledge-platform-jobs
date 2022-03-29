@@ -33,7 +33,7 @@ trait ObjectBundle {
   def getBundleFileName(identifier: String, metadata: Map[String, AnyRef], pkgType: String)(implicit config: PublishConfig): String = {
     val maxAllowedContentName = config.getInt("max_allowed_content_name", 120)
     val contentName = if (metadata.getOrElse("name", "").asInstanceOf[String].length > maxAllowedContentName) metadata.getOrElse("name", "").asInstanceOf[String].substring(0, maxAllowedContentName) else metadata.getOrElse("name", "").asInstanceOf[String]
-    Slug.makeSlug(contentName, isTransliterate = true) + "_" + System.currentTimeMillis() + "_" + identifier + "_" + metadata.getOrElse("pkgVersion", "") + (if (StringUtils.equals(EcarPackageType.FULL.toString, pkgType)) ".ecar" else "_" + pkgType + ".ecar")
+    Slug.makeSlug(contentName, isTransliterate = true) + "_" + System.currentTimeMillis() + "_" + identifier + "_" + metadata.getOrElse("pkgVersion", "") + (if (StringUtils.equals(EcarPackageType.FULL, pkgType)) ".ecar" else "_" + pkgType + ".ecar")
   }
 
   def getManifestData(objIdentifier: String, pkgType: String, objList: List[Map[String, AnyRef]])(implicit defCache: DefinitionCache, neo4JUtil: Neo4JUtil, defConfig: DefinitionConfig, config: PublishConfig): (List[Map[String, AnyRef]], List[Map[AnyRef, String]]) = {
@@ -50,7 +50,7 @@ trait ObjectBundle {
       val updatedObj: Map[String, AnyRef] = data.map(entry =>
         if (dUrlMap.contains(entry._2)) {
           (entry._1, dUrlMap.getOrElse(entry._2.asInstanceOf[String], "").asInstanceOf[AnyRef])
-        } else if (StringUtils.equalsIgnoreCase(EcarPackageType.FULL.toString, pkgType) && StringUtils.equalsIgnoreCase(entry._1, "media")) {
+        } else if (StringUtils.equalsIgnoreCase(EcarPackageType.FULL, pkgType) && StringUtils.equalsIgnoreCase(entry._1, "media")) {
           val media: List[Map[String, AnyRef]] = Optional.ofNullable(ScalaJsonUtil.deserialize[List[Map[String, AnyRef]]](entry._2.asInstanceOf[String])).orElse(List[Map[String, AnyRef]]())
           val newMedia = media.map(m => {
             m.map(entry => {
@@ -236,7 +236,7 @@ trait ObjectBundle {
 
   def getUrlMap(identifier: String, pkgType: String, key: String, value: AnyRef): Map[AnyRef, String] = {
     val pkgKeys = List("artifactUrl", "downloadUrl")
-    if (!pkgKeys.contains(key) || StringUtils.equalsIgnoreCase(EcarPackageType.FULL.toString, pkgType)) {
+    if (!pkgKeys.contains(key) || StringUtils.equalsIgnoreCase(EcarPackageType.FULL, pkgType)) {
       val fileName = value match {
         case file: File => file.getName
         case _ => value.asInstanceOf[String]
