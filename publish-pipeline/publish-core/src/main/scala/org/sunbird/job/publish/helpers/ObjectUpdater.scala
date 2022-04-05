@@ -47,7 +47,7 @@ trait ObjectUpdater {
   def updateProcessingNode(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, definitionCache: DefinitionCache, config: DefinitionConfig): Unit = {
     val status = "Processing"
     val prevState = obj.getString("status", "Draft")
-    val identifier = obj.identifier
+    val identifier = obj.dbId
     val metadataUpdateQuery = metaDataQuery(obj)(definitionCache, config)
     val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$identifier"}) SET n.status="$status",n.prevState="$prevState",$metadataUpdateQuery,$auditPropsUpdateQuery;"""
     logger.info("ObjectUpdater:: updateProcessingNode:: Query: " + query)
@@ -127,7 +127,7 @@ trait ObjectUpdater {
       val selectId = QueryBuilder.select()
       selectId.fcall("blobAsText", QueryBuilder.column("body")).as("body")
       val selectWhereId: Select.Where = selectId.from(readerConfig.keyspace, readerConfig.table).where().and(QueryBuilder.eq("content_id", identifier))
-      logger.info("ObjectUpdater:: getContentBody:: Cassandra Fetch Query :: " + selectWhere.toString)
+      logger.info("ObjectUpdater:: getContentBody:: Cassandra Fetch Query :: " + selectWhereId.toString)
       val rowId = cassandraUtil.findOne(selectWhereId.toString)
       if (null != rowId) rowId.getString("body") else ""
     }

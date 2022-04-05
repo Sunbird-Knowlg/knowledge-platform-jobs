@@ -122,7 +122,7 @@ object FileUtils {
 
   private def generateZipEntry(file: String, sourceFolder: String): String = file.substring(sourceFolder.length, file.length)
 
-  private def zipIt(zipFile: String, fileList: List[String], sourceFolder: String): Unit = {
+  def zipIt(zipFile: String, fileList: List[String], sourceFolder: String): Unit = {
     val buffer = new Array[Byte](1024)
     var zos: ZipOutputStream = null
     try {

@@ -2,8 +2,8 @@ package org.sunbird.job.publish.helpers
 
 object EcarPackageType extends Enumeration {
 
-  val FULL = Value("FULL")
-  val SPINE = Value("SPINE")
-  val OPTIMIZED = Value("OPTIMIZED")
-  val ONLINE = Value("ONLINE")
+  val FULL: String = Value("FULL").toString
+  val SPINE: String = Value("SPINE").toString
+  val OPTIMIZED: String = Value("OPTIMIZED").toString
+  val ONLINE: String = Value("ONLINE").toString
 }
