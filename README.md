@@ -250,7 +250,7 @@ mvn clean install -DskipTests
 ```shell
 cd flink-1.12.7
 ./bin/start-cluster.sh
-./bin/flink run -m localhost:8081 /home/jayaprakash/D/KP/knowledge-platform-jobs/publish-pipeline/content-publish/target/content-publish-1.0.0.jar
+./bin/flink run -m localhost:8081 /user/test/workspace/knowledge-platform-jobs/publish-pipeline/content-publish/target/content-publish-1.0.0.jar
 ```
 4. Open a terminal, connect to kafka docker container and produce the target job topic.
 ```shell
