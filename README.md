@@ -195,7 +195,7 @@ mvn clean install -DskipTests
 6. Save cloud storage related environment variables in StreamTask environment variables.
 7. Start all databases, zookeper and kafka containers in docker
 8. Run the StreamTask (Normal or Debug)
-9. Open a terminal and connect to kafka docker container and produce the target job topic.
+9. Open a terminal, connect to kafka docker container and produce the target job topic.
 ```shell
 docker exec -it kafka_container_id sh
 kafka-console-producer.sh --broker-list kafka:9092 --topic sunbirddev.publish.job.request
@@ -252,7 +252,7 @@ cd flink-1.12.7
 ./bin/start-cluster.sh
 ./bin/flink run -m localhost:8081 /home/jayaprakash/D/KP/knowledge-platform-jobs/publish-pipeline/content-publish/target/content-publish-1.0.0.jar
 ```
-4. Open a terminal and connect to kafka docker container and produce the target job topic.
+4. Open a terminal, connect to kafka docker container and produce the target job topic.
 ```shell
 docker exec -it kafka_container_id sh
 kafka-console-producer.sh --broker-list kafka:9092 --topic sunbirddev.publish.job.request
