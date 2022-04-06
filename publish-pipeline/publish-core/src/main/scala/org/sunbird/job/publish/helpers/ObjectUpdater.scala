@@ -26,6 +26,7 @@ trait ObjectUpdater {
     val metadataUpdateQuery = metaDataQuery(obj)(definitionCache, config)
     val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$identifier"}) SET n.status="$status",n.pkgVersion=${obj.pkgVersion},n.prevStatus="Processing",$metadataUpdateQuery,$auditPropsUpdateQuery;"""
     logger.info("ObjectUpdater:: saveOnSuccess:: Query: " + query)
+    logger.info(s"ObjectUpdater:: saveOnSuccess:: DB ID for ${obj.identifier} is : ${obj.dbId} | pkgVersion : ${obj.pkgVersion}" )
 
     if (obj.mimeType.equalsIgnoreCase("application/vnd.ekstep.ecml-archive")) {
       val ecmlBody = getContentBody(identifier, readerConfig)
@@ -36,6 +37,7 @@ trait ObjectUpdater {
       val imgNodeDelQuery = s"""MATCH (n:domain{IL_UNIQUE_ID:"$editId"}) DETACH DELETE n;"""
       neo4JUtil.executeQuery(imgNodeDelQuery)
       deleteExternalData(obj, readerConfig)
+      logger.info(s"Image Node Data Is Deleted Successfully For ${editId}")
     }
     val result: StatementResult = neo4JUtil.executeQuery(query)
     if (null != result && result.hasNext)
