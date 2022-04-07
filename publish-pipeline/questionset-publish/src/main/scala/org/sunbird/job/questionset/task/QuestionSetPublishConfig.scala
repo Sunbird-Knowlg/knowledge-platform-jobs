@@ -50,6 +50,9 @@ class QuestionSetPublishConfig(override val config: Config) extends PublishConfi
 	val graphRoutePath = config.getString("neo4j.routePath")
 	val graphName = config.getString("neo4j.graph")
 
+	// Cache Config
+	val cacheDbId: Int = if(config.hasPath("redis.database.qsCache.id")) config.getInt("redis.database.qsCache.id") else 0
+
 	// Out Tags
 	val questionPublishOutTag: OutputTag[PublishMetadata] = OutputTag[PublishMetadata]("question-publish")
 	val questionSetPublishOutTag: OutputTag[PublishMetadata] = OutputTag[PublishMetadata]("questionset-publish")
