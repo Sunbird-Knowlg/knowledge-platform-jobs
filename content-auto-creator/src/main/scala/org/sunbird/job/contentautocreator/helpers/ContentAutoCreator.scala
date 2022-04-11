@@ -49,28 +49,22 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 		try {
 			contentStage match {
 				case "create" =>
-					logger.info("ContentAutoCreator :: contentStage 'create'")
 					internalId = createContent(event, createMetadata, config, httpUtil)
-					logger.info("ContentAutoCreator :: contentStage 'create' after createContent:: internalId: " + internalId + " || event.stage:: " + stage)
 					updateContent(event.channel, internalId, updateMetadata, config, httpUtil, cloudStorageUtil)
 					if (!stage.equalsIgnoreCase("create")) {
 						uploadContent(event.channel, internalId, event.artifactUrl, event.mimeType, config, httpUtil, cloudStorageUtil)
 						linkToCollection = true
 						delay(delayUpload)
-						logger.info("ContentAutoCreator :: contentStage 'create' after uploadContent:: internalId: " + internalId + " || event.stage:: " + stage)
 						if (!stage.equalsIgnoreCase("upload")) {
 							reviewContent(event.channel, internalId, config, httpUtil)
 							delay(config.apiCallDelay)
-							logger.info("ContentAutoCreator :: contentStage 'create' after reviewContent:: internalId: " + internalId + " || event.stage:: " + stage)
 							if (!stage.equalsIgnoreCase("review")) {
-								logger.info("ContentAutoCreator :: contentStage 'create' publishing Content:: internalId: " + internalId + " || event.stage:: " + stage)
 								publishContent(event.channel, internalId, event.metadata("lastPublishedBy").asInstanceOf[String], config, httpUtil)
 							}
 							isContentPublished = true
 						}
 					}
 				case "update" =>
-					logger.info("ContentAutoCreator :: contentStage 'update'")
 					updateContent(event.channel, internalId, updateMetadata, config, httpUtil, cloudStorageUtil)
 					if (!stage.equalsIgnoreCase("create")) {
 						uploadContent(event.channel, internalId, event.artifactUrl, event.mimeType, config, httpUtil, cloudStorageUtil)
@@ -86,7 +80,6 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 						}
 					}
 				case "upload" =>
-					logger.info("ContentAutoCreator :: contentStage 'upload'")
 					uploadContent(event.channel, internalId, event.artifactUrl, event.mimeType, config, httpUtil, cloudStorageUtil)
 					linkToCollection = true
 					delay(delayUpload)
@@ -99,7 +92,6 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 						isContentPublished = true
 					}
 				case "review" =>
-					logger.info("ContentAutoCreator :: contentStage 'review'")
 					linkToCollection = true
 					reviewContent(event.channel, internalId, config, httpUtil)
 					delay(config.apiCallDelay)
@@ -108,7 +100,6 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 					}
 					isContentPublished = true
 				case "publish" =>
-					logger.info("ContentAutoCreator :: contentStage 'publish'")
 					linkToCollection = true
 					publishContent(event.channel, internalId, event.metadata("lastPublishedBy").asInstanceOf[String], config, httpUtil)
 					isContentPublished = true
@@ -413,7 +404,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 				GoogleDriveUtil.downloadFile(fileId, getBasePath(identifier, config), mimeType)(config)
 			} else {
 				val filePath = getBasePath(identifier, config)
-				httpUtil.downloadFile(fileUrl.substring(fileUrl.lastIndexOf("/")), filePath)
+				httpUtil.downloadFile(fileUrl, filePath)
 			}
 			file
 		} catch {
