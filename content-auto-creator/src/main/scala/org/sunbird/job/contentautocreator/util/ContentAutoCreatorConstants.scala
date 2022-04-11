@@ -39,10 +39,4 @@ object ContentAutoCreatorConstants {
   val TERMS = "terms"
   val TTL = "ttl"
   val FINAL_STATUS = List("Live", "Unlisted", "Processing")
-
-  val LEARNING_SERVICE_BASE_URL = "service.learning_service.basePath"
-  val SUNBIRD_CONTENT_SEARCH_URL = "service.search.basePath"
-  val UPDATE_HIERARCHY_API = "sunbird_update_hierarchy_api"
-  val KP_CS_BASE_URL = "service.content_service.basePath"
-
 }
