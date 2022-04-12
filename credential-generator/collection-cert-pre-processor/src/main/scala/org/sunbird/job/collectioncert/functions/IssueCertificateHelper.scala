@@ -126,6 +126,9 @@ trait IssueCertificateHelper {
                 if (metadata.nonEmpty) {
                     val contentType = metadata.getOrElse("contenttype", "")
                     config.assessmentContentTypes.contains(contentType)
+                } else if(!metadata.nonEmpty && config.enableSuppressException){
+                        logger.error("Suppressed exception: Metadata cache not available for: " + key)
+                        false
                 } else throw new Exception("Metadata cache not available for: " + key)
             })
             // TODO: Here we have an assumption that, we will consider max percentage from all the available attempts of different assessment contents.
