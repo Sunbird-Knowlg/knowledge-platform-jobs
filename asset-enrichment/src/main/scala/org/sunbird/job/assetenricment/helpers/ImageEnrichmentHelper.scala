@@ -78,7 +78,7 @@ trait ImageEnrichmentHelper {
 
   def isImageOptimizable(file: File, dimensionX: Int, dimensionY: Int): Boolean = {
     val inputFileName = file.getAbsolutePath
-    val imageInfo = new Info(inputFileName, false)
+    val imageInfo = new Info(inputFileName, true)
     val width = imageInfo.getImageWidth
     val height = imageInfo.getImageHeight
     (dimensionX < width && dimensionY < height)
