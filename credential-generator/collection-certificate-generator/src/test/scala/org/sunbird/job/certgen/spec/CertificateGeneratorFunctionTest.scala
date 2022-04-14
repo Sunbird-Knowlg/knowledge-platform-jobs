@@ -177,43 +177,43 @@ class CertificateGeneratorFunctionTest extends BaseTestSpec {
     }
   }
 
-  "Certificate old registry delete api call for for missing id " should " throw serverException " in {
+  "Certificate old registry delete api call for for missing id " should " not throw serverException " in {
 
     val query = QueryBuilder.delete().from(jobConfig.sbKeyspace, jobConfig.certRegTable)
       .where(QueryBuilder.eq("identifier", "missingId"))
       .ifExists
     when(mockCassandraUtil.executePreparedStatement(query.toString)).thenReturn(new util.ArrayList[Row]())
-    an [ServerException] should be thrownBy {
+    noException should be thrownBy {
       new CertificateGeneratorFunction(jobConfig, mockHttpUtil, storageService, mockCassandraUtil).deleteOldRegistry("missingId")
     }
   }
 
-  "Certificate old registry delete api call with valid id " should " throw exception " in {
+  "Certificate old registry delete api call with valid id " should " not throw exception " in {
 
     doNothing().when(mockEsUtil).deleteDocument("validId")
     val query = QueryBuilder.delete().from(jobConfig.sbKeyspace, jobConfig.certRegTable)
       .where(QueryBuilder.eq("identifier", "validId"))
       .ifExists
     when(mockCassandraUtil.executePreparedStatement(query.toString)).thenReturn(new util.ArrayList[Row]())
-    an[ServerException] should be thrownBy {
+    noException should be thrownBy {
       new CertificateGeneratorFunction(jobConfig, mockHttpUtil, storageService, mockCassandraUtil).deleteOldRegistry("validId")
     }
   }
 
-  "Certificate generation for event with missing oldId in rc and old registry " should " throw server exception while re issuing" in {
+  "Certificate generation for event with missing oldId in rc and old registry " should " not throw server exception while re issuing" in {
     val event = new Event(JSONUtil.deserialize[java.util.Map[String, Any]](EventFixture.EVENT_1), 0, 0)
     val batchId = event.related.getOrElse(jobConfig.COURSE_ID, "").asInstanceOf[String]
     val courseId = event.related.getOrElse(jobConfig.BATCH_ID, "").asInstanceOf[String]
     when(mockHttpUtil.delete(jobConfig.rcBaseUrl + "/" + jobConfig.rcEntity + "/" +event.oldId)).thenReturn(HTTPResponse(500, """{}"""))
     when(mockCassandraUtil.find("SELECT * FROM sunbird_courses.user_enrolments WHERE userid='"+event.userId+"' AND batchid='"+batchId+"' AND courseid='"+courseId+"';")).thenReturn(new util.ArrayList[Row]())
-    an [ServerException] should be thrownBy new CertificateGeneratorFunction(jobConfig, mockHttpUtil, storageService, mockCassandraUtil).generateCertificateUsingRC(event, null)(mockMetrics)
+    an [Exception] should be thrownBy new CertificateGeneratorFunction(jobConfig, mockHttpUtil, storageService, mockCassandraUtil).generateCertificateUsingRC(event, null)(mockMetrics)
 
   }
 
-  "Certificate generation for event with connection issue on rc " should " throw unirest exception while re issuing" in {
+  "Certificate generation for event with connection issue on rc " should " not throw unirest exception while re issuing" in {
     val event = new Event(JSONUtil.deserialize[java.util.Map[String, Any]](EventFixture.EVENT_1), 0, 0)
     when(mockHttpUtil.delete(jobConfig.rcBaseUrl + "/" + jobConfig.rcEntity + "/" +event.oldId)).thenThrow(new UnirestException(""))
-    an [ServerException] should be thrownBy new CertificateGeneratorFunction(jobConfig, mockHttpUtil, storageService, mockCassandraUtil).generateCertificateUsingRC(event, null)(mockMetrics)
+    an [Exception] should be thrownBy new CertificateGeneratorFunction(jobConfig, mockHttpUtil, storageService, mockCassandraUtil).generateCertificateUsingRC(event, null)(mockMetrics)
 
   }
 
