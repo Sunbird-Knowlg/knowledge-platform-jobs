@@ -136,7 +136,7 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
             deleteOldRegistry(event.oldId)
           case e: UnirestException =>
             logger.error("Rc deletion failed due to connection :: identifier" + event.oldId + " :: " + e.getMessage)
-            throw ServerException("ERR_CONNECTION_ERROR", "Rc deletion failed | error msg: " + e.getMessage)
+            //throw ServerException("ERR_CONNECTION_ERROR", "Rc deletion failed | error msg: " + e.getMessage)
         }
       }
       val related = event.related
@@ -158,7 +158,7 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
     } catch {
       case ex: Exception =>
         logger.error("Old registry deletion failed | old id is not present :: identifier" + id+ " :: " + ex.getMessage)
-        throw ServerException("ERR_DELETION_OLD_REG", "Old registry deletion failed | error msg: " + ex.getMessage)
+        //throw ServerException("ERR_DELETION_OLD_REG", "Old registry deletion failed | error msg: " + ex.getMessage)
 
     }
   }
