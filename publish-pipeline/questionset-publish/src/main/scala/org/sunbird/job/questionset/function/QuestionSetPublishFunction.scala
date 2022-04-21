@@ -78,6 +78,7 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
     if (messages.isEmpty) {
       val cacheKey = s"""qs_hierarchy_${obj.identifier}"""
       cache.del(cacheKey)
+      cache.del(obj.identifier)
       // Get all the questions from hierarchy
       val qList: List[ObjectData] = getQuestions(obj, qReaderConfig)(cassandraUtil)
       logger.info("processElement ::: child questions list from hierarchy :::  " + qList)
