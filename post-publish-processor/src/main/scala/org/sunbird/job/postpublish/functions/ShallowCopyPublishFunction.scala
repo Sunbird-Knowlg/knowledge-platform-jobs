@@ -25,7 +25,7 @@ class ShallowCopyPublishFunction(config: PostPublishProcessorConfig)
 
   override def processElement(metadata: PublishMetadata, context: ProcessFunction[PublishMetadata, String]#Context, metrics: Metrics): Unit = {
     val epochTime = System.currentTimeMillis
-    val event = s"""{"eid":"BE_JOB_REQUEST","ets":${epochTime},"mid":"LP.${epochTime}.${UUID.randomUUID()}","actor":{"id":"collection-publish","type":"System"},"context":{"pdata":{"ver":"1.0","id":"org.ekstep.platform"},"channel":"sunbird","env":"sunbirddev"},"object":{"ver":"${metadata.pkgVersion}","id":"${metadata.identifier}"},"edata":{"publish_type":"public","metadata":{"mimeType":"${metadata.mimeType}","objectType":"Collection","lastPublishedBy":"System","pkgVersion":${metadata.pkgVersion}},"action":"publish","iteration":1,"contentType":"${metadata.contentType}"}}"""
+    val event = s"""{"eid":"BE_JOB_REQUEST","ets":${epochTime},"mid":"LP.${epochTime}.${UUID.randomUUID()}","actor":{"id":"collection-publish","type":"System"},"context":{"pdata":{"ver":"1.0","id":"org.ekstep.platform"},"channel":"sunbird","env":"sunbirddev"},"object":{"ver":"${metadata.pkgVersion}","id":"${metadata.identifier}"},"edata":{"publish_type":"public","metadata":{"identifier":"${metadata.identifier}", "mimeType":"${metadata.mimeType}","objectType":"Collection","lastPublishedBy":"System","pkgVersion":${metadata.pkgVersion}},"action":"publish","iteration":1,"contentType":"${metadata.contentType}"}}"""
     context.output(config.publishEventOutTag, event)
     metrics.incCounter(config.shallowCopyCount)
     logger.info("Shallow copy content publish triggered for " + metadata.identifier)
