@@ -142,6 +142,7 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   val data = "data"
   val category = "category"
   val certificates = "certificates"
+  val badCharList = if(config.hasPath("task.rc.badcharlist")) config.getStringList("task.rc.badcharlist") else util.Arrays.asList[String]("""\x00""", """\\aaa""")
 
 
   // Tags

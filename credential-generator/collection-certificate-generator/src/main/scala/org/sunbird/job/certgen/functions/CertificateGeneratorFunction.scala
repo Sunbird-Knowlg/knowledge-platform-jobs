@@ -224,7 +224,8 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
     val status = api match {
       case config.rcDeleteApi => httpUtil.delete(uri + "/" +identifier).status
       case config.rcCreateApi =>
-        val req: String = ScalaModuleJsonUtils.serialize(request)
+        val plainReq: String = ScalaModuleJsonUtils.serialize(request)
+        val req = removeBadChars(plainReq)
         val httpResponse = httpUtil.post(uri, req)
         if(httpResponse.status == 200) {
           val response = ScalaJsonUtil.deserialize[Map[String, AnyRef]](httpResponse.body)
@@ -248,6 +249,10 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
       throw ServerException("ERR_API_CALL", "Something Went Wrong While Making API Call:  " + api +  " | Status is: " + status)
     }
     id
+  }
+
+  private def removeBadChars(request: String): String = {
+    config.badCharList.asScala.foldLeft(request)((curReq, removeChar) => StringUtils.remove(curReq, removeChar))
   }
 
   private def cleanUp(fileName: String, path: String): Unit = {
