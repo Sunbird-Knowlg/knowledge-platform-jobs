@@ -226,10 +226,13 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
       case config.rcCreateApi =>
           val plainReq: String = ScalaModuleJsonUtils.serialize(request)
           val req = removeBadChars(plainReq)
+          logger.info("RC Create API request: " + req)
         val httpResponse = httpUtil.post(uri, req)
         if(httpResponse.status == 200) {
           val response = ScalaJsonUtil.deserialize[Map[String, AnyRef]](httpResponse.body)
           id = response.getOrElse("result", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]].getOrElse(config.rcEntity, Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]].getOrElse("osid","").asInstanceOf[String]
+        } else {
+            logger.error("RC Create Error Response: " + httpResponse.status +  " :: Response: " + httpResponse.body)
         }
         httpResponse.status
       case config.rcSearchApi =>
@@ -252,10 +255,10 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
   }
     
     private def removeBadChars(request: String): String = {
-        config.badCharList.asScala.foldLeft(request)((curReq, removeChar) => StringUtils.remove(curReq, removeChar))
+        config.badCharList.split(",").foldLeft(request)((curReq, removeChar) => StringUtils.remove(curReq, removeChar))
     }
-
-  private def cleanUp(fileName: String, path: String): Unit = {
+    
+    private def cleanUp(fileName: String, path: String): Unit = {
     try {
       val directory = new File(path)
       val files: Array[File] = directory.listFiles
