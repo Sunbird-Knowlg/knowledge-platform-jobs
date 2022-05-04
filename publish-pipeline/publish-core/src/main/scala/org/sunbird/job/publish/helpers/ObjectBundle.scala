@@ -374,8 +374,12 @@ trait ObjectBundle {
   }
 
   def getPublishChainFileName(file: File,questionSetIdentifier:String): String = {
-    if (file.getName().toLowerCase().endsWith(manifestFileName) || file.getName().endsWith(hierarchyFileName)) "interactions" + File.separator + questionSetIdentifier + File.separator +file.getName else
-      "interactions" + File.separator + questionSetIdentifier + File.separator +file.getParent().substring(file.getParent().lastIndexOf(File.separator) + 1) + File.separator + file.getName()
+    if (file.getName().toLowerCase().endsWith(manifestFileName) || file.getName().endsWith(hierarchyFileName)) 
+      //"interactions" + File.separator + questionSetIdentifier + File.separator +file.getName
+      File.separator + questionSetIdentifier + File.separator +file.getName
+    else
+      //"interactions" + File.separator + questionSetIdentifier + File.separator +file.getParent().substring(file.getParent().lastIndexOf(File.separator) + 1) + File.separator + file.getName()
+      File.separator + questionSetIdentifier + File.separator +file.getParent().substring(file.getParent().lastIndexOf(File.separator) + 1) + File.separator + file.getName()
   }
 
 
