@@ -255,7 +255,7 @@ class CertificateGeneratorFunction(config: CertificateGeneratorConfig, httpUtil:
   }
 
   private def removeBadChars(request: String): String = {
-    config.badCharList.asScala.foldLeft(request)((curReq, removeChar) => StringUtils.remove(curReq, removeChar))
+    config.badCharList.split(",").foldLeft(request)((curReq, removeChar) => StringUtils.remove(curReq, removeChar))
   }
 
   private def cleanUp(fileName: String, path: String): Unit = {
