@@ -142,8 +142,9 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   val data = "data"
   val category = "category"
   val certificates = "certificates"
-
-
+  val badCharList = if(config.hasPath("task.rc.badcharlist")) config.getString("task.rc.badcharlist") else "\\x00,\\\\aaa,\\aaa,Ø,Ý"
+  
+  
   // Tags
   val auditEventOutputTagName = "audit-events"
   val auditEventOutputTag: OutputTag[String] = OutputTag[String](auditEventOutputTagName)
