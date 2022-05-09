@@ -54,7 +54,6 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
 
   def getRelationalMetadata(identifier: String, pkgVersion: Double, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = {
     val row: Row = Option(getCollectionHierarchy(getEditableObjId(identifier, pkgVersion), readerConfig)).getOrElse(getCollectionHierarchy(identifier, readerConfig))
-    logger.info("CollectionPublisher:: enrichObjectMetadata:: getRelationalMetadata:: " + row.getString("relational_metadata"))
     if (null != row && row.getString("relational_metadata") != null && row.getString("relational_metadata").nonEmpty) {
       val data: Map[String, AnyRef] = ScalaJsonUtil.deserialize[Map[String, AnyRef]](row.getString("relational_metadata"))
       Option(data)
