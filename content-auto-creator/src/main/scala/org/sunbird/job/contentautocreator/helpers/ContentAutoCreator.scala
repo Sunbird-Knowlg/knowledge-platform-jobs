@@ -302,7 +302,11 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 				logger.info("ContentAutoCreator :: uploadContent :: sourceUrl Uploaded Successfully to cloud for : " + internalId + " | sourceUrl : " + sourceUrl + " | sourceFileBlobUrl : " + sourceFileBlobUrl)
 
 				val headers = Map[String, String](ContentAutoCreatorConstants.X_CHANNEL_ID -> channel)
-				val requestUrl = s"${config.contentServiceBaseUrl}/content/v4/upload/$internalId"
+				val requestUrl = if (mimeType.nonEmpty && mimeType.equalsIgnoreCase("application/vnd.ekstep.h5p-archive") && !file.getName.split("\\.").last.equalsIgnoreCase("h5p"))
+					s"${config.contentServiceBaseUrl}/content/v4/upload/$internalId?validation=false&fileFormat=composed-h5p-zip"
+				else
+					s"${config.contentServiceBaseUrl}/content/v4/upload/$internalId?validation=false"
+
 				logger.info("ContentAutoCreator :: uploadContent :: Upload Content requestUrl: " + requestUrl)
 				logger.info("ContentAutoCreator :: uploadContent :: Upload Content sourceFileBlobUrl: " + sourceFileBlobUrl)
 				val httpResponse = httpUtil.postFilePath(requestUrl, "fileUrl", sourceFileBlobUrl, headers)
