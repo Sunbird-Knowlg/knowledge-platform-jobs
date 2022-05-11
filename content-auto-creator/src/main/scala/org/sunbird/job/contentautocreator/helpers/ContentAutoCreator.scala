@@ -288,7 +288,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 			logger.info("ContentAutoCreator :: uploadContent :: Initiating sourceFile download for : " + internalId + " | sourceUrl : " + sourceUrl)
 			val file: File = getFile(internalId, sourceUrl, mimeType, config, httpUtil)
 			logger.info("ContentAutoCreator :: uploadContent :: sourceFile downloaded for : " + internalId + " | sourceUrl : " + sourceUrl)
-			if (null == file || !file.exists) throw new Exception("Error Occurred while downloading sourceUrl file for " + internalId + " | File Url : " + sourceUrl)
+			if (null == file || !file.exists) throw new ServerException("SYSTEM_ERROR", "Error Occurred while downloading sourceUrl file for " + internalId + " | File Url : " + sourceUrl)
 			logger.info("ContentAutoCreator :: uploadContent :: File Path for " + internalId + " is : " + file.getAbsolutePath + " | File Size : " + file.length)
 			if (file.length > config.artifactMaxSize && !config.bulkUploadMimeTypes.contains(mimeType)) {
 				logger.info("ContentAutoCreator :: uploadContent :: File Size is larger than allowed file size allowed in upload api for : " + internalId + " | File Size (MB): " + (file.length / 1048576) + " | mimeType : " + mimeType)
