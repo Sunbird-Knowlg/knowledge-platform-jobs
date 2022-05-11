@@ -157,7 +157,7 @@ class CollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Match
     val unpublishedChildrenObj: List[Map[String, AnyRef]] = ScalaJsonUtil.deserialize[List[Map[String, AnyRef]]](unpublishedChildrenData)
     val publishedCollectionNodeMetadataObj: Map[String,AnyRef] = ScalaJsonUtil.deserialize[Map[String,AnyRef]](publishedCollectionNodeMetadata)
 
-    val collRelationalMetadata = new TestCollectionPublisher().getRelationalMetadata("do_123", 1, readerConfig)(cassandraUtil).getOrElse(Map.empty[String, AnyRef])
+    val collRelationalMetadata = new TestCollectionPublisher().getRelationalMetadata("do_123", 1, readerConfig)(cassandraUtil).get
     // Collection - update and publish children - line 418 in PublishFinalizer
     val updatedChildren: List[Map[String, AnyRef]] = new TestCollectionPublisher().updateHierarchyMetadata(unpublishedChildrenObj, publishedCollectionNodeMetadataObj, collRelationalMetadata)(jobConfig)
 
@@ -167,6 +167,21 @@ class CollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Match
       assert(child.contains("pkgVersion"))
       assert(child("pkgVersion").toString.equalsIgnoreCase("1"))
     })
+  }
+
+  "getRelationalMetadata" should "return null when there is no entry in relational_metadata column" in {
+    val collRelationalMetadata = new TestCollectionPublisher().getRelationalMetadata("do_1234", 1, readerConfig)(cassandraUtil).get
+    assert(collRelationalMetadata != null && collRelationalMetadata.isEmpty)
+  }
+
+  "getRelationalMetadata" should "return null when there is empty entry in relational_metadata column" in {
+    val collRelationalMetadata = new TestCollectionPublisher().getRelationalMetadata("do_12345", 1, readerConfig)(cassandraUtil).get
+    assert(collRelationalMetadata != null && collRelationalMetadata.isEmpty)
+  }
+
+  "getRelationalMetadata" should "return null when there is empty object entry in relational_metadata column" in {
+    val collRelationalMetadata = new TestCollectionPublisher().getRelationalMetadata("do_123456", 1, readerConfig)(cassandraUtil).get
+    assert(collRelationalMetadata != null && collRelationalMetadata.isEmpty)
   }
 
   "publishHierarchy " should "save hierarchy data to cassandra table" in {
