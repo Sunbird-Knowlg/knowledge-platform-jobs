@@ -242,7 +242,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 			logger.info("ContentAutoCreator :: update :: Initiating Icon download for : " + internalId + " | appIconUrl : " + appIconUrl)
 			val file = getFile(internalId, appIconUrl, "image", config, httpUtil)
 			logger.info("ContentAutoCreator :: update :: Icon downloaded for : " + internalId + " | appIconUrl : " + appIconUrl)
-			if (null == file || !file.exists) throw new Exception("Error Occurred while downloading appIcon file for " + internalId + " | File Url : " + appIconUrl)
+			if (null == file || !file.exists) throw new ServerException("SYSTEM_ERROR", "Error Occurred while downloading appIcon file for " + internalId + " | File Url : " + appIconUrl)
 			val urls = uploadArtifact(file, internalId, config, cloudStorageUtil)
 			val updatedAppIcon = if (null != urls && StringUtils.isNotBlank(urls(1))) {
 				val appIconBlobUrl = urls(1)
