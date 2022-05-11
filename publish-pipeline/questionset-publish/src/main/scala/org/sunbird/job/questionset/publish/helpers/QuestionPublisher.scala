@@ -31,7 +31,7 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
     val pkgVersion = obj.metadata.getOrElse("pkgVersion", 0.0.asInstanceOf[Number]).asInstanceOf[Number].intValue() + 1
     val publishType = obj.getString("publish_type", "Public")
     val status = if (StringUtils.equals("Private", publishType)) "Unlisted" else "Live"
-    val updatedMeta = obj.metadata ++ Map("identifier" -> obj.identifier, "pkgVersion" -> pkgVersion.asInstanceOf[AnyRef], "status" -> status)
+    val updatedMeta = obj.metadata ++ Map("pkgVersion" -> pkgVersion.asInstanceOf[AnyRef], "status" -> status)
     Some(new ObjectData(obj.identifier, updatedMeta, obj.extData, obj.hierarchy))
   }
 
