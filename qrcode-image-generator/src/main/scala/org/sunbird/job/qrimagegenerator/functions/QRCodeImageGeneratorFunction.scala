@@ -81,13 +81,15 @@ class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig,
         val generatedImages: ListBuffer[File] = qRCodeImageGeneratorUtil.createQRImages(qrGenRequest, event.storageContainer, event.storagePath, metrics)
 
         if (!event.processId.isBlank) {
+          val maxAllowedCharacter: Int = config.getInt("max_allowed_character_for_file_name", 120)
           logger.info("QRCodeImageGeneratorService:processMessage: Generating zip for QR codes with processId " + event.processId)
           val storageFileName = if (event.storageFileName.isBlank) event.processId else event.storageFileName
+          val qrZipFileName = if (storageFileName.length > maxAllowedCharacter) storageFileName.substring(0, maxAllowedCharacter) else storageFileName
 
           // Merge available and generated image list
           generatedImages.foreach(f => availableImages += f)
 
-          val zipFileName: String = tempFilePath + File.separator + storageFileName + ".zip"
+          val zipFileName: String = tempFilePath + File.separator + qrZipFileName + ".zip"
           val fileList: List[String] = availableImages.map(f => f.getName).toList
           FileUtils.zipIt(zipFileName, fileList, tempFilePath)
 
