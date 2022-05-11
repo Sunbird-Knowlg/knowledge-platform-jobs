@@ -169,17 +169,17 @@ class CollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Match
     })
   }
 
-  "getRelationalMetadata" should "return null when there is no entry in relational_metadata column" in {
+  "getRelationalMetadata" should "return empty Map when there is no entry in relational_metadata column" in {
     val collRelationalMetadata = new TestCollectionPublisher().getRelationalMetadata("do_1234", 1, readerConfig)(cassandraUtil).get
     assert(collRelationalMetadata != null && collRelationalMetadata.isEmpty)
   }
 
-  "getRelationalMetadata" should "return null when there is empty entry in relational_metadata column" in {
+  "getRelationalMetadata" should "return empty Map when there is empty entry in relational_metadata column" in {
     val collRelationalMetadata = new TestCollectionPublisher().getRelationalMetadata("do_12345", 1, readerConfig)(cassandraUtil).get
     assert(collRelationalMetadata != null && collRelationalMetadata.isEmpty)
   }
 
-  "getRelationalMetadata" should "return null when there is empty object entry in relational_metadata column" in {
+  "getRelationalMetadata" should "return empty Map when there is empty object entry in relational_metadata column" in {
     val collRelationalMetadata = new TestCollectionPublisher().getRelationalMetadata("do_123456", 1, readerConfig)(cassandraUtil).get
     assert(collRelationalMetadata != null && collRelationalMetadata.isEmpty)
   }
