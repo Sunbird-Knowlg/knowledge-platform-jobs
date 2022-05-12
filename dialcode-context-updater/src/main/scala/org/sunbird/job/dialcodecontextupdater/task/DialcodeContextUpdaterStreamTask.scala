@@ -36,7 +36,7 @@ class DialcodeContextUpdaterStreamTask(config: DialcodeContextUpdaterConfig, kaf
   }
 }
 
-// $COVERAGE-OFF$ Disabling scoverage as the below code can only be invoked within flink cluster
+
 object DialcodeContextUpdaterStreamTask {
 
   def main(args: Array[String]): Unit = {
@@ -52,4 +52,3 @@ object DialcodeContextUpdaterStreamTask {
   }
 }
 
-// $COVERAGE-ON$
