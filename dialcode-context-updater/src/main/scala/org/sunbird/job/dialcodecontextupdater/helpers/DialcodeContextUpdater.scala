@@ -20,7 +20,13 @@ trait DialcodeContextUpdater {
 	private[this] val logger = LoggerFactory.getLogger(classOf[DialcodeContextUpdater])
 
 	def process(config: DialcodeContextUpdaterConfig, event: Event, httpUtil: HttpUtil, neo4JUtil: Neo4JUtil, cloudStorageUtil: CloudStorageUtil): Boolean = {
-		val stage = event.eData.getOrDefault("stage", "").asInstanceOf[String].trim
+		val identifier = event.identifier
+		if(identifier.nonEmpty) {
+				
+		} else {
+
+		}
+
 		true
 	}
 }

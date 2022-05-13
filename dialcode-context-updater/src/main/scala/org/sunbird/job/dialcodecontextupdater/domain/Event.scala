@@ -24,7 +24,7 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 	def currentIteration: Int = readOrDefault[Int]("edata.iteration", 1)
 
 
-	def isValid(config: DialcodeContextUpdaterConfig): Boolean = {
-		true
+	def isValid(): Boolean = {
+				dialcode.nonEmpty
 	}
 }

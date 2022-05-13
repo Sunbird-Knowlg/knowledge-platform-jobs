@@ -46,10 +46,10 @@ class DialcodeContextUpdaterFunction(config: DialcodeContextUpdaterConfig, httpU
     logger.info("DialcodeContextUpdaterFunction::processElement:: event context : " + event.context)
     logger.info("DialcodeContextUpdaterFunction::processElement:: event edata : " + event.eData)
     try {
-      if (event.isValid(config)) {
-
+      if (event.isValid()) {
+        process(config, event, httpUtil, neo4JUtil, cloudStorageUtil)
       } else {
-        logger.info("DialcodeContextUpdaterFunction::processElement:: Event is not qualified for auto creator content upload/approval having identifier : " + event.objectId + " | objectType : " + event.objectType + " | source : " + event.repository)
+        logger.info("DialcodeContextUpdaterFunction::processElement:: Event is not qualified for dial code context update for dial code : " + event.dialcode)
         metrics.incCounter(config.skippedEventCount)
       }
     } catch {
