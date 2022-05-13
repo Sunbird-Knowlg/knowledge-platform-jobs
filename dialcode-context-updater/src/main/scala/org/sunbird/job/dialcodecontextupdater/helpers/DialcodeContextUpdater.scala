@@ -28,9 +28,9 @@ trait DialcodeContextUpdater {
 			// 2. Call Search API with dialcode and mode=collection
 			// 3. Fetch unit and rootNode output from the response
 			// 4. compose contextInfo and upsert to cassandra
-			val rootNodeFields = getContextData(httpUtil, config).keySet.toList
-
-
+			val contextData = getContextData(httpUtil, config)
+			val searchFields = if(contextData.contains("cData")) contextData.keySet.toList ++ contextData("cData").asInstanceOf[Map[String, AnyRef]].keySet.toList else contextData.keySet.toList
+			val contextInfoSearchData =	searchContent(dialcode, searchFields, config, httpUtil)
 
 		} else {
 			// check if contextInfo is available in metadata. If Yes, update to null
@@ -86,7 +86,9 @@ trait DialcodeContextUpdater {
 						add("Parent")
 					})
 					put(DialcodeContextUpdaterConstants.STATUS, new util.ArrayList[String]())
-					put(DialcodeContextUpdaterConstants.DIALCODES, new util.ArrayList[String]().add(dialcode))
+					put(DialcodeContextUpdaterConstants.DIALCODES, new util.ArrayList[String](){
+						add(dialcode)
+					})
 				})
 				put(DialcodeContextUpdaterConstants.FIELDS, searchFields.toArray[String])
 				put(DialcodeContextUpdaterConstants.SEARCH_MODE, config.searchMode)
