@@ -31,7 +31,9 @@ trait DialcodeContextUpdater {
 			val contextData = getContextData(httpUtil, config)
 			val searchFields = if(contextData.contains("cData")) contextData.keySet.toList ++ contextData("cData").asInstanceOf[Map[String, AnyRef]].keySet.toList else contextData.keySet.toList
 			val contextInfoSearchData =	searchContent(dialcode, searchFields, config, httpUtil)
+			println("DialcodeContextUpdater:: updateContext:: contextInfoSearchData: " + ScalaJsonUtil.serialize(contextInfoSearchData))
 
+			updateCassandra(config, dialcode, ScalaJsonUtil.serialize(contextInfoSearchData), cassandraUtil, metrics)
 		} else {
 			// check if contextInfo is available in metadata. If Yes, update to null
 			val row = readDialCodeFromCassandra(config, dialcode, cassandraUtil)
