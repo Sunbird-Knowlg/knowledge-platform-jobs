@@ -45,22 +45,26 @@ class DialcodeContextUpdaterConfig(override val config: Config) extends BaseJobC
   // DB Config
   val cassandraHost: String = config.getString("lms-cassandra.host")
   val cassandraPort: Int = config.getInt("lms-cassandra.port")
+  val cassandraDialCodeKeyspace: String = config.getString("cassandra.dialcode_keyspace")
+  val cassandraDialCodeTable: String = config.getString("cassandra.dialcode_table")
+//  val cassandraHierarchyKeyspace: String = config.getString("cassandra.hierarchy_keyspace")
+//  val cassandraHierarchyTable: String = config.getString("cassandra.hierarchy_table")
+
   val graphRoutePath: String = config.getString("neo4j.routePath")
   val graphName: String = config.getString("neo4j.graph")
-
+  val dbHitEventCount = "db-hit-events-count"
 
   // Schema Config
   val definitionBasePath: String = if (config.hasPath("schema.basePath")) config.getString("schema.basePath") else "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local"
   val schemaSupportVersionMap: Map[String, AnyRef] = if (config.hasPath("schema.supportedVersion")) config.getObject("schema.supportedVersion").unwrapped().asScala.toMap else Map[String, AnyRef]()
 
-  val cloudProps: List[String] = if (config.hasPath("object.cloud_props")) config.getStringList("object.cloud_props").asScala.toList else List("variants", "downloadUrl", "appIcon", "posterImage", "pdfUrl")
   val overrideManifestProps: List[String] = if (config.hasPath("object.override_manifest_props")) config.getStringList("object.override_manifest_props").asScala.toList else List("variants", "downloadUrl", "previewUrl", "pdfUrl", "lastPublishedBy")
   val contentServiceBaseUrl : String = config.getString("service.content_service.basePath")
   val searchServiceBaseUrl : String = config.getString("service.search.basePath")
   val learningServiceBaseUrl : String = config.getString("service.learning_service.basePath")
 
-  val searchExistsFields: List[String] = if (config.hasPath("search_exists_fields")) config.getStringList("search_exists_fields").asScala.toList else List("originData")
-  val searchFields: List[String] = if (config.hasPath("search_fields")) config.getStringList("search_fields").asScala.toList else List("identifier", "mimeType", "pkgVersion", "channel", "status", "origin", "originData", "artifactUrl")
+  val searchMode: String = if (config.hasPath("search_mode")) config.getString("search_mode") else "Collection"
+  val contextUrl: String = if (config.hasPath("context_url")) config.getString("context_url") else ""
 
   val contentFolder: String = if (config.hasPath("cloud_storage.folder.content")) config.getString("cloud_storage.folder.content") else "content"
   val artifactFolder: String = if (config.hasPath("cloud_storage.folder.artifact")) config.getString("cloud_storage.folder.artifact") else "artifact"

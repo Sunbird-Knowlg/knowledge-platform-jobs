@@ -17,7 +17,7 @@ import java.util
 
 class DialcodeContextUpdaterFunction(config: DialcodeContextUpdaterConfig, httpUtil: HttpUtil,
                                      @transient var neo4JUtil: Neo4JUtil = null,
-                                     @transient var cloudStorageUtil: CloudStorageUtil = null)
+                                     @transient var cassandraUtil: CassandraUtil = null)
                                     (implicit mapTypeInfo: TypeInformation[util.Map[String, AnyRef]], stringTypeInfo: TypeInformation[String])
   extends BaseProcessFunction[Event, String](config) with DialcodeContextUpdater  with FailedEventHelper {
 
@@ -31,10 +31,11 @@ class DialcodeContextUpdaterFunction(config: DialcodeContextUpdaterConfig, httpU
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
     neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName)
-    cloudStorageUtil = new CloudStorageUtil(config)
+    cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort)
   }
 
   override def close(): Unit = {
+    cassandraUtil.close()
     super.close()
   }
 
@@ -47,7 +48,7 @@ class DialcodeContextUpdaterFunction(config: DialcodeContextUpdaterConfig, httpU
     logger.info("DialcodeContextUpdaterFunction::processElement:: event edata : " + event.eData)
     try {
       if (event.isValid()) {
-        process(config, event, httpUtil, neo4JUtil, cloudStorageUtil)
+        updateContext(config, event, httpUtil, neo4JUtil, cassandraUtil, metrics)
       } else {
         logger.info("DialcodeContextUpdaterFunction::processElement:: Event is not qualified for dial code context update for dial code : " + event.dialcode)
         metrics.incCounter(config.skippedEventCount)
