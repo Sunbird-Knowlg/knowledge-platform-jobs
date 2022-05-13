@@ -414,7 +414,10 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 		} catch {
 			case e: ServerException =>
 					logger.info("Invalid fileUrl received for : " + identifier + " | fileUrl : " + fileUrl + "Exception is : " + e.getMessage)
-					throw new ServerException("ERR_INVALID_UPLOAD_FILE_URL", "Invalid fileUrl received for : " + identifier + " | fileUrl : " + fileUrl)
+					throw e
+			case ex: Exception =>
+				logger.info("Invalid fileUrl received for : " + identifier + " | fileUrl : " + fileUrl + "Exception is : " + ex.getMessage)
+				throw new ServerException("ERR_INVALID_UPLOAD_FILE_URL", "Invalid fileUrl received for : " + identifier + " | fileUrl : " + fileUrl)
 		}
 	}
 
