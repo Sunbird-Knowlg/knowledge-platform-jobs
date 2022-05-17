@@ -1,8 +1,7 @@
 package org.sunbird.job.dialcodecontextupdater.helpers
 
 import com.datastax.driver.core.Row
-import com.datastax.driver.core.querybuilder.{QueryBuilder, Select}
-import org.apache.commons.lang3.StringUtils
+import com.datastax.driver.core.querybuilder.QueryBuilder
 import org.slf4j.LoggerFactory
 import org.sunbird.job.Metrics
 import org.sunbird.job.dialcodecontextupdater.domain.Event
@@ -12,7 +11,6 @@ import org.sunbird.job.exception.{APIException, ServerException}
 import org.sunbird.job.util._
 
 import java.util
-import scala.collection.convert.ImplicitConversions.`map AsJavaMap`
 
 
 trait DialcodeContextUpdater {
@@ -28,12 +26,22 @@ trait DialcodeContextUpdater {
 			// 2. Call Search API with dialcode and mode=collection
 			// 3. Fetch unit and rootNode output from the response
 			// 4. compose contextInfo and upsert to cassandra
-			val contextData = getContextData(httpUtil, config)
+			val contextData = getContextJson(httpUtil, config)
 			val searchFields = if(contextData.contains("cData")) contextData.keySet.toList ++ contextData("cData").asInstanceOf[Map[String, AnyRef]].keySet.toList else contextData.keySet.toList
+			println("DialcodeContextUpdater:: updateContext:: searchFields: " + searchFields)
+
 			val contextInfoSearchData =	searchContent(dialcode, searchFields, config, httpUtil)
 			println("DialcodeContextUpdater:: updateContext:: contextInfoSearchData: " + ScalaJsonUtil.serialize(contextInfoSearchData))
 
-			updateCassandra(config, dialcode, ScalaJsonUtil.serialize(contextInfoSearchData), cassandraUtil, metrics)
+			// Filter for necessary fields
+			val filteredCData = if(contextInfoSearchData.contains("cData")) contextInfoSearchData.getOrElse("cData", Map.empty[String, AnyRef]).asInstanceOf[Map[String, AnyRef]].filter(rec => searchFields.contains(rec._1)) else Map.empty[String, AnyRef]
+			val inputContextData = contextInfoSearchData.filter(rec => searchFields.contains(rec._1))
+			println("DialcodeContextUpdater:: updateContext:: filteredCData: " + filteredCData)
+			println("DialcodeContextUpdater:: updateContext:: inputContextData: " + inputContextData)
+
+			val finalFilteredData = if(filteredCData!=null && filteredCData.nonEmpty) inputContextData + ("cData" -> filteredCData) else inputContextData
+			println("DialcodeContextUpdater:: updateContext:: finalFilteredData: " + finalFilteredData)
+			updateCassandra(config, dialcode, ScalaJsonUtil.serialize(finalFilteredData), cassandraUtil, metrics)
 		} else {
 			// check if contextInfo is available in metadata. If Yes, update to null
 			val row = readDialCodeFromCassandra(config, dialcode, cassandraUtil)
@@ -57,6 +65,7 @@ trait DialcodeContextUpdater {
 		val updateQuery: String = QueryBuilder.update(config.cassandraDialCodeKeyspace, config.cassandraDialCodeTable)
 			.`with`(QueryBuilder.set("metadata", contextInfo))
 			.where(QueryBuilder.eq("identifier", dialcode)).toString
+		println("DialcodeContextUpdater:: updateCassandra:: " + updateQuery)
 		cassandraUtil.upsert(updateQuery)
 		metrics.incCounter(config.dbHitEventCount)
 	}
@@ -67,7 +76,7 @@ trait DialcodeContextUpdater {
 		cassandraUtil.findOne(selectQuery.toString)
 	}
 
-	def getContextData(httpUtil: HttpUtil, config: DialcodeContextUpdaterConfig): Map[String, AnyRef] = {
+	def getContextJson(httpUtil: HttpUtil, config: DialcodeContextUpdaterConfig): Map[String, AnyRef] = {
 		try {
 			val contextResponse: HTTPResponse = httpUtil.get(config.contextUrl)
 			val obj = JSONUtil.deserialize[Map[String, AnyRef]](contextResponse.body)
