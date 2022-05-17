@@ -17,7 +17,7 @@ trait DialcodeContextUpdater {
 
 	private[this] val logger = LoggerFactory.getLogger(classOf[DialcodeContextUpdater])
 
-	def updateContext(config: DialcodeContextUpdaterConfig, event: Event, httpUtil: HttpUtil, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, metrics: Metrics): Unit = {
+	def updateContext(config: DialcodeContextUpdaterConfig, event: Event, httpUtil: HttpUtil, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, metrics: Metrics): Row = {
 		val identifier = event.identifier
 		val dialcode = event.dialcode
 		if(identifier.nonEmpty) {
@@ -30,7 +30,7 @@ trait DialcodeContextUpdater {
 			val searchFields = if(contextData.contains("cData")) contextData.keySet.toList ++ contextData("cData").asInstanceOf[Map[String, AnyRef]].keySet.toList else contextData.keySet.toList
 			println("DialcodeContextUpdater:: updateContext:: searchFields: " + searchFields)
 
-			val contextInfoSearchData =	searchContent(dialcode, searchFields, config, httpUtil)
+			val contextInfoSearchData =	searchContent(dialcode, identifier, searchFields, config, httpUtil)
 			println("DialcodeContextUpdater:: updateContext:: contextInfoSearchData: " + ScalaJsonUtil.serialize(contextInfoSearchData))
 
 			// Filter for necessary fields
@@ -48,6 +48,8 @@ trait DialcodeContextUpdater {
 			if(row.getString("metadata") != null && row.getString("metadata").nonEmpty)
 				updateCassandra(config, dialcode, null, cassandraUtil, metrics)
 		}
+
+		readDialCodeFromCassandra(config, dialcode, cassandraUtil)
 	}
 
 //	private def getCollectionHierarchy(identifier: String, config: DialcodeContextUpdaterConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = {
@@ -65,7 +67,6 @@ trait DialcodeContextUpdater {
 		val updateQuery: String = QueryBuilder.update(config.cassandraDialCodeKeyspace, config.cassandraDialCodeTable)
 			.`with`(QueryBuilder.set("metadata", contextInfo))
 			.where(QueryBuilder.eq("identifier", dialcode)).toString
-		println("DialcodeContextUpdater:: updateCassandra:: " + updateQuery)
 		cassandraUtil.upsert(updateQuery)
 		metrics.incCounter(config.dbHitEventCount)
 	}
@@ -88,7 +89,7 @@ trait DialcodeContextUpdater {
 	}
 
 
-	private def searchContent(dialcode: String, searchFields: List[String], config: DialcodeContextUpdaterConfig, httpUtil: HttpUtil): Map[String, AnyRef] = {
+	private def searchContent(dialcode: String, identifier: String, searchFields: List[String], config: DialcodeContextUpdaterConfig, httpUtil: HttpUtil): Map[String, AnyRef] = {
 		val reqMap = new java.util.HashMap[String, AnyRef]() {
 			put(DialcodeContextUpdaterConstants.REQUEST, new java.util.HashMap[String, AnyRef]() {
 				put(DialcodeContextUpdaterConstants.FILTERS, new java.util.HashMap[String, AnyRef]() {
@@ -96,6 +97,7 @@ trait DialcodeContextUpdater {
 						add("Default")
 						add("Parent")
 					})
+					put(DialcodeContextUpdaterConstants.IDENTIFIER, identifier)
 					put(DialcodeContextUpdaterConstants.STATUS, new util.ArrayList[String]())
 					put(DialcodeContextUpdaterConstants.DIALCODES, new util.ArrayList[String](){
 						add(dialcode)
