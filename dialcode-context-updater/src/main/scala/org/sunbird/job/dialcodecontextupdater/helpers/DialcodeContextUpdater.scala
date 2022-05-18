@@ -20,7 +20,7 @@ trait DialcodeContextUpdater {
 	def updateContext(config: DialcodeContextUpdaterConfig, event: Event, httpUtil: HttpUtil, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, metrics: Metrics): Row = {
 		val identifier = event.identifier
 		val dialcode = event.dialcode
-		if(identifier.nonEmpty) {
+		if(identifier.nonEmpty && event.action.equalsIgnoreCase("dialcode-context-update")) {
 			// Compute contextInfo and update cassandra with contextInfo
 			// 1. Read search fields from the context json file
 			// 2. Call Search API with dialcode and mode=collection
@@ -84,7 +84,7 @@ trait DialcodeContextUpdater {
 			obj("@context").asInstanceOf[Map[String, AnyRef]]("context").asInstanceOf[Map[String, AnyRef]]
 		} catch {
 			case e: Exception =>
-				throw new APIException(s"Error in getContextData", e)
+				throw new APIException(s"Error in getContextJson", e)
 		}
 	}
 
@@ -125,8 +125,7 @@ trait DialcodeContextUpdater {
 					collections.filter(record => !record.contains("origin")).head + ("cData" -> content.head)
 				}
 			} else {
-				logger.info("DialcodeContextUpdater :: searchContent :: Received 0 count while searching content for dialcode: " + dialcode)
-				Map.empty[String, AnyRef]
+				throw new ServerException("ERR_DIAL_CONTENT_NOT_FOUND", "No content linking was found for dialcode: " + dialcode + " - to identifier: " + identifier)
 			}
 		} else {
 			throw new ServerException("ERR_API_CALL", "Invalid Response received while searching content for dialcode: " + dialcode)
