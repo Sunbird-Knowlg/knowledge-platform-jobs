@@ -95,4 +95,5 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
   val nestedFields: util.List[String] = if (config.hasPath("content.nested.fields")) config.getStringList("content.nested.fields") else util.Arrays.asList[String]("badgeAssertions","targets","badgeAssociations")
 
   val allowedExtensionsWord: util.List[String] = if (config.hasPath("mimetype.allowed_extensions.word")) config.getStringList("mimetype.allowed_extensions.word") else util.Arrays.asList[String]("doc", "docx", "ppt", "pptx", "key", "odp", "pps", "odt", "wpd", "wps", "wks")
+  val enableDIALContextUpdate: String = if (config.hasPath("enableDIALContextUpdate")) config.getString("enableDIALContextUpdate") else "No"
 }

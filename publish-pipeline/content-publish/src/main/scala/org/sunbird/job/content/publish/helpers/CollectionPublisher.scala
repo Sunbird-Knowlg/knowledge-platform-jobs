@@ -642,4 +642,38 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     result
   }
 
+  def fetchDialListForContextUpdate(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): Map[String, AnyRef] = {
+    val isCollectionShallowCopy = isContentShallowCopy(obj)
+
+    val DialContextMap: Map[String, AnyRef] = if (isCollectionShallowCopy) Map.empty[String, AnyRef] else {
+      val draftHierarchy = getHierarchy(obj.identifier, obj.pkgVersion, readerConfig).get
+      val publishedNodeId = obj.identifier.replaceAll(".img","")
+      val publishedHierarchy = if (obj.identifier.endsWith(".img")) { getHierarchy(publishedNodeId, 0, readerConfig).get } else Map.empty[String, AnyRef]
+      val draftDIALList: mutable.Set[String] = mutable.Set.empty[String]
+      getDIALListFromHierarchy(draftHierarchy, draftDIALList)
+      val publishedDIALList: mutable.Set[String] = mutable.Set.empty[String]
+      if(publishedHierarchy.nonEmpty) getDIALListFromHierarchy(publishedHierarchy, publishedDIALList)
+
+      draftDIALList.add(draftHierarchy.getOrElse("dialcodes", List.empty[String]).asInstanceOf[List[String]].head)
+      publishedDIALList.add(publishedHierarchy.getOrElse("dialcodes", List.empty[String]).asInstanceOf[List[String]].head)
+
+      println("CollectionPublisher:: fetchDialListForContextUpdate:: draftDIALList:: " + draftDIALList)
+      println("CollectionPublisher:: fetchDialListForContextUpdate:: publishedDIALList:: " + publishedDIALList)
+
+      Map("addContextDialCodes" -> draftDIALList.toList, "removeContextDialCodes" -> publishedDIALList.diff(draftDIALList).toList)
+    }
+
+    DialContextMap
+  }
+
+  private def getDIALListFromHierarchy(data: Map[String, AnyRef], dialcodeList: mutable.Set[String]): Unit = {
+    if (StringUtils.equals(data.getOrElse("visibility", "").asInstanceOf[String], "Parent")) dialcodeList ++= data.getOrElse("dialcodes", List.empty[String]).asInstanceOf[List[String]].toSet[String]
+    val children = data.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]]
+    if (children.nonEmpty) {
+      for (child <- children) {
+        getDIALListFromHierarchy(child, dialcodeList)
+      }
+    }
+  }
+
 }
