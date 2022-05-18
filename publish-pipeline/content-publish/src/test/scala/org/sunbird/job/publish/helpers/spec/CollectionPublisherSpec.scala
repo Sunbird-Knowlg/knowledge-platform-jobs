@@ -212,7 +212,7 @@ class CollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Match
   "fetchDialListForContextUpdate" should "fetch the list of added and removed QR codes" in {
     val nodeObj = new ObjectData("do_21354027142511820812318.img", Map("objectType" -> "Collection", "identifier" -> "do_21354027142511820812318", "name" -> "DialCodeHierarchy", "lastPublishedOn" -> getTimeStamp, "lastUpdatedOn" -> getTimeStamp, "status" -> "Draft", "pkgVersion" -> 1.asInstanceOf[Number], "versionKey" -> "1652871771396"), Some(Map()), Some(Map()))
     val DIALListMap = new TestCollectionPublisher().fetchDialListForContextUpdate(nodeObj)(mockNeo4JUtil, cassandraUtil, readerConfig)
-    println("DIALListMap:: " + DIALListMap)
+
     assert(DIALListMap.nonEmpty)
   }
 

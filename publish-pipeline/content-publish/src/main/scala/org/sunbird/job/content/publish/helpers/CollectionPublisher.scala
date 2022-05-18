@@ -657,9 +657,6 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       draftDIALList.add(draftHierarchy.getOrElse("dialcodes", List.empty[String]).asInstanceOf[List[String]].head)
       publishedDIALList.add(publishedHierarchy.getOrElse("dialcodes", List.empty[String]).asInstanceOf[List[String]].head)
 
-      println("CollectionPublisher:: fetchDialListForContextUpdate:: draftDIALList:: " + draftDIALList)
-      println("CollectionPublisher:: fetchDialListForContextUpdate:: publishedDIALList:: " + publishedDIALList)
-
       Map("addContextDialCodes" -> draftDIALList.toList, "removeContextDialCodes" -> publishedDIALList.diff(draftDIALList).toList)
     }
 
