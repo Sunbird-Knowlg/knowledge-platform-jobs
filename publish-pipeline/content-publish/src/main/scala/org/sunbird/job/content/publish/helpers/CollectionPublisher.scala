@@ -649,26 +649,27 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       val draftHierarchy = getHierarchy(obj.identifier, obj.pkgVersion, readerConfig).get
       val publishedNodeId = obj.identifier.replaceAll(".img","")
       val publishedHierarchy = if (obj.identifier.endsWith(".img")) { getHierarchy(publishedNodeId, 0, readerConfig).get } else Map.empty[String, AnyRef]
-      val draftDIALList: mutable.Set[String] = mutable.Set.empty[String]
-      getDIALListFromHierarchy(draftHierarchy, draftDIALList)
-      val publishedDIALList: mutable.Set[String] = mutable.Set.empty[String]
-      if(publishedHierarchy.nonEmpty) getDIALListFromHierarchy(publishedHierarchy, publishedDIALList)
+      val draftDIALcodesMap: mutable.Map[List[String], String] = mutable.Map.empty[List[String], String]
+      getDIALListFromHierarchy(draftHierarchy, draftDIALcodesMap)
+      val publishedDIALcodesMap: mutable.Map[List[String], String] = mutable.Map.empty[List[String], String]
+      if(publishedHierarchy.nonEmpty) getDIALListFromHierarchy(publishedHierarchy, publishedDIALcodesMap)
 
-      draftDIALList.add(draftHierarchy.getOrElse("dialcodes", List.empty[String]).asInstanceOf[List[String]].head)
-      publishedDIALList.add(publishedHierarchy.getOrElse("dialcodes", List.empty[String]).asInstanceOf[List[String]].head)
+      draftDIALcodesMap += (draftHierarchy.getOrElse("dialcodes", mutable.Map.empty[String, String]).asInstanceOf[List[String]] -> draftHierarchy("identifier").asInstanceOf[String])
+      publishedDIALcodesMap += (publishedHierarchy.getOrElse("dialcodes", List.empty[String]).asInstanceOf[List[String]] -> publishedHierarchy("identifier").asInstanceOf[String])
 
-      Map("addContextDialCodes" -> draftDIALList.toList, "removeContextDialCodes" -> publishedDIALList.diff(draftDIALList).toList)
+      Map("addContextDialCodes" -> draftDIALcodesMap.toList, "removeContextDialCodes" -> (publishedDIALcodesMap -- draftDIALcodesMap.keySet))
     }
 
     DialContextMap
   }
 
-  private def getDIALListFromHierarchy(data: Map[String, AnyRef], dialcodeList: mutable.Set[String]): Unit = {
-    if (StringUtils.equals(data.getOrElse("visibility", "").asInstanceOf[String], "Parent")) dialcodeList ++= data.getOrElse("dialcodes", List.empty[String]).asInstanceOf[List[String]].toSet[String]
+  private def getDIALListFromHierarchy(data: Map[String, AnyRef], dialcodeMap: mutable.Map[List[String], String]): Unit = {
+    val dialCodes = data.getOrElse("dialcodes", List.empty[String]).asInstanceOf[List[String]]
+    if (StringUtils.equals(data.getOrElse("visibility", "").asInstanceOf[String], "Parent") && dialCodes!=null && dialCodes.nonEmpty) dialcodeMap += (dialCodes ->  data("identifier").asInstanceOf[String])
     val children = data.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]]
     if (children.nonEmpty) {
       for (child <- children) {
-        getDIALListFromHierarchy(child, dialcodeList)
+        getDIALListFromHierarchy(child, dialcodeMap)
       }
     }
   }
