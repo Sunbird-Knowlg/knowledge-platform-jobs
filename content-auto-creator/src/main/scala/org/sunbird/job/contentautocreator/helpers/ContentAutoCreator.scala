@@ -242,7 +242,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 			logger.info("ContentAutoCreator :: update :: Initiating Icon download for : " + internalId + " | appIconUrl : " + appIconUrl)
 			val file = getFile(internalId, appIconUrl, "image", config, httpUtil)
 			logger.info("ContentAutoCreator :: update :: Icon downloaded for : " + internalId + " | appIconUrl : " + appIconUrl)
-			if (null == file || !file.exists) throw new Exception("Error Occurred while downloading appIcon file for " + internalId + " | File Url : " + appIconUrl)
+			if (null == file || !file.exists) throw new ServerException("SYSTEM_ERROR", "Error Occurred while downloading appIcon file for " + internalId + " | File Url : " + appIconUrl)
 			val urls = uploadArtifact(file, internalId, config, cloudStorageUtil)
 			val updatedAppIcon = if (null != urls && StringUtils.isNotBlank(urls(1))) {
 				val appIconBlobUrl = urls(1)
@@ -288,7 +288,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 			logger.info("ContentAutoCreator :: uploadContent :: Initiating sourceFile download for : " + internalId + " | sourceUrl : " + sourceUrl)
 			val file: File = getFile(internalId, sourceUrl, mimeType, config, httpUtil)
 			logger.info("ContentAutoCreator :: uploadContent :: sourceFile downloaded for : " + internalId + " | sourceUrl : " + sourceUrl)
-			if (null == file || !file.exists) throw new Exception("Error Occurred while downloading sourceUrl file for " + internalId + " | File Url : " + sourceUrl)
+			if (null == file || !file.exists) throw new ServerException("SYSTEM_ERROR", "Error Occurred while downloading sourceUrl file for " + internalId + " | File Url : " + sourceUrl)
 			logger.info("ContentAutoCreator :: uploadContent :: File Path for " + internalId + " is : " + file.getAbsolutePath + " | File Size : " + file.length)
 			if (file.length > config.artifactMaxSize && !config.bulkUploadMimeTypes.contains(mimeType)) {
 				logger.info("ContentAutoCreator :: uploadContent :: File Size is larger than allowed file size allowed in upload api for : " + internalId + " | File Size (MB): " + (file.length / 1048576) + " | mimeType : " + mimeType)
@@ -302,7 +302,11 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 				logger.info("ContentAutoCreator :: uploadContent :: sourceUrl Uploaded Successfully to cloud for : " + internalId + " | sourceUrl : " + sourceUrl + " | sourceFileBlobUrl : " + sourceFileBlobUrl)
 
 				val headers = Map[String, String](ContentAutoCreatorConstants.X_CHANNEL_ID -> channel)
-				val requestUrl = s"${config.contentServiceBaseUrl}/content/v4/upload/$internalId"
+				val requestUrl = if (mimeType.nonEmpty && mimeType.equalsIgnoreCase("application/vnd.ekstep.h5p-archive") && !file.getName.split("\\.").last.equalsIgnoreCase("h5p"))
+					s"${config.contentServiceBaseUrl}/content/v4/upload/$internalId?validation=false&fileFormat=composed-h5p-zip"
+				else
+					s"${config.contentServiceBaseUrl}/content/v4/upload/$internalId?validation=false"
+
 				logger.info("ContentAutoCreator :: uploadContent :: Upload Content requestUrl: " + requestUrl)
 				logger.info("ContentAutoCreator :: uploadContent :: Upload Content sourceFileBlobUrl: " + sourceFileBlobUrl)
 				val httpResponse = httpUtil.postFilePath(requestUrl, "fileUrl", sourceFileBlobUrl, headers)
@@ -410,7 +414,10 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 		} catch {
 			case e: ServerException =>
 					logger.info("Invalid fileUrl received for : " + identifier + " | fileUrl : " + fileUrl + "Exception is : " + e.getMessage)
-					throw new ServerException("ERR_INVALID_UPLOAD_FILE_URL", "Invalid fileUrl received for : " + identifier + " | fileUrl : " + fileUrl)
+					throw e
+			case ex: Exception =>
+				logger.info("Invalid fileUrl received for : " + identifier + " | fileUrl : " + fileUrl + "Exception is : " + ex.getMessage)
+				throw new ServerException("ERR_INVALID_UPLOAD_FILE_URL", "Invalid fileUrl received for : " + identifier + " | fileUrl : " + fileUrl)
 		}
 	}
 

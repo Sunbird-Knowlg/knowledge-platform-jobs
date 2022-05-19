@@ -102,7 +102,7 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
           val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
           logger.info("CollectionPublishFunction:: ECAR generation completed for Collection Object: " + objWithEcar.identifier)
 
-          val collRelationalMetadata = getRelationalMetadata(obj.identifier, obj.pkgVersion-1, readerConfig)(cassandraUtil).get
+          val collRelationalMetadata = getRelationalMetadata(obj.identifier, obj.pkgVersion-1, readerConfig)(cassandraUtil).getOrElse(Map.empty[String, AnyRef])
 
           val dialContextMap = if(config.enableDIALContextUpdate.equalsIgnoreCase("Yes")) fetchDialListForContextUpdate(obj)(neo4JUtil, cassandraUtil, readerConfig) else Map.empty[String, AnyRef]
           logger.info("CollectionPublishFunction:: dialContextMap: " + dialContextMap)
