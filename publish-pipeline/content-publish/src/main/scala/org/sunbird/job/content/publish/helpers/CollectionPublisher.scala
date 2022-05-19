@@ -648,7 +648,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     val DialContextMap: Map[String, AnyRef] = if (isCollectionShallowCopy) Map.empty[String, AnyRef] else {
       val draftHierarchy = getHierarchy(obj.identifier, obj.pkgVersion, readerConfig).get
       val publishedNodeId = obj.identifier.replaceAll(".img","")
-      val publishedHierarchy = if (obj.identifier.endsWith(".img")) { getHierarchy(publishedNodeId, 0, readerConfig).get } else Map.empty[String, AnyRef]
+      val publishedHierarchy = if (obj.pkgVersion > 0) { getHierarchy(publishedNodeId, 0, readerConfig).get } else Map.empty[String, AnyRef]
       val draftDIALcodesMap: mutable.Map[List[String], String] = mutable.Map.empty[List[String], String]
       getDIALListFromHierarchy(draftHierarchy, draftDIALcodesMap)
       val publishedDIALcodesMap: mutable.Map[List[String], String] = mutable.Map.empty[List[String], String]
