@@ -9,9 +9,10 @@ import org.mockito.{ArgumentMatchers, Mockito}
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
 import org.sunbird.job.Metrics
+import org.sunbird.job.postpublish.domain.Event
 import org.sunbird.job.postpublish.models.ExtDataConfig
 import org.sunbird.job.postpublish.task.PostPublishProcessorConfig
-import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, Neo4JUtil}
+import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, JSONUtil, Neo4JUtil}
 
 import java.util
 import scala.collection.JavaConverters._
@@ -130,6 +131,13 @@ class DialHelperTest extends FlatSpec with BeforeAndAfterAll with Matchers with 
     }
 
   }
+
+  "getDialCodeContextMap" should "return map of add and remove dial codes for context update" in {
+    val DIALCODE_CONTEXT_EVENT: String = """{"eid":"BE_JOB_REQUEST","ets":1648720639981,"mid":"LP.1648720639981.d6b1d8c8-7a4a-483a-b83a-b752bede648c","actor":{"id":"DIALcodecontextupdateJob","type":"System"},"context":{"pdata":{"ver":"1.0","id":"org.sunbird.platform"},"channel":"01269878797503692810","env":"dev"},"object":{"ver":"1.0","id":"0117CH01"},"edata":{"action":"dialcode-context-update","iteration":1,"dialcode":"0117CH01","identifier":"d0_1234","traceId":"2342345345"}}""".stripMargin
+    val event = new Event(JSONUtil.deserialize[java.util.Map[String, Any]](DIALCODE_CONTEXT_EVENT),0,1)
+    new TestDialHelper().getDialCodeContextMap(event)
+  }
+
 
 
   def getEvent(): util.Map[String, AnyRef] = {
