@@ -19,9 +19,10 @@ import org.neo4j.driver.v1.StatementResult
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.fixture.EventFixture
 import org.sunbird.job.postpublish.domain.Event
-import org.sunbird.job.postpublish.functions.{DIALCodeLinkFunction, PostPublishEventRouter}
+import org.sunbird.job.postpublish.functions.{DIALCodeLinkFunction, DialCodeContextUpdaterFunction, PostPublishEventRouter}
+import org.sunbird.job.postpublish.helpers.TestDialHelper
 import org.sunbird.job.postpublish.task.{PostPublishProcessorConfig, PostPublishProcessorStreamTask}
-import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, Neo4JUtil}
+import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, JSONUtil, Neo4JUtil}
 import org.sunbird.spec.BaseTestSpec
 
 import java.time.format.DateTimeFormatter
@@ -258,6 +259,12 @@ class PostPublishProcessorTaskTestSpec extends BaseTestSpec {
 
     val dialcode = new DIALCodeLinkFunction(jobConfig, mockHttpUtil, mockNeo4JUtil, cassandraUtil).getDialcode(edata)
     dialcode should be("Q2I5I9")
+  }
+
+  "getDialCodeContextMap" should "return map of add and remove dial codes for context update" in {
+    val DIALCODE_CONTEXT_EVENT: String = """{"eid":"BE_JOB_REQUEST","ets":1648720639981,"mid":"LP.1648720639981.d6b1d8c8-7a4a-483a-b83a-b752bede648c","actor":{"id":"DIALcodecontextupdateJob","type":"System"},"context":{"pdata":{"ver":"1.0","id":"org.sunbird.platform"},"channel":"01269878797503692810","env":"dev"},"object":{"ver":"1.0","id":"0117CH01"},"edata":{"action":"dialcode-context-update","iteration":1,"dialcode":"0117CH01","identifier":"d0_1234","traceId":"2342345345"}}""".stripMargin
+    val event = new Event(JSONUtil.deserialize[java.util.Map[String, Any]](DIALCODE_CONTEXT_EVENT),0,1)
+    new DialCodeContextUpdaterFunction(jobConfig).getDialCodeContextMap(event)
   }
 
   ignore should "run all the scenarios for a given event" in {
