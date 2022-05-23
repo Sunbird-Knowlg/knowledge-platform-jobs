@@ -7,7 +7,7 @@ import org.sunbird.job.Metrics
 import org.sunbird.job.postpublish.domain.Event
 import org.sunbird.job.postpublish.models.ExtDataConfig
 import org.sunbird.job.postpublish.task.PostPublishProcessorConfig
-import org.sunbird.job.util.{CassandraUtil, HttpUtil, JSONUtil, Neo4JUtil}
+import org.sunbird.job.util.{CassandraUtil, HttpUtil, JSONUtil, Neo4JUtil, ScalaJsonUtil}
 
 import java.util
 import java.util.UUID
@@ -127,6 +127,21 @@ trait DialHelper {
     if(event.eData.contains("removeContextDialCodes")) dialcodeContextMap.put("removeContextDialCodes", event.eData.getOrElse("removeContextDialCodes", Map.empty))
 
     dialcodeContextMap
+  }
+
+  def generateDialcodeContextUpdaterEvent(addContextDialCodes: Map[List[String],String], removeContextDialCodes: Map[List[String],String], context: ProcessFunction[java.util.Map[String, AnyRef], String]#Context, metrics: Metrics)(implicit config: PostPublishProcessorConfig) = {
+    if(addContextDialCodes.nonEmpty) {
+      addContextDialCodes.foreach(rec => {
+        dialcodeContextUpdaterEvent(rec._1, rec._2, context)(metrics, config)
+      })
+    }
+
+    if(removeContextDialCodes.nonEmpty) {
+      removeContextDialCodes.foreach(rec => {
+        dialcodeContextUpdaterEvent(rec._1, rec._2, context)(metrics, config)
+      })
+    }
+
   }
 
   def dialcodeContextUpdaterEvent(dialcodes: List[String], contentId: String, context: ProcessFunction[java.util.Map[String, AnyRef], String]#Context)(implicit metrics: Metrics, config: PostPublishProcessorConfig) = {

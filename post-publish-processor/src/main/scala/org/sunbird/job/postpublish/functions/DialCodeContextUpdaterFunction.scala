@@ -6,6 +6,7 @@ import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.postpublish.helpers.DialHelper
 import org.sunbird.job.postpublish.task.PostPublishProcessorConfig
+import org.sunbird.job.util.ScalaJsonUtil
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 
@@ -27,21 +28,9 @@ class DialCodeContextUpdaterFunction(config: PostPublishProcessorConfig) (implic
     logger.info(s"DIAL Code Context Updater operation triggered with object : $edata")
     metrics.incCounter(config.dialcodeContextUpdaterCount)
     try {
-      val addContextDialCodes: Map[List[String],String] = edata.getOrDefault("addContextDialCodes", Map.empty[List[String],String]).asInstanceOf[Map[List[String],String]]
-      val removeContextDialCodes: Map[List[String],String] = edata.getOrDefault("removeContextDialCodes", Map.empty[List[String],String]).asInstanceOf[Map[List[String],String]]
-
-      if(addContextDialCodes.nonEmpty) {
-          addContextDialCodes.foreach(rec => {
-            dialcodeContextUpdaterEvent(rec._1, rec._2, context)(metrics, config)
-          })
-      }
-
-      if(removeContextDialCodes.nonEmpty) {
-        removeContextDialCodes.foreach(rec => {
-          dialcodeContextUpdaterEvent(rec._1, rec._2, context)(metrics, config)
-        })
-      }
-
+      val addContextDialCodes: Map[List[String],String] = edata.getOrDefault("addContextDialCodes", Map.empty[String,String]).asInstanceOf[Map[String,String]].map(rec => (ScalaJsonUtil.deserialize[List[String]](rec._1)->rec._2))
+      val removeContextDialCodes: Map[List[String],String] = edata.getOrDefault("removeContextDialCodes", Map.empty[String,String]).asInstanceOf[Map[String,String]].map(rec => (ScalaJsonUtil.deserialize[List[String]](rec._1)->rec._2))
+        generateDialcodeContextUpdaterEvent(addContextDialCodes, removeContextDialCodes, context, metrics)(config)
       metrics.incCounter(config.dialcodeContextUpdaterSuccessCount)
     } catch {
       case ex: Throwable =>

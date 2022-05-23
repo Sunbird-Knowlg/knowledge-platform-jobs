@@ -21,6 +21,7 @@ import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import java.lang.reflect.Type
 import java.util.UUID
+import scala.collection.mutable
 import scala.concurrent.ExecutionContext
 
 class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
@@ -168,8 +169,12 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
     val ver = obj.metadata("versionKey")
     val contentType = obj.metadata("contentType")
     val status = obj.metadata("status")
+
+    val serAddContextDialCode = ScalaJsonUtil.serialize(dialContextMap.getOrElse("addContextDialCodes", mutable.Map.empty).asInstanceOf[mutable.Map[List[String], String]].map(rec => (ScalaJsonUtil.serialize(rec._1) -> rec._2)))
+    val serRemoveContextDialCode = ScalaJsonUtil.serialize(dialContextMap.getOrElse("removeContextDialCodes", mutable.Map.empty).asInstanceOf[mutable.Map[List[String], String]].map(rec => (ScalaJsonUtil.serialize(rec._1) -> rec._2)))
+
     //TODO: deprecate using contentType in the event.
-    val event = s"""{"eid":"BE_JOB_REQUEST", "ets": $ets, "mid": "$mid", "actor": {"id": "Post Publish Processor", "type": "System"}, "context":{"pdata":{"ver":"1.0","id":"org.sunbird.platform"}, "channel":"$channelId","env":"${config.jobEnv}"},"object":{"ver":"$ver","id":"${obj.identifier}"},"edata": {"action":"post-publish-process","iteration":1,"identifier":"${obj.identifier}","channel":"$channelId","mimeType":"${obj.mimeType}","contentType":"$contentType","pkgVersion":${obj.pkgVersion},"status":"$status","name":"${obj.metadata("name")}","trackable":${obj.metadata.getOrElse("trackable",Map.empty)}, "addContextDialCodes": ${dialContextMap.getOrElse("addContextDialCodes", List.empty)}, "removeContextDialCodes": ${dialContextMap.getOrElse("removeContextDialCodes", List.empty)} }}""".stripMargin
+    val event = s"""{"eid":"BE_JOB_REQUEST", "ets": $ets, "mid": "$mid", "actor": {"id": "Post Publish Processor", "type": "System"}, "context":{"pdata":{"ver":"1.0","id":"org.sunbird.platform"}, "channel":"$channelId","env":"${config.jobEnv}"},"object":{"ver":"$ver","id":"${obj.identifier}"},"edata": {"action":"post-publish-process","iteration":1,"identifier":"${obj.identifier}","channel":"$channelId","mimeType":"${obj.mimeType}","contentType":"$contentType","pkgVersion":${obj.pkgVersion},"status":"$status","name":"${obj.metadata("name")}","trackable":${obj.metadata.getOrElse("trackable",ScalaJsonUtil.serialize(Map.empty))}, "addContextDialCodes": ${serAddContextDialCode}, "removeContextDialCodes": ${serRemoveContextDialCode} }}""".stripMargin
     logger.info(s"Post Publish Process Event for identifier ${obj.identifier}  is  : $event")
     event
   }
