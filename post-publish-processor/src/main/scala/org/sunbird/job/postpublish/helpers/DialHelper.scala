@@ -10,6 +10,7 @@ import org.sunbird.job.postpublish.task.PostPublishProcessorConfig
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, JSONUtil, Neo4JUtil}
 
 import java.util
+import java.util.UUID
 import scala.collection.JavaConverters._
 
 trait DialHelper {
@@ -118,4 +119,26 @@ trait DialHelper {
       new util.HashMap[String, AnyRef]()
     }
   }
+
+  def getDialCodeContextMap(event: Event): util.Map[String, AnyRef] = {
+    val dialcodeContextMap =  new util.HashMap[String, AnyRef]()
+
+    if(event.eData.contains("addContextDialCodes")) dialcodeContextMap.put("addContextDialCodes", event.eData.getOrElse("addContextDialCodes", Map.empty))
+    if(event.eData.contains("removeContextDialCodes")) dialcodeContextMap.put("removeContextDialCodes", event.eData.getOrElse("removeContextDialCodes", Map.empty))
+
+    dialcodeContextMap
+  }
+
+  def dialcodeContextUpdaterEvent(dialcodes: List[String], contentId: String, context: ProcessFunction[java.util.Map[String, AnyRef], String]#Context)(implicit metrics: Metrics, config: PostPublishProcessorConfig) = {
+    dialcodes.foreach(dialcode => {
+      val epochTime = System.currentTimeMillis
+      val event = s"""{"eid":"BE_JOB_REQUEST","ets":${epochTime},"mid":"LP.${epochTime}.${UUID.randomUUID()}","actor":{"id":"DIAL code context update Job","type":"System"},"context":{"pdata":{"ver":"1.0","id":"org.ekstep.platform"},"channel":"sunbird","env":"dev"},"object":{"ver":"1.0","id":"${dialcode}"},"edata":{"action":"dialcode-context-update","iteration":1,"dialcode":"${dialcode}"},"identifier": "${contentId}"}"""
+      context.output(config.dialcodeContextUpdaterOutTag, event)
+      metrics.incCounter(config.dialcodeContextUpdaterCount)
+      logger.info("Dial code context update triggered for " + dialcodes)
+      logger.info("Dial code context update event: " + event)
+    })
+
+  }
+
 }

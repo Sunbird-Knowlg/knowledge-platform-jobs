@@ -30,6 +30,7 @@ class PostPublishProcessorConfig(override val config: Config) extends BaseJobCon
   val shallowCopyParallelism: Int = config.getInt("task.shallow_copy.parallelism")
   val linkDialCodeParallelism: Int = config.getInt("task.link_dialcode.parallelism")
   val batchCreateParallelism: Int = config.getInt("task.batch_create.parallelism")
+  val dialcodeContextUpdaterParallelism: Int = config.getInt("task.dialcode_context_updater.parallelism")
 
   // Metric List
   val totalEventsCount = "total-events-count"
@@ -42,38 +43,45 @@ class PostPublishProcessorConfig(override val config: Config) extends BaseJobCon
   val dialLinkSuccessCount = "dial-link-success-count"
   val dialLinkFailedCount = "dial-link-failed-count"
   val qrImageGeneratorEventCount = "qr-image-event-count"
+  val dialcodeContextUpdaterCount = "dial-context-count"
+  val dialcodeContextUpdaterSuccessCount = "dial-context-success-count"
+  val dialcodeContextUpdaterFailedCount = "dial-context-failed-count"
 
   // Cassandra Configurations
   val dbHost: String = config.getString("lms-cassandra.host")
   val dbPort: Int = config.getInt("lms-cassandra.port")
-  val lmsKeyspaceName = config.getString("lms-cassandra.keyspace")
-  val batchTableName = config.getString("lms-cassandra.batchTable")
-  val dialcodeKeyspaceName = config.getString("dialcode-cassandra.keyspace")
-  val dialcodeTableName = config.getString("dialcode-cassandra.imageTable")
+  val lmsKeyspaceName: String = config.getString("lms-cassandra.keyspace")
+  val batchTableName: String = config.getString("lms-cassandra.batchTable")
+  val dialcodeKeyspaceName: String = config.getString("dialcode-cassandra.keyspace")
+  val dialcodeTableName: String = config.getString("dialcode-cassandra.imageTable")
 
   // Neo4J Configurations
-  val graphRoutePath = config.getString("neo4j.routePath")
-  val graphName = config.getString("neo4j.graph")
+  val graphRoutePath: String = config.getString("neo4j.routePath")
+  val graphName: String = config.getString("neo4j.graph")
 
 
   // Tags
   val batchCreateOutTag: OutputTag[java.util.Map[String, AnyRef]] = OutputTag[java.util.Map[String, AnyRef]]("batch-create")
   val linkDIALCodeOutTag: OutputTag[java.util.Map[String, AnyRef]] = OutputTag[java.util.Map[String, AnyRef]]("dialcode-link")
+  val dialcodeContextOutTag: OutputTag[java.util.Map[String, AnyRef]] = OutputTag[java.util.Map[String, AnyRef]]("dialcode-context")
   val shallowContentPublishOutTag: OutputTag[PublishMetadata] = OutputTag[PublishMetadata]("shallow-copied-content-publish")
   val publishEventOutTag: OutputTag[String] = OutputTag[String]("content-publish-request")
   val generateQRImageOutTag: OutputTag[String] = OutputTag[String]("qr-image-generator-request")
+  val dialcodeContextUpdaterOutTag: OutputTag[String] = OutputTag[String]("dialcode-context-updater")
 
-  val searchBaseUrl = config.getString("service.search.basePath")
-  val lmsBaseUrl = config.getString("service.lms.basePath")
-  val learningBaseUrl = config.getString("service.learning_service.basePath")
-  val dialBaseUrl = config.getString("service.dial.basePath")
+  val searchBaseUrl: String = config.getString("service.search.basePath")
+  val lmsBaseUrl: String = config.getString("service.lms.basePath")
+  val learningBaseUrl: String = config.getString("service.learning_service.basePath")
+  val dialBaseUrl: String = config.getString("service.dial.basePath")
 
   // API URLs
-  val batchCreateAPIPath = lmsBaseUrl + "/private/v1/course/batch/create"
-  val searchAPIPath = searchBaseUrl + "/v3/search"
-  val reserveDialCodeAPIPath = learningBaseUrl + "/content/v3/dialcode/reserve"
+  val batchCreateAPIPath: String = lmsBaseUrl + "/private/v1/course/batch/create"
+  val searchAPIPath: String = searchBaseUrl + "/v3/search"
+  val reserveDialCodeAPIPath: String = learningBaseUrl + "/content/v3/dialcode/reserve"
 
   // QR Image Generator
   val QRImageGeneratorTopic: String = config.getString("kafka.qrimage.topic")
   val primaryCategories: util.List[String] = if (config.hasPath("dialcode.linkable.primaryCategory")) config.getStringList("dialcode.linkable.primaryCategory") else util.Arrays.asList("Course") //List[String]("Course")
+  val dialcodeContextUpdaterTopic: String = config.getString("kafka.dialcode.context.topic")
+
 }
