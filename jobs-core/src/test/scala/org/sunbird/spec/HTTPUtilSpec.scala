@@ -50,8 +50,9 @@ class HTTPUtilSpec extends FlatSpec with Matchers {
     val fileUrl = "https://dockstaging.sunbirded.org/"
     val httpUtil = new HttpUtil
     val downloadPath = "/tmp/content" + File.separator + "_temp_" + System.currentTimeMillis
-    val downloadedFile = httpUtil.downloadFile(fileUrl, downloadPath)
+    assertThrows[IllegalArgumentException] {
+      httpUtil.downloadFile(fileUrl, downloadPath)
+    }
 
-    assert(downloadedFile == null)
   }
 }
