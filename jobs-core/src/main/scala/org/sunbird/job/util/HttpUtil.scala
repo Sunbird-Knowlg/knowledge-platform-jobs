@@ -63,7 +63,7 @@ class HttpUtil extends Serializable {
     val saveFile = new File(downloadLocation)
     if (!saveFile.exists) saveFile.mkdirs
     val urlObject = new URL(url)
-    val filePath = downloadLocation + "/" + urlObject.getPath.substring(urlObject.getPath.lastIndexOf("/")+1)
+    val filePath = downloadLocation + "/" + Slug.makeSlug(urlObject.getPath.substring(urlObject.getPath.lastIndexOf("/")+1))
     if(filePath.equalsIgnoreCase(downloadLocation + "/")) null else {
       urlObject #> new File(filePath) !!
       val downloadedFile = new File(filePath)
