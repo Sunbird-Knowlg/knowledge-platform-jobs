@@ -4,9 +4,9 @@ import kong.unirest.Unirest
 import org.apache.commons.collections.CollectionUtils
 import org.sunbird.job.exception.ServerException
 
-import sys.process._
-import java.io.File
+import java.io.{File, FileOutputStream}
 import java.net.URL
+import java.nio.channels.{Channels, ReadableByteChannel}
 import scala.collection.JavaConverters._
 import scala.language.postfixOps
 
@@ -64,9 +64,15 @@ class HttpUtil extends Serializable {
     if (!saveFile.exists) saveFile.mkdirs
     val urlObject = new URL(url)
     val filePath = downloadLocation + "/" + Slug.makeSlug(urlObject.getPath.substring(urlObject.getPath.lastIndexOf("/")+1))
-    urlObject #> new File(filePath) !!
-    val downloadedFile = new File(filePath)
-    downloadedFile
+    try {
+      val readableByteChannel: ReadableByteChannel = Channels.newChannel(urlObject.openStream)
+      val fileOutputStream: FileOutputStream = new FileOutputStream(filePath)
+      fileOutputStream.getChannel().transferFrom(readableByteChannel, 0, Long.MaxValue);
+      new File(filePath)
+    } catch {
+      case io: java.io.IOException => throw new ServerException("ERR_INVALID_UPLOAD_FILE_URL", "Invalid fileUrl received : " + url)
+      case fnf: java.io.FileNotFoundException => throw new ServerException("ERR_INVALID_UPLOAD_FILE_URL", "Invalid fileUrl received : " + url)
+    }
   }
 
   private def validateRequest(url: String, headerParam: Map[String, String]): Unit = {
