@@ -53,6 +53,15 @@ class HTTPUtilSpec extends FlatSpec with Matchers {
     assertThrows[IllegalArgumentException] {
       httpUtil.downloadFile(fileUrl, downloadPath)
     }
-
   }
+
+  "downloadFile" should "download file with lower case name" in {
+    val fileUrl = "https://file-examples.com/wp-content/uploads/2017/04/file_example_MP4_480_1_5MG.mp4"
+    val httpUtil = new HttpUtil
+    val downloadPath = "/tmp/content" + File.separator + "_temp_" + System.currentTimeMillis
+    val downloadedFile = httpUtil.downloadFile(fileUrl, downloadPath)
+    assert(downloadedFile.exists())
+    FileUtils.deleteDirectory(downloadedFile.getParentFile)
+  }
+
 }
