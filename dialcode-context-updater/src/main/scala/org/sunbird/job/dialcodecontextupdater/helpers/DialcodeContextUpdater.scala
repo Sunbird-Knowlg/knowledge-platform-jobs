@@ -35,7 +35,8 @@ trait DialcodeContextUpdater {
 			val file = new File(config.contextMapFilePath)
 			println("DialcodeContextUpdater:: updateContext:: file: " + file.getAbsolutePath)
 			val primaryCategory = identifierObj.getOrElse("primaryCategory","").asInstanceOf[String]
-			val contextSearchFields: List[String] = getContextSearchFields(primaryCategory.toLowerCase.replaceAll(" ","_"), file)
+			val contextMap: Map[String, AnyRef] = getContextMapFields(primaryCategory.toLowerCase.replaceAll(" ","_"), file)
+			val contextSearchFields: List[String] = fetchFieldsFromMap(contextMap).distinct.filter(rec => rec.forall(_.isLetterOrDigit))
 			println("DialcodeContextUpdater:: updateContext:: searchFields: " + contextSearchFields)
 
 			val contextInfoSearchData =	searchContent(dialcode, identifier, contextSearchFields, config, httpUtil)
@@ -85,11 +86,11 @@ trait DialcodeContextUpdater {
 		cassandraUtil.findOne(selectQuery.toString)
 	}
 
-	def getContextSearchFields(contextType: String, file: File): List[String] = {
+	def getContextMapFields(contextType: String, file: File): Map[String, AnyRef] = {
 		try {
 			val contextMap: Map[String, AnyRef] = ScalaJsonUtil.deserialize[Map[String, AnyRef]](ComplexJsonCompiler.createConsolidatedSchema(file, contextType))
 			println("DialcodeContextUpdater:: getContextSearchFields:: contextMap: " + contextMap)
-			fetchFieldsFromMap(contextMap).distinct.filter(rec => rec.forall(_.isLetterOrDigit))
+			contextMap
 		} catch {
 			case e: Exception =>
 				throw new ServerException("ERR_CONTEXT_MAP_READING","Error in reading context map file: " + e.getMessage)
