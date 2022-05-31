@@ -64,12 +64,13 @@ class DialcodeContextUpdaterConfig(override val config: Config) extends BaseJobC
   val learningServiceBaseUrl : String = config.getString("service.learning_service.basePath")
 
   val searchMode: String = if (config.hasPath("search_mode")) config.getString("search_mode") else "Collection"
-  val contextUrl: String = if (config.hasPath("context_url")) config.getString("context_url") else ""
+  val contextMapFilePath: String = if (config.hasPath("context_map_path")) config.getString("context_map_path") else ""
 
   val contentFolder: String = if (config.hasPath("cloud_storage.folder.content")) config.getString("cloud_storage.folder.content") else "content"
   val artifactFolder: String = if (config.hasPath("cloud_storage.folder.artifact")) config.getString("cloud_storage.folder.artifact") else "artifact"
 
-  val apiCallDelay = if (config.hasPath("content_auto_creator.api_call_delay")) config.getInt("content_auto_creator.api_call_delay") else 2
+  val apiCallDelay: Int = if (config.hasPath("content_auto_creator.api_call_delay")) config.getInt("content_auto_creator.api_call_delay") else 2
+  val identifierSearchFields: List[String] = if (config.hasPath("identifier_search_fields")) config.getStringList("identifier_search_fields").asScala.toList else List("identifier", "primaryCategory")
 
   def getConfig: Config = config
 }

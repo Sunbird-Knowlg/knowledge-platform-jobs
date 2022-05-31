@@ -29,7 +29,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 		
 		if (event.reqOriginData.nonEmpty && originId.nonEmpty) {
 			val contentMetadata = neo4JUtil.getNodeProperties(event.identifier)
-			if (!contentMetadata.isEmpty) {
+			if (contentMetadata != null && !contentMetadata.isEmpty) {
 				internalId = originId
 				contentStage = "na"
 			}

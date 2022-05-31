@@ -18,6 +18,9 @@ import org.sunbird.job.exception.{APIException, ServerException}
 import org.sunbird.job.util._
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 
+import java.io.File
+import java.nio.file.Paths
+
 
 class DialcodeContextUpdaterSpec extends BaseTestSpec {
 
@@ -61,23 +64,23 @@ class DialcodeContextUpdaterSpec extends BaseTestSpec {
 
 
   "getContextJson" should "return context Information" in {
-    when(mockHttpUtil.get(anyString(), any())).thenReturn(HTTPResponse(200, contextResponse))
-
-   val contextFields =  new TestDialcodeContextUpdater().getContextJson(mockHttpUtil, jobConfig).keySet.toList
-   val cDataFields =  new TestDialcodeContextUpdater().getContextJson(mockHttpUtil, jobConfig)("cData").asInstanceOf[Map[String, AnyRef]].keySet.toList
-    println("DialcodeContextUpdaterSpec:: getContextData:: contextFields: " + contextFields)
-    println("DialcodeContextUpdaterSpec:: getContextData:: cDataFields: " + cDataFields)
+    println("DialcodeContextUpdater:: updateContext:: config.contextMapFilePath: " + jobConfig.contextMapFilePath)
+    println("DialcodeContextUpdater:: updateContext:: currentPath: " + Paths.get(".").toAbsolutePath)
+    val file = new File(jobConfig.contextMapFilePath)
+    println("DialcodeContextUpdater:: updateContext:: file: " + file.getAbsolutePath)
+   val contextFields =  new TestDialcodeContextUpdater().getContextSearchFields("course_unit", file)
+   println("DialcodeContextUpdaterSpec:: getContextData:: contextFields: " + contextFields)
 
     assert(contextFields.nonEmpty)
   }
 
-  "getContextJson" should "should throw API exception when there is no context response" in {
-    when(mockHttpUtil.get(anyString(), any())).thenReturn(HTTPResponse(200, ""))
-
-    assertThrows[APIException] {
-     new TestDialcodeContextUpdater().getContextJson(mockHttpUtil, jobConfig).keySet.toList
-    }
-  }
+//  "getContextJson" should "should throw API exception when there is no context response" in {
+//    when(mockHttpUtil.get(anyString(), any())).thenReturn(HTTPResponse(200, ""))
+//
+//    assertThrows[APIException] {
+//     new TestDialcodeContextUpdater().getContextJson(mockHttpUtil, jobConfig).keySet.toList
+//    }
+//  }
 
   "updateContext" should "should throw server exception when there is no search response" in {
     when(mockHttpUtil.get(anyString(), any())).thenReturn(HTTPResponse(200, contextResponse))
