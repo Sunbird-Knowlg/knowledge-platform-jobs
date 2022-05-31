@@ -65,10 +65,7 @@ class DialcodeContextUpdaterSpec extends BaseTestSpec {
 
   "getContextJson" should "return context Information" in {
     println("DialcodeContextUpdater:: updateContext:: config.contextMapFilePath: " + jobConfig.contextMapFilePath)
-    println("DialcodeContextUpdater:: updateContext:: currentPath: " + Paths.get(".").toAbsolutePath)
-    val file = new File(jobConfig.contextMapFilePath)
-    println("DialcodeContextUpdater:: updateContext:: file: " + file.getAbsolutePath)
-    val contextMap =  new TestDialcodeContextUpdater().getContextMapFields("course_unit", file)
+    val contextMap =  new TestDialcodeContextUpdater().getContextMapFields("course_unit", jobConfig.contextMapFilePath)
     val contextFields = new TestDialcodeContextUpdater().fetchFieldsFromMap(contextMap).distinct.filter(rec => rec.forall(_.isLetterOrDigit))
    println("DialcodeContextUpdaterSpec:: getContextData:: contextFields: " + contextFields)
 

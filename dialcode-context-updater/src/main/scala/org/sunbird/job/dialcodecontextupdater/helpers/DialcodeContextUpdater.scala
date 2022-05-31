@@ -31,11 +31,8 @@ trait DialcodeContextUpdater {
 			val identifierObj = searchContent("", identifier, config.identifierSearchFields, config, httpUtil)
 
 			println("DialcodeContextUpdater:: updateContext:: config.contextMapFilePath: " + config.contextMapFilePath)
-			println("DialcodeContextUpdater:: updateContext:: currentPath: " + Paths.get(".").toAbsolutePath)
-			val file = new File(config.contextMapFilePath)
-			println("DialcodeContextUpdater:: updateContext:: file: " + file.getAbsolutePath)
 			val primaryCategory = identifierObj.getOrElse("primaryCategory","").asInstanceOf[String]
-			val contextMap: Map[String, AnyRef] = getContextMapFields(primaryCategory.toLowerCase.replaceAll(" ","_"), file)
+			val contextMap: Map[String, AnyRef] = getContextMapFields(primaryCategory.toLowerCase.replaceAll(" ","_"), config.contextMapFilePath)
 			val contextSearchFields: List[String] = fetchFieldsFromMap(contextMap).distinct.filter(rec => rec.forall(_.isLetterOrDigit))
 			println("DialcodeContextUpdater:: updateContext:: searchFields: " + contextSearchFields)
 
@@ -86,9 +83,9 @@ trait DialcodeContextUpdater {
 		cassandraUtil.findOne(selectQuery.toString)
 	}
 
-	def getContextMapFields(contextType: String, file: File): Map[String, AnyRef] = {
+	def getContextMapFields(contextType: String, contextMapFileURL: String): Map[String, AnyRef] = {
 		try {
-			val contextMap: Map[String, AnyRef] = ScalaJsonUtil.deserialize[Map[String, AnyRef]](ComplexJsonCompiler.createConsolidatedSchema(file, contextType))
+			val contextMap: Map[String, AnyRef] = ScalaJsonUtil.deserialize[Map[String, AnyRef]](ComplexJsonCompiler.createConsolidatedSchema(contextMapFileURL, contextType))
 			println("DialcodeContextUpdater:: getContextSearchFields:: contextMap: " + contextMap)
 			contextMap
 		} catch {

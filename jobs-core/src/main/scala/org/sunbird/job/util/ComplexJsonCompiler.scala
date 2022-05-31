@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 
 import java.io.{File, IOException}
+import java.net.{URI, URL}
 import scala.collection.mutable
 
 object ComplexJsonCompiler {
@@ -11,8 +12,8 @@ object ComplexJsonCompiler {
   final private val definitions: java.util.List[ObjectNode] = new java.util.ArrayList[ObjectNode]()
 
   @throws[IOException]
-  def createConsolidatedSchema(file: File, contextType: String): String = {
-    val entrySchema: ObjectNode = getSchemaWithResolvedParts(file)
+  def createConsolidatedSchema(contextMapFileURL: String, contextType: String): String = {
+    val entrySchema: ObjectNode = getSchemaWithResolvedParts(contextMapFileURL)
     val consolidatedSchema: ObjectNode = objectMapper.createObjectNode.setAll(entrySchema)
     val definitionsNode: ObjectNode = objectMapper.createObjectNode
     definitions.forEach(objectNode => definitionsNode.setAll(objectNode))
@@ -29,8 +30,9 @@ object ComplexJsonCompiler {
   }
 
   @throws[IOException]
-  private def getSchemaWithResolvedParts(file: File): ObjectNode = {
-    val entrySchema = objectMapper.readTree(file).asInstanceOf[ObjectNode]
+  private def getSchemaWithResolvedParts(contextMapFileURL: String): ObjectNode = {
+    val jsonUrl: URL = new URL(contextMapFileURL)
+    val entrySchema = objectMapper.readTree(jsonUrl.openStream()).asInstanceOf[ObjectNode]
     val definitionsNode = entrySchema.get("$defs")
     definitionsNode match {
       case node: ObjectNode =>
