@@ -7,7 +7,7 @@ import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.domain.`object`.DefinitionCache
-import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig}
+import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
 import org.sunbird.job.publish.helpers.EcarPackageType
 import org.sunbird.job.questionset.publish.domain.PublishMetadata
 import org.sunbird.job.questionset.publish.helpers.QuestionPublisher
@@ -16,6 +16,7 @@ import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, Neo4JUti
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 import java.lang.reflect.Type
 
+import org.apache.commons.lang3.StringUtils
 import org.sunbird.job.cache.{DataCache, RedisConnect}
 
 import scala.concurrent.ExecutionContext
@@ -62,7 +63,11 @@ class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUt
   override def processElement(data: PublishMetadata, context: ProcessFunction[PublishMetadata, String]#Context, metrics: Metrics): Unit = {
     logger.info("Question publishing started for : " + data.identifier)
     metrics.incCounter(config.questionPublishEventCount)
-    val obj = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(neo4JUtil, cassandraUtil)
+    val objData = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(neo4JUtil, cassandraUtil)
+    val obj = if (StringUtils.isNotBlank(data.lastPublishedBy)) {
+      val newMeta = objData.metadata ++ Map("lastPublishedBy" -> data.lastPublishedBy)
+      new ObjectData(objData.identifier, newMeta, objData.extData, objData.hierarchy)
+    } else objData
     val messages: List[String] = validate(obj, obj.identifier, validateQuestion)
     if (messages.isEmpty) {
       cache.del(obj.identifier)
