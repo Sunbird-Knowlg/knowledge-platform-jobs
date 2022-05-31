@@ -68,7 +68,8 @@ class DialcodeContextUpdaterSpec extends BaseTestSpec {
     println("DialcodeContextUpdater:: updateContext:: currentPath: " + Paths.get(".").toAbsolutePath)
     val file = new File(jobConfig.contextMapFilePath)
     println("DialcodeContextUpdater:: updateContext:: file: " + file.getAbsolutePath)
-   val contextFields =  new TestDialcodeContextUpdater().getContextSearchFields("course_unit", file)
+    val contextMap =  new TestDialcodeContextUpdater().getContextMapFields("course_unit", file)
+    val contextFields = new TestDialcodeContextUpdater().fetchFieldsFromMap(contextMap).distinct.filter(rec => rec.forall(_.isLetterOrDigit))
    println("DialcodeContextUpdaterSpec:: getContextData:: contextFields: " + contextFields)
 
     assert(contextFields.nonEmpty)
