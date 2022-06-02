@@ -3,8 +3,8 @@ package org.sunbird.job.util
 import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.node.ObjectNode
 
-import java.io.{File, IOException}
-import java.net.{URI, URL}
+import java.io.IOException
+import java.net.URL
 import scala.collection.mutable
 
 object ComplexJsonCompiler {
@@ -50,7 +50,7 @@ object ComplexJsonCompiler {
       val referenceValue = reference.toString
       if (referenceValue.startsWith("#/$defs/")) {
         val refDefinitionString = referenceValue.substring(referenceValue.indexOf("\\#/$defs/") + 9)
-        val returnMap = mutable.Map.empty ++ definitionsMap(refDefinitionString).asInstanceOf[Map[String, AnyRef]]
+        val returnMap = mutable.Map.empty ++ (definitionsMap(refDefinitionString).asInstanceOf[Map[String, AnyRef]] - "@type")
         returnMap
       } else if (referenceValue.startsWith("#/")) {
         val refDefinitionString = referenceValue.substring(referenceValue.indexOf("\\#/") + 3)
@@ -60,8 +60,7 @@ object ComplexJsonCompiler {
         returnMap
       } else mutable.Map.empty
     }
-    else if(record._2.isInstanceOf[Map[String, AnyRef]])
-      mutable.Map(record._1 -> resolveReferences(record._2.asInstanceOf[Map[String, AnyRef]].head, consolidatedSchemaMap, definitionsMap))
+    else if(record._2.isInstanceOf[Map[String, AnyRef]])  mutable.Map(record._1 -> resolveReferences(record._2.asInstanceOf[Map[String, AnyRef]].head, consolidatedSchemaMap, definitionsMap))
     else mutable.Map(record._1 -> record._2)
   }
 }

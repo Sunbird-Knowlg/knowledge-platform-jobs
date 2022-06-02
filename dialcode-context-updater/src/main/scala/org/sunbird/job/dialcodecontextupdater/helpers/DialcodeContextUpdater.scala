@@ -1,17 +1,13 @@
 package org.sunbird.job.dialcodecontextupdater.helpers
 
-import com.datastax.driver.core.Row
-import com.datastax.driver.core.querybuilder.QueryBuilder
 import org.slf4j.LoggerFactory
-import org.sunbird.job.Metrics
 import org.sunbird.job.dialcodecontextupdater.domain.Event
 import org.sunbird.job.dialcodecontextupdater.task.DialcodeContextUpdaterConfig
 import org.sunbird.job.dialcodecontextupdater.util.DialcodeContextUpdaterConstants
-import org.sunbird.job.exception.{APIException, ServerException}
+import org.sunbird.job.exception.ServerException
 import org.sunbird.job.util._
+import scala.collection.JavaConversions.mapAsJavaMap
 
-import java.io.File
-import java.nio.file.Paths
 import java.util
 
 
@@ -19,74 +15,78 @@ trait DialcodeContextUpdater {
 
 	private[this] val logger = LoggerFactory.getLogger(classOf[DialcodeContextUpdater])
 
-	def updateContext(config: DialcodeContextUpdaterConfig, event: Event, httpUtil: HttpUtil, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, metrics: Metrics): Row = {
+	def updateContext(config: DialcodeContextUpdaterConfig, event: Event, httpUtil: HttpUtil): Map[String, AnyRef] = {
 		val identifier = event.identifier
 		val dialcode = event.dialcode
+		val channel = event.channel
 		if(identifier.nonEmpty && event.action.equalsIgnoreCase("dialcode-context-update")) {
-			// Compute contextInfo and update cassandra with contextInfo
-			// 1. Read search fields from the context json file
-			// 2. Call Search API with dialcode and mode=collection
-			// 3. Fetch unit and rootNode output from the response
-			// 4. compose contextInfo and upsert to cassandra
+			// 1. Read primaryCategory of the content identifier using Search API
+			// 2. Fetch contextMap for the content primaryCategory
+			// 3. Filter for search fields from the contextMap
+			// 4. Call Search API with dialcode and mode=collection
+			// 5. Fetch unit and rootNode output from the response
+			// 6. compose contextInfo and invoke updateDIALcode v4 API
 			val identifierObj = searchContent("", identifier, config.identifierSearchFields, config, httpUtil)
 
-			println("DialcodeContextUpdater:: updateContext:: config.contextMapFilePath: " + config.contextMapFilePath)
-			val primaryCategory = identifierObj.getOrElse("primaryCategory","").asInstanceOf[String]
-			val contextMap: Map[String, AnyRef] = getContextMapFields(primaryCategory.toLowerCase.replaceAll(" ","_"), config.contextMapFilePath)
-			val contextSearchFields: List[String] = fetchFieldsFromMap(contextMap).distinct.filter(rec => rec.forall(_.isLetterOrDigit))
-			println("DialcodeContextUpdater:: updateContext:: searchFields: " + contextSearchFields)
+			logger.info("DialcodeContextUpdater:: updateContext:: config.contextMapFilePath: " + config.contextMapFilePath)
+			val primaryCategory = identifierObj.getOrElse("primaryCategory","").asInstanceOf[String].toLowerCase.replaceAll(" ","_")
+			val contextMap: Map[String, AnyRef] = getContextMapFields(primaryCategory, config.contextMapFilePath)
+			val contextSearchFields: List[String] = fetchFieldsFromMap(contextMap).distinct.filter(rec => rec.forall(_.isLetterOrDigit)) ++ List("origin", "originData")
+			logger.info("DialcodeContextUpdater:: updateContext:: searchFields: " + contextSearchFields)
 
 			val contextInfoSearchData =	searchContent(dialcode, identifier, contextSearchFields, config, httpUtil)
-			println("DialcodeContextUpdater:: updateContext:: contextInfoSearchData: " + ScalaJsonUtil.serialize(contextInfoSearchData))
+			logger.info("DialcodeContextUpdater:: updateContext:: contextInfoSearchData: " + ScalaJsonUtil.serialize(contextInfoSearchData))
 
 			// Filter for necessary fields
 			val filteredParentInfo = if(contextInfoSearchData.contains("parentInfo")) contextInfoSearchData.getOrElse("parentInfo", Map.empty[String, AnyRef]).asInstanceOf[Map[String, AnyRef]].filter(rec => contextSearchFields.contains(rec._1)) else Map.empty[String, AnyRef]
 			val inputContextData = contextInfoSearchData.filter(rec => contextSearchFields.contains(rec._1))
-			println("DialcodeContextUpdater:: updateContext:: filteredParentInfo: " + filteredParentInfo)
-			println("DialcodeContextUpdater:: updateContext:: inputContextData: " + inputContextData)
 
 			val finalFilteredData = if(filteredParentInfo!=null && filteredParentInfo.nonEmpty) inputContextData + ("parentInfo" -> filteredParentInfo) else inputContextData
-			println("DialcodeContextUpdater:: updateContext:: finalFilteredData: " + finalFilteredData)
-			updateCassandra(config, dialcode, ScalaJsonUtil.serialize(finalFilteredData), cassandraUtil, metrics)
+			logger.info("DialcodeContextUpdater:: updateContext:: finalFilteredData: " + finalFilteredData)
+
+			val contextDataToUpdate = contextMap.map(rec => {
+				rec._2 match {
+					case stringVal: String => if(!rec._1.equalsIgnoreCase("@type") && finalFilteredData.contains(stringVal)) (rec._1 -> finalFilteredData(stringVal)) else (rec._1 -> rec._2)
+					case objectVal: Map[String, AnyRef] =>  (rec._1 -> objectVal.map(record => {
+						record._2 match {
+							case stringValSubLevel: String =>
+								if (record._1.equalsIgnoreCase("@type")) (record._1 -> stringValSubLevel)
+								else if (!record._1.equalsIgnoreCase("@type") && finalFilteredData(rec._1).asInstanceOf[Map[String, AnyRef]].contains(record._1)) (record._1 -> finalFilteredData(rec._1).asInstanceOf[Map[String, AnyRef]](record._1))
+								else (record._1 -> null)
+							case objectValSubLevel: Map[String, AnyRef] =>  (record._1 -> objectValSubLevel.map(l2Record => {
+									if(finalFilteredData(rec._1).asInstanceOf[Map[String, AnyRef]].contains(l2Record._1))
+										(l2Record._1 -> finalFilteredData(rec._1).asInstanceOf[Map[String, AnyRef]](l2Record._1)) else (l2Record._1 -> null)
+							}).filter(checkRec => checkRec._2!=null))
+						}
+					}).filter(filterRec=>filterRec._2!=null))
+				}
+			})
+
+			logger.info("DialcodeContextUpdater:: updateContext:: serialize - contentDataToUpsert: " + ScalaJsonUtil.serialize(contextDataToUpdate))
+
+			updateDIALContext(config, dialcode, channel, contextDataToUpdate)(httpUtil)
 		} else {
 			// check if contextInfo is available in metadata. If Yes, update to null
-			val row = readDialCodeFromCassandra(config, dialcode, cassandraUtil)
-			if(row.getString("metadata") != null && row.getString("metadata").nonEmpty)
-				updateCassandra(config, dialcode, null, cassandraUtil, metrics)
+			val dialCodeInfo = readDialCode(config, dialcode, channel)(httpUtil)
+			if(dialCodeInfo.contains("contextInfo") && dialCodeInfo("contextInfo") != null)
+				updateDIALContext(config, dialcode, channel, null)(httpUtil)
 		}
 
-		readDialCodeFromCassandra(config, dialcode, cassandraUtil)
+		readDialCode(config, dialcode, channel)(httpUtil)
 	}
 
-//	private def getCollectionHierarchy(identifier: String, config: DialcodeContextUpdaterConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = {
-//		val selectWhere: Select.Where = QueryBuilder.select().all()
-//			.from(config.cassandraHierarchyKeyspace, config.cassandraHierarchyTable).where()
-//		selectWhere.and(QueryBuilder.eq("identifier", identifier))
-//		val row = cassandraUtil.findOne(selectWhere.toString)
-//		if (null != row) {
-//			val data: Map[String, AnyRef] = ScalaJsonUtil.deserialize[Map[String, AnyRef]](row.getString("hierarchy"))
-//			Option(data)
-//		} else Option(Map.empty[String, AnyRef])
-//	}
-
-	def updateCassandra(config: DialcodeContextUpdaterConfig, dialcode: String, contextInfo: String, cassandraUtil: CassandraUtil, metrics: Metrics): Unit = {
-		val updateQuery: String = QueryBuilder.update(config.cassandraDialCodeKeyspace, config.cassandraDialCodeTable)
-			.`with`(QueryBuilder.set("metadata", contextInfo))
-			.where(QueryBuilder.eq("identifier", dialcode)).toString
-		cassandraUtil.upsert(updateQuery)
-		metrics.incCounter(config.dbHitEventCount)
-	}
-
-	def readDialCodeFromCassandra(config: DialcodeContextUpdaterConfig, dialcode: String, cassandraUtil: CassandraUtil): Row = {
-		val selectQuery = QueryBuilder.select().all().from(config.cassandraDialCodeKeyspace, config.cassandraDialCodeTable)
-		selectQuery.where.and(QueryBuilder.eq("identifier", dialcode))
-		cassandraUtil.findOne(selectQuery.toString)
+	def readDialCode(config: DialcodeContextUpdaterConfig, dialcode: String, channel: String) (implicit httpUtil: HttpUtil): Map[String, AnyRef] = {
+		val dialCodeContextReadUrl = config.dialServiceBaseUrl + config.dialcodeContextReadPath + dialcode
+		val headers = Map[String, String]("X-Channel-Id" -> channel, "Content-Type"->"application/json")
+		val dialcodeResponse: HTTPResponse = httpUtil.get(dialCodeContextReadUrl, headers)
+		val obj = JSONUtil.deserialize[Map[String, AnyRef]](dialcodeResponse.body)
+		obj("result").asInstanceOf[Map[String, AnyRef]]("dialcode").asInstanceOf[Map[String, AnyRef]]
 	}
 
 	def getContextMapFields(contextType: String, contextMapFileURL: String): Map[String, AnyRef] = {
 		try {
 			val contextMap: Map[String, AnyRef] = ScalaJsonUtil.deserialize[Map[String, AnyRef]](ComplexJsonCompiler.createConsolidatedSchema(contextMapFileURL, contextType))
-			println("DialcodeContextUpdater:: getContextSearchFields:: contextMap: " + contextMap)
+			logger.info("DialcodeContextUpdater:: getContextSearchFields:: contextMap: " + contextMap)
 			contextMap
 		} catch {
 			case e: Exception =>
@@ -120,7 +120,9 @@ trait DialcodeContextUpdater {
 					}
 				})
 				put(DialcodeContextUpdaterConstants.FIELDS, searchFields.toArray[String])
-				put(DialcodeContextUpdaterConstants.SEARCH_MODE, config.searchMode)
+				if(dialcode.nonEmpty) {
+					put(DialcodeContextUpdaterConstants.SEARCH_MODE, config.searchMode)
+				}
 			})
 		}
 
@@ -144,7 +146,22 @@ trait DialcodeContextUpdater {
 				throw new ServerException("ERR_DIAL_CONTENT_NOT_FOUND", "No content linking was found for dialcode: " + dialcode + " - to identifier: " + identifier)
 			}
 		} else {
-			throw new ServerException("ERR_API_CALL", "Invalid Response received while searching content for dialcode: " + dialcode)
+			throw new ServerException("ERR_SEARCH_API_CALL", "Invalid Response received while searching content for dialcode: " + dialcode)
+		}
+	}
+
+	def updateDIALContext(config: DialcodeContextUpdaterConfig, dialcode: String, channel: String, contextInfo: Map[String, AnyRef]) (implicit httpUtil: HttpUtil): Boolean = {
+		val dialCodeContextUpdateUrl = config.dialServiceBaseUrl + config.dialcodeContextUpdatePath + dialcode
+		val requestBody = if(contextInfo!=null) "{\"request\": {\"dialcode\": {\"contextInfo\":" + mapAsJavaMap(contextInfo) + "}}}"
+		else "{\"request\": {\"dialcode\": {\"contextInfo\": null }}}"
+		val headers = Map[String, String]("X-Channel-Id" -> channel, "Content-Type"->"application/json")
+		val response:HTTPResponse = httpUtil.patch(dialCodeContextUpdateUrl, requestBody, headers)
+
+		if(response.status == 200){
+			true
+		} else {
+			logger.error("Error while updating context for dialcode: " + dialcode + " :: "+response.body)
+			throw new ServerException("ERR_DIAL_CONTEXT_UPDATE_API","Error while updating context for dialcode: " + dialcode + " :: "+response.body)
 		}
 	}
 
