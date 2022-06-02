@@ -29,6 +29,11 @@ trait DialcodeContextUpdater {
 			val identifierObj = searchContent("", identifier, config.identifierSearchFields, config, httpUtil)
 
 			logger.info("DialcodeContextUpdater:: updateContext:: config.contextMapFilePath: " + config.contextMapFilePath)
+
+			if(config.contextMapFilePath.isEmpty) {
+				throw new ServerException("ERR_CONTEXT_MAP_NOT_FOUND", "Context mapping file path was not found for dialcode: " + dialcode + " - to identifier: " + identifier)
+			}
+
 			val primaryCategory = identifierObj.getOrElse("primaryCategory","").asInstanceOf[String].toLowerCase.replaceAll(" ","_")
 			val contextMap: Map[String, AnyRef] = getContextMapFields(primaryCategory, config.contextMapFilePath)
 			val contextSearchFields: List[String] = fetchFieldsFromMap(contextMap).distinct.filter(rec => rec.forall(_.isLetterOrDigit)) ++ List("origin", "originData")
