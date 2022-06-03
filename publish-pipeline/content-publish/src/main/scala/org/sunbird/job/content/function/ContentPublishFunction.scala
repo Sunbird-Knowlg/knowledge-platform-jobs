@@ -91,7 +91,7 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
           pushStreamingUrlEvent(enrichedObj, context)(metrics)
           pushMVCProcessorEvent(enrichedObj, context)(metrics)
 
-          if(config.enableDIALContextUpdate.equalsIgnoreCase("Yes")) {
+          if(obj.metadata.contains("dialcodes") && config.enableDIALContextUpdate.equalsIgnoreCase("Yes")) {
             //pushDIALcodeContextUpdaterEvent for linked and delinked DIAL codes
             pushDIALcodeContextUpdaterEvent(obj, context)(neo4JUtil, metrics)
           }
