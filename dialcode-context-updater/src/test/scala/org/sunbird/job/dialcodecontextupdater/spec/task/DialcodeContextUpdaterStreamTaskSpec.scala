@@ -89,7 +89,6 @@ class DialcodeContextUpdaterStreamTaskSpec extends BaseTestSpec {
     println("Context Information:: " + dialcodeContextInfo("contextInfo"))
 
     assert(dialcodeContextInfo.contains("contextInfo") && dialcodeContextInfo("contextInfo") != null)
-
   }
 
 }
