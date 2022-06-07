@@ -7,11 +7,14 @@ import org.cassandraunit.utils.EmbeddedCassandraServerHelper
 import org.mockito.Mockito
 import org.sunbird.job.Metrics
 import org.sunbird.job.certgen.domain.Event
+import org.sunbird.job.certgen.exceptions.ValidationException
 import org.sunbird.job.certgen.fixture.EventFixture
 import org.sunbird.job.certgen.functions.CertValidator
 import org.sunbird.job.certgen.task.CertificateGeneratorConfig
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, JSONUtil}
 import org.sunbird.spec.BaseTestSpec
+
+import java.util
 
 class CertValidatorTest extends BaseTestSpec{
   var cassandraUtil: CassandraUtil = _
@@ -52,6 +55,16 @@ class CertValidatorTest extends BaseTestSpec{
     val event = new Event(JSONUtil.deserialize[java.util.Map[String, Any]](EventFixture.EVENT_3), 0, 0)
     val isCertificateIssued = new CertValidator().isNotIssued(event)(jobConfig, mockMetrics, cassandraUtil)
     assert(false == isCertificateIssued)
+  }
+
+  "CertValidator with enabled suppress exception on signatoryList with empty field values" should "not throw exception" in {
+    val event = new Event(JSONUtil.deserialize[java.util.Map[String, Any]](EventFixture.EVENT_4), 0, 0)
+    noException should be thrownBy new CertValidator().validateGenerateCertRequest(event, true)
+  }
+
+  "CertValidator on signatoryList with empty field values" should " throw exception" in {
+    val event = new Event(JSONUtil.deserialize[java.util.Map[String, Any]](EventFixture.EVENT_4), 0, 0)
+    an [ValidationException] should be thrownBy new CertValidator().validateGenerateCertRequest(event, false)
   }
 
 }

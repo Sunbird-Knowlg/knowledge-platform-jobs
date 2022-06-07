@@ -22,6 +22,9 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
   val kafkaAuditEventTopic: String = config.getString("kafka.output.audit.topic")
 
+  val enableSuppressException: Boolean = if(config.hasPath("enable.suppress.exception")) config.getBoolean("enable.suppress.exception") else false
+  val enableRcCertificate: Boolean = if(config.hasPath("enable.rc.certificate")) config.getBoolean("enable.rc.certificate") else false
+
 
   // Producers
   val certificateGeneratorAuditProducer = "collection-certificate-generator-audit-events-sink"
@@ -30,9 +33,15 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   val notifierParallelism: Int = if(config.hasPath("task.notifier.parallelism")) config.getInt("task.notifier.parallelism") else 1
   val userFeedParallelism: Int = if(config.hasPath("task.userfeed.parallelism")) config.getInt("task.userfeed.parallelism") else 1
 
+  //ES configuration
+  val esConnection: String = config.getString("es.basePath")
+  val certIndex: String = "certs"
+  val certIndexType: String = "_doc"
 
 
   // Cassandra Configurations
+  val sbKeyspace: String = config.getString("lms-cassandra.sbkeyspace")
+  val certRegTable: String = config.getString("lms-cassandra.certreg.table")
   val dbEnrollmentTable: String = config.getString("lms-cassandra.user_enrolments.table")
   val dbKeyspace: String = config.getString("lms-cassandra.keyspace")
   val dbHost: String = config.getString("lms-cassandra.host")
@@ -73,6 +82,12 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   val addCertRegApi = "/certs/v2/registry/add"
   val userFeedCreateEndPoint:String = "/private/user/feed/v1/create"
   val notificationEndPoint: String = "/v2/notification"
+  val rcBaseUrl: String = config.getString("service.rc.basePath")
+  val rcEntity: String = config.getString("service.rc.entity")
+  val rcCreateApi: String = "service.rc.create.api"
+  val rcDeleteApi: String = "service.rc.delete.api"
+  val rcSearchApi: String = "service.rc.search.api"
+
 
   //constant
   val DATA: String = "data"
@@ -114,6 +129,8 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   val name = "name"
   val token = "token"
   val lastIssuedOn = "lastIssuedOn"
+  val templateUrl = "templateUrl"
+  val `type` = "type"
   val certificate = "certificate"
   val action = "action"
   val courseName = "courseName"
@@ -125,7 +142,7 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   val data = "data"
   val category = "category"
   val certificates = "certificates"
-
+  val badCharList = if(config.hasPath("task.rc.badcharlist")) config.getString("task.rc.badcharlist") else "\\x00,\\\\aaa,\\aaa,Ø,Ý"
 
   // Tags
   val auditEventOutputTagName = "audit-events"

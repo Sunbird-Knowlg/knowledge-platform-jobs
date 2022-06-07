@@ -47,7 +47,7 @@ object MimeType extends Enumeration {
   val OGG_Video: String = Value("video/ogg").toString
   val WEBM_Video: String = Value("video/webm").toString
   val MP3_MPEG_Audio: String = Value("video/mpeg").toString
-  val MP3_X_MPED_Audio: String = Value("video/x-mpeg").toString
+  val MP3_X_MPEG_Audio: String = Value("video/x-mpeg").toString
   val MP3_Audio: String = Value("audio/mp3").toString
   val MP3_MPEG3_Audio: String = Value("audio/mpeg3").toString
   val MP3_X_MPEG3_Audio: String = Value("audio/x-mpeg-3").toString

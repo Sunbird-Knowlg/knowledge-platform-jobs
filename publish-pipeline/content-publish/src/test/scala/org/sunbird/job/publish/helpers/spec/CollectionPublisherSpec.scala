@@ -169,6 +169,21 @@ class CollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Match
     })
   }
 
+  "getRelationalMetadata" should "return empty Map when there is no entry in relational_metadata column" in {
+    val collRelationalMetadata = new TestCollectionPublisher().getRelationalMetadata("do_1234", 1, readerConfig)(cassandraUtil).get
+    assert(collRelationalMetadata != null && collRelationalMetadata.isEmpty)
+  }
+
+  "getRelationalMetadata" should "return empty Map when there is empty entry in relational_metadata column" in {
+    val collRelationalMetadata = new TestCollectionPublisher().getRelationalMetadata("do_12345", 1, readerConfig)(cassandraUtil).get
+    assert(collRelationalMetadata != null && collRelationalMetadata.isEmpty)
+  }
+
+  "getRelationalMetadata" should "return empty Map when there is empty object entry in relational_metadata column" in {
+    val collRelationalMetadata = new TestCollectionPublisher().getRelationalMetadata("do_123456", 1, readerConfig)(cassandraUtil).get
+    assert(collRelationalMetadata != null && collRelationalMetadata.isEmpty)
+  }
+
   "publishHierarchy " should "save hierarchy data to cassandra table" in {
     val publishChildrenData = ScalaJsonUtil.deserialize[List[Map[String, AnyRef]]](publishedChildrenData)
     val publishedCollectionNodeMetadataObj: Map[String,AnyRef] = ScalaJsonUtil.deserialize[Map[String,AnyRef]](publishedCollectionNodeMetadata)

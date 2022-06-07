@@ -14,8 +14,10 @@ import org.sunbird.job.questionset.publish.helpers.QuestionPublisher
 import org.sunbird.job.questionset.task.QuestionSetPublishConfig
 import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, Neo4JUtil}
 import org.sunbird.job.{BaseProcessFunction, Metrics}
-
 import java.lang.reflect.Type
+
+import org.sunbird.job.cache.{DataCache, RedisConnect}
+
 import scala.concurrent.ExecutionContext
 
 class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUtil,
@@ -32,6 +34,7 @@ class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUt
   private val readerConfig = ExtDataConfig(config.questionKeyspaceName, config.questionTableName)
 
   @transient var ec: ExecutionContext = _
+  @transient var cache: DataCache = _
   private val pkgTypes = List(EcarPackageType.FULL.toString, EcarPackageType.ONLINE.toString)
 
   override def open(parameters: Configuration): Unit = {
@@ -42,11 +45,14 @@ class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUt
     ec = ExecutionContexts.global
     definitionCache = new DefinitionCache()
     definitionConfig = DefinitionConfig(config.schemaSupportVersionMap, config.definitionBasePath)
+    cache = new DataCache(config, new RedisConnect(config), config.cacheDbId, List())
+    cache.init()
   }
 
   override def close(): Unit = {
     super.close()
     cassandraUtil.close()
+    cache.close()
   }
 
   override def metricsList(): List[String] = {
@@ -59,6 +65,7 @@ class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUt
     val obj = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(neo4JUtil, cassandraUtil)
     val messages: List[String] = validate(obj, obj.identifier, validateQuestion)
     if (messages.isEmpty) {
+      cache.del(obj.identifier)
       val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
       val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, neo4JUtil, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
       logger.info("Ecar generation done for Question: " + objWithEcar.identifier)

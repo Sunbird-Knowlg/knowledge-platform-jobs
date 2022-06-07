@@ -2,8 +2,13 @@ package org.sunbird.job.util
 
 import kong.unirest.Unirest
 import org.apache.commons.collections.CollectionUtils
+import org.sunbird.job.exception.ServerException
 
+import java.io.{File, FileOutputStream}
+import java.net.URL
+import java.nio.channels.{Channels, ReadableByteChannel}
 import scala.collection.JavaConverters._
+import scala.language.postfixOps
 
 case class HTTPResponse(status: Int, body: String) extends Serializable {
   def isSuccess:Boolean = Array(200, 201) contains status
@@ -26,6 +31,13 @@ class HttpUtil extends Serializable {
     HTTPResponse(response.getStatus, response.getBody)
   }
 
+  def postFilePath(url: String, paramName: String, filePath: String, headers: Map[String, String]): HTTPResponse = {
+    if (null == filePath) throw new ServerException("ERR_INVALID_REQUEST_PARAM", "Invalid File Source!")
+    validateRequest(url,headers)
+    val response = Unirest.post(url).headers(headers.asJava).multiPartContent.field(paramName, filePath).asString;
+    HTTPResponse(response.getStatus, response.getBody)
+  }
+
   def put(url: String, requestBody: String, headers: Map[String, String] = Map[String, String]("Content-Type"->"application/json")): HTTPResponse = {
     val response = Unirest.put(url).headers(headers.asJava).body(requestBody).asString()
     HTTPResponse(response.getStatus, response.getBody)
@@ -45,6 +57,32 @@ class HttpUtil extends Serializable {
       val msg = s"Unable to get metadata for : $url | status : ${resp.getStatus}, body: ${resp.getBody}"
       throw new Exception(msg)
     }
+  }
+
+  def downloadFile(url: String, downloadLocation: String): File = {
+    val saveFile = new File(downloadLocation)
+    if (!saveFile.exists) saveFile.mkdirs
+    val urlObject = new URL(url)
+    val filePath = downloadLocation + "/" + Slug.makeSlug(urlObject.getPath.substring(urlObject.getPath.lastIndexOf("/")+1))
+    try {
+      val readableByteChannel: ReadableByteChannel = Channels.newChannel(urlObject.openStream)
+      val fileOutputStream: FileOutputStream = new FileOutputStream(filePath)
+      fileOutputStream.getChannel().transferFrom(readableByteChannel, 0, Long.MaxValue);
+      new File(filePath)
+    } catch {
+      case io: java.io.IOException => throw new ServerException("ERR_INVALID_UPLOAD_FILE_URL", "Invalid fileUrl received : " + url)
+      case fnf: java.io.FileNotFoundException => throw new ServerException("ERR_INVALID_UPLOAD_FILE_URL", "Invalid fileUrl received : " + url)
+    }
+  }
+
+  private def validateRequest(url: String, headerParam: Map[String, String]): Unit = {
+    if (url.isEmpty) throw new ServerException("ERR_INVALID_URL", "Url Parameter is Missing!")
+    if (null == headerParam || headerParam.isEmpty) throw new ServerException("ERR_INVALID_HEADER_PARAM", "Header Parameter is Missing!")
+  }
+
+  def delete(url: String): HTTPResponse = {
+    val response = Unirest.delete(url).header("Content-Type", "application/json").asString()
+    HTTPResponse(response.getStatus, response.getBody)
   }
 }
 

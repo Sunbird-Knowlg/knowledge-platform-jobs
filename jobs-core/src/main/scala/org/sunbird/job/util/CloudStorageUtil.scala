@@ -37,7 +37,7 @@ class CloudStorageUtil(config: BaseJobConfig) extends Serializable {
     }
   }
 
-  def uploadFile(folderName: String, file: File, slug: Option[Boolean] = Option(true)): Array[String] = {
+  def uploadFile(folderName: String, file: File, slug: Option[Boolean] = Option(true), container: String = container): Array[String] = {
     val slugFile = if (slug.getOrElse(true)) Slug.createSlugFile(file) else file
     val objectKey = folderName + "/" + slugFile.getName
     val url = getService.upload(container, slugFile.getAbsolutePath, objectKey, Option.apply(false), Option.apply(1), Option.apply(5), Option.empty)
