@@ -5,6 +5,7 @@ import com.datastax.driver.core.querybuilder.{Insert, QueryBuilder, Select}
 import com.fasterxml.jackson.core.JsonProcessingException
 import org.apache.commons.io.FileUtils
 import org.apache.commons.lang3.StringUtils
+import org.mortbay.util.SingletonList
 import org.slf4j.LoggerFactory
 import org.sunbird.job.content.task.ContentPublishConfig
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
@@ -649,13 +650,13 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       val draftHierarchy = getHierarchy(obj.identifier, obj.pkgVersion, readerConfig).get
       val publishedNodeId = obj.identifier.replaceAll(".img","")
       val publishedHierarchy = if (obj.pkgVersion > 0) { getHierarchy(publishedNodeId, 0, readerConfig).get } else Map.empty[String, AnyRef]
-      val draftDIALcodesMap: mutable.Map[AnyRef, String] = mutable.Map.empty[AnyRef, String]
+      val draftDIALcodesMap: mutable.Map[List[String], String] = mutable.Map.empty[List[String], String]
       getDIALListFromHierarchy(draftHierarchy, draftDIALcodesMap)
-      val publishedDIALcodesMap: mutable.Map[AnyRef, String] = mutable.Map.empty[AnyRef, String]
+      val publishedDIALcodesMap: mutable.Map[List[String], String] = mutable.Map.empty[List[String], String]
       if(publishedHierarchy.nonEmpty) getDIALListFromHierarchy(publishedHierarchy, publishedDIALcodesMap)
 
-      if(obj.metadata.contains("dialcodes")) draftDIALcodesMap += (obj.metadata("dialcodes") -> draftHierarchy("identifier").asInstanceOf[String])
-      if(publishedHierarchy.nonEmpty && publishedHierarchy.contains("dialcodes")) publishedDIALcodesMap += (publishedHierarchy("dialcodes") -> publishedHierarchy("identifier").asInstanceOf[String])
+      if(obj.metadata.contains("dialcodes")) draftDIALcodesMap += (obj.metadata("dialcodes").asInstanceOf[SingletonList].asScala.toList -> draftHierarchy("identifier").asInstanceOf[String])
+      if(publishedHierarchy.nonEmpty && publishedHierarchy.contains("dialcodes")) publishedDIALcodesMap += (publishedHierarchy("dialcodes").asInstanceOf[SingletonList].asScala.toList -> publishedHierarchy("identifier").asInstanceOf[String])
 
       Map("addContextDialCodes" -> draftDIALcodesMap, "removeContextDialCodes" -> (publishedDIALcodesMap -- draftDIALcodesMap.keySet))
     }
@@ -663,7 +664,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     DialContextMap
   }
 
-  private def getDIALListFromHierarchy(data: Map[String, AnyRef], dialcodeMap: mutable.Map[AnyRef, String]): Unit = {
+  private def getDIALListFromHierarchy(data: Map[String, AnyRef], dialcodeMap: mutable.Map[List[String], String]): Unit = {
     val dialCodes = data.getOrElse("dialcodes", List.empty[String]).asInstanceOf[List[String]]
     if (StringUtils.equals(data.getOrElse("visibility", "").asInstanceOf[String], "Parent") && dialCodes!=null && dialCodes.nonEmpty) dialcodeMap += (dialCodes ->  data("identifier").asInstanceOf[String])
     val children = data.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]]

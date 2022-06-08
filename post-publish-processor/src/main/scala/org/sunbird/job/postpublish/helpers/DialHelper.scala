@@ -131,24 +131,23 @@ trait DialHelper {
   }
 
   def generateDialcodeContextUpdaterEvent(channel: String, addContextDialCodes: Map[List[String],String], removeContextDialCodes: Map[List[String],String], context: ProcessFunction[java.util.Map[String, AnyRef], String]#Context, metrics: Metrics)(implicit config: PostPublishProcessorConfig) = {
-    if(addContextDialCodes.nonEmpty) {
-      addContextDialCodes.foreach(rec => {
-        dialcodeContextUpdaterEvent(channel, rec._1, rec._2, context)(metrics, config)
-      })
-    }
-
     if(removeContextDialCodes.nonEmpty) {
       removeContextDialCodes.foreach(rec => {
-        dialcodeContextUpdaterEvent(channel, rec._1, rec._2, context)(metrics, config)
+        dialcodeContextUpdaterEvent(channel, rec._1, rec._2, context, "dialcode-context-delete")(metrics, config)
+      })
+    }
+    if(addContextDialCodes.nonEmpty) {
+      addContextDialCodes.foreach(rec => {
+        dialcodeContextUpdaterEvent(channel, rec._1, rec._2, context, "dialcode-context-update")(metrics, config)
       })
     }
 
   }
 
-  def dialcodeContextUpdaterEvent(channel: String, dialcodes: List[String], contentId: String, context: ProcessFunction[java.util.Map[String, AnyRef], String]#Context)(implicit metrics: Metrics, config: PostPublishProcessorConfig) = {
+  def dialcodeContextUpdaterEvent(channel: String, dialcodes: List[String], contentId: String, context: ProcessFunction[java.util.Map[String, AnyRef], String]#Context, action: String)(implicit metrics: Metrics, config: PostPublishProcessorConfig) = {
     dialcodes.foreach(dialcode => {
       val epochTime = System.currentTimeMillis
-      val event = s"""{"eid":"BE_JOB_REQUEST","ets":$epochTime,"mid":"LP.$epochTime.${UUID.randomUUID()}","actor":{"id":"DIAL code context update Job","type":"System"},"context":{"pdata":{"ver":"1.0","id":"org.ekstep.platform"},"channel":"$channel","env":"dev"},"object":{"ver":"1.0","id":"$dialcode"},"edata":{"action":"dialcode-context-update","iteration":1,"dialcode":"$dialcode","identifier": "$contentId"},"identifier": "$contentId"}"""
+      val event = s"""{"eid":"BE_JOB_REQUEST","ets":$epochTime,"mid":"LP.$epochTime.${UUID.randomUUID()}","actor":{"id":"DIAL code context update Job","type":"System"},"context":{"pdata":{"ver":"1.0","id":"org.ekstep.platform"},"channel":"$channel","env":"dev"},"object":{"ver":"1.0","id":"$dialcode"},"edata":{"action":"$action","iteration":1,"dialcode":"$dialcode","identifier": "$contentId"},"identifier": "$contentId"}"""
       context.output(config.dialcodeContextUpdaterOutTag, event)
       metrics.incCounter(config.dialcodeContextUpdaterCount)
       logger.info("DialHelper:: dialcodeContextUpdaterEvent:: Dial code context update event: " + event)
