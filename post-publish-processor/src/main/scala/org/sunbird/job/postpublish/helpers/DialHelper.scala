@@ -125,33 +125,33 @@ trait DialHelper {
 
     if(event.eData.contains("addContextDialCodes")) dialcodeContextMap.put("addContextDialCodes", event.eData.getOrElse("addContextDialCodes", Map.empty))
     if(event.eData.contains("removeContextDialCodes")) dialcodeContextMap.put("removeContextDialCodes", event.eData.getOrElse("removeContextDialCodes", Map.empty))
+    if(event.eData.contains("channel")) dialcodeContextMap.put("channel", event.eData.getOrElse("channel", "").asInstanceOf[String])
 
     dialcodeContextMap
   }
 
-  def generateDialcodeContextUpdaterEvent(addContextDialCodes: Map[List[String],String], removeContextDialCodes: Map[List[String],String], context: ProcessFunction[java.util.Map[String, AnyRef], String]#Context, metrics: Metrics)(implicit config: PostPublishProcessorConfig) = {
+  def generateDialcodeContextUpdaterEvent(channel: String, addContextDialCodes: Map[List[String],String], removeContextDialCodes: Map[List[String],String], context: ProcessFunction[java.util.Map[String, AnyRef], String]#Context, metrics: Metrics)(implicit config: PostPublishProcessorConfig) = {
     if(addContextDialCodes.nonEmpty) {
       addContextDialCodes.foreach(rec => {
-        dialcodeContextUpdaterEvent(rec._1, rec._2, context)(metrics, config)
+        dialcodeContextUpdaterEvent(channel, rec._1, rec._2, context)(metrics, config)
       })
     }
 
     if(removeContextDialCodes.nonEmpty) {
       removeContextDialCodes.foreach(rec => {
-        dialcodeContextUpdaterEvent(rec._1, rec._2, context)(metrics, config)
+        dialcodeContextUpdaterEvent(channel, rec._1, rec._2, context)(metrics, config)
       })
     }
 
   }
 
-  def dialcodeContextUpdaterEvent(dialcodes: List[String], contentId: String, context: ProcessFunction[java.util.Map[String, AnyRef], String]#Context)(implicit metrics: Metrics, config: PostPublishProcessorConfig) = {
+  def dialcodeContextUpdaterEvent(channel: String, dialcodes: List[String], contentId: String, context: ProcessFunction[java.util.Map[String, AnyRef], String]#Context)(implicit metrics: Metrics, config: PostPublishProcessorConfig) = {
     dialcodes.foreach(dialcode => {
       val epochTime = System.currentTimeMillis
-      val event = s"""{"eid":"BE_JOB_REQUEST","ets":${epochTime},"mid":"LP.${epochTime}.${UUID.randomUUID()}","actor":{"id":"DIAL code context update Job","type":"System"},"context":{"pdata":{"ver":"1.0","id":"org.ekstep.platform"},"channel":"sunbird","env":"dev"},"object":{"ver":"1.0","id":"${dialcode}"},"edata":{"action":"dialcode-context-update","iteration":1,"dialcode":"${dialcode}"},"identifier": "${contentId}"}"""
+      val event = s"""{"eid":"BE_JOB_REQUEST","ets":$epochTime,"mid":"LP.$epochTime.${UUID.randomUUID()}","actor":{"id":"DIAL code context update Job","type":"System"},"context":{"pdata":{"ver":"1.0","id":"org.ekstep.platform"},"channel":"$channel","env":"dev"},"object":{"ver":"1.0","id":"$dialcode"},"edata":{"action":"dialcode-context-update","iteration":1,"dialcode":"$dialcode","identifier": "$contentId"},"identifier": "$contentId"}"""
       context.output(config.dialcodeContextUpdaterOutTag, event)
       metrics.incCounter(config.dialcodeContextUpdaterCount)
-      logger.info("Dial code context update triggered for " + dialcodes)
-      logger.info("Dial code context update event: " + event)
+      logger.info("DialHelper:: dialcodeContextUpdaterEvent:: Dial code context update event: " + event)
     })
 
   }

@@ -30,11 +30,12 @@ class DialCodeContextUpdaterFunction(config: PostPublishProcessorConfig) (implic
     try {
       val addContextDialCodes: Map[List[String],String] = edata.getOrDefault("addContextDialCodes", Map.empty[String,String]).asInstanceOf[Map[String,String]].map(rec => (ScalaJsonUtil.deserialize[List[String]](rec._1)->rec._2))
       val removeContextDialCodes: Map[List[String],String] = edata.getOrDefault("removeContextDialCodes", Map.empty[String,String]).asInstanceOf[Map[String,String]].map(rec => (ScalaJsonUtil.deserialize[List[String]](rec._1)->rec._2))
-        generateDialcodeContextUpdaterEvent(addContextDialCodes, removeContextDialCodes, context, metrics)(config)
+      val channel: String = edata.getOrDefault("channel", "").asInstanceOf[String]
+      generateDialcodeContextUpdaterEvent(channel, addContextDialCodes, removeContextDialCodes, context, metrics)(config)
       metrics.incCounter(config.dialcodeContextUpdaterSuccessCount)
     } catch {
       case ex: Throwable =>
-        logger.error(s"Error while processing message for DIAL Code Context Updater  : ${edata}.", ex)
+        logger.error(s"Error while processing message for DIAL Code Context Updater  : $edata.", ex)
         metrics.incCounter(config.dialcodeContextUpdaterFailedCount)
         throw ex
     }
