@@ -655,7 +655,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       if(publishedHierarchy.nonEmpty) getDIALListFromHierarchy(publishedHierarchy, publishedDIALcodesMap)
 
       draftDIALcodesMap += (draftHierarchy.getOrElse("dialcodes", List.empty[String]).asInstanceOf[List[String]] -> draftHierarchy("identifier").asInstanceOf[String])
-      publishedDIALcodesMap += (publishedHierarchy.getOrElse("dialcodes", List.empty[String]).asInstanceOf[List[String]] -> publishedHierarchy("identifier").asInstanceOf[String])
+      if(publishedHierarchy.nonEmpty) publishedDIALcodesMap += (publishedHierarchy.getOrElse("dialcodes", List.empty[String]).asInstanceOf[List[String]] -> publishedHierarchy("identifier").asInstanceOf[String])
 
       Map("addContextDialCodes" -> draftDIALcodesMap, "removeContextDialCodes" -> (publishedDIALcodesMap -- draftDIALcodesMap.keySet))
     }
