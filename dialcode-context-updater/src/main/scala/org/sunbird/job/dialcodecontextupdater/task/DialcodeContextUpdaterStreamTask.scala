@@ -44,10 +44,10 @@ object DialcodeContextUpdaterStreamTask {
     val config = configFilePath.map {
       path => ConfigFactory.parseFile(new File(path)).resolve()
     }.getOrElse(ConfigFactory.load("dialcode-context-updater.conf").withFallback(ConfigFactory.systemEnvironment()))
-    val contentAutoCreatorConfig = new DialcodeContextUpdaterConfig(config)
-    val kafkaUtil = new FlinkKafkaConnector(contentAutoCreatorConfig)
+    val dialcodeContextUpdaterConfig = new DialcodeContextUpdaterConfig(config)
+    val kafkaUtil = new FlinkKafkaConnector(dialcodeContextUpdaterConfig)
     val httpUtil = new HttpUtil
-    val task = new DialcodeContextUpdaterStreamTask(contentAutoCreatorConfig, kafkaUtil, httpUtil)
+    val task = new DialcodeContextUpdaterStreamTask(dialcodeContextUpdaterConfig, kafkaUtil, httpUtil)
     task.process()
   }
 }
