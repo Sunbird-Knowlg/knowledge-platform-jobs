@@ -6,7 +6,6 @@ import org.sunbird.job.dialcodecontextupdater.task.DialcodeContextUpdaterConfig
 import org.sunbird.job.dialcodecontextupdater.util.DialcodeContextUpdaterConstants
 import org.sunbird.job.exception.ServerException
 import org.sunbird.job.util._
-import scala.collection.JavaConversions.mapAsJavaMap
 
 import java.util
 
@@ -70,7 +69,7 @@ trait DialcodeContextUpdater {
 
 			logger.info("DialcodeContextUpdater:: updateContext:: serialize - contentDataToUpsert: " + ScalaJsonUtil.serialize(contextDataToUpdate))
 
-			updateDIALContext(config, dialcode, channel, contextDataToUpdate)(httpUtil)
+			updateDIALContext(config, dialcode, channel, ScalaJsonUtil.serialize(contextDataToUpdate))(httpUtil)
 		} else {
 			// check if contextInfo is available in metadata. If Yes, update to null
 			val dialCodeInfo = readDialCode(config, dialcode, channel)(httpUtil)
@@ -156,9 +155,9 @@ trait DialcodeContextUpdater {
 		}
 	}
 
-	def updateDIALContext(config: DialcodeContextUpdaterConfig, dialcode: String, channel: String, contextInfo: Map[String, AnyRef]) (implicit httpUtil: HttpUtil): Boolean = {
+	def updateDIALContext(config: DialcodeContextUpdaterConfig, dialcode: String, channel: String, contextInfo: String) (implicit httpUtil: HttpUtil): Boolean = {
 		val dialCodeContextUpdateUrl = config.dialServiceBaseUrl + config.dialcodeContextUpdatePath + dialcode
-		val requestBody = if(contextInfo!=null) "{\"request\": {\"dialcode\": {\"contextInfo\":" + mapAsJavaMap(contextInfo) + "}}}"
+		val requestBody = if(contextInfo!=null) "{\"request\": {\"dialcode\": {\"contextInfo\":" + contextInfo + "}}}"
 		else "{\"request\": {\"dialcode\": {\"contextInfo\": null }}}"
 		val headers = Map[String, String]("X-Channel-Id" -> channel, "Content-Type"->"application/json")
 		val response:HTTPResponse = httpUtil.patch(dialCodeContextUpdateUrl, requestBody, headers)
