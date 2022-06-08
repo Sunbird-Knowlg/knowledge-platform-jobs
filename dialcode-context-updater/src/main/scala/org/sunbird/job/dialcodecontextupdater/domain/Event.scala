@@ -19,7 +19,7 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 
 	def dialcode: String = readOrDefault[String]("edata.dialcode", "")
 
-	def identifier: String = readOrDefault[String]("identifier", "")
+	def identifier: String = readOrDefault[String]("edata.identifier", "")
 
 	def currentIteration: Int = readOrDefault[Int]("edata.iteration", 1)
 
