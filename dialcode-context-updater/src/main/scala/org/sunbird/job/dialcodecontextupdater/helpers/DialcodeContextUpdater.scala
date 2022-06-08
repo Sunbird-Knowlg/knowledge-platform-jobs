@@ -56,8 +56,8 @@ trait DialcodeContextUpdater {
 						record._2 match {
 							case stringValSubLevel: String =>
 								if (record._1.equalsIgnoreCase("@type")) (record._1 -> stringValSubLevel)
-								else if (!record._1.equalsIgnoreCase("@type") && finalFilteredData(rec._1).isInstanceOf[String]) (record._1 -> finalFilteredData(rec._1).asInstanceOf[String])
-								else if (!record._1.equalsIgnoreCase("@type") && finalFilteredData(rec._1).asInstanceOf[Map[String, AnyRef]].contains(record._1)) (record._1 -> finalFilteredData(rec._1).asInstanceOf[Map[String, AnyRef]](record._1))
+								else if (!record._1.equalsIgnoreCase("@type") && finalFilteredData.contains(rec._1) && finalFilteredData(rec._1).isInstanceOf[String]) (record._1 -> finalFilteredData(rec._1).asInstanceOf[String])
+								else if (!record._1.equalsIgnoreCase("@type") && finalFilteredData.contains(rec._1) && finalFilteredData(rec._1).asInstanceOf[Map[String, AnyRef]].contains(record._1)) (record._1 -> finalFilteredData(rec._1).asInstanceOf[Map[String, AnyRef]](record._1))
 								else (record._1 -> null)
 							case objectValSubLevel: Map[String, AnyRef] =>  (record._1 -> objectValSubLevel.map(l2Record => {
 									if(finalFilteredData(rec._1).asInstanceOf[Map[String, AnyRef]].contains(l2Record._1))
