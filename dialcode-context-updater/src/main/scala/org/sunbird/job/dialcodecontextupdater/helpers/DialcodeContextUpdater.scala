@@ -26,6 +26,7 @@ trait DialcodeContextUpdater {
 			// 4. Call Search API with dialcode and mode=collection
 			// 5. Fetch unit and rootNode output from the response
 			// 6. compose contextInfo and invoke updateDIALcode v4 API
+			logger.info("DialcodeContextUpdater::updateContext:: Context Update Starting for dialcode: " + dialcode + " || identifier: " + identifier + " || channel: " + channel)
 			val identifierObj = searchContent("", identifier, config.identifierSearchFields, config, httpUtil)
 
 			logger.info("DialcodeContextUpdater:: updateContext:: config.contextMapFilePath: " + config.contextMapFilePath)
