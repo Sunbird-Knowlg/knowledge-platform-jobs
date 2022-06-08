@@ -270,8 +270,9 @@ class PostPublishProcessorTaskTestSpec extends BaseTestSpec {
 
     val addContextDialCodes: Map[List[String],String] = dialcodeContextMap.getOrDefault("addContextDialCodes", Map.empty[String,String]).asInstanceOf[Map[String,String]].map(rec => (ScalaJsonUtil.deserialize[List[String]](rec._1)->rec._2))
     val removeContextDialCodes: Map[List[String],String] = dialcodeContextMap.getOrDefault("removeContextDialCodes", Map.empty[String,String]).asInstanceOf[Map[String,String]].map(rec => (ScalaJsonUtil.deserialize[List[String]](rec._1)->rec._2))
+    val channel: String = dialcodeContextMap.getOrDefault("channel","").asInstanceOf[String]
     assertThrows[Exception] {
-      new DialCodeContextUpdaterFunction(jobConfig).generateDialcodeContextUpdaterEvent(addContextDialCodes, removeContextDialCodes, null, metrics)
+      new DialCodeContextUpdaterFunction(jobConfig).generateDialcodeContextUpdaterEvent(channel, addContextDialCodes, removeContextDialCodes, null, metrics)
     }
   }
 
