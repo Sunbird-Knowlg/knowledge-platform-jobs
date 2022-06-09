@@ -5,7 +5,6 @@ import com.datastax.driver.core.querybuilder.{Insert, QueryBuilder, Select}
 import com.fasterxml.jackson.core.JsonProcessingException
 import org.apache.commons.io.FileUtils
 import org.apache.commons.lang3.StringUtils
-import org.mortbay.util.SingletonList
 import org.slf4j.LoggerFactory
 import org.sunbird.job.content.task.ContentPublishConfig
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
