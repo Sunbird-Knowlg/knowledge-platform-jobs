@@ -655,8 +655,14 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       val publishedDIALcodesMap: mutable.Map[List[String], String] = mutable.Map.empty[List[String], String]
       if(publishedHierarchy.nonEmpty) getDIALListFromHierarchy(publishedHierarchy, publishedDIALcodesMap)
 
-      if(obj.metadata.contains("dialcodes")) draftDIALcodesMap += (obj.metadata.getOrElse("dialcodes", List.empty[String]).asInstanceOf[List[String]] -> draftHierarchy("identifier").asInstanceOf[String])
-      if(publishedHierarchy.nonEmpty && publishedHierarchy.contains("dialcodes")) publishedDIALcodesMap += (publishedHierarchy.getOrElse("dialcodes", List.empty[String]).asInstanceOf[List[String]] -> publishedHierarchy("identifier").asInstanceOf[String])
+      if(obj.metadata.contains("dialcodes")) {
+        val strDialcodes = ScalaJsonUtil.serialize(obj.metadata("dialcodes"))
+        draftDIALcodesMap += (ScalaJsonUtil.deserialize[List[String]](strDialcodes) -> draftHierarchy("identifier").asInstanceOf[String])
+      }
+      if(publishedHierarchy.nonEmpty && publishedHierarchy.contains("dialcodes")) {
+        val strDialcodes = ScalaJsonUtil.serialize(publishedHierarchy("dialcodes"))
+        publishedDIALcodesMap += (ScalaJsonUtil.deserialize[List[String]](strDialcodes) -> publishedHierarchy("identifier").asInstanceOf[String])
+      }
 
       Map("addContextDialCodes" -> draftDIALcodesMap, "removeContextDialCodes" -> (publishedDIALcodesMap -- draftDIALcodesMap.keySet))
     }
