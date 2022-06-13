@@ -87,7 +87,6 @@ class DialcodeContextUpdaterStreamTaskSpec extends BaseTestSpec {
     val event = new Event(JSONUtil.deserialize[java.util.Map[String, Any]](EventFixture.DIALCODE_EVENT_WITH_CONTEXT),0,1)
 
     val dialcodeContextInfo: Map[String, AnyRef] = new DialcodeContextUpdaterFunction(jobConfig, mockHttpUtil).updateContext(jobConfig,event, mockHttpUtil)
-    println("Context Information:: " + dialcodeContextInfo("contextInfo"))
 
     assert(dialcodeContextInfo.contains("contextInfo") && dialcodeContextInfo("contextInfo") != null)
   }
@@ -100,7 +99,6 @@ class DialcodeContextUpdaterStreamTaskSpec extends BaseTestSpec {
     val event = new Event(JSONUtil.deserialize[java.util.Map[String, Any]](EventFixture.DIALCODE_EVENT_NULL_CONTEXT),0,1)
 
     val dialcodeContextInfo: Map[String, AnyRef] = new DialcodeContextUpdaterFunction(jobConfig, mockHttpUtil).updateContext(jobConfig,event, mockHttpUtil)
-    println("Context Information:: " + dialcodeContextInfo("contextInfo"))
 
     assert(dialcodeContextInfo.contains("contextInfo") && dialcodeContextInfo("contextInfo") == null)
   }
