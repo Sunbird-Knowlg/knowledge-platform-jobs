@@ -15,6 +15,8 @@ trait DialcodeContextUpdater {
 	private[this] val logger = LoggerFactory.getLogger(classOf[DialcodeContextUpdater])
 
 	def updateContext(config: DialcodeContextUpdaterConfig, event: Event, httpUtil: HttpUtil): Map[String, AnyRef] = {
+		logger.info("DialcodeContextUpdater::updateContext:: Processing event for dial code context update operation for event object : " + event.obj)
+		logger.info("DialcodeContextUpdater::updateContext:: event edata : " + event.eData)
 		val identifier = event.identifier
 		val dialcode = event.dialcode
 		val channel = event.channel

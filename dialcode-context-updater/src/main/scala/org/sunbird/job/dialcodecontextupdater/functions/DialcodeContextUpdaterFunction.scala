@@ -38,10 +38,8 @@ class DialcodeContextUpdaterFunction(config: DialcodeContextUpdaterConfig, httpU
                               context: ProcessFunction[Event, String]#Context,
                               metrics: Metrics): Unit = {
     metrics.incCounter(config.totalEventsCount)
-    logger.info("DialcodeContextUpdaterFunction::processElement:: Processing event for dial code context update operation for event object : " + event.obj)
 
     try {
-      logger.info("DialcodeContextUpdaterFunction::processElement:: event edata : " + event.eData)
       if (event.isValid()) {
         updateContext(config, event, httpUtil)
       } else {

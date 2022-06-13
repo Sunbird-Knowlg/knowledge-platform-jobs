@@ -9,8 +9,6 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 
 	def eData: Map[String, AnyRef] = readOrDefault("edata", Map()).asInstanceOf[Map[String, AnyRef]]
 
-	def context: Map[String, AnyRef] = readOrDefault("context", Map()).asInstanceOf[Map[String, AnyRef]]
-
 	def obj: Map[String, AnyRef] = readOrDefault("object", Map()).asInstanceOf[Map[String, AnyRef]]
 
 	def channel: String = readOrDefault[String]("context.channel", "")
@@ -20,8 +18,6 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 	def dialcode: String = readOrDefault[String]("edata.dialcode", "")
 
 	def identifier: String = readOrDefault[String]("edata.identifier", "")
-
-	def currentIteration: Int = readOrDefault[Int]("edata.iteration", 1)
 
 
 	def isValid(): Boolean = {
