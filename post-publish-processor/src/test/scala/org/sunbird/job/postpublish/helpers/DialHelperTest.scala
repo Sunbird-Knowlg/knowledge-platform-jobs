@@ -133,9 +133,12 @@ class DialHelperTest extends FlatSpec with BeforeAndAfterAll with Matchers with 
   }
 
   "getDialCodeContextMap" should "return map of add and remove dial codes for context update" in {
-    val DIALCODE_CONTEXT_EVENT: String = """{"eid":"BE_JOB_REQUEST","ets":1648720639981,"mid":"LP.1648720639981.d6b1d8c8-7a4a-483a-b83a-b752bede648c","actor":{"id":"DIALcodecontextupdateJob","type":"System"},"context":{"pdata":{"ver":"1.0","id":"org.sunbird.platform"},"channel":"01269878797503692810","env":"dev"},"object":{"ver":"1.0","id":"0117CH01"},"edata":{"action":"dialcode-context-update","iteration":1,"dialcode":"0117CH01","identifier":"d0_1234","traceId":"2342345345"}}""".stripMargin
+    val DIALCODE_CONTEXT_EVENT: String = """{"eid":"BE_JOB_REQUEST", "ets": 1655115290761, "mid": "LP.1655115290761.3d71f870-0f87-4a92-b1cd-96ff4fd977e8", "actor": {"id": "Post Publish Processor", "type": "System"}, "context":{"pdata":{"ver":"1.0","id":"org.sunbird.platform"}, "channel":"01309282781705830427","env":"sunbirddev"},"object":{"ver":"1655115235618","id":"do_113556562556149760174"},"edata": {"action":"post-publish-process","iteration":1,"identifier":"do_113556562556149760174","channel":"01309282781705830427","mimeType":"application/vnd.ekstep.content-collection","contentType":"TextBook","pkgVersion":3,"status":"Live","name":"DIAL Context 7","trackable":{"enabled":"No","autoBatch":"No"}, "addContextDialCodes": {"[\"D4G2L3\"]":"do_113556562556149760174","[\"G3L9S2\"]":"do_113556563202981888177"}, "removeContextDialCodes": {"[\"C9N8K3\"]":"do_113556563202891776175"} }}""".stripMargin
     val event = new Event(JSONUtil.deserialize[java.util.Map[String, Any]](DIALCODE_CONTEXT_EVENT),0,1)
-    new TestDialHelper().getDialCodeContextMap(event)
+    val dialcodeMap = new TestDialHelper().getDialCodeContextMap(event)
+    assert(dialcodeMap.containsKey("removeContextDialCodes"))
+    assert(dialcodeMap.containsKey("addContextDialCodes"))
+    assert(dialcodeMap.containsKey("channel"))
   }
 
 

@@ -61,5 +61,4 @@ class DialcodeContextUpdaterConfig(override val config: Config) extends BaseJobC
 
   val identifierSearchFields: List[String] = if (config.hasPath("dialcode_context_updater.identifier_search_fields")) config.getStringList("dialcode_context_updater.identifier_search_fields").asScala.toList else List("identifier", "primaryCategory","channel")
 
-  def getConfig: Config = config
 }
