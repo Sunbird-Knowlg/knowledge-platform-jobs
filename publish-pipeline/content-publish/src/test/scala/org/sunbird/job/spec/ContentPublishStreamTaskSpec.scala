@@ -15,14 +15,19 @@ import org.mockito.ArgumentMatchers.anyString
 import org.mockito.Mockito
 import org.mockito.Mockito.when
 import org.sunbird.job.connector.FlinkKafkaConnector
+import org.sunbird.job.content.function.CollectionPublishFunction
 import org.sunbird.job.content.publish.domain.Event
 import org.sunbird.job.content.task.{ContentPublishConfig, ContentPublishStreamTask}
+import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.fixture.EventFixture
 import org.sunbird.job.publish.config.PublishConfig
+import org.sunbird.job.publish.core.{ExtDataConfig, ObjectData}
 import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, Neo4JUtil}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 
+import java.text.SimpleDateFormat
 import java.util
+import java.util.Date
 
 class ContentPublishStreamTaskSpec extends BaseTestSpec {
 
@@ -37,6 +42,9 @@ class ContentPublishStreamTaskSpec extends BaseTestSpec {
   val mockKafkaUtil: FlinkKafkaConnector = mock[FlinkKafkaConnector](Mockito.withSettings().serializable())
   val config: Config = ConfigFactory.load("test.conf").withFallback(ConfigFactory.systemEnvironment())
   implicit val jobConfig: ContentPublishConfig = new ContentPublishConfig(config)
+  var definitionCache = new DefinitionCache()
+  implicit val definition: ObjectDefinition = definitionCache.getDefinition("Collection", jobConfig.schemaSupportVersionMap.getOrElse("collection", "1.0").asInstanceOf[String], jobConfig.definitionBasePath)
+  implicit val readerConfig: ExtDataConfig = ExtDataConfig(jobConfig.hierarchyKeyspaceName, jobConfig.hierarchyTableName, definition.getExternalPrimaryKey, definition.getExternalProps)
 
   val mockHttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
   implicit val mockNeo4JUtil: Neo4JUtil = mock[Neo4JUtil](Mockito.withSettings().serializable())
@@ -67,6 +75,21 @@ class ContentPublishStreamTaskSpec extends BaseTestSpec {
 
   def initialize(): Unit = {
     when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new ContentPublishEventSource)
+  }
+
+  def getTimeStamp: String = {
+    val sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
+    sdf.format(new Date())
+  }
+
+
+  "fetchDialListForContextUpdate" should "fetch the list of added and removed QR codes" in {
+    val nodeObj = new ObjectData("do_21354027142511820812318.img", Map("objectType" -> "Collection", "identifier" -> "do_21354027142511820812318", "name" -> "DialCodeHierarchy", "lastPublishedOn" -> getTimeStamp, "lastUpdatedOn" -> getTimeStamp, "status" -> "Draft", "pkgVersion" -> 1.asInstanceOf[Number], "versionKey" -> "1652871771396", "channel" -> "0126825293972439041", "contentType" -> "TextBook"), Some(Map()), Some(Map()))
+    val DIALListMap = new CollectionPublishFunction(jobConfig, mockHttpUtil).fetchDialListForContextUpdate(nodeObj)(mockNeo4JUtil, cassandraUtil, readerConfig)
+    assert(DIALListMap.nonEmpty)
+
+    val postProcessEvent = new CollectionPublishFunction(jobConfig, mockHttpUtil).getPostProcessEvent(nodeObj, DIALListMap)
+    assert(postProcessEvent.nonEmpty)
   }
 
   ignore should " publish the content " in {

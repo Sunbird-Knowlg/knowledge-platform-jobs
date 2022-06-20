@@ -52,7 +52,17 @@ class PostPublishEventRouter(config: PostPublishProcessorConfig, httpUtil: HttpU
       val dialCodeDetails = getDialCodeDetails(identifier, event)(neo4JUtil, config)
       if (!dialCodeDetails.isEmpty)
         context.output(config.linkDIALCodeOutTag, dialCodeDetails)
-    } else {
+
+      val dialcodeContextMap = getDialCodeContextMap(event)
+      if(!dialcodeContextMap.isEmpty)
+        context.output(config.dialcodeContextOutTag, dialcodeContextMap)
+    }
+    else if (event.action.equals("post-publish-process") && event.eData.contains("addContextDialCodes") && event.eData.contains("removeContextDialCodes")) {
+      val dialcodeContextMap = getDialCodeContextMap(event)
+      if(!dialcodeContextMap.isEmpty)
+        context.output(config.dialcodeContextOutTag, dialcodeContextMap)
+    }
+    else {
       metrics.incCounter(config.skippedEventCount)
       logger.info(s"Event not qualified for publishing for Identifier : ${event.collectionId}.")
     }

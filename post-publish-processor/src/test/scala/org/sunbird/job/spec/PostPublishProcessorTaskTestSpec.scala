@@ -16,12 +16,14 @@ import org.mockito.ArgumentMatchers.{any, anyString, endsWith}
 import org.mockito.Mockito
 import org.mockito.Mockito._
 import org.neo4j.driver.v1.StatementResult
+import org.sunbird.job.Metrics
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.fixture.EventFixture
 import org.sunbird.job.postpublish.domain.Event
-import org.sunbird.job.postpublish.functions.{DIALCodeLinkFunction, PostPublishEventRouter}
+import org.sunbird.job.postpublish.functions.{DIALCodeLinkFunction, DialCodeContextUpdaterFunction, PostPublishEventRouter}
+import org.sunbird.job.postpublish.helpers.TestDialHelper
 import org.sunbird.job.postpublish.task.{PostPublishProcessorConfig, PostPublishProcessorStreamTask}
-import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, Neo4JUtil}
+import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, JSONUtil, Neo4JUtil, ScalaJsonUtil}
 import org.sunbird.spec.BaseTestSpec
 
 import java.time.format.DateTimeFormatter
@@ -258,6 +260,20 @@ class PostPublishProcessorTaskTestSpec extends BaseTestSpec {
 
     val dialcode = new DIALCodeLinkFunction(jobConfig, mockHttpUtil, mockNeo4JUtil, cassandraUtil).getDialcode(edata)
     dialcode should be("Q2I5I9")
+  }
+
+  "getDialCodeContextMap" should "return map of add and remove dial codes for context update" in {
+    implicit val metrics: Metrics = new Metrics(null)
+    val DIALCODE_CONTEXT_EVENT: String = """{"eid":"BE_JOB_REQUEST", "ets": 1653307293906, "mid": "LP.1653307293906.c4ebcb3b-4828-4bf1-99fa-bd363f4ceae9", "actor": {"id": "Post Publish Processor", "type": "System"}, "context":{"pdata":{"ver":"1.0","id":"org.sunbird.platform"}, "channel":"0126825293972439041","env":"sunbirddev"},"object":{"ver":"1652871771396","id":"do_21354027142511820812318.img"},"edata": {"action":"post-publish-process","iteration":1,"identifier":"do_21354027142511820812318.img","channel":"0126825293972439041","mimeType":"","contentType":"TextBook","pkgVersion":1,"status":"Draft","name":"DialCodeHierarchy","trackable":{}, "addContextDialCodes": {"[\"V2A8N1\"]":"do_21354027142511820812318","[\"L5L9A2\"]":"do_21354031968955596812322","[\"F6I6S6\"]":"do_21354032495652044812326","[\"R8C7G2\"]":"do_21354031968951500812320","[\"D1D5H9\"]":"do_21354032495648768012324"}, "removeContextDialCodes": {"[\"A3S8L6\"]":"do_21354031968955596812322"} }}""".stripMargin
+    val event = new Event(JSONUtil.deserialize[java.util.Map[String, Any]](DIALCODE_CONTEXT_EVENT),0,1)
+    val dialcodeContextMap = new DialCodeContextUpdaterFunction(jobConfig).getDialCodeContextMap(event)
+
+    val addContextDialCodes: Map[List[String],String] = dialcodeContextMap.getOrDefault("addContextDialCodes", Map.empty[String,String]).asInstanceOf[Map[String,String]].map(rec => (ScalaJsonUtil.deserialize[List[String]](rec._1)->rec._2))
+    val removeContextDialCodes: Map[List[String],String] = dialcodeContextMap.getOrDefault("removeContextDialCodes", Map.empty[String,String]).asInstanceOf[Map[String,String]].map(rec => (ScalaJsonUtil.deserialize[List[String]](rec._1)->rec._2))
+    val channel: String = dialcodeContextMap.getOrDefault("channel","").asInstanceOf[String]
+    assertThrows[Exception] {
+      new DialCodeContextUpdaterFunction(jobConfig).generateDialcodeContextUpdaterEvent(channel, addContextDialCodes, removeContextDialCodes, null, metrics)
+    }
   }
 
   ignore should "run all the scenarios for a given event" in {

@@ -642,4 +642,42 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     result
   }
 
+  def fetchDialListForContextUpdate(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): Map[String, AnyRef] = {
+    val isCollectionShallowCopy = isContentShallowCopy(obj)
+
+    val DialContextMap: Map[String, AnyRef] = if (isCollectionShallowCopy) Map.empty[String, AnyRef] else {
+      val draftHierarchy = getHierarchy(obj.identifier, obj.pkgVersion, readerConfig).get
+      val publishedNodeId = obj.identifier.replaceAll(".img","")
+      val publishedHierarchy = if (obj.pkgVersion > 0) { getHierarchy(publishedNodeId, 0, readerConfig).get } else Map.empty[String, AnyRef]
+      val draftDIALcodesMap: mutable.Map[List[String], String] = mutable.Map.empty[List[String], String]
+      getDIALListFromHierarchy(draftHierarchy, draftDIALcodesMap)
+      val publishedDIALcodesMap: mutable.Map[List[String], String] = mutable.Map.empty[List[String], String]
+      if(publishedHierarchy.nonEmpty) getDIALListFromHierarchy(publishedHierarchy, publishedDIALcodesMap)
+
+      if(obj.metadata.contains("dialcodes")) {
+        val strDialcodes = ScalaJsonUtil.serialize(obj.metadata("dialcodes"))
+        draftDIALcodesMap += (ScalaJsonUtil.deserialize[List[String]](strDialcodes) -> draftHierarchy("identifier").asInstanceOf[String])
+      }
+      if(publishedHierarchy.nonEmpty && publishedHierarchy.contains("dialcodes")) {
+        val strDialcodes = ScalaJsonUtil.serialize(publishedHierarchy("dialcodes"))
+        publishedDIALcodesMap += (ScalaJsonUtil.deserialize[List[String]](strDialcodes) -> publishedHierarchy("identifier").asInstanceOf[String])
+      }
+
+      Map("addContextDialCodes" -> draftDIALcodesMap, "removeContextDialCodes" -> (publishedDIALcodesMap -- draftDIALcodesMap.keySet))
+    }
+
+    DialContextMap
+  }
+
+  private def getDIALListFromHierarchy(data: Map[String, AnyRef], dialcodeMap: mutable.Map[List[String], String]): Unit = {
+    val dialCodes = data.getOrElse("dialcodes", List.empty[String]).asInstanceOf[List[String]]
+    if (StringUtils.equals(data.getOrElse("visibility", "").asInstanceOf[String], "Parent") && dialCodes!=null && dialCodes.nonEmpty) dialcodeMap += (dialCodes ->  data("identifier").asInstanceOf[String])
+    val children = data.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]]
+    if (children.nonEmpty) {
+      for (child <- children) {
+        getDIALListFromHierarchy(child, dialcodeMap)
+      }
+    }
+  }
+
 }

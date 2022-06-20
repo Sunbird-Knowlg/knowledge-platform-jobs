@@ -21,6 +21,7 @@ import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import java.lang.reflect.Type
 import java.util.UUID
+import scala.collection.mutable
 import scala.concurrent.ExecutionContext
 
 class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
@@ -104,6 +105,9 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
 
           val collRelationalMetadata = getRelationalMetadata(obj.identifier, obj.pkgVersion-1, readerConfig)(cassandraUtil).getOrElse(Map.empty[String, AnyRef])
 
+          val dialContextMap = if(config.enableDIALContextUpdate.equalsIgnoreCase("Yes")) fetchDialListForContextUpdate(obj)(neo4JUtil, cassandraUtil, readerConfig) else Map.empty[String, AnyRef]
+          logger.info("CollectionPublishFunction:: dialContextMap: " + dialContextMap)
+
           saveOnSuccess(new ObjectData(objWithEcar.identifier, objWithEcar.metadata.-("children"), objWithEcar.extData, objWithEcar.hierarchy))(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
           logger.info("CollectionPublishFunction:: Published Collection Object metadata saved successfully to graph DB: " + objWithEcar.identifier)
 
@@ -123,7 +127,7 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
           }
 
           if (!isCollectionShallowCopy) syncNodes(successObj, updatedChildren, unitNodes)(esUtil, neo4JUtil, cassandraUtil, readerConfig, definition, config)
-          pushPostProcessEvent(successObj, context)(metrics)
+          pushPostProcessEvent(successObj, dialContextMap, context)(metrics)
           metrics.incCounter(config.collectionPublishSuccessEventCount)
           logger.info("CollectionPublishFunction:: Collection publishing completed successfully for : " + data.identifier)
         } else {
@@ -147,9 +151,9 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
     }
   }
 
-  private def pushPostProcessEvent(obj: ObjectData, context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
+  private def pushPostProcessEvent(obj: ObjectData, dialContextMap: Map[String, AnyRef] ,context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
     try {
-      val event = getPostProcessEvent(obj)
+      val event = getPostProcessEvent(obj, dialContextMap)
       context.output(config.generatePostPublishProcessTag, event)
       metrics.incCounter(config.collectionPostPublishProcessEventCount)
     } catch  {
@@ -158,18 +162,23 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
     }
   }
 
-  def getPostProcessEvent(obj: ObjectData): String = {
+  def getPostProcessEvent(obj: ObjectData, dialContextMap: Map[String, AnyRef]): String = {
     val ets = System.currentTimeMillis
     val mid = s"""LP.$ets.${UUID.randomUUID}"""
     val channelId = obj.metadata("channel")
     val ver = obj.metadata("versionKey")
     val contentType = obj.metadata("contentType")
     val status = obj.metadata("status")
+
+    val serAddContextDialCode = ScalaJsonUtil.serialize(dialContextMap.getOrElse("addContextDialCodes", mutable.Map.empty).asInstanceOf[mutable.Map[List[String], String]].map(rec => (ScalaJsonUtil.serialize(rec._1) -> rec._2)))
+    val serRemoveContextDialCode = ScalaJsonUtil.serialize(dialContextMap.getOrElse("removeContextDialCodes", mutable.Map.empty).asInstanceOf[mutable.Map[List[String], String]].map(rec => (ScalaJsonUtil.serialize(rec._1) -> rec._2)))
+
     //TODO: deprecate using contentType in the event.
-    val event = s"""{"eid":"BE_JOB_REQUEST", "ets": $ets, "mid": "$mid", "actor": {"id": "Post Publish Processor", "type": "System"}, "context":{"pdata":{"ver":"1.0","id":"org.sunbird.platform"}, "channel":"$channelId","env":"${config.jobEnv}"},"object":{"ver":"$ver","id":"${obj.identifier}"},"edata": {"action":"post-publish-process","iteration":1,"identifier":"${obj.identifier}","channel":"$channelId","mimeType":"${obj.mimeType}","contentType":"$contentType","pkgVersion":${obj.pkgVersion},"status":"$status","name":"${obj.metadata("name")}","trackable":${obj.metadata.getOrElse("trackable",Map.empty)}}}""".stripMargin
+    val event = s"""{"eid":"BE_JOB_REQUEST", "ets": $ets, "mid": "$mid", "actor": {"id": "Post Publish Processor", "type": "System"}, "context":{"pdata":{"ver":"1.0","id":"org.sunbird.platform"}, "channel":"$channelId","env":"${config.jobEnv}"},"object":{"ver":"$ver","id":"${obj.identifier}"},"edata": {"action":"post-publish-process","iteration":1,"identifier":"${obj.identifier}","channel":"$channelId","mimeType":"${obj.mimeType}","contentType":"$contentType","pkgVersion":${obj.pkgVersion},"status":"$status","name":"${obj.metadata("name")}","trackable":${obj.metadata.getOrElse("trackable",ScalaJsonUtil.serialize(Map.empty))}, "addContextDialCodes": ${serAddContextDialCode}, "removeContextDialCodes": ${serRemoveContextDialCode} }}""".stripMargin
     logger.info(s"Post Publish Process Event for identifier ${obj.identifier}  is  : $event")
     event
   }
+
   private def pushFailedEvent(event: Event, errorMessage: String, error: Throwable, context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
     val failedEvent = if (error == null) getFailedEvent(event.jobName, event.getMap(), errorMessage) else getFailedEvent(event.jobName, event.getMap(), error)
     context.output(config.failedEventOutTag, failedEvent)
