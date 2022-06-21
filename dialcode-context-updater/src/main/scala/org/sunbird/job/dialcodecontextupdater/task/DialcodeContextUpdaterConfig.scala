@@ -50,7 +50,6 @@ class DialcodeContextUpdaterConfig(override val config: Config) extends BaseJobC
   val graphName: String = config.getString("neo4j.graph")
   val dbHitEventCount = "db-hit-events-count"
 
-  val contentServiceBaseUrl : String = config.getString("service.content_service.basePath")
   val searchServiceBaseUrl : String = config.getString("service.search.basePath")
   val dialServiceBaseUrl : String = config.getString("service.dial_service.basePath")
   val dialcodeContextUpdatePath : String = config.getString("dialcode_context_updater.dial_code_context_update_api_path")
