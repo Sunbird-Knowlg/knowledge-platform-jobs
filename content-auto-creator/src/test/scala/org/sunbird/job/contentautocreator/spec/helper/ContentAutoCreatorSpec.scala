@@ -62,11 +62,10 @@ class ContentAutoCreatorSpec extends FlatSpec with Matchers with MockitoSugar {
 		when(mockHttpUtil.post(contains("/content/v4/review"), anyString, any())).thenReturn(HTTPResponse(200, reviewResponse))
 		when(mockHttpUtil.post(contains("/content/v3/publish"), anyString, any())).thenReturn(HTTPResponse(200, publishResponse))
 		val metadata = new util.HashMap[String, AnyRef]() {
-			put("identifier", "do_123");
-			put("appIcon", "https://dev.sunbirded.org/assets/images/sunbird_logo.png");
+			put("identifier", "do_21344892893869670417014");
 			put("IL_UNIQUE_ID", "do_21344892893869670417014");
-			put("objectType", "QuestionSet");
-			put("name", "Test QuestionSet");
+			put("objectType", "Content");
+			put("name", "Test Content");
 			put("status", "Live");
 		}
 		when(mockNeo4JUtil.getNodeProperties(anyString())).thenReturn(metadata)
