@@ -13,6 +13,7 @@ import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.util._
 
 import java.io.File
+import java.util
 
 class ContentAutoCreatorSpec extends FlatSpec with Matchers with MockitoSugar {
 
@@ -60,6 +61,15 @@ class ContentAutoCreatorSpec extends FlatSpec with Matchers with MockitoSugar {
 		when(mockHttpUtil.postFilePath(contains("/content/v4/upload"), anyString, anyString, any())).thenReturn(HTTPResponse(200, uploadResponse))
 		when(mockHttpUtil.post(contains("/content/v4/review"), anyString, any())).thenReturn(HTTPResponse(200, reviewResponse))
 		when(mockHttpUtil.post(contains("/content/v3/publish"), anyString, any())).thenReturn(HTTPResponse(200, publishResponse))
+		val metadata = new util.HashMap[String, AnyRef]() {
+			put("identifier", "do_123");
+			put("appIcon", "https://dev.sunbirded.org/assets/images/sunbird_logo.png");
+			put("IL_UNIQUE_ID", "do_21344892893869670417014");
+			put("objectType", "QuestionSet");
+			put("name", "Test QuestionSet");
+			put("status", "Live");
+		}
+		when(mockNeo4JUtil.getNodeProperties(anyString())).thenReturn(metadata)
 		val isContentPublished = new TestContentAutoCreator().process(jobConfig, event, mockHttpUtil, mockNeo4JUtil, cloudUtil)
 		assert(isContentPublished)
 	}
