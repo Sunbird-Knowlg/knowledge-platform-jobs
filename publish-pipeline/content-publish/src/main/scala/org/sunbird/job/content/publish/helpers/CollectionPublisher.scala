@@ -151,13 +151,18 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
   }
 
   def getUnitsFromLiveContent(obj: ObjectData)(implicit cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): List[String] = {
-    val objHierarchy = getHierarchy(obj.metadata.getOrElse("identifier", "").asInstanceOf[String], obj.metadata.getOrElse("pkgVersion", 1).asInstanceOf[Integer].doubleValue(), readerConfig).get
+    val objHierarchy = getHierarchy(obj.metadata.getOrElse("identifier", "").asInstanceOf[String], obj.metadata.getOrElse("pkgVersion", 1).asInstanceOf[Number].doubleValue(), readerConfig).get
     val children = objHierarchy.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]]
+    getUnits(children)
+  }
+
+  private def getUnits(children: List[Map[String, AnyRef]]): List[String] = {
     if (children.nonEmpty) {
-      children.map(child => {
+      children.flatMap(child => {
         if (child.getOrElse("visibility", "").asInstanceOf[String].equalsIgnoreCase("Parent")) {
-          child.getOrElse("identifier", "").asInstanceOf[String]
-        } else ""
+          val childUnits = if(child.contains("children")) getUnits(child.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]]) else List.empty
+          childUnits ++ List(child.getOrElse("identifier", "").asInstanceOf[String])
+        } else List.empty[String]
       }).filter(rec => rec.nonEmpty)
     } else List.empty[String]
   }
