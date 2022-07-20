@@ -151,13 +151,18 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
   }
 
   def getUnitsFromLiveContent(obj: ObjectData)(implicit cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): List[String] = {
-    val objHierarchy = getHierarchy(obj.metadata.getOrElse("identifier", "").asInstanceOf[String], obj.metadata.getOrElse("pkgVersion", 1).asInstanceOf[Integer].doubleValue(), readerConfig).get
+    val objHierarchy = getHierarchy(obj.metadata.getOrElse("identifier", "").asInstanceOf[String], obj.metadata.getOrElse("pkgVersion", 1).asInstanceOf[Number].doubleValue(), readerConfig).get
     val children = objHierarchy.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]]
+    getUnits(children)
+  }
+
+  private def getUnits(children: List[Map[String, AnyRef]]): List[String] = {
     if (children.nonEmpty) {
-      children.map(child => {
+      children.flatMap(child => {
         if (child.getOrElse("visibility", "").asInstanceOf[String].equalsIgnoreCase("Parent")) {
-          child.getOrElse("identifier", "").asInstanceOf[String]
-        } else ""
+          val childUnits = if(child.contains("children")) getUnits(child.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]]) else List.empty
+          childUnits ++ List(child.getOrElse("identifier", "").asInstanceOf[String])
+        } else List.empty[String]
       }).filter(rec => rec.nonEmpty)
     } else List.empty[String]
   }
@@ -552,10 +557,11 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     getNodeForSyncing(children, nodes, nodeIds)
     logger.info("CollectionPublisher:: syncNodes:: after getNodeForSyncing:: nodes:: " + nodes + " || nodeIds:: " + nodeIds)
 
-    val updatedUnitNodes = if (unitNodes.nonEmpty) unitNodes.filter(unitNode => !nodeIds.contains(unitNode)) else unitNodes
-    logger.info("CollectionPublisher:: syncNodes:: after getNodeForSyncing:: updatedUnitNodes:: " + updatedUnitNodes)
+    // Filtering for removed nodes from Live version. nodeIds is list of nodes from Draft version. unitNodes is list of nodes from Live version.
+    val orphanUnitNodes = if (unitNodes.nonEmpty) unitNodes.filter(unitNode => !nodeIds.contains(unitNode)) else unitNodes
+    logger.info("CollectionPublisher:: syncNodes:: after getNodeForSyncing:: orphanUnitNodes:: " + orphanUnitNodes)
 
-    if (nodes.isEmpty && updatedUnitNodes.isEmpty) return Map.empty
+    if (nodes.isEmpty && orphanUnitNodes.isEmpty) return Map.empty
 
     val errors = mutable.Map.empty[String, String]
     val messages: Map[String, Map[String, AnyRef]] = getMessages(nodes.toList, definition, nestedFields, errors)(esUtil)
@@ -572,7 +578,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       }
 
     try //Unindexing not utilized units
-      if (updatedUnitNodes.nonEmpty) updatedUnitNodes.map(unitNodeId => esUtil.deleteDocument(unitNodeId))
+      if (orphanUnitNodes.nonEmpty) orphanUnitNodes.map(unitNodeId => esUtil.deleteDocument(unitNodeId))
     catch {
       case e: Exception =>
         logger.error("CollectionPublisher:: syncNodes:: Elastic Search indexing failed: " + e)
