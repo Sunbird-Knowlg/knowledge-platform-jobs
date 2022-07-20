@@ -151,6 +151,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
   }
 
   def getUnitsFromLiveContent(obj: ObjectData)(implicit cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): List[String] = {
+    logger.info("CollectionPublisher:: getUnitsFromLiveContent:: identifier: " + obj.identifier + " || pkgVersion: " + obj.metadata.getOrElse("pkgVersion", 1).asInstanceOf[Number])
     val objHierarchy = getHierarchy(obj.identifier, obj.metadata.getOrElse("pkgVersion", 1).asInstanceOf[Number].doubleValue(), readerConfig).get
     val children = objHierarchy.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]]
     getUnits(children)
