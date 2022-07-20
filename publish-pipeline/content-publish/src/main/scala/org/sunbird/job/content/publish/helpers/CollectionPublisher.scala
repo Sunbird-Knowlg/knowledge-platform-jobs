@@ -151,7 +151,8 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
   }
 
   def getUnitsFromLiveContent(obj: ObjectData)(implicit cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): List[String] = {
-    val objHierarchy = getHierarchy(obj.metadata.getOrElse("identifier", "").asInstanceOf[String], obj.metadata.getOrElse("pkgVersion", 1).asInstanceOf[Number].doubleValue(), readerConfig).get
+    logger.info("CollectionPublisher:: getUnitsFromLiveContent:: identifier: " + obj.identifier + " || pkgVersion: " + obj.metadata.getOrElse("pkgVersion", 1).asInstanceOf[Number])
+    val objHierarchy = getHierarchy(obj.identifier, obj.metadata.getOrElse("pkgVersion", 1).asInstanceOf[Number].doubleValue(), readerConfig).get
     val children = objHierarchy.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]]
     getUnits(children)
   }
@@ -555,7 +556,8 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     val nodeIds = ListBuffer.empty[String]
 
     getNodeForSyncing(children, nodes, nodeIds)
-    logger.info("CollectionPublisher:: syncNodes:: after getNodeForSyncing:: nodes:: " + nodes + " || nodeIds:: " + nodeIds)
+    logger.info("CollectionPublisher:: syncNodes:: after getNodeForSyncing:: nodes:: " + nodes.toList + " || nodeIds:: " + nodeIds)
+    logger.info("CollectionPublisher:: syncNodes:: unitNodes:: " + unitNodes)
 
     // Filtering for removed nodes from Live version. nodeIds is list of nodes from Draft version. unitNodes is list of nodes from Live version.
     val orphanUnitNodes = if (unitNodes.nonEmpty) unitNodes.filter(unitNode => !nodeIds.contains(unitNode)) else unitNodes
