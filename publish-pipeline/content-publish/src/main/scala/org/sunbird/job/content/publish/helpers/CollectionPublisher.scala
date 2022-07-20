@@ -557,10 +557,11 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     getNodeForSyncing(children, nodes, nodeIds)
     logger.info("CollectionPublisher:: syncNodes:: after getNodeForSyncing:: nodes:: " + nodes + " || nodeIds:: " + nodeIds)
 
-    val updatedUnitNodes = if (unitNodes.nonEmpty) unitNodes.filter(unitNode => !nodeIds.contains(unitNode)) else unitNodes
-    logger.info("CollectionPublisher:: syncNodes:: after getNodeForSyncing:: updatedUnitNodes:: " + updatedUnitNodes)
+    // Filtering for removed nodes from Live version. nodeIds is list of nodes from Draft version. unitNodes is list of nodes from Live version.
+    val orphanUnitNodes = if (unitNodes.nonEmpty) unitNodes.filter(unitNode => !nodeIds.contains(unitNode)) else unitNodes
+    logger.info("CollectionPublisher:: syncNodes:: after getNodeForSyncing:: orphanUnitNodes:: " + orphanUnitNodes)
 
-    if (nodes.isEmpty && updatedUnitNodes.isEmpty) return Map.empty
+    if (nodes.isEmpty && orphanUnitNodes.isEmpty) return Map.empty
 
     val errors = mutable.Map.empty[String, String]
     val messages: Map[String, Map[String, AnyRef]] = getMessages(nodes.toList, definition, nestedFields, errors)(esUtil)
@@ -577,7 +578,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       }
 
     try //Unindexing not utilized units
-      if (updatedUnitNodes.nonEmpty) updatedUnitNodes.map(unitNodeId => esUtil.deleteDocument(unitNodeId))
+      if (orphanUnitNodes.nonEmpty) orphanUnitNodes.map(unitNodeId => esUtil.deleteDocument(unitNodeId))
     catch {
       case e: Exception =>
         logger.error("CollectionPublisher:: syncNodes:: Elastic Search indexing failed: " + e)
