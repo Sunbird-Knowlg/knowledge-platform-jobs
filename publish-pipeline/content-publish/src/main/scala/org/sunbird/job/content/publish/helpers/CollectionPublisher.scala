@@ -44,6 +44,14 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     } else Option(Map.empty[String, AnyRef])
   }
 
+  def getLiveHierarchy(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = {
+    val row: Row = getCollectionHierarchy(identifier, readerConfig)
+    if (null != row) {
+      val data: Map[String, AnyRef] = ScalaJsonUtil.deserialize[Map[String, AnyRef]](row.getString("hierarchy"))
+      Option(data)
+    } else Option(Map.empty[String, AnyRef])
+  }
+
   private def getCollectionHierarchy(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Row = {
     val selectWhere: Select.Where = QueryBuilder.select().all()
       .from(readerConfig.keyspace, readerConfig.table).
@@ -152,7 +160,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
 
   def getUnitsFromLiveContent(obj: ObjectData)(implicit cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): List[String] = {
     logger.info("CollectionPublisher:: getUnitsFromLiveContent:: identifier: " + obj.identifier + " || pkgVersion: " + obj.metadata.getOrElse("pkgVersion", 1).asInstanceOf[Number])
-    val objHierarchy = getHierarchy(obj.identifier, obj.metadata.getOrElse("pkgVersion", 1).asInstanceOf[Number].doubleValue(), readerConfig).get
+    val objHierarchy = getLiveHierarchy(obj.identifier, readerConfig).get
     val children = objHierarchy.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]]
     getUnits(children)
   }
