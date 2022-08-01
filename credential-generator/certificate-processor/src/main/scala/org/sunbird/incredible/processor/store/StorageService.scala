@@ -26,6 +26,10 @@ class StorageService(storageParams: StorageParams) extends Serializable {
         val storageKey = storageParams.awsStorageKey.get
         val storageSecret = storageParams.awsStorageSecret.get
         storageService = StorageServiceFactory.getStorageService(StorageConfig(storageType, storageKey, storageSecret))
+      } else if (StringUtils.equalsIgnoreCase(storageType, JsonKeys.CEPHS3)) {
+        val storageKey = storageParams.cephs3StorageKey.get
+        val storageSecret = storageParams.cephs3StorageSecret.get
+        storageService = StorageServiceFactory.getStorageService(StorageConfig(storageType, storageKey, storageSecret))
       } else throw new ServerException("ERR_INVALID_CLOUD_STORAGE", "Error while initialising cloud storage")
     }
     storageService
@@ -36,6 +40,8 @@ class StorageService(storageParams: StorageParams) extends Serializable {
       storageParams.azureContainerName
     else if (StringUtils.equalsIgnoreCase(storageType, JsonKeys.AWS))
       storageParams.awsContainerName.get
+    else if (StringUtils.equalsIgnoreCase(storageType, JsonKeys.CEPHS3))
+      storageParams.cephs3ContainerName.get
     else
       throw new ServerException("ERR_INVALID_CLOUD_STORAGE", "Container name not configured.")
   }
