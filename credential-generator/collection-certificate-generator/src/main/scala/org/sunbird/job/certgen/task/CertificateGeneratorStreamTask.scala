@@ -15,6 +15,7 @@ import org.sunbird.job.certgen.functions.{CertificateGeneratorFunction, CreateUs
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.util.{FlinkUtil, HttpUtil}
 import org.apache.commons.lang3.StringUtils
+import org.sunbird.incredible.pojos.exceptions.ServerException
 
 class CertificateGeneratorStreamTask(config: CertificateGeneratorConfig, kafkaConnector: FlinkKafkaConnector, httpUtil: HttpUtil, storageService: StorageService) {
 
@@ -75,9 +76,12 @@ object CertificateGeneratorStreamTask {
     var storageParams: StorageParams= null
     if (StringUtils.equalsIgnoreCase(ccgConfig.storageType, ccgConfig.AZURE)) {
       storageParams = StorageParams(ccgConfig.storageType, ccgConfig.azureStorageKey, ccgConfig.azureStorageSecret, ccgConfig.containerName)
+    } else if(StringUtils.equalsIgnoreCase(ccgConfig.storageType, ccgConfig.AWS)){
+      storageParams = StorageParams(ccgConfig.storageType, ccgConfig.awsStorageKey, ccgConfig.awsStorageSecret, ccgConfig.containerName)
     } else if(StringUtils.equalsIgnoreCase(ccgConfig.storageType, ccgConfig.CEPHS3)){
       storageParams = StorageParams(ccgConfig.storageType, ccgConfig.cephs3StorageKey, ccgConfig.cephs3StorageSecret, ccgConfig.containerName)
-    }
+    } else throw new ServerException("ERR_INVALID_CLOUD_STORAGE", "Error while initialising cloud storage")
+
     // val storageParams: StorageParams = StorageParams(ccgConfig.storageType, ccgConfig.azureStorageKey, ccgConfig.azureStorageSecret, ccgConfig.containerName)
     val storageService: StorageService = new StorageService(storageParams)
     val task = new CertificateGeneratorStreamTask(ccgConfig, kafkaUtil, httpUtil, storageService)

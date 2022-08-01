@@ -77,8 +77,8 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   val certRegistryBaseUrl: String = config.getString("service.certreg.basePath")
   val learnerServiceBaseUrl: String = config.getString("service.learner.basePath")
   val basePath: String = domainUrl.concat("/").concat("certs")
-  val awsStorageSecret: String = ""
-  val awsStorageKey: String = ""
+  val awsStorageSecret: String = config.getString("cert_aws_storage_secret")
+  val awsStorageKey: String = config.getString("cert_aws_storage_key")
   val addCertRegApi = "/certs/v2/registry/add"
   val userFeedCreateEndPoint:String = "/private/user/feed/v1/create"
   val notificationEndPoint: String = "/v2/notification"
@@ -91,6 +91,7 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   val cephs3StorageKey: String = config.getString("cert_cephs3_storage_key")
   val AZURE: String = "azure"
   val CEPHS3: String = "cephs3"
+  val AWS: String = "aws"
 
 
   //constant
