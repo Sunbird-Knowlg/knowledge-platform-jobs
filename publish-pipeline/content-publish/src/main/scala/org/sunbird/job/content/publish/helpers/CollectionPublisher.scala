@@ -679,7 +679,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
         publishedDIALcodesMap += (ScalaJsonUtil.deserialize[List[String]](strDialcodes) -> publishedHierarchy("identifier").asInstanceOf[String])
       }
 
-      Map("addContextDialCodes" -> draftDIALcodesMap, "removeContextDialCodes" -> (publishedDIALcodesMap -- draftDIALcodesMap.keySet))
+      Map("addContextDialCodes" -> draftDIALcodesMap.filter(rec=> rec._1 != null), "removeContextDialCodes" -> (publishedDIALcodesMap -- draftDIALcodesMap.keySet).filter(rec=> rec._1 != null))
     }
 
     DialContextMap
