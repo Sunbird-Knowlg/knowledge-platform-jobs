@@ -41,7 +41,21 @@ trait DialcodeContextUpdater {
 			val contextSearchFields: List[String] = fetchFieldsFromMap(contextMap).distinct.filter(rec => rec.forall(_.isLetterOrDigit)) ++ List("origin", "originData")
 			logger.info("DialcodeContextUpdater:: updateContext:: searchFields: " + contextSearchFields)
 
-			val contextInfoSearchData =	searchContent(dialcode, identifier, contextSearchFields, config, httpUtil)
+			val contextInfoSearchData: Map[String, AnyRef] =	try {
+				searchContent(dialcode, identifier, contextSearchFields, config, httpUtil)
+			} catch {
+				case se: ServerException => if(se.getMessage.contains("No content linking was found for dialcode")) {
+					try {
+						Thread.sleep(config.nodeESSyncWaitTime)
+						searchContent(dialcode, identifier, contextSearchFields, config, httpUtil)
+					}
+					catch {
+						case ie: InterruptedException =>	throw new ServerException("ERR_DIAL_CONTENT_NOT_FOUND", "No content linking was found for dialcode: " + dialcode + " - to identifier: " + identifier)
+						case ex: Exception => throw ex
+					}
+				} else throw se
+				case ex: Exception => throw ex
+			}
 			logger.info("DialcodeContextUpdater:: updateContext:: contextInfoSearchData: " + ScalaJsonUtil.serialize(contextInfoSearchData))
 
 			// Filter for necessary fields
@@ -62,8 +76,8 @@ trait DialcodeContextUpdater {
 								else if (!record._1.equalsIgnoreCase("@type") && finalFilteredData.contains(rec._1) && finalFilteredData(rec._1).asInstanceOf[Map[String, AnyRef]].contains(stringValSubLevel)) (record._1 -> finalFilteredData(rec._1).asInstanceOf[Map[String, AnyRef]](stringValSubLevel))
 								else (record._1 -> null)
 							case objectValSubLevel: Map[String, AnyRef] =>  (record._1 -> objectValSubLevel.map(l2Record => {
-									if(finalFilteredData.contains(rec._1) && finalFilteredData(rec._1).asInstanceOf[Map[String, AnyRef]].contains(l2Record._2.asInstanceOf[String]))
-										(l2Record._1 -> finalFilteredData(rec._1).asInstanceOf[Map[String, AnyRef]](l2Record._2.asInstanceOf[String])) else (l2Record._1 -> null)
+								if(finalFilteredData.contains(rec._1) && finalFilteredData(rec._1).asInstanceOf[Map[String, AnyRef]].contains(l2Record._2.asInstanceOf[String]))
+									(l2Record._1 -> finalFilteredData(rec._1).asInstanceOf[Map[String, AnyRef]](l2Record._2.asInstanceOf[String])) else (l2Record._1 -> null)
 							}).filter(checkRec => checkRec._2!=null))
 						}
 					}).filter(filterRec=>filterRec._2!=null))
