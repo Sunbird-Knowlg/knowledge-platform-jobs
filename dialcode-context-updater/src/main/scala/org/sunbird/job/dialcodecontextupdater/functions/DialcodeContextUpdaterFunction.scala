@@ -41,6 +41,11 @@ class DialcodeContextUpdaterFunction(config: DialcodeContextUpdaterConfig, httpU
 
     try {
       if (event.isValid()) {
+        try Thread.sleep(config.nodeESSyncWaitTime)
+        catch {
+          case e: InterruptedException =>
+            e.printStackTrace()
+        }
         updateContext(config, event, httpUtil)
       } else {
         logger.info("DialcodeContextUpdaterFunction::processElement:: Event is not qualified for dial code context update for dial code : " + event.dialcode)

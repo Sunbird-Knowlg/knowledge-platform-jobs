@@ -59,5 +59,5 @@ class DialcodeContextUpdaterConfig(override val config: Config) extends BaseJobC
   val contextMapFilePath: String = if (config.hasPath("dialcode_context_updater.context_map_path")) config.getString("dialcode_context_updater.context_map_path") else ""
 
   val identifierSearchFields: List[String] = if (config.hasPath("dialcode_context_updater.identifier_search_fields")) config.getStringList("dialcode_context_updater.identifier_search_fields").asScala.toList else List("identifier", "primaryCategory","channel")
-
+  val nodeESSyncWaitTime: Int = if (config.hasPath("es_sync_wait_time")) config.getInt("es_sync_wait_time") else 2000
 }
