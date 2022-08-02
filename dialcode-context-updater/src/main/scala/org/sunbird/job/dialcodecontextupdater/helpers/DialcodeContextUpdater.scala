@@ -44,7 +44,7 @@ trait DialcodeContextUpdater {
 			val contextInfoSearchData: Map[String, AnyRef] =	try {
 				searchContent(dialcode, identifier, contextSearchFields, config, httpUtil)
 			} catch {
-				case se: ServerException => {
+				case se: ServerException => if(se.getMessage.contains("No content linking was found for dialcode")) {
 					try {
 						Thread.sleep(config.nodeESSyncWaitTime)
 						searchContent(dialcode, identifier, contextSearchFields, config, httpUtil)
@@ -53,7 +53,7 @@ trait DialcodeContextUpdater {
 						case ie: InterruptedException =>	throw new ServerException("ERR_DIAL_CONTENT_NOT_FOUND", "No content linking was found for dialcode: " + dialcode + " - to identifier: " + identifier)
 						case ex: Exception => throw ex
 					}
-				}
+				} else throw se
 				case ex: Exception => throw ex
 			}
 			logger.info("DialcodeContextUpdater:: updateContext:: contextInfoSearchData: " + ScalaJsonUtil.serialize(contextInfoSearchData))
