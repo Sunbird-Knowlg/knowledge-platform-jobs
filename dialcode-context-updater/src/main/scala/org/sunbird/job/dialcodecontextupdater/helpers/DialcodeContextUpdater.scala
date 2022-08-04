@@ -28,7 +28,21 @@ trait DialcodeContextUpdater {
 			// 5. Fetch unit and rootNode output from the response
 			// 6. compose contextInfo and invoke updateDIALcode v4 API
 			logger.info("DialcodeContextUpdater::updateContext:: Context Update Starting for dialcode: " + dialcode + " || identifier: " + identifier + " || channel: " + channel)
-			val identifierObj = searchContent("", identifier, config.identifierSearchFields, config, httpUtil)
+			val identifierObj = try {
+				searchContent("", identifier, config.identifierSearchFields, config, httpUtil)
+			} catch {
+				case se: ServerException => if(se.getMessage.contains("No content linking was found for dialcode")) {
+					try {
+						Thread.sleep(config.nodeESSyncWaitTime)
+						searchContent("", identifier, config.identifierSearchFields, config, httpUtil)
+					}
+					catch {
+						case ie: InterruptedException =>	throw new ServerException("ERR_DIAL_CONTENT_NOT_FOUND", "No content linking was found for dialcode: " + dialcode + " - to identifier: " + identifier)
+						case ex: Exception => throw ex
+					}
+				} else throw se
+				case ex: Exception => throw ex
+			}
 
 			logger.info("DialcodeContextUpdater:: updateContext:: config.contextMapFilePath: " + config.contextMapFilePath)
 
