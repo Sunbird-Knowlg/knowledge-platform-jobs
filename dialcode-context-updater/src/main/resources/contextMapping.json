@@ -6,8 +6,8 @@
       "name": "name",
       "status": "status",
       "channel": "channel",
-      "publishedOn": "lastPublishedOn",
-      "primaryCategory": "primaryCategory"
+      "published_On": "lastPublishedOn",
+      "primary_Category": "primaryCategory"
     },
     "collection": {
       "@type": "sb-ed:Collection",
@@ -15,8 +15,8 @@
       "name": "name",
       "status": "status",
       "channel": "channel",
-      "published On": "lastPublishedOn",
-      "primary Category": "primaryCategory",
+      "published_On": "lastPublishedOn",
+      "primary_Category": "primaryCategory",
       "license": "license"
     },
     "collectionUnit": {
@@ -32,7 +32,7 @@
       "class": "gradeLevel",
       "subject": "subject",
       "topic": "topic",
-      "learningOutcome": "learningOutcome",
+      "learning_Outcome": "learningOutcome",
       "purpose": "purpose"
     }
   },
