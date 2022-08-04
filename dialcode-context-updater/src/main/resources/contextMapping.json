@@ -15,8 +15,9 @@
       "name": "name",
       "status": "status",
       "channel": "channel",
-      "publishedOn": "lastPublishedOn",
-      "primaryCategory": "primaryCategory"
+      "published On": "lastPublishedOn",
+      "primary Category": "primaryCategory",
+      "license": "license"
     },
     "collectionUnit": {
       "@type": "sb-ed:CollectionUnit",
