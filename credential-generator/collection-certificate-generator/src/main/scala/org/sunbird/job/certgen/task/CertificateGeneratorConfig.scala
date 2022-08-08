@@ -89,6 +89,7 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   val rcSearchApi: String = "service.rc.search.api"
   val cephs3StorageSecret: String = config.getString("cert_cephs3_storage_secret")
   val cephs3StorageKey: String = config.getString("cert_cephs3_storage_key")
+  val cephs3StorageEndPoint: String = config.getString("cert_cephs3_storage_endpoint")
   val AZURE: String = "azure"
   val CEPHS3: String = "cephs3"
   val AWS: String = "aws"

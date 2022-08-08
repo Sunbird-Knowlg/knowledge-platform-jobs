@@ -31,6 +31,7 @@ object JsonKeys {
   val CEPHS3: String = "cephs3"
   val CEPHS3_STORAGE_KEY: String = "CEPHS3_STORAGE_KEY"
   val CEPHS3_STORAGE_SECRET: String = "CEPHS3_STORAGE_SECRET"
+  val CEPHS3_STORAGE_HOST: String = "CEPHS3_STORAGE_ENDPOINT"
   val SLUG: String = "sunbird_cert_slug"
   val ACCESS_CODE_LENGTH: String = "ACCESS_CODE_LENGTH"
   val PATH: String = "path"
