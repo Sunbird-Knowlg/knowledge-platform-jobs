@@ -77,8 +77,8 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   val certRegistryBaseUrl: String = config.getString("service.certreg.basePath")
   val learnerServiceBaseUrl: String = config.getString("service.learner.basePath")
   val basePath: String = domainUrl.concat("/").concat("certs")
-  val awsStorageSecret: String = config.getString("cert_aws_storage_secret")
-  val awsStorageKey: String = config.getString("cert_aws_storage_key")
+  val awsStorageSecret: String = if (config.hasPath("cert_aws_storage_secret")) config.getString("cert_aws_storage_secret") else ""
+  val awsStorageKey: String = if (config.hasPath("cert_aws_storage_key")) config.getString("cert_aws_storage_key") else ""
   val addCertRegApi = "/certs/v2/registry/add"
   val userFeedCreateEndPoint:String = "/private/user/feed/v1/create"
   val notificationEndPoint: String = "/v2/notification"
@@ -87,9 +87,9 @@ class CertificateGeneratorConfig(override val config: Config) extends BaseJobCon
   val rcCreateApi: String = "service.rc.create.api"
   val rcDeleteApi: String = "service.rc.delete.api"
   val rcSearchApi: String = "service.rc.search.api"
-  val cephs3StorageSecret: String = config.getString("cert_cephs3_storage_secret")
-  val cephs3StorageKey: String = config.getString("cert_cephs3_storage_key")
-  val cephs3StorageEndPoint: String = config.getString("cert_cephs3_storage_endpoint")
+  val cephs3StorageSecret: String = if (config.hasPath("cert_cephs3_storage_secret")) config.getString("cert_cephs3_storage_secret") else ""
+  val cephs3StorageKey: String = if (config.hasPath("cert_cephs3_storage_key")) config.getString("cert_cephs3_storage_key") else ""
+  val cephs3StorageEndPoint: String = if (config.hasPath("cert_cephs3_storage_endpoint")) config.getString("cert_cephs3_storage_endpoint") else ""
   val AZURE: String = "azure"
   val CEPHS3: String = "cephs3"
   val AWS: String = "aws"
