@@ -13,7 +13,7 @@ import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import java.util
 
-class CassandraDataMigrationFunction(config: CassandraDataMigrationConfig, httpUtil: HttpUtil,
+class CassandraDataMigrationFunction(config: CassandraDataMigrationConfig,
                                      @transient var neo4JUtil: Neo4JUtil = null,
                                      @transient var cassandraUtil: CassandraUtil = null,
                                      @transient var cloudStorageUtil: CloudStorageUtil = null)

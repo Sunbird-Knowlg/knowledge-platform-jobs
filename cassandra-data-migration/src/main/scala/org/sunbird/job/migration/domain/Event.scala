@@ -12,7 +12,7 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 
 	def action: String = readOrDefault[String]("edata.action", "")
 
-	def keyspace: Map[String, AnyRef] = readOrDefault("edata.keyspace", Map())
+	def keyspace: String = readOrDefault[String]("edata.keyspace", "")
 
 	def table: String = readOrDefault[String]("edata.table", "")
 
