@@ -42,11 +42,7 @@ class CassandraDataMigratorSpec extends BaseTestSpec {
     new TestCassandraDataMigrator().migrateData(jobConfig)(cassandraUtil)
     val row = new TestCassandraDataMigrator().readColumnDataFromCassandra(content_id, jobConfig)(cassandraUtil)
     val migratedData: String = row.getString(jobConfig.columnToMigrate)
-    println("migratedData:: " + migratedData)
-    println("jobConfig.keyValueMigrateStrings.values().toArray().head:: " + jobConfig.keyValueMigrateStrings.values().toArray().head)
-
-    println("migratedData.contains(jobConfig.keyValueMigrateStrings.values().toArray().head):: " + migratedData.contains("\""+jobConfig.keyValueMigrateStrings.values().toArray().head))
-    assert(migratedData.contains("\""+jobConfig.keyValueMigrateStrings.values().toArray().head))
+   assert(migratedData.contains("\""+jobConfig.keyValueMigrateStrings.values().toArray().head))
   }
 
   def testCassandraUtil(cassandraUtil: CassandraUtil): Unit = {
