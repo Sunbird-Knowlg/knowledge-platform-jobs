@@ -23,7 +23,9 @@ trait CassandraDataMigrator {
 			if(row != null) {
 				val fetchedData: String = row.getString(config.columnToMigrate)
 				logger.info(s"CassandraDataMigrator:: migrateData:: Fetched ${config.columnToMigrate} in Cassandra For $primaryKey :: $fetchedData")
-				val migratedData: String = StringUtils.replace(fetchedData, config.keyStringToMigrate, config.valueStringToMigrate)
+
+				val migratedData = StringUtils.replaceEach(fetchedData, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
+
 				// Pass updated data to row using primaryKey field
 				updateMigratedDataToCassandra(migratedData, primaryKey, config) (cassandraUtil)
 			}
