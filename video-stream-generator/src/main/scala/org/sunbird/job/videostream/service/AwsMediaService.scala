@@ -33,8 +33,8 @@ abstract class AwsMediaService extends IMediaService {
 		val queue = config.getConfig("aws.service.queue")
 		val role = config.getConfig("aws.service.role")
 		val streamType = config.getConfig("aws.stream.protocol").toLowerCase()
-		val artifactUrl = jobRequest.get("artifact_url").mkString
-		val contentId = jobRequest.get("content_id").mkString
+		val artifactUrl = jobRequest.get("artifactUrl").mkString
+		val contentId = jobRequest.get("identifier").mkString
 		val inputFile = prepareInputUrl(artifactUrl)
 		val output = prepareOutputUrl(contentId, streamType)
 		AwsRequestBody.submit_hls_job
