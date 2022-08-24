@@ -53,7 +53,7 @@ class VideoStreamService(implicit config: VideoStreamGeneratorConfig, httpUtil: 
           val job = mediaResponse.result.getOrElse("job", Map()).asInstanceOf[Map[String, AnyRef]]
           val jobStatus = job.getOrElse("status","").asInstanceOf[String]
 
-          if(jobStatus.equalsIgnoreCase("FINISHED")) {
+          if(config.jobStatus.contains(jobStatus)) {
             val streamingUrl = mediaService.getStreamingPaths(jobRequest.job_id.get).result.getOrElse("streamUrl","").asInstanceOf[String]
             val requestData = JSONUtil.deserialize[Map[String, AnyRef]](jobRequest.request_data)
             val contentId = requestData.getOrElse("identifier", "").asInstanceOf[String]
