@@ -35,8 +35,9 @@ abstract class AwsMediaService extends IMediaService {
 		val streamType = config.getConfig("aws.stream.protocol").toLowerCase()
 		val artifactUrl = jobRequest.get("artifactUrl").mkString
 		val contentId = jobRequest.get("identifier").mkString
+		val pkgVersion = jobRequest.get("pkgVersion").toString
 		val inputFile = prepareInputUrl(artifactUrl)
-		val output = prepareOutputUrl(contentId, streamType)
+		val output = prepareOutputUrl(contentId, streamType, pkgVersion)
 		AwsRequestBody.submit_hls_job
 		  .replace("queueId", queue)
 		  .replace("mediaRole", role)
@@ -51,10 +52,11 @@ abstract class AwsMediaService extends IMediaService {
 		"s3:" + separator + separator + bucket + separator + "content" + temp(1)
 	}
 
-	protected def prepareOutputUrl(contentId: String, streamType: String)(implicit config: VideoStreamGeneratorConfig): String = {
+	protected def prepareOutputUrl(contentId: String, streamType: String, pkgVersion: String)(implicit config: VideoStreamGeneratorConfig): String = {
 		val bucket = config.getConfig("aws.content_bucket_name")
+		val output = streamType.toLowerCase + "_" + pkgVersion
 		val separator = File.separator;
-		"s3:" + separator + separator + bucket + separator + "content" + separator + contentId + separator + streamType.toLowerCase + separator
+		"s3:" + separator + separator + bucket + separator + "content" + separator + contentId + separator + output + separator
 	}
 
 	protected def getSignatureHeader()(implicit config: VideoStreamGeneratorConfig): Map[String, String] = {
