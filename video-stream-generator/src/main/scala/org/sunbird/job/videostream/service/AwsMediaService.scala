@@ -35,7 +35,7 @@ abstract class AwsMediaService extends IMediaService {
 		val streamType = config.getConfig("aws.stream.protocol").toLowerCase()
 		val artifactUrl = jobRequest.get("artifactUrl").mkString
 		val contentId = jobRequest.get("identifier").mkString
-		val pkgVersion = jobRequest.get("pkgVersion").toString
+		val pkgVersion = jobRequest.getOrElse("pkgVersion", "").toString
 		val inputFile = prepareInputUrl(artifactUrl)
 		val output = prepareOutputUrl(contentId, streamType, pkgVersion)
 		AwsRequestBody.submit_hls_job
