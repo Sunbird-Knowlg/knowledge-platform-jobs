@@ -4,6 +4,11 @@ case class CertificateConfig(basePath: String, encryptionServiceUrl: String, con
                              issuerUrl: String, signatoryExtension: String, accessCodeLength: Double = 6)
 
 
-case class StorageParams(cloudStorageType: String, azureStorageKey: String, azureStorageSecret: String, azureContainerName: String,
-                         awsStorageKey: Option[String] = None, awsStorageSecret: Option[String] = None, awsContainerName: Option[String] =None,
-                         cephs3StorageKey: Option[String] = None, cephs3StorageSecret: Option[String] = None, cephs3ContainerName: Option[String] =None, cephs3StorageEndPoint: Option[String] =None)
+
+
+/*case class StorageParams(cloudStorageType: String, azureStorageKey: String, azureStorageSecret: String, azureContainerName: String,
+                         awsStorageKey: Option[String] = None, awsStorageSecret: Option[String] = None, awsContainerName: Option[String] = None,
+                         cephs3StorageKey: Option[String] = None, cephs3StorageSecret: Option[String] = None,
+                         cephs3ContainerName: Option[String] = None, cephs3StorageEndPoint: Option[String] = None) */
+
+case class StorageParams(cloudStorageType: String, storageKey: String, storageSecret: String, containerName: String, storageEndPoint: Option[String] = None)

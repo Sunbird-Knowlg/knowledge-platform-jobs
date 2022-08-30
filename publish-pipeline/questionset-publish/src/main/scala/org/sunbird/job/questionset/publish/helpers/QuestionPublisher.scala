@@ -169,7 +169,7 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
     var urlArray = new Array[String](2)
     // Check the cloud folder convention to store artifact.zip file with Mahesh
     try {
-      val folder = "question" + File.separator + Slug.makeSlug(identifier, isTransliterate = true)
+      val folder = "question" + File.separator + org.sunbird.job.publish.core.Slug.makeSlug(identifier, isTransliterate = true)
       urlArray = cloudStorageUtil.uploadFile(folder, uploadFile)
     } catch {
       case e: Exception =>

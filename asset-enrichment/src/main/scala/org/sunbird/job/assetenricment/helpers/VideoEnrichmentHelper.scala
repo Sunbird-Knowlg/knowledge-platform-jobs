@@ -23,7 +23,7 @@ trait VideoEnrichmentHelper extends ThumbnailUtil {
   private val CONTENT_FOLDER = "content"
   private val ARTIFACT_FOLDER = "artifact"
 
-  def enrichVideo(asset: Asset)(config: AssetEnrichmentConfig, youTubeUtil: YouTubeUtil, cloudStorageUtil: CloudStorageUtil, neo4JUtil: Neo4JUtil): Asset = {
+  def enrichVideo(asset: Asset)(config: AssetEnrichmentConfig, youTubeUtil: YouTubeUtil, cloudStorageUtil: org.sunbird.job.util.CloudStorageUtil, neo4JUtil: Neo4JUtil): Asset = {
     try {
       val videoUrl = asset.artifactUrl
       enrichVideo(asset, videoUrl)(youTubeUtil, cloudStorageUtil, neo4JUtil, config)
@@ -37,7 +37,7 @@ trait VideoEnrichmentHelper extends ThumbnailUtil {
     }
   }
 
-  private def enrichVideo(asset: Asset, videoUrl: String)(youTubeUtil: YouTubeUtil, cloudStorageUtil: CloudStorageUtil, neo4JUtil: Neo4JUtil, config: AssetEnrichmentConfig): Asset = {
+  private def enrichVideo(asset: Asset, videoUrl: String)(youTubeUtil: YouTubeUtil, cloudStorageUtil: org.sunbird.job.util.CloudStorageUtil, neo4JUtil: Neo4JUtil, config: AssetEnrichmentConfig): Asset = {
     if (StringUtils.equalsIgnoreCase("video/x-youtube", asset.mimeType)) processYoutubeVideo(asset, videoUrl)(youTubeUtil)
     else processOtherVideo(asset, videoUrl)(cloudStorageUtil, config)
     asset.put("status", "Live")
@@ -53,7 +53,7 @@ trait VideoEnrichmentHelper extends ThumbnailUtil {
     } else throw new Exception(s"Failed to get data for Youtube Video Url : $videoUrl and identifier: ${asset.identifier}.")
   }
 
-  def processOtherVideo(asset: Asset, videoUrl: String)(implicit cloudStorageUtil: CloudStorageUtil, config: AssetEnrichmentConfig): Unit = {
+  def processOtherVideo(asset: Asset, videoUrl: String)(implicit cloudStorageUtil: org.sunbird.job.util.CloudStorageUtil, config: AssetEnrichmentConfig): Unit = {
     val videoFile = FileUtils.copyURLToFile(asset.identifier, videoUrl, videoUrl.substring(videoUrl.lastIndexOf("/") + 1))
     try {
       videoFile match {
@@ -66,7 +66,7 @@ trait VideoEnrichmentHelper extends ThumbnailUtil {
     }
   }
 
-  private def enrichVideo(asset: Asset, videoFile: File)(implicit cloudStorageUtil: CloudStorageUtil, config: AssetEnrichmentConfig): Unit = {
+  private def enrichVideo(asset: Asset, videoFile: File)(implicit cloudStorageUtil: org.sunbird.job.util.CloudStorageUtil, config: AssetEnrichmentConfig): Unit = {
     val frameGrabber = new FFmpegFrameGrabber(videoFile)
     frameGrabber.start()
     val videoDuration = frameGrabber.getLengthInTime
@@ -125,11 +125,11 @@ trait VideoEnrichmentHelper extends ThumbnailUtil {
     colorSet.size
   }
 
-  def upload(uploadedFile: File, identifier: String)(implicit cloudStorageUtil: CloudStorageUtil): Array[String] = {
+  def upload(uploadedFile: File, identifier: String)(implicit cloudStorageUtil: org.sunbird.job.util.CloudStorageUtil): Array[String] = {
     try {
-      val slug = Slug.makeSlug(identifier, isTransliterate = true)
+      val slug = org.sunbird.job.util.Slug.makeSlug(identifier, isTransliterate = true)
       val folder = s"$CONTENT_FOLDER/$slug/$ARTIFACT_FOLDER"
-      cloudStorageUtil.uploadFile(folder, uploadedFile, Some(true))
+     cloudStorageUtil.uploadFile(folder, uploadedFile, Some(true))
     } catch {
       case e: Exception =>
         throw new Exception("Error while uploading File to cloud for identifier : ${identifier}.", e)
