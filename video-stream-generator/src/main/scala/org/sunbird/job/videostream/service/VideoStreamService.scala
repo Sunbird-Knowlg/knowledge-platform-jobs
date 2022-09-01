@@ -15,7 +15,7 @@ import scala.collection.JavaConverters._
 
 class VideoStreamService(implicit config: VideoStreamGeneratorConfig, httpUtil: HttpUtil) {
   private[this] lazy val logger = LoggerFactory.getLogger(classOf[VideoStreamService])
-  private lazy val mediaService = MediaServiceFactory.getMediaService()
+  private lazy val mediaService = MediaServiceFactory.getMediaService(config)
   private lazy val dbKeyspace:String = config.dbKeyspace
   private lazy val dbTable:String = config.dbTable
   lazy val cassandraUtil:CassandraUtil = new CassandraUtil(config.lmsDbHost, config.lmsDbPort)
@@ -53,7 +53,7 @@ class VideoStreamService(implicit config: VideoStreamGeneratorConfig, httpUtil: 
           val job = mediaResponse.result.getOrElse("job", Map()).asInstanceOf[Map[String, AnyRef]]
           val jobStatus = job.getOrElse("status","").asInstanceOf[String]
 
-          if(jobStatus.equalsIgnoreCase("FINISHED")) {
+          if(config.jobStatus.contains(jobStatus)) {
             val streamingUrl = mediaService.getStreamingPaths(jobRequest.job_id.get).result.getOrElse("streamUrl","").asInstanceOf[String]
             val requestData = JSONUtil.deserialize[Map[String, AnyRef]](jobRequest.request_data)
             val contentId = requestData.getOrElse("identifier", "").asInstanceOf[String]
@@ -100,8 +100,8 @@ class VideoStreamService(implicit config: VideoStreamGeneratorConfig, httpUtil: 
     val requestData = JSONUtil.deserialize[Map[String, AnyRef]](jobRequest.request_data)
     val mediaRequest = MediaRequest(UUID.randomUUID().toString, null, requestData)
     val response:MediaResponse = mediaService.submitJob(mediaRequest)
-    val stageName = "STREAMING_JOB_SUBMISSION";
-    var streamStage:Option[StreamingStage] = None;
+    val stageName = "STREAMING_JOB_SUBMISSION"
+    var streamStage:Option[StreamingStage] = None
 
     if (response.responseCode.equals("OK")) {
       val jobId = response.result.getOrElse("job", Map()).asInstanceOf[Map[String, AnyRef]].getOrElse("id","").asInstanceOf[String];
