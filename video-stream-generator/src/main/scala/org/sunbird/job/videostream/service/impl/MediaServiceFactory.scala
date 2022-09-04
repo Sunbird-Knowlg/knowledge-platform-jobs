@@ -11,6 +11,7 @@ object MediaServiceFactory {
     serviceType match {
       case "azure" => AzureMediaServiceImpl
       case "aws" => AwsMediaServiceImpl
+      case "google" => GCPMediaServiceImpl
       case _ => throw new MediaServiceException("ERR_INVALID_SERVICE_TYPE", "Please Provide Valid Media Service Name")
     }
   }

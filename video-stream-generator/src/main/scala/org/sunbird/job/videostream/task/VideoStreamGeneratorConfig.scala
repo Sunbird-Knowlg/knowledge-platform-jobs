@@ -43,7 +43,8 @@ class VideoStreamGeneratorConfig(override val config: Config) extends BaseJobCon
   val lpURL: String = config.getString("service.content.basePath")
   val contentV4Update = "/content/v4/system/update/"
 
-  val jobStatus:util.List[String] = if(config.hasPath("media_service_job_success_status")) config.getStringList("media_service_job_success_status") else util.Arrays.asList("FINISHED", "COMPLETE")
+  val jobStatus:util.List[String] = if(config.hasPath("media_service_job_success_status")) config.getStringList("media_service_job_success_status") else util.Arrays.asList("FINISHED", "COMPLETE", "SUCCEEDED")
+  val jobFailStatus:util.List[String] = if(config.hasPath("media_service_job_fail_status")) config.getStringList("media_service_job_fail_status") else util.Arrays.asList("ERROR", "FAILED")
 
   def getConfig(key: String): String = {
     if (config.hasPath(key))

@@ -64,7 +64,7 @@ class VideoStreamService(implicit config: VideoStreamGeneratorConfig, httpUtil: 
             } else {
               null
             }
-          } else if(jobStatus.equalsIgnoreCase("ERROR")){
+          } else if(config.jobFailStatus.contains(jobStatus)){
             val errMessage = job.getOrElse("error", Map()).asInstanceOf[Map[String, AnyRef]].getOrElse("errorMessage", "No error message").asInstanceOf[String]
             StreamingStage(jobRequest.request_id, jobRequest.client_key, jobRequest.job_id.get, stageName, jobStatus, "FAILED", iteration + 1, errMessage)
           } else {
