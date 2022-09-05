@@ -45,7 +45,7 @@ object GCPMediaServiceImpl extends GCPMediaService {
 				Response.getSuccessResponse(HashMap[String, AnyRef]("streamUrl" -> streamUrl))
 			} else Response.getGCPResponse(job)
 		} catch {
-			case ex: _ => Response.getFailureResponse(Map("error" -> Map("errorCode"->"SERVER_ERROR", "errorMessage"->ex.getMessage)), "SERVER_ERROR", s"""Unable to fetch job details with identifier: ${jobId}""")
+			case ex: Exception => Response.getFailureResponse(Map("error" -> Map("errorCode"->"SERVER_ERROR", "errorMessage"->ex.getMessage)), "SERVER_ERROR", s"""Unable to fetch job details with identifier: ${jobId}""")
 		}
 	}
 
