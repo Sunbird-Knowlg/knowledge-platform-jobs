@@ -1,6 +1,7 @@
 package org.sunbird.job.videostream.service.impl
 
 import io.grpc.StatusRuntimeException
+import org.slf4j.LoggerFactory
 import org.sunbird.job.util.HttpUtil
 import org.sunbird.job.videostream.exception.MediaServiceException
 import org.sunbird.job.videostream.helpers.{MediaRequest, MediaResponse, Response}
@@ -11,6 +12,8 @@ import scala.collection.immutable.HashMap
 
 object GCPMediaServiceImpl extends GCPMediaService {
 
+	private[this] val logger = LoggerFactory.getLogger(this.getClass)
+
 	override def submitJob(request: MediaRequest)(implicit config: VideoStreamGeneratorConfig, httpUtil: HttpUtil): MediaResponse = {
 		val identifier = request.request.get("identifier").mkString
 		val pkgVersion = request.request.getOrElse("pkgVersion", "").toString
@@ -18,8 +21,15 @@ object GCPMediaServiceImpl extends GCPMediaService {
 		val template = config.getConfig("gcp.stream.template_id").toLowerCase
 		val inputUri = prepareInputUrl(request.request.get("artifactUrl").mkString)
 		val outputUri = prepareOutputUrl(identifier, streamType, pkgVersion)
+		logger.info("submit Job  media request :::"+request.request)
+		println("test print")
+		println("print media request ::: "+request.request)
+		println("inputUri :::: "+inputUri)
+		println("outputUri ::: "+outputUri)
+		println("template ::: "+template)
 		try {
 			val job = createJobFromTemplate(inputUri, outputUri, template)
+			println("job ::: "+ job)
 			Response.getGCPResponse(job)
 		} catch {
 			case e: MediaServiceException => Response.getFailureResponse(Map("error" -> Map("errorCode"->e.errorCode, "errorMessage"->e.getMessage)), "ERR_GCP_SUBMIT_JOB", s"Error Occurred While Submitting Job for ${identifier}")

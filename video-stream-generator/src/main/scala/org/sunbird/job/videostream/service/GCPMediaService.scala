@@ -6,11 +6,13 @@ import org.sunbird.job.videostream.helpers.GCPAuthUtil
 import org.sunbird.job.videostream.task.VideoStreamGeneratorConfig
 import com.google.cloud.video.transcoder.v1.GetJobRequest
 import com.google.cloud.video.transcoder.v1.JobName
-
+import org.slf4j.LoggerFactory
 
 import scala.reflect.io.File
 
 abstract class GCPMediaService extends IMediaService {
+
+	private[this] val logger = LoggerFactory.getLogger(classOf[GCPMediaService])
 
 	protected def getJobDetails(jobId: String)(implicit config: VideoStreamGeneratorConfig): Job = {
 		val transcoderServiceClient = GCPAuthUtil.getTranscoderServiceClient()
@@ -36,12 +38,25 @@ abstract class GCPMediaService extends IMediaService {
 	protected def createJobFromTemplate(inputUri: String, outputUri: String, template: String)(implicit config: VideoStreamGeneratorConfig): Job = {
 		try {
 			val transcoderServiceClient = GCPAuthUtil.getTranscoderServiceClient()
+			if(null!=transcoderServiceClient){
+				logger.info("logger  - received client ... is terminated ???"+transcoderServiceClient.isTerminated)
+				println("print is client alive "+transcoderServiceClient.isTerminated)
+				println("print is client shutdown "+transcoderServiceClient.isShutdown)
+				println("print client settings::: "+transcoderServiceClient.getSettings.toString)
+			}
+
 			val createJobRequest = CreateJobRequest.newBuilder.setJob(
 				Job.newBuilder.setInputUri(inputUri).setOutputUri(outputUri).setTemplateId(template).build)
 			  .setParent(LocationName.of(config.getConfig("gcp.project_id"), config.getConfig("gcp.location")).toString).build
 			transcoderServiceClient.createJob(createJobRequest)
 		} catch {
-			case ex: Exception => throw new MediaServiceException("ERR_GCP_CREATE_JOB_TEMPLATE", s"Unable to create job using template: ${template}. Exception is: " + ex.getMessage)
+			case ex: Exception => {
+				logger.info("test logger from exception block")
+				println("print exception occured ::: cause"+ex.getCause + " | exception message :: "+ex.getMessage)
+				ex.printStackTrace()
+				throw new MediaServiceException("ERR_GCP_CREATE_JOB_TEMPLATE", s"Unable to create job using template: ${template}. Exception is: " + ex.getMessage)
+			}
+
 		}
 	}
 
