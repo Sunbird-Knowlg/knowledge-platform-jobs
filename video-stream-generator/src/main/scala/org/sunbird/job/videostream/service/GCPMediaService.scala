@@ -22,10 +22,10 @@ abstract class GCPMediaService extends IMediaService {
 	}
 
 	protected def prepareInputUrl(url: String)(implicit config: VideoStreamGeneratorConfig): String = {
-		val temp = url.split("content")
+		val temp = url.split("/content")
 		val bucket = config.getConfig("gcp.content_bucket_name")
 		val separator = File.separator
-		"gs:" + separator + separator + bucket + separator + "content" + temp(1)
+		"gs:" + separator + separator + bucket + separator + "content" + temp(temp.length-1)
 	}
 
 	protected def prepareOutputUrl(contentId: String, streamType: String, pkgVersion: String)(implicit config: VideoStreamGeneratorConfig): String = {
