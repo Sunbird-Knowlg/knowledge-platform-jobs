@@ -70,9 +70,9 @@ object Response {
 
   def getGCPResponse(job: Job): MediaResponse = {
     if (null != job) {
-      val jobId = job.getName.split("jobs")(1)
+      val jobId = job.getName.split("jobs/")(1)
       val status = job.getState.toString
-      val submittedOn = formatter.format(new Date(job.getCreateTime.toString.toLong * 1000))
+      val submittedOn = formatter.format(new Date(job.getCreateTime.getSeconds * 1000))
       val result = Map("job" -> Map("id" -> jobId, "status" -> status, "submittedOn" -> submittedOn))
       job.getState.getNumber match {
         case 1 | 2 | 3 => getSuccessResponse(result)
