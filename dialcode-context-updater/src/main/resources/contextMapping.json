@@ -16,8 +16,7 @@
       "status": "status",
       "channel": "channel",
       "lastPublishedOn": "lastPublishedOn",
-      "primaryCategory": "primaryCategory",
-      "license": "license"
+      "primaryCategory": "primaryCategory"
     },
     "collectionUnit": {
       "@type": "sb-ed:CollectionUnit",
