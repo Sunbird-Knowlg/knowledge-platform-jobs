@@ -1,7 +1,7 @@
 {
   "$defs": {
     "content": {
-      "@type": "sb-ed:Content",
+      "@type": "sbed:Content",
       "identifier": "identifier",
       "name": "name",
       "status": "status",
@@ -10,22 +10,21 @@
       "primaryCategory": "primaryCategory"
     },
     "collection": {
-      "@type": "sb-ed:Collection",
+      "@type": "sbed:Collection",
       "identifier": "identifier",
       "name": "name",
       "status": "status",
       "channel": "channel",
       "lastPublishedOn": "lastPublishedOn",
-      "primaryCategory": "primaryCategory",
-      "license": "license"
+      "primaryCategory": "primaryCategory"
     },
     "collectionUnit": {
-      "@type": "sb-ed:CollectionUnit",
+      "@type": "sbed:CollectionUnit",
       "identifier": "identifier",
       "name": "name"
     },
     "framework": {
-      "@type": "sb-ed:Framework",
+      "@type": "sbed:Framework",
       "identifier": "framework",
       "board": "board",
       "medium": "medium",
@@ -37,22 +36,22 @@
     }
   },
   "digital_textbook": {
-    "@type": "sb-ed:TextBook",
+    "@type": "sbed:TextBook",
     "$ref": "#/$defs/collection",
     "framework" : { "$ref" : "#/$defs/framework" }
   },
   "textbook_unit": {
-    "@type": "sb-ed:TextBookUnit",
+    "@type": "sbed:TextBookUnit",
     "$ref": "#/$defs/collectionUnit",
     "parentInfo": {"$ref": "#/digital_textbook"}
   },
   "course": {
-    "@type": "sb-ed:Course",
+    "@type": "sbed:Course",
     "$ref": "#/$defs/collection",
     "framework": { "$ref" : "#/$defs/framework" }
   },
   "course_unit": {
-    "@type": "sb-ed:CourseUnit",
+    "@type": "sbed:CourseUnit",
     "$ref": "#/$defs/collectionUnit",
     "parentInfo": {"$ref": "#/course" }
   }
