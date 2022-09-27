@@ -130,7 +130,7 @@ class LiveCollectionPublishFunction(config: LiveNodePublisherConfig, httpUtil: H
         metrics.incCounter(config.collectionPublishSuccessEventCount)
         logger.info("CollectionPublishFunction:: Collection publishing completed successfully for : " + data.identifier)
 
-        saveOnSuccess(new ObjectData(objWithEcar.identifier, objWithEcar.metadata ++ Map("migrationVersion" -> 1.asInstanceOf[AnyRef]) - ("children") , objWithEcar.extData, objWithEcar.hierarchy))(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
+        saveOnSuccess(new ObjectData(objWithEcar.identifier, objWithEcar.metadata.-("children") , objWithEcar.extData, objWithEcar.hierarchy))(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
         logger.info("CollectionPublishFunction:: Published Collection Object metadata saved successfully to graph DB: " + objWithEcar.identifier)
       }
     } catch {

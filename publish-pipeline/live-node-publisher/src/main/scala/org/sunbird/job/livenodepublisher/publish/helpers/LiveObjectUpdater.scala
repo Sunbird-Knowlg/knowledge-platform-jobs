@@ -23,7 +23,7 @@ trait LiveObjectUpdater {
     val status = if (StringUtils.equalsIgnoreCase("Unlisted", publishType)) "Unlisted" else "Live"
     val identifier = obj.identifier
     val metadataUpdateQuery = metaDataQuery(obj)(definitionCache, config)
-    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$identifier"}) SET n.status="$status",n.pkgVersion=${obj.pkgVersion},n.prevStatus="Processing",$metadataUpdateQuery,$auditPropsUpdateQuery;"""
+    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$identifier"}) SET n.status="$status",n.pkgVersion=${obj.pkgVersion},n.prevStatus="Processing",n.migrationVersion=1,$metadataUpdateQuery,$auditPropsUpdateQuery;"""
     logger.info("ObjectUpdater:: saveOnSuccess:: Query: " + query)
     logger.info(s"ObjectUpdater:: saveOnSuccess:: DB ID for ${obj.identifier} is : ${obj.dbId} | pkgVersion : ${obj.pkgVersion}" )
 
