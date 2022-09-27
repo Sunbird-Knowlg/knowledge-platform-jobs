@@ -43,6 +43,7 @@
 				<module>metrics-data-transformer</module>
 				<module>qrcode-image-generator</module>
 				<module>dialcode-context-updater</module>
+				<module>live-video-stream-generator</module>
 			</modules>
 		</profile>
 		<profile>
