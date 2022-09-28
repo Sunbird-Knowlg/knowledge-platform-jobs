@@ -24,6 +24,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 		val updateMetadata = filteredMetadata.filter(x => !config.content_create_props.contains(x._1))
 		val delayUpload = if (StringUtils.equalsIgnoreCase(event.mimeType, "application/vnd.ekstep.h5p-archive")) 6 * config.apiCallDelay else config.apiCallDelay
 
+
 		val originId = event.reqOriginData.getOrDefault("identifier","")
 		var internalId, contentStage: String = ""
 		
@@ -106,7 +107,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 				case _ => logger.info("ContentAutoCreator :: process :: Event Skipped for operations (create, upload, publish) for: " + event.identifier + " | Content Stage : " + contentStage)
 			}
 
-			delay(30)
+			delay(config.publishDelay)
 			val updatedContentMetadata = neo4JUtil.getNodeProperties(internalId)
 			logger.info("ContentAutoCreator :: process :: updatedContentMetadata status : "  + updatedContentMetadata.get("status").asInstanceOf[String])
 			if(!updatedContentMetadata.get("status").asInstanceOf[String].equalsIgnoreCase("Failed") &&
