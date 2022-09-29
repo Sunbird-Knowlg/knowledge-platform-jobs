@@ -106,9 +106,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 				case _ => logger.info("ContentAutoCreator :: process :: Event Skipped for operations (create, upload, publish) for: " + event.identifier + " | Content Stage : " + contentStage)
 			}
 
-			val updatedContentMetadata = neo4JUtil.getNodeProperties(internalId)
-			if(updatedContentMetadata.get("status").asInstanceOf[String].equalsIgnoreCase("Live") &&
-				event.collection.nonEmpty && (linkToCollection || contentStage.equalsIgnoreCase("na"))) {
+			if(event.collection.nonEmpty && (linkToCollection || contentStage.equalsIgnoreCase("na"))) {
 				linkCollection(internalId, event.collection)(config, httpUtil)
 			} else logger.info("ContentAutoCreator :: process :: Textbook Linking Skipped because received empty collection/textbookInfo for : " + event.identifier)
 
