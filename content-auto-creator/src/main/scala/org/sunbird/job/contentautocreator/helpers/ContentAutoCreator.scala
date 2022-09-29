@@ -24,7 +24,6 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 		val updateMetadata = filteredMetadata.filter(x => !config.content_create_props.contains(x._1))
 		val delayUpload = if (StringUtils.equalsIgnoreCase(event.mimeType, "application/vnd.ekstep.h5p-archive")) 6 * config.apiCallDelay else config.apiCallDelay
 
-
 		val originId = event.reqOriginData.getOrDefault("identifier","")
 		var internalId, contentStage: String = ""
 		
