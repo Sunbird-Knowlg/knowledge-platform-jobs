@@ -78,5 +78,6 @@ class ContentAutoCreatorConfig(override val config: Config) extends BaseJobConfi
   val artifactFolder: String = if (config.hasPath("cloud_storage.folder.artifact")) config.getString("cloud_storage.folder.artifact") else "artifact"
 
   val apiCallDelay = if (config.hasPath("content_auto_creator.api_call_delay")) config.getInt("content_auto_creator.api_call_delay") else 2
+
   def getConfig: Config = config
 }
