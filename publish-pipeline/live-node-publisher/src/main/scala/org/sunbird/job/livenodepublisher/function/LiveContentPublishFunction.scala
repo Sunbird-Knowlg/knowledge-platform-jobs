@@ -91,14 +91,14 @@ class LiveContentPublishFunction(config: LiveNodePublisherConfig, httpUtil: Http
           pushStreamingUrlEvent(enrichedObj, context)(metrics)
 
           metrics.incCounter(config.contentPublishSuccessEventCount)
-          logger.info(s"Content publishing completed successfully for : " + data.identifier)
-          logger.info(s"{ identifier: \"${data.identifier}\", mimetype: \"${data.mimeType}\", status: \"Success\"}")
+          logger.info("Content publishing completed successfully for : " + data.identifier)
+          logger.info(s"""{ identifier: \"${data.identifier}\", mimetype: \"${data.mimeType}\", status: \"Success\"}""")
         } else {
           saveOnFailure(obj, messages, data.pkgVersion)(neo4JUtil)
           val errorMessages = messages.mkString("; ")
           pushFailedEvent(data, errorMessages, null, context)(metrics)
           logger.info("Content publishing failed for : " + data.identifier)
-          logger.info(s"{ identifier: \"${data.identifier}\", mimetype: \"${data.mimeType}\", status: \"Failed\"}")
+          logger.info(s"""{ identifier: \"${data.identifier}\", mimetype: \"${data.mimeType}\", status: \"Failed\"}""")
         }
       }
     } catch {
@@ -107,12 +107,12 @@ class LiveContentPublishFunction(config: LiveNodePublisherConfig, httpUtil: Http
         saveOnFailure(obj, List(ex.getMessage), data.pkgVersion)(neo4JUtil)
         pushFailedEvent(data, null, ex, context)(metrics)
         logger.error("Error while publishing content :: " + ex.getMessage)
-        logger.info(s"{ identifier: \"${data.identifier}\", mimetype: \"${data.mimeType}\", status: \"Failed\"}")
+        logger.info(s"""{ identifier: \"${data.identifier}\", mimetype: \"${data.mimeType}\", status: \"Failed\"}""")
       case ex: Exception =>
         ex.printStackTrace()
         saveOnFailure(obj, List(ex.getMessage), data.pkgVersion)(neo4JUtil)
-        logger.error(s"Error while processing message for Partition: ${data.partition} and Offset: ${data.offset}. Error : ${ex.getMessage}", ex)
-        logger.info(s"{ identifier: \"${data.identifier}\", mimetype: \"${data.mimeType}\", status: \"Failed\"}")
+        logger.error(s"""Error while processing message for Partition: ${data.partition} and Offset: ${data.offset}. Error : ${ex.getMessage}""", ex)
+        logger.info(s"""{ identifier: \"${data.identifier}\", mimetype: \"${data.mimeType}\", status: \"Failed\"}""")
         throw ex
     }
   }
