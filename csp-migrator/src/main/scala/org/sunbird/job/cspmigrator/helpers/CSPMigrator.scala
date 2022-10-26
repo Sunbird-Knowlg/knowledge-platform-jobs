@@ -57,11 +57,10 @@ trait CSPMigrator extends ObjectReader with ObjectUpdater {
 		}
 
 		if(objectType.equalsIgnoreCase("Collection") && mimeType.equalsIgnoreCase("application/vnd.ekstep.content-collection")) {
-
-
-
+			val collectionHierarchy: String = getCollectionHierarchy(identifier, config)(cassandraUtil)
+			val migratedCollectionHierarchy: String = StringUtils.replaceEach(collectionHierarchy, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
+			updateCollectionHierarchy(identifier, migratedCollectionHierarchy, config)(cassandraUtil)
 		}
-
 
 		val migratedMetadataFields: Map[String, String] =  fieldsToMigrate.flatMap(migrateField => {
 			if(objMetadata.contains(migrateField)) {

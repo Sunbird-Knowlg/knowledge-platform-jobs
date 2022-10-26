@@ -31,7 +31,7 @@ trait ObjectReader {
     val metaData = Option(neo4JUtil.getNodeProperties(identifier)).getOrElse(neo4JUtil.getNodeProperties(identifier)).asScala.toMap
     val id = metaData.getOrElse("IL_UNIQUE_ID", identifier).asInstanceOf[String]
     val objType = metaData.getOrElse("IL_FUNC_OBJECT_TYPE", "").asInstanceOf[String]
-    logger.info("ObjectReader:: getMetadata:: identifier: " + identifier + " with objType: " + objType)
+    logger.info("ObjectReader:: getLiveNodeMetadata:: identifier: " + identifier + " with objType: " + objType)
     metaData ++ Map[String, AnyRef]("identifier" -> id, "objectType" -> objType) - ("IL_UNIQUE_ID", "IL_FUNC_OBJECT_TYPE", "IL_SYS_NODE_TYPE")
   }
 
@@ -40,7 +40,7 @@ trait ObjectReader {
     val selectId = QueryBuilder.select()
     selectId.fcall("blobAsText", QueryBuilder.column("body")).as("body")
     val selectWhereId: Select.Where = selectId.from(config.contentKeyspaceName, config.contentTableName).where().and(QueryBuilder.eq("content_id", identifier))
-    logger.info("ObjectUpdater:: getContentBody:: Cassandra Fetch Query :: " + selectWhereId.toString)
+    logger.info("ObjectReader:: getContentBody:: ECML Body Fetch Query :: " + selectWhereId.toString)
     val rowId = cassandraUtil.findOne(selectWhereId.toString)
     if (null != rowId) rowId.getString("body") else ""
   }
@@ -54,14 +54,13 @@ trait ObjectReader {
     cassandraUtil.findOne(selectWhere.toString)
   }
 
-  def getContentHierarchy(identifier: String, config: CSPMigratorConfig)(implicit cassandraUtil: CassandraUtil): String = {
-    // fetch content body from cassandra
+  def getCollectionHierarchy(identifier: String, config: CSPMigratorConfig)(implicit cassandraUtil: CassandraUtil): String = {
     val selectId = QueryBuilder.select()
-    selectId.fcall("blobAsText", QueryBuilder.column("body")).as("body")
-    val selectWhereId: Select.Where = selectId.from(config.hierarchyKeyspaceName, config.hierarchyTableName).where().and(QueryBuilder.eq("content_id", identifier))
-    logger.info("ObjectUpdater:: getContentBody:: Cassandra Fetch Query :: " + selectWhereId.toString)
+    selectId.fcall("blobAsText", QueryBuilder.column("hierarchy")).as("hierarchy")
+    val selectWhereId: Select.Where = selectId.from(config.hierarchyKeyspaceName, config.hierarchyTableName).where().and(QueryBuilder.eq("identifier", identifier))
+    logger.info("ObjectReader:: getCollectionHierarchy:: Hierarchy Fetch Query :: " + selectWhereId.toString)
     val rowId = cassandraUtil.findOne(selectWhereId.toString)
-    if (null != rowId) rowId.getString("body") else ""
+    if (null != rowId) rowId.getString("hierarchy") else ""
   }
 
 }
