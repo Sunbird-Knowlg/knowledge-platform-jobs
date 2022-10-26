@@ -74,17 +74,25 @@ class CSPMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
         metrics.incCounter(config.skippedEventCount)
       }
     } catch {
-      case e: ServerException =>
-        logger.error("CSPMigratorFunction :: Message processing failed for mid : " + event.mid() + " || " + event , e)
-        val currentIteration = event.currentIteration
-        if (currentIteration < 1) {
-          val newEventMap = new util.HashMap[String, Any]()
-          newEventMap.putAll(event.getMap())
-          newEventMap.get("edata").asInstanceOf[util.HashMap[String, Any]].put("iteration",currentIteration+1)
-          pushEventForRetry(event.jobName, newEventMap, e, metrics, context)
-          logger.info("CSPMigratorFunction :: Failed Event Sent To Kafka Topic : " + config.kafkaFailedTopic + " | for mid : " + event.mid(), event)
-        }
-        else logger.info("CSPMigratorFunction :: Event Reached Maximum Retry Limit having mid : " + event.mid() + "| " +  event)
+      case se: ServerException =>
+        logger.error("CSPMigratorFunction :: Message processing failed for mid : " + event.mid() + " || " + event , se)
+        logger.error("Error while migrating content :: " + se.getMessage)
+
+        // Insert into neo4j with migrationVersion as 0.1
+        if(!se.getMessage.contains("Migration Failed for"))
+        neo4JUtil.updateNode(event.identifier, objMetadata + ("migrationVersion" -> 0.1.asInstanceOf[Number]))
+
+        logger.info(s"""{ identifier: \"${objMetadata.getOrElse("identifier", "").asInstanceOf[String]}\", mimetype: \"${objMetadata.getOrElse("mimeType", "").asInstanceOf[String]}\", status: \"Failed\", stage: \"Static Migration\"}""")
+
+//        val currentIteration = event.currentIteration
+//        if (currentIteration < 1) {
+//          val newEventMap = new util.HashMap[String, Any]()
+//          newEventMap.putAll(event.getMap())
+//          newEventMap.get("edata").asInstanceOf[util.HashMap[String, Any]].put("iteration",currentIteration+1)
+//          pushEventForRetry(event.jobName, newEventMap, e, metrics, context)
+//          logger.info("CSPMigratorFunction :: Failed Event Sent To Kafka Topic : " + config.kafkaFailedTopic + " | for mid : " + event.mid(), event)
+//        }
+//        else logger.info("CSPMigratorFunction :: Event Reached Maximum Retry Limit having mid : " + event.mid() + "| " +  event)
     }
   }
 
