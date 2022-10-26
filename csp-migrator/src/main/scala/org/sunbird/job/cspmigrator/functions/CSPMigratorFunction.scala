@@ -27,7 +27,7 @@ class CSPMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
   lazy val defCache: DefinitionCache = new DefinitionCache()
 
   override def metricsList(): List[String] = {
-    List(config.totalEventsCount, config.successEventCount, config.failedEventCount, config.skippedEventCount, config.errorEventCount)
+    List(config.totalEventsCount, config.successEventCount, config.failedEventCount, config.skippedEventCount, config.errorEventCount, config.assetVideoStreamCount, config.liveNodePublishCount)
   }
 
   override def open(parameters: Configuration): Unit = {
@@ -57,7 +57,16 @@ class CSPMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
         if(event.objectType.equalsIgnoreCase("Asset") && returnObj.get("status").asInstanceOf[String].equalsIgnoreCase("Live")
           && (event.mimeType.equalsIgnoreCase("video/mp4") || event.mimeType.equalsIgnoreCase("video/webm"))) {
           pushStreamingUrlEvent(returnObj, context)(metrics)
+          metrics.incCounter(config.assetVideoStreamCount)
         }
+
+        if((event.objectType.equalsIgnoreCase("Content") || event.objectType.equalsIgnoreCase("Collection"))
+          && (returnObj.get("status").asInstanceOf[String].equalsIgnoreCase("Live") ||
+          returnObj.get("status").asInstanceOf[String].equalsIgnoreCase("Unlisted"))) {
+          pushLiveNodePublishEvent(returnObj, context, metrics)
+          metrics.incCounter(config.liveNodePublishCount)
+        }
+
         logger.info("CSPMigratorFunction::processElement:: CSP migration operation completed for : " + event.identifier)
         metrics.incCounter(config.successEventCount)
       } else {
@@ -73,9 +82,9 @@ class CSPMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
           newEventMap.putAll(event.getMap())
           newEventMap.get("edata").asInstanceOf[util.HashMap[String, Any]].put("iteration",currentIteration+1)
           pushEventForRetry(event.jobName, newEventMap, e, metrics, context)
-          logger.info("Failed Event Sent To Kafka Topic : " + config.kafkaFailedTopic + " | for mid : " + event.mid(), event)
+          logger.info("CSPMigratorFunction :: Failed Event Sent To Kafka Topic : " + config.kafkaFailedTopic + " | for mid : " + event.mid(), event)
         }
-        else logger.info("Event Reached Maximum Retry Limit having mid : " + event.mid() + "| " +  event)
+        else logger.info("CSPMigratorFunction :: Event Reached Maximum Retry Limit having mid : " + event.mid() + "| " +  event)
     }
   }
 
@@ -102,9 +111,26 @@ class CSPMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
     val identifier = objMetadata.getOrElse("identifier", "").asInstanceOf[String]
     val pkgVersion = objMetadata.getOrElse("pkgVersion", "").asInstanceOf[Number]
     //TODO: deprecate using contentType in the event.
-    val event = s"""{"eid":"BE_JOB_REQUEST", "ets": $ets, "mid": "$mid", "actor": {"id": "CSP Migrator", "type": "System"}, "context":{"pdata":{"ver":"1.0","id":"org.ekstep.platform"}, "channel":"$channelId","env":"${config.jobEnv}"},"object":{"ver":"$ver","id":"$identifier"},"edata": {"action":"post-publish-process","iteration":1,"identifier":"$identifier","channel":"$channelId","artifactUrl":"$artifactUrl","mimeType":"$mimeType","contentType":"$contentType","pkgVersion":$pkgVersion,"status":"$status"}}""".stripMargin
-    logger.info(s"Asset Video Streaming Event for identifier $identifier  is  : $event")
+    val event = s"""{"eid":"BE_JOB_REQUEST", "ets": $ets, "mid": "$mid", "actor": {"id": "Live Video Stream Generator", "type": "System"}, "context":{"pdata":{"ver":"1.0","id":"org.ekstep.platform"}, "channel":"$channelId","env":"${config.jobEnv}"},"object":{"ver":"$ver","id":"$identifier"},"edata": {"action":"live-video-stream-generate","iteration":1,"identifier":"$identifier","channel":"$channelId","artifactUrl":"$artifactUrl","mimeType":"$mimeType","contentType":"$contentType","pkgVersion":$pkgVersion,"status":"$status"}}""".stripMargin
+    logger.info(s"CSPMigratorFunction :: Asset Video Streaming Event for identifier $identifier  is  : $event")
     event
+  }
+
+  def pushLiveNodePublishEvent(objMetadata: Map[String, AnyRef], context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
+    val epochTime = System.currentTimeMillis
+    val identifier = objMetadata.getOrElse("identifier", "").asInstanceOf[String]
+    val pkgVersion = objMetadata.getOrElse("pkgVersion", "").asInstanceOf[Number]
+    val objectType = objMetadata.getOrElse("objectType", "").asInstanceOf[String]
+    val contentType = objMetadata.getOrElse("contentType", "").asInstanceOf[String]
+    val mimeType = objMetadata.getOrElse("mimeType", "").asInstanceOf[String]
+    val status = objMetadata.getOrElse("status", "").asInstanceOf[String]
+    val publishType = if(status.equalsIgnoreCase("Live")) "Public" else "Unlisted"
+
+    val event = s"""{"eid":"BE_JOB_REQUEST","ets":${epochTime},"mid":"LP.${epochTime}.${UUID.randomUUID()}","actor":{"id":"content-republish","type":"System"},"context":{"pdata":{"ver":"1.0","id":"org.ekstep.platform"},"channel":"sunbird","env":"${config.jobEnv}"},"object":{"ver":"$pkgVersion","id":"$identifier"},"edata":{"publish_type":"$publishType","metadata":{"identifier":"$identifier", "mimeType":"$mimeType","objectType":"$objectType","lastPublishedBy":"System","pkgVersion":$pkgVersion},"action":"republish","iteration":1,"contentType":"$contentType"}}"""
+    context.output(config.liveNodePublishEventOutTag, event)
+    metrics.incCounter(config.liveNodePublishCount)
+    logger.info("CSPMigratorFunction :: Live content publish triggered for " + identifier)
+    logger.info("CSPMigratorFunction :: Live content publish event: " + event)
   }
 
 }

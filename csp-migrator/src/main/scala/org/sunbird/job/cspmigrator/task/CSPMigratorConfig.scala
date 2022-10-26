@@ -19,7 +19,8 @@ class CSPMigratorConfig(override val config: Config) extends BaseJobConfig(confi
   // Kafka Topics Configuration
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
   val kafkaFailedTopic: String = config.getString("kafka.failed.topic")
-  val live_videoStreamingTopic: String = config.getString("kafka.live_video_stream.topic")
+  val liveVideoStreamingTopic: String = config.getString("kafka.live_video_stream.topic")
+  val liveNodeRepublishTopic: String = config.getString("kafka.live_node_republish.topic")
 
   val jobEnv: String = config.getString("job.env")
 
@@ -34,6 +35,8 @@ class CSPMigratorConfig(override val config: Config) extends BaseJobConfig(confi
   val failedEventCount = "failed-message-count"
   val skippedEventCount = "skipped-message-count"
   val errorEventCount = "error-message-count"
+  val liveNodePublishCount = "live-node-publish-count"
+  val assetVideoStreamCount = "asset-video-stream-count"
 
   // Consumers
   val eventConsumer = "csp-migrator-consumer"
@@ -44,6 +47,7 @@ class CSPMigratorConfig(override val config: Config) extends BaseJobConfig(confi
   val contentAutoCreatorOutputTag: OutputTag[Event] = OutputTag[Event]("csp-migrator")
   val failedEventOutTag: OutputTag[String] = OutputTag[String]("csp-migrator-failed-event")
   val generateVideoStreamingOutTag: OutputTag[String] = OutputTag[String]("live-video-streaming-generator-request")
+  val liveNodePublishEventOutTag: OutputTag[String] = OutputTag[String]("live-node-republish-request")
 
   val configVersion = "1.0"
 
