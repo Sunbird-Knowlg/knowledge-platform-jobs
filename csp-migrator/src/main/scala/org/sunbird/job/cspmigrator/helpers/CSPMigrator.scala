@@ -25,7 +25,7 @@ trait CSPMigrator extends MigrationObjectReader with MigrationObjectUpdater {
 		// if objectType is Asset and mimeType is video, trigger streamingUrl generation
 		// if objectType is content and mimeType is ECML, need to update ECML content body
 		// if objectType is collection, fetch hierarchy data and update cassandra data with the replaced string
-		// if objectType is content/collection and the node is Live, trigger the LiveNodePublisher flink job - pending
+		// if objectType is content/collection and the node is Live, trigger the LiveNodePublisher flink job
 		// if objectType is AssessmentItem, migrate cassandra data as well
 		// update the migrationVersion of the object
 
