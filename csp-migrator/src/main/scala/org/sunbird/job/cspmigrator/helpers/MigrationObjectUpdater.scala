@@ -6,19 +6,19 @@ import org.sunbird.job.cspmigrator.task.CSPMigratorConfig
 import org.sunbird.job.exception.InvalidInputException
 import org.sunbird.job.util.CassandraUtil
 
-trait ObjectUpdater {
+trait MigrationObjectUpdater {
 
-  private[this] val logger = LoggerFactory.getLogger(classOf[ObjectUpdater])
+  private[this] val logger = LoggerFactory.getLogger(classOf[MigrationObjectUpdater])
 
   def updateContentBody(identifier: String, ecmlBody: String, config: CSPMigratorConfig)(implicit cassandraUtil: CassandraUtil): Unit = {
     val updateQuery = QueryBuilder.update(config.contentKeyspaceName, config.contentTableName)
       .where(QueryBuilder.eq("content_id", identifier))
       .`with`(QueryBuilder.set("body", QueryBuilder.fcall("textAsBlob", ecmlBody)))
-      logger.info(s"ObjectUpdater:: updateContentBody:: Updating Content Body in Cassandra For $identifier : ${updateQuery.toString}")
+      logger.info(s"MigrationObjectUpdater:: updateContentBody:: Updating Content Body in Cassandra For $identifier : ${updateQuery.toString}")
       val result = cassandraUtil.upsert(updateQuery.toString)
-      if (result) logger.info(s"ObjectUpdater:: updateContentBody:: Content Body Updated Successfully For $identifier")
+      if (result) logger.info(s"MigrationObjectUpdater:: updateContentBody:: Content Body Updated Successfully For $identifier")
       else {
-        logger.error(s"ObjectUpdater:: updateContentBody:: Content Body Update Failed For $identifier")
+        logger.error(s"MigrationObjectUpdater:: updateContentBody:: Content Body Update Failed For $identifier")
         throw new InvalidInputException(s"Content Body Update Failed For $identifier")
       }
   }
@@ -36,11 +36,11 @@ trait ObjectUpdater {
       .and(QueryBuilder.set("responsedeclaration", updatedData.getOrElse("responseDeclaration", null)))
       .and(QueryBuilder.set("interactions", updatedData.getOrElse("interactions", null)))
 
-    logger.info(s"ObjectUpdater:: updateAssessmentBody:: Updating Assessment Body in Cassandra For $identifier : ${updateQuery.toString}")
+    logger.info(s"MigrationObjectUpdater:: updateAssessmentBody:: Updating Assessment Body in Cassandra For $identifier : ${updateQuery.toString}")
     val result = cassandraUtil.upsert(updateQuery.toString)
-    if (result) logger.info(s"ObjectUpdater:: updateAssessmentBody:: Assessment Body Updated Successfully For $identifier")
+    if (result) logger.info(s"MigrationObjectUpdater:: updateAssessmentBody:: Assessment Body Updated Successfully For $identifier")
     else {
-      logger.error(s"ObjectUpdater:: updateAssessmentBody:: Assessment Body Update Failed For $identifier")
+      logger.error(s"MigrationObjectUpdater:: updateAssessmentBody:: Assessment Body Update Failed For $identifier")
       throw new InvalidInputException(s"Assessment Body Update Failed For $identifier")
     }
   }
@@ -49,11 +49,11 @@ trait ObjectUpdater {
     val updateQuery = QueryBuilder.update(config.hierarchyKeyspaceName, config.hierarchyTableName)
       .where(QueryBuilder.eq("identifier", identifier))
       .`with`(QueryBuilder.set("body", QueryBuilder.fcall("textAsBlob", hierarchy)))
-    logger.info(s"ObjectUpdater:: updateCollectionHierarchy:: Updating Hierarchy in Cassandra For $identifier : ${updateQuery.toString}")
+    logger.info(s"MigrationObjectUpdater:: updateCollectionHierarchy:: Updating Hierarchy in Cassandra For $identifier : ${updateQuery.toString}")
     val result = cassandraUtil.upsert(updateQuery.toString)
-    if (result) logger.info(s"ObjectUpdater:: updateCollectionHierarchy:: Hierarchy Updated Successfully For $identifier")
+    if (result) logger.info(s"MigrationObjectUpdater:: updateCollectionHierarchy:: Hierarchy Updated Successfully For $identifier")
     else {
-      logger.error(s"ObjectUpdater:: updateCollectionHierarchy:: Hierarchy Update Failed For $identifier")
+      logger.error(s"MigrationObjectUpdater:: updateCollectionHierarchy:: Hierarchy Update Failed For $identifier")
       throw new InvalidInputException(s"Hierarchy Update Failed For $identifier")
     }
   }

@@ -10,7 +10,7 @@ import org.sunbird.job.util._
 
 import scala.collection.JavaConverters._
 
-trait CSPMigrator extends ObjectReader with ObjectUpdater {
+trait CSPMigrator extends MigrationObjectReader with MigrationObjectUpdater {
 
 	private[this] val logger = LoggerFactory.getLogger(classOf[CSPMigrator])
 
@@ -22,9 +22,9 @@ trait CSPMigrator extends ObjectReader with ObjectUpdater {
 		// fetch the list of attributes for string replace from config
 		// check the string of each property and perform string replace.
 		// commit updated data to DB.
-		// if objectType is Asset and mimeType is video, trigger streamingUrl generation - pending
+		// if objectType is Asset and mimeType is video, trigger streamingUrl generation
 		// if objectType is content and mimeType is ECML, need to update ECML content body
-		// if objectType is collection, fetch hierarchy data and update cassandra data with the replaced string - pending
+		// if objectType is collection, fetch hierarchy data and update cassandra data with the replaced string
 		// if objectType is content/collection and the node is Live, trigger the LiveNodePublisher flink job - pending
 		// if objectType is AssessmentItem, migrate cassandra data as well
 		// update the migrationVersion of the object
@@ -70,7 +70,6 @@ trait CSPMigrator extends ObjectReader with ObjectUpdater {
 		}).filter(record => record._1.nonEmpty).toMap[String, String]
 
 		neo4JUtil.updateNode(identifier, objMetadata ++ migratedMetadataFields + ("migrationVersion" -> 1.0.asInstanceOf[Number]))
-
 
 		if(!(status.equalsIgnoreCase("Live") || status.equalsIgnoreCase("Unlisted")) && identifier.endsWith(".img")) {
 			val liveObjMetadata: Map[String, AnyRef] = getLiveNodeMetadata(event.identifier)(neo4JUtil)
