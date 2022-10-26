@@ -3,18 +3,11 @@ package org.sunbird.job.cspmigrator.helpers
 import com.datastax.driver.core.Row
 import com.datastax.driver.core.querybuilder.{QueryBuilder, Select}
 import org.apache.commons.lang3
-import org.apache.commons.lang3.StringUtils
-import org.neo4j.driver.v1.StatementResult
 import org.slf4j.LoggerFactory
-import org.sunbird.job.cspmigrator.models.{DefinitionConfig, ExtDataConfig, ObjectData}
+import org.sunbird.job.cspmigrator.models.{ExtDataConfig, ObjectData}
 import org.sunbird.job.cspmigrator.task.CSPMigratorConfig
-import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.exception.InvalidInputException
-import org.sunbird.job.util.{CassandraUtil, JSONUtil, Neo4JUtil, ScalaJsonUtil}
-
-import java.text.SimpleDateFormat
-import java.util
-import java.util.Date
+import org.sunbird.job.util.CassandraUtil
 
 trait ObjectUpdater {
 

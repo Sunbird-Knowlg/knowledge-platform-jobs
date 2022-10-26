@@ -2,13 +2,16 @@ package org.sunbird.job.cspmigrator.helpers
 
 import com.datastax.driver.core.Row
 import org.apache.commons.lang3.StringUtils
+import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
+import org.sunbird.job.Metrics
 import org.sunbird.job.cspmigrator.domain.Event
 import org.sunbird.job.cspmigrator.models.{ExtDataConfig, ObjectData, ObjectExtData}
 import org.sunbird.job.cspmigrator.task.CSPMigratorConfig
 import org.sunbird.job.exception.ServerException
 import org.sunbird.job.util._
 
+import java.util.UUID
 import scala.collection.JavaConverters._
 
 trait CSPMigrator extends ObjectReader with ObjectUpdater {
@@ -53,7 +56,7 @@ trait CSPMigrator extends ObjectReader with ObjectUpdater {
 			updateContentBody(obj.dbId, migratedECMLBody, readerConfig)(cassandraUtil)
 		}
 
-		
+
 
 
 		val migratedMetadataFields: Map[String, String] =  fieldsToMigrate.flatMap(migrateField => {
@@ -108,4 +111,31 @@ trait CSPMigrator extends ObjectReader with ObjectUpdater {
 	override def saveExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Unit = None
 
 	override def deleteExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Unit = None
+
+
+
+//	private def pushStreamingUrlEvent(obj: ObjectData, context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
+//		if (config.isStreamingEnabled && config.streamableMimeType.contains(obj.mimeType)) {
+//			val event = getStreamingEvent(obj)
+//			context.output(config.generateVideoStreamingOutTag, event)
+//			metrics.incCounter(config.videoStreamingGeneratorEventCount)
+//		}
+//	}
+//
+//	def getStreamingEvent(obj: ObjectData): String = {
+//		val ets = System.currentTimeMillis
+//		val mid = s"""LP.$ets.${UUID.randomUUID}"""
+//		val channelId = obj.getString("channel", "")
+//		val ver = obj.getString("versionKey", "")
+//		val artifactUrl = obj.getString("artifactUrl", "")
+//		val contentType = obj.getString("contentType", "")
+//		val status = obj.getString("status", "")
+//		//TODO: deprecate using contentType in the event.
+//		val event = s"""{"eid":"BE_JOB_REQUEST", "ets": $ets, "mid": "$mid", "actor": {"id": "Post Publish Processor", "type": "System"}, "context":{"pdata":{"ver":"1.0","id":"org.ekstep.platform"}, "channel":"$channelId","env":"${config.jobEnv}"},"object":{"ver":"$ver","id":"${obj.identifier}"},"edata": {"action":"post-publish-process","iteration":1,"identifier":"${obj.identifier}","channel":"$channelId","artifactUrl":"$artifactUrl","mimeType":"${obj.mimeType}","contentType":"$contentType","pkgVersion":${obj.pkgVersion},"status":"$status"}}""".stripMargin
+//		logger.info(s"Video Streaming Event for identifier ${obj.identifier}  is  : $event")
+//		event
+//	}
+
+
+
 }
