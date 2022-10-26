@@ -53,6 +53,9 @@ trait CSPMigrator extends ObjectReader with ObjectUpdater {
 			updateContentBody(obj.dbId, migratedECMLBody, readerConfig)(cassandraUtil)
 		}
 
+		
+
+
 		val migratedMetadataFields: Map[String, String] =  fieldsToMigrate.flatMap(migrateField => {
 			if(obj.metadata.contains(migrateField)) {
 				val metadataField = obj.metadata.getOrElse(migrateField, "").asInstanceOf[String]
@@ -60,7 +63,7 @@ trait CSPMigrator extends ObjectReader with ObjectUpdater {
 			} else Map.empty[String, String]
 		}).filter(record => record._1.nonEmpty).toMap[String, String]
 
-		neo4JUtil.updateNode(obj.identifier, obj.metadata ++ migratedMetadataFields + ("migrationVersion" -> 1.0.asInstanceOf[Number]))
+		neo4JUtil.updateNode(obj.dbId, obj.metadata ++ migratedMetadataFields + ("migrationVersion" -> 1.0.asInstanceOf[Number]))
 
 
 		if(!(status.equalsIgnoreCase("Live") || status.equalsIgnoreCase("Unlisted")) && obj.identifier.endsWith(".img")) {
