@@ -2,23 +2,19 @@ package org.sunbird.job.cspmigrator.helpers
 
 import com.datastax.driver.core.Row
 import org.apache.commons.lang3.StringUtils
-import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
-import org.sunbird.job.Metrics
 import org.sunbird.job.cspmigrator.domain.Event
-import org.sunbird.job.cspmigrator.models.{ExtDataConfig, ObjectData, ObjectExtData}
 import org.sunbird.job.cspmigrator.task.CSPMigratorConfig
 import org.sunbird.job.exception.ServerException
 import org.sunbird.job.util._
 
-import java.util.UUID
 import scala.collection.JavaConverters._
 
 trait CSPMigrator extends ObjectReader with ObjectUpdater {
 
 	private[this] val logger = LoggerFactory.getLogger(classOf[CSPMigrator])
 
-	def process(obj: ObjectData, config: CSPMigratorConfig, readerConfig: ExtDataConfig, event: Event, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil): Unit = {
+	def process(objMetadata: Map[String, AnyRef], config: CSPMigratorConfig, event: Event, httpUtil: HttpUtil, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil): Map[String, AnyRef] = {
 
 		// fetch the objectType.
 		// check if the object has only Draft OR only Live OR live/image if the objectType is content/collection.
@@ -32,45 +28,53 @@ trait CSPMigrator extends ObjectReader with ObjectUpdater {
 		// if objectType is content/collection and the node is Live, trigger the LiveNodePublisher flink job - pending
 		// if objectType is AssessmentItem, migrate cassandra data as well
 		// update the migrationVersion of the object
+
+		// validation of the replace URL paths to be done. If not available, skip the content - pending
+		// Failed contents set migrationVersion to 0.1 - pending
 0
-		val status: String = obj.metadata.getOrElse("status","").asInstanceOf[String]
-		val objectType: String = obj.metadata.getOrElse("objectType","").asInstanceOf[String]
-		val mimeType: String = obj.metadata.getOrElse("mimeType","").asInstanceOf[String]
+		val status: String = objMetadata.getOrElse("status","").asInstanceOf[String]
+		val objectType: String = objMetadata.getOrElse("objectType","").asInstanceOf[String]
+		val mimeType: String = objMetadata.getOrElse("mimeType","").asInstanceOf[String]
+		val identifier: String = objMetadata.getOrElse("identifier", "").asInstanceOf[String]
 		val fieldsToMigrate: List[String] = if (config.getConfig.hasPath("neo4j_fields_to_migrate."+objectType.toLowerCase())) config.getConfig.getStringList("neo4j_fields_to_migrate."+objectType.toLowerCase()).asScala.toList
 													else throw new ServerException("ERR_CONFIG_NOT_FOUND", "Fields to migrate configuration not found for objectType: " + objectType)
 
 		if(objectType.equalsIgnoreCase("AssessmentItem")) {
-			val row: Row = getQuestionData(obj.dbId, config)(cassandraUtil)
+			val row: Row = getQuestionData(identifier, config)(cassandraUtil)
 			val data: Map[String, String] = if (null != row) extProps.map(prop => prop -> row.getString(prop.toLowerCase())).toMap.filter(p => StringUtils.isNotBlank(p._2)) else Map[String, String]()
 
 			val updatedData = data.flatMap(rec => {
 				Map(rec._1 -> StringUtils.replaceEach(rec._2, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String])))
 			})
 
-			updateQuestionData(obj.dbId, updatedData, config)(cassandraUtil)
+			updateQuestionData(identifier, updatedData, config)(cassandraUtil)
 		}
 
 		if(objectType.equalsIgnoreCase("Content") && mimeType.equalsIgnoreCase("application/vnd.ekstep.ecml-archive")) {
-			val ecmlBody: String = getContentBody(obj.dbId, readerConfig)(cassandraUtil)
+			val ecmlBody: String = getContentBody(identifier, config)(cassandraUtil)
 			val migratedECMLBody: String = StringUtils.replaceEach(ecmlBody, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
-			updateContentBody(obj.dbId, migratedECMLBody, readerConfig)(cassandraUtil)
+			updateContentBody(identifier, migratedECMLBody, config)(cassandraUtil)
+		}
+
+		if(objectType.equalsIgnoreCase("Collection") && mimeType.equalsIgnoreCase("application/vnd.ekstep.content-collection")) {
+
+
+
 		}
 
 
-
-
 		val migratedMetadataFields: Map[String, String] =  fieldsToMigrate.flatMap(migrateField => {
-			if(obj.metadata.contains(migrateField)) {
-				val metadataField = obj.metadata.getOrElse(migrateField, "").asInstanceOf[String]
+			if(objMetadata.contains(migrateField)) {
+				val metadataField = objMetadata.getOrElse(migrateField, "").asInstanceOf[String]
 				Map(migrateField -> StringUtils.replaceEach(metadataField, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String])))
 			} else Map.empty[String, String]
 		}).filter(record => record._1.nonEmpty).toMap[String, String]
 
-		neo4JUtil.updateNode(obj.dbId, obj.metadata ++ migratedMetadataFields + ("migrationVersion" -> 1.0.asInstanceOf[Number]))
+		neo4JUtil.updateNode(identifier, objMetadata ++ migratedMetadataFields + ("migrationVersion" -> 1.0.asInstanceOf[Number]))
 
 
-		if(!(status.equalsIgnoreCase("Live") || status.equalsIgnoreCase("Unlisted")) && obj.identifier.endsWith(".img")) {
-			val liveObj = getLiveNode(event.identifier, obj.pkgVersion, obj.mimeType, readerConfig)(neo4JUtil, cassandraUtil)
+		if(!(status.equalsIgnoreCase("Live") || status.equalsIgnoreCase("Unlisted")) && identifier.endsWith(".img")) {
+			val liveObjMetadata: Map[String, AnyRef] = getLiveNodeMetadata(event.identifier)(neo4JUtil)
 
 			if(objectType.equalsIgnoreCase("AssessmentItem")) {
 				val row: Row = getQuestionData(event.identifier, config)(cassandraUtil)
@@ -84,57 +88,26 @@ trait CSPMigrator extends ObjectReader with ObjectUpdater {
 			}
 
 			if(objectType.equalsIgnoreCase("Content") && mimeType.equalsIgnoreCase("application/vnd.ekstep.ecml-archive")) {
-				val ecmlBody: String = getContentBody(event.identifier, readerConfig)(cassandraUtil)
+				val ecmlBody: String = getContentBody(event.identifier, config)(cassandraUtil)
 				val migratedECMLBody: String = StringUtils.replaceEach(ecmlBody, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
-				updateContentBody(event.identifier, migratedECMLBody, readerConfig)(cassandraUtil)
+				updateContentBody(event.identifier, migratedECMLBody, config)(cassandraUtil)
 			}
 
 			val migratedLiveMetadataFields: Map[String, String] =  fieldsToMigrate.flatMap(migrateField => {
-				if(liveObj.metadata.contains(migrateField)) {
-					val metadataField = liveObj.metadata.getOrElse(migrateField, "").asInstanceOf[String]
+				if(liveObjMetadata.contains(migrateField)) {
+					val metadataField = liveObjMetadata.getOrElse(migrateField, "").asInstanceOf[String]
 					Map(migrateField -> StringUtils.replaceEach(metadataField, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String])))
 				} else Map.empty[String, String]
 			}).filter(record => record._1.nonEmpty).toMap[String, String]
 
-			neo4JUtil.updateNode(liveObj.identifier, liveObj.metadata ++ migratedLiveMetadataFields + ("migrationVersion" -> 1.0.asInstanceOf[Number]))
-		}
+			neo4JUtil.updateNode(liveObjMetadata.getOrElse("identifier","").asInstanceOf[String], liveObjMetadata ++ migratedLiveMetadataFields + ("migrationVersion" -> 1.0.asInstanceOf[Number]))
 
+			liveObjMetadata
 
-		logger.info("CSPMigrator :: process :: identifier: " + event.identifier )
+		} else objMetadata
 
 	}
 
-	override def getHierarchy(identifier: String, pkgVersion: Double, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = None
-
-	override def getExtData(identifier: String, pkgVersion: Double, mimeType: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[ObjectExtData] = None
-
-	override def saveExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Unit = None
-
-	override def deleteExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Unit = None
-
-
-
-//	private def pushStreamingUrlEvent(obj: ObjectData, context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
-//		if (config.isStreamingEnabled && config.streamableMimeType.contains(obj.mimeType)) {
-//			val event = getStreamingEvent(obj)
-//			context.output(config.generateVideoStreamingOutTag, event)
-//			metrics.incCounter(config.videoStreamingGeneratorEventCount)
-//		}
-//	}
-//
-//	def getStreamingEvent(obj: ObjectData): String = {
-//		val ets = System.currentTimeMillis
-//		val mid = s"""LP.$ets.${UUID.randomUUID}"""
-//		val channelId = obj.getString("channel", "")
-//		val ver = obj.getString("versionKey", "")
-//		val artifactUrl = obj.getString("artifactUrl", "")
-//		val contentType = obj.getString("contentType", "")
-//		val status = obj.getString("status", "")
-//		//TODO: deprecate using contentType in the event.
-//		val event = s"""{"eid":"BE_JOB_REQUEST", "ets": $ets, "mid": "$mid", "actor": {"id": "Post Publish Processor", "type": "System"}, "context":{"pdata":{"ver":"1.0","id":"org.ekstep.platform"}, "channel":"$channelId","env":"${config.jobEnv}"},"object":{"ver":"$ver","id":"${obj.identifier}"},"edata": {"action":"post-publish-process","iteration":1,"identifier":"${obj.identifier}","channel":"$channelId","artifactUrl":"$artifactUrl","mimeType":"${obj.mimeType}","contentType":"$contentType","pkgVersion":${obj.pkgVersion},"status":"$status"}}""".stripMargin
-//		logger.info(s"Video Streaming Event for identifier ${obj.identifier}  is  : $event")
-//		event
-//	}
 
 
 

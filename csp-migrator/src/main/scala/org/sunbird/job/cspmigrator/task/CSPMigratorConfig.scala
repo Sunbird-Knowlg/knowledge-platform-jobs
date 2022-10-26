@@ -19,6 +19,10 @@ class CSPMigratorConfig(override val config: Config) extends BaseJobConfig(confi
   // Kafka Topics Configuration
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
   val kafkaFailedTopic: String = config.getString("kafka.failed.topic")
+  val live_videoStreamingTopic: String = config.getString("kafka.live_video_stream.topic")
+
+  val jobEnv: String = config.getString("job.env")
+
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
   override val parallelism: Int = config.getInt("task.parallelism")
   val contentAutoCreatorParallelism: Int = if (config.hasPath("task.csp-migrator.parallelism"))
@@ -39,6 +43,7 @@ class CSPMigratorConfig(override val config: Config) extends BaseJobConfig(confi
   // Tags
   val contentAutoCreatorOutputTag: OutputTag[Event] = OutputTag[Event]("csp-migrator")
   val failedEventOutTag: OutputTag[String] = OutputTag[String]("csp-migrator-failed-event")
+  val generateVideoStreamingOutTag: OutputTag[String] = OutputTag[String]("live-video-streaming-generator-request")
 
   val configVersion = "1.0"
 

@@ -31,6 +31,7 @@ class CSPMigratorStreamTask(config: CSPMigratorConfig, kafkaConnector: FlinkKafk
       .setParallelism(config.parallelism)
 
     processStreamTask.getSideOutput(config.failedEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaFailedTopic))
+    processStreamTask.getSideOutput(config.generateVideoStreamingOutTag).addSink(kafkaConnector.kafkaStringSink(config.live_videoStreamingTopic))
 
     env.execute(config.jobName)
   }

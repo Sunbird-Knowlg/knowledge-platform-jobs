@@ -1,7 +1,6 @@
 package org.sunbird.job.cspmigrator.domain
 
 import org.apache.commons.lang3.StringUtils
-import org.sunbird.job.cspmigrator.models.ObjectData
 import org.sunbird.job.cspmigrator.task.CSPMigratorConfig
 import org.sunbird.job.domain.reader.JobRequest
 
@@ -35,7 +34,7 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 	}
 
 	def isValid(objMetadata: Map[String, AnyRef], config: CSPMigratorConfig): Boolean = {
-		(objMetadata.getOrElse("migrationVersion",0).asInstanceOf[Number].doubleValue() == 0 && StringUtils.equals("csp-migration", action) && StringUtils.isNotBlank(identifier)) && StringUtils.isNotBlank(channel)
+		(objMetadata.getOrElse("migrationVersion",0).asInstanceOf[Number].doubleValue() != 1.0 && StringUtils.equals("csp-migration", action) && StringUtils.isNotBlank(identifier)) && StringUtils.isNotBlank(channel)
 	}
 
 }

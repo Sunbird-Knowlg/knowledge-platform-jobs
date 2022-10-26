@@ -6,7 +6,6 @@ import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cspmigrator.domain.Event
 import org.sunbird.job.cspmigrator.helpers.CSPMigrator
-import org.sunbird.job.cspmigrator.models.{ExtDataConfig, ObjectData}
 import org.sunbird.job.cspmigrator.task.CSPMigratorConfig
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.exception.ServerException
@@ -15,6 +14,7 @@ import org.sunbird.job.util._
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import java.util
+import java.util.UUID
 
 class CSPMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
                           @transient var neo4JUtil: Neo4JUtil = null,
@@ -25,7 +25,6 @@ class CSPMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
 
   private[this] lazy val logger = LoggerFactory.getLogger(classOf[CSPMigratorFunction])
   lazy val defCache: DefinitionCache = new DefinitionCache()
-  private val readerConfig = ExtDataConfig(config.contentKeyspaceName, config.contentTableName)
 
   override def metricsList(): List[String] = {
     List(config.totalEventsCount, config.successEventCount, config.failedEventCount, config.skippedEventCount, config.errorEventCount)
@@ -49,13 +48,18 @@ class CSPMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
     logger.info("CSPMigratorFunction::processElement:: event context : " + event.context)
     logger.info("CSPMigratorFunction::processElement:: event edata : " + event.eData)
 
-    val obj: ObjectData = getObject(event.identifier, event.pkgVersion, event.mimeType, readerConfig)(neo4JUtil, cassandraUtil)
+    val objMetadata: Map[String, AnyRef] = getMetadata(event.identifier, event.pkgVersion)(neo4JUtil)
 
     try {
-      if (event.isValid(obj.metadata, config)) {
-            process(obj, config, readerConfig, event, neo4JUtil, cassandraUtil)
-            logger.info("CSPMigratorFunction::processElement:: Content auto creator upload/approval operation completed for : " + event.identifier)
-            metrics.incCounter(config.successEventCount)
+      if (event.isValid(objMetadata, config)) {
+        val returnObj: Map[String, AnyRef] = process(objMetadata, config, event, httpUtil, neo4JUtil, cassandraUtil)
+
+        if(event.objectType.equalsIgnoreCase("Asset") && returnObj.get("status").asInstanceOf[String].equalsIgnoreCase("Live")
+          && (event.mimeType.equalsIgnoreCase("video/mp4") || event.mimeType.equalsIgnoreCase("video/webm"))) {
+          pushStreamingUrlEvent(returnObj, context)(metrics)
+        }
+        logger.info("CSPMigratorFunction::processElement:: CSP migration operation completed for : " + event.identifier)
+        metrics.incCounter(config.successEventCount)
       } else {
         logger.info("CSPMigratorFunction::processElement:: Event is not qualified for csp migration having identifier : " + event.identifier + " | objectType : " + event.objectType)
         metrics.incCounter(config.skippedEventCount)
@@ -75,13 +79,32 @@ class CSPMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
     }
   }
 
-
-
   private def pushEventForRetry(jobName: String, newEventMap: util.HashMap[String, Any], error: Throwable, metrics: Metrics, context: ProcessFunction[Event, String]#Context): Unit = {
     val failedEvent = getFailedEvent(jobName, newEventMap, error)
     context.output(config.failedEventOutTag, failedEvent)
     metrics.incCounter(config.errorEventCount)
   }
 
+  private def pushStreamingUrlEvent(objMetadata: Map[String, AnyRef], context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
+    val event = getStreamingEvent(objMetadata)
+    context.output(config.generateVideoStreamingOutTag, event)
+  }
+
+  def getStreamingEvent(objMetadata: Map[String, AnyRef]): String = {
+    val ets = System.currentTimeMillis
+    val mid = s"""LP.$ets.${UUID.randomUUID}"""
+    val channelId = objMetadata.getOrElse("channel", "").asInstanceOf[String]
+    val ver = objMetadata.getOrElse("versionKey", "").asInstanceOf[String]
+    val artifactUrl = objMetadata.getOrElse("artifactUrl", "").asInstanceOf[String]
+    val contentType = objMetadata.getOrElse("contentType", "").asInstanceOf[String]
+    val mimeType = objMetadata.getOrElse("mimeType", "").asInstanceOf[String]
+    val status = objMetadata.getOrElse("status", "").asInstanceOf[String]
+    val identifier = objMetadata.getOrElse("identifier", "").asInstanceOf[String]
+    val pkgVersion = objMetadata.getOrElse("pkgVersion", "").asInstanceOf[Number]
+    //TODO: deprecate using contentType in the event.
+    val event = s"""{"eid":"BE_JOB_REQUEST", "ets": $ets, "mid": "$mid", "actor": {"id": "CSP Migrator", "type": "System"}, "context":{"pdata":{"ver":"1.0","id":"org.ekstep.platform"}, "channel":"$channelId","env":"${config.jobEnv}"},"object":{"ver":"$ver","id":"$identifier"},"edata": {"action":"post-publish-process","iteration":1,"identifier":"$identifier","channel":"$channelId","artifactUrl":"$artifactUrl","mimeType":"$mimeType","contentType":"$contentType","pkgVersion":$pkgVersion,"status":"$status"}}""".stripMargin
+    logger.info(s"Asset Video Streaming Event for identifier $identifier  is  : $event")
+    event
+  }
 
 }
