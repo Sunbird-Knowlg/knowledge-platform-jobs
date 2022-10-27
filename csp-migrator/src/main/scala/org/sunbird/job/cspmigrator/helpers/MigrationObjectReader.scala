@@ -42,7 +42,7 @@ trait MigrationObjectReader {
     val extProps = config.getConfig.getStringList("cassandra_fields_to_migrate.assessmentitem").asScala.toList
     extProps.foreach(prop => if (lang3.StringUtils.equals("body", prop) | lang3.StringUtils.equals("answer", prop)) select.fcall("blobAsText", QueryBuilder.column(prop.toLowerCase())).as(prop.toLowerCase()) else select.column(prop.toLowerCase()).as(prop.toLowerCase()))
     val selectWhere: Select.Where = select.from(config.contentKeyspaceName, config.assessmentTableName).where().and(QueryBuilder.eq("identifier", identifier))
-    logger.info("Cassandra Fetch Query :: " + selectWhere.toString)
+    logger.info("MigrationObjectReader ::: Cassandra Fetch Query :: " + selectWhere.toString)
     cassandraUtil.findOne(selectWhere.toString)
   }
 
