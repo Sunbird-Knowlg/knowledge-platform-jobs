@@ -3,7 +3,6 @@ package org.sunbird.job.cspmigrator.helpers
 import com.datastax.driver.core.Row
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
-import org.sunbird.job.cspmigrator.domain.Event
 import org.sunbird.job.cspmigrator.task.CSPMigratorConfig
 import org.sunbird.job.exception.ServerException
 import org.sunbird.job.util._
@@ -42,26 +41,31 @@ trait CSPMigrator extends MigrationObjectReader with MigrationObjectUpdater {
 			val row: Row = getQuestionData(identifier, config)(cassandraUtil)
 			val extProps = config.getConfig.getStringList("cassandra_fields_to_migrate.assessmentitem").asScala.toList
 			val data: Map[String, String] = if (null != row) extProps.map(prop => prop -> row.getString(prop.toLowerCase())).toMap.filter(p => StringUtils.isNotBlank(p._2)) else Map[String, String]()
-
-			val updatedData = data.flatMap(rec => {
+			logger.info("CSPMigrator:: process:: objectType AssessmentItem fetched Cassandra data:: " + data)
+			val migrateData = data.flatMap(rec => {
 				Map(rec._1 -> StringUtils.replaceEach(rec._2, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String])))
 			})
-
-			updateQuestionData(identifier, updatedData, config)(cassandraUtil)
+			updateQuestionData(identifier, migrateData, config)(cassandraUtil)
+			logger.info("CSPMigrator:: process:: objectType AssessmentItem Migrated Cassandra data:: " + migrateData)
 		}
 
 		if(objectType.equalsIgnoreCase("Content") && mimeType.equalsIgnoreCase("application/vnd.ekstep.ecml-archive")) {
 			val ecmlBody: String = getContentBody(identifier, config)(cassandraUtil)
+			logger.info("CSPMigrator:: process:: objectType Content - ECML fetched body:: " + ecmlBody)
 			val migratedECMLBody: String = StringUtils.replaceEach(ecmlBody, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
 			updateContentBody(identifier, migratedECMLBody, config)(cassandraUtil)
+			logger.info("CSPMigrator:: process:: objectType Content - ECML Migrated body:: " + migratedECMLBody)
 		}
 
 		if(objectType.equalsIgnoreCase("Collection") && mimeType.equalsIgnoreCase("application/vnd.ekstep.content-collection")) {
 			val collectionHierarchy: String = getCollectionHierarchy(identifier, config)(cassandraUtil)
+			logger.info("CSPMigrator:: process:: objectType Collection - fetched Hierarchy:: " + collectionHierarchy)
 			val migratedCollectionHierarchy: String = StringUtils.replaceEach(collectionHierarchy, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
 			updateCollectionHierarchy(identifier, migratedCollectionHierarchy, config)(cassandraUtil)
+			logger.info("CSPMigrator:: process:: objectType Collection - migrated Hierarchy:: " + migratedCollectionHierarchy)
 		}
 
+		logger.info(s"""CSPMigrator:: process:: starting neo4j fields migration for $identifier - $objectType fields:: $fieldsToMigrate""")
 		val migratedMetadataFields: Map[String, String] =  fieldsToMigrate.flatMap(migrateField => {
 			if(objMetadata.contains(migrateField)) {
 				val metadataField = objMetadata.getOrElse(migrateField, "").asInstanceOf[String]
@@ -72,9 +76,9 @@ trait CSPMigrator extends MigrationObjectReader with MigrationObjectUpdater {
 				Map(migrateField -> migrateValue)
 			} else Map.empty[String, String]
 		}).filter(record => record._1.nonEmpty).toMap[String, String]
-
+		logger.info(s"""CSPMigrator:: process:: $identifier - $objectType updated fields data:: $migratedMetadataFields""")
 		neo4JUtil.updateNode(identifier, objMetadata ++ migratedMetadataFields + ("migrationVersion" -> 1.0.asInstanceOf[Number]))
-
+		logger.info("CSPMigrator:: process:: static fields migration completed for " + identifier)
 	}
 
 }
