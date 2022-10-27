@@ -36,19 +36,18 @@ trait MigrationObjectReader {
     if (null != rowId) rowId.getString("body") else ""
   }
 
-  def getQuestionData(identifier: String, config: CSPMigratorConfig)(implicit cassandraUtil: CassandraUtil): Row = {
-    logger.info("MigrationObjectReader ::: getQuestionData ::: Reading Question External Data For : " + identifier)
+  def getAssessmentItemData(identifier: String, config: CSPMigratorConfig)(implicit cassandraUtil: CassandraUtil): Row = {
+    logger.info("MigrationObjectReader ::: getAssessmentItemData ::: Reading Question External Data For : " + identifier)
     val select = QueryBuilder.select()
     val extProps = config.getConfig.getStringList("cassandra_fields_to_migrate.assessmentitem").asScala.toList
     extProps.foreach(prop => if (lang3.StringUtils.equals("body", prop) | lang3.StringUtils.equals("answer", prop)) select.fcall("blobAsText", QueryBuilder.column(prop.toLowerCase())).as(prop.toLowerCase()) else select.column(prop.toLowerCase()).as(prop.toLowerCase()))
-    val selectWhere: Select.Where = select.from(config.contentKeyspaceName, config.assessmentTableName).where().and(QueryBuilder.eq("identifier", identifier))
-    logger.info("MigrationObjectReader ::: Cassandra Fetch Query :: " + selectWhere.toString)
+    val selectWhere: Select.Where = select.from(config.contentKeyspaceName, config.assessmentTableName).where().and(QueryBuilder.eq("question_id", identifier))
+    logger.info("MigrationObjectReader ::: getAssessmentItemData:: Cassandra Fetch Query :: " + selectWhere.toString)
     cassandraUtil.findOne(selectWhere.toString)
   }
 
   def getCollectionHierarchy(identifier: String, config: CSPMigratorConfig)(implicit cassandraUtil: CassandraUtil): String = {
-    val selectId = QueryBuilder.select()
-    selectId.fcall("blobAsText", QueryBuilder.column("hierarchy")).as("hierarchy")
+    val selectId = QueryBuilder.select().column("hierarchy")
     val selectWhereId: Select.Where = selectId.from(config.hierarchyKeyspaceName, config.hierarchyTableName).where().and(QueryBuilder.eq("identifier", identifier))
     logger.info("MigrationObjectReader:: getCollectionHierarchy:: Hierarchy Fetch Query :: " + selectWhereId.toString)
     val rowId = cassandraUtil.findOne(selectWhereId.toString)

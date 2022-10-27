@@ -64,10 +64,6 @@ class CSPMigratorConfig(override val config: Config) extends BaseJobConfig(confi
   val graphRoutePath: String = config.getString("neo4j.routePath")
   val graphName: String = config.getString("neo4j.graph")
 
-  // Redis Configurations
-  val nodeStore: Int = config.getInt("redis.database.contentCache.id")
-
-
   // Schema Config
   val definitionBasePath: String = if (config.hasPath("schema.basePath")) config.getString("schema.basePath") else "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local"
   val schemaSupportVersionMap: Map[String, AnyRef] = if (config.hasPath("schema.supportedVersion")) config.getObject("schema.supportedVersion").unwrapped().asScala.toMap else Map[String, AnyRef]()
