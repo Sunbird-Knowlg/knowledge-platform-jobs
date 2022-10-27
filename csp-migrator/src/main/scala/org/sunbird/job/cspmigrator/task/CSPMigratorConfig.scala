@@ -85,7 +85,7 @@ class CSPMigratorConfig(override val config: Config) extends BaseJobConfig(confi
   val contentFolder: String = if (config.hasPath("cloud_storage.folder.content")) config.getString("cloud_storage.folder.content") else "content"
   val artifactFolder: String = if (config.hasPath("cloud_storage.folder.artifact")) config.getString("cloud_storage.folder.artifact") else "artifact"
   val fieldsToMigrate: util.Map[String, AnyRef] = if(config.hasPath("neo4j_fields_to_migrate")) config.getAnyRef("neo4j_fields_to_migrate").asInstanceOf[util.Map[String, AnyRef]] else new util.HashMap[String, AnyRef]()
-  val keyValueMigrateStrings: util.Map[String, String] = config.getAnyRef("migrate.key_value_strings_to_migrate").asInstanceOf[util.Map[String, String]]
+  val keyValueMigrateStrings: util.Map[String, String] = config.getAnyRef("key_value_strings_to_migrate").asInstanceOf[util.Map[String, String]]
 
   def getConfig: Config = config
 }

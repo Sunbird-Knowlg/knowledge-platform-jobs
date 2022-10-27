@@ -22,6 +22,8 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 
 	def mimeType: String = readOrDefault[String]("edata.metadata.mimeType", "")
 
+	def status: String = readOrDefault[String]("edata.metadata.status", "")
+
 	def objectType: String = readOrDefault[String]("edata.objectType", "")
 
 	def identifier: String = readOrDefault[String]("object.id", "")

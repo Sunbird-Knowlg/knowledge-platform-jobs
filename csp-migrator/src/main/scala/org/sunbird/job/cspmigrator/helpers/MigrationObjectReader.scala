@@ -12,10 +12,9 @@ import scala.collection.JavaConverters._
 trait MigrationObjectReader {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[MigrationObjectReader])
-  val extProps = List("body", "editorState", "answer", "solutions", "instructions", "hints", "media", "responseDeclaration", "interactions", "identifier")
 
-  def getMetadata(identifier: String, pkgVersion: Double)(implicit neo4JUtil: Neo4JUtil): Map[String, AnyRef] = {
-    val nodeId = getEditableObjId(identifier, pkgVersion)
+  def getMetadata(identifier: String, pkgVersion: Double, status: String)(implicit neo4JUtil: Neo4JUtil): Map[String, AnyRef] = {
+    val nodeId = getEditableObjId(identifier, pkgVersion, status)
     val metaData = Option(neo4JUtil.getNodeProperties(nodeId)).getOrElse(neo4JUtil.getNodeProperties(identifier)).asScala.toMap
     val id = metaData.getOrElse("IL_UNIQUE_ID", identifier).asInstanceOf[String]
     val objType = metaData.getOrElse("IL_FUNC_OBJECT_TYPE", "").asInstanceOf[String]
@@ -23,16 +22,8 @@ trait MigrationObjectReader {
     metaData ++ Map[String, AnyRef]("identifier" -> id, "objectType" -> objType) - ("IL_UNIQUE_ID", "IL_FUNC_OBJECT_TYPE", "IL_SYS_NODE_TYPE")
   }
 
-  def getEditableObjId(identifier: String, pkgVersion: Double): String = {
-    if (pkgVersion > 0) identifier + ".img" else identifier
-  }
-
-  def getLiveNodeMetadata(identifier: String)(implicit neo4JUtil: Neo4JUtil): Map[String, AnyRef] = {
-    val metaData = Option(neo4JUtil.getNodeProperties(identifier)).getOrElse(neo4JUtil.getNodeProperties(identifier)).asScala.toMap
-    val id = metaData.getOrElse("IL_UNIQUE_ID", identifier).asInstanceOf[String]
-    val objType = metaData.getOrElse("IL_FUNC_OBJECT_TYPE", "").asInstanceOf[String]
-    logger.info("MigrationObjectReader:: getLiveNodeMetadata:: identifier: " + identifier + " with objType: " + objType)
-    metaData ++ Map[String, AnyRef]("identifier" -> id, "objectType" -> objType) - ("IL_UNIQUE_ID", "IL_FUNC_OBJECT_TYPE", "IL_SYS_NODE_TYPE")
+  def getEditableObjId(identifier: String, pkgVersion: Double, status: String): String = {
+    if (pkgVersion > 0 && !(status.equalsIgnoreCase("Live") || status.equalsIgnoreCase("Unlisted")) && !identifier.endsWith(".img")) identifier + ".img" else identifier
   }
 
   def getContentBody(identifier: String, config: CSPMigratorConfig)(implicit cassandraUtil: CassandraUtil): String = {
@@ -48,6 +39,7 @@ trait MigrationObjectReader {
   def getQuestionData(identifier: String, config: CSPMigratorConfig)(implicit cassandraUtil: CassandraUtil): Row = {
     logger.info("MigrationObjectReader ::: getQuestionData ::: Reading Question External Data For : " + identifier)
     val select = QueryBuilder.select()
+    val extProps = config.getConfig.getStringList("cassandra_fields_to_migrate.assessmentitem").asScala.toList
     extProps.foreach(prop => if (lang3.StringUtils.equals("body", prop) | lang3.StringUtils.equals("answer", prop)) select.fcall("blobAsText", QueryBuilder.column(prop.toLowerCase())).as(prop.toLowerCase()) else select.column(prop.toLowerCase()).as(prop.toLowerCase()))
     val selectWhere: Select.Where = select.from(config.contentKeyspaceName, config.assessmentTableName).where().and(QueryBuilder.eq("identifier", identifier))
     logger.info("Cassandra Fetch Query :: " + selectWhere.toString)

@@ -14,7 +14,7 @@ trait CSPMigrator extends MigrationObjectReader with MigrationObjectUpdater {
 
 	private[this] val logger = LoggerFactory.getLogger(classOf[CSPMigrator])
 
-	def process(objMetadata: Map[String, AnyRef], config: CSPMigratorConfig, event: Event, httpUtil: HttpUtil, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil): Map[String, AnyRef] = {
+	def process(objMetadata: Map[String, AnyRef], config: CSPMigratorConfig, httpUtil: HttpUtil, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil): Unit = {
 
 		// fetch the objectType.
 		// check if the object has only Draft OR only Live OR live/image if the objectType is content/collection.
@@ -31,8 +31,7 @@ trait CSPMigrator extends MigrationObjectReader with MigrationObjectUpdater {
 
 		// validation of the replace URL paths to be done. If not available, Fail migration
 		// For Migration Failed contents set migrationVersion to 0.1
-0
-		val status: String = objMetadata.getOrElse("status","").asInstanceOf[String]
+
 		val objectType: String = objMetadata.getOrElse("objectType","").asInstanceOf[String]
 		val mimeType: String = objMetadata.getOrElse("mimeType","").asInstanceOf[String]
 		val identifier: String = objMetadata.getOrElse("identifier", "").asInstanceOf[String]
@@ -41,6 +40,7 @@ trait CSPMigrator extends MigrationObjectReader with MigrationObjectUpdater {
 
 		if(objectType.equalsIgnoreCase("AssessmentItem")) {
 			val row: Row = getQuestionData(identifier, config)(cassandraUtil)
+			val extProps = config.getConfig.getStringList("cassandra_fields_to_migrate.assessmentitem").asScala.toList
 			val data: Map[String, String] = if (null != row) extProps.map(prop => prop -> row.getString(prop.toLowerCase())).toMap.filter(p => StringUtils.isNotBlank(p._2)) else Map[String, String]()
 
 			val updatedData = data.flatMap(rec => {
@@ -75,54 +75,6 @@ trait CSPMigrator extends MigrationObjectReader with MigrationObjectUpdater {
 
 		neo4JUtil.updateNode(identifier, objMetadata ++ migratedMetadataFields + ("migrationVersion" -> 1.0.asInstanceOf[Number]))
 
-		if(!(status.equalsIgnoreCase("Live") || status.equalsIgnoreCase("Unlisted")) && identifier.endsWith(".img")) {
-			try {
-				val liveObjMetadata: Map[String, AnyRef] = getLiveNodeMetadata(event.identifier)(neo4JUtil)
-
-				if (objectType.equalsIgnoreCase("AssessmentItem")) {
-					val row: Row = getQuestionData(event.identifier, config)(cassandraUtil)
-					val data: Map[String, String] = if (null != row) extProps.map(prop => prop -> row.getString(prop.toLowerCase())).toMap.filter(p => StringUtils.isNotBlank(p._2)) else Map[String, String]()
-
-					val updatedData = data.flatMap(rec => {
-						Map(rec._1 -> StringUtils.replaceEach(rec._2, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String])))
-					})
-
-					updateQuestionData(event.identifier, updatedData, config)(cassandraUtil)
-				}
-
-				if (objectType.equalsIgnoreCase("Content") && mimeType.equalsIgnoreCase("application/vnd.ekstep.ecml-archive")) {
-					val ecmlBody: String = getContentBody(event.identifier, config)(cassandraUtil)
-					val migratedECMLBody: String = StringUtils.replaceEach(ecmlBody, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
-					updateContentBody(event.identifier, migratedECMLBody, config)(cassandraUtil)
-				}
-
-				val migratedLiveMetadataFields: Map[String, String] = fieldsToMigrate.flatMap(migrateField => {
-					if (liveObjMetadata.contains(migrateField)) {
-						val metadataField = liveObjMetadata.getOrElse(migrateField, "").asInstanceOf[String]
-						val migrateValue: String = StringUtils.replaceEach(metadataField, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
-
-						if (httpUtil.getSize(migrateValue) < 0) throw new ServerException("ERR_NEW_PATH_NOT_FOUND", "File not found in the new path to migrate: " + migrateValue)
-
-						Map(migrateField -> migrateValue)
-					} else Map.empty[String, String]
-				}).filter(record => record._1.nonEmpty).toMap[String, String]
-
-				neo4JUtil.updateNode(liveObjMetadata.getOrElse("identifier", "").asInstanceOf[String], liveObjMetadata ++ migratedLiveMetadataFields + ("migrationVersion" -> 1.0.asInstanceOf[Number]))
-
-				liveObjMetadata
-			} catch {
-				case se: ServerException =>
-					// Insert into neo4j with migrationVersion as 0.1
-					neo4JUtil.updateNode(event.identifier, objMetadata + ("migrationVersion" -> 0.1.asInstanceOf[Number]))
-
-					throw new ServerException("MIGRATION_FAILED", "Migration Failed for  " + event.identifier)
-			}
-
-		} else objMetadata
-
 	}
-
-
-
 
 }

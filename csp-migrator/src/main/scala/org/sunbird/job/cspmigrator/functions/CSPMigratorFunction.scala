@@ -48,22 +48,22 @@ class CSPMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
     logger.info("CSPMigratorFunction::processElement:: event context : " + event.context)
     logger.info("CSPMigratorFunction::processElement:: event edata : " + event.eData)
 
-    val objMetadata: Map[String, AnyRef] = getMetadata(event.identifier, event.pkgVersion)(neo4JUtil)
+    val objMetadata: Map[String, AnyRef] = getMetadata(event.identifier, event.pkgVersion, event.status)(neo4JUtil)
 
     try {
       if (event.isValid(objMetadata, config)) {
-        val returnObj: Map[String, AnyRef] = process(objMetadata, config, event, httpUtil, neo4JUtil, cassandraUtil)
+        process(objMetadata, config, httpUtil, neo4JUtil, cassandraUtil)
 
-        if(event.objectType.equalsIgnoreCase("Asset") && returnObj.get("status").asInstanceOf[String].equalsIgnoreCase("Live")
+        if(event.objectType.equalsIgnoreCase("Asset") && event.status.equalsIgnoreCase("Live")
           && (event.mimeType.equalsIgnoreCase("video/mp4") || event.mimeType.equalsIgnoreCase("video/webm"))) {
-          pushStreamingUrlEvent(returnObj, context)(metrics)
+          pushStreamingUrlEvent(objMetadata, context)(metrics)
           metrics.incCounter(config.assetVideoStreamCount)
         }
 
         if((event.objectType.equalsIgnoreCase("Content") || event.objectType.equalsIgnoreCase("Collection"))
-          && (returnObj.get("status").asInstanceOf[String].equalsIgnoreCase("Live") ||
-          returnObj.get("status").asInstanceOf[String].equalsIgnoreCase("Unlisted"))) {
-          pushLiveNodePublishEvent(returnObj, context, metrics)
+          && (event.status.equalsIgnoreCase("Live") ||
+          event.status.equalsIgnoreCase("Unlisted"))) {
+          pushLiveNodePublishEvent(objMetadata, context, metrics)
           metrics.incCounter(config.liveNodePublishCount)
         }
 
@@ -95,12 +95,12 @@ class CSPMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
 //        else logger.info("CSPMigratorFunction :: Event Reached Maximum Retry Limit having mid : " + event.mid() + "| " +  event)
     }
   }
-
-  private def pushEventForRetry(jobName: String, newEventMap: util.HashMap[String, Any], error: Throwable, metrics: Metrics, context: ProcessFunction[Event, String]#Context): Unit = {
-    val failedEvent = getFailedEvent(jobName, newEventMap, error)
-    context.output(config.failedEventOutTag, failedEvent)
-    metrics.incCounter(config.errorEventCount)
-  }
+//
+//  private def pushEventForRetry(jobName: String, newEventMap: util.HashMap[String, Any], error: Throwable, metrics: Metrics, context: ProcessFunction[Event, String]#Context): Unit = {
+//    val failedEvent = getFailedEvent(jobName, newEventMap, error)
+//    context.output(config.failedEventOutTag, failedEvent)
+//    metrics.incCounter(config.errorEventCount)
+//  }
 
   private def pushStreamingUrlEvent(objMetadata: Map[String, AnyRef], context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
     val event = getStreamingEvent(objMetadata)
