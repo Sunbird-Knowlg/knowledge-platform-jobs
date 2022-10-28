@@ -83,7 +83,7 @@ class CSPMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
     } catch {
       case se: ServerException =>
         logger.error("CSPMigratorFunction :: Message processing failed for mid : " + event.mid() + " || " + event , se)
-        logger.error("Error while migrating content :: " + se.getMessage)
+        logger.error("CSPMigratorFunction :: Error while migrating content :: " + se.getMessage)
 
         // Insert into neo4j with migrationVersion as 0.1
         if(!se.getMessage.contains("Migration Failed for"))
