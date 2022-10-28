@@ -37,6 +37,18 @@ trait CSPMigrator extends MigrationObjectReader with MigrationObjectUpdater {
 		val fieldsToMigrate: List[String] = if (config.getConfig.hasPath("neo4j_fields_to_migrate."+objectType.toLowerCase())) config.getConfig.getStringList("neo4j_fields_to_migrate."+objectType.toLowerCase()).asScala.toList
 													else throw new ServerException("ERR_CONFIG_NOT_FOUND", "Fields to migrate configuration not found for objectType: " + objectType)
 
+		logger.info(s"""CSPMigrator:: process:: starting neo4j fields migration for $identifier - $objectType fields:: $fieldsToMigrate""")
+		val migratedMetadataFields: Map[String, String] =  fieldsToMigrate.flatMap(migrateField => {
+			if(objMetadata.contains(migrateField)) {
+				val metadataField = objMetadata.getOrElse(migrateField, "").asInstanceOf[String]
+				val migrateValue: String = StringUtils.replaceEach(metadataField, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
+
+				if(httpUtil.getSize(migrateValue) < 0) throw new ServerException("ERR_NEW_PATH_NOT_FOUND", "File not found in the new path to migrate: " + migrateValue)
+
+				Map(migrateField -> migrateValue)
+			} else Map.empty[String, String]
+		}).filter(record => record._1.nonEmpty).toMap[String, String]
+
 		if(objectType.equalsIgnoreCase("AssessmentItem")) {
 			val row: Row = getAssessmentItemData(identifier, config)(cassandraUtil)
 			val extProps = config.getConfig.getStringList("cassandra_fields_to_migrate.assessmentitem").asScala.toList
@@ -65,17 +77,6 @@ trait CSPMigrator extends MigrationObjectReader with MigrationObjectUpdater {
 			logger.info(s"""CSPMigrator:: process:: $identifier - $objectType :: Migrated Hierarchy:: $migratedCollectionHierarchy""")
 		}
 
-		logger.info(s"""CSPMigrator:: process:: starting neo4j fields migration for $identifier - $objectType fields:: $fieldsToMigrate""")
-		val migratedMetadataFields: Map[String, String] =  fieldsToMigrate.flatMap(migrateField => {
-			if(objMetadata.contains(migrateField)) {
-				val metadataField = objMetadata.getOrElse(migrateField, "").asInstanceOf[String]
-				val migrateValue: String = StringUtils.replaceEach(metadataField, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
-
-				if(httpUtil.getSize(migrateValue) < 0) throw new ServerException("ERR_NEW_PATH_NOT_FOUND", "File not found in the new path to migrate: " + migrateValue)
-
-				Map(migrateField -> migrateValue)
-			} else Map.empty[String, String]
-		}).filter(record => record._1.nonEmpty).toMap[String, String]
 		logger.info(s"""CSPMigrator:: process:: $identifier - $objectType updated fields data:: $migratedMetadataFields""")
 		val updateMigrateData = objMetadata ++ migratedMetadataFields + ("migrationVersion" -> 1.0.asInstanceOf[Number])
 		neo4JUtil.updateNode(identifier, updateMigrateData)
