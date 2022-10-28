@@ -106,7 +106,6 @@ class CSPMigratorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with
         assert(!migratedMetadata.getOrElse(migrateField, "").asInstanceOf[String].contains(key))
       })
     })
-    assert(migratedMetadata.getOrElse("migrationVersion", 0).asInstanceOf[Double] == 1)
   }
 
   "Collection Hierarchy" should " get updated with migrate data in cassandra database" in {
@@ -271,7 +270,6 @@ class CSPMigratorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with
         assert(!migratedMetadata.getOrElse(migrateField, "").asInstanceOf[String].contains(key))
       })
     })
-    assert(migratedMetadata.getOrElse("migrationVersion", 0).asInstanceOf[Double] == 1)
   }
 
 }

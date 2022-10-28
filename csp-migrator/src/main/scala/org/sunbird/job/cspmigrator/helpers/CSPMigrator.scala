@@ -30,6 +30,7 @@ trait CSPMigrator extends MigrationObjectReader with MigrationObjectUpdater {
 
 		// validation of the replace URL paths to be done. If not available, Fail migration
 		// For Migration Failed contents set migrationVersion to 0.1
+		// For collection, verify if all childNodes are having
 
 		val objectType: String = objMetadata.getOrElse("objectType","").asInstanceOf[String]
 		val mimeType: String = objMetadata.getOrElse("mimeType","").asInstanceOf[String]
@@ -77,11 +78,8 @@ trait CSPMigrator extends MigrationObjectReader with MigrationObjectUpdater {
 			logger.info(s"""CSPMigrator:: process:: $identifier - $objectType :: Migrated Hierarchy:: $migratedCollectionHierarchy""")
 		}
 
-		logger.info(s"""CSPMigrator:: process:: $identifier - $objectType updated fields data:: $migratedMetadataFields""")
-		val updateMigrateData = objMetadata ++ migratedMetadataFields + ("migrationVersion" -> 1.0.asInstanceOf[Number])
-		neo4JUtil.updateNode(identifier, updateMigrateData)
-		logger.info("CSPMigrator:: process:: static fields migration completed for " + identifier)
-		updateMigrateData
+		migratedMetadataFields
+
 	}
 
 }

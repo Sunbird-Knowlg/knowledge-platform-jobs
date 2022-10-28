@@ -52,7 +52,12 @@ class CSPMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
 
     try {
       if (event.isValid(objMetadata, config)) {
-        process(objMetadata, config, httpUtil, neo4JUtil, cassandraUtil)
+        val migratedMetadataFields  = process(objMetadata, config, httpUtil, neo4JUtil, cassandraUtil)
+
+        logger.info(s"""CSPMigratorFunction:: process:: ${event.identifier} - ${event.objectType} updated fields data:: $migratedMetadataFields""")
+        val updateMigrateData = objMetadata ++ migratedMetadataFields + ("migrationVersion" -> config.migrationVersion.asInstanceOf[AnyRef])
+        neo4JUtil.updateNode(event.identifier, updateMigrateData)
+        logger.info("CSPMigratorFunction:: process:: static fields migration completed for " + event.identifier)
 
         if(event.objectType.equalsIgnoreCase("Asset") && event.status.equalsIgnoreCase("Live")
           && (event.mimeType.equalsIgnoreCase("video/mp4") || event.mimeType.equalsIgnoreCase("video/webm"))) {

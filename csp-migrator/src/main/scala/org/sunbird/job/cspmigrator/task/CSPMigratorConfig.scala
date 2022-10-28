@@ -64,12 +64,6 @@ class CSPMigratorConfig(override val config: Config) extends BaseJobConfig(confi
   val graphRoutePath: String = config.getString("neo4j.routePath")
   val graphName: String = config.getString("neo4j.graph")
 
-  // Schema Config
-  val definitionBasePath: String = if (config.hasPath("schema.basePath")) config.getString("schema.basePath") else "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local"
-  val schemaSupportVersionMap: Map[String, AnyRef] = if (config.hasPath("schema.supportedVersion")) config.getObject("schema.supportedVersion").unwrapped().asScala.toMap else Map[String, AnyRef]()
-
-  val cloudProps: List[String] = if (config.hasPath("object.cloud_props")) config.getStringList("object.cloud_props").asScala.toList else List("variants", "downloadUrl", "appIcon", "posterImage", "pdfUrl")
-  val overrideManifestProps: List[String] = if (config.hasPath("object.override_manifest_props")) config.getStringList("object.override_manifest_props").asScala.toList else List("variants", "downloadUrl", "previewUrl", "pdfUrl", "lastPublishedBy")
   val contentServiceBaseUrl : String = config.getString("service.content_service.basePath")
   val searchServiceBaseUrl : String = config.getString("service.search.basePath")
   val learningServiceBaseUrl : String = config.getString("service.learning_service.basePath")
@@ -78,10 +72,9 @@ class CSPMigratorConfig(override val config: Config) extends BaseJobConfig(confi
   val searchExistsFields: List[String] = if (config.hasPath("search_exists_fields")) config.getStringList("search_exists_fields").asScala.toList else List("originData")
   val searchFields: List[String] = if (config.hasPath("search_fields")) config.getStringList("search_fields").asScala.toList else List("identifier", "mimeType", "pkgVersion", "channel", "status", "origin", "originData", "artifactUrl")
 
-  val contentFolder: String = if (config.hasPath("cloud_storage.folder.content")) config.getString("cloud_storage.folder.content") else "content"
-  val artifactFolder: String = if (config.hasPath("cloud_storage.folder.artifact")) config.getString("cloud_storage.folder.artifact") else "artifact"
   val fieldsToMigrate: util.Map[String, AnyRef] = if(config.hasPath("neo4j_fields_to_migrate")) config.getAnyRef("neo4j_fields_to_migrate").asInstanceOf[util.Map[String, AnyRef]] else new util.HashMap[String, AnyRef]()
   val keyValueMigrateStrings: util.Map[String, String] = config.getAnyRef("key_value_strings_to_migrate").asInstanceOf[util.Map[String, String]]
+  val migrationVersion: Int = if(config.hasPath("migrationVersion"))  config.getInt("migrationVersion") else 1
 
   def getConfig: Config = config
 }
