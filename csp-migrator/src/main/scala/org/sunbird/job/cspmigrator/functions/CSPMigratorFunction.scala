@@ -52,12 +52,7 @@ class CSPMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
 
     try {
       if (event.isValid(objMetadata, config)) {
-        val migratedMetadataFields  = process(objMetadata, config, httpUtil, neo4JUtil, cassandraUtil)
-
-        logger.info(s"""CSPMigratorFunction:: process:: ${event.identifier} - ${event.objectType} updated fields data:: $migratedMetadataFields""")
-        val updateMigrateData = objMetadata ++ migratedMetadataFields + ("migrationVersion" -> config.migrationVersion.asInstanceOf[AnyRef])
-        neo4JUtil.updateNode(event.identifier, updateMigrateData)
-        logger.info("CSPMigratorFunction:: process:: static fields migration completed for " + event.identifier)
+        val migratedMetadataFields  = process(objMetadata, event.status, config, httpUtil, neo4JUtil, cassandraUtil)
 
         if(event.objectType.equalsIgnoreCase("Asset") && event.status.equalsIgnoreCase("Live")
           && (event.mimeType.equalsIgnoreCase("video/mp4") || event.mimeType.equalsIgnoreCase("video/webm"))) {
@@ -65,12 +60,19 @@ class CSPMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
           metrics.incCounter(config.assetVideoStreamCount)
         }
 
-        if((event.objectType.equalsIgnoreCase("Content") || event.objectType.equalsIgnoreCase("Collection"))
+        if(event.objectType.equalsIgnoreCase("Content")
           && (event.status.equalsIgnoreCase("Live") ||
           event.status.equalsIgnoreCase("Unlisted"))) {
           pushLiveNodePublishEvent(objMetadata, context, metrics)
           metrics.incCounter(config.liveNodePublishCount)
-        }
+        } else updateMigrationVersion(objMetadata ++ migratedMetadataFields, event)(neo4JUtil)
+
+        if(event.objectType.equalsIgnoreCase("Collection")
+          && (event.status.equalsIgnoreCase("Live") ||
+          event.status.equalsIgnoreCase("Unlisted"))) {
+          pushLiveNodePublishEvent(objMetadata, context, metrics)
+          metrics.incCounter(config.liveNodePublishCount)
+        } else updateMigrationVersion(objMetadata ++ migratedMetadataFields, event)(neo4JUtil)
 
         logger.info("CSPMigratorFunction::processElement:: CSP migration operation completed for : " + event.identifier)
         metrics.incCounter(config.successEventCount)
@@ -144,6 +146,14 @@ class CSPMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
     metrics.incCounter(config.liveNodePublishCount)
     logger.info("CSPMigratorFunction :: Live content publish triggered for " + identifier)
     logger.info("CSPMigratorFunction :: Live content publish event: " + event)
+  }
+
+  private def updateMigrationVersion(updatedMetadata: Map[String, AnyRef], event: Event)(neo4JUtil: Neo4JUtil): Unit = {
+    logger.info(s"""CSPMigratorFunction:: process:: ${event.identifier} - ${event.objectType} updated fields data:: $updatedMetadata""")
+    val updateMigrateData = updatedMetadata + ("migrationVersion" -> config.migrationVersion.asInstanceOf[AnyRef])
+    neo4JUtil.updateNode(event.identifier, updateMigrateData)
+    logger.info("CSPMigratorFunction:: process:: static fields migration completed for " + event.identifier)
+
   }
 
 }

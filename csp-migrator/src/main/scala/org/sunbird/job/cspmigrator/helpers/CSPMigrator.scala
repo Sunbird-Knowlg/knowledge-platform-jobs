@@ -13,7 +13,7 @@ trait CSPMigrator extends MigrationObjectReader with MigrationObjectUpdater {
 
 	private[this] val logger = LoggerFactory.getLogger(classOf[CSPMigrator])
 
-	def process(objMetadata: Map[String, AnyRef], config: CSPMigratorConfig, httpUtil: HttpUtil, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil): Map[String, AnyRef] = {
+	def process(objMetadata: Map[String, AnyRef], status: String, config: CSPMigratorConfig, httpUtil: HttpUtil, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil): Map[String, AnyRef] = {
 
 		// fetch the objectType.
 		// check if the object has only Draft OR only Live OR live/image if the objectType is content/collection.
@@ -70,7 +70,8 @@ trait CSPMigrator extends MigrationObjectReader with MigrationObjectUpdater {
 			logger.info(s"""CSPMigrator:: process:: $identifier - $objectType :: ECML Migrated body:: $migratedECMLBody""")
 		}
 
-		if(objectType.equalsIgnoreCase("Collection") && mimeType.equalsIgnoreCase("application/vnd.ekstep.content-collection")) {
+		if(objectType.equalsIgnoreCase("Collection") && !(status.equalsIgnoreCase("Live") ||
+			status.equalsIgnoreCase("Unlisted")) && mimeType.equalsIgnoreCase("application/vnd.ekstep.content-collection")) {
 			val collectionHierarchy: String = getCollectionHierarchy(identifier, config)(cassandraUtil)
 			logger.info(s"""CSPMigrator:: process:: $identifier - $objectType :: Fetched Hierarchy:: $collectionHierarchy""")
 			val migratedCollectionHierarchy: String = StringUtils.replaceEach(collectionHierarchy, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
