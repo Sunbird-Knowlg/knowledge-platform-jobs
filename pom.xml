@@ -36,13 +36,13 @@
 <!--				<module>enrolment-reconciliation</module>-->
 				<module>auto-creator-v2</module>
 				<module>content-auto-creator</module>
-				<module>asset-enrichment</module>
 				<module>audit-history-indexer</module>
 				<module>audit-event-generator</module>
 <!--				<module>metrics-data-transformer</module>-->
 				<module>qrcode-image-generator</module>
 				<module>dialcode-context-updater</module>
 				<module>csp-migrator</module>
+				<module>asset-enrichment</module>
 				<module>video-stream-generator</module>
 			</modules>
 		</profile>
