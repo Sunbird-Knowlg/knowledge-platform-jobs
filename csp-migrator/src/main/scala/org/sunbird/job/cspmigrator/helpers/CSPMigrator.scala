@@ -80,7 +80,6 @@ trait CSPMigrator extends MigrationObjectReader with MigrationObjectUpdater {
 		}
 
 		migratedMetadataFields
-
 	}
 
 }
