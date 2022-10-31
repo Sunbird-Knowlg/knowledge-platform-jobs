@@ -100,7 +100,7 @@ class CSPMigratorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with
 
     when(mockHttpUtil.getSize(anyString(), any())).thenReturn(200)
 
-    val migratedMetadata = cspMigrator.process(objectMetadata, jobConfig, mockHttpUtil, mockNeo4JUtil, cassandraUtil)
+    val migratedMetadata = cspMigrator.process(objectMetadata, "Draft", jobConfig, mockHttpUtil, mockNeo4JUtil, cassandraUtil)
     fieldsToMigrate.map(migrateField => {
       jobConfig.keyValueMigrateStrings.keySet().toArray().map(key => {
         assert(!migratedMetadata.getOrElse(migrateField, "").asInstanceOf[String].contains(key))
@@ -264,7 +264,7 @@ class CSPMigratorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with
 
     when(mockHttpUtil.getSize(anyString(), any())).thenReturn(200)
     val fieldsToMigrate: List[String] = jobConfig.getConfig.getStringList("neo4j_fields_to_migrate.collection").asScala.toList
-    val migratedMetadata = cspMigrator.process(objectMetadata, jobConfig, mockHttpUtil, mockNeo4JUtil, cassandraUtil)
+    val migratedMetadata = cspMigrator.process(objectMetadata, "Draft", jobConfig, mockHttpUtil, mockNeo4JUtil, cassandraUtil)
     fieldsToMigrate.map(migrateField => {
       jobConfig.keyValueMigrateStrings.keySet().toArray().map(key => {
         assert(!migratedMetadata.getOrElse(migrateField, "").asInstanceOf[String].contains(key))
