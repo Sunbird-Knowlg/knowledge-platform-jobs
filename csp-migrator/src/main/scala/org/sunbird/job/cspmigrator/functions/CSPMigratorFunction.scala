@@ -125,7 +125,6 @@ class CSPMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
     val status = objMetadata.getOrElse("status", "").asInstanceOf[String]
     val identifier = objMetadata.getOrElse("identifier", "").asInstanceOf[String]
     val pkgVersion = objMetadata.getOrElse("pkgVersion", "").asInstanceOf[Number]
-    //TODO: deprecate using contentType in the event.
     val event = s"""{"eid":"BE_JOB_REQUEST", "ets": $ets, "mid": "$mid", "actor": {"id": "Live Video Stream Generator", "type": "System"}, "context":{"pdata":{"ver":"1.0","id":"org.ekstep.platform"}, "channel":"$channelId","env":"${config.jobEnv}"},"object":{"ver":"$ver","id":"$identifier"},"edata": {"action":"live-video-stream-generate","iteration":1,"identifier":"$identifier","channel":"$channelId","artifactUrl":"$artifactUrl","mimeType":"$mimeType","contentType":"$contentType","pkgVersion":$pkgVersion,"status":"$status"}}""".stripMargin
     logger.info(s"CSPMigratorFunction :: Asset Video Streaming Event for identifier $identifier  is  : $event")
     event
