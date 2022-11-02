@@ -60,7 +60,7 @@ trait LiveObjectUpdater {
     val upPkgVersion = pkgVersion + 1
     val errorMessages = messages.mkString("; ")
     val nodeId = obj.dbId
-    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$nodeId"}) SET n.status="Failed", n.pkgVersion=$upPkgVersion, n.publishError="$errorMessages", $auditPropsUpdateQuery;"""
+    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$nodeId"}) SET n.status="Failed", n.pkgVersion=$upPkgVersion,n.migrationVersion=0.1, n.publishError="$errorMessages", $auditPropsUpdateQuery;"""
     logger.info("ObjectUpdater:: saveOnFailure:: Query: " + query)
     neo4JUtil.executeQuery(query)
   }
