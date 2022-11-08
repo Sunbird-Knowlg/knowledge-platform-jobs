@@ -79,7 +79,7 @@ trait CSPMigrator extends MigrationObjectReader with MigrationObjectUpdater {
 			logger.info(s"""CSPMigrator:: process:: $identifier - $objectType :: Migrated Hierarchy:: $migratedCollectionHierarchy""")
 		}
 
-		migratedMetadataFields + Map("migrationVersion" -> 1.0)
+		migratedMetadataFields
 	}
 
 }
