@@ -52,7 +52,9 @@ class CSPMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
 
     try {
       if (event.isValid(objMetadata, config)) {
-        val migratedMetadataFields  = process(objMetadata, event.status, config, httpUtil, neo4JUtil, cassandraUtil)
+        val migratedMetadataFields = process(objMetadata, event.status, config, httpUtil, neo4JUtil, cassandraUtil)
+
+        updateMigrationVersion(objMetadata ++ migratedMetadataFields, event)(neo4JUtil)
 
         if(event.objectType.equalsIgnoreCase("Asset") && event.status.equalsIgnoreCase("Live")
           && (event.mimeType.equalsIgnoreCase("video/mp4") || event.mimeType.equalsIgnoreCase("video/webm"))) {
@@ -65,14 +67,14 @@ class CSPMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
           event.status.equalsIgnoreCase("Unlisted"))) {
           pushLiveNodePublishEvent(objMetadata, context, metrics)
           metrics.incCounter(config.liveNodePublishCount)
-        } else updateMigrationVersion(objMetadata ++ migratedMetadataFields, event)(neo4JUtil)
+        }
 
         if(event.objectType.equalsIgnoreCase("Collection")
           && (event.status.equalsIgnoreCase("Live") ||
           event.status.equalsIgnoreCase("Unlisted"))) {
           pushLiveNodePublishEvent(objMetadata, context, metrics)
           metrics.incCounter(config.liveNodePublishCount)
-        } else updateMigrationVersion(objMetadata ++ migratedMetadataFields, event)(neo4JUtil)
+        }
 
         logger.info("CSPMigratorFunction::processElement:: CSP migration operation completed for : " + event.identifier)
         metrics.incCounter(config.successEventCount)

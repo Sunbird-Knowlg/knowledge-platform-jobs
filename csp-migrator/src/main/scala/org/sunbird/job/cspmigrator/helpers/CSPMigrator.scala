@@ -30,7 +30,7 @@ trait CSPMigrator extends MigrationObjectReader with MigrationObjectUpdater {
 
 		// validation of the replace URL paths to be done. If not available, Fail migration
 		// For Migration Failed contents set migrationVersion to 0.1
-		// For collection, verify if all childNodes are having
+		// For collection, verify if all childNodes are having live migrated contents - REQUIRED for Draft/Image version?
 
 		val objectType: String = objMetadata.getOrElse("objectType","").asInstanceOf[String]
 		val mimeType: String = objMetadata.getOrElse("mimeType","").asInstanceOf[String]
@@ -79,7 +79,7 @@ trait CSPMigrator extends MigrationObjectReader with MigrationObjectUpdater {
 			logger.info(s"""CSPMigrator:: process:: $identifier - $objectType :: Migrated Hierarchy:: $migratedCollectionHierarchy""")
 		}
 
-		migratedMetadataFields
+		migratedMetadataFields + Map("migrationVersion" -> 1.0)
 	}
 
 }
