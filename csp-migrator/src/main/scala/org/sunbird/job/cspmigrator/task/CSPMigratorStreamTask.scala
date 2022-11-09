@@ -7,7 +7,7 @@ import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.cspmigrator.domain.Event
-import org.sunbird.job.cspmigrator.functions.CSPMigratorFunction
+import org.sunbird.job.cspmigrator.functions.{CSPMigratorFunction, CassandraMigratorFunction}
 import org.sunbird.job.util.{FlinkUtil, HttpUtil}
 
 import java.io.File
@@ -29,6 +29,10 @@ class CSPMigratorStreamTask(config: CSPMigratorConfig, kafkaConnector: FlinkKafk
       .name(config.cspMigratorFunction)
       .uid(config.cspMigratorFunction)
       .setParallelism(config.parallelism)
+
+
+    processStreamTask.getSideOutput(config.cassandraMigrationOutputTag).process(new CassandraMigratorFunction(config, httpUtil))
+      .name(config.cassandraMigratorFunction).uid(config.cassandraMigratorFunction).setParallelism(config.cassandraMigratorParallelism)
 
     processStreamTask.getSideOutput(config.failedEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaFailedTopic))
     processStreamTask.getSideOutput(config.generateVideoStreamingOutTag).addSink(kafkaConnector.kafkaStringSink(config.liveVideoStreamingTopic))

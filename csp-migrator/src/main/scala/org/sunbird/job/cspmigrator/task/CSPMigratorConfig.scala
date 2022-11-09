@@ -24,9 +24,11 @@ class CSPMigratorConfig(override val config: Config) extends BaseJobConfig(confi
 
   val jobEnv: String = config.getString("job.env")
 
+  val cassandraMigrationOutputTag: OutputTag[Event] = OutputTag[Event]("csp-cassandra-migration")
+
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
   override val parallelism: Int = config.getInt("task.parallelism")
-  val contentAutoCreatorParallelism: Int = if (config.hasPath("task.csp-migrator.parallelism"))
+  val cassandraMigratorParallelism: Int = if (config.hasPath("task.csp-migrator.parallelism"))
     config.getInt("task.csp-migrator.parallelism") else 1
 
   // Metric List
@@ -42,6 +44,7 @@ class CSPMigratorConfig(override val config: Config) extends BaseJobConfig(confi
   val eventConsumer = "csp-migrator-consumer"
   val cspMigratorFunction = "csp-migrator-process"
   val cspMigratorEventProducer = "csp-migrator-producer"
+  val cassandraMigratorFunction = "csp-cassandra-migrator-process"
 
   // Tags
   val contentAutoCreatorOutputTag: OutputTag[Event] = OutputTag[Event]("csp-migrator")

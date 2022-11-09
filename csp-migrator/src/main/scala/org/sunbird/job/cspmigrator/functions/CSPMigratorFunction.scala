@@ -5,7 +5,7 @@ import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cspmigrator.domain.Event
-import org.sunbird.job.cspmigrator.helpers.CSPMigrator
+import org.sunbird.job.cspmigrator.helpers.CSPNeo4jMigrator
 import org.sunbird.job.cspmigrator.task.CSPMigratorConfig
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.exception.ServerException
@@ -21,7 +21,7 @@ class CSPMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
                           @transient var cassandraUtil: CassandraUtil = null,
                           @transient var cloudStorageUtil: CloudStorageUtil = null)
                          (implicit mapTypeInfo: TypeInformation[util.Map[String, AnyRef]], stringTypeInfo: TypeInformation[String])
-  extends BaseProcessFunction[Event, String](config) with CSPMigrator with FailedEventHelper {
+  extends BaseProcessFunction[Event, String](config) with CSPNeo4jMigrator with FailedEventHelper {
 
   private[this] lazy val logger = LoggerFactory.getLogger(classOf[CSPMigratorFunction])
   lazy val defCache: DefinitionCache = new DefinitionCache()
@@ -54,10 +54,9 @@ class CSPMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
       if (event.isValid(objMetadata, config)) {
         val migratedMetadataFields = process(objMetadata, event.status, config, httpUtil, neo4JUtil, cassandraUtil)
 
-        updateMigrationVersion(objMetadata ++ migratedMetadataFields, event)(neo4JUtil)
-
         if(config.videStreamRegenerationEnabled && event.objectType.equalsIgnoreCase("Asset") && event.status.equalsIgnoreCase("Live")
           && (event.mimeType.equalsIgnoreCase("video/mp4") || event.mimeType.equalsIgnoreCase("video/webm"))) {
+          updateMigrationVersion(objMetadata ++ migratedMetadataFields, event)(neo4JUtil)
           pushStreamingUrlEvent(objMetadata, context)(metrics)
           metrics.incCounter(config.assetVideoStreamCount)
         }
@@ -67,14 +66,14 @@ class CSPMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
           event.status.equalsIgnoreCase("Unlisted"))) {
           pushLiveNodePublishEvent(objMetadata, context, metrics)
           metrics.incCounter(config.liveNodePublishCount)
-        }
+        } else updateMigrationVersion(objMetadata ++ migratedMetadataFields, event)(neo4JUtil)
 
         if(event.objectType.equalsIgnoreCase("Collection")
           && (event.status.equalsIgnoreCase("Live") ||
           event.status.equalsIgnoreCase("Unlisted"))) {
           pushLiveNodePublishEvent(objMetadata, context, metrics)
           metrics.incCounter(config.liveNodePublishCount)
-        }
+        } else updateMigrationVersion(objMetadata ++ migratedMetadataFields, event)(neo4JUtil)
 
         logger.info("CSPMigratorFunction::processElement:: CSP migration operation completed for : " + event.identifier)
         metrics.incCounter(config.successEventCount)
