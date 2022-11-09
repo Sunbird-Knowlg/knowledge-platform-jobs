@@ -24,19 +24,14 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 
 	def status: String = readOrDefault[String]("edata.metadata.status", "")
 
-	def objectType: String = readOrDefault[String]("edata.objectType", "")
+	def objectType: String = readOrDefault[String]("edata.metadata.objectType", "")
 
 	def identifier: String = readOrDefault[String]("object.id", "")
 
 	def currentIteration: Int = readOrDefault[Int]("edata.iteration", 1)
 
-	def pkgVersion: Double = {
-		val pkgVersion = readOrDefault[Int]("edata.metadata.pkgVersion", 0)
-		pkgVersion.toDouble
-	}
-
 	def isValid(objMetadata: Map[String, AnyRef], config: CSPMigratorConfig): Boolean = {
-		(objMetadata.getOrElse("migrationVersion",0).asInstanceOf[Number].doubleValue() != 1.0 && StringUtils.equals("csp-migration", action) && StringUtils.isNotBlank(identifier)) && StringUtils.isNotBlank(channel)
+		(objMetadata.getOrElse("migrationVersion",0).asInstanceOf[Number].doubleValue() != 1.0 && StringUtils.equals("csp-migration", action) && StringUtils.isNotBlank(identifier)) && StringUtils.isNotBlank(channel) && StringUtils.isNotBlank(status)
 	}
 
 }

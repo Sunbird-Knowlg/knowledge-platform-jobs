@@ -48,7 +48,7 @@ class CSPMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
     logger.info("CSPMigratorFunction::processElement:: event context : " + event.context)
     logger.info("CSPMigratorFunction::processElement:: event edata : " + event.eData)
 
-    val objMetadata: Map[String, AnyRef] = getMetadata(event.identifier, event.pkgVersion, event.status)(neo4JUtil)
+    val objMetadata: Map[String, AnyRef] = getMetadata(event.identifier)(neo4JUtil)
 
     try {
       if (event.isValid(objMetadata, config)) {
