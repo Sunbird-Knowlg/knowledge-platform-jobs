@@ -56,13 +56,13 @@ class CSPMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
 
         updateMigrationVersion(objMetadata ++ migratedMetadataFields, event)(neo4JUtil)
 
-        if(event.objectType.equalsIgnoreCase("Asset") && event.status.equalsIgnoreCase("Live")
+        if(config.videStreamRegenerationEnabled && event.objectType.equalsIgnoreCase("Asset") && event.status.equalsIgnoreCase("Live")
           && (event.mimeType.equalsIgnoreCase("video/mp4") || event.mimeType.equalsIgnoreCase("video/webm"))) {
           pushStreamingUrlEvent(objMetadata, context)(metrics)
           metrics.incCounter(config.assetVideoStreamCount)
         }
 
-        if(event.objectType.equalsIgnoreCase("Content")
+        if(config.liveNodeRepublishEnabled && event.objectType.equalsIgnoreCase("Content")
           && (event.status.equalsIgnoreCase("Live") ||
           event.status.equalsIgnoreCase("Unlisted"))) {
           pushLiveNodePublishEvent(objMetadata, context, metrics)
@@ -86,7 +86,7 @@ class CSPMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
       case se: ServerException =>
         logger.error("CSPMigratorFunction :: Message processing failed for mid : " + event.mid() + " || " + event , se)
         logger.error("CSPMigratorFunction :: Error while migrating content :: " + se.getMessage)
-
+        metrics.incCounter(config.failedEventCount)
         // Insert into neo4j with migrationVersion as 0.1
         if(!se.getMessage.contains("Migration Failed for"))
         neo4JUtil.updateNode(event.identifier, objMetadata + ("migrationVersion" -> 0.1.asInstanceOf[Number]))

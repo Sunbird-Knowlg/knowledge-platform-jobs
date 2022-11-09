@@ -76,5 +76,8 @@ class CSPMigratorConfig(override val config: Config) extends BaseJobConfig(confi
   val keyValueMigrateStrings: util.Map[String, String] = config.getAnyRef("key_value_strings_to_migrate").asInstanceOf[util.Map[String, String]]
   val migrationVersion: Int = if(config.hasPath("migrationVersion"))  config.getInt("migrationVersion") else 1
 
+  val videStreamRegenerationEnabled: Boolean = if(config.hasPath("video_stream_regeneration_enable"))  config.getBoolean("video_stream_regeneration_enable") else true
+  val liveNodeRepublishEnabled: Boolean = if(config.hasPath("live_node_republish_enable"))  config.getBoolean("live_node_republish_enable") else true
+
   def getConfig: Config = config
 }
