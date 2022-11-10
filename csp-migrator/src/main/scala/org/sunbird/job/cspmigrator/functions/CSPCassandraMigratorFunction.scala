@@ -44,8 +44,8 @@ class CSPCassandraMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil
                               context: ProcessFunction[Event, String]#Context,
                               metrics: Metrics): Unit = {
     metrics.incCounter(config.totalEventsCount)
-    logger.info("CassandraMigratorFunction::processElement:: event context : " + event.context)
-    logger.info("CassandraMigratorFunction::processElement:: event edata : " + event.eData)
+    logger.info("CSPCassandraMigratorFunction::processElement:: event context : " + event.context)
+    logger.info("CSPCassandraMigratorFunction::processElement:: event edata : " + event.eData)
 
     val objMetadata: Map[String, AnyRef] = getMetadata(event.identifier)(neo4JUtil)
 
@@ -54,8 +54,8 @@ class CSPCassandraMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil
         metrics.incCounter(config.successEventCount)
     } catch {
       case se: ServerException =>
-        logger.error("CassandraMigratorFunction :: Message processing failed for mid : " + event.mid() + " || " + event , se)
-        logger.error("CassandraMigratorFunction :: Error while migrating content :: " + se.getMessage)
+        logger.error("CSPCassandraMigratorFunction :: Message processing failed for mid : " + event.mid() + " || " + event , se)
+        logger.error("CSPCassandraMigratorFunction :: Error while migrating content :: " + se.getMessage)
         metrics.incCounter(config.failedEventCount)
         // Insert into neo4j with migrationVersion as 0.1
         if(!se.getMessage.contains("Migration Failed for"))
