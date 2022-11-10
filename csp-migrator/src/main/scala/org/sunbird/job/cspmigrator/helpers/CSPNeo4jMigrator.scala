@@ -1,6 +1,5 @@
 package org.sunbird.job.cspmigrator.helpers
 
-import com.datastax.driver.core.Row
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cspmigrator.task.CSPMigratorConfig
@@ -33,7 +32,6 @@ trait CSPNeo4jMigrator extends MigrationObjectReader with MigrationObjectUpdater
 		// For collection, verify if all childNodes are having live migrated contents - REQUIRED for Draft/Image version?
 
 		val objectType: String = objMetadata.getOrElse("objectType","").asInstanceOf[String]
-//		val mimeType: String = objMetadata.getOrElse("mimeType","").asInstanceOf[String]
 		val identifier: String = objMetadata.getOrElse("identifier", "").asInstanceOf[String]
 		val fieldsToMigrate: List[String] = if (config.getConfig.hasPath("neo4j_fields_to_migrate."+objectType.toLowerCase())) config.getConfig.getStringList("neo4j_fields_to_migrate."+objectType.toLowerCase()).asScala.toList
 													else throw new ServerException("ERR_CONFIG_NOT_FOUND", "Fields to migrate configuration not found for objectType: " + objectType)
@@ -44,41 +42,16 @@ trait CSPNeo4jMigrator extends MigrationObjectReader with MigrationObjectUpdater
 				val metadataField = objMetadata.getOrElse(migrateField, "").asInstanceOf[String]
 				val migrateValue: String = StringUtils.replaceEach(metadataField, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
 
-				if(httpUtil.getSize(migrateValue) < 0) throw new ServerException("ERR_NEW_PATH_NOT_FOUND", "File not found in the new path to migrate: " + migrateValue)
+				if(httpUtil.getSize(migrateValue) < 0) {
+					//							if (config.copyMissingFiles)
+					//								clouds
+					//							else
+									throw new ServerException("ERR_NEW_PATH_NOT_FOUND", "File not found in the new path to migrate: " + migrateValue)
+				}
 
 				Map(migrateField -> migrateValue)
 			} else Map.empty[String, String]
 		}).filter(record => record._1.nonEmpty).toMap[String, String]
-
-//		if(objectType.equalsIgnoreCase("AssessmentItem")) {
-//			val row: Row = getAssessmentItemData(identifier, config)(cassandraUtil)
-//			val extProps = config.getConfig.getStringList("cassandra_fields_to_migrate.assessmentitem").asScala.toList
-//			val data: Map[String, String] = if (null != row) extProps.map(prop => prop -> row.getString(prop.toLowerCase())).toMap.filter(p => StringUtils.isNotBlank(p._2)) else Map[String, String]()
-//			logger.info(s"""CSPMigrator:: process:: $identifier - $objectType :: Fetched Cassandra data:: $data""")
-//			val migrateData = data.flatMap(rec => {
-//				Map(rec._1 -> StringUtils.replaceEach(rec._2, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String])))
-//			})
-//			updateAssessmentItemData(identifier, migrateData, config)(cassandraUtil)
-//			logger.info(s"""CSPMigrator:: process:: $identifier - $objectType :: Migrated Cassandra data:: $migrateData""")
-//		}
-//
-//		if(objectType.equalsIgnoreCase("Content") && mimeType.equalsIgnoreCase("application/vnd.ekstep.ecml-archive")) {
-//			val ecmlBody: String = getContentBody(identifier, config)(cassandraUtil)
-//			logger.info(s"""CSPMigrator:: process:: $identifier - $objectType :: ECML Fetched body:: $ecmlBody""")
-//			val migratedECMLBody: String = StringUtils.replaceEach(ecmlBody, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
-//			updateContentBody(identifier, migratedECMLBody, config)(cassandraUtil)
-//			logger.info(s"""CSPMigrator:: process:: $identifier - $objectType :: ECML Migrated body:: $migratedECMLBody""")
-//		}
-//
-//		if(objectType.equalsIgnoreCase("Collection") && !(status.equalsIgnoreCase("Live") ||
-//			status.equalsIgnoreCase("Unlisted")) && mimeType.equalsIgnoreCase("application/vnd.ekstep.content-collection")) {
-//			val collectionHierarchy: String = getCollectionHierarchy(identifier, config)(cassandraUtil)
-//			logger.info(s"""CSPMigrator:: process:: $identifier - $objectType :: Fetched Hierarchy:: $collectionHierarchy""")
-//			val migratedCollectionHierarchy: String = StringUtils.replaceEach(collectionHierarchy, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
-//			updateCollectionHierarchy(identifier, migratedCollectionHierarchy, config)(cassandraUtil)
-//			logger.info(s"""CSPMigrator:: process:: $identifier - $objectType :: Migrated Hierarchy:: $migratedCollectionHierarchy""")
-//		}
-
 		migratedMetadataFields
 	}
 

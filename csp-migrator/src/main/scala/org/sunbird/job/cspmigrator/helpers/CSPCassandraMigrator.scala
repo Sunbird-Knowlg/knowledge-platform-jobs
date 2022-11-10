@@ -64,7 +64,8 @@ trait CSPCassandraMigrator extends MigrationObjectReader with MigrationObjectUpd
 						if(httpUtil.getSize(migrateValue) < 0) {
 //							if (config.copyMissingFiles)
 //								clouds
-//							else throw new ServerException("ERR_NEW_PATH_NOT_FOUND", "File not found in the new path to migrate: " + migrateValue)
+//							else
+														throw new ServerException("ERR_NEW_PATH_NOT_FOUND", "File not found in the new path to migrate: " + migrateValue)
 						}
 					}
 				})
