@@ -13,7 +13,7 @@ trait CSPCassandraMigrator extends MigrationObjectReader with MigrationObjectUpd
 
 	private[this] val logger = LoggerFactory.getLogger(classOf[CSPCassandraMigrator])
 
-	def process(objMetadata: Map[String, AnyRef], status: String, config: CSPMigratorConfig, httpUtil: HttpUtil, cassandraUtil: CassandraUtil): Unit = {
+	def process(objMetadata: Map[String, AnyRef], status: String, config: CSPMigratorConfig, httpUtil: HttpUtil, cassandraUtil: CassandraUtil, cloudStorageUtil: CloudStorageUtil): Unit = {
 
 		val objectType: String = objMetadata.getOrElse("objectType","").asInstanceOf[String]
 		val mimeType: String = objMetadata.getOrElse("mimeType","").asInstanceOf[String]
@@ -35,7 +35,7 @@ trait CSPCassandraMigrator extends MigrationObjectReader with MigrationObjectUpd
 			val ecmlBody: String = getContentBody(identifier, config)(cassandraUtil)
 			logger.info(s"""CSPCassandraMigrator:: process:: $identifier - $objectType :: ECML Fetched body:: $ecmlBody""")
 
-			val migratedECMLBody: String = extractAndValidateUrls(ecmlBody, config)
+			val migratedECMLBody: String = extractAndValidateUrls(ecmlBody, config, httpUtil, cloudStorageUtil)
 
 			updateContentBody(identifier, migratedECMLBody, config)(cassandraUtil)
 			logger.info(s"""CSPCassandraMigrator:: process:: $identifier - $objectType :: ECML Migrated body:: $migratedECMLBody""")
@@ -45,7 +45,7 @@ trait CSPCassandraMigrator extends MigrationObjectReader with MigrationObjectUpd
 			status.equalsIgnoreCase("Unlisted")) && mimeType.equalsIgnoreCase("application/vnd.ekstep.content-collection")) {
 			val collectionHierarchy: String = getCollectionHierarchy(identifier, config)(cassandraUtil)
 			logger.info(s"""CSPCassandraMigrator:: process:: $identifier - $objectType :: Fetched Hierarchy:: $collectionHierarchy""")
-			val migratedCollectionHierarchy: String = StringUtils.replaceEach(collectionHierarchy, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
+			val migratedCollectionHierarchy: String = extractAndValidateUrls(collectionHierarchy, config, httpUtil, cloudStorageUtil)
 			updateCollectionHierarchy(identifier, migratedCollectionHierarchy, config)(cassandraUtil)
 			logger.info(s"""CSPCassandraMigrator:: process:: $identifier - $objectType :: Migrated Hierarchy:: $migratedCollectionHierarchy""")
 		}
@@ -53,14 +53,22 @@ trait CSPCassandraMigrator extends MigrationObjectReader with MigrationObjectUpd
 	}
 
 
-	def extractAndValidateUrls(contentString: String, config: CSPMigratorConfig): String = {
+	def extractAndValidateUrls(contentString: String, config: CSPMigratorConfig, httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil): String = {
 		val extractedUrls: List[String] = extarctUrls(contentString)
 
 		if(extractedUrls.nonEmpty) {
-			extractedUrls.foreach(url => {
-				url.contains()
+			extractedUrls.toSet.foreach(url => {
+				config.keyValueMigrateStrings.keySet().toArray().map(migrateDomain => {
+					if(url.contains(migrateDomain)) {
+						val migrateValue: String = StringUtils.replaceEach(url, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
+						if(httpUtil.getSize(migrateValue) < 0) {
+//							if (config.copyMissingFiles)
+//								clouds
+//							else throw new ServerException("ERR_NEW_PATH_NOT_FOUND", "File not found in the new path to migrate: " + migrateValue)
+						}
+					}
+				})
 			})
-
 			StringUtils.replaceEach(contentString, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
 		} else contentString
 	}

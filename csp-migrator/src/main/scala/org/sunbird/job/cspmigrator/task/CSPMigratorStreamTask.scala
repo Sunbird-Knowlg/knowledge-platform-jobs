@@ -7,7 +7,7 @@ import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.cspmigrator.domain.Event
-import org.sunbird.job.cspmigrator.functions.{CSPMigratorFunction, CassandraMigratorFunction}
+import org.sunbird.job.cspmigrator.functions.{CSPNeo4jMigratorFunction, CSPCassandraMigratorFunction}
 import org.sunbird.job.util.{FlinkUtil, HttpUtil}
 
 import java.io.File
@@ -25,13 +25,13 @@ class CSPMigratorStreamTask(config: CSPMigratorConfig, kafkaConnector: FlinkKafk
     val processStreamTask = env.addSource(kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)).name(config.eventConsumer)
       .uid(config.eventConsumer).setParallelism(config.kafkaConsumerParallelism)
       .rebalance
-      .process(new CSPMigratorFunction(config, httpUtil))
+      .process(new CSPNeo4jMigratorFunction(config, httpUtil))
       .name(config.cspMigratorFunction)
       .uid(config.cspMigratorFunction)
       .setParallelism(config.parallelism)
 
 
-    processStreamTask.getSideOutput(config.cassandraMigrationOutputTag).process(new CassandraMigratorFunction(config, httpUtil))
+    processStreamTask.getSideOutput(config.cassandraMigrationOutputTag).process(new CSPCassandraMigratorFunction(config, httpUtil))
       .name(config.cassandraMigratorFunction).uid(config.cassandraMigratorFunction).setParallelism(config.cassandraMigratorParallelism)
 
     processStreamTask.getSideOutput(config.failedEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaFailedTopic))

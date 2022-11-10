@@ -16,14 +16,14 @@ import org.sunbird.job.{BaseProcessFunction, Metrics}
 import java.util
 import java.util.UUID
 
-class CSPMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
-                          @transient var neo4JUtil: Neo4JUtil = null,
-                          @transient var cassandraUtil: CassandraUtil = null,
-                          @transient var cloudStorageUtil: CloudStorageUtil = null)
-                         (implicit mapTypeInfo: TypeInformation[util.Map[String, AnyRef]], stringTypeInfo: TypeInformation[String])
+class CSPNeo4jMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
+                               @transient var neo4JUtil: Neo4JUtil = null,
+                               @transient var cassandraUtil: CassandraUtil = null,
+                               @transient var cloudStorageUtil: CloudStorageUtil = null)
+                              (implicit mapTypeInfo: TypeInformation[util.Map[String, AnyRef]], stringTypeInfo: TypeInformation[String])
   extends BaseProcessFunction[Event, String](config) with CSPNeo4jMigrator with FailedEventHelper {
 
-  private[this] lazy val logger = LoggerFactory.getLogger(classOf[CSPMigratorFunction])
+  private[this] lazy val logger = LoggerFactory.getLogger(classOf[CSPNeo4jMigratorFunction])
   lazy val defCache: DefinitionCache = new DefinitionCache()
 
   override def metricsList(): List[String] = {
@@ -45,8 +45,8 @@ class CSPMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
                               context: ProcessFunction[Event, String]#Context,
                               metrics: Metrics): Unit = {
     metrics.incCounter(config.totalEventsCount)
-    logger.info("CSPMigratorFunction::processElement:: event context : " + event.context)
-    logger.info("CSPMigratorFunction::processElement:: event edata : " + event.eData)
+    logger.info("CSPNeo4jMigratorFunction::processElement:: event context : " + event.context)
+    logger.info("CSPNeo4jMigratorFunction::processElement:: event edata : " + event.eData)
 
     val objMetadata: Map[String, AnyRef] = getMetadata(event.identifier)(neo4JUtil)
 
@@ -75,16 +75,16 @@ class CSPMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
           metrics.incCounter(config.liveNodePublishCount)
         } else updateMigrationVersion(objMetadata ++ migratedMetadataFields, event)(neo4JUtil)
 
-        logger.info("CSPMigratorFunction::processElement:: CSP migration operation completed for : " + event.identifier)
+        logger.info("CSPNeo4jMigratorFunction::processElement:: CSP migration operation completed for : " + event.identifier)
         metrics.incCounter(config.successEventCount)
       } else {
-        logger.info("CSPMigratorFunction::processElement:: Event is not qualified for csp migration having identifier : " + event.identifier + " | objectType : " + event.objectType)
+        logger.info("CSPNeo4jMigratorFunction::processElement:: Event is not qualified for csp migration having identifier : " + event.identifier + " | objectType : " + event.objectType)
         metrics.incCounter(config.skippedEventCount)
       }
     } catch {
       case se: ServerException =>
-        logger.error("CSPMigratorFunction :: Message processing failed for mid : " + event.mid() + " || " + event , se)
-        logger.error("CSPMigratorFunction :: Error while migrating content :: " + se.getMessage)
+        logger.error("CSPNeo4jMigratorFunction :: Message processing failed for mid : " + event.mid() + " || " + event , se)
+        logger.error("CSPNeo4jMigratorFunction :: Error while migrating content :: " + se.getMessage)
         metrics.incCounter(config.failedEventCount)
         // Insert into neo4j with migrationVersion as 0.1
         if(!se.getMessage.contains("Migration Failed for"))
@@ -98,9 +98,9 @@ class CSPMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
 //          newEventMap.putAll(event.getMap())
 //          newEventMap.get("edata").asInstanceOf[util.HashMap[String, Any]].put("iteration",currentIteration+1)
 //          pushEventForRetry(event.jobName, newEventMap, e, metrics, context)
-//          logger.info("CSPMigratorFunction :: Failed Event Sent To Kafka Topic : " + config.kafkaFailedTopic + " | for mid : " + event.mid(), event)
+//          logger.info("CSPNeo4jMigratorFunction :: Failed Event Sent To Kafka Topic : " + config.kafkaFailedTopic + " | for mid : " + event.mid(), event)
 //        }
-//        else logger.info("CSPMigratorFunction :: Event Reached Maximum Retry Limit having mid : " + event.mid() + "| " +  event)
+//        else logger.info("CSPNeo4jMigratorFunction :: Event Reached Maximum Retry Limit having mid : " + event.mid() + "| " +  event)
     }
   }
 //
@@ -127,7 +127,7 @@ class CSPMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
     val identifier = objMetadata.getOrElse("identifier", "").asInstanceOf[String]
     val pkgVersion = objMetadata.getOrElse("pkgVersion", "").asInstanceOf[Number]
     val event = s"""{"eid":"BE_JOB_REQUEST", "ets": $ets, "mid": "$mid", "actor": {"id": "Live Video Stream Generator", "type": "System"}, "context":{"pdata":{"ver":"1.0","id":"org.ekstep.platform"}, "channel":"$channelId","env":"${config.jobEnv}"},"object":{"ver":"$ver","id":"$identifier"},"edata": {"action":"live-video-stream-generate","iteration":1,"identifier":"$identifier","channel":"$channelId","artifactUrl":"$artifactUrl","mimeType":"$mimeType","contentType":"$contentType","pkgVersion":$pkgVersion,"status":"$status"}}""".stripMargin
-    logger.info(s"CSPMigratorFunction :: Asset Video Streaming Event for identifier $identifier  is  : $event")
+    logger.info(s"CSPNeo4jMigratorFunction :: Asset Video Streaming Event for identifier $identifier  is  : $event")
     event
   }
 
@@ -144,15 +144,15 @@ class CSPMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
     val event = s"""{"eid":"BE_JOB_REQUEST","ets":$epochTime,"mid":"LP.$epochTime.${UUID.randomUUID()}","actor":{"id":"content-republish","type":"System"},"context":{"pdata":{"ver":"1.0","id":"org.ekstep.platform"},"channel":"sunbird","env":"${config.jobEnv}"},"object":{"ver":"$pkgVersion","id":"$identifier"},"edata":{"publish_type":"$publishType","metadata":{"identifier":"$identifier", "mimeType":"$mimeType","objectType":"$objectType","lastPublishedBy":"System","pkgVersion":$pkgVersion},"action":"republish","iteration":1,"contentType":"$contentType"}}"""
     context.output(config.liveNodePublishEventOutTag, event)
     metrics.incCounter(config.liveNodePublishCount)
-    logger.info("CSPMigratorFunction :: Live content publish triggered for " + identifier)
-    logger.info("CSPMigratorFunction :: Live content publish event: " + event)
+    logger.info("CSPNeo4jMigratorFunction :: Live content publish triggered for " + identifier)
+    logger.info("CSPNeo4jMigratorFunction :: Live content publish event: " + event)
   }
 
   private def updateMigrationVersion(updatedMetadata: Map[String, AnyRef], event: Event)(neo4JUtil: Neo4JUtil): Unit = {
-    logger.info(s"""CSPMigratorFunction:: process:: ${event.identifier} - ${event.objectType} updated fields data:: $updatedMetadata""")
+    logger.info(s"""CSPNeo4jMigratorFunction:: process:: ${event.identifier} - ${event.objectType} updated fields data:: $updatedMetadata""")
     val updateMigrateData = updatedMetadata + ("migrationVersion" -> config.migrationVersion.asInstanceOf[AnyRef])
     neo4JUtil.updateNode(event.identifier, updateMigrateData)
-    logger.info("CSPMigratorFunction:: process:: static fields migration completed for " + event.identifier)
+    logger.info("CSPNeo4jMigratorFunction:: process:: static fields migration completed for " + event.identifier)
 
   }
 

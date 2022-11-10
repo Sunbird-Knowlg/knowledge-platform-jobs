@@ -15,14 +15,14 @@ import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import java.util
 
-class CassandraMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
+class CSPCassandraMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
                                 @transient var neo4JUtil: Neo4JUtil = null,
                                 @transient var cassandraUtil: CassandraUtil = null,
                                 @transient var cloudStorageUtil: CloudStorageUtil = null)
                                (implicit mapTypeInfo: TypeInformation[util.Map[String, AnyRef]], stringTypeInfo: TypeInformation[String])
   extends BaseProcessFunction[Event, String](config) with CSPCassandraMigrator with FailedEventHelper {
 
-  private[this] lazy val logger = LoggerFactory.getLogger(classOf[CassandraMigratorFunction])
+  private[this] lazy val logger = LoggerFactory.getLogger(classOf[CSPCassandraMigratorFunction])
   lazy val defCache: DefinitionCache = new DefinitionCache()
 
   override def metricsList(): List[String] = {
@@ -50,7 +50,7 @@ class CassandraMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
     val objMetadata: Map[String, AnyRef] = getMetadata(event.identifier)(neo4JUtil)
 
     try {
-        process(objMetadata, event.status, config, httpUtil, cassandraUtil)
+        process(objMetadata, event.status, config, httpUtil, cassandraUtil, cloudStorageUtil)
         metrics.incCounter(config.successEventCount)
     } catch {
       case se: ServerException =>
