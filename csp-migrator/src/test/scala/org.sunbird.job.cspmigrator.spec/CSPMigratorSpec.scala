@@ -22,7 +22,7 @@ class CSPMigratorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with
   implicit val mockNeo4JUtil: Neo4JUtil = mock[Neo4JUtil](Mockito.withSettings().serializable())
   val mockHttpUtil: HttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
   var cassandraUtil: CassandraUtil = _
-  implicit val cloudStorageUtil = new CloudStorageUtil(jobConfig)
+  implicit val cloudStorageUtil: CloudStorageUtil = new CloudStorageUtil(jobConfig)
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
