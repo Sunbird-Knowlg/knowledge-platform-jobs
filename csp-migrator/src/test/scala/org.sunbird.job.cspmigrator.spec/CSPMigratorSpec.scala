@@ -9,7 +9,7 @@ import org.mockito.Mockito
 import org.mockito.Mockito.when
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
-import org.sunbird.job.cspmigrator.helpers.CSPMigrator
+import org.sunbird.job.cspmigrator.helpers.{CSPCassandraMigrator, CSPNeo4jMigrator}
 import org.sunbird.job.cspmigrator.task.CSPMigratorConfig
 import org.sunbird.job.util._
 
@@ -42,7 +42,8 @@ class CSPMigratorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with
   }
 
   "ECML Body" should " get updated with migrate data in cassandra database" in {
-    val cspMigrator = new TestCSPMigrator()
+
+    val cspneo4jMigrator = new TestCSPNeo4jMigrator()
     val fieldsToMigrate: List[String] = jobConfig.getConfig.getStringList("neo4j_fields_to_migrate.content").asScala.toList
 
     val objectMetadata = Map[String, AnyRef]("ownershipType" -> Array("createdFor"), "previewUrl" -> "https://ntpproductionall.blob.core.windows.net/ntp-content-production/content/ecml/do_31270597860728832015700-latest",
@@ -98,9 +99,14 @@ class CSPMigratorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with
       "resourceType" -> "Learn"
     )
 
+
+    val cspCassandraMigrator = new TestCSPCassandraMigrator()
+
+    cspCassandraMigrator.process(objectMetadata, "Draft", jobConfig, mockHttpUtil, cassandraUtil)
+
     when(mockHttpUtil.getSize(anyString(), any())).thenReturn(200)
 
-    val migratedMetadata = cspMigrator.process(objectMetadata, "Draft", jobConfig, mockHttpUtil, mockNeo4JUtil, cassandraUtil)
+    val migratedMetadata = cspneo4jMigrator.process(objectMetadata, "Draft", jobConfig, mockHttpUtil, mockNeo4JUtil, cassandraUtil)
     fieldsToMigrate.map(migrateField => {
       jobConfig.keyValueMigrateStrings.keySet().toArray().map(key => {
         assert(!migratedMetadata.getOrElse(migrateField, "").asInstanceOf[String].contains(key))
@@ -109,7 +115,7 @@ class CSPMigratorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with
   }
 
   "Collection Hierarchy" should " get updated with migrate data in cassandra database" in {
-    val cspMigrator = new TestCSPMigrator()
+    val cspMigrator = new TestCSPNeo4jMigrator()
 
     val objectMetadata = Map[String, AnyRef](
       "ownershipType" -> Array(
@@ -274,6 +280,6 @@ class CSPMigratorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with
 
 }
 
-class TestCSPMigrator extends CSPMigrator {
+class TestCSPNeo4jMigrator extends CSPNeo4jMigrator {}
 
-}
+class TestCSPCassandraMigrator extends CSPCassandraMigrator {}

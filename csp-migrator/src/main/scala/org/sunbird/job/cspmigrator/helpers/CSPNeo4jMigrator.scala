@@ -33,7 +33,7 @@ trait CSPNeo4jMigrator extends MigrationObjectReader with MigrationObjectUpdater
 		// For collection, verify if all childNodes are having live migrated contents - REQUIRED for Draft/Image version?
 
 		val objectType: String = objMetadata.getOrElse("objectType","").asInstanceOf[String]
-		val mimeType: String = objMetadata.getOrElse("mimeType","").asInstanceOf[String]
+//		val mimeType: String = objMetadata.getOrElse("mimeType","").asInstanceOf[String]
 		val identifier: String = objMetadata.getOrElse("identifier", "").asInstanceOf[String]
 		val fieldsToMigrate: List[String] = if (config.getConfig.hasPath("neo4j_fields_to_migrate."+objectType.toLowerCase())) config.getConfig.getStringList("neo4j_fields_to_migrate."+objectType.toLowerCase()).asScala.toList
 													else throw new ServerException("ERR_CONFIG_NOT_FOUND", "Fields to migrate configuration not found for objectType: " + objectType)

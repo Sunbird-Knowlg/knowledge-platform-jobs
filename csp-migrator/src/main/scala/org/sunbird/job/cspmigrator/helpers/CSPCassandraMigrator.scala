@@ -9,7 +9,7 @@ import org.sunbird.job.util._
 
 import scala.collection.JavaConverters._
 
-trait CSPCassandraMigrator extends MigrationObjectReader with MigrationObjectUpdater {
+trait CSPCassandraMigrator extends MigrationObjectReader with MigrationObjectUpdater with URLExtractor {
 
 	private[this] val logger = LoggerFactory.getLogger(classOf[CSPCassandraMigrator])
 
@@ -23,31 +23,46 @@ trait CSPCassandraMigrator extends MigrationObjectReader with MigrationObjectUpd
 			val row: Row = getAssessmentItemData(identifier, config)(cassandraUtil)
 			val extProps = config.getConfig.getStringList("cassandra_fields_to_migrate.assessmentitem").asScala.toList
 			val data: Map[String, String] = if (null != row) extProps.map(prop => prop -> row.getString(prop.toLowerCase())).toMap.filter(p => StringUtils.isNotBlank(p._2)) else Map[String, String]()
-			logger.info(s"""CSPMigrator:: process:: $identifier - $objectType :: Fetched Cassandra data:: $data""")
+			logger.info(s"""CSPCassandraMigrator:: process:: $identifier - $objectType :: Fetched Cassandra data:: $data""")
 			val migrateData = data.flatMap(rec => {
 				Map(rec._1 -> StringUtils.replaceEach(rec._2, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String])))
 			})
 			updateAssessmentItemData(identifier, migrateData, config)(cassandraUtil)
-			logger.info(s"""CSPMigrator:: process:: $identifier - $objectType :: Migrated Cassandra data:: $migrateData""")
+			logger.info(s"""CSPCassandraMigrator:: process:: $identifier - $objectType :: Migrated Cassandra data:: $migrateData""")
 		}
 
 		if(objectType.equalsIgnoreCase("Content") && mimeType.equalsIgnoreCase("application/vnd.ekstep.ecml-archive")) {
 			val ecmlBody: String = getContentBody(identifier, config)(cassandraUtil)
-			logger.info(s"""CSPMigrator:: process:: $identifier - $objectType :: ECML Fetched body:: $ecmlBody""")
-			val migratedECMLBody: String = StringUtils.replaceEach(ecmlBody, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
+			logger.info(s"""CSPCassandraMigrator:: process:: $identifier - $objectType :: ECML Fetched body:: $ecmlBody""")
+
+			val migratedECMLBody: String = extractAndValidateUrls(ecmlBody, config)
+
 			updateContentBody(identifier, migratedECMLBody, config)(cassandraUtil)
-			logger.info(s"""CSPMigrator:: process:: $identifier - $objectType :: ECML Migrated body:: $migratedECMLBody""")
+			logger.info(s"""CSPCassandraMigrator:: process:: $identifier - $objectType :: ECML Migrated body:: $migratedECMLBody""")
 		}
 
 		if(objectType.equalsIgnoreCase("Collection") && !(status.equalsIgnoreCase("Live") ||
 			status.equalsIgnoreCase("Unlisted")) && mimeType.equalsIgnoreCase("application/vnd.ekstep.content-collection")) {
 			val collectionHierarchy: String = getCollectionHierarchy(identifier, config)(cassandraUtil)
-			logger.info(s"""CSPMigrator:: process:: $identifier - $objectType :: Fetched Hierarchy:: $collectionHierarchy""")
+			logger.info(s"""CSPCassandraMigrator:: process:: $identifier - $objectType :: Fetched Hierarchy:: $collectionHierarchy""")
 			val migratedCollectionHierarchy: String = StringUtils.replaceEach(collectionHierarchy, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
 			updateCollectionHierarchy(identifier, migratedCollectionHierarchy, config)(cassandraUtil)
-			logger.info(s"""CSPMigrator:: process:: $identifier - $objectType :: Migrated Hierarchy:: $migratedCollectionHierarchy""")
+			logger.info(s"""CSPCassandraMigrator:: process:: $identifier - $objectType :: Migrated Hierarchy:: $migratedCollectionHierarchy""")
 		}
 
+	}
+
+
+	def extractAndValidateUrls(contentString: String, config: CSPMigratorConfig): String = {
+		val extractedUrls: List[String] = extarctUrls(contentString)
+
+		if(extractedUrls.nonEmpty) {
+			extractedUrls.foreach(url => {
+				url.contains()
+			})
+
+			StringUtils.replaceEach(contentString, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
+		} else contentString
 	}
 
 }

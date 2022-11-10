@@ -81,6 +81,8 @@ class CSPMigratorConfig(override val config: Config) extends BaseJobConfig(confi
 
   val videStreamRegenerationEnabled: Boolean = if(config.hasPath("video_stream_regeneration_enable"))  config.getBoolean("video_stream_regeneration_enable") else true
   val liveNodeRepublishEnabled: Boolean = if(config.hasPath("live_node_republish_enable"))  config.getBoolean("live_node_republish_enable") else true
+  val copyMissingFiles: Boolean = if(config.hasPath("copy_missing_files_to_cloud"))  config.getBoolean("copy_missing_files_to_cloud") else true
+
 
   def getConfig: Config = config
 }
