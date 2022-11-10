@@ -49,7 +49,7 @@ object CSPMigratorStreamTask {
     val configFilePath = Option(ParameterTool.fromArgs(args).get("config.file.path"))
     val config = configFilePath.map {
       path => ConfigFactory.parseFile(new File(path)).resolve()
-    }.getOrElse(ConfigFactory.load("content-auto-creator.conf").withFallback(ConfigFactory.systemEnvironment()))
+    }.getOrElse(ConfigFactory.load("csp-migrator.conf").withFallback(ConfigFactory.systemEnvironment()))
     val CSPMigratorConfig = new CSPMigratorConfig(config)
     val kafkaUtil = new FlinkKafkaConnector(CSPMigratorConfig)
     val httpUtil = new HttpUtil
