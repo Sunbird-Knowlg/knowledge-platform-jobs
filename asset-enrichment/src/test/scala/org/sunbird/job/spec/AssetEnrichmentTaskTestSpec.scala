@@ -80,7 +80,7 @@ class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
     new VideoEnrichmentFunction(jobConfig).enrichVideo(asset)(jobConfig, youTubeUtil, cloudUtil, mockNeo4JUtil)
     asset.get("thumbnail", "").asInstanceOf[String] should be("https://i.ytimg.com/vi/-SgZ3Enpau8/mqdefault.jpg")
     asset.get("status", "").asInstanceOf[String] should be("Live")
-    asset.get("duration", "0").asInstanceOf[String] should be("273")
+    asset.get("duration", "0").asInstanceOf[String] should be("274")
   }
 
   "validateForArtifactUrl" should "validate for content upload context driven" in {
