@@ -4,7 +4,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 import org.cassandraunit.CQLDataLoader
 import org.cassandraunit.dataset.cql.FileCQLDataSet
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
-import org.mockito.ArgumentMatchers.{any, anyString}
+import org.mockito.ArgumentMatchers.{any, anyBoolean, anyString}
 import org.mockito.Mockito
 import org.mockito.Mockito.when
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
@@ -13,6 +13,7 @@ import org.sunbird.job.cspmigrator.helpers.{CSPCassandraMigrator, CSPNeo4jMigrat
 import org.sunbird.job.cspmigrator.task.CSPMigratorConfig
 import org.sunbird.job.util._
 
+import java.io.File
 import scala.collection.JavaConverters._
 
 class CSPMigratorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
@@ -22,7 +23,7 @@ class CSPMigratorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with
   implicit val mockNeo4JUtil: Neo4JUtil = mock[Neo4JUtil](Mockito.withSettings().serializable())
   val mockHttpUtil: HttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
   var cassandraUtil: CassandraUtil = _
-  implicit val cloudStorageUtil: CloudStorageUtil = new CloudStorageUtil(jobConfig)
+  implicit val mockCloudUtil: CloudStorageUtil = mock[CloudStorageUtil](Mockito.withSettings().serializable())
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
@@ -100,14 +101,14 @@ class CSPMigratorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with
       "resourceType" -> "Learn"
     )
 
-
+    when(mockCloudUtil.uploadFile(anyString(),any[File](),Option(anyBoolean()),anyString())).thenReturn(Array.empty[String])
     val cspCassandraMigrator = new TestCSPCassandraMigrator()
 
-    cspCassandraMigrator.process(objectMetadata, "Draft", jobConfig, mockHttpUtil, cassandraUtil, cloudStorageUtil)
+    cspCassandraMigrator.process(objectMetadata, "Draft", jobConfig, mockHttpUtil, cassandraUtil, mockCloudUtil)
 
     when(mockHttpUtil.getSize(anyString(), any())).thenReturn(200)
 
-    val migratedMetadata = cspneo4jMigrator.process(objectMetadata, jobConfig, cloudStorageUtil)
+    val migratedMetadata = cspneo4jMigrator.process(objectMetadata, jobConfig, mockCloudUtil)
     fieldsToMigrate.map(migrateField => {
       jobConfig.keyValueMigrateStrings.keySet().toArray().map(key => {
         assert(!migratedMetadata.getOrElse(migrateField, "").asInstanceOf[String].contains(key))
@@ -269,9 +270,10 @@ class CSPMigratorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with
     "resourceType" -> "Course"
     )
 
+    when(mockCloudUtil.uploadFile(anyString(),any[File](),Option(anyBoolean()),anyString())).thenReturn(Array.empty[String])
     when(mockHttpUtil.getSize(anyString(), any())).thenReturn(200)
     val fieldsToMigrate: List[String] = jobConfig.getConfig.getStringList("neo4j_fields_to_migrate.collection").asScala.toList
-    val migratedMetadata = cspMigrator.process(objectMetadata, jobConfig, cloudStorageUtil)
+    val migratedMetadata = cspMigrator.process(objectMetadata, jobConfig, mockCloudUtil)
     fieldsToMigrate.map(migrateField => {
       jobConfig.keyValueMigrateStrings.keySet().toArray().map(key => {
         assert(!migratedMetadata.getOrElse(migrateField, "").asInstanceOf[String].contains(key))

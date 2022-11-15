@@ -77,11 +77,13 @@ trait MigrationObjectUpdater extends URLExtractor {
             val migrateValue: String = StringUtils.replaceEach(urlString, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
             if(httpUtil.getSize(migrateValue) < 0) {
               if (config.copyMissingFiles) {
-                // code to download file from old cloud path and upload to new cloud path
-                val downloadedFile: File = downloadFile(s"/tmp/$identifier", urlString)
-                val exDomain: String = urlString.replace(migrateDomain.asInstanceOf[String],"")
-                val folderName: String = exDomain.substring(1,exDomain.indexOf(FilenameUtils.getName(urlString))-1)
-                cloudStorageUtil.uploadFile(folderName,downloadedFile)
+                if(FilenameUtils.getExtension(urlString) != null && !FilenameUtils.getExtension(urlString).isBlank && FilenameUtils.getExtension(urlString).nonEmpty) {
+                  // code to download file from old cloud path and upload to new cloud path
+                  val downloadedFile: File = downloadFile(s"/tmp/$identifier", urlString)
+                  val exDomain: String = urlString.replace(migrateDomain.asInstanceOf[String], "")
+                  val folderName: String = exDomain.substring(1, exDomain.indexOf(FilenameUtils.getName(urlString)) - 1)
+                  cloudStorageUtil.uploadFile(folderName, downloadedFile)
+                }
               } else throw new ServerException("ERR_NEW_PATH_NOT_FOUND", "File not found in the new path to migrate: " + migrateValue)
             }
           }
@@ -100,7 +102,7 @@ trait MigrationObjectUpdater extends URLExtractor {
   } catch {
     case e: IOException =>
       e.printStackTrace()
-      throw new ServerException("ERR_INVALID_FILE_URL", "File not found in the old path to migrate: " + downloadPath)
+      throw new ServerException("ERR_INVALID_FILE_URL", "File not found in the old path to migrate: " + fileUrl)
   }
 
   private def createDirectory(directoryName: String): Unit = {
