@@ -14,7 +14,6 @@ import org.sunbird.job.util._
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import java.util
-import java.util.UUID
 
 class CSPNeo4jMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
                                @transient var neo4JUtil: Neo4JUtil = null,
@@ -27,7 +26,7 @@ class CSPNeo4jMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
   lazy val defCache: DefinitionCache = new DefinitionCache()
 
   override def metricsList(): List[String] = {
-    List(config.totalEventsCount, config.successEventCount, config.failedEventCount, config.skippedEventCount, config.errorEventCount, config.assetVideoStreamCount, config.liveNodePublishCount)
+    List(config.totalEventsCount, config.successEventCount, config.failedEventCount, config.skippedEventCount, config.errorEventCount, config.assetVideoStreamCount, config.liveContentNodePublishCount)
   }
 
   override def open(parameters: Configuration): Unit = {
@@ -54,28 +53,25 @@ class CSPNeo4jMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
       if (event.isValid(objMetadata, config)) {
         val migratedMetadataFields = process(objMetadata, event.status, config, httpUtil, neo4JUtil, cassandraUtil)
 
+        val migratedMap = objMetadata ++ migratedMetadataFields
+
+//        context.output(config.cassandraMigrationOutputTag, event) ??
+
         if(config.videStreamRegenerationEnabled && event.objectType.equalsIgnoreCase("Asset") && event.status.equalsIgnoreCase("Live")
           && (event.mimeType.equalsIgnoreCase("video/mp4") || event.mimeType.equalsIgnoreCase("video/webm"))) {
-          updateNeo4j(objMetadata ++ migratedMetadataFields + ("migrationVersion" -> config.migrationVersion.asInstanceOf[AnyRef]), event)(neo4JUtil)
-          pushStreamingUrlEvent(objMetadata, context)(metrics)
+          updateNeo4j(migratedMap + ("migrationVersion" -> config.migrationVersion.asInstanceOf[AnyRef]), event)(neo4JUtil)
+          pushStreamingUrlEvent(migratedMap, context, config)(metrics)
           metrics.incCounter(config.assetVideoStreamCount)
         }
 
-        if(config.liveNodeRepublishEnabled && event.objectType.equalsIgnoreCase("Content")
+        if(config.liveNodeRepublishEnabled && (event.objectType.equalsIgnoreCase("Content") ||
+          event.objectType.equalsIgnoreCase("Collection"))
           && (event.status.equalsIgnoreCase("Live") ||
           event.status.equalsIgnoreCase("Unlisted"))) {
-          pushLiveNodePublishEvent(objMetadata, context, metrics)
-          updateNeo4j(objMetadata, event)(neo4JUtil)
-          metrics.incCounter(config.liveNodePublishCount)
-        } else updateNeo4j(objMetadata ++ migratedMetadataFields + ("migrationVersion" -> config.migrationVersion.asInstanceOf[AnyRef]), event)(neo4JUtil)
-
-        if(event.objectType.equalsIgnoreCase("Collection")
-          && (event.status.equalsIgnoreCase("Live") ||
-          event.status.equalsIgnoreCase("Unlisted"))) {
-          pushLiveNodePublishEvent(objMetadata, context, metrics)
-          updateNeo4j(objMetadata, event)(neo4JUtil)
-          metrics.incCounter(config.liveNodePublishCount)
-        } else updateNeo4j(objMetadata ++ migratedMetadataFields + ("migrationVersion" -> config.migrationVersion.asInstanceOf[AnyRef]), event)(neo4JUtil)
+          updateNeo4j(migratedMap, event)(neo4JUtil)
+          pushLiveNodePublishEvent(objMetadata, context, metrics, config)
+          metrics.incCounter(config.liveContentNodePublishCount)
+        } else updateNeo4j(migratedMap + ("migrationVersion" -> config.migrationVersion.asInstanceOf[AnyRef]), event)(neo4JUtil)
 
         logger.info("CSPNeo4jMigratorFunction::processElement:: CSP migration operation completed for : " + event.identifier)
         metrics.incCounter(config.successEventCount)
@@ -84,12 +80,11 @@ class CSPNeo4jMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
         metrics.incCounter(config.skippedEventCount)
       }
     } catch {
-      case se: ServerException =>
+      case se: Exception =>
         logger.error("CSPNeo4jMigratorFunction :: Message processing failed for mid : " + event.mid() + " || " + event , se)
         logger.error("CSPNeo4jMigratorFunction :: Error while migrating content :: " + se.getMessage)
         metrics.incCounter(config.failedEventCount)
         // Insert into neo4j with migrationVersion as 0.1
-        if(!se.getMessage.contains("Migration Failed for"))
         neo4JUtil.updateNode(event.identifier, objMetadata + ("migrationVersion" -> 0.1.asInstanceOf[Number]))
 
         logger.info(s"""{ identifier: \"${objMetadata.getOrElse("identifier", "").asInstanceOf[String]}\", mimetype: \"${objMetadata.getOrElse("mimeType", "").asInstanceOf[String]}\", status: \"Failed\", stage: \"Static Migration\"}""")
@@ -111,49 +106,5 @@ class CSPNeo4jMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
 //    context.output(config.failedEventOutTag, failedEvent)
 //    metrics.incCounter(config.errorEventCount)
 //  }
-
-  private def pushStreamingUrlEvent(objMetadata: Map[String, AnyRef], context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
-    val event = getStreamingEvent(objMetadata)
-    context.output(config.generateVideoStreamingOutTag, event)
-  }
-
-  def getStreamingEvent(objMetadata: Map[String, AnyRef]): String = {
-    val ets = System.currentTimeMillis
-    val mid = s"""LP.$ets.${UUID.randomUUID}"""
-    val channelId = objMetadata.getOrElse("channel", "").asInstanceOf[String]
-    val ver = objMetadata.getOrElse("versionKey", "").asInstanceOf[String]
-    val artifactUrl = objMetadata.getOrElse("artifactUrl", "").asInstanceOf[String]
-    val contentType = objMetadata.getOrElse("contentType", "").asInstanceOf[String]
-    val mimeType = objMetadata.getOrElse("mimeType", "").asInstanceOf[String]
-    val status = objMetadata.getOrElse("status", "").asInstanceOf[String]
-    val identifier = objMetadata.getOrElse("identifier", "").asInstanceOf[String]
-    val pkgVersion = objMetadata.getOrElse("pkgVersion", "").asInstanceOf[Number]
-    val event = s"""{"eid":"BE_JOB_REQUEST", "ets": $ets, "mid": "$mid", "actor": {"id": "Live Video Stream Generator", "type": "System"}, "context":{"pdata":{"ver":"1.0","id":"org.ekstep.platform"}, "channel":"$channelId","env":"${config.jobEnv}"},"object":{"ver":"$ver","id":"$identifier"},"edata": {"action":"live-video-stream-generate","iteration":1,"identifier":"$identifier","channel":"$channelId","artifactUrl":"$artifactUrl","mimeType":"$mimeType","contentType":"$contentType","pkgVersion":$pkgVersion,"status":"$status"}}""".stripMargin
-    logger.info(s"CSPNeo4jMigratorFunction :: Asset Video Streaming Event for identifier $identifier  is  : $event")
-    event
-  }
-
-  def pushLiveNodePublishEvent(objMetadata: Map[String, AnyRef], context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
-    val epochTime = System.currentTimeMillis
-    val identifier = objMetadata.getOrElse("identifier", "").asInstanceOf[String]
-    val pkgVersion = objMetadata.getOrElse("pkgVersion", "").asInstanceOf[Number]
-    val objectType = objMetadata.getOrElse("objectType", "").asInstanceOf[String]
-    val contentType = objMetadata.getOrElse("contentType", "").asInstanceOf[String]
-    val mimeType = objMetadata.getOrElse("mimeType", "").asInstanceOf[String]
-    val status = objMetadata.getOrElse("status", "").asInstanceOf[String]
-    val publishType = if(status.equalsIgnoreCase("Live")) "Public" else "Unlisted"
-
-    val event = s"""{"eid":"BE_JOB_REQUEST","ets":$epochTime,"mid":"LP.$epochTime.${UUID.randomUUID()}","actor":{"id":"content-republish","type":"System"},"context":{"pdata":{"ver":"1.0","id":"org.ekstep.platform"},"channel":"sunbird","env":"${config.jobEnv}"},"object":{"ver":"$pkgVersion","id":"$identifier"},"edata":{"publish_type":"$publishType","metadata":{"identifier":"$identifier", "mimeType":"$mimeType","objectType":"$objectType","lastPublishedBy":"System","pkgVersion":$pkgVersion},"action":"republish","iteration":1,"contentType":"$contentType"}}"""
-    context.output(config.liveNodePublishEventOutTag, event)
-    metrics.incCounter(config.liveNodePublishCount)
-    logger.info("CSPNeo4jMigratorFunction :: Live content publish triggered for " + identifier)
-    logger.info("CSPNeo4jMigratorFunction :: Live content publish event: " + event)
-  }
-
-  private def updateNeo4j(updatedMetadata: Map[String, AnyRef], event: Event)(neo4JUtil: Neo4JUtil): Unit = {
-    logger.info(s"""CSPNeo4jMigratorFunction:: process:: ${event.identifier} - ${event.objectType} updated fields data:: $updatedMetadata""")
-    neo4JUtil.updateNode(event.identifier, updatedMetadata)
-    logger.info("CSPNeo4jMigratorFunction:: process:: static fields migration completed for " + event.identifier)
-  }
 
 }

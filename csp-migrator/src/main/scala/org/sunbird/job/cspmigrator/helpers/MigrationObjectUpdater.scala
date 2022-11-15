@@ -2,9 +2,10 @@ package org.sunbird.job.cspmigrator.helpers
 
 import com.datastax.driver.core.querybuilder.QueryBuilder
 import org.slf4j.LoggerFactory
+import org.sunbird.job.cspmigrator.domain.Event
 import org.sunbird.job.cspmigrator.task.CSPMigratorConfig
 import org.sunbird.job.exception.InvalidInputException
-import org.sunbird.job.util.CassandraUtil
+import org.sunbird.job.util.{CassandraUtil, Neo4JUtil}
 
 trait MigrationObjectUpdater {
 
@@ -52,5 +53,12 @@ trait MigrationObjectUpdater {
       throw new InvalidInputException(s"""Hierarchy Update Failed For $identifier""")
     }
   }
+
+  def updateNeo4j(updatedMetadata: Map[String, AnyRef], event: Event)(neo4JUtil: Neo4JUtil): Unit = {
+    logger.info(s"""MigrationObjectUpdater:: process:: ${event.identifier} - ${event.objectType} updated fields data:: $updatedMetadata""")
+    neo4JUtil.updateNode(event.identifier, updatedMetadata)
+    logger.info("MigrationObjectUpdater:: process:: static fields migration completed for " + event.identifier)
+  }
+
 
 }

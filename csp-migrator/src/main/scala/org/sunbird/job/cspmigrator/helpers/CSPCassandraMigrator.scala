@@ -34,6 +34,7 @@ trait CSPCassandraMigrator extends MigrationObjectReader with MigrationObjectUpd
 			logger.info(s"""CSPCassandraMigrator:: process:: $identifier - $objectType :: Migrated Cassandra data:: $migrateData""")
 		}
 
+		// Add ContentImage ObjectType
 		if(objectType.equalsIgnoreCase("Content") && mimeType.equalsIgnoreCase("application/vnd.ekstep.ecml-archive")) {
 			val ecmlBody: String = getContentBody(identifier, config)(cassandraUtil)
 			logger.info(s"""CSPCassandraMigrator:: process:: $identifier - $objectType :: ECML Fetched body:: $ecmlBody""")
@@ -44,8 +45,7 @@ trait CSPCassandraMigrator extends MigrationObjectReader with MigrationObjectUpd
 			logger.info(s"""CSPCassandraMigrator:: process:: $identifier - $objectType :: ECML Migrated body:: $migratedECMLBody""")
 		}
 
-		if(objectType.equalsIgnoreCase("Collection") && !(status.equalsIgnoreCase("Live") ||
-			status.equalsIgnoreCase("Unlisted")) && mimeType.equalsIgnoreCase("application/vnd.ekstep.content-collection")) {
+		if(objectType.equalsIgnoreCase("Collection") && mimeType.equalsIgnoreCase("application/vnd.ekstep.content-collection")) {
 			val collectionHierarchy: String = getCollectionHierarchy(identifier, config)(cassandraUtil)
 			logger.info(s"""CSPCassandraMigrator:: process:: $identifier - $objectType :: Fetched Hierarchy:: $collectionHierarchy""")
 			val migratedCollectionHierarchy: String = extractAndValidateUrls(identifier, collectionHierarchy, config, httpUtil, cloudStorageUtil)

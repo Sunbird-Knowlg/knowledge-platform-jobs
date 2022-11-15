@@ -26,7 +26,7 @@ class CSPCassandraMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil
   lazy val defCache: DefinitionCache = new DefinitionCache()
 
   override def metricsList(): List[String] = {
-    List(config.totalEventsCount, config.successEventCount, config.failedEventCount, config.skippedEventCount, config.errorEventCount, config.assetVideoStreamCount, config.liveNodePublishCount)
+    List(config.totalEventsCount, config.successEventCount, config.failedEventCount, config.skippedEventCount, config.errorEventCount, config.assetVideoStreamCount, config.liveContentNodePublishCount)
   }
 
   override def open(parameters: Configuration): Unit = {
@@ -52,13 +52,15 @@ class CSPCassandraMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil
     try {
         process(objMetadata, event.status, config, httpUtil, cassandraUtil, cloudStorageUtil)
         metrics.incCounter(config.successEventCount)
+
+
+
     } catch {
-      case se: ServerException =>
+      case se: Exception =>
         logger.error("CSPCassandraMigratorFunction :: Message processing failed for mid : " + event.mid() + " || " + event , se)
         logger.error("CSPCassandraMigratorFunction :: Error while migrating content :: " + se.getMessage)
         metrics.incCounter(config.failedEventCount)
         // Insert into neo4j with migrationVersion as 0.1
-        if(!se.getMessage.contains("Migration Failed for"))
         neo4JUtil.updateNode(event.identifier, objMetadata + ("migrationVersion" -> 0.1.asInstanceOf[Number]))
 
         logger.info(s"""{ identifier: \"${objMetadata.getOrElse("identifier", "").asInstanceOf[String]}\", mimetype: \"${objMetadata.getOrElse("mimeType", "").asInstanceOf[String]}\", status: \"Failed\", stage: \"Static Migration\"}""")

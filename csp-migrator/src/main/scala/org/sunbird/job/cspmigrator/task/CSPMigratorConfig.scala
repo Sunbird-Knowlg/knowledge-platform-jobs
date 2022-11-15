@@ -32,12 +32,12 @@ class CSPMigratorConfig(override val config: Config) extends BaseJobConfig(confi
     config.getInt("task.csp-migrator.parallelism") else 1
 
   // Metric List
-  val totalEventsCount = "total-message-count"
-  val successEventCount = "success-message-count"
-  val failedEventCount = "failed-message-count"
-  val skippedEventCount = "skipped-message-count"
-  val errorEventCount = "error-message-count"
-  val liveNodePublishCount = "live-node-publish-count"
+  val totalEventsCount = "csp-total-message-count"
+  val successEventCount = "csp-success-message-count"
+  val failedEventCount = "csp-failed-message-count"
+  val skippedEventCount = "csp-skipped-message-count"
+  val errorEventCount = "csp-error-message-count"
+  val liveContentNodePublishCount = "live-content-node-publish-count"
   val assetVideoStreamCount = "asset-video-stream-count"
 
   // Consumers
@@ -50,7 +50,7 @@ class CSPMigratorConfig(override val config: Config) extends BaseJobConfig(confi
   val contentAutoCreatorOutputTag: OutputTag[Event] = OutputTag[Event]("csp-migrator")
   val failedEventOutTag: OutputTag[String] = OutputTag[String]("csp-migrator-failed-event")
   val generateVideoStreamingOutTag: OutputTag[String] = OutputTag[String]("live-video-streaming-generator-request")
-  val liveNodePublishEventOutTag: OutputTag[String] = OutputTag[String]("live-node-republish-request")
+  val liveContentNodePublishEventOutTag: OutputTag[String] = OutputTag[String]("live-content-node-republish-request")
 
   val configVersion = "1.0"
 
