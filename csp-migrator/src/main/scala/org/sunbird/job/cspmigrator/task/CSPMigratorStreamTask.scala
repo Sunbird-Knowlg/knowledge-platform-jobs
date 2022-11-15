@@ -36,7 +36,7 @@ class CSPMigratorStreamTask(config: CSPMigratorConfig, kafkaConnector: FlinkKafk
 
     processStreamTask.getSideOutput(config.failedEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaFailedTopic))
     processStreamTask.getSideOutput(config.generateVideoStreamingOutTag).addSink(kafkaConnector.kafkaStringSink(config.liveVideoStreamingTopic))
-    processStreamTask.getSideOutput(config.liveContentNodePublishEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.liveNodeRepublishTopic))
+    processStreamTask.getSideOutput(config.liveContentNodePublishEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.liveContentNodeRepublishTopic))
 
     env.execute(config.jobName)
   }
