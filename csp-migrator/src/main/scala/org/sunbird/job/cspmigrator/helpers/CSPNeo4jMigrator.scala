@@ -43,12 +43,11 @@ trait CSPNeo4jMigrator extends MigrationObjectReader with MigrationObjectUpdater
 			if(objMetadata.contains(migrateField)) {
 				val metadataFieldVlaue = objMetadata.getOrElse(migrateField, "").asInstanceOf[String]
 				val migrateValue: String = StringUtils.replaceEach(metadataFieldVlaue, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
-				println("URL Extension:: " + FilenameUtils.getExtension(metadataFieldVlaue))
 				if (config.copyMissingFiles) {
 					if(FilenameUtils.getExtension(metadataFieldVlaue) != null && !FilenameUtils.getExtension(metadataFieldVlaue).isBlank && FilenameUtils.getExtension(metadataFieldVlaue).nonEmpty) {
 						// code to download file from old cloud path and upload to new cloud path
 						val downloadedFile: File = downloadFile(s"/tmp/$identifier", metadataFieldVlaue)
-						val exDomain: String = metadataFieldVlaue.replace(migrateField "")
+						val exDomain: String = metadataFieldVlaue.replace(migrateField, "")
 						val folderName: String = exDomain.substring(1, exDomain.indexOf(FilenameUtils.getName(metadataFieldVlaue)) - 1)
 						cloudStorageUtil.uploadFile(folderName, downloadedFile)
 					}
