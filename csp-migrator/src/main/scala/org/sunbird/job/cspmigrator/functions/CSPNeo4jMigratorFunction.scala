@@ -50,7 +50,7 @@ class CSPNeo4jMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
 
     try {
       if (event.isValid(objMetadata, config)) {
-        val migratedMetadataFields = process(objMetadata, event.status, config, httpUtil, neo4JUtil, cassandraUtil)
+        val migratedMetadataFields = process(objMetadata, config, cloudStorageUtil)
 
         val migratedMap = objMetadata ++ migratedMetadataFields
 

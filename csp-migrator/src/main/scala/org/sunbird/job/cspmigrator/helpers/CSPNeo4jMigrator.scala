@@ -1,18 +1,20 @@
 package org.sunbird.job.cspmigrator.helpers
 
+import org.apache.commons.io.FilenameUtils
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cspmigrator.task.CSPMigratorConfig
 import org.sunbird.job.exception.ServerException
-import org.sunbird.job.util._
+import org.sunbird.job.util.CloudStorageUtil
 
+import java.io.File
 import scala.collection.JavaConverters._
 
 trait CSPNeo4jMigrator extends MigrationObjectReader with MigrationObjectUpdater {
 
 	private[this] val logger = LoggerFactory.getLogger(classOf[CSPNeo4jMigrator])
 
-	def process(objMetadata: Map[String, AnyRef], status: String, config: CSPMigratorConfig, httpUtil: HttpUtil, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil): Map[String, AnyRef] = {
+	def process(objMetadata: Map[String, AnyRef], config: CSPMigratorConfig, cloudStorageUtil: CloudStorageUtil): Map[String, AnyRef] = {
 
 		// fetch the objectType.
 		// check if the object has only Draft OR only Live OR live/image if the objectType is content/collection.
@@ -39,16 +41,15 @@ trait CSPNeo4jMigrator extends MigrationObjectReader with MigrationObjectUpdater
 		logger.info(s"""CSPMigrator:: process:: starting neo4j fields migration for $identifier - $objectType fields:: $fieldsToMigrate""")
 		val migratedMetadataFields: Map[String, String] =  fieldsToMigrate.flatMap(migrateField => {
 			if(objMetadata.contains(migrateField)) {
-				val metadataField = objMetadata.getOrElse(migrateField, "").asInstanceOf[String]
-				val migrateValue: String = StringUtils.replaceEach(metadataField, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
-
-				if(httpUtil.getSize(migrateValue) < 0) {
-					//							if (config.copyMissingFiles)
-					//								clouds
-					//							else
-									throw new ServerException("ERR_NEW_PATH_NOT_FOUND", "File not found in the new path to migrate: " + migrateValue)
-				}
-
+				val metadataFieldVlaue = objMetadata.getOrElse(migrateField, "").asInstanceOf[String]
+				val migrateValue: String = StringUtils.replaceEach(metadataFieldVlaue, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
+				if (config.copyMissingFiles) {
+					// code to download file from old cloud path and upload to new cloud path
+					val downloadedFile: File = downloadFile(s"/tmp/$identifier", metadataFieldVlaue)
+					val exDomain: String = metadataFieldVlaue.replace(migrateField.asInstanceOf[String],"")
+					val folderName: String = exDomain.substring(1,exDomain.indexOf(FilenameUtils.getName(metadataFieldVlaue))-1)
+					cloudStorageUtil.uploadFile(folderName,downloadedFile)
+				} else throw new ServerException("ERR_NEW_PATH_NOT_FOUND", "File not found in the new path to migrate: " + migrateValue)
 				Map(migrateField -> migrateValue)
 			} else Map.empty[String, String]
 		}).filter(record => record._1.nonEmpty).toMap[String, String]

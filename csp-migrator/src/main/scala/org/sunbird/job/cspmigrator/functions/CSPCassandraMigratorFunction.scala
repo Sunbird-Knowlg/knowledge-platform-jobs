@@ -49,7 +49,7 @@ class CSPCassandraMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil
     val objMetadata: Map[String, AnyRef] = getMetadata(event.identifier)(neo4JUtil)
 
     try {
-        process(objMetadata, event.status, config, httpUtil, cassandraUtil, cloudStorageUtil)
+      process(objMetadata, event.status, config, httpUtil, cassandraUtil, cloudStorageUtil)
 
       event.objectType match {
         case "Content" | "Collection" =>
@@ -70,7 +70,6 @@ class CSPCassandraMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil
         neo4JUtil.updateNode(event.identifier, objMetadata + ("migrationVersion" -> 0.1.asInstanceOf[Number]))
 
         logger.info(s"""{ identifier: \"${objMetadata.getOrElse("identifier", "").asInstanceOf[String]}\", mimetype: \"${objMetadata.getOrElse("mimeType", "").asInstanceOf[String]}\", status: \"Failed\", stage: \"Static Migration\"}""")
-
     }
   }
 
