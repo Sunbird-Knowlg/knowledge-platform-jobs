@@ -28,7 +28,7 @@ class CSPMigratorConfig(override val config: Config) extends BaseJobConfig(confi
 
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
   override val parallelism: Int = config.getInt("task.parallelism")
-  val cassandraMigratorParallelism: Int = if (config.hasPath("task.csp-migrator.parallelism"))
+  val cassandraMigratorParallelism: Int = if (config.hasPath("task.cassandra-migrator.parallelism"))
     config.getInt("task.csp-migrator.parallelism") else 1
 
   // Metric List
