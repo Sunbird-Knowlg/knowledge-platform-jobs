@@ -20,7 +20,7 @@ class CSPMigratorConfig(override val config: Config) extends BaseJobConfig(confi
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
   val kafkaFailedTopic: String = config.getString("kafka.failed.topic")
   val liveVideoStreamingTopic: String = config.getString("kafka.live_video_stream.topic")
-  val liveNodeRepublishTopic: String = config.getString("kafka.live_node_republish.topic")
+  val liveNodeRepublishTopic: String = config.getString("kafka.live_content_node_republish.topic")
 
   val jobEnv: String = config.getString("job.env")
 
