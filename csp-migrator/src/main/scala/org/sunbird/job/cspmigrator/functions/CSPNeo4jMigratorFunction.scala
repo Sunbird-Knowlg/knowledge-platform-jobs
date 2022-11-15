@@ -8,7 +8,6 @@ import org.sunbird.job.cspmigrator.domain.Event
 import org.sunbird.job.cspmigrator.helpers.CSPNeo4jMigrator
 import org.sunbird.job.cspmigrator.task.CSPMigratorConfig
 import org.sunbird.job.domain.`object`.DefinitionCache
-import org.sunbird.job.exception.ServerException
 import org.sunbird.job.helper.FailedEventHelper
 import org.sunbird.job.util._
 import org.sunbird.job.{BaseProcessFunction, Metrics}
@@ -55,26 +54,38 @@ class CSPNeo4jMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
 
         val migratedMap = objMetadata ++ migratedMetadataFields
 
-//        context.output(config.cassandraMigrationOutputTag, event) ??
-
-        if(config.videStreamRegenerationEnabled && event.objectType.equalsIgnoreCase("Asset") && event.status.equalsIgnoreCase("Live")
-          && (event.mimeType.equalsIgnoreCase("video/mp4") || event.mimeType.equalsIgnoreCase("video/webm"))) {
-          updateNeo4j(migratedMap + ("migrationVersion" -> config.migrationVersion.asInstanceOf[AnyRef]), event)(neo4JUtil)
-          pushStreamingUrlEvent(migratedMap, context, config)(metrics)
-          metrics.incCounter(config.assetVideoStreamCount)
+        event.objectType match {
+          case "Asset"  =>
+            event.mimeType.toLowerCase match {
+              case "video/mp4" | "video/webm" =>
+                finalizeMigration(migratedMap, event, metrics, config)(neo4JUtil)
+                if (config.videStreamRegenerationEnabled && event.status.equalsIgnoreCase("Live")) {
+                  logger.info("CSPNeo4jMigratorFunction :: Sending Asset For streaming URL generation: " + event.identifier)
+                  pushStreamingUrlEvent(migratedMap, context, config)(metrics)
+                  metrics.incCounter(config.assetVideoStreamCount)
+                }
+              case _ => finalizeMigration(migratedMap, event, metrics, config)(neo4JUtil)
+            }
+          case "Content" | "ContentImage" | "Collection" | "CollectionImage" =>
+            event.mimeType.toLowerCase match {
+              case "application/vnd.ekstep.ecml-archive" | "application/vnd.ekstep.content-collection" =>
+                updateNeo4j(migratedMap, event)(neo4JUtil)
+                logger.info("CSPNeo4jMigratorFunction :: Sending Content/Collection For cassandra migration: " + event.identifier)
+                context.output(config.cassandraMigrationOutputTag, event)
+              case _ =>
+                finalizeMigration(migratedMap, event, metrics, config)(neo4JUtil)
+                if(config.liveNodeRepublishEnabled && (event.status.equalsIgnoreCase("Live") ||
+                  event.status.equalsIgnoreCase("Unlisted"))) {
+                  pushLiveNodePublishEvent(objMetadata, context, metrics, config)
+                  metrics.incCounter(config.liveContentNodePublishCount)
+                }
+            }
+          case "AssessmentItem" =>
+            updateNeo4j(migratedMap, event)(neo4JUtil)
+            logger.info("CSPNeo4jMigratorFunction :: Sending AssessmentItem For cassandra migration: " + event.identifier)
+            context.output(config.cassandraMigrationOutputTag, event)
+          case _ => finalizeMigration(migratedMap, event, metrics, config)(neo4JUtil)
         }
-
-        if(config.liveNodeRepublishEnabled && (event.objectType.equalsIgnoreCase("Content") ||
-          event.objectType.equalsIgnoreCase("Collection"))
-          && (event.status.equalsIgnoreCase("Live") ||
-          event.status.equalsIgnoreCase("Unlisted"))) {
-          updateNeo4j(migratedMap, event)(neo4JUtil)
-          pushLiveNodePublishEvent(objMetadata, context, metrics, config)
-          metrics.incCounter(config.liveContentNodePublishCount)
-        } else updateNeo4j(migratedMap + ("migrationVersion" -> config.migrationVersion.asInstanceOf[AnyRef]), event)(neo4JUtil)
-
-        logger.info("CSPNeo4jMigratorFunction::processElement:: CSP migration operation completed for : " + event.identifier)
-        metrics.incCounter(config.successEventCount)
       } else {
         logger.info("CSPNeo4jMigratorFunction::processElement:: Event is not qualified for csp migration having identifier : " + event.identifier + " | objectType : " + event.objectType)
         metrics.incCounter(config.skippedEventCount)
@@ -88,23 +99,8 @@ class CSPNeo4jMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
         neo4JUtil.updateNode(event.identifier, objMetadata + ("migrationVersion" -> 0.1.asInstanceOf[Number]))
 
         logger.info(s"""{ identifier: \"${objMetadata.getOrElse("identifier", "").asInstanceOf[String]}\", mimetype: \"${objMetadata.getOrElse("mimeType", "").asInstanceOf[String]}\", status: \"Failed\", stage: \"Static Migration\"}""")
-
-//        val currentIteration = event.currentIteration
-//        if (currentIteration < 1) {
-//          val newEventMap = new util.HashMap[String, Any]()
-//          newEventMap.putAll(event.getMap())
-//          newEventMap.get("edata").asInstanceOf[util.HashMap[String, Any]].put("iteration",currentIteration+1)
-//          pushEventForRetry(event.jobName, newEventMap, e, metrics, context)
-//          logger.info("CSPNeo4jMigratorFunction :: Failed Event Sent To Kafka Topic : " + config.kafkaFailedTopic + " | for mid : " + event.mid(), event)
-//        }
-//        else logger.info("CSPNeo4jMigratorFunction :: Event Reached Maximum Retry Limit having mid : " + event.mid() + "| " +  event)
     }
   }
-//
-//  private def pushEventForRetry(jobName: String, newEventMap: util.HashMap[String, Any], error: Throwable, metrics: Metrics, context: ProcessFunction[Event, String]#Context): Unit = {
-//    val failedEvent = getFailedEvent(jobName, newEventMap, error)
-//    context.output(config.failedEventOutTag, failedEvent)
-//    metrics.incCounter(config.errorEventCount)
-//  }
+
 
 }

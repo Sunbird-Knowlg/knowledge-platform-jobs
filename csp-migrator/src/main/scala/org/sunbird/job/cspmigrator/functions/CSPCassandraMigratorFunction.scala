@@ -8,7 +8,6 @@ import org.sunbird.job.cspmigrator.domain.Event
 import org.sunbird.job.cspmigrator.helpers.CSPCassandraMigrator
 import org.sunbird.job.cspmigrator.task.CSPMigratorConfig
 import org.sunbird.job.domain.`object`.DefinitionCache
-import org.sunbird.job.exception.ServerException
 import org.sunbird.job.helper.FailedEventHelper
 import org.sunbird.job.util._
 import org.sunbird.job.{BaseProcessFunction, Metrics}
@@ -51,10 +50,17 @@ class CSPCassandraMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil
 
     try {
         process(objMetadata, event.status, config, httpUtil, cassandraUtil, cloudStorageUtil)
-        metrics.incCounter(config.successEventCount)
 
-
-
+      event.objectType match {
+        case "Content" | "Collection" =>
+          finalizeMigration(objMetadata, event, metrics, config)(neo4JUtil)
+          if(config.liveNodeRepublishEnabled && (event.status.equalsIgnoreCase("Live") ||
+            event.status.equalsIgnoreCase("Unlisted"))) {
+            pushLiveNodePublishEvent(objMetadata, context, metrics, config)
+            metrics.incCounter(config.liveContentNodePublishCount)
+          }
+        case  _ => finalizeMigration(objMetadata, event, metrics, config)(neo4JUtil)
+      }
     } catch {
       case se: Exception =>
         logger.error("CSPCassandraMigratorFunction :: Message processing failed for mid : " + event.mid() + " || " + event , se)

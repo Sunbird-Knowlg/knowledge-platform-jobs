@@ -1,13 +1,19 @@
 package org.sunbird.job.cspmigrator.helpers
 
 import com.datastax.driver.core.querybuilder.QueryBuilder
+import org.apache.commons.io.{FileUtils, FilenameUtils}
+import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
+import org.sunbird.job.Metrics
 import org.sunbird.job.cspmigrator.domain.Event
 import org.sunbird.job.cspmigrator.task.CSPMigratorConfig
-import org.sunbird.job.exception.InvalidInputException
-import org.sunbird.job.util.{CassandraUtil, Neo4JUtil}
+import org.sunbird.job.exception.{InvalidInputException, ServerException}
+import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, Neo4JUtil}
 
-trait MigrationObjectUpdater {
+import java.io.{File, IOException}
+import java.net.URL
+
+trait MigrationObjectUpdater extends URLExtractor {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[MigrationObjectUpdater])
 
@@ -60,5 +66,52 @@ trait MigrationObjectUpdater {
     logger.info("MigrationObjectUpdater:: process:: static fields migration completed for " + event.identifier)
   }
 
+
+  def extractAndValidateUrls(identifier: String, contentString: String, config: CSPMigratorConfig, httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil): String = {
+    val extractedUrls: List[String] = extarctUrls(contentString)
+
+    if(extractedUrls.nonEmpty) {
+      extractedUrls.toSet.foreach(urlString => {
+        config.keyValueMigrateStrings.keySet().toArray().map(migrateDomain => {
+          if(urlString.contains(migrateDomain)) {
+            val migrateValue: String = StringUtils.replaceEach(urlString, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
+            if(httpUtil.getSize(migrateValue) < 0) {
+              if (config.copyMissingFiles) {
+                // code to download file from old cloud path and upload to new cloud path
+                val downloadedFile: File = downloadFile(s"/tmp/$identifier", urlString)
+                val folderName: String = ""
+                cloudStorageUtil.uploadFile(folderName,downloadedFile)
+
+              } else throw new ServerException("ERR_NEW_PATH_NOT_FOUND", "File not found in the new path to migrate: " + migrateValue)
+            }
+          }
+        })
+      })
+      StringUtils.replaceEach(contentString, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
+    } else contentString
+  }
+
+
+  def downloadFile(downloadPath: String, fileUrl: String): File = try {
+    createDirectory(downloadPath)
+    val file = new File(downloadPath + File.separator + FilenameUtils.getName(fileUrl))
+    FileUtils.copyURLToFile(new URL(fileUrl), file)
+    file
+  } catch {
+    case e: IOException =>
+      e.printStackTrace()
+      throw new ServerException("ERR_INVALID_FILE_URL", "File not found in the old path to migrate: " + downloadPath)
+  }
+
+  private def createDirectory(directoryName: String): Unit = {
+    val theDir = new File(directoryName)
+    if (!theDir.exists) theDir.mkdirs
+  }
+
+  def finalizeMigration(migratedMap: Map[String, AnyRef], event: Event, metrics: Metrics, config: CSPMigratorConfig)(neo4JUtil: Neo4JUtil): Unit = {
+    updateNeo4j(migratedMap + ("migrationVersion" -> config.migrationVersion.asInstanceOf[AnyRef]), event)(neo4JUtil)
+    logger.info("MigrationObjectUpdater::finalizeMigration:: CSP migration operation completed for : " + event.identifier)
+    metrics.incCounter(config.successEventCount)
+  }
 
 }
