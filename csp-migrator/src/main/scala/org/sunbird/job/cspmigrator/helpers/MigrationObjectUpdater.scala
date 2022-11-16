@@ -112,6 +112,7 @@ trait MigrationObjectUpdater extends URLExtractor {
           // code to download file from old cloud path and upload to new cloud path
           val downloadedFile: File = downloadFile(s"/tmp/$identifier", originalUrl)
           val exDomain: String = originalUrl.replace(migrateDomain, "")
+          // TODO : BUCKET NAMES TO BE INCLUDED BASED ON CNAME DESIGN
           val folderName: String = exDomain.substring(1, exDomain.indexOf(FilenameUtils.getName(originalUrl)) - 1)
           cloudStorageUtil.uploadFile(folderName, downloadedFile)
         }
