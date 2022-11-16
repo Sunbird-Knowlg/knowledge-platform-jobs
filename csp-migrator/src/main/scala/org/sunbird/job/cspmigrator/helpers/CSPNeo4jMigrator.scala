@@ -43,17 +43,7 @@ trait CSPNeo4jMigrator extends MigrationObjectReader with MigrationObjectUpdater
 			if(objMetadata.contains(migrateField)) {
 				val metadataFieldVlaue = objMetadata.getOrElse(migrateField, "").asInstanceOf[String]
 				val migrateValue: String = StringUtils.replaceEach(metadataFieldVlaue, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
-				if(httpUtil.getSize(migrateValue) < 0) {
-					if (config.copyMissingFiles) {
-						if (FilenameUtils.getExtension(metadataFieldVlaue) != null && !FilenameUtils.getExtension(metadataFieldVlaue).isBlank && FilenameUtils.getExtension(metadataFieldVlaue).nonEmpty) {
-							// code to download file from old cloud path and upload to new cloud path
-							val downloadedFile: File = downloadFile(s"/tmp/$identifier", metadataFieldVlaue)
-							val exDomain: String = metadataFieldVlaue.replace(migrateField, "")
-							val folderName: String = exDomain.substring(1, exDomain.indexOf(FilenameUtils.getName(metadataFieldVlaue)) - 1)
-							cloudStorageUtil.uploadFile(folderName, downloadedFile)
-						}
-					} else throw new ServerException("ERR_NEW_PATH_NOT_FOUND", "File not found in the new path to migrate: " + migrateValue)
-				}
+				verifyFile(identifier, metadataFieldVlaue, migrateValue, migrateField, config)(httpUtil, cloudStorageUtil)
 				Map(migrateField -> migrateValue)
 			} else Map.empty[String, String]
 		}).filter(record => record._1.nonEmpty).toMap[String, String]

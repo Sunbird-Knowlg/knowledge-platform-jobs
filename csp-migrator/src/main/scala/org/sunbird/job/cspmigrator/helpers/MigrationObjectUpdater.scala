@@ -75,17 +75,7 @@ trait MigrationObjectUpdater extends URLExtractor {
         config.keyValueMigrateStrings.keySet().toArray().map(migrateDomain => {
           if(urlString.contains(migrateDomain.asInstanceOf[String])) {
             val migrateValue: String = StringUtils.replaceEach(urlString, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
-            if(httpUtil.getSize(migrateValue) < 0) {
-              if (config.copyMissingFiles) {
-                if(FilenameUtils.getExtension(urlString) != null && !FilenameUtils.getExtension(urlString).isBlank && FilenameUtils.getExtension(urlString).nonEmpty) {
-                  // code to download file from old cloud path and upload to new cloud path
-                  val downloadedFile: File = downloadFile(s"/tmp/$identifier", urlString)
-                  val exDomain: String = urlString.replace(migrateDomain.asInstanceOf[String], "")
-                  val folderName: String = exDomain.substring(1, exDomain.indexOf(FilenameUtils.getName(urlString)) - 1)
-                  cloudStorageUtil.uploadFile(folderName, downloadedFile)
-                }
-              } else throw new ServerException("ERR_NEW_PATH_NOT_FOUND", "File not found in the new path to migrate: " + migrateValue)
-            }
+            verifyFile(identifier, urlString, migrateValue, migrateDomain.asInstanceOf[String], config)(httpUtil, cloudStorageUtil)
           }
         })
       })
@@ -114,6 +104,20 @@ trait MigrationObjectUpdater extends URLExtractor {
     updateNeo4j(migratedMap + ("migrationVersion" -> config.migrationVersion.asInstanceOf[AnyRef]), event)(neo4JUtil)
     logger.info("MigrationObjectUpdater::finalizeMigration:: CSP migration operation completed for : " + event.identifier)
     metrics.incCounter(config.successEventCount)
+  }
+
+  def verifyFile(identifier: String, originalUrl: String, migrateUrl: String, migrateDomain: String, config: CSPMigratorConfig)(implicit httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil): Unit = {
+    if(httpUtil.getSize(migrateUrl) < 0) {
+      if (config.copyMissingFiles) {
+        if(FilenameUtils.getExtension(originalUrl) != null && !FilenameUtils.getExtension(originalUrl).isBlank && FilenameUtils.getExtension(originalUrl).nonEmpty) {
+          // code to download file from old cloud path and upload to new cloud path
+          val downloadedFile: File = downloadFile(s"/tmp/$identifier", originalUrl)
+          val exDomain: String = originalUrl.replace(migrateDomain, "")
+          val folderName: String = exDomain.substring(1, exDomain.indexOf(FilenameUtils.getName(originalUrl)) - 1)
+          cloudStorageUtil.uploadFile(folderName, downloadedFile)
+        }
+      } else throw new ServerException("ERR_NEW_PATH_NOT_FOUND", "File not found in the new path to migrate: " + migrateUrl)
+    }
   }
 
 }
