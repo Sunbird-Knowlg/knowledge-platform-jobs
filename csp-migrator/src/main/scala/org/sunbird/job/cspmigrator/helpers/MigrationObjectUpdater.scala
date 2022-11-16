@@ -69,7 +69,6 @@ trait MigrationObjectUpdater extends URLExtractor {
 
   def extractAndValidateUrls(identifier: String, contentString: String, config: CSPMigratorConfig, httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil): String = {
     val extractedUrls: List[String] = extarctUrls(contentString)
-
     if(extractedUrls.nonEmpty) {
       extractedUrls.toSet[String].foreach(urlString => {
         config.keyValueMigrateStrings.keySet().toArray().map(migrateDomain => {
