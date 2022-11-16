@@ -39,10 +39,14 @@ trait ObjectBundle {
   def getManifestData(objIdentifier: String, pkgType: String, objList: List[Map[String, AnyRef]])(implicit defCache: DefinitionCache, neo4JUtil: Neo4JUtil, defConfig: DefinitionConfig, config: PublishConfig): (List[Map[String, AnyRef]], List[Map[AnyRef, String]]) = {
     objList.map(data => {
       val identifier = data.getOrElse("identifier", "").asInstanceOf[String].replaceAll(".img", "")
+      val visibility = data.getOrElse("visibility", "").asInstanceOf[String]
       val mimeType = data.getOrElse("mimeType", "").asInstanceOf[String]
       val objectType: String = if(!data.contains("objectType") || data.getOrElse("objectType", "").asInstanceOf[String].isBlank || data.getOrElse("objectType", "").asInstanceOf[String].isEmpty) {
-        val metaData = Option(neo4JUtil.getNodeProperties(identifier)).getOrElse(neo4JUtil.getNodeProperties(identifier)).asScala.toMap
-        metaData.getOrElse("IL_FUNC_OBJECT_TYPE", "").asInstanceOf[String]
+        if(visibility.equalsIgnoreCase("Parent") && mimeType.equalsIgnoreCase("application/vnd.ekstep.content-collection")) "Collection"
+        else {
+          val metaData = Option(neo4JUtil.getNodeProperties(identifier)).getOrElse(neo4JUtil.getNodeProperties(identifier)).asScala.toMap
+          metaData.getOrElse("IL_FUNC_OBJECT_TYPE", "").asInstanceOf[String]
+        }
       } else data.getOrElse("objectType", "").asInstanceOf[String] .replaceAll("Image", "")
       val contentDisposition = data.getOrElse("contentDisposition", "").asInstanceOf[String]
       logger.info("ObjectBundle:: getManifestData:: identifier:: " + identifier + " || objectType:: " + objectType)
