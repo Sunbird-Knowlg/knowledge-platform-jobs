@@ -5,7 +5,7 @@ import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cspmigrator.task.CSPMigratorConfig
 import org.sunbird.job.exception.ServerException
-import org.sunbird.job.util.CloudStorageUtil
+import org.sunbird.job.util.{CloudStorageUtil, HttpUtil}
 
 import java.io.File
 import scala.collection.JavaConverters._
@@ -14,7 +14,7 @@ trait CSPNeo4jMigrator extends MigrationObjectReader with MigrationObjectUpdater
 
 	private[this] val logger = LoggerFactory.getLogger(classOf[CSPNeo4jMigrator])
 
-	def process(objMetadata: Map[String, AnyRef], config: CSPMigratorConfig, cloudStorageUtil: CloudStorageUtil): Map[String, AnyRef] = {
+	def process(objMetadata: Map[String, AnyRef], config: CSPMigratorConfig, httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil): Map[String, AnyRef] = {
 
 		// fetch the objectType.
 		// check if the object has only Draft OR only Live OR live/image if the objectType is content/collection.
@@ -43,15 +43,17 @@ trait CSPNeo4jMigrator extends MigrationObjectReader with MigrationObjectUpdater
 			if(objMetadata.contains(migrateField)) {
 				val metadataFieldVlaue = objMetadata.getOrElse(migrateField, "").asInstanceOf[String]
 				val migrateValue: String = StringUtils.replaceEach(metadataFieldVlaue, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
-				if (config.copyMissingFiles) {
-					if(FilenameUtils.getExtension(metadataFieldVlaue) != null && !FilenameUtils.getExtension(metadataFieldVlaue).isBlank && FilenameUtils.getExtension(metadataFieldVlaue).nonEmpty) {
-						// code to download file from old cloud path and upload to new cloud path
-						val downloadedFile: File = downloadFile(s"/tmp/$identifier", metadataFieldVlaue)
-						val exDomain: String = metadataFieldVlaue.replace(migrateField, "")
-						val folderName: String = exDomain.substring(1, exDomain.indexOf(FilenameUtils.getName(metadataFieldVlaue)) - 1)
-						cloudStorageUtil.uploadFile(folderName, downloadedFile)
-					}
-				} else throw new ServerException("ERR_NEW_PATH_NOT_FOUND", "File not found in the new path to migrate: " + migrateValue)
+				if(httpUtil.getSize(migrateValue) < 0) {
+					if (config.copyMissingFiles) {
+						if (FilenameUtils.getExtension(metadataFieldVlaue) != null && !FilenameUtils.getExtension(metadataFieldVlaue).isBlank && FilenameUtils.getExtension(metadataFieldVlaue).nonEmpty) {
+							// code to download file from old cloud path and upload to new cloud path
+							val downloadedFile: File = downloadFile(s"/tmp/$identifier", metadataFieldVlaue)
+							val exDomain: String = metadataFieldVlaue.replace(migrateField, "")
+							val folderName: String = exDomain.substring(1, exDomain.indexOf(FilenameUtils.getName(metadataFieldVlaue)) - 1)
+							cloudStorageUtil.uploadFile(folderName, downloadedFile)
+						}
+					} else throw new ServerException("ERR_NEW_PATH_NOT_FOUND", "File not found in the new path to migrate: " + migrateValue)
+				}
 				Map(migrateField -> migrateValue)
 			} else Map.empty[String, String]
 		}).filter(record => record._1.nonEmpty).toMap[String, String]
