@@ -58,22 +58,22 @@ class CSPNeo4jMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
           case "Asset"  =>
             event.mimeType.toLowerCase match {
               case "video/mp4" | "video/webm" =>
-                finalizeMigration(migratedMap, event, metrics, config)(neo4JUtil)
+                finalizeMigration(migratedMap, event, metrics, config)(defCache, neo4JUtil)
                 if (config.videStreamRegenerationEnabled && event.status.equalsIgnoreCase("Live")) {
                   logger.info("CSPNeo4jMigratorFunction :: Sending Asset For streaming URL generation: " + event.identifier)
                   pushStreamingUrlEvent(migratedMap, context, config)(metrics)
                   metrics.incCounter(config.assetVideoStreamCount)
                 }
-              case _ => finalizeMigration(migratedMap, event, metrics, config)(neo4JUtil)
+              case _ => finalizeMigration(migratedMap, event, metrics, config)(defCache, neo4JUtil)
             }
           case "Content" | "ContentImage" | "Collection" | "CollectionImage" =>
             event.mimeType.toLowerCase match {
               case "application/vnd.ekstep.ecml-archive" | "application/vnd.ekstep.content-collection" =>
-                updateNeo4j(migratedMap, event)(neo4JUtil)
+                updateNeo4j(migratedMap, event)(defCache, neo4JUtil, config)
                 logger.info("CSPNeo4jMigratorFunction :: Sending Content/Collection For cassandra migration: " + event.identifier)
                 context.output(config.cassandraMigrationOutputTag, event)
               case _ =>
-                finalizeMigration(migratedMap, event, metrics, config)(neo4JUtil)
+                finalizeMigration(migratedMap, event, metrics, config)(defCache, neo4JUtil)
                 if(config.liveNodeRepublishEnabled && (event.status.equalsIgnoreCase("Live") ||
                   event.status.equalsIgnoreCase("Unlisted"))) {
                   pushLiveNodePublishEvent(objMetadata, context, metrics, config)
@@ -81,10 +81,10 @@ class CSPNeo4jMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
                 }
             }
           case "AssessmentItem" =>
-            updateNeo4j(migratedMap, event)(neo4JUtil)
+            updateNeo4j(migratedMap, event)(defCache, neo4JUtil, config)
             logger.info("CSPNeo4jMigratorFunction :: Sending AssessmentItem For cassandra migration: " + event.identifier)
             context.output(config.cassandraMigrationOutputTag, event)
-          case _ => finalizeMigration(migratedMap, event, metrics, config)(neo4JUtil)
+          case _ => finalizeMigration(migratedMap, event, metrics, config)(defCache, neo4JUtil)
         }
       } else {
         logger.info("CSPNeo4jMigratorFunction::processElement:: Event is not qualified for csp migration having identifier : " + event.identifier + " | objectType : " + event.objectType)
@@ -95,10 +95,11 @@ class CSPNeo4jMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
         logger.error("CSPNeo4jMigratorFunction :: Message processing failed for mid : " + event.mid() + " || " + event , se)
         logger.error("CSPNeo4jMigratorFunction :: Error while migrating content :: " + se.getMessage)
         metrics.incCounter(config.failedEventCount)
-        // Insert into neo4j with migrationVersion as 0.1
-        neo4JUtil.updateNode(event.identifier, objMetadata + ("migrationVersion" -> 0.1.asInstanceOf[Number]))
-
+        se.printStackTrace()
         logger.info(s"""{ identifier: \"${objMetadata.getOrElse("identifier", "").asInstanceOf[String]}\", mimetype: \"${objMetadata.getOrElse("mimeType", "").asInstanceOf[String]}\", status: \"Failed\", stage: \"Static Migration\"}""")
+        // Insert into neo4j with migrationVersion as 0.1
+        updateNeo4j(objMetadata + ("migrationVersion" -> 0.1.asInstanceOf[Number]), event)(defCache, neo4JUtil, config)
+
     }
   }
 

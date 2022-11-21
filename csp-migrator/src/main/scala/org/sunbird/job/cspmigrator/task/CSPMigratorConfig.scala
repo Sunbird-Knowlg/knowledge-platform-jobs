@@ -8,7 +8,6 @@ import org.sunbird.job.BaseJobConfig
 import org.sunbird.job.cspmigrator.domain.Event
 
 import java.util
-import scala.collection.JavaConverters._
 
 class CSPMigratorConfig(override val config: Config) extends BaseJobConfig(config, "csp-migrator") {
 
@@ -75,6 +74,7 @@ class CSPMigratorConfig(override val config: Config) extends BaseJobConfig(confi
   val liveNodeRepublishEnabled: Boolean = if(config.hasPath("live_node_republish_enable"))  config.getBoolean("live_node_republish_enable") else true
   val copyMissingFiles: Boolean = if(config.hasPath("copy_missing_files_to_cloud"))  config.getBoolean("copy_missing_files_to_cloud") else true
 
+  val definitionBasePath: String = if (config.hasPath("schema.basePath")) config.getString("schema.basePath") else "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local"
 
   def getConfig: Config = config
 }

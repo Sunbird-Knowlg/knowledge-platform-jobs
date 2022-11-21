@@ -7,11 +7,13 @@ import org.slf4j.LoggerFactory
 import org.sunbird.job.Metrics
 import org.sunbird.job.cspmigrator.domain.Event
 import org.sunbird.job.cspmigrator.task.CSPMigratorConfig
+import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.exception.{InvalidInputException, ServerException}
-import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, Neo4JUtil}
+import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, JSONUtil, Neo4JUtil, ScalaJsonUtil}
 
 import java.io.{File, IOException}
 import java.net.URL
+import java.util
 
 trait MigrationObjectUpdater extends URLExtractor {
 
@@ -60,9 +62,12 @@ trait MigrationObjectUpdater extends URLExtractor {
     }
   }
 
-  def updateNeo4j(updatedMetadata: Map[String, AnyRef], event: Event)(neo4JUtil: Neo4JUtil): Unit = {
+  def updateNeo4j(updatedMetadata: Map[String, AnyRef], event: Event)(definitionCache: DefinitionCache, neo4JUtil: Neo4JUtil, config: CSPMigratorConfig): Unit = {
     logger.info(s"""MigrationObjectUpdater:: process:: ${event.identifier} - ${event.objectType} updated fields data:: $updatedMetadata""")
-    neo4JUtil.updateNode(event.identifier, updatedMetadata)
+    val metadataUpdateQuery = metaDataQuery(event.objectType, updatedMetadata)(definitionCache, config)
+    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"${event.identifier}"}) SET $metadataUpdateQuery;"""
+    logger.info(s"""MigrationObjectUpdater:: process:: ${event.identifier} - ${event.objectType} updated fields :: Query: """ + query)
+    neo4JUtil.executeQuery(query)
     logger.info("MigrationObjectUpdater:: process:: static fields migration completed for " + event.identifier)
   }
 
@@ -70,14 +75,16 @@ trait MigrationObjectUpdater extends URLExtractor {
   def extractAndValidateUrls(identifier: String, contentString: String, config: CSPMigratorConfig, httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil): String = {
     val extractedUrls: List[String] = extarctUrls(contentString)
     if(extractedUrls.nonEmpty) {
-      extractedUrls.toSet[String].foreach(urlString => {
-        config.keyValueMigrateStrings.keySet().toArray().map(migrateDomain => {
-          if(urlString.contains(migrateDomain.asInstanceOf[String])) {
-            val migrateValue: String = StringUtils.replaceEach(urlString, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
-            verifyFile(identifier, urlString, migrateValue, migrateDomain.asInstanceOf[String], config)(httpUtil, cloudStorageUtil)
-          }
+      if(config.copyMissingFiles) {
+        extractedUrls.toSet[String].foreach(urlString => {
+          config.keyValueMigrateStrings.keySet().toArray().map(migrateDomain => {
+            if(urlString.contains(migrateDomain.asInstanceOf[String])) {
+              val migrateValue: String = StringUtils.replaceEach(urlString, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
+              verifyFile(identifier, urlString, migrateValue, migrateDomain.asInstanceOf[String], config)(httpUtil, cloudStorageUtil)
+            }
+          })
         })
-      })
+      }
       StringUtils.replaceEach(contentString, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
     } else contentString
   }
@@ -99,13 +106,14 @@ trait MigrationObjectUpdater extends URLExtractor {
     if (!theDir.exists) theDir.mkdirs
   }
 
-  def finalizeMigration(migratedMap: Map[String, AnyRef], event: Event, metrics: Metrics, config: CSPMigratorConfig)(neo4JUtil: Neo4JUtil): Unit = {
-    updateNeo4j(migratedMap + ("migrationVersion" -> config.migrationVersion.asInstanceOf[AnyRef]), event)(neo4JUtil)
+  def finalizeMigration(migratedMap: Map[String, AnyRef], event: Event, metrics: Metrics, config: CSPMigratorConfig)(defCache: DefinitionCache, neo4JUtil: Neo4JUtil): Unit = {
+    updateNeo4j(migratedMap + ("migrationVersion" -> config.migrationVersion.asInstanceOf[AnyRef]), event)(defCache, neo4JUtil, config)
     logger.info("MigrationObjectUpdater::finalizeMigration:: CSP migration operation completed for : " + event.identifier)
     metrics.incCounter(config.successEventCount)
   }
 
   def verifyFile(identifier: String, originalUrl: String, migrateUrl: String, migrateDomain: String, config: CSPMigratorConfig)(implicit httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil): Unit = {
+    logger.info("MigrationObjectUpdater::verifyFile:: originalUrl :: " + originalUrl + " || migrateUrl:: " + migrateUrl)
     if(httpUtil.getSize(migrateUrl) < 0) {
       if (config.copyMissingFiles) {
         if(FilenameUtils.getExtension(originalUrl) != null && !FilenameUtils.getExtension(originalUrl).isBlank && FilenameUtils.getExtension(originalUrl).nonEmpty) {
@@ -118,6 +126,47 @@ trait MigrationObjectUpdater extends URLExtractor {
         }
       } else throw new ServerException("ERR_NEW_PATH_NOT_FOUND", "File not found in the new path to migrate: " + migrateUrl)
     }
+  }
+
+
+  def metaDataQuery(objectType: String, objMetadata: Map[String, AnyRef])(definitionCache: DefinitionCache, config: CSPMigratorConfig): String = {
+    val version = "1.0"
+    val definition = definitionCache.getDefinition(objectType, version, config.definitionBasePath)
+    val metadata = objMetadata - ("IL_UNIQUE_ID", "identifier", "IL_FUNC_OBJECT_TYPE", "IL_SYS_NODE_TYPE", "pkgVersion", "lastStatusChangedOn", "lastUpdatedOn", "status", "objectType", "publish_type")
+    metadata.map(prop => {
+      if (null == prop._2) s"n.${prop._1}=${prop._2}"
+      else if (definition.objectTypeProperties.contains(prop._1)) {
+        prop._2 match {
+          case _: Map[String, AnyRef] =>
+            val strValue = JSONUtil.serialize(ScalaJsonUtil.serialize(prop._2))
+            s"""n.${prop._1}=$strValue"""
+          case _: util.Map[String, AnyRef] =>
+            val strValue = JSONUtil.serialize(JSONUtil.serialize(prop._2))
+            s"""n.${prop._1}=$strValue"""
+          case _ =>
+            val strValue = JSONUtil.serialize(prop._2)
+            s"""n.${prop._1}=$strValue"""
+        }
+      } else {
+        prop._2 match {
+          case _: Map[String, AnyRef] =>
+            val strValue = JSONUtil.serialize(ScalaJsonUtil.serialize(prop._2))
+            s"""n.${prop._1}=$strValue"""
+          case _: util.Map[String, AnyRef] =>
+            val strValue = JSONUtil.serialize(JSONUtil.serialize(prop._2))
+            s"""n.${prop._1}=$strValue"""
+          case _: List[String] =>
+            val strValue = ScalaJsonUtil.serialize(prop._2)
+            s"""n.${prop._1}=$strValue"""
+          case _: util.List[String] =>
+            val strValue = JSONUtil.serialize(prop._2)
+            s"""n.${prop._1}=$strValue"""
+          case _ =>
+            val strValue = JSONUtil.serialize(prop._2)
+            s"""n.${prop._1}=$strValue"""
+        }
+      }
+    }).mkString(",")
   }
 
 }
