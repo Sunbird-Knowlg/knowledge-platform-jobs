@@ -67,14 +67,6 @@ class CSPMigratorConfig(override val config: Config) extends BaseJobConfig(confi
   val graphRoutePath: String = config.getString("neo4j.routePath")
   val graphName: String = config.getString("neo4j.graph")
 
-  val contentServiceBaseUrl : String = config.getString("service.content_service.basePath")
-  val searchServiceBaseUrl : String = config.getString("service.search.basePath")
-  val learningServiceBaseUrl : String = config.getString("service.learning_service.basePath")
-
-  
-  val searchExistsFields: List[String] = if (config.hasPath("search_exists_fields")) config.getStringList("search_exists_fields").asScala.toList else List("originData")
-  val searchFields: List[String] = if (config.hasPath("search_fields")) config.getStringList("search_fields").asScala.toList else List("identifier", "mimeType", "pkgVersion", "channel", "status", "origin", "originData", "artifactUrl")
-
   val fieldsToMigrate: util.Map[String, AnyRef] = if(config.hasPath("neo4j_fields_to_migrate")) config.getAnyRef("neo4j_fields_to_migrate").asInstanceOf[util.Map[String, AnyRef]] else new util.HashMap[String, AnyRef]()
   val keyValueMigrateStrings: util.Map[String, String] = config.getAnyRef("key_value_strings_to_migrate").asInstanceOf[util.Map[String, String]]
   val migrationVersion: Int = if(config.hasPath("migrationVersion"))  config.getInt("migrationVersion") else 1
