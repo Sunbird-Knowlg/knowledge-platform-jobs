@@ -23,7 +23,7 @@ trait LiveObjectUpdater {
     val status = if (StringUtils.equalsIgnoreCase("Unlisted", publishType)) "Unlisted" else "Live"
     val identifier = obj.identifier
     val metadataUpdateQuery = metaDataQuery(obj)(definitionCache, config)
-    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$identifier"}) SET n.status="$status",n.pkgVersion=${obj.pkgVersion},n.prevStatus="Processing",n.migrationVersion=1,$metadataUpdateQuery,$auditPropsUpdateQuery;"""
+    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$identifier"}) SET n.status="$status",n.pkgVersion=${obj.pkgVersion},n.prevStatus="Processing",n.migrationVersion=1.1,$metadataUpdateQuery,$auditPropsUpdateQuery;"""
     logger.info("ObjectUpdater:: saveOnSuccess:: Query: " + query)
     logger.info(s"ObjectUpdater:: saveOnSuccess:: DB ID for ${obj.identifier} is : ${obj.dbId} | pkgVersion : ${obj.pkgVersion}" )
 
@@ -60,7 +60,7 @@ trait LiveObjectUpdater {
     val upPkgVersion = pkgVersion + 1
     val errorMessages = messages.mkString("; ")
     val nodeId = obj.dbId
-    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$nodeId"}) SET n.status="Failed", n.pkgVersion=$upPkgVersion,n.migrationVersion=0.1, n.publishError="$errorMessages", $auditPropsUpdateQuery;"""
+    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$nodeId"}) SET n.status="Failed", n.pkgVersion=$upPkgVersion,n.migrationVersion=0.2, n.publishError="$errorMessages", $auditPropsUpdateQuery;"""
     logger.info("ObjectUpdater:: saveOnFailure:: Query: " + query)
     neo4JUtil.executeQuery(query)
   }
