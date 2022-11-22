@@ -12,7 +12,7 @@ trait CSPCassandraMigrator extends MigrationObjectReader with MigrationObjectUpd
 
 	private[this] val logger = LoggerFactory.getLogger(classOf[CSPCassandraMigrator])
 
-	def process(objMetadata: Map[String, AnyRef], status: String, config: CSPMigratorConfig, httpUtil: HttpUtil, cassandraUtil: CassandraUtil, cloudStorageUtil: CloudStorageUtil): Unit = {
+	def process(objMetadata: Map[String, AnyRef], config: CSPMigratorConfig, httpUtil: HttpUtil, cassandraUtil: CassandraUtil, cloudStorageUtil: CloudStorageUtil): Unit = {
 
 		val objectType: String = objMetadata.getOrElse("objectType","").asInstanceOf[String]
 		val identifier: String = objMetadata.getOrElse("identifier", "").asInstanceOf[String]
