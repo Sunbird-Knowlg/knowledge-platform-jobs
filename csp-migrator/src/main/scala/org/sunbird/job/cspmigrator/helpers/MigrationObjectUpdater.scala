@@ -3,6 +3,7 @@ package org.sunbird.job.cspmigrator.helpers
 import com.datastax.driver.core.querybuilder.QueryBuilder
 import org.apache.commons.io.{FileUtils, FilenameUtils}
 import org.apache.commons.lang3.StringUtils
+import org.neo4j.driver.v1.StatementResult
 import org.slf4j.LoggerFactory
 import org.sunbird.job.Metrics
 import org.sunbird.job.cspmigrator.domain.Event
@@ -65,9 +66,10 @@ trait MigrationObjectUpdater extends URLExtractor {
   def updateNeo4j(updatedMetadata: Map[String, AnyRef], event: Event)(definitionCache: DefinitionCache, neo4JUtil: Neo4JUtil, config: CSPMigratorConfig): Unit = {
     logger.info(s"""MigrationObjectUpdater:: process:: ${event.identifier} - ${event.objectType} updated fields data:: $updatedMetadata""")
     val metadataUpdateQuery = metaDataQuery(event.objectType, updatedMetadata)(definitionCache, config)
-    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"${event.identifier}"}) SET $metadataUpdateQuery;"""
+    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"${event.identifier}"}) SET $metadataUpdateQuery return n;"""
     logger.info(s"""MigrationObjectUpdater:: process:: ${event.identifier} - ${event.objectType} updated fields :: Query: """ + query)
-    neo4JUtil.executeQuery(query)
+    val sResult: StatementResult = neo4JUtil.executeQuery(query)
+    if(sResult !=null) logger.info("MigrationObjectUpdater:: process:: sResult:: " + sResult)
     logger.info("MigrationObjectUpdater:: process:: static fields migration completed for " + event.identifier)
   }
 

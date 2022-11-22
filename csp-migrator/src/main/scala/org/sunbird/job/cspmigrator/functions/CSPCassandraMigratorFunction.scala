@@ -47,7 +47,7 @@ class CSPCassandraMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil
     logger.info("CSPCassandraMigratorFunction::processElement:: event edata : " + event.eData)
 
     val objMetadata: Map[String, AnyRef] = getMetadata(event.identifier)(neo4JUtil)
-
+    logger.info("CSPCassandraMigratorFunction::processElement:: objMetadata : " + objMetadata)
     try {
       process(objMetadata, event.status, config, httpUtil, cassandraUtil, cloudStorageUtil)
 

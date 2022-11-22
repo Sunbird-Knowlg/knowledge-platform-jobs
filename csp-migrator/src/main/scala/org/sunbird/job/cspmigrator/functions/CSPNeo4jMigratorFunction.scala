@@ -47,7 +47,7 @@ class CSPNeo4jMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
     logger.info("CSPNeo4jMigratorFunction::processElement:: event edata : " + event.eData)
 
     val objMetadata: Map[String, AnyRef] = getMetadata(event.identifier)(neo4JUtil)
-
+    logger.info("CSPNeo4jMigratorFunction::processElement:: objMetadata : " + objMetadata)
     try {
       if (event.isValid(objMetadata, config)) {
         val migratedMetadataFields = process(objMetadata, config, httpUtil, cloudStorageUtil)
@@ -70,6 +70,8 @@ class CSPNeo4jMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
             event.mimeType.toLowerCase match {
               case "application/vnd.ekstep.ecml-archive" | "application/vnd.ekstep.content-collection" =>
                 updateNeo4j(migratedMap, event)(defCache, neo4JUtil, config)
+                getMetadata(event.identifier)(neo4JUtil)
+                logger.info("CSPNeo4jMigratorFunction::processElement:: objMetadata : " + objMetadata)
                 logger.info("CSPNeo4jMigratorFunction :: Sending Content/Collection For cassandra migration: " + event.identifier)
                 context.output(config.cassandraMigrationOutputTag, event)
               case _ =>
