@@ -36,7 +36,7 @@ trait CSPNeo4jMigrator extends MigrationObjectReader with MigrationObjectUpdater
 		val fieldsToMigrate: List[String] = if (config.getConfig.hasPath("neo4j_fields_to_migrate."+objectType.toLowerCase())) config.getConfig.getStringList("neo4j_fields_to_migrate."+objectType.toLowerCase()).asScala.toList
 													else throw new ServerException("ERR_CONFIG_NOT_FOUND", "Fields to migrate configuration not found for objectType: " + objectType)
 
-		logger.info(s"""CSPMigrator:: process:: starting neo4j fields migration for $identifier - $objectType fields:: $fieldsToMigrate""")
+		logger.info(s"""CSPNeo4jMigrator:: process:: starting neo4j fields migration for $identifier - $objectType fields:: $fieldsToMigrate""")
 		val migratedMetadataFields: Map[String, String] =  fieldsToMigrate.flatMap(migrateField => {
 			if(objMetadata.contains(migrateField)) {
 				val metadataFieldValue = objMetadata.getOrElse(migrateField, "").asInstanceOf[String]
@@ -46,7 +46,7 @@ trait CSPNeo4jMigrator extends MigrationObjectReader with MigrationObjectUpdater
 			} else Map.empty[String, String]
 		}).filter(record => record._1.nonEmpty).toMap[String, String]
 
-		logger.info(s"""CSPMigrator:: process:: $identifier - $objectType migratedMetadataFields:: $migratedMetadataFields""")
+		logger.info(s"""CSPNeo4jMigrator:: process:: $identifier - $objectType migratedMetadataFields:: $migratedMetadataFields""")
 		migratedMetadataFields
 	}
 
