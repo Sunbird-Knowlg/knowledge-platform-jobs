@@ -66,18 +66,18 @@ class CSPCassandraMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil
         } else Map.empty[String, String]
       }).filter(record => record._1.nonEmpty).toMap[String, String]
 
-      logger.info(s"""CSPMigrator:: process:: $event.identifier - $event.objectType migratedMetadataFields:: $migratedMetadataFields""")
+      logger.info(s"""CSPCassandraMigratorFunction:: process:: $event.identifier - $event.objectType migratedMetadataFields:: $migratedMetadataFields""")
 
 
       event.objectType match {
         case "Content" | "Collection" =>
-          finalizeMigration(objMetadata+migratedMetadataFields, event, metrics, config)(defCache, neo4JUtil)
+          finalizeMigration(objMetadata++migratedMetadataFields, event, metrics, config)(defCache, neo4JUtil)
           if(config.liveNodeRepublishEnabled && (event.status.equalsIgnoreCase("Live") ||
             event.status.equalsIgnoreCase("Unlisted"))) {
             pushLiveNodePublishEvent(objMetadata, context, metrics, config)
             metrics.incCounter(config.liveContentNodePublishCount)
           }
-        case  _ => finalizeMigration(objMetadata+migratedMetadataFields, event, metrics, config)(defCache, neo4JUtil)
+        case  _ => finalizeMigration(objMetadata++migratedMetadataFields, event, metrics, config)(defCache, neo4JUtil)
       }
     } catch {
       case se: Exception =>
