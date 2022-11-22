@@ -104,7 +104,7 @@ class CSPMigratorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with
     when(mockCloudUtil.uploadFile(anyString(),any[File](),Option(anyBoolean()),anyString())).thenReturn(Array.empty[String])
     val cspCassandraMigrator = new TestCSPCassandraMigrator()
 
-    cspCassandraMigrator.process(objectMetadata, "Draft", jobConfig, mockHttpUtil, cassandraUtil, mockCloudUtil)
+    cspCassandraMigrator.process(objectMetadata, jobConfig, mockHttpUtil, cassandraUtil, mockCloudUtil)
 
     when(mockHttpUtil.getSize(anyString(), any())).thenReturn(200)
 
