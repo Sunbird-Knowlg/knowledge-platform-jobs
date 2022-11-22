@@ -53,23 +53,23 @@ class CSPCassandraMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil
 
       event.objectType match {
         case "Content" | "Collection" =>
-          finalizeMigration(objMetadata, event, metrics, config)(neo4JUtil)
+          finalizeMigration(objMetadata, event, metrics, config)(defCache, neo4JUtil)
           if(config.liveNodeRepublishEnabled && (event.status.equalsIgnoreCase("Live") ||
             event.status.equalsIgnoreCase("Unlisted"))) {
             pushLiveNodePublishEvent(objMetadata, context, metrics, config)
             metrics.incCounter(config.liveContentNodePublishCount)
           }
-        case  _ => finalizeMigration(objMetadata, event, metrics, config)(neo4JUtil)
+        case  _ => finalizeMigration(objMetadata, event, metrics, config)(defCache, neo4JUtil)
       }
     } catch {
       case se: Exception =>
         logger.error("CSPCassandraMigratorFunction :: Message processing failed for mid : " + event.mid() + " || " + event , se)
         logger.error("CSPCassandraMigratorFunction :: Error while migrating content :: " + se.getMessage)
         metrics.incCounter(config.failedEventCount)
-        // Insert into neo4j with migrationVersion as 0.1
-        neo4JUtil.updateNode(event.identifier, objMetadata + ("migrationVersion" -> 0.1.asInstanceOf[Number]))
-
+        se.printStackTrace()
         logger.info(s"""{ identifier: \"${objMetadata.getOrElse("identifier", "").asInstanceOf[String]}\", mimetype: \"${objMetadata.getOrElse("mimeType", "").asInstanceOf[String]}\", status: \"Failed\", stage: \"Static Migration\"}""")
+        // Insert into neo4j with migrationVersion as 0.1
+        updateNeo4j(objMetadata + ("migrationVersion" -> 0.1.asInstanceOf[Number]), event)(defCache, neo4JUtil, config)
     }
   }
 

@@ -1,13 +1,11 @@
 package org.sunbird.job.cspmigrator.helpers
 
-import org.apache.commons.io.FilenameUtils
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cspmigrator.task.CSPMigratorConfig
 import org.sunbird.job.exception.ServerException
 import org.sunbird.job.util.{CloudStorageUtil, HttpUtil}
 
-import java.io.File
 import scala.collection.JavaConverters._
 
 trait CSPNeo4jMigrator extends MigrationObjectReader with MigrationObjectUpdater {
@@ -41,12 +39,14 @@ trait CSPNeo4jMigrator extends MigrationObjectReader with MigrationObjectUpdater
 		logger.info(s"""CSPMigrator:: process:: starting neo4j fields migration for $identifier - $objectType fields:: $fieldsToMigrate""")
 		val migratedMetadataFields: Map[String, String] =  fieldsToMigrate.flatMap(migrateField => {
 			if(objMetadata.contains(migrateField)) {
-				val metadataFieldVlaue = objMetadata.getOrElse(migrateField, "").asInstanceOf[String]
-				val migrateValue: String = StringUtils.replaceEach(metadataFieldVlaue, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
-				verifyFile(identifier, metadataFieldVlaue, migrateValue, migrateField, config)(httpUtil, cloudStorageUtil)
+				val metadataFieldValue = objMetadata.getOrElse(migrateField, "").asInstanceOf[String]
+				val migrateValue: String = StringUtils.replaceEach(metadataFieldValue, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
+				if(config.copyMissingFiles) verifyFile(identifier, metadataFieldValue, migrateValue, migrateField, config)(httpUtil, cloudStorageUtil)
 				Map(migrateField -> migrateValue)
 			} else Map.empty[String, String]
 		}).filter(record => record._1.nonEmpty).toMap[String, String]
+
+		logger.info(s"""CSPMigrator:: process:: $identifier - $objectType migratedMetadataFields:: $migratedMetadataFields""")
 		migratedMetadataFields
 	}
 
