@@ -20,7 +20,7 @@ import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.livevideostream.domain.Event
 import org.sunbird.job.fixture.EventFixture
 import org.sunbird.job.livevideostream.service.IMediaService
-import org.sunbird.job.livevideostream.task.{LiveVideoStreamGeneratorConfig, LiveVideoStreamGeneratorStreamTask, VideoStreamGeneratorStreamTask}
+import org.sunbird.job.livevideostream.task.{LiveVideoStreamGeneratorConfig, LiveVideoStreamGeneratorStreamTask}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 
 import scala.collection.JavaConverters._
