@@ -1,6 +1,5 @@
 package org.sunbird.job.spec
 
-import java.util
 import com.datastax.driver.core.Row
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.flink.api.common.typeinfo.TypeInformation
@@ -12,18 +11,18 @@ import org.apache.flink.test.util.MiniClusterWithClientResource
 import org.cassandraunit.CQLDataLoader
 import org.cassandraunit.dataset.cql.FileCQLDataSet
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
-import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, JSONUtil}
+import org.mockito.ArgumentMatchers.{any, anyString, contains}
 import org.mockito.Mockito
 import org.mockito.Mockito._
-import org.mockito.ArgumentMatchers.{any, anyString, contains}
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.livevideostream.domain.Event
 import org.sunbird.job.fixture.EventFixture
+import org.sunbird.job.livevideostream.domain.Event
 import org.sunbird.job.livevideostream.service.IMediaService
 import org.sunbird.job.livevideostream.task.{LiveVideoStreamGeneratorConfig, LiveVideoStreamGeneratorStreamTask}
+import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, JSONUtil}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 
-import scala.collection.JavaConverters._
+import java.util
 
 class LiveVideoStreamGeneratorTaskTestSpec extends BaseTestSpec {
 
