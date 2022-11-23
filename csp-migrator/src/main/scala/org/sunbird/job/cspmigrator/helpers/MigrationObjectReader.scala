@@ -9,8 +9,10 @@ import org.sunbird.job.Metrics
 import org.sunbird.job.cspmigrator.domain.Event
 import org.sunbird.job.cspmigrator.task.CSPMigratorConfig
 import org.sunbird.job.util.{CassandraUtil, Neo4JUtil}
-
 import java.util.UUID
+
+import org.apache.flink.streaming.api.scala.OutputTag
+
 import scala.collection.JavaConverters._
 
 trait MigrationObjectReader {
@@ -53,6 +55,14 @@ trait MigrationObjectReader {
     if (null != rowId) rowId.getString("hierarchy") else ""
   }
 
+  def getQuestionSetHierarchy(identifier: String, config: CSPMigratorConfig)(implicit cassandraUtil: CassandraUtil): String = {
+    val selectId = QueryBuilder.select().column("hierarchy")
+    val selectWhereId: Select.Where = selectId.from(config.qsHierarchyKeyspaceName, config.qsHierarchyTableName).where().and(QueryBuilder.eq("identifier", identifier))
+    logger.info("MigrationObjectReader:: getQuestionSetHierarchy:: Hierarchy Fetch Query :: " + selectWhereId.toString)
+    val rowId = cassandraUtil.findOne(selectWhereId.toString)
+    if (null != rowId) rowId.getString("hierarchy") else ""
+  }
+
 
   def pushStreamingUrlEvent(objMetadata: Map[String, AnyRef], context: ProcessFunction[Event, String]#Context, config: CSPMigratorConfig)(implicit metrics: Metrics): Unit = {
     val event = getStreamingEvent(objMetadata, config)
@@ -90,6 +100,23 @@ trait MigrationObjectReader {
     metrics.incCounter(config.liveContentNodePublishCount)
     logger.info("MigrationObjectReader :: Live content publish triggered for " + identifier)
     logger.info("MigrationObjectReader :: Live content publish event: " + event)
+  }
+
+  def pushQuestionPublishEvent(objMetadata: Map[String, AnyRef], context: ProcessFunction[Event, String]#Context, metrics: Metrics, config: CSPMigratorConfig, tag: OutputTag[String], countMetric: String): Unit = {
+    val epochTime = System.currentTimeMillis
+    val identifier = objMetadata.getOrElse("identifier", "").asInstanceOf[String]
+    val pkgVersion = objMetadata.getOrElse("pkgVersion", "").asInstanceOf[Number]
+    val objectType = objMetadata.getOrElse("objectType", "").asInstanceOf[String]
+    val mimeType = objMetadata.getOrElse("mimeType", "").asInstanceOf[String]
+    val status = objMetadata.getOrElse("status", "").asInstanceOf[String]
+    val publishType = if(status.equalsIgnoreCase("Live")) "Public" else "Unlisted"
+    val channel = objMetadata.getOrElse("channel", "").asInstanceOf[String]
+    val lastPublishedBy = objMetadata.getOrElse("lastPublishedBy", "System").asInstanceOf[String]
+    val event = s"""{"eid":"BE_JOB_REQUEST","ets":$epochTime,"mid":"LP.$epochTime.${UUID.randomUUID()}","actor":{"id":"question-republish","type":"System"},"context":{"pdata":{"ver":"1.0","id":"org.sunbird.platform"},"channel":"${channel}","env":"${config.jobEnv}"},"object":{"ver":"$pkgVersion","id":"$identifier"},"edata":{"publish_type":"$publishType","metadata":{"identifier":"$identifier", "mimeType":"$mimeType","objectType":"$objectType","lastPublishedBy":"${lastPublishedBy}","pkgVersion":$pkgVersion},"action":"republish","iteration":1}}"""
+    context.output(tag, event)
+    metrics.incCounter(countMetric)
+    logger.info(s"MigrationObjectReader :: Live ${objectType} publish triggered for " + identifier)
+    logger.info(s"MigrationObjectReader :: Live ${objectType} publish event: " + event)
   }
 
 }

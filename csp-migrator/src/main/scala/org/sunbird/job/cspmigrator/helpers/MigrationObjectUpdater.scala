@@ -63,6 +63,19 @@ trait MigrationObjectUpdater extends URLExtractor {
     }
   }
 
+  def updateQuestionSetHierarchy(identifier: String, hierarchy: String, config: CSPMigratorConfig)(implicit cassandraUtil: CassandraUtil): Unit = {
+    val updateQuery = QueryBuilder.update(config.qsHierarchyKeyspaceName, config.qsHierarchyTableName)
+      .where(QueryBuilder.eq("identifier", identifier))
+      .`with`(QueryBuilder.set("hierarchy", hierarchy))
+    logger.info(s"""MigrationObjectUpdater:: updateQuestionSetHierarchy:: Updating Hierarchy in Cassandra For $identifier : ${updateQuery.toString}""")
+    val result = cassandraUtil.upsert(updateQuery.toString)
+    if (result) logger.info(s"""MigrationObjectUpdater:: updateQuestionSetHierarchy:: Hierarchy Updated Successfully For $identifier""")
+    else {
+      logger.error(s"""MigrationObjectUpdater:: updateQuestionSetHierarchy:: Hierarchy Update Failed For $identifier""")
+      throw new InvalidInputException(s"""Hierarchy Update Failed For $identifier""")
+    }
+  }
+
   def updateNeo4j(updatedMetadata: Map[String, AnyRef], event: Event)(definitionCache: DefinitionCache, neo4JUtil: Neo4JUtil, config: CSPMigratorConfig): Unit = {
     logger.info(s"""MigrationObjectUpdater:: process:: ${event.identifier} - ${event.objectType} updated fields data:: $updatedMetadata""")
     val metadataUpdateQuery = metaDataQuery(event.objectType, updatedMetadata)(definitionCache, config)
