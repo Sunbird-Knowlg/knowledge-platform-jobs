@@ -35,7 +35,7 @@ class LiveVideoStreamGeneratorStreamTask(config: LiveVideoStreamGeneratorConfig,
 }
 
 // $COVERAGE-OFF$ Disabling scoverage as the below code can only be invoked within flink cluster
-object VideoStreamGeneratorStreamTask {
+object LiveVideoStreamGeneratorStreamTask {
 
   def main(args: Array[String]): Unit = {
     val configFilePath = Option(ParameterTool.fromArgs(args).get("config.file.path"))
