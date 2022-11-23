@@ -1,5 +1,6 @@
 package org.sunbird.job.cspmigrator.functions
 
+import org.apache.commons.lang3.StringUtils
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
@@ -8,9 +9,12 @@ import org.sunbird.job.cspmigrator.domain.Event
 import org.sunbird.job.cspmigrator.helpers.CSPCassandraMigrator
 import org.sunbird.job.cspmigrator.task.CSPMigratorConfig
 import org.sunbird.job.domain.`object`.DefinitionCache
+import org.sunbird.job.exception.ServerException
 import org.sunbird.job.helper.FailedEventHelper
 import org.sunbird.job.util._
 import org.sunbird.job.{BaseProcessFunction, Metrics}
+
+import scala.collection.JavaConverters._
 
 import java.util
 
@@ -47,19 +51,33 @@ class CSPCassandraMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil
     logger.info("CSPCassandraMigratorFunction::processElement:: event edata : " + event.eData)
 
     val objMetadata: Map[String, AnyRef] = getMetadata(event.identifier)(neo4JUtil)
-
+    logger.info("CSPCassandraMigratorFunction::processElement:: objMetadata : " + objMetadata)
     try {
-      process(objMetadata, event.status, config, httpUtil, cassandraUtil, cloudStorageUtil)
+      process(objMetadata, config, httpUtil, cassandraUtil, cloudStorageUtil)
+
+      val fieldsToMigrate: List[String] = if (config.getConfig.hasPath("neo4j_fields_to_migrate."+event.objectType.toLowerCase())) config.getConfig.getStringList("neo4j_fields_to_migrate."+event.objectType.toLowerCase()).asScala.toList
+      else throw new ServerException("ERR_CONFIG_NOT_FOUND", "Fields to migrate configuration not found for objectType: " + event.objectType)
+      val migratedMetadataFields: Map[String, String] =  fieldsToMigrate.flatMap(migrateField => {
+        if(objMetadata.contains(migrateField)) {
+          val metadataFieldValue = objMetadata.getOrElse(migrateField, "").asInstanceOf[String]
+          val migrateValue: String = StringUtils.replaceEach(metadataFieldValue, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
+          if(config.copyMissingFiles) verifyFile(event.identifier, metadataFieldValue, migrateValue, migrateField, config)(httpUtil, cloudStorageUtil)
+          Map(migrateField -> migrateValue)
+        } else Map.empty[String, String]
+      }).filter(record => record._1.nonEmpty).toMap[String, String]
+
+      logger.info(s"""CSPCassandraMigratorFunction:: process:: $event.identifier - $event.objectType migratedMetadataFields:: $migratedMetadataFields""")
+
 
       event.objectType match {
         case "Content" | "Collection" =>
-          finalizeMigration(objMetadata, event, metrics, config)(defCache, neo4JUtil)
+          finalizeMigration(objMetadata++migratedMetadataFields, event, metrics, config)(defCache, neo4JUtil)
           if(config.liveNodeRepublishEnabled && (event.status.equalsIgnoreCase("Live") ||
             event.status.equalsIgnoreCase("Unlisted"))) {
             pushLiveNodePublishEvent(objMetadata, context, metrics, config)
             metrics.incCounter(config.liveContentNodePublishCount)
           }
-        case  _ => finalizeMigration(objMetadata, event, metrics, config)(defCache, neo4JUtil)
+        case  _ => finalizeMigration(objMetadata++migratedMetadataFields, event, metrics, config)(defCache, neo4JUtil)
       }
     } catch {
       case se: Exception =>

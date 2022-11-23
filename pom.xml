@@ -41,6 +41,7 @@
 <!--				<module>metrics-data-transformer</module>-->
 				<module>qrcode-image-generator</module>
 				<module>dialcode-context-updater</module>
+				<module>live-video-stream-generator</module>
 				<module>csp-migrator</module>
 				<module>asset-enrichment</module>
 				<module>video-stream-generator</module>
