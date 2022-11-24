@@ -10,7 +10,7 @@ import org.sunbird.job.searchindexer.compositesearch.domain.Event
 import org.sunbird.job.searchindexer.compositesearch.helpers.CompositeSearchIndexerHelper
 import org.sunbird.job.searchindexer.models.CompositeIndexer
 import org.sunbird.job.searchindexer.task.SearchIndexerConfig
-import org.sunbird.job.util.ElasticSearchUtil
+import org.sunbird.job.util.{CSPMetaUtil, ElasticSearchUtil, ScalaJsonUtil}
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 
@@ -54,7 +54,13 @@ class CompositeSearchIndexerFunction(config: SearchIndexerConfig,
     val graphId = event.readOrDefault("graphId", "")
     val uniqueId = event.readOrDefault("nodeUniqueId", "")
     val messageId = event.readOrDefault("mid", "")
-    CompositeIndexer(graphId, objectType, uniqueId, messageId, event.getMap(), config)
+
+    val updateEvent: java.util.Map[String, Any] = if(config.isrRelativePathEnabled) {
+      val json = CSPMetaUtil.updateAbsolutePath(event.getJson())(config)
+      ScalaJsonUtil.deserialize[java.util.Map[String, Any]](json)
+    } else event.getMap()
+
+    CompositeIndexer(graphId, objectType, uniqueId, messageId, updateEvent, config)
   }
 
   override def metricsList(): List[String] = {
