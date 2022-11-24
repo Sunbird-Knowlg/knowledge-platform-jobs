@@ -35,7 +35,7 @@ trait ObjectUpdater {
 
     if (!StringUtils.equalsIgnoreCase(editId, identifier)) {
       val imgNodeDelQuery = s"""MATCH (n:domain{IL_UNIQUE_ID:"$editId"}) DETACH DELETE n;"""
-      neo4JUtil.executeQuery(imgNodeDelQuery)
+      neo4JUtil.executeQuery(imgNodeDelQuery, neo4JUtil.DELETE_OPERATION)
       deleteExternalData(obj, readerConfig)
       logger.info(s"Image Node Data Is Deleted Successfully For ${editId}")
     }
