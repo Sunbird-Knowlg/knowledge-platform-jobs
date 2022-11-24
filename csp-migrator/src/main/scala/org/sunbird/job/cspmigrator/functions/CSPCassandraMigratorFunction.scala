@@ -55,7 +55,7 @@ class CSPCassandraMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil
     try {
       process(objMetadata, config, httpUtil, cassandraUtil, cloudStorageUtil)
 
-      val fieldsToMigrate: List[String] = if (config.getConfig.hasPath("neo4j_fields_to_migrate."+event.objectType.toLowerCase())) config.getConfig.getStringList("neo4j_fields_to_migrate."+event.objectType.toLowerCase()).asScala.toList
+      /*val fieldsToMigrate: List[String] = if (config.getConfig.hasPath("neo4j_fields_to_migrate."+event.objectType.toLowerCase())) config.getConfig.getStringList("neo4j_fields_to_migrate."+event.objectType.toLowerCase()).asScala.toList
       else throw new ServerException("ERR_CONFIG_NOT_FOUND", "Fields to migrate configuration not found for objectType: " + event.objectType)
       val migratedMetadataFields: Map[String, String] =  fieldsToMigrate.flatMap(migrateField => {
         if(objMetadata.contains(migrateField)) {
@@ -64,20 +64,23 @@ class CSPCassandraMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil
           if(config.copyMissingFiles) verifyFile(event.identifier, metadataFieldValue, migrateValue, migrateField, config)(httpUtil, cloudStorageUtil)
           Map(migrateField -> migrateValue)
         } else Map.empty[String, String]
-      }).filter(record => record._1.nonEmpty).toMap[String, String]
-
-      logger.info(s"""CSPCassandraMigratorFunction:: process:: $event.identifier - $event.objectType migratedMetadataFields:: $migratedMetadataFields""")
-
+      }).filter(record => record._1.nonEmpty).toMap[String, String]*/
 
       event.objectType match {
         case "Content" | "Collection" =>
-          finalizeMigration(objMetadata++migratedMetadataFields, event, metrics, config)(defCache, neo4JUtil)
+          finalizeMigration(objMetadata, event, metrics, config)(defCache, neo4JUtil)
           if(config.liveNodeRepublishEnabled && (event.status.equalsIgnoreCase("Live") ||
             event.status.equalsIgnoreCase("Unlisted"))) {
             pushLiveNodePublishEvent(objMetadata, context, metrics, config)
             metrics.incCounter(config.liveContentNodePublishCount)
           }
-        case  _ => finalizeMigration(objMetadata++migratedMetadataFields, event, metrics, config)(defCache, neo4JUtil)
+        case "QuestionSet" =>
+          finalizeMigration(objMetadata, event, metrics, config)(defCache, neo4JUtil)
+          if(config.liveNodeRepublishEnabled && (event.status.equalsIgnoreCase("Live") ||
+            event.status.equalsIgnoreCase("Unlisted"))) {
+            pushQuestionPublishEvent(objMetadata, context, metrics, config, config.liveQuestionSetNodePublishEventOutTag, config.liveQuestionSetNodePublishCount)
+          }
+        case  _ => finalizeMigration(objMetadata, event, metrics, config)(defCache, neo4JUtil)
       }
     } catch {
       case se: Exception =>
