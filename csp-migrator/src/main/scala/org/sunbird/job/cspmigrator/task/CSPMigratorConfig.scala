@@ -20,6 +20,7 @@ class CSPMigratorConfig(override val config: Config) extends BaseJobConfig(confi
   val kafkaFailedTopic: String = config.getString("kafka.failed.topic")
   val liveVideoStreamingTopic: String = config.getString("kafka.live_video_stream.topic")
   val liveContentNodeRepublishTopic: String = config.getString("kafka.live_content_node_republish.topic")
+  val liveQuestionNodeRepublishTopic: String = config.getString("kafka.live_question_node_republish.topic")
 
   val jobEnv: String = config.getString("job.env")
 
@@ -38,6 +39,8 @@ class CSPMigratorConfig(override val config: Config) extends BaseJobConfig(confi
   val errorEventCount = "csp-error-message-count"
   val liveContentNodePublishCount = "live-content-node-publish-count"
   val assetVideoStreamCount = "asset-video-stream-count"
+  val liveQuestionNodePublishCount = "live-question-node-publish-count"
+  val liveQuestionSetNodePublishCount = "live-questionset-node-publish-count"
 
   // Consumers
   val eventConsumer = "csp-migrator-consumer"
@@ -50,6 +53,8 @@ class CSPMigratorConfig(override val config: Config) extends BaseJobConfig(confi
   val failedEventOutTag: OutputTag[String] = OutputTag[String]("csp-migrator-failed-event")
   val generateVideoStreamingOutTag: OutputTag[String] = OutputTag[String]("live-video-streaming-generator-request")
   val liveContentNodePublishEventOutTag: OutputTag[String] = OutputTag[String]("live-content-node-republish-request")
+  val liveQuestionSetNodePublishEventOutTag: OutputTag[String] = OutputTag[String]("live-questionset-node-republish-request")
+  val liveQuestionNodePublishEventOutTag: OutputTag[String] = OutputTag[String]("live-question-node-republish-request")
 
   val configVersion = "1.0"
 
@@ -61,6 +66,8 @@ class CSPMigratorConfig(override val config: Config) extends BaseJobConfig(confi
   val assessmentTableName: String = config.getString("content.assessment_table")
   val hierarchyKeyspaceName: String = config.getString("hierarchy.keyspace")
   val hierarchyTableName: String = config.getString("hierarchy.table")
+  val qsHierarchyKeyspaceName: String = config.getString("questionset.hierarchy.keyspace")
+  val qsHierarchyTableName: String = config.getString("questionset.hierarchy.table")
 
   // Neo4J Configurations
   val graphRoutePath: String = config.getString("neo4j.routePath")
