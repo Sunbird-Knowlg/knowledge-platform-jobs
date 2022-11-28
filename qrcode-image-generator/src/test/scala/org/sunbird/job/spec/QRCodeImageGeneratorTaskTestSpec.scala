@@ -42,7 +42,7 @@ class QRCodeImageGeneratorTaskTestSpec extends BaseTestSpec {
   override protected def beforeAll(): Unit = {
     BaseMetricsReporter.gaugeMetrics.clear()
     EmbeddedCassandraServerHelper.startEmbeddedCassandra(80000L)
-    cassandraUtils = new CassandraUtil(jobConfig.cassandraHost, jobConfig.cassandraPort)
+    cassandraUtils = new CassandraUtil(jobConfig.cassandraHost, jobConfig.cassandraPort, jobConfig)
     val session = cassandraUtils.session
     val dataLoader = new CQLDataLoader(session)
     dataLoader.load(new FileCQLDataSet(getClass.getResource("/test.cql").getPath, true, true))

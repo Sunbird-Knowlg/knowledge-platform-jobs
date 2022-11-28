@@ -27,7 +27,7 @@ class CollectionCertPreProcessorFn(config: CollectionCertPreProcessorConfig, htt
 
     override def open(parameters: Configuration): Unit = {
         super.open(parameters)
-        cassandraUtil = new CassandraUtil(config.dbHost, config.dbPort)
+        cassandraUtil = new CassandraUtil(config.dbHost, config.dbPort, config)
         val redisConnect = new RedisConnect(config)
         cache = new DataCache(config, redisConnect, config.collectionCacheStore, List())
         cache.init()

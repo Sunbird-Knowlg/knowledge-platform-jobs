@@ -36,7 +36,7 @@ class EnrolmentReconciliationFn(config: EnrolmentReconciliationConfig,  httpUtil
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
-    cassandraUtil = new CassandraUtil(config.dbHost, config.dbPort)
+    cassandraUtil = new CassandraUtil(config.dbHost, config.dbPort, config)
     cache = new DataCache(config, new RedisConnect(config), config.nodeStore, List())
     cache.init()
     collectionStatusCache = TTLCache[String, String](Duration.apply(config.statusCacheExpirySec, TimeUnit.SECONDS))

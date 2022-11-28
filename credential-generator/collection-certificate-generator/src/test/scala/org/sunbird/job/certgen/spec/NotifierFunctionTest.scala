@@ -38,7 +38,7 @@ class NotifierFunctionTest extends BaseTestSpec {
   override protected def beforeAll(): Unit = {
     super.beforeAll()
     EmbeddedCassandraServerHelper.startEmbeddedCassandra(80000L)
-    cassandraUtil = new CassandraUtil(notifierConfig.dbHost, notifierConfig.dbPort)
+    cassandraUtil = new CassandraUtil(notifierConfig.dbHost, notifierConfig.dbPort, notifierConfig)
     val session = cassandraUtil.session
 
     session.execute(s"DROP KEYSPACE IF EXISTS ${notifierConfig.dbKeyspace}")

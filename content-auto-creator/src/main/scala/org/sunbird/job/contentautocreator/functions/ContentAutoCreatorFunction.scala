@@ -30,7 +30,7 @@ class ContentAutoCreatorFunction(config: ContentAutoCreatorConfig, httpUtil: Htt
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
-    neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName)
+    neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName, config)
     cloudStorageUtil = new CloudStorageUtil(config)
   }
 

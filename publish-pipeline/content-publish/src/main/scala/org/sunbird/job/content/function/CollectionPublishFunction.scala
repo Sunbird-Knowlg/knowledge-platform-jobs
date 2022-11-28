@@ -45,8 +45,8 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
-    cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort)
-    neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName)
+    cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort, config)
+    neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName, config)
     esUtil = new ElasticSearchUtil(config.esConnectionInfo, config.compositeSearchIndexName, config.compositeSearchIndexType)
     cloudStorageUtil = new CloudStorageUtil(config)
     ec = ExecutionContexts.global
@@ -71,7 +71,7 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
     val readerConfig = ExtDataConfig(config.hierarchyKeyspaceName, config.hierarchyTableName, definition.getExternalPrimaryKey, definition.getExternalProps)
     logger.info("Collection publishing started for : " + data.identifier)
     metrics.incCounter(config.collectionPublishEventCount)
-    val obj: ObjectData = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(neo4JUtil, cassandraUtil)
+    val obj: ObjectData = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(neo4JUtil, cassandraUtil, config)
     try {
       if (obj.pkgVersion > data.pkgVersion) {
         metrics.incCounter(config.skippedEventCount)
@@ -93,7 +93,7 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
 
           // Collection - add step to remove units of already Live content from redis - line 243 in PublishFinalizer
           val unitNodes = if (obj.metadata("identifier").asInstanceOf[String].endsWith(".img")) {
-            val childNodes = getUnitsFromLiveContent(updatedObj)(cassandraUtil, readerConfig)
+            val childNodes = getUnitsFromLiveContent(updatedObj)(cassandraUtil, readerConfig, config)
             childNodes.filter(rec => rec.nonEmpty).foreach(childId => cache.del(COLLECTION_CACHE_KEY_PREFIX + childId))
             childNodes.filter(rec => rec.nonEmpty)
           } else  List.empty
@@ -104,12 +104,12 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
           val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
           logger.info("CollectionPublishFunction:: ECAR generation completed for Collection Object: " + objWithEcar.identifier)
 
-          val collRelationalMetadata = getRelationalMetadata(obj.identifier, obj.pkgVersion-1, readerConfig)(cassandraUtil).getOrElse(Map.empty[String, AnyRef])
+          val collRelationalMetadata = getRelationalMetadata(obj.identifier, obj.pkgVersion-1, readerConfig)(cassandraUtil, config).getOrElse(Map.empty[String, AnyRef])
 
-          val dialContextMap = if(config.enableDIALContextUpdate.equalsIgnoreCase("Yes")) fetchDialListForContextUpdate(obj)(neo4JUtil, cassandraUtil, readerConfig) else Map.empty[String, AnyRef]
+          val dialContextMap = if(config.enableDIALContextUpdate.equalsIgnoreCase("Yes")) fetchDialListForContextUpdate(obj)(neo4JUtil, cassandraUtil, readerConfig, config) else Map.empty[String, AnyRef]
           logger.info("CollectionPublishFunction:: dialContextMap: " + dialContextMap)
 
-          saveOnSuccess(new ObjectData(objWithEcar.identifier, objWithEcar.metadata.-("children"), objWithEcar.extData, objWithEcar.hierarchy))(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
+          saveOnSuccess(new ObjectData(objWithEcar.identifier, objWithEcar.metadata.-("children"), objWithEcar.extData, objWithEcar.hierarchy))(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig, config)
           logger.info("CollectionPublishFunction:: Published Collection Object metadata saved successfully to graph DB: " + objWithEcar.identifier)
 
           val variantsJsonString = ScalaJsonUtil.serialize(objWithEcar.metadata("variants"))

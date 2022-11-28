@@ -50,7 +50,7 @@ class CollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Match
   override protected def beforeAll(): Unit = {
     super.beforeAll()
     EmbeddedCassandraServerHelper.startEmbeddedCassandra(80000L)
-    cassandraUtil = new CassandraUtil(jobConfig.cassandraHost, jobConfig.cassandraPort)
+    cassandraUtil = new CassandraUtil(jobConfig.cassandraHost, jobConfig.cassandraPort, jobConfig)
     val session = cassandraUtil.session
     val dataLoader = new CQLDataLoader(session)
     dataLoader.load(new FileCQLDataSet(getClass.getResource("/test.cql").getPath, true, true))
@@ -157,7 +157,7 @@ class CollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Match
     val unpublishedChildrenObj: List[Map[String, AnyRef]] = ScalaJsonUtil.deserialize[List[Map[String, AnyRef]]](unpublishedChildrenData)
     val publishedCollectionNodeMetadataObj: Map[String,AnyRef] = ScalaJsonUtil.deserialize[Map[String,AnyRef]](publishedCollectionNodeMetadata)
 
-    val collRelationalMetadata = new TestCollectionPublisher().getRelationalMetadata("do_123", 1, readerConfig)(cassandraUtil).get
+    val collRelationalMetadata = new TestCollectionPublisher().getRelationalMetadata("do_123", 1, readerConfig)(cassandraUtil, jobConfig).get
     // Collection - update and publish children - line 418 in PublishFinalizer
     val updatedChildren: List[Map[String, AnyRef]] = new TestCollectionPublisher().updateHierarchyMetadata(unpublishedChildrenObj, publishedCollectionNodeMetadataObj, collRelationalMetadata)(jobConfig)
 
@@ -170,17 +170,17 @@ class CollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Match
   }
 
   "getRelationalMetadata" should "return empty Map when there is no entry in relational_metadata column" in {
-    val collRelationalMetadata = new TestCollectionPublisher().getRelationalMetadata("do_1234", 1, readerConfig)(cassandraUtil).get
+    val collRelationalMetadata = new TestCollectionPublisher().getRelationalMetadata("do_1234", 1, readerConfig)(cassandraUtil, jobConfig).get
     assert(collRelationalMetadata != null && collRelationalMetadata.isEmpty)
   }
 
   "getRelationalMetadata" should "return empty Map when there is empty entry in relational_metadata column" in {
-    val collRelationalMetadata = new TestCollectionPublisher().getRelationalMetadata("do_12345", 1, readerConfig)(cassandraUtil).get
+    val collRelationalMetadata = new TestCollectionPublisher().getRelationalMetadata("do_12345", 1, readerConfig)(cassandraUtil, jobConfig).get
     assert(collRelationalMetadata != null && collRelationalMetadata.isEmpty)
   }
 
   "getRelationalMetadata" should "return empty Map when there is empty object entry in relational_metadata column" in {
-    val collRelationalMetadata = new TestCollectionPublisher().getRelationalMetadata("do_123456", 1, readerConfig)(cassandraUtil).get
+    val collRelationalMetadata = new TestCollectionPublisher().getRelationalMetadata("do_123456", 1, readerConfig)(cassandraUtil, jobConfig).get
     assert(collRelationalMetadata != null && collRelationalMetadata.isEmpty)
   }
 
@@ -194,7 +194,7 @@ class CollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Match
 
   "getUnitsFromLiveContent" should "return object hierarchy" in {
     val data = new ObjectData("do_2133950809948078081503", Map("identifier" -> "do_2133950809948078081503"), Some(Map.empty[String, AnyRef]))
-    val fetchedChildren = new TestCollectionPublisher().getUnitsFromLiveContent(data)(cassandraUtil,readerConfig)
+    val fetchedChildren = new TestCollectionPublisher().getUnitsFromLiveContent(data)(cassandraUtil, readerConfig, jobConfig)
     assert(fetchedChildren.nonEmpty)
   }
 
@@ -226,7 +226,7 @@ class CollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Match
 
   "fetchDialListForContextUpdate" should "fetch the list of added and removed QR codes" in {
     val nodeObj = new ObjectData("do_21354027142511820812318.img", Map("objectType" -> "Collection", "identifier" -> "do_21354027142511820812318", "name" -> "DialCodeHierarchy", "lastPublishedOn" -> getTimeStamp, "lastUpdatedOn" -> getTimeStamp, "status" -> "Draft", "pkgVersion" -> 1.asInstanceOf[Number], "versionKey" -> "1652871771396"), Some(Map()), Some(Map()))
-    val DIALListMap = new TestCollectionPublisher().fetchDialListForContextUpdate(nodeObj)(mockNeo4JUtil, cassandraUtil, readerConfig)
+    val DIALListMap = new TestCollectionPublisher().fetchDialListForContextUpdate(nodeObj)(mockNeo4JUtil, cassandraUtil, readerConfig, jobConfig)
     println("DIALListMap:: " + DIALListMap)
     assert(DIALListMap.nonEmpty)
   }

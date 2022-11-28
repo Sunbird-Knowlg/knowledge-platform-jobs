@@ -24,8 +24,8 @@ class DIALCodeLinkFunction(config: PostPublishProcessorConfig, httpUtil: HttpUti
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
-    cassandraUtil = new CassandraUtil(config.dbHost, config.dbPort)
-    neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName)
+    cassandraUtil = new CassandraUtil(config.dbHost, config.dbPort, config)
+    neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName, config)
   }
 
   override def close(): Unit = {

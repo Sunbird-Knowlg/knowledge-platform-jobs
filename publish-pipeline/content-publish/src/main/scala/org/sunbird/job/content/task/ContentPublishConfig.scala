@@ -98,4 +98,6 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
 
   val allowedExtensionsWord: util.List[String] = if (config.hasPath("mimetype.allowed_extensions.word")) config.getStringList("mimetype.allowed_extensions.word") else util.Arrays.asList[String]("doc", "docx", "ppt", "pptx", "key", "odp", "pps", "odt", "wpd", "wps", "wks")
   val enableDIALContextUpdate: String = if (config.hasPath("enableDIALContextUpdate")) config.getString("enableDIALContextUpdate") else "No"
+
+  val isrRelativePathEnabled: Boolean = if (config.hasPath("cloudstorage.metadata.replace_absolute_path")) config.getBoolean("cloudstorage.metadata.replace_absolute_path") else false
 }

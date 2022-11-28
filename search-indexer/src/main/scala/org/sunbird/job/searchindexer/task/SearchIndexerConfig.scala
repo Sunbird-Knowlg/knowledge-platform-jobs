@@ -70,4 +70,6 @@ class SearchIndexerConfig(override val config: Config) extends BaseJobConfig(con
   val definitionCacheExpiry: Int = if (config.hasPath("schema.definition_cache.expiry")) config.getInt("schema.definition_cache.expiry") else 14400
   val restrictObjectTypes: util.List[String] = if(config.hasPath("restrict.objectTypes")) config.getStringList("restrict.objectTypes") else new util.ArrayList[String]
   val ignoredFields: List[String] = if (config.hasPath("ignored.fields")) config.getStringList("ignored.fields").asScala.toList else List("responseDeclaration", "body")
+
+  val isrRelativePathEnabled: Boolean = if (config.hasPath("cloudstorage.metadata.replace_absolute_path")) config.getBoolean("cloudstorage.metadata.replace_absolute_path") else false
 }

@@ -34,8 +34,8 @@ class CSPCassandraMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
-    neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName)
-    cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort)
+    neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName, config)
+    cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort, config)
     cloudStorageUtil = new CloudStorageUtil(config)
   }
 

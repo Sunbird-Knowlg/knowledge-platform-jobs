@@ -66,7 +66,7 @@ class ActivityAggregateUpdaterTaskTestSpec extends BaseTestSpec {
     val redisConnect = new RedisConnect(courseAggregatorConfig)
     jedis = redisConnect.getConnection(courseAggregatorConfig.nodeStore)
     EmbeddedCassandraServerHelper.startEmbeddedCassandra(80000L)
-    cassandraUtil = new CassandraUtil(courseAggregatorConfig.dbHost, courseAggregatorConfig.dbPort)
+    cassandraUtil = new CassandraUtil(courseAggregatorConfig.dbHost, courseAggregatorConfig.dbPort, courseAggregatorConfig)
     val session = cassandraUtil.session
 
     val dataLoader = new CQLDataLoader(session)
