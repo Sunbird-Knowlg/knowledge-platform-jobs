@@ -16,9 +16,6 @@ class Neo4JUtil(routePath: String, graphId: String, config: BaseJobConfig) {
   val maxIdleSession = 20
   val driver = GraphDatabase.driver(routePath, getConfig)
   val isrRelativePathEnabled = config.getBoolean("cloudstorage.metadata.replace_absolute_path", false)
-  val READ_OPERATION = "read"
-  val WRITE_OPERATION = "write"
-  val DELETE_OPERATION = "delete"
 
   def getConfig: Config = {
     val config = Config.build
@@ -61,7 +58,7 @@ class Neo4JUtil(routePath: String, graphId: String, config: BaseJobConfig) {
   def getNodesName(identifiers: List[String]): Map[String, String] = {
     val query = s"""MATCH(n:domain) WHERE n.IL_UNIQUE_ID IN ${JSONUtil.serialize(identifiers.asJava)} RETURN n.IL_UNIQUE_ID AS id, n.name AS name;"""
     logger.info("Neo4jUril :: getNodesName :: Query : " + query)
-    val statementResult = executeQuery(query, READ_OPERATION)
+    val statementResult = executeQuery(query)
     if (null != statementResult) {
       statementResult.list().asScala.toList.flatMap(record => Map(record.get("id").asString() -> record.get("name").asString())).toMap
     } else {
@@ -81,8 +78,8 @@ class Neo4JUtil(routePath: String, graphId: String, config: BaseJobConfig) {
     else throw new Exception(s"Unable to update the node with identifier: $identifier")
   }
 
-  def executeQuery(query: String, operation: String = WRITE_OPERATION) = {
-    val updatedQuery = if(StringUtils.equalsIgnoreCase(WRITE_OPERATION, operation) && isrRelativePathEnabled) CSPMetaUtil.updateRelativePath(query)(config)  else query
+  def executeQuery(query: String) = {
+    val updatedQuery = if(isrRelativePathEnabled) CSPMetaUtil.updateRelativePath(query)(config)  else query
     val session = driver.session()
     session.run(updatedQuery)
   }

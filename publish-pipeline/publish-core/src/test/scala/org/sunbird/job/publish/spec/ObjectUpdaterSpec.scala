@@ -33,7 +33,7 @@ class ObjectUpdaterSpec extends FlatSpec with BeforeAndAfterAll with Matchers wi
 
   "ObjectUpdater saveOnSuccess" should " update the status for successfully published data " in {
 
-    when(mockNeo4JUtil.executeQuery(anyString())).thenReturn(any());
+    when(mockNeo4JUtil.executeQuery(anyString())).thenReturn(any())
 
     val hierarchy = Map("identifier" -> "do_123", "children" -> List(Map("identifier" -> "do_234", "name" -> "Children-1"), Map("identifier" -> "do_345", "name" -> "Children-2")))
     val metadata = Map("objectType" -> "QuestionSet", "identifier" -> "do_123","publish_type" -> "Public", "IL_UNIQUE_ID" -> "do_123", "IL_FUNC_OBJECT_TYPE" -> "QuestionSet", "name" -> "Test QuestionSet", "status" -> "Live")
