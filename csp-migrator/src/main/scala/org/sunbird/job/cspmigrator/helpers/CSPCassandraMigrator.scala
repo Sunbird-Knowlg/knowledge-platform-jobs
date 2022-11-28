@@ -40,6 +40,13 @@ trait CSPCassandraMigrator extends MigrationObjectReader with MigrationObjectUpd
 				val migratedCollectionHierarchy: String = extractAndValidateUrls(identifier, collectionHierarchy, config, httpUtil, cloudStorageUtil)
 				updateCollectionHierarchy(identifier, migratedCollectionHierarchy, config)(cassandraUtil)
 				logger.info(s"""CSPCassandraMigrator:: process:: $identifier - $objectType :: Migrated Hierarchy:: $migratedCollectionHierarchy""")
+			case "QuestionSet" | "QuestionSetImage" => {
+				val qsH: String = getQuestionSetHierarchy(identifier, config)(cassandraUtil)
+				logger.info(s"""CSPCassandraMigrator:: process:: $identifier - $objectType :: Fetched Hierarchy:: $qsH""")
+				val migratedQsHierarchy: String = extractAndValidateUrls(identifier, qsH, config, httpUtil, cloudStorageUtil)
+				updateQuestionSetHierarchy(identifier, migratedQsHierarchy, config)(cassandraUtil)
+				logger.info(s"""CSPCassandraMigrator:: process:: $identifier - $objectType :: Migrated Hierarchy:: $migratedQsHierarchy""")
+			}
 			case _ => logger.info(s"""CSPCassandraMigrator:: process:: $identifier - $objectType :: NO CASSANDRA MIGRATION PERFORMED!! """)
 		}
 
