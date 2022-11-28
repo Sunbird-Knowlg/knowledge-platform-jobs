@@ -26,7 +26,7 @@ class MVCIndexer(config: MVCIndexerConfig, var esUtil: ElasticSearchUtil, httpUt
     if (esUtil == null) {
       esUtil = new ElasticSearchUtil(config.esConnectionInfo, config.mvcProcessorIndex, config.mvcProcessorIndexType)
     }
-    cassandraUtil = new CassandraUtil(config.lmsDbHost, config.lmsDbPort)
+    cassandraUtil = new CassandraUtil(config.lmsDbHost, config.lmsDbPort, config)
     mvcIndexerService = new MVCIndexerService(config, esUtil, httpUtil, cassandraUtil)
   }
 

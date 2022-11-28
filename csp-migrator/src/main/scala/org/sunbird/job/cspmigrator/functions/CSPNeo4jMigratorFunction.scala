@@ -30,8 +30,8 @@ class CSPNeo4jMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
-    neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName)
-    cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort)
+    neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName, config)
+    cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort, config)
     cloudStorageUtil = new CloudStorageUtil(config)
   }
 
@@ -70,8 +70,6 @@ class CSPNeo4jMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
             event.mimeType.toLowerCase match {
               case "application/vnd.ekstep.ecml-archive" | "application/vnd.ekstep.content-collection" =>
                 updateNeo4j(migratedMap, event)(defCache, neo4JUtil, config)
-                getMetadata(event.identifier)(neo4JUtil)
-                logger.info("CSPNeo4jMigratorFunction::processElement:: objMetadata : " + objMetadata)
                 logger.info("CSPNeo4jMigratorFunction :: Sending Content/Collection For cassandra migration: " + event.identifier)
                 context.output(config.cassandraMigrationOutputTag, event)
               case _ =>
@@ -82,10 +80,23 @@ class CSPNeo4jMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
                   metrics.incCounter(config.liveContentNodePublishCount)
                 }
             }
-          case "AssessmentItem" =>
+          case "AssessmentItem" => {
             updateNeo4j(migratedMap, event)(defCache, neo4JUtil, config)
             logger.info("CSPNeo4jMigratorFunction :: Sending AssessmentItem For cassandra migration: " + event.identifier)
             context.output(config.cassandraMigrationOutputTag, event)
+          }
+          case "Question" | "QuestionImage" => {
+            finalizeMigration(migratedMap, event, metrics, config)(defCache, neo4JUtil)
+            if(config.liveNodeRepublishEnabled && (event.status.equalsIgnoreCase("Live") ||
+              event.status.equalsIgnoreCase("Unlisted"))) {
+              pushQuestionPublishEvent(objMetadata, context, metrics, config, config.liveQuestionNodePublishEventOutTag, config.liveQuestionNodePublishCount)
+            }
+          }
+          case "QuestionSet" | "QuestionSetImage" => {
+            updateNeo4j(migratedMap, event)(defCache, neo4JUtil, config)
+            logger.info("CSPNeo4jMigratorFunction :: Sending QuestionSet/QuestionSetImage For cassandra migration: " + event.identifier)
+            context.output(config.cassandraMigrationOutputTag, event)
+          }
           case _ => finalizeMigration(migratedMap, event, metrics, config)(defCache, neo4JUtil)
         }
       } else {

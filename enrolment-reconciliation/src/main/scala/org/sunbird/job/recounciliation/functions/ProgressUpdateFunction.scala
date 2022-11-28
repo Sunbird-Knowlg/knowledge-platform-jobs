@@ -19,7 +19,7 @@ class ProgressUpdateFunction(config: EnrolmentReconciliationConfig)(implicit val
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
-    cassandraUtil = new CassandraUtil(config.dbHost, config.dbPort)
+    cassandraUtil = new CassandraUtil(config.dbHost, config.dbPort, config)
   }
 
   override def close(): Unit = {

@@ -55,7 +55,7 @@ class ContentPublishStreamTaskSpec extends BaseTestSpec {
   override protected def beforeAll(): Unit = {
     super.beforeAll()
     EmbeddedCassandraServerHelper.startEmbeddedCassandra(80000L)
-    cassandraUtil = new CassandraUtil(jobConfig.cassandraHost, jobConfig.cassandraPort)
+    cassandraUtil = new CassandraUtil(jobConfig.cassandraHost, jobConfig.cassandraPort, jobConfig)
     val session = cassandraUtil.session
     val dataLoader = new CQLDataLoader(session)
     dataLoader.load(new FileCQLDataSet(getClass.getResource("/test.cql").getPath, true, true))
@@ -85,7 +85,7 @@ class ContentPublishStreamTaskSpec extends BaseTestSpec {
 
   "fetchDialListForContextUpdate" should "fetch the list of added and removed QR codes" in {
     val nodeObj = new ObjectData("do_21354027142511820812318.img", Map("objectType" -> "Collection", "identifier" -> "do_21354027142511820812318", "name" -> "DialCodeHierarchy", "lastPublishedOn" -> getTimeStamp, "lastUpdatedOn" -> getTimeStamp, "status" -> "Draft", "pkgVersion" -> 1.asInstanceOf[Number], "versionKey" -> "1652871771396", "channel" -> "0126825293972439041", "contentType" -> "TextBook"), Some(Map()), Some(Map()))
-    val DIALListMap = new CollectionPublishFunction(jobConfig, mockHttpUtil).fetchDialListForContextUpdate(nodeObj)(mockNeo4JUtil, cassandraUtil, readerConfig)
+    val DIALListMap = new CollectionPublishFunction(jobConfig, mockHttpUtil).fetchDialListForContextUpdate(nodeObj)(mockNeo4JUtil, cassandraUtil, readerConfig, jobConfig)
     assert(DIALListMap.nonEmpty)
 
     val postProcessEvent = new CollectionPublishFunction(jobConfig, mockHttpUtil).getPostProcessEvent(nodeObj, DIALListMap)
