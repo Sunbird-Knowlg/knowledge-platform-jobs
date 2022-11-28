@@ -42,7 +42,7 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
-    cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort)
+    cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort, config)
     neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName, config)
     cloudStorageUtil = new CloudStorageUtil(config)
     ec = ExecutionContexts.global
@@ -66,7 +66,7 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
   override def processElement(data: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
     logger.info("Content publishing started for : " + data.identifier)
     metrics.incCounter(config.contentPublishEventCount)
-    val obj: ObjectData = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(neo4JUtil, cassandraUtil)
+    val obj: ObjectData = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(neo4JUtil, cassandraUtil, config)
     try {
       if (obj.pkgVersion > data.pkgVersion) {
         metrics.incCounter(config.skippedEventCount)
@@ -87,7 +87,7 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
           val enrichedObj = enrichObject(ecmlVerifiedObj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
           val objWithEcar = getObjectWithEcar(enrichedObj, if (enrichedObj.getString("contentDisposition", "").equalsIgnoreCase("online-only")) List(EcarPackageType.SPINE) else pkgTypes)(ec, neo4JUtil, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
           logger.info("Ecar generation done for Content: " + objWithEcar.identifier)
-          saveOnSuccess(objWithEcar)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
+          saveOnSuccess(objWithEcar)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig, config)
           pushStreamingUrlEvent(enrichedObj, context)(metrics)
           pushMVCProcessorEvent(enrichedObj, context)(metrics)
 

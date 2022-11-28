@@ -37,7 +37,7 @@ class DialcodeContextUpdaterSpec extends BaseTestSpec {
   override protected def beforeAll(): Unit = {
     BaseMetricsReporter.gaugeMetrics.clear()
     EmbeddedCassandraServerHelper.startEmbeddedCassandra(80000L)
-    cassandraUtil = new CassandraUtil(jobConfig.cassandraHost, jobConfig.cassandraPort)
+    cassandraUtil = new CassandraUtil(jobConfig.cassandraHost, jobConfig.cassandraPort, jobConfig)
     val session = cassandraUtil.session
     val dataLoader = new CQLDataLoader(session)
     dataLoader.load(new FileCQLDataSet(getClass.getResource("/test.cql").getPath, true, true))

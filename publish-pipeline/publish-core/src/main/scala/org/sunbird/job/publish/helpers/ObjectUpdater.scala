@@ -6,8 +6,9 @@ import org.neo4j.driver.v1.StatementResult
 import org.slf4j.LoggerFactory
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.exception.InvalidInputException
+import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
-import org.sunbird.job.util.{CassandraUtil, JSONUtil, Neo4JUtil, ScalaJsonUtil}
+import org.sunbird.job.util.{CSPMetaUtil, CassandraUtil, JSONUtil, Neo4JUtil, ScalaJsonUtil}
 
 import java.text.SimpleDateFormat
 import java.util
@@ -18,12 +19,12 @@ trait ObjectUpdater {
   private[this] val logger = LoggerFactory.getLogger(classOf[ObjectUpdater])
 
   @throws[Exception]
-  def saveOnSuccess(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, definitionCache: DefinitionCache, config: DefinitionConfig): Unit = {
+  def saveOnSuccess(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, definitionCache: DefinitionCache, definitionConfig: DefinitionConfig, config: PublishConfig): Unit = {
     val publishType = obj.getString("publish_type", "Public")
     val status = if (StringUtils.equalsIgnoreCase("Unlisted", publishType)) "Unlisted" else "Live"
     val editId = obj.dbId
     val identifier = obj.identifier
-    val metadataUpdateQuery = metaDataQuery(obj)(definitionCache, config)
+    val metadataUpdateQuery = metaDataQuery(obj)(definitionCache, definitionConfig)
     val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$identifier"}) SET n.status="$status",n.pkgVersion=${obj.pkgVersion},n.prevStatus="Processing",$metadataUpdateQuery,$auditPropsUpdateQuery;"""
     logger.info("ObjectUpdater:: saveOnSuccess:: Query: " + query)
     logger.info(s"ObjectUpdater:: saveOnSuccess:: DB ID for ${obj.identifier} is : ${obj.dbId} | pkgVersion : ${obj.pkgVersion}" )
@@ -118,21 +119,33 @@ trait ObjectUpdater {
     s"""n.lastUpdatedOn="$updatedOn",n.lastStatusChangedOn="$updatedOn""""
   }
 
-  def getContentBody(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): String = {
+  def getContentBody(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil, config: PublishConfig): String = {
     // fetch content body from cassandra
     val select = QueryBuilder.select()
     select.fcall("blobAsText", QueryBuilder.column("body")).as("body")
     val selectWhere: Select.Where = select.from(readerConfig.keyspace, readerConfig.table).where().and(QueryBuilder.eq("content_id", identifier + ".img"))
     logger.info("ObjectUpdater:: getContentBody:: Cassandra Fetch Query for image:: " + selectWhere.toString)
     val row = cassandraUtil.findOne(selectWhere.toString)
-    if (null != row) row.getString("body") else {
+    if (null != row) {
+      val body = row.getString("body")
+      val updatedBody = if (isrRelativePathEnabled(config)) CSPMetaUtil.updateAbsolutePath(body) else body
+      updatedBody
+    } else {
       val selectId = QueryBuilder.select()
       selectId.fcall("blobAsText", QueryBuilder.column("body")).as("body")
       val selectWhereId: Select.Where = selectId.from(readerConfig.keyspace, readerConfig.table).where().and(QueryBuilder.eq("content_id", identifier))
       logger.info("ObjectUpdater:: getContentBody:: Cassandra Fetch Query :: " + selectWhereId.toString)
       val rowId = cassandraUtil.findOne(selectWhereId.toString)
-      if (null != rowId) rowId.getString("body") else ""
+      if (null != rowId) {
+        val body = rowId.getString("body")
+        val updatedBody = if (isrRelativePathEnabled(config)) CSPMetaUtil.updateAbsolutePath(body) else body
+        updatedBody
+      } else ""
     }
+  }
+
+  private def isrRelativePathEnabled(config: PublishConfig): Boolean = {
+    config.getBoolean("cloudstorage.metadata.replace_absolute_path", false)
   }
 
   def updateContentBody(identifier: String, ecmlBody: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Unit = {

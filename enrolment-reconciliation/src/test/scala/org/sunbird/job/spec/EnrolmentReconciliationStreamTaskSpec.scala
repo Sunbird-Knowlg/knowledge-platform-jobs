@@ -54,7 +54,7 @@ class EnrolmentReconciliationStreamTaskSpec extends BaseTestSpec {
     val redisConnect = new RedisConnect(jobConfig)
     jedis = redisConnect.getConnection(jobConfig.nodeStore)
     EmbeddedCassandraServerHelper.startEmbeddedCassandra(80000L)
-    cassandraUtil = new CassandraUtil(jobConfig.dbHost, jobConfig.dbPort)
+    cassandraUtil = new CassandraUtil(jobConfig.dbHost, jobConfig.dbPort, jobConfig)
     val session = cassandraUtil.session
 
     val dataLoader = new CQLDataLoader(session)

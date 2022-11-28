@@ -44,7 +44,7 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
-    cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort)
+    cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort, config)
     neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName, config)
     cloudStorageUtil = new CloudStorageUtil(config)
     ec = ExecutionContexts.global
@@ -71,7 +71,7 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
     val readerConfig = ExtDataConfig(config.questionSetKeyspaceName, config.questionSetTableName, definition.getExternalPrimaryKey, definition.getExternalProps)
     val qDef: ObjectDefinition = definitionCache.getDefinition("Question", config.schemaSupportVersionMap.getOrElse("question", "1.0").asInstanceOf[String], config.definitionBasePath)
     val qReaderConfig = ExtDataConfig(config.questionKeyspaceName, qDef.getExternalTable, qDef.getExternalPrimaryKey, qDef.getExternalProps)
-    val objData = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(neo4JUtil, cassandraUtil)
+    val objData = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(neo4JUtil, cassandraUtil, config)
     val obj = if (StringUtils.isNotBlank(data.lastPublishedBy)) {
       val newMeta = objData.metadata ++ Map("lastPublishedBy" -> data.lastPublishedBy)
       new ObjectData(objData.identifier, newMeta, objData.extData, objData.hierarchy)
@@ -103,7 +103,7 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
         val objWithEcar = generateECAR(enrichedObj, pkgTypes)(ec, neo4JUtil, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
         // Generate PDF URL
         val updatedObj = generatePreviewUrl(objWithEcar, qList)(httpUtil, cloudStorageUtil)
-        saveOnSuccess(updatedObj)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
+        saveOnSuccess(updatedObj)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig, config)
         logger.info("QuestionSet publishing completed successfully for : " + data.identifier)
         metrics.incCounter(config.questionSetPublishSuccessEventCount)
       } else {
@@ -123,7 +123,7 @@ class QuestionSetPublishFunction(config: QuestionSetPublishConfig, httpUtil: Htt
     val messages = ListBuffer[String]()
     children.foreach(q => {
       val id = q.identifier.replace(".img", "")
-      val obj = getObject(id, 0, q.mimeType, publishType, readerConfig)(neo4JUtil, cassandraUtil)
+      val obj = getObject(id, 0, q.mimeType, publishType, readerConfig)(neo4JUtil, cassandraUtil, config)
       logger.info(s"question metadata for $id : ${obj.metadata}")
       if (!List("Live", "Unlisted").contains(obj.getString("status", ""))) {
         logger.info("Question publishing failed for : " + id)

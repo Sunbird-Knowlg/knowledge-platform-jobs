@@ -25,7 +25,7 @@ class PostPublishEventRouter(config: PostPublishProcessorConfig, httpUtil: HttpU
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
-    cassandraUtil = new CassandraUtil(config.dbHost, config.dbPort)
+    cassandraUtil = new CassandraUtil(config.dbHost, config.dbPort, config)
     neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName, config)
   }
 

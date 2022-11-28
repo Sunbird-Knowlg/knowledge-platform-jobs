@@ -40,7 +40,7 @@ class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUt
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
-    cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort)
+    cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort, config)
     neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName, config)
     cloudStorageUtil = new CloudStorageUtil(config)
     ec = ExecutionContexts.global
@@ -63,7 +63,7 @@ class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUt
   override def processElement(data: PublishMetadata, context: ProcessFunction[PublishMetadata, String]#Context, metrics: Metrics): Unit = {
     logger.info("Question publishing started for : " + data.identifier)
     metrics.incCounter(config.questionPublishEventCount)
-    val objData = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(neo4JUtil, cassandraUtil)
+    val objData = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(neo4JUtil, cassandraUtil, config)
     val obj = if (StringUtils.isNotBlank(data.lastPublishedBy)) {
       val newMeta = objData.metadata ++ Map("lastPublishedBy" -> data.lastPublishedBy)
       new ObjectData(objData.identifier, newMeta, objData.extData, objData.hierarchy)
@@ -74,7 +74,7 @@ class QuestionPublishFunction(config: QuestionSetPublishConfig, httpUtil: HttpUt
       val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
       val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, neo4JUtil, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
       logger.info("Ecar generation done for Question: " + objWithEcar.identifier)
-      saveOnSuccess(objWithEcar)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
+      saveOnSuccess(objWithEcar)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig, config)
       metrics.incCounter(config.questionPublishSuccessEventCount)
       logger.info("Question publishing completed successfully for : " + data.identifier)
     } else {

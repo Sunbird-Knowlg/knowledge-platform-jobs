@@ -42,7 +42,7 @@ class LiveContentPublishFunction(config: LiveNodePublisherConfig, httpUtil: Http
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
-    cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort)
+    cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort, config)
     neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName, config)
     cloudStorageUtil = new CloudStorageUtil(config)
     ec = ExecutionContexts.global

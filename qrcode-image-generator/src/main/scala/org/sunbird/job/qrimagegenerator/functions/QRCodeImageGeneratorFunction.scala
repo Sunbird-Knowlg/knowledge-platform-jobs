@@ -24,7 +24,7 @@ class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig,
   private val logger = LoggerFactory.getLogger(classOf[QRCodeImageGeneratorFunction])
 
   override def open(parameters: Configuration): Unit = {
-    cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort)
+    cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort, config)
     cloudStorageUtil = new CloudStorageUtil(config)
     qRCodeImageGeneratorUtil = new QRCodeImageGeneratorUtil(config, cassandraUtil, cloudStorageUtil)
     super.open(parameters)
