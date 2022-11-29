@@ -7,7 +7,7 @@ import org.sunbird.job.BaseJobConfig
 
 import java.util
 
-class CassandraUtil(host: String, port: Int, config: BaseJobConfig) {
+class CassandraUtil(host: String, port: Int, config: BaseJobConfig) extends Serializable {
 
   private[this] val logger = LoggerFactory.getLogger("CassandraUtil")
 
