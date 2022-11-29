@@ -9,7 +9,7 @@ import org.sunbird.job.BaseJobConfig
 
 import scala.collection.JavaConverters._
 
-class Neo4JUtil(routePath: String, graphId: String, config: BaseJobConfig) {
+class Neo4JUtil(routePath: String, graphId: String, config: BaseJobConfig) extends Serializable {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[Neo4JUtil])
 
