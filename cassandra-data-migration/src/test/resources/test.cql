@@ -10,12 +10,12 @@ CREATE TABLE IF NOT EXISTS hierarchy_store.content_hierarchy (
   PRIMARY KEY (identifier)
 );
 
-CREATE KEYSPACE IF NOT EXISTS dialcodes WITH replication = {
+CREATE OR REPLACE KEYSPACE IF NOT EXISTS dialcodes WITH replication = {
   'class': 'SimpleStrategy',
   'replication_factor': '1'
 };
 
-CREATE TABLE dialcodes.dialcode_batch (
+CREATE TABLE IF NOT EXISTS dialcodes.dialcode_batch (
     processid uuid PRIMARY KEY,
     channel text,
     config map<text, text>,
