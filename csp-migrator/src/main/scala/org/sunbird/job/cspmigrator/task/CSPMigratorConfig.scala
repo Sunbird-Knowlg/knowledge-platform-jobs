@@ -75,7 +75,7 @@ class CSPMigratorConfig(override val config: Config) extends BaseJobConfig(confi
 
   val fieldsToMigrate: util.Map[String, AnyRef] = if(config.hasPath("neo4j_fields_to_migrate")) config.getAnyRef("neo4j_fields_to_migrate").asInstanceOf[util.Map[String, AnyRef]] else new util.HashMap[String, AnyRef]()
   val keyValueMigrateStrings: util.Map[String, String] = config.getAnyRef("key_value_strings_to_migrate").asInstanceOf[util.Map[String, String]]
-  val migrationVersion: Int = if(config.hasPath("migrationVersion"))  config.getInt("migrationVersion") else 1
+  val migrationVersion: Double = if(config.hasPath("migrationVersion"))  config.getDouble("migrationVersion") else 1.0
 
   val videStreamRegenerationEnabled: Boolean = if(config.hasPath("video_stream_regeneration_enable"))  config.getBoolean("video_stream_regeneration_enable") else true
   val liveNodeRepublishEnabled: Boolean = if(config.hasPath("live_node_republish_enable"))  config.getBoolean("live_node_republish_enable") else true

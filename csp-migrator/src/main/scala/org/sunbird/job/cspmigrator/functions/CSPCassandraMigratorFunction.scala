@@ -29,7 +29,7 @@ class CSPCassandraMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil
   lazy val defCache: DefinitionCache = new DefinitionCache()
 
   override def metricsList(): List[String] = {
-    List(config.totalEventsCount, config.successEventCount, config.failedEventCount, config.skippedEventCount, config.errorEventCount, config.assetVideoStreamCount, config.liveContentNodePublishCount)
+    List(config.totalEventsCount, config.successEventCount, config.failedEventCount, config.skippedEventCount, config.errorEventCount, config.assetVideoStreamCount, config.liveContentNodePublishCount, config.liveQuestionNodePublishCount, config.liveQuestionSetNodePublishCount)
   }
 
   override def open(parameters: Configuration): Unit = {
@@ -74,7 +74,7 @@ class CSPCassandraMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil
             pushLiveNodePublishEvent(objMetadata, context, metrics, config)
             metrics.incCounter(config.liveContentNodePublishCount)
           }
-        case "QuestionSet" =>
+        case "QuestionSet"| "QuestionSetImage" =>
           finalizeMigration(objMetadata, event, metrics, config)(defCache, neo4JUtil)
           if(config.liveNodeRepublishEnabled && (event.status.equalsIgnoreCase("Live") ||
             event.status.equalsIgnoreCase("Unlisted"))) {
