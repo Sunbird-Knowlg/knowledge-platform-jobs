@@ -21,7 +21,7 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 	def isValid(config: CassandraDataMigrationConfig): Boolean = {
 		((StringUtils.equals("migrate-cassandra", action) && StringUtils.isNotBlank(column))
 			&& (config.cassandraKeyspace.contains(keyspace) && config.cassandraTable.contains(table))
-			&& !StringUtils.equalsIgnoreCase(column, config.columnToMigrate))
+			&& StringUtils.equalsIgnoreCase(column, config.columnToMigrate))
 	}
 
 }
