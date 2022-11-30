@@ -52,7 +52,7 @@ trait DialcodeContextUpdater {
 
 			val primaryCategory = identifierObj.getOrElse("primaryCategory","").asInstanceOf[String].toLowerCase.replaceAll(" ","_")
 			val contextMap: Map[String, AnyRef] = getContextMapFields(primaryCategory, config.contextMapFilePath)
-			val contextSearchFields: List[String] = fetchFieldsFromMap(contextMap).distinct.filter(rec => rec.forall(_.isLetterOrDigit)) ++ List("origin", "originData")
+			val contextSearchFields: List[String] = fetchFieldsFromMap(contextMap).distinct.filter(rec => !rec.startsWith("@")) ++ List("origin", "originData")
 			logger.info("DialcodeContextUpdater:: updateContext:: searchFields: " + contextSearchFields)
 
 			val contextInfoSearchData: Map[String, AnyRef] =	try {
@@ -190,6 +190,7 @@ trait DialcodeContextUpdater {
 		val dialCodeContextUpdateUrl = config.dialServiceBaseUrl + config.dialcodeContextUpdatePath + dialcode
 		val requestBody = if(contextInfo!=null) "{\"request\": {\"dialcode\": {\"contextInfo\":" + contextInfo + "}}}"
 		else "{\"request\": {\"dialcode\": {\"contextInfo\": null }}}"
+		logger.info("DialcodeContextUpdater :: updateDIALContext :: Update context requestBody: " + requestBody)
 		val headers = Map[String, String]("X-Channel-Id" -> channel, "Content-Type"->"application/json")
 		val response:HTTPResponse = httpUtil.patch(dialCodeContextUpdateUrl, requestBody, headers)
 

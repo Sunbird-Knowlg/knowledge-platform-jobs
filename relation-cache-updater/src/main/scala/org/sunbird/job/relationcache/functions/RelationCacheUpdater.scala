@@ -33,7 +33,7 @@ class RelationCacheUpdater(config: RelationCacheUpdaterConfig)
 
     override def open(parameters: Configuration): Unit = {
         super.open(parameters)
-        cassandraUtil = new CassandraUtil(config.dbHost, config.dbPort)
+        cassandraUtil = new CassandraUtil(config.dbHost, config.dbPort, config)
 
         // Using LP cache for leafnodes, ancestors cache for the collection.
         val lpCacheConnect = new RedisConnect(config)

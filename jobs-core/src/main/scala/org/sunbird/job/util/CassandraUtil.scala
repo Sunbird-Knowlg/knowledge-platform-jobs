@@ -3,12 +3,15 @@ package org.sunbird.job.util
 import com.datastax.driver.core._
 import com.datastax.driver.core.exceptions.DriverException
 import org.slf4j.LoggerFactory
+import org.sunbird.job.BaseJobConfig
 
 import java.util
 
-class CassandraUtil(host: String, port: Int) {
+class CassandraUtil(host: String, port: Int, config: BaseJobConfig) extends Serializable {
 
   private[this] val logger = LoggerFactory.getLogger("CassandraUtil")
+
+  val isrRelativePathEnabled = config.getBoolean("cloudstorage.metadata.replace_absolute_path", false)
 
   val cluster = {
     Cluster.builder()
@@ -22,7 +25,8 @@ class CassandraUtil(host: String, port: Int) {
   def findOne(query: String): Row = {
     try {
       val rs: ResultSet = session.execute(query)
-      rs.one
+      val result = rs.one
+      result
     } catch {
       case ex: DriverException =>
         logger.error(s"findOne - Error while executing query $query :: ", ex)
@@ -42,8 +46,11 @@ class CassandraUtil(host: String, port: Int) {
     }
   }
 
-  def upsert(query: String): Boolean = {
-    val rs: ResultSet = session.execute(query)
+  def upsert(query: String, urlReplaceReq: Boolean = false): Boolean = {
+    logger.info("cassandra util ::: urlReplaceReq:: " + urlReplaceReq)
+    val updatedQuery = if (isrRelativePathEnabled && urlReplaceReq) CSPMetaUtil.updateRelativePath(query)(config) else query
+    logger.info("updated query ::: " + updatedQuery)
+    val rs: ResultSet = session.execute(updatedQuery)
     rs.wasApplied
   }
 

@@ -28,7 +28,7 @@ class CertValidatorTest extends BaseTestSpec{
   override protected def beforeAll(): Unit = {
     super.beforeAll()
     EmbeddedCassandraServerHelper.startEmbeddedCassandra(80000L)
-    cassandraUtil = new CassandraUtil(jobConfig.dbHost, jobConfig.dbPort)
+    cassandraUtil = new CassandraUtil(jobConfig.dbHost, jobConfig.dbPort, jobConfig)
     val session = cassandraUtil.session
     session.execute(s"DROP KEYSPACE IF EXISTS ${jobConfig.dbKeyspace}")
     val dataLoader = new CQLDataLoader(session)

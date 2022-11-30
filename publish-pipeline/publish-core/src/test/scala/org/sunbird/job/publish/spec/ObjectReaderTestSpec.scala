@@ -4,6 +4,7 @@ import org.mockito.Mockito
 import org.mockito.Mockito._
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
+import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{ExtDataConfig, ObjectExtData}
 import org.sunbird.job.publish.helpers.ObjectReader
 import org.sunbird.job.util.{CassandraUtil, Neo4JUtil}
@@ -22,6 +23,7 @@ class ObjectReaderTestSpec extends FlatSpec with BeforeAndAfterAll with Matchers
 
   implicit val mockNeo4JUtil: Neo4JUtil = mock[Neo4JUtil](Mockito.withSettings().serializable())
   implicit val mockCassandraUtil: CassandraUtil = mock[CassandraUtil](Mockito.withSettings().serializable())
+  implicit val config: PublishConfig = mock[PublishConfig](Mockito.withSettings().serializable())
 
   "Object Reader " should " read the metadata " in {
     when(mockNeo4JUtil.getNodeProperties("do_123.img")).thenReturn(Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123.img", "IL_UNIQUE_ID" -> "do_123.img", "pkgVersion" -> 2.0.asInstanceOf[AnyRef]).asJava)
@@ -37,9 +39,9 @@ class ObjectReaderTestSpec extends FlatSpec with BeforeAndAfterAll with Matchers
 
 class TestObjectReader extends ObjectReader {
 
-  override def getExtData(identifier: String, pkgVersion: Double, mimeType: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[ObjectExtData] = None
+  override def getExtData(identifier: String, pkgVersion: Double, mimeType: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil, config: PublishConfig): Option[ObjectExtData] = None
 
-  override def getHierarchy(identifier: String, pkgVersion: Double, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = None
+  override def getHierarchy(identifier: String, pkgVersion: Double, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil, config: PublishConfig): Option[Map[String, AnyRef]] = None
 
   override def getExtDatas(identifiers: List[String], readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = None
 
