@@ -37,8 +37,9 @@ class CassandraDataMigrationConfig(override val config: Config) extends BaseJobC
   val cassandraKeyspace: String = config.getString("migrate.keyspace")
   val cassandraTable: String = config.getString("migrate.table")
   val primaryKeyColumn: String = config.getString("migrate.primary_key_column")
-  val isColumnBLOB: Boolean = config.getBoolean("migrate.is_column_blob")
+  val primaryKeyColumnType: String = config.getString("migrate.primary_key_column_type")
   val columnToMigrate: String = config.getString("migrate.column_to_migrate")
+  val columnToMigrateType: String = config.getString("migrate.column_to_migrate_type")
 
   val keyValueMigrateStrings: util.Map[String, String] = config.getAnyRef("migrate.key_value_strings_to_migrate").asInstanceOf[util.Map[String, String]]
 
