@@ -16,8 +16,6 @@ class CassandraDataMigrationConfig(override val config: Config) extends BaseJobC
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
   override val parallelism: Int = config.getInt("task.parallelism")
-  val linkCollectionParallelism: Int = if (config.hasPath("task.link-collection.parallelism"))
-    config.getInt("task.link-collection.parallelism") else 1
 
   // Metric List
   val totalEventsCount = "total-events-count"
