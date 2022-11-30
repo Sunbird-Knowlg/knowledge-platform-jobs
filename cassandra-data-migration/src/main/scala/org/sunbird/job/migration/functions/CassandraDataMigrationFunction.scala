@@ -29,7 +29,7 @@ class CassandraDataMigrationFunction(config: CassandraDataMigrationConfig,
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
-    cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort)
+    cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort, config)
   }
 
   override def close(): Unit = {

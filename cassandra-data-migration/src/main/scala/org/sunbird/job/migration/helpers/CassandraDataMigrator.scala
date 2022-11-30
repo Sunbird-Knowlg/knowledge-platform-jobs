@@ -16,7 +16,7 @@ trait CassandraDataMigrator {
 
 		// select primary key Column rows from table to migrate
 		val primaryKeys = readPrimaryKeysFromCassandra(config)
-		logger.info(s"CassandraDataMigrator:: migrateData:: After fething primary keys. Keys Count:: " + primaryKeys.size())
+		logger.info(s"CassandraDataMigrator:: migrateData:: After fetching primary keys. Keys Count:: " + primaryKeys.size())
 		primaryKeys.forEach(col => {
 			val primaryKey: String = col.getString(config.primaryKeyColumn)
 			val row = readColumnDataFromCassandra(primaryKey, config)(cassandraUtil)
@@ -34,19 +34,26 @@ trait CassandraDataMigrator {
 	}
 
 	def readPrimaryKeysFromCassandra(config: CassandraDataMigrationConfig)(implicit cassandraUtil: CassandraUtil): java.util.List[Row] = {
-		val query = s"select ${config.primaryKeyColumn} from ${config.cassandraKeyspace}.${config.cassandraTable} ALLOW FILTERING;"
+		val query =  s"""select ${config.primaryKeyColumn} from ${config.cassandraKeyspace}.${config.cassandraTable} ALLOW FILTERING;"""
 		cassandraUtil.find(query)
 	}
 
 	def readColumnDataFromCassandra(primaryKey: String, config: CassandraDataMigrationConfig)(implicit cassandraUtil: CassandraUtil): Row = {
-		val query = s"select ${config.columnToMigrate} from ${config.cassandraKeyspace}.${config.cassandraTable} where ${config.primaryKeyColumn}='$primaryKey' ALLOW FILTERING;"
+		val query = if(config.isColumnBLOB) s"""select blobAsText(${config.columnToMigrate}) as ${config.columnToMigrate} from ${config.cassandraKeyspace}.${config.cassandraTable} where ${config.primaryKeyColumn}='$primaryKey' ALLOW FILTERING;"""
+		else s"""select ${config.columnToMigrate} from ${config.cassandraKeyspace}.${config.cassandraTable} where ${config.primaryKeyColumn}='$primaryKey' ALLOW FILTERING;"""
 		cassandraUtil.findOne(query)
 	}
 
 	def updateMigratedDataToCassandra(migratedData: String, primaryKey: String, config: CassandraDataMigrationConfig)(implicit cassandraUtil: CassandraUtil): Unit = {
-		val updateQuery: Update.Where = QueryBuilder.update(config.cassandraKeyspace, config.cassandraTable)
-			.`with`(QueryBuilder.set(config.columnToMigrate, migratedData))
+		val updateQuery: Update.Where = if(config.isColumnBLOB) {
+			QueryBuilder.update(config.cassandraKeyspace, config.cassandraTable)
+			 .`with`(QueryBuilder.set(config.columnToMigrate, QueryBuilder.fcall("textAsBlob", migratedData)))
 			.where(QueryBuilder.eq(config.primaryKeyColumn, primaryKey))
+		} else {
+			QueryBuilder.update(config.cassandraKeyspace, config.cassandraTable)
+				.`with`(QueryBuilder.set(config.columnToMigrate, migratedData))
+				.where(QueryBuilder.eq(config.primaryKeyColumn, primaryKey))
+		}
 		logger.info(s"CassandraDataMigrator:: updateMigratedDataToCassandra:: Updating ${config.columnToMigrate} in Cassandra For $primaryKey :: ${updateQuery.toString}")
 		val result = cassandraUtil.upsert(updateQuery.toString)
 		if (result) logger.info(s"CassandraDataMigrator:: updateMigratedDataToCassandra:: ${config.columnToMigrate} Updated Successfully For $primaryKey")
