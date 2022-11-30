@@ -6,7 +6,7 @@ import org.sunbird.job.task.CassandraDataMigrationConfig
 
 class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) extends JobRequest(eventMap, partition, offset) {
 
-	private val jobName = "cassandra-data-migration"
+	val jobName = "cassandra-data-migration"
 
 	def eData: Map[String, AnyRef] = readOrDefault("edata", Map()).asInstanceOf[Map[String, AnyRef]]
 

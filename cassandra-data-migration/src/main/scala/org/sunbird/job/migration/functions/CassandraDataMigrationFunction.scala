@@ -38,7 +38,9 @@ class CassandraDataMigrationFunction(config: CassandraDataMigrationConfig,
   }
 
   override def processElement(event: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
+    logger.info("CassandraDataMigrationFunction:: processElement:: event:: " + event)
     if (event.isValid(config))
       migrateData(config)(cassandraUtil)
+    else logger.info("CassandraDataMigrationFunction:: processElement:: event SKIPPED!! :: " + event)
   }
 }
