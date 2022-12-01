@@ -15,10 +15,11 @@ object CSPMetaUtil {
 
   def updateAbsolutePath(data: util.Map[String, AnyRef])(implicit config: BaseJobConfig): util.Map[String, AnyRef] = {
     logger.info("CSPMetaUtil ::: updateAbsolutePath ::: data before url replace :: " + data)
+    val relativePathPrefix: String = config.getString("cloudstorage.relative_path_prefix", "")
     val cspMeta: util.List[String] = config.config.getStringList("cloudstorage.metadata.list")
     val absolutePath = config.getString("cloudstorage.read_base_path", "") + java.io.File.separator + config.getString("cloud_storage_container", "")
     val result = if (MapUtils.isNotEmpty(data)) {
-      val updatedMeta: util.Map[String, AnyRef] = data.asScala.map(x => if (cspMeta.contains(x._1)) (x._1, x._2.asInstanceOf[String].replace("CLOUD_STORAGE_BASE_PATH", absolutePath)) else (x._1, x._2)).toMap.asJava
+      val updatedMeta: util.Map[String, AnyRef] = data.asScala.map(x => if (cspMeta.contains(x._1)) (x._1, x._2.asInstanceOf[String].replace(relativePathPrefix, absolutePath)) else (x._1, x._2)).toMap.asJava
       updatedMeta
     } else data
     logger.info("CSPMetaUtil ::: updateAbsolutePath ::: data after url replace :: " + result)
@@ -27,11 +28,12 @@ object CSPMetaUtil {
 
   def updateAbsolutePath(data: util.List[util.Map[String, AnyRef]])(implicit config: BaseJobConfig): util.List[util.Map[String, AnyRef]] = {
     logger.info("CSPMetaUtil ::: updateAbsolutePath util.List[util.Map[String, AnyRef]] ::: data before url replace :: " + data)
+    val relativePathPrefix: String = config.getString("cloudstorage.relative_path_prefix", "")
     val cspMeta: util.List[String] = config.config.getStringList("cloudstorage.metadata.list")
     val absolutePath: String = config.getString("cloudstorage.read_base_path", "") + java.io.File.separator + config.getString("cloud_storage_container", "")
     val result = data.asScala.toList.map(meta => {
       if (MapUtils.isNotEmpty(meta)) {
-        val updatedMeta: util.Map[String, AnyRef] = meta.asScala.map(x => if (cspMeta.contains(x._1)) (x._1, getBasePath(x._1, x._2, Array("CLOUD_STORAGE_BASE_PATH"), Array(absolutePath))) else (x._1, x._2)).toMap.asJava
+        val updatedMeta: util.Map[String, AnyRef] = meta.asScala.map(x => if (cspMeta.contains(x._1)) (x._1, getBasePath(x._1, x._2, Array(relativePathPrefix), Array(absolutePath))) else (x._1, x._2)).toMap.asJava
         updatedMeta
       } else meta
     }).asJava
@@ -41,9 +43,10 @@ object CSPMetaUtil {
 
   def updateAbsolutePath(data: String)(implicit config: BaseJobConfig): String = {
     logger.info("CSPMetaUtil ::: updateAbsolutePath String ::: data before url replace :: " + data)
+    val relativePathPrefix: String = config.getString("cloudstorage.relative_path_prefix", "")
     val absolutePath = config.getString("cloudstorage.read_base_path", "") + java.io.File.separator + config.getString("cloud_storage_container", "")
     val result = if (StringUtils.isNotEmpty(data)) {
-      val updatedData: String = data.replaceAll("CLOUD_STORAGE_BASE_PATH", absolutePath)
+      val updatedData: String = data.replaceAll(relativePathPrefix, absolutePath)
       updatedData
     } else data
     logger.info("CSPMetaUtil ::: updateAbsolutePath String ::: data after url replace :: " + result)
@@ -52,10 +55,11 @@ object CSPMetaUtil {
 
   def updateRelativePath(data: util.Map[String, AnyRef])(implicit config: BaseJobConfig): util.Map[String, AnyRef] = {
     logger.info("CSPMetaUtil ::: updateRelativePath util.Map[String, AnyRef] ::: data before url replace :: " + data)
+    val relativePathPrefix: String = config.getString("cloudstorage.relative_path_prefix", "")
     val cspMeta: util.List[String] = config.config.getStringList("cloudstorage.metadata.list")
     val validCSPSource: List[String] = config.config.getStringList("cloudstorage.write_base_path").asScala.toList
     val basePaths: Array[String] = validCSPSource.map(source => source + java.io.File.separator + config.getString("cloud_storage_container", "")).toArray
-    val repArray = getReplacementData(basePaths, "CLOUD_STORAGE_BASE_PATH")
+    val repArray = getReplacementData(basePaths, relativePathPrefix)
     val result = if (MapUtils.isNotEmpty(data)) {
       val updatedMeta: util.Map[String, AnyRef] = data.asScala.map(x => if (cspMeta.contains(x._1)) (x._1, getBasePath(x._1, x._2, basePaths, repArray)) else (x._1, x._2)).toMap.asJava
       updatedMeta
@@ -66,9 +70,10 @@ object CSPMetaUtil {
 
   def updateRelativePath(query: String)(implicit config: BaseJobConfig): String = {
     logger.info("CSPMetaUtil ::: updateRelativePath ::: query before url replace :: " + query)
+    val relativePathPrefix: String = config.getString("cloudstorage.relative_path_prefix", "")
     val validCSPSource: List[String] = config.config.getStringList("cloudstorage.write_base_path").asScala.toList
     val paths: Array[String] = validCSPSource.map(s => s + java.io.File.separator + config.getString("cloud_storage_container", "")).toArray
-    val repArray = getReplacementData(paths, "CLOUD_STORAGE_BASE_PATH")
+    val repArray = getReplacementData(paths, relativePathPrefix)
     val result = StringUtils.replaceEach(query, paths, repArray)
     logger.info("CSPMetaUtil ::: updateRelativePath ::: query after url replace :: " + result)
     result
