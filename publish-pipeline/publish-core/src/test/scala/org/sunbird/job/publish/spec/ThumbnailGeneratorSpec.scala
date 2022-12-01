@@ -36,7 +36,7 @@ class ThumbnailGeneratorSpec extends FlatSpec with BeforeAndAfterAll with Matche
     resultMetadata.getOrElse("posterImage", "").asInstanceOf[String].isEmpty should be(false)
     resultMetadata.getOrElse("appIcon", "").asInstanceOf[String].isEmpty should be(false)
     resultMetadata.getOrElse("posterImage", "").asInstanceOf[String] shouldBe "https://dev.knowlg.sunbird.org/content/preview/assets/icons/avatar_anonymous.png"
-    resultMetadata.getOrElse("appIcon", "").asInstanceOf[String] shouldBe "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/questionset/do_123/artifact/sunbird_logo.thumb.png"
+    resultMetadata.getOrElse("appIcon", "").asInstanceOf[String] shouldBe "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/questionset/do_123/artifact/avatar_anonymous.thumb.png"
   }
 
   "Object Thumbnail Generator generateThumbnail with google drive link" should "add the thumbnail to ObjectData" in {
