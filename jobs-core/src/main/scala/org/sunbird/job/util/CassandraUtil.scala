@@ -46,9 +46,9 @@ class CassandraUtil(host: String, port: Int, config: BaseJobConfig) extends Seri
     }
   }
 
-  def upsert(query: String, urlReplaceReq: Boolean = false): Boolean = {
-    logger.info("cassandra util ::: urlReplaceReq:: " + urlReplaceReq)
-    val updatedQuery = if (isrRelativePathEnabled && urlReplaceReq) CSPMetaUtil.updateRelativePath(query)(config) else query
+  def upsert(query: String): Boolean = {
+    logger.info("cassandra util ::: query:: " + query)
+    val updatedQuery = if (isrRelativePathEnabled) CSPMetaUtil.updateRelativePath(query)(config) else query
     logger.info("updated query ::: " + updatedQuery)
     val rs: ResultSet = session.execute(updatedQuery)
     rs.wasApplied
