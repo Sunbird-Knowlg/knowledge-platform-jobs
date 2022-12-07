@@ -100,7 +100,7 @@ class CSPNeo4jMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
           case _ => finalizeMigration(migratedMap, event, metrics, config)(defCache, neo4JUtil)
         }
       } else {
-        if(objMetadata.contains("migrationVersion")) {
+        if(!objMetadata.contains("migrationVersion")) {
           // Insert into neo4j with migrationVersion as 0.5 for skipped events for easy identification
           updateNeo4j(objMetadata + ("migrationVersion" -> 0.5.asInstanceOf[Number]), event)(defCache, neo4JUtil, config)
         }
