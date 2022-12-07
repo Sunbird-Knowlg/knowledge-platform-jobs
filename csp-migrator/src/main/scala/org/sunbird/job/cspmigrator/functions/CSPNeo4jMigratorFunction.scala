@@ -100,8 +100,10 @@ class CSPNeo4jMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
           case _ => finalizeMigration(migratedMap, event, metrics, config)(defCache, neo4JUtil)
         }
       } else {
-        // Insert into neo4j with migrationVersion as 0.5 for skipped events for easy identification
-        updateNeo4j(objMetadata + ("migrationVersion" -> 0.5.asInstanceOf[Number]), event)(defCache, neo4JUtil, config)
+        if(!objMetadata.contains("migrationVersion")) {
+          // Insert into neo4j with migrationVersion as 0.5 for skipped events for easy identification
+          updateNeo4j(objMetadata + ("migrationVersion" -> 0.5.asInstanceOf[Number]), event)(defCache, neo4JUtil, config)
+        }
         logger.info("CSPNeo4jMigratorFunction::processElement:: Event is not qualified for csp migration having identifier : " + event.identifier + " | objectType : " + event.objectType)
         metrics.incCounter(config.skippedEventCount)
       }
