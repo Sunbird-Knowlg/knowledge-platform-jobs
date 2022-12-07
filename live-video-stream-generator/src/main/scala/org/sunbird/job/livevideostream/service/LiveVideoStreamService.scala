@@ -118,7 +118,7 @@ class LiveVideoStreamService(implicit config: LiveVideoStreamGeneratorConfig, ht
 
   private def updatePreviewUrl(contentId: String, streamingUrl: String, channel: String): Boolean = {
     if(streamingUrl.nonEmpty && contentId.nonEmpty) {
-      val requestBody = "{\"request\": {\"content\": {\"streamingUrl\":\""+ streamingUrl +"\", \"migrationVersion\":1.3}}}"
+      val requestBody = "{\"request\": {\"content\": {\"streamingUrl\":\""+ streamingUrl +"\", \"migrationVersion\":1.2}}}"
       val url = config.lpURL + config.contentV4Update + contentId
       val headers = Map[String, String]("X-Channel-Id" -> channel, "Content-Type"->"application/json")
       val response:HTTPResponse = httpUtil.patch(url, requestBody, headers)
