@@ -55,7 +55,7 @@ class CSPMigratorConfig(override val config: Config) extends BaseJobConfig(confi
   val liveContentNodePublishEventOutTag: OutputTag[String] = OutputTag[String]("live-content-node-republish-request")
   val liveQuestionSetNodePublishEventOutTag: OutputTag[String] = OutputTag[String]("live-questionset-node-republish-request")
   val liveQuestionNodePublishEventOutTag: OutputTag[String] = OutputTag[String]("live-question-node-republish-request")
-  val liveCollectionNodePublishEventOutTag: OutputTag[String] = OutputTag[String]("live-content-node-republish-request")
+  val liveCollectionNodePublishEventOutTag: OutputTag[String] = OutputTag[String]("live-collection-node-republish-request")
 
   val configVersion = "1.0"
 
