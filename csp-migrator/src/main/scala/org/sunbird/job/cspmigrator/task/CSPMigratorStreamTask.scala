@@ -31,14 +31,15 @@ class CSPMigratorStreamTask(config: CSPMigratorConfig, kafkaConnector: FlinkKafk
       .setParallelism(config.parallelism)
 
 
-    processStreamTask.getSideOutput(config.cassandraMigrationOutputTag).process(new CSPCassandraMigratorFunction(config, httpUtil))
+    val cassandraStream = processStreamTask.getSideOutput(config.cassandraMigrationOutputTag).process(new CSPCassandraMigratorFunction(config, httpUtil))
       .name(config.cassandraMigratorFunction).uid(config.cassandraMigratorFunction).setParallelism(config.cassandraMigratorParallelism)
 
     processStreamTask.getSideOutput(config.failedEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaFailedTopic))
     processStreamTask.getSideOutput(config.generateVideoStreamingOutTag).addSink(kafkaConnector.kafkaStringSink(config.liveVideoStreamingTopic))
-    processStreamTask.getSideOutput(config.liveContentNodePublishEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.liveContentNodeRepublishTopic))
     processStreamTask.getSideOutput(config.liveQuestionNodePublishEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.liveQuestionNodeRepublishTopic))
-    processStreamTask.getSideOutput(config.liveQuestionSetNodePublishEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.liveQuestionNodeRepublishTopic))
+
+    cassandraStream.getSideOutput(config.liveCollectionNodePublishEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.liveContentNodeRepublishTopic))
+    cassandraStream.getSideOutput(config.liveQuestionSetNodePublishEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.liveQuestionNodeRepublishTopic))
 
     env.execute(config.jobName)
   }

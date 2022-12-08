@@ -85,7 +85,7 @@ trait MigrationObjectReader {
     event
   }
 
-  def pushLiveNodePublishEvent(objMetadata: Map[String, AnyRef], context: ProcessFunction[Event, String]#Context, metrics: Metrics, config: CSPMigratorConfig): Unit = {
+  def pushLiveNodePublishEvent(objMetadata: Map[String, AnyRef], context: ProcessFunction[Event, String]#Context, metrics: Metrics, config: CSPMigratorConfig, tag: OutputTag[String]): Unit = {
     val epochTime = System.currentTimeMillis
     val identifier = objMetadata.getOrElse("identifier", "").asInstanceOf[String]
     val pkgVersion = objMetadata.getOrElse("pkgVersion", "").asInstanceOf[Number]
@@ -96,7 +96,7 @@ trait MigrationObjectReader {
     val publishType = if(status.equalsIgnoreCase("Live")) "Public" else "Unlisted"
 
     val event = s"""{"eid":"BE_JOB_REQUEST","ets":$epochTime,"mid":"LP.$epochTime.${UUID.randomUUID()}","actor":{"id":"content-republish","type":"System"},"context":{"pdata":{"ver":"1.0","id":"org.ekstep.platform"},"channel":"sunbird","env":"${config.jobEnv}"},"object":{"ver":"$pkgVersion","id":"$identifier"},"edata":{"publish_type":"$publishType","metadata":{"identifier":"$identifier", "mimeType":"$mimeType","objectType":"$objectType","lastPublishedBy":"System","pkgVersion":$pkgVersion},"action":"republish","iteration":1,"contentType":"$contentType"}}"""
-    context.output(config.liveContentNodePublishEventOutTag, event)
+    context.output(tag, event)
     metrics.incCounter(config.liveContentNodePublishCount)
     logger.info("MigrationObjectReader :: Live content publish triggered for " + identifier)
     logger.info("MigrationObjectReader :: Live content publish event: " + event)
