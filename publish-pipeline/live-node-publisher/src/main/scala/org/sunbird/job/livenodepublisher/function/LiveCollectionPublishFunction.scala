@@ -20,8 +20,8 @@ import org.sunbird.job.util._
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import java.lang.reflect.Type
-import scala.collection.convert.ImplicitConversions.`collection AsScalaIterable`
 import scala.concurrent.ExecutionContext
+import scala.collection.JavaConverters._
 
 class LiveCollectionPublishFunction(config: LiveNodePublisherConfig, httpUtil: HttpUtil,
                                     @transient var neo4JUtil: Neo4JUtil = null,
@@ -72,7 +72,7 @@ class LiveCollectionPublishFunction(config: LiveNodePublisherConfig, httpUtil: H
     metrics.incCounter(config.collectionPublishEventCount)
     val obj: ObjectData = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(neo4JUtil, cassandraUtil)
     try {
-      val childNodesMetadata: List[String] = obj.metadata.getOrElse("childNodes", List.empty).asInstanceOf[List[String]]
+      val childNodesMetadata: List[String] = obj.metadata.getOrElse("childNodes", new java.util.ArrayList()).asInstanceOf[java.util.List[String]].asScala.toList
       val addedResources: List[String] = searchContents(childNodesMetadata.toArray, config, httpUtil)
       val addedResourcesMigrationVersion: List[String] = searchContents(childNodesMetadata.toArray, config, httpUtil, true)
 
