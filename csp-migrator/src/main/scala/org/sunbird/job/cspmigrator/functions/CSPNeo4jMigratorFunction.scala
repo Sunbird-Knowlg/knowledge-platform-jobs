@@ -76,7 +76,7 @@ class CSPNeo4jMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil,
                 finalizeMigration(migratedMap, event, metrics, config)(defCache, neo4JUtil)
                 if(config.liveNodeRepublishEnabled && (event.status.equalsIgnoreCase("Live") ||
                   event.status.equalsIgnoreCase("Unlisted"))) {
-                  pushLiveNodePublishEvent(objMetadata, context, metrics, config)
+                  pushLiveNodePublishEvent(objMetadata, context, metrics, config, config.liveContentNodePublishEventOutTag)
                   metrics.incCounter(config.liveContentNodePublishCount)
                 }
             }

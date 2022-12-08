@@ -74,7 +74,7 @@ class CSPCassandraMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil
           finalizeMigration(migratedObjMetadata, event, metrics, config)(defCache, neo4JUtil)
           if(config.liveNodeRepublishEnabled && (event.status.equalsIgnoreCase("Live") ||
             event.status.equalsIgnoreCase("Unlisted"))) {
-            pushLiveNodePublishEvent(objMetadata, context, metrics, config)
+            pushLiveNodePublishEvent(objMetadata, context, metrics, config, config.liveCollectionNodePublishEventOutTag)
             metrics.incCounter(config.liveContentNodePublishCount)
           }
         case "QuestionSet"| "QuestionSetImage" =>
