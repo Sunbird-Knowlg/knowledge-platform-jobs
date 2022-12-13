@@ -173,6 +173,7 @@ trait LiveContentPublisher extends LiveObjectReader with ObjectValidator with Ob
       case _: java.lang.IllegalArgumentException => throw new InvalidInputException(s"Invalid input found For $data.identifier")
       case iex: java.lang.InterruptedException | java.io.FileNotFoundException =>
         val result: StatementResult = neo4JUtil.executeQuery(s"""MATCH (n:domain{IL_UNIQUE_ID:"${data.identifier}"}) SET n.migrationVersion=0.5;""")
+        throw new InvalidInputException(s"Invalid input found For $data.identifier")
     }
   }
 
