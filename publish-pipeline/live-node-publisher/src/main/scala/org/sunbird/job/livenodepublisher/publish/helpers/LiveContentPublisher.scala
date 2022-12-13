@@ -3,6 +3,7 @@ package org.sunbird.job.livenodepublisher.publish.helpers
 import org.apache.commons.io.FilenameUtils
 import org.apache.commons.lang3.StringUtils
 import org.apache.tika.Tika
+import org.neo4j.driver.v1.StatementResult
 import org.slf4j.LoggerFactory
 import org.sunbird.job.livenodepublisher.task.LiveNodePublisherConfig
 import org.sunbird.job.domain.`object`.DefinitionCache
@@ -69,7 +70,7 @@ trait LiveContentPublisher extends LiveObjectReader with ObjectValidator with Ob
       ExtractableMimeTypeHelper.copyExtractedContentPackage(obj, contentConfig, "version", cloudStorageUtil)
       ExtractableMimeTypeHelper.copyExtractedContentPackage(obj, contentConfig, "latest", cloudStorageUtil)
     }
-    val updatedPreviewUrl = updatePreviewUrl(obj, updatedPragma, cloudStorageUtil, contentConfig).getOrElse(updatedPragma)
+    val updatedPreviewUrl = updatePreviewUrl(obj, updatedPragma, neo4JUtil, cloudStorageUtil, contentConfig).getOrElse(updatedPragma)
     Some(new ObjectData(obj.identifier, updatedPreviewUrl, obj.extData, obj.hierarchy))
   }
 
@@ -170,6 +171,8 @@ trait LiveContentPublisher extends LiveObjectReader with ObjectValidator with Ob
       new ObjectData(data.identifier, data.metadata ++ meta, data.extData, data.hierarchy)
     } catch {
       case _: java.lang.IllegalArgumentException => throw new InvalidInputException(s"Invalid input found For $data.identifier")
+      case iex: java.lang.InterruptedException | java.io.FileNotFoundException =>
+        val result: StatementResult = neo4JUtil.executeQuery(s"""MATCH (n:domain{IL_UNIQUE_ID:"${data.identifier}"}) SET n.migrationVersion=0.5;""")
     }
   }
 
@@ -192,7 +195,7 @@ trait LiveContentPublisher extends LiveObjectReader with ObjectValidator with Ob
     } else None
   }
 
-  private def updatePreviewUrl(obj: ObjectData, updatedMeta: Map[String, AnyRef], cloudStorageUtil: CloudStorageUtil, config: LiveNodePublisherConfig): Option[Map[String, AnyRef]] = {
+  private def updatePreviewUrl(obj: ObjectData, updatedMeta: Map[String, AnyRef], neo4JUtil: Neo4JUtil, cloudStorageUtil: CloudStorageUtil, config: LiveNodePublisherConfig): Option[Map[String, AnyRef]] = {
     try {
       if (StringUtils.isNotBlank(obj.mimeType)) {
         logger.debug("Checking Required Fields For: " + obj.mimeType)
@@ -211,6 +214,8 @@ trait LiveContentPublisher extends LiveObjectReader with ObjectValidator with Ob
       } else None
     } catch {
       case ex: Exception => logger.debug("Exception for updatePreviewUrl: " + ex.getMessage)
+        val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"${obj.identifier}"}) SET n.migrationVersion=0.5;"""
+        val result: StatementResult = neo4JUtil.executeQuery(query)
         None
     }
   }
