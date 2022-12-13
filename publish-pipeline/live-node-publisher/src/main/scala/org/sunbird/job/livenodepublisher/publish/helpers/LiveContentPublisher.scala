@@ -193,20 +193,25 @@ trait LiveContentPublisher extends LiveObjectReader with ObjectValidator with Ob
   }
 
   private def updatePreviewUrl(obj: ObjectData, updatedMeta: Map[String, AnyRef], cloudStorageUtil: CloudStorageUtil, config: LiveNodePublisherConfig): Option[Map[String, AnyRef]] = {
-    if (StringUtils.isNotBlank(obj.mimeType)) {
-      logger.debug("Checking Required Fields For: " + obj.mimeType)
-      obj.mimeType match {
-        case MimeType.Collection | MimeType.Plugin_Archive | MimeType.Android_Package | MimeType.ASSETS =>
-          None
-        case MimeType.ECML_Archive | MimeType.HTML_Archive | MimeType.H5P_Archive =>
-          val latestFolderS3Url = ExtractableMimeTypeHelper.getCloudStoreURL(obj, cloudStorageUtil, config)
-          val updatedPreviewUrl = updatedMeta ++ Map("previewUrl" -> latestFolderS3Url, "streamingUrl" -> latestFolderS3Url)
-          Some(updatedPreviewUrl)
-        case _ =>
-          val artifactUrl = obj.getString("artifactUrl", null)
-          val updatedPreviewUrl = updatedMeta ++ Map("previewUrl" -> artifactUrl)
-          if (config.isStreamingEnabled && !config.streamableMimeType.contains(obj.mimeType)) Some(updatedPreviewUrl ++ Map("streamingUrl" -> artifactUrl)) else Some(updatedPreviewUrl)
-      }
-    } else None
+    try {
+      if (StringUtils.isNotBlank(obj.mimeType)) {
+        logger.debug("Checking Required Fields For: " + obj.mimeType)
+        obj.mimeType match {
+          case MimeType.Collection | MimeType.Plugin_Archive | MimeType.Android_Package | MimeType.ASSETS =>
+            None
+          case MimeType.ECML_Archive | MimeType.HTML_Archive | MimeType.H5P_Archive =>
+            val latestFolderS3Url = ExtractableMimeTypeHelper.getCloudStoreURL(obj, cloudStorageUtil, config)
+            val updatedPreviewUrl = updatedMeta ++ Map("previewUrl" -> latestFolderS3Url, "streamingUrl" -> latestFolderS3Url)
+            Some(updatedPreviewUrl)
+          case _ =>
+            val artifactUrl = obj.getString("artifactUrl", null)
+            val updatedPreviewUrl = updatedMeta ++ Map("previewUrl" -> artifactUrl)
+            if (config.isStreamingEnabled && !config.streamableMimeType.contains(obj.mimeType)) Some(updatedPreviewUrl ++ Map("streamingUrl" -> artifactUrl)) else Some(updatedPreviewUrl)
+        }
+      } else None
+    } catch {
+      case ex: Exception => logger.debug("Exception for updatePreviewUrl: " + ex.getMessage)
+        None
+    }
   }
 }
