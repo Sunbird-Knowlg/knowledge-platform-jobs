@@ -7,6 +7,7 @@ import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.exception.InvalidInputException
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ObjectData}
+import org.sunbird.job.util.CSPMetaUtil.updateAbsolutePath
 import org.sunbird.job.util.{FileUtils, JSONUtil, Neo4JUtil, ScalaJsonUtil, Slug}
 
 import java.io._
@@ -109,7 +110,7 @@ trait ObjectBundle {
   }
 
   //TODO: Enhance this method of .ecar & .zip extension
-  def downloadFiles(identifier: String, files: Map[AnyRef, List[String]], bundlePath: String)(implicit ec: ExecutionContext): Future[List[File]] = {
+  def downloadFiles(identifier: String, files: Map[AnyRef, List[String]], bundlePath: String)(implicit ec: ExecutionContext, config: PublishConfig): Future[List[File]] = {
     val futures = files.map {
       case (k, v) =>
         v.map {
@@ -127,7 +128,9 @@ trait ObjectBundle {
                   val url = k.asInstanceOf[String]
                   // UnknownHostException | FileNotFoundException
                   try {
-                    FileUtils.downloadFile(url, destPath)
+                    if(url.contains(config.getString("cloudstorage.relative_path_prefix", ""))) {
+                      FileUtils.downloadFile(updateAbsolutePath(url), destPath)
+                    } else FileUtils.downloadFile(url, destPath)
                   } catch {
                     case e: Exception => throw new InvalidInputException(s"Error while downloading file $url", e)
                   }
