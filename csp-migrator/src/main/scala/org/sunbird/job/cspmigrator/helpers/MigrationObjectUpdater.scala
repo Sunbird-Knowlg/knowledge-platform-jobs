@@ -131,7 +131,7 @@ trait MigrationObjectUpdater extends URLExtractor {
   def verifyFile(identifier: String, originalUrl: String, migrateUrl: String, migrateDomain: String, config: CSPMigratorConfig)(implicit httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil): Unit = {
     val updateMigrateUrl = updateAbsolutePath(migrateUrl)(config)
     logger.info("MigrationObjectUpdater::verifyFile:: originalUrl :: " + originalUrl + " || updateMigrateUrl:: " + updateMigrateUrl)
-    if(httpUtil.getSize(updateMigrateUrl) < 0) {
+    if(httpUtil.getSize(updateMigrateUrl) <= 0) {
       if (config.copyMissingFiles) {
         if(FilenameUtils.getExtension(originalUrl) != null && !FilenameUtils.getExtension(originalUrl).isBlank && FilenameUtils.getExtension(originalUrl).nonEmpty) {
           // code to download file from old cloud path and upload to new cloud path
