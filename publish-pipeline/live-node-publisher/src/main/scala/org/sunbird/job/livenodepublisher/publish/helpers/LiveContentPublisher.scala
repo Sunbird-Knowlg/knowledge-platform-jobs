@@ -66,9 +66,14 @@ trait LiveContentPublisher extends LiveObjectReader with ObjectValidator with Ob
     //delete basePath if exists
     Files.deleteIfExists(new File(ExtractableMimeTypeHelper.getBasePath(obj.identifier, contentConfig.bundleLocation)).toPath)
 
-    if (contentConfig.isECARExtractionEnabled && contentConfig.extractableMimeTypes.contains(obj.mimeType)) {
-      ExtractableMimeTypeHelper.copyExtractedContentPackage(obj, contentConfig, "version", cloudStorageUtil)
-      ExtractableMimeTypeHelper.copyExtractedContentPackage(obj, contentConfig, "latest", cloudStorageUtil)
+    try {
+      if (contentConfig.isECARExtractionEnabled && contentConfig.extractableMimeTypes.contains(obj.mimeType)) {
+        ExtractableMimeTypeHelper.copyExtractedContentPackage(obj, contentConfig, "version", cloudStorageUtil)
+        ExtractableMimeTypeHelper.copyExtractedContentPackage(obj, contentConfig, "latest", cloudStorageUtil)
+      }
+    } catch {
+      case _:Exception => neo4JUtil.executeQuery(s"""MATCH (n:domain{IL_UNIQUE_ID:"${obj.identifier}"}) SET n.migrationVersion=0.5;""")
+        throw new InvalidInputException(s"Invalid input found For $obj.identifier")
     }
     val updatedPreviewUrl = updatePreviewUrl(obj, updatedPragma, neo4JUtil, cloudStorageUtil, contentConfig).getOrElse(updatedPragma)
     Some(new ObjectData(obj.identifier, updatedPreviewUrl, obj.extData, obj.hierarchy))
