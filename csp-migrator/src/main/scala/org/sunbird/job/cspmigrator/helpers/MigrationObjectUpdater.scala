@@ -10,6 +10,7 @@ import org.sunbird.job.cspmigrator.domain.Event
 import org.sunbird.job.cspmigrator.task.CSPMigratorConfig
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.exception.{InvalidInputException, ServerException}
+import org.sunbird.job.util.CSPMetaUtil.updateAbsolutePath
 import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, JSONUtil, Neo4JUtil, ScalaJsonUtil}
 
 import java.io.{File, IOException}
@@ -128,18 +129,18 @@ trait MigrationObjectUpdater extends URLExtractor {
   }
 
   def verifyFile(identifier: String, originalUrl: String, migrateUrl: String, migrateDomain: String, config: CSPMigratorConfig)(implicit httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil): Unit = {
-    logger.info("MigrationObjectUpdater::verifyFile:: originalUrl :: " + originalUrl + " || migrateUrl:: " + migrateUrl)
-    if(httpUtil.getSize(migrateUrl) < 0) {
+    val updateMigrateUrl = updateAbsolutePath(migrateUrl)(config)
+    logger.info("MigrationObjectUpdater::verifyFile:: originalUrl :: " + originalUrl + " || updateMigrateUrl:: " + updateMigrateUrl)
+    if(httpUtil.getSize(updateMigrateUrl) <= 0) {
       if (config.copyMissingFiles) {
         if(FilenameUtils.getExtension(originalUrl) != null && !FilenameUtils.getExtension(originalUrl).isBlank && FilenameUtils.getExtension(originalUrl).nonEmpty) {
           // code to download file from old cloud path and upload to new cloud path
           val downloadedFile: File = downloadFile(s"/tmp/$identifier", originalUrl)
           val exDomain: String = originalUrl.replace(migrateDomain, "")
-          // TODO : BUCKET NAMES TO BE INCLUDED BASED ON CNAME DESIGN
           val folderName: String = exDomain.substring(1, exDomain.indexOf(FilenameUtils.getName(originalUrl)) - 1)
           cloudStorageUtil.uploadFile(folderName, downloadedFile)
         }
-      } else throw new ServerException("ERR_NEW_PATH_NOT_FOUND", "File not found in the new path to migrate: " + migrateUrl)
+      } else throw new ServerException("ERR_NEW_PATH_NOT_FOUND", "File not found in the new path to migrate: " + updateMigrateUrl)
     }
   }
 
