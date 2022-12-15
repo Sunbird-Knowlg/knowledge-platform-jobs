@@ -146,7 +146,7 @@ trait MigrationObjectUpdater extends URLExtractor {
 
 
   def metaDataQuery(objectType: String, objMetadata: Map[String, AnyRef])(definitionCache: DefinitionCache, config: CSPMigratorConfig): String = {
-    val version = "1.0"
+    val version = if(objectType.equalsIgnoreCase("itemset")) "2.0" else "1.0"
     val definition = definitionCache.getDefinition(objectType, version, config.definitionBasePath)
     val metadata = objMetadata - ("IL_UNIQUE_ID", "identifier", "IL_FUNC_OBJECT_TYPE", "IL_SYS_NODE_TYPE", "pkgVersion", "lastStatusChangedOn", "lastUpdatedOn", "status", "objectType", "publish_type")
     metadata.map(prop => {
