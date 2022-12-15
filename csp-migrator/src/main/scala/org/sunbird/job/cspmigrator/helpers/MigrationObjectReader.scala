@@ -41,7 +41,7 @@ trait MigrationObjectReader {
     logger.info("MigrationObjectReader ::: getAssessmentItemData ::: Reading Question External Data For : " + identifier)
     val select = QueryBuilder.select()
     val extProps = config.getConfig.getStringList("cassandra_fields_to_migrate.assessmentitem").asScala.toList
-    extProps.foreach(prop => if (lang3.StringUtils.equals("body", prop) | lang3.StringUtils.equals("answer", prop)) select.fcall("blobAsText", QueryBuilder.column(prop.toLowerCase())).as(prop.toLowerCase()) else select.column(prop.toLowerCase()).as(prop.toLowerCase()))
+    extProps.foreach(prop => select.fcall("blobAsText", QueryBuilder.column(prop.toLowerCase())).as(prop.toLowerCase()))
     val selectWhere: Select.Where = select.from(config.contentKeyspaceName, config.assessmentTableName).where().and(QueryBuilder.eq("question_id", identifier))
     logger.info("MigrationObjectReader ::: getAssessmentItemData:: Cassandra Fetch Query :: " + selectWhere.toString)
     cassandraUtil.findOne(selectWhere.toString)

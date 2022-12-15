@@ -108,7 +108,8 @@ class LiveCollectionPublishFunction(config: LiveNodePublisherConfig, httpUtil: H
         cache.del(data.identifier + COLLECTION_CACHE_KEY_SUFFIX)
         cache.del(COLLECTION_CACHE_KEY_PREFIX + data.identifier)
 
-        val enrichedObj = enrichObject(updatedObj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
+        val enrichedObjTemp = enrichObjectMetadata(updatedObj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
+        val enrichedObj = enrichedObjTemp.getOrElse(updatedObj)
         logger.info("CollectionPublishFunction:: Collection Object Enriched: " + enrichedObj.identifier)
         val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
         logger.info("CollectionPublishFunction:: ECAR generation completed for Collection Object: " + objWithEcar.identifier)
