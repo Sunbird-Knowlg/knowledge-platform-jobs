@@ -39,8 +39,8 @@ trait MigrationObjectUpdater extends URLExtractor {
       .where(QueryBuilder.eq("question_id", identifier))
       .`with`(QueryBuilder.set("body", QueryBuilder.fcall("textAsBlob", updatedData.getOrElse("body", null))))
       .and(QueryBuilder.set("question", QueryBuilder.fcall("textAsBlob", updatedData.getOrElse("question", null))))
-      .and(QueryBuilder.set("editorstate", updatedData.getOrElse("editorState", null)))
-      .and(QueryBuilder.set("solutions", updatedData.getOrElse("solutions", null)))
+      .and(QueryBuilder.set("editorstate", QueryBuilder.fcall("textAsBlob", updatedData.getOrElse("editorstate", null))))
+      .and(QueryBuilder.set("solutions", QueryBuilder.fcall("textAsBlob", updatedData.getOrElse("solutions", null))))
 
     logger.info(s"""MigrationObjectUpdater:: updateAssessmentItemData:: Updating Assessment Body in Cassandra For $identifier : ${updateQuery.toString}""")
     val result = cassandraUtil.upsert(updateQuery.toString)
