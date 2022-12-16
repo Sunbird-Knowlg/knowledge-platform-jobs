@@ -18,10 +18,17 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 
 	def column: String = readOrDefault[String]("edata.column", "")
 
-	def isValid(config: CassandraDataMigrationConfig): Boolean = {
-		((StringUtils.equals("migrate-cassandra", action) && StringUtils.isNotBlank(column))
-			&& (config.cassandraKeyspace.contains(keyspace) && config.cassandraTable.contains(table))
-			&& StringUtils.equalsIgnoreCase(column, config.columnToMigrate))
+	def columnType: String = readOrDefault[String]("edata.columnType", "")
+
+	def primaryKeyColumn: String = readOrDefault[String]("edata.primaryKeyColumn", "")
+
+	def primaryKeyColumnType: String = readOrDefault[String]("edata.primaryKeyColumnType", "")
+
+
+	def isValid(): Boolean = {
+		(StringUtils.equals("migrate-cassandra", action) && StringUtils.isNotBlank(column) && StringUtils.isNotBlank(columnType)
+			&& StringUtils.isNotBlank(table) && StringUtils.isNotBlank(keyspace) && StringUtils.isNotBlank(primaryKeyColumn)
+			&& StringUtils.isNotBlank(primaryKeyColumnType))
 	}
 
 }

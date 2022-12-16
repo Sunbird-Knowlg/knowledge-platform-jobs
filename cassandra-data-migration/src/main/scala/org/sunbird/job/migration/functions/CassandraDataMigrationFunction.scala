@@ -15,8 +15,7 @@ import java.util
 
 class CassandraDataMigrationFunction(config: CassandraDataMigrationConfig,
                                      @transient var neo4JUtil: Neo4JUtil = null,
-                                     @transient var cassandraUtil: CassandraUtil = null,
-                                     @transient var cloudStorageUtil: CloudStorageUtil = null)
+                                     @transient var cassandraUtil: CassandraUtil = null)
                                     (implicit mapTypeInfo: TypeInformation[util.Map[String, AnyRef]], stringTypeInfo: TypeInformation[String])
   extends BaseProcessFunction[Event, String](config) with CassandraDataMigrator {
 
@@ -39,8 +38,8 @@ class CassandraDataMigrationFunction(config: CassandraDataMigrationConfig,
 
   override def processElement(event: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
     logger.info("CassandraDataMigrationFunction:: processElement:: event:: " + event)
-    if (event.isValid(config))
-      migrateData(config)(cassandraUtil)
+    if (event.isValid())
+      migrateData(event, config)(cassandraUtil)
     else logger.info("CassandraDataMigrationFunction:: processElement:: event SKIPPED!! :: " + event)
   }
 }
