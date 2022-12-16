@@ -67,6 +67,8 @@ class CSPCassandraMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil
       val migratedObjMetadata = objMetadata ++ migratedMetadataFields
       logger.info("CSPCassandraMigratorFunction::processElement:: migratedObjMetadata : " + migratedObjMetadata)
 
+      updateNeo4j(migratedObjMetadata, event)(defCache, neo4JUtil, config)
+
       process(migratedObjMetadata, config, httpUtil, cassandraUtil, cloudStorageUtil)
 
       event.objectType match {
