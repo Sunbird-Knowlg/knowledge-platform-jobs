@@ -86,7 +86,7 @@ object ExtractableMimeTypeHelper {
 
       obj.metadata ++ Map("artifactUrl" -> result(1), "cloudStorageKey" -> result(0), "size" -> contentSize.asInstanceOf[AnyRef])
     } catch {
-      case ex@(_: org.sunbird.cloud.storage.exception.StorageServiceException | _: java.lang.NullPointerException) => {
+      case ex@(_: org.sunbird.cloud.storage.exception.StorageServiceException | _: java.lang.NullPointerException | _:java.io.FileNotFoundException) => {
         ex.printStackTrace()
         throw new InvalidInputException(s"Invalid input found For $obj.identifier")
       }
