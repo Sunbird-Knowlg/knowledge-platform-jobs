@@ -88,7 +88,7 @@ object ExtractableMimeTypeHelper {
     } catch {
       case ex@(_: org.sunbird.cloud.storage.exception.StorageServiceException | _: java.lang.NullPointerException | _:java.io.FileNotFoundException) => {
         ex.printStackTrace()
-        throw new InvalidInputException(s"Invalid input found For $obj.identifier")
+        throw new InvalidInputException(s"ECML Asset Files not found For $obj.identifier")
       }
       case anyEx: Exception => throw anyEx
     }
