@@ -99,4 +99,7 @@ class LiveNodePublisherConfig(override val config: Config) extends PublishConfig
 
   val searchServiceBaseUrl : String = config.getString("service.search.basePath")
   val searchFields: util.List[String] = util.Arrays.asList[String]("identifier","migratedVersion")
+
+  val isrRelativePathEnabled: Boolean = if (config.hasPath("cloudstorage.metadata.replace_absolute_path")) config.getBoolean("cloudstorage.metadata.replace_absolute_path") else false
+
 }
