@@ -1,5 +1,6 @@
 package org.sunbird.job.livenodepublisher.publish.helpers.spec
 
+import com.typesafe.config.{Config, ConfigFactory}
 import org.mockito.ArgumentMatchers.{any, anyString}
 import org.mockito.Mockito
 import org.mockito.Mockito.when
@@ -7,6 +8,8 @@ import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.livenodepublisher.publish.helpers.LiveObjectUpdater
+import org.sunbird.job.livenodepublisher.task.LiveNodePublisherConfig
+import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
 import org.sunbird.job.util.{CassandraUtil, Neo4JUtil}
 
@@ -19,6 +22,8 @@ class LiveObjectUpdaterSpec extends FlatSpec with BeforeAndAfterAll with Matcher
   implicit val readerConfig = ExtDataConfig("test", "test")
   implicit lazy val defCache: DefinitionCache = new DefinitionCache()
   implicit val definitionConfig: DefinitionConfig = DefinitionConfig(Map("itemset" -> "2.0"), "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local")
+  val config: Config = ConfigFactory.load("test.conf").withFallback(ConfigFactory.systemEnvironment())
+  implicit val jobConfig: LiveNodePublisherConfig = new LiveNodePublisherConfig(config)
 
 
   override protected def beforeAll(): Unit = {

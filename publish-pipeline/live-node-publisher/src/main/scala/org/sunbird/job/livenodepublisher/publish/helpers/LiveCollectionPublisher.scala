@@ -34,7 +34,7 @@ trait LiveCollectionPublisher extends LiveObjectReader with SyncMessagesGenerato
   private val PUBLISHED_STATUS_LIST = List("Live", "Unlisted")
   private val COLLECTION_MIME_TYPE = "application/vnd.ekstep.content-collection"
 
-  override def getExtData(identifier: String, mimeType: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[ObjectExtData] = None
+  override def getExtData(identifier: String, mimeType: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil, config: PublishConfig): Option[ObjectExtData] = None
 
   override def getHierarchy(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = {
     val row: Row = getCollectionHierarchy(identifier, readerConfig)

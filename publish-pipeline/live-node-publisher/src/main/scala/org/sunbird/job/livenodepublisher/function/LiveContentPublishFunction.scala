@@ -66,7 +66,7 @@ class LiveContentPublishFunction(config: LiveNodePublisherConfig, httpUtil: Http
   override def processElement(data: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
     logger.info("Content publishing started for : " + data.identifier)
     metrics.incCounter(config.contentPublishEventCount)
-    val obj: ObjectData = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(neo4JUtil, cassandraUtil)
+    val obj: ObjectData = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(neo4JUtil, cassandraUtil, config)
     try {
       if (obj.pkgVersion > data.pkgVersion) {
         metrics.incCounter(config.skippedEventCount)
@@ -88,7 +88,7 @@ class LiveContentPublishFunction(config: LiveNodePublisherConfig, httpUtil: Http
           val enrichedObj = enrichedObjTemp.getOrElse(ecmlVerifiedObj)
           val objWithEcar = getObjectWithEcar(enrichedObj, if (enrichedObj.getString("contentDisposition", "").equalsIgnoreCase("online-only")) List(EcarPackageType.SPINE) else pkgTypes)(ec, neo4JUtil, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
           logger.info("Ecar generation done for Content: " + objWithEcar.identifier)
-          saveOnSuccess(objWithEcar)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
+          saveOnSuccess(objWithEcar)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig, config)
           pushStreamingUrlEvent(enrichedObj, context)(metrics)
 
           metrics.incCounter(config.contentPublishSuccessEventCount)

@@ -70,7 +70,7 @@ class LiveCollectionPublishFunction(config: LiveNodePublisherConfig, httpUtil: H
     val readerConfig = ExtDataConfig(config.hierarchyKeyspaceName, config.hierarchyTableName, definition.getExternalPrimaryKey(), definition.getExternalProps())
     logger.info("Collection publishing started for : " + data.identifier)
     metrics.incCounter(config.collectionPublishEventCount)
-    val obj: ObjectData = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(neo4JUtil, cassandraUtil)
+    val obj: ObjectData = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(neo4JUtil, cassandraUtil, config)
     try {
       val childNodesMetadata: List[String] = obj.metadata.getOrElse("childNodes", new java.util.ArrayList()).asInstanceOf[java.util.List[String]].asScala.toList
       val addedResources: List[String] = searchContents(childNodesMetadata.toArray, config, httpUtil)
@@ -131,7 +131,7 @@ class LiveCollectionPublishFunction(config: LiveNodePublisherConfig, httpUtil: H
         metrics.incCounter(config.collectionPublishSuccessEventCount)
         logger.info("CollectionPublishFunction:: Collection publishing completed successfully for : " + data.identifier)
 
-        saveOnSuccess(new ObjectData(objWithEcar.identifier, objWithEcar.metadata.-("children") , objWithEcar.extData, objWithEcar.hierarchy))(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
+        saveOnSuccess(new ObjectData(objWithEcar.identifier, objWithEcar.metadata.-("children") , objWithEcar.extData, objWithEcar.hierarchy))(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig, config)
         logger.info("CollectionPublishFunction:: Published Collection Object metadata saved successfully to graph DB: " + objWithEcar.identifier)
       }
     } catch {
