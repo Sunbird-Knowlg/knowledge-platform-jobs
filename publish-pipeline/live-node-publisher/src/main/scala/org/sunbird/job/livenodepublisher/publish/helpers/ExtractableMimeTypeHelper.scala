@@ -51,39 +51,47 @@ object ExtractableMimeTypeHelper {
   }
 
   def processECMLBody(obj: ObjectData, config: LiveNodePublisherConfig)(implicit ec: ExecutionContext, cloudStorageUtil: CloudStorageUtil): Map[String, AnyRef] = {
-    val basePath = config.bundleLocation + "/" + System.currentTimeMillis + "_tmp" + "/" + obj.identifier
-    val ecmlBody = obj.extData.get.getOrElse("body", "").toString
-    val ecmlType: String = getECMLType(ecmlBody)
-    val ecrfObj: Plugin = getEcrfObject(ecmlType, ecmlBody)
+    try {
+      val basePath = config.bundleLocation + "/" + System.currentTimeMillis + "_tmp" + "/" + obj.identifier
+      val ecmlBody = obj.extData.get.getOrElse("body", "").toString
+      val ecmlType: String = getECMLType(ecmlBody)
+      val ecrfObj: Plugin = getEcrfObject(ecmlType, ecmlBody)
 
-    // localize assets - download assets to local base path (tmp folder) for validation
-    localizeAssets(obj.identifier, ecrfObj, basePath, config)
+      // localize assets - download assets to local base path (tmp folder) for validation
+      localizeAssets(obj.identifier, ecrfObj, basePath, config)
 
-    // validate assets
-    val processedEcrf: Plugin = new ECMLExtractor(basePath, obj.identifier).process(ecrfObj)
+      // validate assets
+      val processedEcrf: Plugin = new ECMLExtractor(basePath, obj.identifier).process(ecrfObj)
 
-    // getECMLString
-    val processedEcml: String = getEcmlStringFromEcrf(processedEcrf, ecmlType)
+      // getECMLString
+      val processedEcml: String = getEcmlStringFromEcrf(processedEcrf, ecmlType)
 
-    // write ECML String to basePath
-    writeECMLFile(basePath, processedEcml, ecmlType)
+      // write ECML String to basePath
+      writeECMLFile(basePath, processedEcml, ecmlType)
 
-    // create zip package
-    val zipFileName: String = basePath + File.separator + System.currentTimeMillis + "_" + Slug.makeSlug(obj.identifier) + ".zip"
-    FileUtils.createZipPackage(basePath, zipFileName)
+      // create zip package
+      val zipFileName: String = basePath + File.separator + System.currentTimeMillis + "_" + Slug.makeSlug(obj.identifier) + ".zip"
+      FileUtils.createZipPackage(basePath, zipFileName)
 
-    // upload zip file to blob and set artifactUrl
-    val result: Array[String] = uploadArtifactToCloud(new File(zipFileName), obj.identifier, None, config)
+      // upload zip file to blob and set artifactUrl
+      val result: Array[String] = uploadArtifactToCloud(new File(zipFileName), obj.identifier, None, config)
 
-    // upload local extracted directory to blob
-    extractPackageInCloud(new File(zipFileName), obj, "snapshot", slugFile = true, basePath, config)
+      // upload local extracted directory to blob
+      extractPackageInCloud(new File(zipFileName), obj, "snapshot", slugFile = true, basePath, config)
 
-    val contentSize = (new File(zipFileName)).length
+      val contentSize = (new File(zipFileName)).length
 
-    // delete local folder
-    FileUtils.deleteQuietly(basePath)
+      // delete local folder
+      FileUtils.deleteQuietly(basePath)
 
-    obj.metadata ++ Map("artifactUrl" -> result(1), "cloudStorageKey" -> result(0), "size" -> contentSize.asInstanceOf[AnyRef])
+      obj.metadata ++ Map("artifactUrl" -> result(1), "cloudStorageKey" -> result(0), "size" -> contentSize.asInstanceOf[AnyRef])
+    } catch {
+      case ex@(_: org.sunbird.cloud.storage.exception.StorageServiceException | _: java.lang.NullPointerException) => {
+        ex.printStackTrace()
+        throw new InvalidInputException(s"Invalid input found For $obj.identifier")
+      }
+      case anyEx: Exception => throw anyEx
+    }
   }
 
   private def getEcrfObject(ecmlType: String, ecmlBody: String): Plugin = {
