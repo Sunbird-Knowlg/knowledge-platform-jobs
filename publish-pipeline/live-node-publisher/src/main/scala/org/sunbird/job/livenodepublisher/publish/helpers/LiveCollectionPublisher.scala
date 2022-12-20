@@ -36,10 +36,12 @@ trait LiveCollectionPublisher extends LiveObjectReader with SyncMessagesGenerato
 
   override def getExtData(identifier: String, mimeType: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil, config: PublishConfig): Option[ObjectExtData] = None
 
-  override def getHierarchy(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = {
+  override def getHierarchy(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil, config: PublishConfig): Option[Map[String, AnyRef]] = {
     val row: Row = getCollectionHierarchy(identifier, readerConfig)
     if (null != row) {
-      val data: Map[String, AnyRef] = ScalaJsonUtil.deserialize[Map[String, AnyRef]](row.getString("hierarchy"))
+      val hierarchy = row.getString("hierarchy")
+      val updatedHierarchy = if (config.asInstanceOf[LiveNodePublisherConfig].isrRelativePathEnabled) CSPMetaUtil.updateAbsolutePath(hierarchy) else hierarchy
+      val data: Map[String, AnyRef] = ScalaJsonUtil.deserialize[Map[String, AnyRef]](updatedHierarchy)
       Option(data)
     } else Option(Map.empty[String, AnyRef])
   }
@@ -150,7 +152,7 @@ trait LiveCollectionPublisher extends LiveObjectReader with SyncMessagesGenerato
     } else Some(updatedMeta)
   }
 
-  def getUnitsFromLiveContent(obj: ObjectData)(implicit cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): List[String] = {
+  def getUnitsFromLiveContent(obj: ObjectData)(implicit cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, config: PublishConfig): List[String] = {
     logger.info("CollectionPublisher:: getUnitsFromLiveContent:: identifier: " + obj.identifier + " || pkgVersion: " + obj.metadata.getOrElse("pkgVersion", 1).asInstanceOf[Number])
     val objHierarchy = getHierarchy(obj.identifier, readerConfig).get
     val children = objHierarchy.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]]
@@ -194,7 +196,7 @@ trait LiveCollectionPublisher extends LiveObjectReader with SyncMessagesGenerato
     } else obj
   }
 
-  private def enrichChildren(toEnrichChildren: ListBuffer[Map[String, AnyRef]], collectionResourceChildNodes: mutable.HashSet[String], childNodesToRemove: ListBuffer[String])(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): ListBuffer[Map[String, AnyRef]] = {
+  private def enrichChildren(toEnrichChildren: ListBuffer[Map[String, AnyRef]], collectionResourceChildNodes: mutable.HashSet[String], childNodesToRemove: ListBuffer[String])(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, config: PublishConfig): ListBuffer[Map[String, AnyRef]] = {
     val newChildren = toEnrichChildren.toList
     newChildren.map(child => {
       logger.info("CollectionPublisher:: enrichChildren:: child identifier:: " + child.getOrElse("identifier", "") + " || visibility:: " + child.getOrElse("visibility", "") + " || mimeType:: " + child.getOrElse("mimeType", "") + " || objectType:: " + child.getOrElse("objectType", ""))

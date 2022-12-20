@@ -49,5 +49,5 @@ class TestObjectReader extends LiveObjectReader {
 
   override def getExtData(identifier: String, mimeType: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil, jobConfig: PublishConfig): Option[ObjectExtData] = None
 
-  override def getHierarchy(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = None
+  override def getHierarchy(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil, jobConfig: PublishConfig): Option[Map[String, AnyRef]] = None
 }

@@ -193,7 +193,7 @@ class LiveCollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with M
 
   "getUnitsFromLiveContent" should "return object hierarchy" in {
     val data = new ObjectData("do_2133950809948078081503", Map("identifier" -> "do_2133950809948078081503"), Some(Map.empty[String, AnyRef]))
-    val fetchedChildren = new TestCollectionPublisher().getUnitsFromLiveContent(data)(cassandraUtil,readerConfig)
+    val fetchedChildren = new TestCollectionPublisher().getUnitsFromLiveContent(data)(cassandraUtil,readerConfig,jobConfig)
     assert(fetchedChildren.nonEmpty)
   }
 
