@@ -37,13 +37,17 @@ trait LiveCollectionPublisher extends LiveObjectReader with SyncMessagesGenerato
   override def getExtData(identifier: String, mimeType: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil, config: PublishConfig): Option[ObjectExtData] = None
 
   override def getHierarchy(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil, config: PublishConfig): Option[Map[String, AnyRef]] = {
-    val row: Row = getCollectionHierarchy(identifier, readerConfig)
-    if (null != row) {
-      val hierarchy = row.getString("hierarchy")
-      val updatedHierarchy = if (config.asInstanceOf[LiveNodePublisherConfig].isrRelativePathEnabled) CSPMetaUtil.updateAbsolutePath(hierarchy) else hierarchy
-      val data: Map[String, AnyRef] = ScalaJsonUtil.deserialize[Map[String, AnyRef]](updatedHierarchy)
-      Option(data)
-    } else Option(Map.empty[String, AnyRef])
+    try {
+      val row: Row = getCollectionHierarchy(identifier, readerConfig)
+      if (null != row) {
+        val hierarchy = row.getString("hierarchy")
+        val updatedHierarchy = if (config.asInstanceOf[LiveNodePublisherConfig].isrRelativePathEnabled) CSPMetaUtil.updateAbsolutePath(hierarchy) else hierarchy
+        val data: Map[String, AnyRef] = ScalaJsonUtil.deserialize[Map[String, AnyRef]](updatedHierarchy)
+        Option(data)
+      } else Option(Map.empty[String, AnyRef])
+    } catch {
+      case _: Exception => throw new InvalidInputException("Exception while reading Hierarchy for collection:: " + identifier)
+    }
   }
 
   private def getCollectionHierarchy(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Row = {
