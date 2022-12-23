@@ -149,13 +149,15 @@ class LiveCollectionPublishFunction(config: LiveNodePublisherConfig, httpUtil: H
   }
 
   private def pushFailedEvent(event: Event, errorMessage: String, error: Throwable, context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
-    val failedEvent = if (error == null) getFailedEvent(event.jobName, event.getMap(), errorMessage) else getFailedEvent(event.jobName, event.getMap(), error)
+    val failedEvent = if (error == null)
+      if(errorMessage.length>500) getFailedEvent(event.jobName, event.getMap(), errorMessage.substring(0,500))  else getFailedEvent(event.jobName, event.getMap(), errorMessage)
+    else getFailedEvent(event.jobName, event.getMap(), error)
     context.output(config.failedEventOutTag, failedEvent)
     metrics.incCounter(config.collectionPublishFailedEventCount)
   }
 
   private def pushSkipEvent(event: Event, skipMessage: String, context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
-    val skipEvent = getFailedEvent(event.jobName, event.getMap(), skipMessage)
+    val skipEvent = if(skipMessage.length>500) getFailedEvent(event.jobName, event.getMap(), skipMessage.substring(0,500))  else getFailedEvent(event.jobName, event.getMap(), skipMessage)
     context.output(config.skippedEventOutTag, skipEvent)
     metrics.incCounter(config.skippedEventCount)
   }
