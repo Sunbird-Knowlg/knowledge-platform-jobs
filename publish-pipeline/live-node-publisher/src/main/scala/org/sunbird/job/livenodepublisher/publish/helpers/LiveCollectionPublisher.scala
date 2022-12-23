@@ -42,7 +42,7 @@ trait LiveCollectionPublisher extends LiveObjectReader with SyncMessagesGenerato
       if (null != row) {
         val hierarchy = row.getString("hierarchy")
         val updatedHierarchy = if (config.asInstanceOf[LiveNodePublisherConfig].isrRelativePathEnabled) CSPMetaUtil.updateAbsolutePath(hierarchy) else hierarchy
-        val data: Map[String, AnyRef] = ScalaJsonUtil.deserialize[Map[String, AnyRef]](updatedHierarchy)
+        val data: Map[String, AnyRef] = if(updatedHierarchy.nonEmpty) ScalaJsonUtil.deserialize[Map[String, AnyRef]](updatedHierarchy) else Map.empty[String, AnyRef]
         Option(data)
       } else Option(Map.empty[String, AnyRef])
     } catch {
