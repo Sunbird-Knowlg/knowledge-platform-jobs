@@ -138,7 +138,8 @@ class LiveCollectionPublishFunction(config: LiveNodePublisherConfig, httpUtil: H
       case ex@(_: InvalidInputException | _: ClientException) => // ClientException - Invalid input exception.
         ex.printStackTrace()
         saveOnFailure(obj, List(ex.getMessage), data.pkgVersion)(neo4JUtil)
-        pushFailedEvent(data, null, ex, context)(metrics)
+        val exMsg = if(ex.getMessage.length>500) ex.getMessage.substring(0,500) else ex.getMessage
+        pushFailedEvent(data, exMsg, null, context)(metrics)
         logger.error(s"CollectionPublishFunction::Error while publishing collection :: ${data.partition} and Offset: ${data.offset}. Error : ${ex.getMessage}", ex)
       case ex: Exception =>
         ex.printStackTrace()
@@ -149,9 +150,7 @@ class LiveCollectionPublishFunction(config: LiveNodePublisherConfig, httpUtil: H
   }
 
   private def pushFailedEvent(event: Event, errorMessage: String, error: Throwable, context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
-    val failedEvent = if (error == null)
-      if(errorMessage.length>500) getFailedEvent(event.jobName, event.getMap(), errorMessage.substring(0,500))  else getFailedEvent(event.jobName, event.getMap(), errorMessage)
-    else getFailedEvent(event.jobName, event.getMap(), error)
+    val failedEvent = if (error == null) getFailedEvent(event.jobName, event.getMap(), errorMessage) else getFailedEvent(event.jobName, event.getMap(), error)
     context.output(config.failedEventOutTag, failedEvent)
     metrics.incCounter(config.collectionPublishFailedEventCount)
   }
