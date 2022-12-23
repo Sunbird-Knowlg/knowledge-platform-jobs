@@ -138,7 +138,7 @@ class LiveCollectionPublishFunction(config: LiveNodePublisherConfig, httpUtil: H
       case ex@(_: InvalidInputException | _: ClientException) => // ClientException - Invalid input exception.
         ex.printStackTrace()
         saveOnFailure(obj, List(ex.getMessage), data.pkgVersion)(neo4JUtil)
-        val exMsg = if(ex.getMessage.length>500) ex.getMessage.substring(0,500) else ex.getMessage
+        val exMsg = if(ex.getMessage.length>1000) ex.getMessage.substring(0,1000) else ex.getMessage
         pushFailedEvent(data, exMsg, null, context)(metrics)
         logger.error(s"CollectionPublishFunction::Error while publishing collection :: ${data.partition} and Offset: ${data.offset}. Error : ${ex.getMessage}", ex)
       case ex: Exception =>
