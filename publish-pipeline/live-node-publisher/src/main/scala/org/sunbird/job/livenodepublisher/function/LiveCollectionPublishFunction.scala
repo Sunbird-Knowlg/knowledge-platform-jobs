@@ -73,8 +73,8 @@ class LiveCollectionPublishFunction(config: LiveNodePublisherConfig, httpUtil: H
     val obj: ObjectData = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(neo4JUtil, cassandraUtil, config)
     try {
       val childNodesMetadata: List[String] = obj.metadata.getOrElse("childNodes", new java.util.ArrayList()).asInstanceOf[java.util.List[String]].asScala.toList
-      val addedResources: List[String] = searchContents(childNodesMetadata.toArray, config, httpUtil)
-      val addedResourcesMigrationVersion: List[String] = searchContents(childNodesMetadata.toArray, config, httpUtil, true)
+      val addedResources: List[String] = searchContents(data.identifier, childNodesMetadata.toArray, config, httpUtil)
+      val addedResourcesMigrationVersion: List[String] = searchContents(data.identifier, childNodesMetadata.toArray, config, httpUtil, true)
 
       val isCollectionShallowCopy = isContentShallowCopy(obj)
       val shallowCopyOriginMigrationVersion: Double = if(isCollectionShallowCopy) {
@@ -160,37 +160,41 @@ class LiveCollectionPublishFunction(config: LiveNodePublisherConfig, httpUtil: H
     metrics.incCounter(config.skippedEventCount)
   }
 
-  private def searchContents(identifiers: Array[String], config: LiveNodePublisherConfig, httpUtil: HttpUtil, fetchMigratedVersion: Boolean = false): List[String] = {
-    val reqMap = new java.util.HashMap[String, AnyRef]() {
-      put("request", new java.util.HashMap[String, AnyRef]() {
-        put("filters", new java.util.HashMap[String, AnyRef]() {
-          put("visibility", "Default")
-          put("identifiers", identifiers)
-          if(fetchMigratedVersion) put("migratedVersion", 1.asInstanceOf[Number])
+  private def searchContents(collectionId: String, identifiers: Array[String], config: LiveNodePublisherConfig, httpUtil: HttpUtil, fetchMigratedVersion: Boolean = false): List[String] = {
+    try {
+      val reqMap = new java.util.HashMap[String, AnyRef]() {
+        put("request", new java.util.HashMap[String, AnyRef]() {
+          put("filters", new java.util.HashMap[String, AnyRef]() {
+            put("visibility", "Default")
+            put("identifiers", identifiers)
+            if (fetchMigratedVersion) put("migratedVersion", 1.asInstanceOf[Number])
+          })
+          put("fields", config.searchFields)
         })
-        put("fields", config.searchFields)
-      })
-    }
-
-    val requestUrl = s"${config.searchServiceBaseUrl}/v3/search"
-    logger.info("CollectionPublishFunction :: searchContent :: Search Content requestUrl: " + requestUrl)
-    logger.info("CollectionPublishFunction :: searchContent :: Search Content reqMap: " + reqMap)
-    val httpResponse = httpUtil.post(requestUrl, JSONUtil.serialize(reqMap))
-    if (httpResponse.status == 200) {
-      val response = JSONUtil.deserialize[Map[String, AnyRef]](httpResponse.body)
-      val result = response.getOrElse("result", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
-      val contents = result.getOrElse("content", List[Map[String,AnyRef]]()).asInstanceOf[List[Map[String,AnyRef]]]
-      val count = result.getOrElse("count", 0).asInstanceOf[Int]
-      if(count>0) {
-        contents.map(content => {
-          content.getOrElse("identifier","").toString
-        })
-      } else {
-        logger.info("ContentAutoCreator :: searchContent :: Received 0 count while searching childNodes : ")
-        List.empty[String]
       }
-    } else {
-      throw new ServerException("ERR_API_CALL", "Invalid Response received while searching childNodes : " + getErrorDetails(httpResponse))
+
+      val requestUrl = s"${config.searchServiceBaseUrl}/v3/search"
+      logger.info("CollectionPublishFunction :: searchContent :: Search Content requestUrl: " + requestUrl)
+      logger.info("CollectionPublishFunction :: searchContent :: Search Content reqMap: " + reqMap)
+      val httpResponse = httpUtil.post(requestUrl, JSONUtil.serialize(reqMap))
+      if (httpResponse.status == 200) {
+        val response = JSONUtil.deserialize[Map[String, AnyRef]](httpResponse.body)
+        val result = response.getOrElse("result", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
+        val contents = result.getOrElse("content", List[Map[String, AnyRef]]()).asInstanceOf[List[Map[String, AnyRef]]]
+        val count = result.getOrElse("count", 0).asInstanceOf[Int]
+        if (count > 0) {
+          contents.map(content => {
+            content.getOrElse("identifier", "").toString
+          })
+        } else {
+          logger.info("ContentAutoCreator :: searchContent :: Received 0 count while searching childNodes : ")
+          List.empty[String]
+        }
+      } else {
+        throw new ServerException("ERR_API_CALL", "Invalid Response received while searching childNodes : " + getErrorDetails(httpResponse))
+      }
+    } catch {
+      case ex: Exception => throw new InvalidInputException("Exception while searching children data for collection:: " + collectionId + " || ex: " + ex.getMessage)
     }
   }
 
