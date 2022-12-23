@@ -194,7 +194,7 @@ class LiveCollectionPublishFunction(config: LiveNodePublisherConfig, httpUtil: H
         throw new ServerException("ERR_API_CALL", "Invalid Response received while searching childNodes : " + getErrorDetails(httpResponse))
       }
     } catch {
-      case _: Exception => throw new InvalidInputException("Exception while searching children data for collection:: " + collectionId + " || ex: " ex.getMessage)
+      case ex: Exception => throw new InvalidInputException("Exception while searching children data for collection:: " + collectionId + " || ex: " + ex.getMessage)
     }
   }
 
