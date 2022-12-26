@@ -146,7 +146,7 @@ trait LiveCollectionPublisher extends LiveObjectReader with SyncMessagesGenerato
     } catch {
       case ex@(_: org.sunbird.cloud.storage.exception.StorageServiceException | _: java.lang.NullPointerException | _:java.io.FileNotFoundException | _:java.io.IOException) => {
         ex.printStackTrace()
-        throw new InvalidInputException(s"ECAR bundling failed for $obj.identifier:: " + ex.getMessage)
+        throw new InvalidInputException(s"ECAR bundling failed for ${obj.identifier}:: " + ex.getMessage)
       }
       case anyEx: Exception => throw anyEx
     }
