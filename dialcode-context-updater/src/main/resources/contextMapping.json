@@ -1,0 +1,58 @@
+{
+  "$defs": {
+    "content": {
+      "@type": "sbed:Content",
+      "identifier": "identifier",
+      "name": "name",
+      "status": "status",
+      "channel": "channel",
+      "lastPublishedOn": "lastPublishedOn",
+      "primaryCategory": "primaryCategory"
+    },
+    "collection": {
+      "@type": "sbed:Collection",
+      "identifier": "identifier",
+      "name": "name",
+      "status": "status",
+      "channel": "channel",
+      "lastPublishedOn": "lastPublishedOn",
+      "primaryCategory": "primaryCategory"
+    },
+    "collectionUnit": {
+      "@type": "sbed:CollectionUnit",
+      "identifier": "identifier",
+      "name": "name"
+    },
+    "framework": {
+      "@type": "sbed:Framework",
+      "identifier": "framework",
+      "board": "board",
+      "medium": "medium",
+      "class": "gradeLevel",
+      "subject": "subject",
+      "topic": "topic",
+      "learningOutcome": "learningOutcome",
+      "purpose": "purpose"
+    }
+  },
+  "digital_textbook": {
+    "@type": "sbed:TextBook",
+    "$ref": "#/$defs/collection",
+    "framework" : { "$ref" : "#/$defs/framework" }
+  },
+  "textbook_unit": {
+    "@type": "sbed:TextBookUnit",
+    "$ref": "#/$defs/collectionUnit",
+    "parentInfo": {"$ref": "#/digital_textbook"}
+  },
+  "course": {
+    "@type": "sbed:Course",
+    "$ref": "#/$defs/collection",
+    "framework": { "$ref" : "#/$defs/framework" }
+  },
+  "course_unit": {
+    "@type": "sbed:CourseUnit",
+    "$ref": "#/$defs/collectionUnit",
+    "parentInfo": {"$ref": "#/course" }
+  }
+}

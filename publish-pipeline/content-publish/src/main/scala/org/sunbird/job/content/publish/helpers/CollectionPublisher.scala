@@ -44,6 +44,14 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     } else Option(Map.empty[String, AnyRef])
   }
 
+  def getLiveHierarchy(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = {
+    val row: Row = getCollectionHierarchy(identifier, readerConfig)
+    if (null != row) {
+      val data: Map[String, AnyRef] = ScalaJsonUtil.deserialize[Map[String, AnyRef]](row.getString("hierarchy"))
+      Option(data)
+    } else Option(Map.empty[String, AnyRef])
+  }
+
   private def getCollectionHierarchy(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Row = {
     val selectWhere: Select.Where = QueryBuilder.select().all()
       .from(readerConfig.keyspace, readerConfig.table).
@@ -151,13 +159,19 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
   }
 
   def getUnitsFromLiveContent(obj: ObjectData)(implicit cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): List[String] = {
-    val objHierarchy = getHierarchy(obj.metadata.getOrElse("identifier", "").asInstanceOf[String], obj.metadata.getOrElse("pkgVersion", 1).asInstanceOf[Integer].doubleValue(), readerConfig).get
+    logger.info("CollectionPublisher:: getUnitsFromLiveContent:: identifier: " + obj.identifier + " || pkgVersion: " + obj.metadata.getOrElse("pkgVersion", 1).asInstanceOf[Number])
+    val objHierarchy = getLiveHierarchy(obj.identifier, readerConfig).get
     val children = objHierarchy.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]]
+    getUnits(children)
+  }
+
+  private def getUnits(children: List[Map[String, AnyRef]]): List[String] = {
     if (children.nonEmpty) {
-      children.map(child => {
+      children.flatMap(child => {
         if (child.getOrElse("visibility", "").asInstanceOf[String].equalsIgnoreCase("Parent")) {
-          child.getOrElse("identifier", "").asInstanceOf[String]
-        } else ""
+          val childUnits = if(child.contains("children")) getUnits(child.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]]) else List.empty
+          childUnits ++ List(child.getOrElse("identifier", "").asInstanceOf[String])
+        } else List.empty[String]
       }).filter(rec => rec.nonEmpty)
     } else List.empty[String]
   }
@@ -550,12 +564,14 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     val nodeIds = ListBuffer.empty[String]
 
     getNodeForSyncing(children, nodes, nodeIds)
-    logger.info("CollectionPublisher:: syncNodes:: after getNodeForSyncing:: nodes:: " + nodes + " || nodeIds:: " + nodeIds)
+    logger.info("CollectionPublisher:: syncNodes:: after getNodeForSyncing:: nodes:: " + nodes.toList + " || nodeIds:: " + nodeIds)
+    logger.info("CollectionPublisher:: syncNodes:: unitNodes:: " + unitNodes)
 
-    val updatedUnitNodes = if (unitNodes.nonEmpty) unitNodes.filter(unitNode => !nodeIds.contains(unitNode)) else unitNodes
-    logger.info("CollectionPublisher:: syncNodes:: after getNodeForSyncing:: updatedUnitNodes:: " + updatedUnitNodes)
+    // Filtering for removed nodes from Live version. nodeIds is list of nodes from Draft version. unitNodes is list of nodes from Live version.
+    val orphanUnitNodes = if (unitNodes.nonEmpty) unitNodes.filter(unitNode => !nodeIds.contains(unitNode)) else unitNodes
+    logger.info("CollectionPublisher:: syncNodes:: after getNodeForSyncing:: orphanUnitNodes:: " + orphanUnitNodes)
 
-    if (nodes.isEmpty && updatedUnitNodes.isEmpty) return Map.empty
+    if (nodes.isEmpty && orphanUnitNodes.isEmpty) return Map.empty
 
     val errors = mutable.Map.empty[String, String]
     val messages: Map[String, Map[String, AnyRef]] = getMessages(nodes.toList, definition, nestedFields, errors)(esUtil)
@@ -572,7 +588,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       }
 
     try //Unindexing not utilized units
-      if (updatedUnitNodes.nonEmpty) updatedUnitNodes.map(unitNodeId => esUtil.deleteDocument(unitNodeId))
+      if (orphanUnitNodes.nonEmpty) orphanUnitNodes.map(unitNodeId => esUtil.deleteDocument(unitNodeId))
     catch {
       case e: Exception =>
         logger.error("CollectionPublisher:: syncNodes:: Elastic Search indexing failed: " + e)
@@ -640,6 +656,44 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       throw new InvalidInputException(msg)
     }
     result
+  }
+
+  def fetchDialListForContextUpdate(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): Map[String, AnyRef] = {
+    val isCollectionShallowCopy = isContentShallowCopy(obj)
+
+    val DialContextMap: Map[String, AnyRef] = if (isCollectionShallowCopy) Map.empty[String, AnyRef] else {
+      val draftHierarchy = getHierarchy(obj.identifier, obj.pkgVersion, readerConfig).get
+      val publishedNodeId = obj.identifier.replaceAll(".img","")
+      val publishedHierarchy = if (obj.pkgVersion > 0) { getHierarchy(publishedNodeId, 0, readerConfig).get } else Map.empty[String, AnyRef]
+      val draftDIALcodesMap: mutable.Map[List[String], String] = mutable.Map.empty[List[String], String]
+      getDIALListFromHierarchy(draftHierarchy, draftDIALcodesMap)
+      val publishedDIALcodesMap: mutable.Map[List[String], String] = mutable.Map.empty[List[String], String]
+      if(publishedHierarchy.nonEmpty) getDIALListFromHierarchy(publishedHierarchy, publishedDIALcodesMap)
+
+      if(obj.metadata.contains("dialcodes")) {
+        val strDialcodes = ScalaJsonUtil.serialize(obj.metadata("dialcodes"))
+        draftDIALcodesMap += (ScalaJsonUtil.deserialize[List[String]](strDialcodes) -> draftHierarchy("identifier").asInstanceOf[String])
+      }
+      if(publishedHierarchy.nonEmpty && publishedHierarchy.contains("dialcodes")) {
+        val strDialcodes = ScalaJsonUtil.serialize(publishedHierarchy("dialcodes"))
+        publishedDIALcodesMap += (ScalaJsonUtil.deserialize[List[String]](strDialcodes) -> publishedHierarchy("identifier").asInstanceOf[String])
+      }
+
+      Map("addContextDialCodes" -> draftDIALcodesMap.filter(rec=> rec._1 != null), "removeContextDialCodes" -> (publishedDIALcodesMap -- draftDIALcodesMap.keySet).filter(rec=> rec._1 != null))
+    }
+
+    DialContextMap
+  }
+
+  private def getDIALListFromHierarchy(data: Map[String, AnyRef], dialcodeMap: mutable.Map[List[String], String]): Unit = {
+    val dialCodes = data.getOrElse("dialcodes", List.empty[String]).asInstanceOf[List[String]]
+    if (StringUtils.equals(data.getOrElse("visibility", "").asInstanceOf[String], "Parent") && dialCodes!=null && dialCodes.nonEmpty) dialcodeMap += (dialCodes ->  data("identifier").asInstanceOf[String])
+    val children = data.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]]
+    if (children.nonEmpty) {
+      for (child <- children) {
+        getDIALListFromHierarchy(child, dialcodeMap)
+      }
+    }
   }
 
 }

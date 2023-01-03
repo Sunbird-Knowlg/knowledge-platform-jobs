@@ -19,24 +19,44 @@
 	</description>
 	<url>https://sunbird.org/</url>
 
-	<modules>
-		<module>jobs-core</module>
-		<module>relation-cache-updater</module>
-		<module>activity-aggregate-updater</module>
-        <module>post-publish-processor</module>
-		<module>credential-generator</module>
-        <module>publish-pipeline</module>
-		<module>video-stream-generator</module>
-		<module>search-indexer</module>
-		<module>enrolment-reconciliation</module>
-		<module>auto-creator-v2</module>
-		<module>content-auto-creator</module>
-		<module>asset-enrichment</module>
-		<module>audit-history-indexer</module>
-		<module>audit-event-generator</module>
-		<module>metrics-data-transformer</module>
-		<module>qrcode-image-generator</module>
-	</modules>
+	<profiles>
+		<profile>
+			<id>knowlg-jobs</id>
+			<activation>
+				<activeByDefault>true</activeByDefault>
+			</activation>
+			<modules>
+				<module>jobs-core</module>
+				<module>relation-cache-updater</module>
+				<module>activity-aggregate-updater</module>
+				<module>post-publish-processor</module>
+				<module>credential-generator</module>
+				<module>publish-pipeline</module>
+				<module>video-stream-generator</module>
+				<module>search-indexer</module>
+				<module>enrolment-reconciliation</module>
+				<module>auto-creator-v2</module>
+				<module>content-auto-creator</module>
+				<module>asset-enrichment</module>
+				<module>audit-history-indexer</module>
+				<module>audit-event-generator</module>
+				<module>metrics-data-transformer</module>
+				<module>qrcode-image-generator</module>
+				<module>dialcode-context-updater</module>
+			</modules>
+		</profile>
+		<profile>
+			<id>knowlg-core</id>
+			<activation>
+				<activeByDefault>false</activeByDefault>
+			</activation>
+			<modules>
+				<module>jobs-core</module>
+				<module>publish-pipeline/publish-core</module>
+			</modules>
+		</profile>
+	</profiles>
+
 
 	<properties>
 		<!-- maven specific properties -->

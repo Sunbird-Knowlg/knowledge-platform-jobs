@@ -9,9 +9,10 @@ import org.mockito.{ArgumentMatchers, Mockito}
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
 import org.sunbird.job.Metrics
+import org.sunbird.job.postpublish.domain.Event
 import org.sunbird.job.postpublish.models.ExtDataConfig
 import org.sunbird.job.postpublish.task.PostPublishProcessorConfig
-import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, Neo4JUtil}
+import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, JSONUtil, Neo4JUtil}
 
 import java.util
 import scala.collection.JavaConverters._
@@ -130,6 +131,16 @@ class DialHelperTest extends FlatSpec with BeforeAndAfterAll with Matchers with 
     }
 
   }
+
+  "getDialCodeContextMap" should "return map of add and remove dial codes for context update" in {
+    val DIALCODE_CONTEXT_EVENT: String = """{"eid":"BE_JOB_REQUEST", "ets": 1655115290761, "mid": "LP.1655115290761.3d71f870-0f87-4a92-b1cd-96ff4fd977e8", "actor": {"id": "Post Publish Processor", "type": "System"}, "context":{"pdata":{"ver":"1.0","id":"org.sunbird.platform"}, "channel":"01309282781705830427","env":"sunbirddev"},"object":{"ver":"1655115235618","id":"do_113556562556149760174"},"edata": {"action":"post-publish-process","iteration":1,"identifier":"do_113556562556149760174","channel":"01309282781705830427","mimeType":"application/vnd.ekstep.content-collection","contentType":"TextBook","pkgVersion":3,"status":"Live","name":"DIAL Context 7","trackable":{"enabled":"No","autoBatch":"No"}, "addContextDialCodes": {"[\"D4G2L3\"]":"do_113556562556149760174","[\"G3L9S2\"]":"do_113556563202981888177"}, "removeContextDialCodes": {"[\"C9N8K3\"]":"do_113556563202891776175"} }}""".stripMargin
+    val event = new Event(JSONUtil.deserialize[java.util.Map[String, Any]](DIALCODE_CONTEXT_EVENT),0,1)
+    val dialcodeMap = new TestDialHelper().getDialCodeContextMap(event)
+    assert(dialcodeMap.containsKey("removeContextDialCodes"))
+    assert(dialcodeMap.containsKey("addContextDialCodes"))
+    assert(dialcodeMap.containsKey("channel"))
+  }
+
 
 
   def getEvent(): util.Map[String, AnyRef] = {

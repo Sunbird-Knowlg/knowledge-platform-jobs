@@ -1,5 +1,6 @@
 package org.sunbird.job.questionset.publish.util
 
+import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.publish.config.PublishConfig
@@ -16,11 +17,15 @@ object QuestionPublishUtil extends QuestionPublisher {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[QuestionPublishUtil])
 
-  def publishQuestions(identifier: String, objList: List[ObjectData], pkgVersion: Double)(implicit ec: ExecutionContext, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, definitionCache: DefinitionCache, definitionConfig: DefinitionConfig, config: PublishConfig, httpUtil: HttpUtil): List[ObjectData] = {
+  def publishQuestions(identifier: String, objList: List[ObjectData], pkgVersion: Double, lastPublishedBy: String)(implicit ec: ExecutionContext, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, definitionCache: DefinitionCache, definitionConfig: DefinitionConfig, config: PublishConfig, httpUtil: HttpUtil): List[ObjectData] = {
     logger.info("QuestionPublishUtil :::: publishing child question for questionset : " + identifier)
     objList.map(qData => {
       logger.info("QuestionPublishUtil :::: publishing child question : " + qData.identifier)
-      val obj = getObject(qData.identifier, qData.pkgVersion, qData.mimeType, qData.metadata.getOrElse("publish_type", "Public").toString, readerConfig)(neo4JUtil, cassandraUtil)
+      val objData = getObject(qData.identifier, qData.pkgVersion, qData.mimeType, qData.metadata.getOrElse("publish_type", "Public").toString, readerConfig)(neo4JUtil, cassandraUtil)
+      val obj = if (StringUtils.isNotBlank(lastPublishedBy)) {
+        val newMeta = objData.metadata ++ Map("lastPublishedBy" -> lastPublishedBy)
+        new ObjectData(objData.identifier, newMeta, objData.extData, objData.hierarchy)
+      } else objData
       val messages: List[String] = validate(obj, obj.identifier, validateQuestion)
       if (messages.isEmpty) {
         val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)

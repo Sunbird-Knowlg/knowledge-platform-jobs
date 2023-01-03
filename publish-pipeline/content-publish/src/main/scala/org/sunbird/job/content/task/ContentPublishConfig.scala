@@ -42,6 +42,7 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
   val collectionPublishFailedEventCount = "collection-publish-failed-count"
   val collectionPostPublishProcessEventCount = "collection-post-publish-process-count"
   val mvProcessorEventCount = "mvc-processor-event-count"
+  val dialcodeContextUpdaterEventCount = "dialcode-context-updater-event-count"
 
   // Cassandra Configurations
   val cassandraHost: String = config.getString("lms-cassandra.host")
@@ -65,6 +66,7 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
   val failedEventOutTag: OutputTag[String] = OutputTag[String]("failed-event")
   val generatePostPublishProcessTag: OutputTag[String] = OutputTag[String]("post-publish-process-request")
   val mvcProcessorTag: OutputTag[String] = OutputTag[String]("mvc-processor-request")
+  val dialcodeContextUpdaterOutTag: OutputTag[String] = OutputTag[String]("dialcode-context-updater-request")
 
   // Service Urls
   val printServiceBaseUrl: String = config.getString("service.print.basePath")
@@ -95,4 +97,5 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
   val nestedFields: util.List[String] = if (config.hasPath("content.nested.fields")) config.getStringList("content.nested.fields") else util.Arrays.asList[String]("badgeAssertions","targets","badgeAssociations")
 
   val allowedExtensionsWord: util.List[String] = if (config.hasPath("mimetype.allowed_extensions.word")) config.getStringList("mimetype.allowed_extensions.word") else util.Arrays.asList[String]("doc", "docx", "ppt", "pptx", "key", "odp", "pps", "odt", "wpd", "wps", "wks")
+  val enableDIALContextUpdate: String = if (config.hasPath("enableDIALContextUpdate")) config.getString("enableDIALContextUpdate") else "No"
 }

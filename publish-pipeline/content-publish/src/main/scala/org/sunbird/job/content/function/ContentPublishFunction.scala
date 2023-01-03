@@ -90,6 +90,12 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
           saveOnSuccess(objWithEcar)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
           pushStreamingUrlEvent(enrichedObj, context)(metrics)
           pushMVCProcessorEvent(enrichedObj, context)(metrics)
+
+          if(obj.metadata.contains("dialcodes") && config.enableDIALContextUpdate.equalsIgnoreCase("Yes")) {
+            //pushDIALcodeContextUpdaterEvent for linked and delinked DIAL codes
+            pushDIALcodeContextUpdaterEvent(obj, context)(neo4JUtil, metrics)
+          }
+
           metrics.incCounter(config.contentPublishSuccessEventCount)
           logger.info("Content publishing completed successfully for : " + data.identifier)
         } else {
@@ -160,5 +166,35 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
     val failedEvent = if (error == null) getFailedEvent(event.jobName, event.getMap(), errorMessage) else getFailedEvent(event.jobName, event.getMap(), error)
     context.output(config.failedEventOutTag, failedEvent)
     metrics.incCounter(config.contentPublishFailedEventCount)
+  }
+
+
+
+  private def pushDIALcodeContextUpdaterEvent(obj: ObjectData, context: ProcessFunction[Event, String]#Context)(implicit neo4JUtil: Neo4JUtil, metrics: Metrics): Unit = {
+    val nodeId: String = obj.identifier.replaceAll(".img","")
+    val draftDialcode = obj.metadata.getOrElse("dialcodes", List.empty[String]).asInstanceOf[List[String]]
+    val publishedDialCode = if(obj.pkgVersion>0) neo4JUtil.getNodeProperties(nodeId).getOrDefault("dialcodes",List.empty[String]).asInstanceOf[List[String]] else List.empty[String]
+
+    val addContextDialCodes: Map[List[String], String] = if(draftDialcode!=null && draftDialcode.nonEmpty) Map(draftDialcode -> nodeId) else Map.empty[List[String], String]
+    val removeContextDialCodes: Map[List[String], String] = if(publishedDialCode!=null && publishedDialCode.nonEmpty && publishedDialCode.exists(dialcode => !draftDialcode.contains(dialcode))) Map(publishedDialCode.filter(dialcode => !draftDialcode.contains(dialcode)) -> nodeId) else Map.empty[List[String], String]
+
+    if(addContextDialCodes.nonEmpty || removeContextDialCodes.nonEmpty) {
+      val event = getDIALcodeContextUpdaterEvent(obj, addContextDialCodes, removeContextDialCodes)(neo4JUtil)
+      context.output(config.dialcodeContextUpdaterOutTag, event)
+      metrics.incCounter(config.dialcodeContextUpdaterEventCount)
+    }
+  }
+
+  def getDIALcodeContextUpdaterEvent(obj: ObjectData, addContextDialCodes: Map[List[String], String], removeContextDialCodes: Map[List[String], String])(implicit neo4JUtil: Neo4JUtil): String = {
+    val ets = System.currentTimeMillis
+    val mid = s"""LP.$ets.${UUID.randomUUID}"""
+    val channelId = obj.getString("channel", "")
+    val ver = obj.getString("versionKey", "")
+    val contentType = obj.getString("contentType", "")
+    val status = obj.getString("status", "")
+    //TODO: deprecate using contentType in the event.
+    val event = s"""{"eid":"BE_JOB_REQUEST", "ets": $ets, "mid": "$mid", "actor": {"id": "Post Publish Processor", "type": "System"}, "context":{"pdata":{"ver":"1.0","id":"org.ekstep.platform"}, "channel":"$channelId","env":"${config.jobEnv}"},"object":{"ver":"$ver","id":"${obj.identifier}"},"edata": {"action":"post-publish-process","iteration":1,"identifier":"${obj.identifier}","channel":"$channelId","contentType":"$contentType","status":"$status", "addContextDialCodes": ${addContextDialCodes}, "removeContextDialCodes": ${removeContextDialCodes} }}""".stripMargin
+    logger.info(s"Video Streaming Event for identifier ${obj.identifier}  is  : $event")
+    event
   }
 }
