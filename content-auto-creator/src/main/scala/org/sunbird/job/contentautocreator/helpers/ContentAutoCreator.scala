@@ -346,7 +346,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 	}
 
 	private def publishContent(channel: String, identifier: String, lastPublishedBy: String, config: ContentAutoCreatorConfig, httpUtil: HttpUtil): Unit = {
-		val requestUrl = s"${config.learningServiceBaseUrl}/content/v3/publish/" + identifier
+		val requestUrl = s"${config.contentServiceBaseUrl}/content/v4/publish/" + identifier
 		val reqMap = new java.util.HashMap[String, AnyRef]() {
 			put(ContentAutoCreatorConstants.REQUEST, new java.util.HashMap[String, AnyRef]() {
 				put(ContentAutoCreatorConstants.CONTENT, new java.util.HashMap[String, AnyRef]() {

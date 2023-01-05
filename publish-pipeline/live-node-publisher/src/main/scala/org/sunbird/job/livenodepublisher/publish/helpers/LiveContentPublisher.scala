@@ -168,10 +168,10 @@ trait LiveContentPublisher extends LiveObjectReader with ObjectValidator with Ob
 
   def getObjectWithEcar(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, neo4JUtil: Neo4JUtil, cloudStorageUtil: CloudStorageUtil, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
     try {
-      logger.info("ContentPublisher:getObjectWithEcar: Ecar generation done for Content: " + data.identifier)
+      logger.info("LiveContentPublisher :: getObjectWithEcar:: Ecar generation done for Content: " + data.identifier)
       val ecarMap: Map[String, String] = generateEcar(data, pkgTypes)
       val variants: java.util.Map[String, java.util.Map[String, String]] = ecarMap.map { case (key, value) => key.toLowerCase -> Map[String, String]("ecarUrl" -> value, "size" -> httpUtil.getSize(value).toString).asJava }.asJava
-      logger.info("ContentPublisher ::: getObjectWithEcar ::: ecar map ::: " + ecarMap)
+      logger.info("LiveContentPublisher :: getObjectWithEcar :: ecar map :: " + ecarMap)
       val meta: Map[String, AnyRef] = Map("downloadUrl" -> ecarMap.getOrElse(EcarPackageType.FULL, ""), "variants" -> variants)
       new ObjectData(data.identifier, data.metadata ++ meta, data.extData, data.hierarchy)
     } catch {

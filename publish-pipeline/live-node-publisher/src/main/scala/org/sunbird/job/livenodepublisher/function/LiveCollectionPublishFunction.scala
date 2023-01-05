@@ -38,7 +38,7 @@ class LiveCollectionPublishFunction(config: LiveNodePublisherConfig, httpUtil: H
   private var cache: DataCache = _
   private val COLLECTION_CACHE_KEY_PREFIX = "hierarchy_"
   private val COLLECTION_CACHE_KEY_SUFFIX = ":leafnodes"
-
+  private val PUBLISHED_STATUS_LIST = List("Live", "Unlisted")
   @transient var ec: ExecutionContext = _
   private val pkgTypes = List(EcarPackageType.SPINE, EcarPackageType.ONLINE)
 
@@ -72,67 +72,72 @@ class LiveCollectionPublishFunction(config: LiveNodePublisherConfig, httpUtil: H
     metrics.incCounter(config.collectionPublishEventCount)
     val obj: ObjectData = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(neo4JUtil, cassandraUtil, config)
     try {
-      val childNodesMetadata: List[String] = obj.metadata.getOrElse("childNodes", new java.util.ArrayList()).asInstanceOf[java.util.List[String]].asScala.toList
-      val addedResources: List[String] = searchContents(data.identifier, childNodesMetadata.toArray, config, httpUtil)
-      val addedResourcesMigrationVersion: List[String] = searchContents(data.identifier, childNodesMetadata.toArray, config, httpUtil, true)
-
-      val isCollectionShallowCopy = isContentShallowCopy(obj)
-      val shallowCopyOriginMigrationVersion: Double = if(isCollectionShallowCopy) {
-        val originId = obj.metadata.getOrElse("origin", "").asInstanceOf[String]
-        val originNodeMetadata = neo4JUtil.getNodeProperties(originId)
-        if (null != originNodeMetadata) {
-          originNodeMetadata.getOrDefault("migrationVersion", "0").toString.toDouble
-        } else 0
-      } else 0
-
-      if (obj.pkgVersion > data.pkgVersion) {
+      if (obj.pkgVersion > data.pkgVersion || !PUBLISHED_STATUS_LIST.contains(obj.metadata.getOrElse("status", "").asInstanceOf[String])) {
         metrics.incCounter(config.skippedEventCount)
-        logger.info(s"""pkgVersion should be greater than or equal to the obj.pkgVersion for : ${obj.identifier}""")
-      }
-      else if(isCollectionShallowCopy && shallowCopyOriginMigrationVersion != 1)  {
-        pushSkipEvent(data, "Origin node is found to be not migrated", context)(metrics)
-      }
-      else if(addedResources.size != addedResourcesMigrationVersion.size) {
-        val errorMessageIdentifiers = addedResources.filter(rec => !addedResourcesMigrationVersion.contains(rec)).mkString(",")
-        pushSkipEvent(data, "Non migrated contents found: " + errorMessageIdentifiers, context)(metrics)
+        logger.info(s"""Either object status is invalid OR Event pkgVersion is not greater than or equal to the obj.pkgVersion for : ${obj.identifier}""")
       } else {
-        val updObj = new ObjectData(obj.identifier, obj.metadata ++ Map("lastPublishedBy" -> data.lastPublishedBy, "dialcodes" -> obj.metadata.getOrElse("dialcodes",null)), obj.extData, obj.hierarchy)
+        val childNodesMetadata: List[String] = obj.metadata.getOrElse("childNodes", new java.util.ArrayList()).asInstanceOf[java.util.List[String]].asScala.toList
+        val addedResources: List[String] = searchContents(data.identifier, childNodesMetadata.toArray, config, httpUtil)
+        val addedResourcesMigrationVersion: List[String] = searchContents(data.identifier, childNodesMetadata.toArray, config, httpUtil, true)
 
-        // Pre-publish update
-        updateProcessingNode(updObj)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
+        val isCollectionShallowCopy = isContentShallowCopy(obj)
+        val shallowCopyOriginMigrationVersion: Double = if (isCollectionShallowCopy) {
+          val originId = obj.metadata.getOrElse("origin", "").asInstanceOf[String]
+          val originNodeMetadata = neo4JUtil.getNodeProperties(originId)
+          if (null != originNodeMetadata) {
+            originNodeMetadata.getOrDefault("migrationVersion", "0").toString.toDouble
+          } else 0
+        } else 0
 
-        val updatedObj = if (isCollectionShallowCopy) updateOriginPkgVersion(updObj)(neo4JUtil) else updObj
+        if (obj.pkgVersion > data.pkgVersion) {
+          metrics.incCounter(config.skippedEventCount)
+          logger.info(s"""pkgVersion should be greater than or equal to the obj.pkgVersion for : ${obj.identifier}""")
+        }
+        else if (isCollectionShallowCopy && shallowCopyOriginMigrationVersion != 1) {
+          pushSkipEvent(data, "Origin node is found to be not migrated", context)(metrics)
+        }
+        else if (addedResources.size != addedResourcesMigrationVersion.size) {
+          val errorMessageIdentifiers = addedResources.filter(rec => !addedResourcesMigrationVersion.contains(rec)).mkString(",")
+          pushSkipEvent(data, "Non migrated contents found: " + errorMessageIdentifiers, context)(metrics)
+        } else {
+          val updObj = new ObjectData(obj.identifier, obj.metadata ++ Map("lastPublishedBy" -> data.lastPublishedBy, "dialcodes" -> obj.metadata.getOrElse("dialcodes", null)), obj.extData, obj.hierarchy)
 
-        // Clear redis cache
-        cache.del(data.identifier)
-        cache.del(data.identifier + COLLECTION_CACHE_KEY_SUFFIX)
-        cache.del(COLLECTION_CACHE_KEY_PREFIX + data.identifier)
+          // Pre-publish update
+          updateProcessingNode(updObj)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
 
-        val enrichedObjTemp = enrichObjectMetadata(updatedObj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
-        val enrichedObj = enrichedObjTemp.getOrElse(updatedObj)
-        logger.info("CollectionPublishFunction:: Collection Object Enriched: " + enrichedObj.identifier)
-        val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
-        logger.info("CollectionPublishFunction:: ECAR generation completed for Collection Object: " + objWithEcar.identifier)
+          val updatedObj = if (isCollectionShallowCopy) updateOriginPkgVersion(updObj)(neo4JUtil) else updObj
 
-        val collRelationalMetadata = getRelationalMetadata(obj.identifier, readerConfig)(cassandraUtil).getOrElse(Map.empty[String, AnyRef])
+          // Clear redis cache
+          cache.del(data.identifier)
+          cache.del(data.identifier + COLLECTION_CACHE_KEY_SUFFIX)
+          cache.del(COLLECTION_CACHE_KEY_PREFIX + data.identifier)
 
-        val variantsJsonString = ScalaJsonUtil.serialize(objWithEcar.metadata("variants"))
-        val publishType = objWithEcar.getString("publish_type", "Public")
-        val successObj = new ObjectData(objWithEcar.identifier, objWithEcar.metadata + ("status" -> (if (publishType.equalsIgnoreCase("Unlisted")) "Unlisted" else "Live"), "variants" -> variantsJsonString, "identifier" -> objWithEcar.identifier), objWithEcar.extData, objWithEcar.hierarchy)
-        val children = successObj.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
+          val enrichedObjTemp = enrichObjectMetadata(updatedObj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
+          val enrichedObj = enrichedObjTemp.getOrElse(updatedObj)
+          logger.info("CollectionPublishFunction:: Collection Object Enriched: " + enrichedObj.identifier)
+          val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
+          logger.info("CollectionPublishFunction:: ECAR generation completed for Collection Object: " + objWithEcar.identifier)
 
-        // Collection - update and publish children - line 418 in PublishFinalizer
-        val updatedChildren = updateHierarchyMetadata(children, successObj.metadata, collRelationalMetadata)(config)
-        logger.info("CollectionPublishFunction:: Hierarchy Metadata updated for Collection Object: " + successObj.identifier + " || updatedChildren:: " + updatedChildren)
-        publishHierarchy(updatedChildren, successObj, readerConfig, config)(cassandraUtil)
+          val collRelationalMetadata = getRelationalMetadata(obj.identifier, readerConfig)(cassandraUtil).getOrElse(Map.empty[String, AnyRef])
 
-        if (!isCollectionShallowCopy) syncNodes(successObj, updatedChildren, List.empty)(esUtil, neo4JUtil, cassandraUtil, readerConfig, definition, config)
+          val variantsJsonString = ScalaJsonUtil.serialize(objWithEcar.metadata("variants"))
+          val publishType = objWithEcar.getString("publish_type", "Public")
+          val successObj = new ObjectData(objWithEcar.identifier, objWithEcar.metadata + ("status" -> (if (publishType.equalsIgnoreCase("Unlisted")) "Unlisted" else "Live"), "variants" -> variantsJsonString, "identifier" -> objWithEcar.identifier), objWithEcar.extData, objWithEcar.hierarchy)
+          val children = successObj.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
 
-        metrics.incCounter(config.collectionPublishSuccessEventCount)
-        logger.info("CollectionPublishFunction:: Collection publishing completed successfully for : " + data.identifier)
+          // Collection - update and publish children - line 418 in PublishFinalizer
+          val updatedChildren = updateHierarchyMetadata(children, successObj.metadata, collRelationalMetadata)(config)
+          logger.info("CollectionPublishFunction:: Hierarchy Metadata updated for Collection Object: " + successObj.identifier + " || updatedChildren:: " + updatedChildren)
+          publishHierarchy(updatedChildren, successObj, readerConfig, config)(cassandraUtil)
 
-        saveOnSuccess(new ObjectData(objWithEcar.identifier, objWithEcar.metadata.-("children") , objWithEcar.extData, objWithEcar.hierarchy))(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig, config)
-        logger.info("CollectionPublishFunction:: Published Collection Object metadata saved successfully to graph DB: " + objWithEcar.identifier)
+          if (!isCollectionShallowCopy) syncNodes(successObj, updatedChildren, List.empty)(esUtil, neo4JUtil, cassandraUtil, readerConfig, definition, config)
+
+          metrics.incCounter(config.collectionPublishSuccessEventCount)
+          logger.info("CollectionPublishFunction:: Collection publishing completed successfully for : " + data.identifier)
+
+          saveOnSuccess(new ObjectData(objWithEcar.identifier, objWithEcar.metadata.-("children"), objWithEcar.extData, objWithEcar.hierarchy))(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig, config)
+          logger.info("CollectionPublishFunction:: Published Collection Object metadata saved successfully to graph DB: " + objWithEcar.identifier)
+        }
       }
     } catch {
       case ex@(_: InvalidInputException | _: ClientException) => // ClientException - Invalid input exception.
