@@ -39,18 +39,18 @@ trait LiveObjectUpdater {
     saveExternalData(obj, readerConfig)
   }
 
-  @throws[Exception]
-  def updateProcessingNode(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, definitionCache: DefinitionCache, config: DefinitionConfig): Unit = {
-    val status = "Processing"
-    val prevState = obj.getString("status", "Draft")
-    val identifier = obj.dbId
-    val metadataUpdateQuery = metaDataQuery(obj)(definitionCache, config)
-    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$identifier"}) SET n.status="$status",n.prevState="$prevState",$metadataUpdateQuery,$auditPropsUpdateQuery;"""
-    logger.info("ObjectUpdater:: updateProcessingNode:: Query: " + query)
-    val result: StatementResult = neo4JUtil.executeQuery(query)
-    if (null != result && result.hasNext)
-      logger.info(s"ObjectUpdater:: updateProcessingNode:: statement result : ${result.next().asMap()}")
-  }
+//  @throws[Exception]
+//  def updateProcessingNode(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, definitionCache: DefinitionCache, config: DefinitionConfig): Unit = {
+//    val status = "Processing"
+//    val prevState = obj.getString("status", "Draft")
+//    val identifier = obj.dbId
+//    val metadataUpdateQuery = metaDataQuery(obj)(definitionCache, config)
+//    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$identifier"}) SET n.status="$status",n.prevState="$prevState",$metadataUpdateQuery,$auditPropsUpdateQuery;"""
+//    logger.info("ObjectUpdater:: updateProcessingNode:: Query: " + query)
+//    val result: StatementResult = neo4JUtil.executeQuery(query)
+//    if (null != result && result.hasNext)
+//      logger.info(s"ObjectUpdater:: updateProcessingNode:: statement result : ${result.next().asMap()}")
+//  }
 
   def saveExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Unit
 
@@ -58,10 +58,9 @@ trait LiveObjectUpdater {
 
   @throws[Exception]
   def saveOnFailure(obj: ObjectData, messages: List[String], pkgVersion: Double)(implicit neo4JUtil: Neo4JUtil): Unit = {
-    val upPkgVersion = pkgVersion + 1
     val errorMessages = messages.mkString("; ")
     val nodeId = obj.dbId
-    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$nodeId"}) SET n.status="Failed", n.pkgVersion=$upPkgVersion,n.migrationVersion=0.2, n.publishError="$errorMessages", $auditPropsUpdateQuery;"""
+    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$nodeId"}) SET n.pkgVersion=${obj.pkgVersion},n.migrationVersion=0.2, n.publishError="$errorMessages", $auditPropsUpdateQuery;"""
     logger.info("ObjectUpdater:: saveOnFailure:: Query: " + query)
     neo4JUtil.executeQuery(query)
   }
