@@ -1,11 +1,13 @@
 package org.sunbird.job.cspmigrator.helpers
 
+import org.apache.commons.io.FileUtils
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cspmigrator.task.CSPMigratorConfig
 import org.sunbird.job.exception.ServerException
-import org.sunbird.job.util.{CloudStorageUtil, HttpUtil}
+import org.sunbird.job.util.{CloudStorageUtil, GoogleDriveUtil, HttpUtil, Slug}
 
+import java.io.File
 import scala.collection.JavaConverters._
 
 trait CSPNeo4jMigrator extends MigrationObjectReader with MigrationObjectUpdater {
@@ -42,14 +44,83 @@ trait CSPNeo4jMigrator extends MigrationObjectReader with MigrationObjectUpdater
 		val migratedMetadataFields: Map[String, String] =  fieldsToMigrate.flatMap(migrateField => {
 			if(objMetadata.contains(migrateField) && (!migrateField.equalsIgnoreCase("streamingUrl") || !streamableMimeTypes.contains(mimeType) )) {
 				val metadataFieldValue = objMetadata.getOrElse(migrateField, "").asInstanceOf[String]
-				val migrateValue: String = StringUtils.replaceEach(metadataFieldValue, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
-				if(config.copyMissingFiles) verifyFile(identifier, metadataFieldValue, migrateValue, migrateField, config)(httpUtil, cloudStorageUtil)
+
+				// TODO: call a method to validate the url, upload to cloud set the url to migrated value
+				val tempMetadataFieldValue = handleGoogleDriveMetadata(metadataFieldValue,identifier, mimeType, config, httpUtil, cloudStorageUtil)
+
+				//val migrateValue: String = StringUtils.replaceEach(metadataFieldValue, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
+				//if(config.copyMissingFiles) verifyFile(identifier, metadataFieldValue, migrateValue, migrateField, config)(httpUtil, cloudStorageUtil)
+				val migrateValue: String = StringUtils.replaceEach(tempMetadataFieldValue, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
+				if(config.copyMissingFiles) verifyFile(identifier, tempMetadataFieldValue, migrateValue, migrateField, config)(httpUtil, cloudStorageUtil)
 				Map(migrateField -> migrateValue)
 			} else Map.empty[String, String]
 		}).filter(record => record._1.nonEmpty).toMap[String, String]
 
 		logger.info(s"""CSPNeo4jMigrator:: process:: $identifier - $objectType migratedMetadataFields:: $migratedMetadataFields""")
 		migratedMetadataFields
+	}
+
+	def handleGoogleDriveMetadata(fileUrl: String, contentId: String, mimeType: String, config: CSPMigratorConfig, httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil): String = {
+		if (StringUtils.isNotBlank(fileUrl) && fileUrl.contains("drive.google.com")) {
+			val file = getFile(contentId, fileUrl, "image", config, httpUtil)
+			logger.info("ContentAutoCreator :: update :: Icon downloaded for : " + contentId + " | appIconUrl : " + fileUrl)
+
+			if (null == file || !file.exists){
+				logger.info("Error Occurred while downloading appIcon file for " + contentId + " | File Url : " + fileUrl)
+				null
+			} else{
+				val urls = uploadArtifact(file, contentId, config, cloudStorageUtil)
+				val url = if (null != urls && StringUtils.isNotBlank(urls(1))) {
+					val  blobUrl = urls(1)
+					logger.info("CSPNeo4jMigrator :: handleGoogleDriveMetadata :: Icon Uploaded Successfully to cloud for : " + contentId + " | appIconUrl : " + fileUrl + " | appIconBlobUrl : " + blobUrl)
+					FileUtils.deleteQuietly(file)
+					blobUrl
+				}else{
+					null
+				}
+				url
+			}
+		}else{
+			fileUrl
+		}
+	}
+
+	private def uploadArtifact(uploadedFile: File, identifier: String, config: CSPMigratorConfig, cloudStorageUtil: CloudStorageUtil) = {
+		try {
+			var folder = config.contentFolder
+			folder = folder + "/" + Slug.makeSlug(identifier, isTransliterate = true) + "/" + config.artifactFolder
+			cloudStorageUtil.uploadFile(folder, uploadedFile, Option(true))
+		} catch {
+			case e: Exception => e.printStackTrace()
+				logger.info("ContentAutoCreator :: uploadArtifact ::  Exception occurred while uploading artifact for : " + identifier + "Exception is : " + e.getMessage)
+				throw new ServerException("ERR_CONTENT_UPLOAD_FILE", "Error while uploading the File.", e)
+		}
+	}
+
+	@throws[Exception]
+	private def getFile(identifier: String, fileUrl: String, mimeType: String, config: CSPMigratorConfig, httpUtil: HttpUtil): File = {
+		try {
+			val fileId = fileUrl.split("download&id=")(1)
+			if (StringUtils.isBlank(fileId)) {
+				//throw new ServerException("ERR_INVALID_UPLOAD_FILE_URL", "Invalid fileUrl received for : " + identifier + " | fileUrl : " + fileUrl)
+				logger.info("Invalid fileUrl received for : " + identifier + " | fileUrl : " + fileUrl)
+				null
+			}else{
+				GoogleDriveUtil.downloadFile(fileId, getBasePath(identifier, config), mimeType)(config)
+			}
+		} catch {
+			case e: ServerException =>
+				logger.info("Invalid fileUrl received for : " + identifier + " | fileUrl : " + fileUrl + "Exception is : " + e.getMessage)
+				throw e
+			case ex: Exception =>
+				logger.info("Invalid fileUrl received for : " + identifier + " | fileUrl : " + fileUrl + "Exception is : " + ex.getMessage)
+				throw new ServerException("ERR_INVALID_UPLOAD_FILE_URL", "Invalid fileUrl received for : " + identifier + " | fileUrl : " + fileUrl)
+		}
+	}
+
+	private def getBasePath(objectId: String, config: CSPMigratorConfig): String = {
+		if (StringUtils.isNotBlank(objectId)) config.temp_file_location + File.separator + objectId + File.separator + "_temp_" + System.currentTimeMillis
+		else config.temp_file_location + File.separator + "_temp_" + System.currentTimeMillis
 	}
 
 }
