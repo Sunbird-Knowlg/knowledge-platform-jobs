@@ -62,6 +62,7 @@ class LiveVideoStreamService(implicit config: LiveVideoStreamGeneratorConfig, ht
             if(updatePreviewUrl(contentId, streamingUrl, channel)) {
               StreamingStage(jobRequest.request_id, jobRequest.client_key, jobRequest.job_id.get, stageName, jobStatus, "FINISHED", iteration + 1);
             } else {
+              // TODO:: Set job status to FAILED
               null
             }
           } else if(jobStatus.equalsIgnoreCase("ERROR")){
