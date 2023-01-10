@@ -127,7 +127,8 @@ class VideoStreamService(implicit config: VideoStreamGeneratorConfig, httpUtil: 
         true
       } else {
         logger.error("Error while updating previewUrl for content : " + contentId + " :: "+response.body)
-        throw new Exception("Error while updating previewUrl for content : " + contentId + " :: "+response.body)
+//        throw new Exception("Error while updating previewUrl for content : " + contentId + " :: "+response.body)
+        false
       }
     } else {
       false
