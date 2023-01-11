@@ -19,21 +19,6 @@
     </properties>
     <dependencies>
         <dependency>
-            <groupId>org.sunbird</groupId>
-            <artifactId>cloud-store-sdk_2.12</artifactId>
-            <version>1.4.4</version>
-            <exclusions>
-                <exclusion>
-                    <artifactId>log4j</artifactId>
-                    <groupId>log4j</groupId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>slf4j-log4j12</artifactId>
-                    <groupId>org.slf4j</groupId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
             <groupId>org.apache.flink</groupId>
             <artifactId>flink-streaming-scala_${scala.version}</artifactId>
             <version>${flink.version}</version>
@@ -93,7 +78,7 @@
             <artifactId>junidecode</artifactId>
             <version>0.1.1</version>
         </dependency>
-        <!-- <dependency>
+        <dependency>
             <groupId>org.sunbird</groupId>
             <artifactId>cloud-store-sdk_2.12</artifactId>
             <version>1.4.4</version>
@@ -107,7 +92,7 @@
                     <groupId>org.slf4j</groupId>
                 </exclusion>
             </exclusions>
-        </dependency> -->
+        </dependency>
         <dependency>
             <groupId>org.scalatest</groupId>
             <artifactId>scalatest_${scala.version}</artifactId>
