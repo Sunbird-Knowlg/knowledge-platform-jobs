@@ -6,6 +6,7 @@ import org.neo4j.driver.v1.StatementResult
 import org.slf4j.LoggerFactory
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.exception.InvalidInputException
+import org.sunbird.job.livenodepublisher.task.LiveNodePublisherConfig
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
 import org.sunbird.job.util.{CSPMetaUtil, CassandraUtil, JSONUtil, Neo4JUtil, ScalaJsonUtil}
@@ -23,8 +24,9 @@ trait LiveObjectUpdater {
     val publishType = obj.getString("publish_type", "Public")
     val status = if (StringUtils.equalsIgnoreCase("Unlisted", publishType)) "Unlisted" else "Live"
     val identifier = obj.identifier
+    val migrationVersion: Double = if(config.getConfig().hasPath("migrationVersion")) config.getConfig().getDouble("migrationVersion") else 1.0 + 0.1
     val metadataUpdateQuery = metaDataQuery(obj)(definitionCache, definitionConfig)
-    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$identifier"}) SET n.status="$status",n.pkgVersion=${obj.pkgVersion},n.prevStatus="Processing",n.migrationVersion=1.1,$metadataUpdateQuery,$auditPropsUpdateQuery;"""
+    val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$identifier"}) SET n.status="$status",n.pkgVersion=${obj.pkgVersion},n.prevStatus="Processing",n.migrationVersion=$migrationVersion,$metadataUpdateQuery,$auditPropsUpdateQuery;"""
     logger.info("ObjectUpdater:: saveOnSuccess:: Query: " + query)
     logger.info(s"ObjectUpdater:: saveOnSuccess:: DB ID for ${obj.identifier} is : ${obj.dbId} | pkgVersion : ${obj.pkgVersion}" )
 
