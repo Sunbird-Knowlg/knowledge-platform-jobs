@@ -31,7 +31,7 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
 	def currentIteration: Int = readOrDefault[Int]("edata.iteration", 1)
 
 	def isValid(objMetadata: Map[String, AnyRef], config: CSPMigratorConfig): Boolean = {
-		(objMetadata.getOrElse("migrationVersion",0).asInstanceOf[Number].doubleValue() != 1.0 && StringUtils.equals("csp-migration", action) && StringUtils.isNotBlank(identifier)) && StringUtils.isNotBlank(status)
+		(StringUtils.equals("csp-migration", action) && StringUtils.isNotBlank(identifier)) && StringUtils.isNotBlank(status)
 	}
 
 }
