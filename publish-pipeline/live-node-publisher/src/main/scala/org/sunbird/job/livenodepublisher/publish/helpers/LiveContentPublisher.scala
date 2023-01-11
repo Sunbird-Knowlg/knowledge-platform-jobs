@@ -11,6 +11,7 @@ import org.sunbird.job.exception.InvalidInputException
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData, ObjectExtData}
 import org.sunbird.job.publish.helpers._
+import org.sunbird.job.util.CSPMetaUtil.updateRelativePath
 import org.sunbird.job.util._
 
 import java.io.{File, IOException}
@@ -210,7 +211,8 @@ trait LiveContentPublisher extends LiveObjectReader with ObjectValidator with Ob
             None
           case MimeType.ECML_Archive | MimeType.HTML_Archive | MimeType.H5P_Archive =>
             val latestFolderS3Url = ExtractableMimeTypeHelper.getCloudStoreURL(obj, cloudStorageUtil, config)
-            val updatedPreviewUrl = updatedMeta ++ Map("previewUrl" -> latestFolderS3Url, "streamingUrl" -> latestFolderS3Url)
+            val relativeLatestFolder = StringUtils.replaceEach(latestFolderS3Url, config.config.getStringList("cloudstorage.write_base_path").asScala.toArray, Array(config.getString("cloudstorage.read_base_path", "")))
+            val updatedPreviewUrl = updatedMeta ++ Map("previewUrl" -> relativeLatestFolder, "streamingUrl" -> latestFolderS3Url)
             Some(updatedPreviewUrl)
           case _ =>
             val artifactUrl = obj.getString("artifactUrl", null)
