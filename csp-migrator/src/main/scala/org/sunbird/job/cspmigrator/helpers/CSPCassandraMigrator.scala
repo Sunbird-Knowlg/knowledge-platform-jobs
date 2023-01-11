@@ -16,6 +16,7 @@ trait CSPCassandraMigrator extends MigrationObjectReader with MigrationObjectUpd
 
 		val objectType: String = objMetadata.getOrElse("objectType","").asInstanceOf[String]
 		val identifier: String = objMetadata.getOrElse("identifier", "").asInstanceOf[String]
+		val mimeType: String = objMetadata.getOrElse("mimeType", "").asInstanceOf[String]
 
 		objectType match {
 			case "AssessmentItem" =>
@@ -31,19 +32,19 @@ trait CSPCassandraMigrator extends MigrationObjectReader with MigrationObjectUpd
 			case 	"Content" | "ContentImage" =>
 				val ecmlBody: String = getContentBody(identifier, config)(cassandraUtil)
 				logger.info(s"""CSPCassandraMigrator:: process:: $identifier - $objectType :: ECML Fetched body:: $ecmlBody""")
-				val migratedECMLBody: String = extractAndValidateUrls(identifier, ecmlBody, config, httpUtil, cloudStorageUtil)
+				val migratedECMLBody: String = extractAndValidateUrls(identifier, mimeType, ecmlBody, config, httpUtil, cloudStorageUtil)
 				updateContentBody(identifier, migratedECMLBody, config)(cassandraUtil)
 				logger.info(s"""CSPCassandraMigrator:: process:: $identifier - $objectType :: ECML Migrated body:: $migratedECMLBody""")
 			case 	"Collection" | "CollectionImage" =>
 				val collectionHierarchy: String = getCollectionHierarchy(identifier, config)(cassandraUtil)
 				logger.info(s"""CSPCassandraMigrator:: process:: $identifier - $objectType :: Fetched Hierarchy:: $collectionHierarchy""")
-				val migratedCollectionHierarchy: String = extractAndValidateUrls(identifier, collectionHierarchy, config, httpUtil, cloudStorageUtil)
+				val migratedCollectionHierarchy: String = extractAndValidateUrls(identifier, mimeType, collectionHierarchy, config, httpUtil, cloudStorageUtil)
 				updateCollectionHierarchy(identifier, migratedCollectionHierarchy, config)(cassandraUtil)
 				logger.info(s"""CSPCassandraMigrator:: process:: $identifier - $objectType :: Migrated Hierarchy:: $migratedCollectionHierarchy""")
 			case "QuestionSet" | "QuestionSetImage" => {
 				val qsH: String = getQuestionSetHierarchy(identifier, config)(cassandraUtil)
 				logger.info(s"""CSPCassandraMigrator:: process:: $identifier - $objectType :: Fetched Hierarchy:: $qsH""")
-				val migratedQsHierarchy: String = extractAndValidateUrls(identifier, qsH, config, httpUtil, cloudStorageUtil)
+				val migratedQsHierarchy: String = extractAndValidateUrls(identifier, mimeType, qsH, config, httpUtil, cloudStorageUtil)
 				updateQuestionSetHierarchy(identifier, migratedQsHierarchy, config)(cassandraUtil)
 				logger.info(s"""CSPCassandraMigrator:: process:: $identifier - $objectType :: Migrated Hierarchy:: $migratedQsHierarchy""")
 			}

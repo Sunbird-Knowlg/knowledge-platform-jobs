@@ -5,7 +5,7 @@ import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cspmigrator.task.CSPMigratorConfig
 import org.sunbird.job.exception.ServerException
-import org.sunbird.job.util.{CloudStorageUtil, GoogleDriveUtil, HttpUtil, Slug}
+import org.sunbird.job.util.{CloudStorageUtil, HttpUtil, Slug}
 
 import java.io.File
 import scala.collection.JavaConverters._
@@ -50,8 +50,11 @@ trait CSPNeo4jMigrator extends MigrationObjectReader with MigrationObjectUpdater
 
 				//val migrateValue: String = StringUtils.replaceEach(metadataFieldValue, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
 				//if(config.copyMissingFiles) verifyFile(identifier, metadataFieldValue, migrateValue, migrateField, config)(httpUtil, cloudStorageUtil)
-				val migrateValue: String = StringUtils.replaceEach(tempMetadataFieldValue, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
-				if(config.copyMissingFiles) verifyFile(identifier, tempMetadataFieldValue, migrateValue, migrateField, config)(httpUtil, cloudStorageUtil)
+
+				val migrateValue: String = if(StringUtils.isNotBlank(tempMetadataFieldValue))
+					StringUtils.replaceEach(tempMetadataFieldValue, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
+					else	null
+				if(config.copyMissingFiles && StringUtils.isNotBlank(migrateValue)) verifyFile(identifier, tempMetadataFieldValue, migrateValue, migrateField, config)(httpUtil, cloudStorageUtil)
 				Map(migrateField -> migrateValue)
 			} else Map.empty[String, String]
 		}).filter(record => record._1.nonEmpty).toMap[String, String]
@@ -60,7 +63,7 @@ trait CSPNeo4jMigrator extends MigrationObjectReader with MigrationObjectUpdater
 		migratedMetadataFields
 	}
 
-	def handleGoogleDriveMetadata(fileUrl: String, contentId: String, mimeType: String, config: CSPMigratorConfig, httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil): String = {
+	/*def handleGoogleDriveMetadata(fileUrl: String, contentId: String, mimeType: String, config: CSPMigratorConfig, httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil): String = {
 		if (StringUtils.isNotBlank(fileUrl) && fileUrl.contains("drive.google.com")) {
 			val file = getFile(contentId, fileUrl, "image", config, httpUtil)
 			logger.info("ContentAutoCreator :: update :: Icon downloaded for : " + contentId + " | appIconUrl : " + fileUrl)
@@ -95,9 +98,9 @@ trait CSPNeo4jMigrator extends MigrationObjectReader with MigrationObjectUpdater
 				logger.info("ContentAutoCreator :: uploadArtifact ::  Exception occurred while uploading artifact for : " + identifier + "Exception is : " + e.getMessage)
 				throw new ServerException("ERR_CONTENT_UPLOAD_FILE", "Error while uploading the File.", e)
 		}
-	}
+	}*/
 
-	@throws[Exception]
+	/*@throws[Exception]
 	private def getFile(identifier: String, fileUrl: String, mimeType: String, config: CSPMigratorConfig, httpUtil: HttpUtil): File = {
 		try {
 			val fileId = fileUrl.split("download&id=")(1)
@@ -121,6 +124,6 @@ trait CSPNeo4jMigrator extends MigrationObjectReader with MigrationObjectUpdater
 	private def getBasePath(objectId: String, config: CSPMigratorConfig): String = {
 		if (StringUtils.isNotBlank(objectId)) config.temp_file_location + File.separator + objectId + File.separator + "_temp_" + System.currentTimeMillis
 		else config.temp_file_location + File.separator + "_temp_" + System.currentTimeMillis
-	}
+	}*/
 
 }

@@ -1,20 +1,18 @@
-package org.sunbird.job.util
+package org.sunbird.job.cspmigrator.helpers
 
 import com.google.api.client.googleapis.auth.oauth2.GoogleCredential
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport
 import com.google.api.client.googleapis.json.GoogleJsonResponseException
 import com.google.api.client.http.HttpResponseException
 import com.google.api.client.json.jackson2.JacksonFactory
-import com.google.api.services.drive.Drive
-import com.google.api.services.drive.DriveScopes
+import com.google.api.services.drive.{Drive, DriveScopes}
 import org.apache.commons.lang.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.BaseJobConfig
 import org.sunbird.job.exception.ServerException
+import org.sunbird.job.util.Slug
 
-import java.io.ByteArrayInputStream
-import java.io.File
-import java.io.FileOutputStream
+import java.io.{ByteArrayInputStream, File, FileOutputStream}
 import java.nio.charset.Charset
 import java.util
 
