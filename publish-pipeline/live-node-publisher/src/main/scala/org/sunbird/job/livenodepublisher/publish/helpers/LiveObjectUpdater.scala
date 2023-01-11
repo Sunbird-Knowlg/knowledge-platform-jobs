@@ -24,7 +24,7 @@ trait LiveObjectUpdater {
     val publishType = obj.getString("publish_type", "Public")
     val status = if (StringUtils.equalsIgnoreCase("Unlisted", publishType)) "Unlisted" else "Live"
     val identifier = obj.identifier
-    val migrationVersion: Double = config.getConfig().asInstanceOf[LiveNodePublisherConfig].migrationVersion + 0.1
+    val migrationVersion: Double = if(config.getConfig().hasPath("migrationVersion")) config.getConfig().getDouble("migrationVersion") else 1.0 + 0.1
     val metadataUpdateQuery = metaDataQuery(obj)(definitionCache, definitionConfig)
     val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"$identifier"}) SET n.status="$status",n.pkgVersion=${obj.pkgVersion},n.prevStatus="Processing",n.migrationVersion=$migrationVersion,$metadataUpdateQuery,$auditPropsUpdateQuery;"""
     logger.info("ObjectUpdater:: saveOnSuccess:: Query: " + query)
