@@ -206,12 +206,15 @@ trait MigrationObjectUpdater extends URLExtractor {
         GoogleDriveUtil.downloadFile(fileId, getBasePath(identifier, config), mimeType)(config)
       }
     } catch {
-      case e: ServerException =>
+      case e: ServerException =>{
         logger.info("Invalid fileUrl received for : " + identifier + " | fileUrl : " + fileUrl + "Exception is : " + e.getMessage)
-      case ex: Exception =>
+        null
+      }
+      case ex: Exception => {
         logger.info("Invalid fileUrl received for : " + identifier + " | fileUrl : " + fileUrl + "Exception is : " + ex.getMessage)
+        null
+      }
     }
-    null
   }
 
   private def getBasePath(objectId: String, config: CSPMigratorConfig): String = {
