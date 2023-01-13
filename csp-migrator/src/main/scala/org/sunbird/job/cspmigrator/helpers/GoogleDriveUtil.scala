@@ -62,9 +62,9 @@ object GoogleDriveUtil {
         logger.info("GoogleDriveUtil :: downloadFile ::: Drive File Details:: " + googleDriveFile)
         val fileName = Slug.makeSlug(googleDriveFile.getName)
         logger.info("GoogleDriveUtil :: downloadFile ::: Slug fileName :: " + fileName)
-        val fileMimeType = googleDriveFile.getMimeType
-        logger.info("GoogleDriveUtil :: downloadFile ::: Node mimeType :: " + mimeType + " | File mimeType :: " + fileMimeType)
-        if (!StringUtils.equalsIgnoreCase(mimeType, "image")) validateMimeType(fileId, mimeType, fileMimeType)
+        //val fileMimeType = googleDriveFile.getMimeType
+        //logger.info("GoogleDriveUtil :: downloadFile ::: Node mimeType :: " + mimeType + " | File mimeType :: " + fileMimeType)
+        //if (!StringUtils.equalsIgnoreCase(mimeType, "image")) validateMimeType(fileId, mimeType, fileMimeType)
         val saveFile = new File(saveDir)
         if (!saveFile.exists) saveFile.mkdirs
         val saveFilePath: String = saveDir + File.separator + fileName
