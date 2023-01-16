@@ -51,7 +51,6 @@ class CSPCassandraMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil
     logger.info("CSPCassandraMigratorFunction::processElement:: event edata : " + event.eData)
 
     val objMetadata: Map[String, AnyRef] = getMetadata(event.identifier)(neo4JUtil)
-    val mimeType: String = objMetadata.getOrElse("mimeType", "").asInstanceOf[String]
     val identifier: String = objMetadata.getOrElse("identifier", "").asInstanceOf[String]
 
     try {
@@ -61,7 +60,6 @@ class CSPCassandraMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil
         if(objMetadata.contains(migrateField)) {
           val metadataFieldValue = objMetadata.getOrElse(migrateField, "").asInstanceOf[String]
 
-          // TODO: call a method to validate the url, upload to cloud set the url to migrated value
           val tempMetadataFieldValue = handleGoogleDriveMetadata(metadataFieldValue, identifier, config, httpUtil, cloudStorageUtil)
 
           val migrateValue: String = if (StringUtils.isNotBlank(tempMetadataFieldValue))
