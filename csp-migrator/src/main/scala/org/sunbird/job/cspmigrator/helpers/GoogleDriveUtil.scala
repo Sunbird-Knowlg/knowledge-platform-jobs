@@ -48,7 +48,7 @@ object GoogleDriveUtil {
   }
 
   @throws[Exception]
-  def downloadFile(fileId: String, saveDir: String, mimeType: String)(implicit config: BaseJobConfig): File = {
+  def downloadFile(fileId: String, saveDir: String)(implicit config: BaseJobConfig): File = {
     var file: File = null
     while(file == null && currentBackOffDelay <= maximumBackoffDelay) {
       try {
@@ -62,9 +62,6 @@ object GoogleDriveUtil {
         logger.info("GoogleDriveUtil :: downloadFile ::: Drive File Details:: " + googleDriveFile)
         val fileName = Slug.makeSlug(googleDriveFile.getName)
         logger.info("GoogleDriveUtil :: downloadFile ::: Slug fileName :: " + fileName)
-        //val fileMimeType = googleDriveFile.getMimeType
-        //logger.info("GoogleDriveUtil :: downloadFile ::: Node mimeType :: " + mimeType + " | File mimeType :: " + fileMimeType)
-        //if (!StringUtils.equalsIgnoreCase(mimeType, "image")) validateMimeType(fileId, mimeType, fileMimeType)
         val saveFile = new File(saveDir)
         if (!saveFile.exists) saveFile.mkdirs
         val saveFilePath: String = saveDir + File.separator + fileName

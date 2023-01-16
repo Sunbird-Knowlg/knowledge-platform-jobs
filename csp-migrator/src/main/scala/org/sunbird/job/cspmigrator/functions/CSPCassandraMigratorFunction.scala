@@ -62,10 +62,7 @@ class CSPCassandraMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil
           val metadataFieldValue = objMetadata.getOrElse(migrateField, "").asInstanceOf[String]
 
           // TODO: call a method to validate the url, upload to cloud set the url to migrated value
-          val tempMetadataFieldValue = handleGoogleDriveMetadata(metadataFieldValue, identifier, mimeType, config, httpUtil, cloudStorageUtil)
-
-          //val migrateValue: String = StringUtils.replaceEach(metadataFieldValue, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
-          //if(config.copyMissingFiles) verifyFile(event.identifier, metadataFieldValue, migrateValue, migrateField, config)(httpUtil, cloudStorageUtil)
+          val tempMetadataFieldValue = handleGoogleDriveMetadata(metadataFieldValue, identifier, config, httpUtil, cloudStorageUtil)
 
           val migrateValue: String = if (StringUtils.isNotBlank(tempMetadataFieldValue))
             StringUtils.replaceEach(tempMetadataFieldValue, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
