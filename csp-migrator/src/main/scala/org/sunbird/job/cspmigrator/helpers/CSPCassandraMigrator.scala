@@ -16,7 +16,7 @@ trait CSPCassandraMigrator extends MigrationObjectReader with MigrationObjectUpd
 
 		val objectType: String = objMetadata.getOrElse("objectType","").asInstanceOf[String]
 		val identifier: String = objMetadata.getOrElse("identifier", "").asInstanceOf[String]
-		
+
 		objectType match {
 			case "AssessmentItem" =>
 				val row: Row = getAssessmentItemData(identifier, config)(cassandraUtil)

@@ -5,7 +5,7 @@ import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cspmigrator.task.CSPMigratorConfig
 import org.sunbird.job.exception.ServerException
-import org.sunbird.job.util.{CloudStorageUtil, HttpUtil, Slug}
+import org.sunbird.job.util.{CloudStorageUtil, HttpUtil}
 
 import java.io.File
 import scala.collection.JavaConverters._
