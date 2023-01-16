@@ -1,13 +1,11 @@
 package org.sunbird.job.cspmigrator.helpers
 
-import org.apache.commons.io.FileUtils
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cspmigrator.task.CSPMigratorConfig
 import org.sunbird.job.exception.ServerException
 import org.sunbird.job.util.{CloudStorageUtil, HttpUtil}
 
-import java.io.File
 import scala.collection.JavaConverters._
 
 trait CSPNeo4jMigrator extends MigrationObjectReader with MigrationObjectUpdater {
@@ -45,7 +43,6 @@ trait CSPNeo4jMigrator extends MigrationObjectReader with MigrationObjectUpdater
 			if(objMetadata.contains(migrateField) && (!migrateField.equalsIgnoreCase("streamingUrl") || !streamableMimeTypes.contains(mimeType) )) {
 				val metadataFieldValue = objMetadata.getOrElse(migrateField, "").asInstanceOf[String]
 
-				// TODO: call a method to validate the url, upload to cloud set the url to migrated value
 				val tempMetadataFieldValue = handleGoogleDriveMetadata(metadataFieldValue,identifier, config, httpUtil, cloudStorageUtil)
 
 				val migrateValue: String = if(StringUtils.isNotBlank(tempMetadataFieldValue))
