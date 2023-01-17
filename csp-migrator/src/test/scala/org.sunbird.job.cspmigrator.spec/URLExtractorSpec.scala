@@ -1,6 +1,5 @@
 package org.sunbird.job.cspmigrator.spec
 
-import org.apache.commons.lang3.StringUtils
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
 import org.sunbird.job.cspmigrator.helpers.URLExtractor
