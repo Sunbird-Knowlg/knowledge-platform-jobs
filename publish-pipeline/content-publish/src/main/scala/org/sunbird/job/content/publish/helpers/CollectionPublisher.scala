@@ -218,11 +218,6 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       }
 
       if (StringUtils.equalsIgnoreCase(child.getOrElse("visibility", "").asInstanceOf[String], "Default") && EXPANDABLE_OBJECTS.contains(child.getOrElse("objectType", "").asInstanceOf[String])) {
-        val pkgVersion = child.getOrElse("pkgVersion", 0) match {
-          case _: Integer => child.getOrElse("pkgVersion", 0).asInstanceOf[Integer].doubleValue()
-          case _: Double => child.getOrElse("pkgVersion", 0).asInstanceOf[Double].doubleValue()
-          case _ => child.getOrElse("pkgVersion", "0").toString.toDouble
-        }
         val childCollectionHierarchy = getLiveHierarchy(child.getOrElse("identifier", "").asInstanceOf[String], readerConfig).get
         if (childCollectionHierarchy.nonEmpty) {
           val childNodes = childCollectionHierarchy.getOrElse("childNodes", List.empty).asInstanceOf[List[String]]
