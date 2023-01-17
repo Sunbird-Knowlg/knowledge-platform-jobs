@@ -92,31 +92,35 @@ trait MigrationObjectUpdater extends URLExtractor {
     val extractedUrls: List[String] = extarctUrls(contentString)
     logger.info("MigrationObjectUpdater::extractAndValidateUrls:: extractedUrls : " + extractedUrls)
     if(extractedUrls.nonEmpty) {
-      if(config.copyMissingFiles) {
+      var tempContentString: String = contentString
+
+      val migratedString = if(config.copyMissingFiles) {
         extractedUrls.toSet[String].foreach(urlString => {
           // TODO: call a method to validate the url, upload to cloud set the url to migrated value
           val tempUrlString = handleGoogleDriveMetadata(urlString, identifier, config, httpUtil, cloudStorageUtil)
 
           config.keyValueMigrateStrings.keySet().toArray().map(migrateDomain => {
             if (StringUtils.isNotBlank(tempUrlString) && tempUrlString.contains(migrateDomain.asInstanceOf[String])) {
-              StringUtils.replace(contentString, urlString, tempUrlString)
+              tempContentString = StringUtils.replace(tempContentString, urlString, tempUrlString)
 
               val migrateValue: String = StringUtils.replaceEach(tempUrlString, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
               verifyFile(identifier, tempUrlString, migrateValue, migrateDomain.asInstanceOf[String], config)(httpUtil, cloudStorageUtil)
             }
           })
         })
+        tempContentString
       }else{
         extractedUrls.toSet[String].foreach(urlString => {
           logger.info("MigrationObjectUpdater::extractAndValidateUrls:: urlString : " + urlString)
           val tempUrlString = handleGoogleDriveMetadata(urlString, identifier, config, httpUtil, cloudStorageUtil)
           logger.info("MigrationObjectUpdater::extractAndValidateUrls:: tempUrlString : " + tempUrlString)
           if(StringUtils.isNotBlank(tempUrlString))
-            StringUtils.replace(contentString, urlString, tempUrlString)
+            tempContentString = StringUtils.replace(tempContentString, urlString, tempUrlString)
         })
+        tempContentString
       }
 
-      StringUtils.replaceEach(contentString, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
+      StringUtils.replaceEach(migratedString, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
     } else contentString
   }
 
