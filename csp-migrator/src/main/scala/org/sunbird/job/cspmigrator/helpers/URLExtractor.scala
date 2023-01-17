@@ -7,7 +7,7 @@ import scala.collection.JavaConverters._
 trait URLExtractor {
 
   // Function to extract all the URL// Function to extract all the URL from the string
-  def extarctUrls(str: String): List[String] = {
+  def extractUrls(str: String): List[String] = {
     // Creating an empty ArrayList
     val list = new util.ArrayList[String]
 
