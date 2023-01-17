@@ -89,7 +89,7 @@ trait MigrationObjectUpdater extends URLExtractor {
 
 
   def extractAndValidateUrls(identifier: String, contentString: String, config: CSPMigratorConfig, httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil): String = {
-    val extractedUrls: List[String] = extarctUrls(contentString)
+    val extractedUrls: List[String] = extractUrls(contentString)
     logger.info("MigrationObjectUpdater::extractAndValidateUrls:: extractedUrls : " + extractedUrls)
     if(extractedUrls.nonEmpty) {
       var tempContentString: String = contentString

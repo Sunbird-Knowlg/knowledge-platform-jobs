@@ -118,7 +118,7 @@ object CSPMetaUtil {
     res
   }
 
-  private def getReplacementData(oldPath: Array[String], repStr: String): Array[String] = {
+  def getReplacementData(oldPath: Array[String], repStr: String): Array[String] = {
     val repArray = new Array[String](oldPath.length)
     for (i <- oldPath.indices) {
       repArray(i) = repStr
