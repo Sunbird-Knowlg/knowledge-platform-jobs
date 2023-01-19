@@ -60,7 +60,7 @@ class CSPCassandraMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil
         if(objMetadata.contains(migrateField)) {
           val metadataFieldValue = objMetadata.getOrElse(migrateField, "").asInstanceOf[String]
 
-          val tempMetadataFieldValue = handleGoogleDriveMetadata(metadataFieldValue, identifier, config, httpUtil, cloudStorageUtil)
+          val tempMetadataFieldValue = handleExternalURLS(metadataFieldValue, identifier, config, httpUtil, cloudStorageUtil)
 
           val migrateValue: String = if (StringUtils.isNotBlank(tempMetadataFieldValue))
             StringUtils.replaceEach(tempMetadataFieldValue, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
