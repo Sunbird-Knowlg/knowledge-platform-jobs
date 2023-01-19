@@ -13,6 +13,7 @@ import org.sunbird.job.exception.{InvalidInputException, ServerException}
 import org.sunbird.job.util.CSPMetaUtil.updateAbsolutePath
 import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, JSONUtil, Neo4JUtil, ScalaJsonUtil, Slug}
 
+import scala.collection.JavaConverters._
 import java.io.{File, IOException}
 import java.net.URL
 import java.util
@@ -97,7 +98,7 @@ trait MigrationObjectUpdater extends URLExtractor {
       val migratedString = if(config.copyMissingFiles) {
         extractedUrls.toSet[String].foreach(urlString => {
           // TODO: call a method to validate the url, upload to cloud set the url to migrated value
-          val tempUrlString = handleGoogleDriveMetadata(urlString, identifier, config, httpUtil, cloudStorageUtil)
+          val tempUrlString = handleExternalURLS(urlString, identifier, config, httpUtil, cloudStorageUtil)
 
           config.keyValueMigrateStrings.keySet().toArray().map(migrateDomain => {
             if (StringUtils.isNotBlank(tempUrlString) && tempUrlString.contains(migrateDomain.asInstanceOf[String])) {
@@ -112,10 +113,9 @@ trait MigrationObjectUpdater extends URLExtractor {
       }else{
         extractedUrls.toSet[String].foreach(urlString => {
           logger.info("MigrationObjectUpdater::extractAndValidateUrls:: urlString : " + urlString)
-          val tempUrlString = handleGoogleDriveMetadata(urlString, identifier, config, httpUtil, cloudStorageUtil)
+          val tempUrlString = handleExternalURLS(urlString, identifier, config, httpUtil, cloudStorageUtil)
           logger.info("MigrationObjectUpdater::extractAndValidateUrls:: tempUrlString : " + tempUrlString)
-          if(StringUtils.isNotBlank(tempUrlString))
-            tempContentString = StringUtils.replace(tempContentString, urlString, tempUrlString)
+          tempContentString = if(StringUtils.isNotBlank(tempUrlString)) StringUtils.replace(tempContentString, urlString, tempUrlString) else StringUtils.replace(tempContentString, urlString, "")
         })
         tempContentString
       }
@@ -131,9 +131,8 @@ trait MigrationObjectUpdater extends URLExtractor {
     FileUtils.copyURLToFile(new URL(fileUrl), file)
     file
   } catch {
-    case e: IOException =>
-      e.printStackTrace()
-      throw new ServerException("ERR_INVALID_FILE_URL", "File not found in the old path to migrate: " + fileUrl)
+    case e: IOException => logger.info("ERR_INVALID_FILE_URL", "File not found in the old path to migrate: " + fileUrl)
+      null
   }
 
   private def createDirectory(directoryName: String): Unit = {
@@ -231,9 +230,11 @@ trait MigrationObjectUpdater extends URLExtractor {
     else config.temp_file_location + File.separator + "_temp_" + System.currentTimeMillis
   }
 
-  def handleGoogleDriveMetadata(fileUrl: String, contentId: String, config: CSPMigratorConfig, httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil): String = {
-    if (StringUtils.isNotBlank(fileUrl) && fileUrl.contains("drive.google.com")) {
-      val file = getFile(contentId, fileUrl, config, httpUtil)
+  def handleExternalURLS(fileUrl: String, contentId: String, config: CSPMigratorConfig, httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil): String = {
+    val validCSPSource: List[String] = config.config.getStringList("cloudstorage.write_base_path").asScala.toList
+
+    if (StringUtils.isNotBlank(fileUrl) && !validCSPSource.exists(writeURL=> fileUrl.contains(writeURL))) {
+      val file = if(fileUrl.contains("drive.google.com")) getFile(contentId, fileUrl, config, httpUtil) else downloadFile(getBasePath(contentId, config), fileUrl)
       logger.info("ContentAutoCreator :: update :: Icon downloaded for : " + contentId + " | appIconUrl : " + fileUrl)
 
       if (null == file || !file.exists) {
@@ -243,7 +244,7 @@ trait MigrationObjectUpdater extends URLExtractor {
         val urls = uploadArtifact(file, contentId, config, cloudStorageUtil)
         val url = if (null != urls && StringUtils.isNotBlank(urls(1))) {
           val blobUrl = urls(1)
-          logger.info("CSPNeo4jMigrator :: handleGoogleDriveMetadata :: Icon Uploaded Successfully to cloud for : " + contentId + " | appIconUrl : " + fileUrl + " | appIconBlobUrl : " + blobUrl)
+          logger.info("CSPNeo4jMigrator :: handleExternalURLS :: Icon Uploaded Successfully to cloud for : " + contentId + " | appIconUrl : " + fileUrl + " | appIconBlobUrl : " + blobUrl)
           FileUtils.deleteQuietly(file)
           blobUrl
         } else null
