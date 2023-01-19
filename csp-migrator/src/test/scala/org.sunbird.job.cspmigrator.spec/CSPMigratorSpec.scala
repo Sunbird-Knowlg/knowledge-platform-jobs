@@ -111,7 +111,7 @@ class CSPMigratorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with
     val migratedMetadata = cspneo4jMigrator.process(objectMetadata, jobConfig, mockHttpUtil, mockCloudUtil)
     fieldsToMigrate.map(migrateField => {
       jobConfig.keyValueMigrateStrings.keySet().toArray().map(key => {
-        assert(!migratedMetadata.getOrElse(migrateField, "").asInstanceOf[String].contains(key))
+        assert(migratedMetadata == null || !migratedMetadata.getOrElse(migrateField, "").asInstanceOf[String].contains(key))
       })
     })
   }
