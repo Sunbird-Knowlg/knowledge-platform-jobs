@@ -42,8 +42,13 @@ trait CSPNeo4jMigrator extends MigrationObjectReader with MigrationObjectUpdater
 		val migratedMetadataFields: Map[String, String] =  fieldsToMigrate.flatMap(migrateField => {
 			if(objMetadata.contains(migrateField) && (!migrateField.equalsIgnoreCase("streamingUrl") || !streamableMimeTypes.contains(mimeType) )) {
 				val metadataFieldValue = objMetadata.getOrElse(migrateField, "").asInstanceOf[String]
-				val migrateValue: String = StringUtils.replaceEach(metadataFieldValue, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
-				if(config.copyMissingFiles) verifyFile(identifier, metadataFieldValue, migrateValue, migrateField, config)(httpUtil, cloudStorageUtil)
+
+				val tempMetadataFieldValue = handleGoogleDriveMetadata(metadataFieldValue,identifier, config, httpUtil, cloudStorageUtil)
+
+				val migrateValue: String = if(StringUtils.isNotBlank(tempMetadataFieldValue))
+					StringUtils.replaceEach(tempMetadataFieldValue, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
+					else	null
+				if(config.copyMissingFiles && StringUtils.isNotBlank(migrateValue)) verifyFile(identifier, tempMetadataFieldValue, migrateValue, migrateField, config)(httpUtil, cloudStorageUtil)
 				Map(migrateField -> migrateValue)
 			} else Map.empty[String, String]
 		}).filter(record => record._1.nonEmpty).toMap[String, String]
@@ -51,5 +56,4 @@ trait CSPNeo4jMigrator extends MigrationObjectReader with MigrationObjectUpdater
 		logger.info(s"""CSPNeo4jMigrator:: process:: $identifier - $objectType migratedMetadataFields:: $migratedMetadataFields""")
 		migratedMetadataFields
 	}
-
 }

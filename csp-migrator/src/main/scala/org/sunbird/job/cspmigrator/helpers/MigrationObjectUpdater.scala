@@ -11,7 +11,7 @@ import org.sunbird.job.cspmigrator.task.CSPMigratorConfig
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.exception.{InvalidInputException, ServerException}
 import org.sunbird.job.util.CSPMetaUtil.updateAbsolutePath
-import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, JSONUtil, Neo4JUtil, ScalaJsonUtil}
+import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, JSONUtil, Neo4JUtil, ScalaJsonUtil, Slug}
 
 import java.io.{File, IOException}
 import java.net.URL
@@ -90,18 +90,37 @@ trait MigrationObjectUpdater extends URLExtractor {
 
   def extractAndValidateUrls(identifier: String, contentString: String, config: CSPMigratorConfig, httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil): String = {
     val extractedUrls: List[String] = extractUrls(contentString)
+    logger.info("MigrationObjectUpdater::extractAndValidateUrls:: extractedUrls : " + extractedUrls)
     if(extractedUrls.nonEmpty) {
-      if(config.copyMissingFiles) {
+      var tempContentString: String = contentString
+
+      val migratedString = if(config.copyMissingFiles) {
         extractedUrls.toSet[String].foreach(urlString => {
+          // TODO: call a method to validate the url, upload to cloud set the url to migrated value
+          val tempUrlString = handleGoogleDriveMetadata(urlString, identifier, config, httpUtil, cloudStorageUtil)
+
           config.keyValueMigrateStrings.keySet().toArray().map(migrateDomain => {
-            if(urlString.contains(migrateDomain.asInstanceOf[String])) {
-              val migrateValue: String = StringUtils.replaceEach(urlString, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
-              verifyFile(identifier, urlString, migrateValue, migrateDomain.asInstanceOf[String], config)(httpUtil, cloudStorageUtil)
+            if (StringUtils.isNotBlank(tempUrlString) && tempUrlString.contains(migrateDomain.asInstanceOf[String])) {
+              tempContentString = StringUtils.replace(tempContentString, urlString, tempUrlString)
+
+              val migrateValue: String = StringUtils.replaceEach(tempUrlString, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
+              verifyFile(identifier, tempUrlString, migrateValue, migrateDomain.asInstanceOf[String], config)(httpUtil, cloudStorageUtil)
             }
           })
         })
+        tempContentString
+      }else{
+        extractedUrls.toSet[String].foreach(urlString => {
+          logger.info("MigrationObjectUpdater::extractAndValidateUrls:: urlString : " + urlString)
+          val tempUrlString = handleGoogleDriveMetadata(urlString, identifier, config, httpUtil, cloudStorageUtil)
+          logger.info("MigrationObjectUpdater::extractAndValidateUrls:: tempUrlString : " + tempUrlString)
+          if(StringUtils.isNotBlank(tempUrlString))
+            tempContentString = StringUtils.replace(tempContentString, urlString, tempUrlString)
+        })
+        tempContentString
       }
-      StringUtils.replaceEach(contentString, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
+
+      StringUtils.replaceEach(migratedString, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
     } else contentString
   }
 
@@ -183,6 +202,66 @@ trait MigrationObjectUpdater extends URLExtractor {
         }
       }
     }).mkString(",")
+  }
+
+  @throws[Exception]
+  private def getFile(identifier: String, fileUrl: String, config: CSPMigratorConfig, httpUtil: HttpUtil): File = {
+    try {
+      val fileId = fileUrl.split("download&id=")(1)
+      if (StringUtils.isBlank(fileId)) {
+        logger.info("Invalid fileUrl received for : " + identifier + " | fileUrl : " + fileUrl)
+        null
+      } else {
+        GoogleDriveUtil.downloadFile(fileId, getBasePath(identifier, config))(config)
+      }
+    } catch {
+      case e: ServerException =>{
+        logger.info("Invalid fileUrl received for : " + identifier + " | fileUrl : " + fileUrl + "Exception is : " + e.getMessage)
+        null
+      }
+      case ex: Exception => {
+        logger.info("Invalid fileUrl received for : " + identifier + " | fileUrl : " + fileUrl + "Exception is : " + ex.getMessage)
+        null
+      }
+    }
+  }
+
+  private def getBasePath(objectId: String, config: CSPMigratorConfig): String = {
+    if (StringUtils.isNotBlank(objectId)) config.temp_file_location + File.separator + objectId + File.separator + "_temp_" + System.currentTimeMillis
+    else config.temp_file_location + File.separator + "_temp_" + System.currentTimeMillis
+  }
+
+  def handleGoogleDriveMetadata(fileUrl: String, contentId: String, config: CSPMigratorConfig, httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil): String = {
+    if (StringUtils.isNotBlank(fileUrl) && fileUrl.contains("drive.google.com")) {
+      val file = getFile(contentId, fileUrl, config, httpUtil)
+      logger.info("ContentAutoCreator :: update :: Icon downloaded for : " + contentId + " | appIconUrl : " + fileUrl)
+
+      if (null == file || !file.exists) {
+        logger.info("Error Occurred while downloading appIcon file for " + contentId + " | File Url : " + fileUrl)
+        null
+      } else {
+        val urls = uploadArtifact(file, contentId, config, cloudStorageUtil)
+        val url = if (null != urls && StringUtils.isNotBlank(urls(1))) {
+          val blobUrl = urls(1)
+          logger.info("CSPNeo4jMigrator :: handleGoogleDriveMetadata :: Icon Uploaded Successfully to cloud for : " + contentId + " | appIconUrl : " + fileUrl + " | appIconBlobUrl : " + blobUrl)
+          FileUtils.deleteQuietly(file)
+          blobUrl
+        } else null
+        url
+      }
+    } else fileUrl
+  }
+
+  private def uploadArtifact(uploadedFile: File, identifier: String, config: CSPMigratorConfig, cloudStorageUtil: CloudStorageUtil) = {
+    try {
+      var folder = config.contentFolder
+      folder = folder + "/" + Slug.makeSlug(identifier, isTransliterate = true) + "/" + config.artifactFolder
+      cloudStorageUtil.uploadFile(folder, uploadedFile, Option(true))
+    } catch {
+      case e: Exception => e.printStackTrace()
+        logger.info("ContentAutoCreator :: uploadArtifact ::  Exception occurred while uploading artifact for : " + identifier + "Exception is : " + e.getMessage)
+        throw new ServerException("ERR_CONTENT_UPLOAD_FILE", "Error while uploading the File.", e)
+    }
   }
 
 }
