@@ -79,7 +79,7 @@ class CSPMigratorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with
       "code" -> "org.sunbird.zRuXiC",
       "description" -> "10 PS BITS",
       "streamingUrl" -> "https://ntpproductionall.blob.core.windows.net/ntp-content-production/content/ecml/do_31270597860728832015700-latest",
-      "posterImage" -> "https://ntpproductionall.blob.core.windows.net/ntp-content-production/content/do_31270069910858956813856/artifact/10-ps-tm_1550378309450.png",
+      "posterImage" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_31270069910858956813856/artifact/10-ps-tm_1550378309450.png",
       "idealScreenSize" -> "normal",
       "createdOn" -> "2019-02-24T15:39:39.209+0000",
       "copyrightYear" -> 2019.asInstanceOf[Number],
@@ -111,7 +111,7 @@ class CSPMigratorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with
     val migratedMetadata = cspneo4jMigrator.process(objectMetadata, jobConfig, mockHttpUtil, mockCloudUtil)
     fieldsToMigrate.map(migrateField => {
       jobConfig.keyValueMigrateStrings.keySet().toArray().map(key => {
-        assert(migratedMetadata == null || !migratedMetadata.getOrElse(migrateField, "").asInstanceOf[String].contains(key))
+        assert(migratedMetadata.getOrElse(migrateField, "") == null || !migratedMetadata.getOrElse(migrateField, "").asInstanceOf[String].contains(key))
       })
     })
   }
