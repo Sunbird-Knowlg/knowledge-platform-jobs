@@ -115,8 +115,7 @@ trait MigrationObjectUpdater extends URLExtractor {
           logger.info("MigrationObjectUpdater::extractAndValidateUrls:: urlString : " + urlString)
           val tempUrlString = handleExternalURLS(urlString, identifier, config, httpUtil, cloudStorageUtil)
           logger.info("MigrationObjectUpdater::extractAndValidateUrls:: tempUrlString : " + tempUrlString)
-          if(StringUtils.isNotBlank(tempUrlString))
-            tempContentString = StringUtils.replace(tempContentString, urlString, tempUrlString)
+          tempContentString = if(StringUtils.isNotBlank(tempUrlString)) StringUtils.replace(tempContentString, urlString, tempUrlString) else StringUtils.replace(tempContentString, urlString, "")
         })
         tempContentString
       }
