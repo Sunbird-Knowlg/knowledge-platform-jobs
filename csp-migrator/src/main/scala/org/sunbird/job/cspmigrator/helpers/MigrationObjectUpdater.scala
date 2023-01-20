@@ -127,8 +127,10 @@ trait MigrationObjectUpdater extends URLExtractor {
 
   def downloadFile(downloadPath: String, fileUrl: String): File = try {
     createDirectory(downloadPath)
-    val file = new File(downloadPath + File.separator + FilenameUtils.getName(fileUrl))
+    var file = new File(downloadPath + File.separator + Slug.makeSlug(FilenameUtils.getName(fileUrl)))
     FileUtils.copyURLToFile(new URL(fileUrl), file)
+    file = Slug.createSlugFile(file)
+    logger.info("MigrationObjectUpdater:: downloadFile:: external URL file download status:: " + file.exists() + " || " + file.getAbsolutePath)
     file
   } catch {
     case e: IOException => logger.info("ERR_INVALID_FILE_URL", "File not found in the old path to migrate: " + fileUrl)
@@ -235,7 +237,7 @@ trait MigrationObjectUpdater extends URLExtractor {
 
     if (StringUtils.isNotBlank(fileUrl) && !validCSPSource.exists(writeURL=> fileUrl.contains(writeURL))) {
       val file = if(fileUrl.contains("drive.google.com")) getFile(contentId, fileUrl, config, httpUtil) else downloadFile(getBasePath(contentId, config), fileUrl)
-      logger.info("ContentAutoCreator :: update :: Icon downloaded for : " + contentId + " | appIconUrl : " + fileUrl)
+      logger.info("MigrationObjectUpdater :: update :: Icon downloaded for : " + contentId + " | appIconUrl : " + fileUrl)
 
       if (null == file || !file.exists) {
         logger.info("Error Occurred while downloading appIcon file for " + contentId + " | File Url : " + fileUrl)
@@ -253,14 +255,14 @@ trait MigrationObjectUpdater extends URLExtractor {
     } else fileUrl
   }
 
-  private def uploadArtifact(uploadedFile: File, identifier: String, config: CSPMigratorConfig, cloudStorageUtil: CloudStorageUtil) = {
+  private def uploadArtifact(uploadedFile: File, identifier: String, config: CSPMigratorConfig, cloudStorageUtil: CloudStorageUtil): Array[String] = {
     try {
       var folder = config.contentFolder
       folder = folder + "/" + Slug.makeSlug(identifier, isTransliterate = true) + "/" + config.artifactFolder
       cloudStorageUtil.uploadFile(folder, uploadedFile, Option(true))
     } catch {
       case e: Exception => e.printStackTrace()
-        logger.info("ContentAutoCreator :: uploadArtifact ::  Exception occurred while uploading artifact for : " + identifier + "Exception is : " + e.getMessage)
+        logger.info("MigrationObjectUpdater :: uploadArtifact ::  Exception occurred while uploading artifact for : " + identifier + "Exception is : " + e.getMessage)
         throw new ServerException("ERR_CONTENT_UPLOAD_FILE", "Error while uploading the File.", e)
     }
   }
