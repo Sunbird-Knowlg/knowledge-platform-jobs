@@ -127,8 +127,10 @@ trait MigrationObjectUpdater extends URLExtractor {
 
   def downloadFile(downloadPath: String, fileUrl: String): File = try {
     createDirectory(downloadPath)
-    val file = new File(downloadPath + File.separator + FilenameUtils.getName(fileUrl))
+    var file = new File(downloadPath + File.separator + Slug.makeSlug(FilenameUtils.getName(fileUrl)))
     FileUtils.copyURLToFile(new URL(fileUrl), file)
+    file = Slug.createSlugFile(file)
+    logger.info("MigrationObjectUpdater:: downloadFile:: external URL file download status:: " + file.exists() + " || " + file.getAbsolutePath)
     file
   } catch {
     case e: IOException => logger.info("ERR_INVALID_FILE_URL", "File not found in the old path to migrate: " + fileUrl)
