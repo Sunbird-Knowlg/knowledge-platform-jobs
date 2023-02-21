@@ -18,9 +18,10 @@ import java.awt.{Color, Font, FontFormatException, Graphics2D, RenderingHints}
 import java.io.{File, IOException, InputStream}
 import java.util.UUID
 import javax.imageio.ImageIO
+import scala.collection.mutable
 import scala.collection.mutable.ListBuffer
 
-class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil: CassandraUtil, cloudStorageUtil: CloudStorageUtil) {
+class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil: CassandraUtil, cloudStorageUtil: CloudStorageUtil, esUtil: ElasticSearchUtil) {
   private val qrCodeWriter = new QRCodeWriter()
   private val fontStore: java.util.Map[String, Font] = new java.util.HashMap[String, Font]()
   private val logger = LoggerFactory.getLogger(classOf[QRCodeImageGeneratorUtil])
@@ -54,6 +55,11 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
       try {
         val imageDownloadUrl = cloudStorageUtil.uploadFile(path, finalImageFile, Some(false), container = container)
         updateCassandra(config.cassandraDialCodeImageTable, 2, imageDownloadUrl(1), "filename", fileName, metrics)
+        val indexDocument = getIndexDocument(text)(esUtil)
+        if(indexDocument!=null && indexDocument.nonEmpty) {
+          val updatedDocString = ScalaJsonUtil.serialize(indexDocument + ("imageURL" -> imageDownloadUrl(1)))
+          esUtil.updateDocument(text, updatedDocString)
+        }
       } catch {
         case e: Exception =>
           metrics.incCounter(config.dbFailureEventCount)
@@ -258,6 +264,13 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
   @throws[FontFormatException]
   private def getFontFromStore(fontName: String): Font = {
     fontStore.getOrDefault(fontName, loadFontStore(fontName))
+  }
+
+
+  private def getIndexDocument(id: String)(esUtil: ElasticSearchUtil): mutable.Map[String, AnyRef] = {
+    val documentJson: String = esUtil.getDocumentAsString(id)
+    val indexDocument = if (documentJson != null && !documentJson.isEmpty) ScalaJsonUtil.deserialize[mutable.Map[String, AnyRef]](documentJson) else mutable.Map[String, AnyRef]()
+    indexDocument
   }
 }
 

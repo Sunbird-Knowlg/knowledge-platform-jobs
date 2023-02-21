@@ -23,6 +23,12 @@ class QRCodeImageGeneratorConfig(override val config: Config) extends BaseJobCon
   val cloudDbHitCount = "cloud-db-hit-events-count"
   val cloudDbFailCount = "cloud-db-hit-failure-count"
 
+  // ES Configs
+  val esConnectionInfo = config.getString("es.basePath")
+
+  val dialcodeExternalIndex: String = if (config.hasPath("dialcode.index.name")) config.getString("dialcode.index.name") else "dialcode"
+  val dialcodeExternalIndexType: String = "dc"
+
   // Consumers
   val eventConsumer = "qrcode-image-generator-consumer"
   val qrCodeImageGeneratorFunction = "qrcode-image-generator-function"
