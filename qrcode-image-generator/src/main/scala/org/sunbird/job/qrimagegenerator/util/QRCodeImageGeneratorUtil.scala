@@ -57,7 +57,7 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
         updateCassandra(config.cassandraDialCodeImageTable, 2, imageDownloadUrl(1), "filename", fileName, metrics)
         val indexDocument = getIndexDocument(text)(esUtil)
         if(indexDocument!=null && indexDocument.nonEmpty) {
-          val updatedDocString = ScalaJsonUtil.serialize(indexDocument + ("imageURL" -> imageDownloadUrl(1)))
+          val updatedDocString = ScalaJsonUtil.serialize(indexDocument + ("imageUrl" -> imageDownloadUrl(1)))
           esUtil.updateDocument(text, updatedDocString)
         }
       } catch {
