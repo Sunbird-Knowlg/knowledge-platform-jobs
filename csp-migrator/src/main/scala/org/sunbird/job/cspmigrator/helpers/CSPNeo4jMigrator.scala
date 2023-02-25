@@ -40,7 +40,7 @@ trait CSPNeo4jMigrator extends MigrationObjectReader with MigrationObjectUpdater
 
 		logger.info(s"""CSPNeo4jMigrator:: process:: starting neo4j fields migration for $identifier - $objectType fields:: $fieldsToMigrate""")
 		val migratedMetadataFields: Map[String, String] =  fieldsToMigrate.flatMap(migrateField => {
-			if(objMetadata.contains(migrateField) && (!migrateField.equalsIgnoreCase("streamingUrl") || !streamableMimeTypes.contains(mimeType) )) {
+			if(objMetadata.contains(migrateField) && (!migrateField.equalsIgnoreCase("streamingUrl") || !streamableMimeTypes.contains(mimeType)) && (mimeType.equalsIgnoreCase("video/x-youtube") && migrateField.equalsIgnoreCase("appIcon"))) {
 				val metadataFieldValue = objMetadata.getOrElse(migrateField, "").asInstanceOf[String]
 
 				val tempMetadataFieldValue = handleExternalURLS(metadataFieldValue,identifier, config, httpUtil, cloudStorageUtil)
