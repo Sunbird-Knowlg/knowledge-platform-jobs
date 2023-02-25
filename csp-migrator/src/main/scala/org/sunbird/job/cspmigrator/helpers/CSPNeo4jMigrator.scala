@@ -12,6 +12,7 @@ trait CSPNeo4jMigrator extends MigrationObjectReader with MigrationObjectUpdater
 
 	private[this] val logger = LoggerFactory.getLogger(classOf[CSPNeo4jMigrator])
 	val streamableMimeTypes=List("video/mp4", "video/webm")
+	val imageAttributes=List("appIcon", "thumbnail", "posterImage")
 
 	def process(objMetadata: Map[String, AnyRef], config: CSPMigratorConfig, httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil): Map[String, AnyRef] = {
 
@@ -40,7 +41,7 @@ trait CSPNeo4jMigrator extends MigrationObjectReader with MigrationObjectUpdater
 
 		logger.info(s"""CSPNeo4jMigrator:: process:: starting neo4j fields migration for $identifier - $objectType fields:: $fieldsToMigrate""")
 		val migratedMetadataFields: Map[String, String] =  fieldsToMigrate.flatMap(migrateField => {
-			if(objMetadata.contains(migrateField) && (!migrateField.equalsIgnoreCase("streamingUrl") || !streamableMimeTypes.contains(mimeType)) && (mimeType.equalsIgnoreCase("video/x-youtube") && migrateField.equalsIgnoreCase("appIcon"))) {
+			if(objMetadata.contains(migrateField) && (!migrateField.equalsIgnoreCase("streamingUrl") || !streamableMimeTypes.contains(mimeType)) && (!mimeType.equalsIgnoreCase("video/x-youtube") || imageAttributes.contains(migrateField))) {
 				val metadataFieldValue = objMetadata.getOrElse(migrateField, "").asInstanceOf[String]
 
 				val tempMetadataFieldValue = handleExternalURLS(metadataFieldValue,identifier, config, httpUtil, cloudStorageUtil)
