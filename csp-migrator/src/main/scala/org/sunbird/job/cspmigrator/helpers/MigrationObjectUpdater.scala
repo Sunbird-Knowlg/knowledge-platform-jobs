@@ -234,9 +234,9 @@ trait MigrationObjectUpdater extends URLExtractor {
 
   def handleExternalURLS(fileUrl: String, contentId: String, config: CSPMigratorConfig, httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil): String = {
     val validCSPSource: List[String] = config.config.getStringList("cloudstorage.write_base_path").asScala.toList
-    val readBasePath: String = config.config.getString("cloudstorage.read_base_path")
+    val relativePathPrefix: String = config.config.getString("cloudstorage.relative_path_prefix")
 
-    if (StringUtils.isNotBlank(fileUrl) && !fileUrl.contains(readBasePath) && !validCSPSource.exists(writeURL=> fileUrl.contains(writeURL))) {
+    if (StringUtils.isNotBlank(fileUrl) && !fileUrl.contains(relativePathPrefix) && !validCSPSource.exists(writeURL=> fileUrl.contains(writeURL))) {
       val file = if(fileUrl.contains("drive.google.com")) getFile(contentId, fileUrl, config, httpUtil) else downloadFile(getBasePath(contentId, config), fileUrl)
       logger.info("MigrationObjectUpdater :: update :: Icon downloaded for : " + contentId + " | appIconUrl : " + fileUrl)
 
