@@ -31,13 +31,13 @@ class LiveNodePublisherStreamTask(config: LiveNodePublisherConfig, kafkaConnecto
       .setParallelism(config.eventRouterParallelism)
 
     val contentPublish = processStreamTask.getSideOutput(config.contentPublishOutTag).process(new LiveContentPublishFunction(config, httpUtil))
-      .name("live-content-publish-process").uid("live-content-publish-process").setParallelism(1)
+      .name("live-content-publish-process").uid("live-content-publish-process").setParallelism(config.kafkaConsumerParallelism)
 
     contentPublish.getSideOutput(config.generateVideoStreamingOutTag).addSink(kafkaConnector.kafkaStringSink(config.liveVideoStreamTopic))
     contentPublish.getSideOutput(config.failedEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
 
    val collectionPublish = processStreamTask.getSideOutput(config.collectionPublishOutTag).process(new LiveCollectionPublishFunction(config, httpUtil))
-    		  .name("live-collection-publish-process").uid("live-collection-publish-process").setParallelism(1)
+    		  .name("live-collection-publish-process").uid("live-collection-publish-process").setParallelism(config.kafkaConsumerParallelism)
     collectionPublish.getSideOutput(config.skippedEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaSkippedTopic))
     collectionPublish.getSideOutput(config.failedEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
 
