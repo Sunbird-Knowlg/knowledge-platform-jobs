@@ -1,6 +1,6 @@
-CREATE KEYSPACE dialcodes WITH replication = {'class': 'NetworkTopologyStrategy', 'datacenter1': '2'}  AND durable_writes = true;
+CREATE KEYSPACE IF NOT EXISTS dialcodes WITH replication = {'class': 'NetworkTopologyStrategy', 'datacenter1': '2'}  AND durable_writes = true;
 
-CREATE TABLE dialcodes.dialcode_images (
+CREATE TABLE IF NOT EXISTS dialcodes.dialcode_images (
     filename text PRIMARY KEY,
     channel text,
     config map<text, text>,
@@ -11,7 +11,7 @@ CREATE TABLE dialcodes.dialcode_images (
     url text
 );
 
-CREATE TABLE dialcodes.dialcode_batch (
+CREATE TABLE IF NOT EXISTS dialcodes.dialcode_batch (
     processid uuid PRIMARY KEY,
     channel text,
     config map<text, text>,
