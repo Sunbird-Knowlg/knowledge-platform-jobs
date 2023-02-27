@@ -56,15 +56,7 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
       try {
         val imageDownloadUrl = cloudStorageUtil.uploadFile(path, finalImageFile, Some(false), container = container)
         updateCassandra(config.cassandraDialCodeImageTable, 2, imageDownloadUrl(1), "filename", fileName, metrics)
-        val indexDocument = getIndexDocument(text)(esUtil)
-        logger.info("QRCodeImageGeneratorUtil:createQRImages: indexDocument:: " + indexDocument)
-        if(indexDocument!=null && indexDocument.nonEmpty) {
-          val updatedDocString = ScalaJsonUtil.serialize(indexDocument + ("imageUrl" -> imageDownloadUrl(1)))
-          logger.info("QRCodeImageGeneratorUtil:createQRImages: updatedDocString:: " + updatedDocString)
-          esUtil.updateDocument(text, updatedDocString)
-        } else {
-          throw new InvalidInputException("ElasticSearch Document not found for " + text)
-        }
+        indexImageInDocument(text, imageDownloadUrl(1))(esUtil)
       } catch {
         case e: Exception =>
           metrics.incCounter(config.dbFailureEventCount)
@@ -272,10 +264,18 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
   }
 
 
-  def getIndexDocument(id: String)(esUtil: ElasticSearchUtil): mutable.Map[String, AnyRef] = {
+  def indexImageInDocument(id: String, imageDownloadUrl: String)(esUtil: ElasticSearchUtil): Unit = {
     val documentJson: String = esUtil.getDocumentAsString(id)
     val indexDocument = if (documentJson != null && documentJson.nonEmpty) ScalaJsonUtil.deserialize[mutable.Map[String, AnyRef]](documentJson) else mutable.Map[String, AnyRef]()
-    indexDocument
+    logger.info("QRCodeImageGeneratorUtil:createQRImages: indexDocument:: " + indexDocument)
+    if(indexDocument!=null && indexDocument.nonEmpty) {
+      val updatedDocString = ScalaJsonUtil.serialize(indexDocument + ("imageUrl" -> imageDownloadUrl(1)))
+      logger.info("QRCodeImageGeneratorUtil:createQRImages: updatedDocString:: " + updatedDocString)
+      esUtil.updateDocument(id, updatedDocString)
+    } else {
+      throw new InvalidInputException("ElasticSearch Document not found for " + id)
+    }
+
   }
 
 
