@@ -422,6 +422,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 	}
 
 	private def getErrorDetails(httpResponse: HTTPResponse): String = {
+		logger.info("ContentAutoCreator:: getErrorDetails:: httpResponse.body:: " + httpResponse.body)
 		val response = JSONUtil.deserialize[Map[String, AnyRef]](httpResponse.body)
 		if (null != response) " | Response Code :" + httpResponse.status + " | Result : " + response.getOrElse("result", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]] + " | Error Message : " + response.getOrElse("params", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
 		else " | Null Response Received."
