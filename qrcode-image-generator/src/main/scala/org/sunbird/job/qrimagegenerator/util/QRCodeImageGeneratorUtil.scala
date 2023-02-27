@@ -8,6 +8,7 @@ import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 import com.google.zxing.{BarcodeFormat, EncodeHintType, NotFoundException, WriterException}
 import org.slf4j.LoggerFactory
 import org.sunbird.job.Metrics
+import org.sunbird.job.exception.InvalidInputException
 import org.sunbird.job.qrimagegenerator.domain.{ImageConfig, QRCodeImageGeneratorRequest}
 import org.sunbird.job.qrimagegenerator.task.QRCodeImageGeneratorConfig
 import org.sunbird.job.util._
@@ -62,7 +63,7 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
           logger.info("QRCodeImageGeneratorUtil:createQRImages: updatedDocString:: " + updatedDocString)
           esUtil.updateDocument(text, updatedDocString)
         } else {
-
+          throw new InvalidInputException("ElasticSearch Document not found for " + text)
         }
       } catch {
         case e: Exception =>
