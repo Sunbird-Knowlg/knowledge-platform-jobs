@@ -99,6 +99,9 @@ class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig,
           val zipDownloadUrl = cloudStorageUtil.uploadFile(event.storagePath, zipFile, Some(false), container = event.storageContainer)
           metrics.incCounter(config.cloudDbHitCount)
           qRCodeImageGeneratorUtil.updateCassandra(config.cassandraDialCodeBatchTable, 2, zipDownloadUrl(1), "processid", event.processId, metrics)
+
+          if(config.indexImageURL)
+            context.output(config.indexImageUrlOutTag, event)
         }
         else {
           logger.info("QRCodeImageGeneratorService:processMessage: Skipping zip creation due to missing processId.")

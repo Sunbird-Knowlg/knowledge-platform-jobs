@@ -1,5 +1,6 @@
 package org.sunbird.job.qrimagegenerator.util
 
+import com.datastax.driver.core.Row
 import com.datastax.driver.core.querybuilder.QueryBuilder
 import com.google.zxing.client.j2se.BufferedImageLuminanceSource
 import com.google.zxing.common.{BitMatrix, HybridBinarizer}
@@ -56,7 +57,6 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
       try {
         val imageDownloadUrl = cloudStorageUtil.uploadFile(path, finalImageFile, Some(false), container = container)
         updateCassandra(config.cassandraDialCodeImageTable, 2, imageDownloadUrl(1), "filename", fileName, metrics)
-        indexImageInDocument(text, imageDownloadUrl(1))(esUtil)
       } catch {
         case e: Exception =>
           metrics.incCounter(config.dbFailureEventCount)
@@ -155,8 +155,8 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
   }
 
   private def getImage(bitMatrix: BitMatrix, colorModel: String) = {
-    val imageWidth = bitMatrix.getWidth()
-    val imageHeight = bitMatrix.getHeight()
+    val imageWidth = bitMatrix.getWidth
+    val imageHeight = bitMatrix.getHeight
     val image = new BufferedImage(imageWidth, imageHeight, getImageType(colorModel))
     image.createGraphics()
     val graphics = image.getGraphics.asInstanceOf[Graphics2D]
@@ -264,14 +264,21 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
   }
 
 
-  def indexImageInDocument(id: String, imageDownloadUrl: String)(esUtil: ElasticSearchUtil): Unit = {
+  def indexImageInDocument(id: String)(esUtil: ElasticSearchUtil, cassandraUtil: CassandraUtil): Unit = {
     val documentJson: String = esUtil.getDocumentAsString(id)
     val indexDocument = if (documentJson != null && documentJson.nonEmpty) ScalaJsonUtil.deserialize[mutable.Map[String, AnyRef]](documentJson) else mutable.Map[String, AnyRef]()
-    logger.info("QRCodeImageGeneratorUtil:createQRImages: indexDocument:: " + indexDocument)
-    if(indexDocument!=null && indexDocument.nonEmpty) {
-      val updatedDocString = ScalaJsonUtil.serialize(indexDocument + ("imageUrl" -> imageDownloadUrl(1)))
-      logger.info("QRCodeImageGeneratorUtil:createQRImages: updatedDocString:: " + updatedDocString)
-      esUtil.updateDocument(id, updatedDocString)
+    logger.info("QRCodeImageGeneratorUtil::indexImageInDocument:: indexDocument:: " + indexDocument)
+    if(indexDocument!=null && indexDocument.nonEmpty && !indexDocument.contains("url")) {
+      val query = QueryBuilder.select("url").from(config.cassandraKeyspace, config.cassandraDialCodeImageTable)
+        .where(QueryBuilder.eq("filename", indexDocument.get("filename").toString))
+
+      val row: Row = cassandraUtil.findOne(query.toString)
+      if(null != row && !row.isNull("url")) {
+        val imageUrl = row.getString("url")
+        val updatedDocString = ScalaJsonUtil.serialize(indexDocument + ("imageUrl" -> imageUrl))
+        logger.info("QRCodeImageGeneratorUtil:indexImageInDocument: updatedDocString:: " + updatedDocString)
+        esUtil.updateDocument(id, updatedDocString)
+      }
     } else {
       throw new InvalidInputException("ElasticSearch Document not found for " + id)
     }

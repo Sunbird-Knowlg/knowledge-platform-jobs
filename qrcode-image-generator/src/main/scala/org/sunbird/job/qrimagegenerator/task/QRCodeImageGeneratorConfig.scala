@@ -1,7 +1,11 @@
 package org.sunbird.job.qrimagegenerator.task
 
 import com.typesafe.config.Config
+import org.apache.flink.api.common.typeinfo.TypeInformation
+import org.apache.flink.api.java.typeutils.TypeExtractor
+import org.apache.flink.streaming.api.scala.OutputTag
 import org.sunbird.job.BaseJobConfig
+import org.sunbird.job.qrimagegenerator.domain.Event
 
 class QRCodeImageGeneratorConfig(override val config: Config) extends BaseJobConfig(config, "qrcode-image-generator") {
 
@@ -12,6 +16,7 @@ class QRCodeImageGeneratorConfig(override val config: Config) extends BaseJobCon
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
   override val parallelism: Int = config.getInt("task.parallelism")
+  implicit val qrImageTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
 
   // Metric List
   val totalEventsCount = "total-events-count"
@@ -22,6 +27,9 @@ class QRCodeImageGeneratorConfig(override val config: Config) extends BaseJobCon
   val skippedEventCount = "skipped-events-count"
   val cloudDbHitCount = "cloud-db-hit-events-count"
   val cloudDbFailCount = "cloud-db-hit-failure-count"
+
+  //Tags
+  val indexImageUrlOutTag: OutputTag[Event] = OutputTag[Event]("index-imageUrl")
 
   // ES Configs
   val esConnectionInfo = config.getString("es.basePath")
@@ -49,4 +57,6 @@ class QRCodeImageGeneratorConfig(override val config: Config) extends BaseJobCon
   val cassandraKeyspace: String = config.getString("lms-cassandra.keyspace")
   val cassandraDialCodeImageTable: String = config.getString("lms-cassandra.table.image")
   val cassandraDialCodeBatchTable: String = config.getString("lms-cassandra.table.batch")
+
+  val indexImageURL: Boolean = if (config.hasPath("qr.image.index")) config.getBoolean("qr.image.index") else true
 }

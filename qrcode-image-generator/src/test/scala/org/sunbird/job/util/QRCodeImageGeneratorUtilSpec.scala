@@ -40,11 +40,11 @@ class QRCodeImageGeneratorUtilSpec extends FlatSpec with BeforeAndAfterAll with 
   "QRCodeImageGeneratorFunction" should "return QR Code Document" in {
     val qrCodeImageGeneratorUtil = new QRCodeImageGeneratorUtil(jobConfig, cassandraUtil, mockCloudUtil, mockElasticUtil)
     assertThrows[InvalidInputException] {
-      qrCodeImageGeneratorUtil.indexImageInDocument("Q1I5I3","https://sunbirddev.blob.core.windows.net/sunbird-content-dev/in.ekstep/0_Q1I5I3.png")(mockElasticUtil)
+      qrCodeImageGeneratorUtil.indexImageInDocument("Q1I5I3")(mockElasticUtil, cassandraUtil)
     }
     val Q1I5I3Json = """{"identifier":"Q1I5I3", "filename":"0_Q1I5I3", "channel":"b00bc992ef25f1a9a8d63291e20efc8d"}"""
     when(mockElasticUtil.getDocumentAsString("Q1I5I3")).thenReturn(Q1I5I3Json)
-    qrCodeImageGeneratorUtil.indexImageInDocument("Q1I5I3","https://sunbirddev.blob.core.windows.net/sunbird-content-dev/in.ekstep/0_Q1I5I3.png")(mockElasticUtil)
+    qrCodeImageGeneratorUtil.indexImageInDocument("Q1I5I3")(mockElasticUtil, cassandraUtil)
   }
 
 
