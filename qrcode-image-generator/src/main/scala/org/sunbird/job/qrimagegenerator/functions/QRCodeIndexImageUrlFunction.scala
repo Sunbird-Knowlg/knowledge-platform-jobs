@@ -48,7 +48,6 @@ class QRCodeIndexImageUrlFunction(config: QRCodeImageGeneratorConfig,
               qRCodeImageGeneratorUtil.indexImageInDocument(text)(esUtil, cassandraUtil)
             } catch {
               case e: Exception =>
-                metrics.incCounter(config.cloudDbFailCount)
                 throw new InvalidEventException(e.getMessage, Map("partition" -> event.partition, "offset" -> event.offset), e)
             }
           }
