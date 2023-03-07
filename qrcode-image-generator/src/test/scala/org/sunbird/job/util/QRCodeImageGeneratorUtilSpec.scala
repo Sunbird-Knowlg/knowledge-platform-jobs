@@ -19,7 +19,7 @@ class QRCodeImageGeneratorUtilSpec extends FlatSpec with BeforeAndAfterAll with 
   implicit val mockNeo4JUtil: Neo4JUtil = mock[Neo4JUtil](Mockito.withSettings().serializable())
   var cassandraUtil: CassandraUtil = _
   implicit val mockCloudUtil: CloudStorageUtil = mock[CloudStorageUtil](Mockito.withSettings().serializable())
-  val mockElasticUtil = mock[ElasticSearchUtil](Mockito.withSettings().serializable())
+  val mockElasticUtil: ElasticSearchUtil = mock[ElasticSearchUtil](Mockito.withSettings().serializable())
 
   override protected def beforeAll(): Unit = {
     EmbeddedCassandraServerHelper.startEmbeddedCassandra(80000L)
