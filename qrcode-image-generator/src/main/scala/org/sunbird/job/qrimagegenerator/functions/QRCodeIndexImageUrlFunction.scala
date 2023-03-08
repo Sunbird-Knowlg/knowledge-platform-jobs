@@ -47,7 +47,7 @@ class QRCodeIndexImageUrlFunction(config: QRCodeImageGeneratorConfig,
               val text = dialcode("text").asInstanceOf[String]
               qRCodeImageGeneratorUtil.indexImageInDocument(text)(esUtil, cassandraUtil)
             } catch {
-              case e: Exception =>  throw new InvalidEventException(e.getMessage)
+              case e: Exception => e.printStackTrace() throw new InvalidEventException(e.getMessage)
             }
           }
 
