@@ -58,5 +58,5 @@ class QRCodeImageGeneratorConfig(override val config: Config) extends BaseJobCon
   val cassandraDialCodeImageTable: String = config.getString("lms-cassandra.table.image")
   val cassandraDialCodeBatchTable: String = config.getString("lms-cassandra.table.batch")
 
-  val indexImageURL: Boolean = if (config.hasPath("qr.image.index")) config.getBoolean("qr.image.index") else true
+  val indexImageURL: Boolean = if (config.hasPath("qr.image.indexImageUrl")) config.getBoolean("qr.image.indexImageUrl") else true
 }
