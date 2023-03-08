@@ -34,7 +34,7 @@ class QRCodeImageGeneratorTaskTestSpec extends BaseTestSpec {
   val jobConfig: QRCodeImageGeneratorConfig = new QRCodeImageGeneratorConfig(config)
   val cloudStorageUtil:CloudStorageUtil = new CloudStorageUtil(jobConfig)
   var cassandraUtils: CassandraUtil = _
-
+  val mockElasticUtil: ElasticSearchUtil = mock[ElasticSearchUtil](Mockito.withSettings().serializable())
   var currentMilliSecond = 1605816926271L
 
   override protected def beforeAll(): Unit = {
@@ -54,6 +54,18 @@ class QRCodeImageGeneratorTaskTestSpec extends BaseTestSpec {
   }
 
   "QRCodeImageGeneratorTask" should "generate event" in {
+
+    val N3X6Y3Json = """{"identifier":"N3X6Y3", "filename":"2_N3X6Y3", "channel":"b00bc992ef25f1a9a8d63291e20efc8d"}"""
+    val U3J1J9Json = """{"identifier":"U3J1J9", "filename":"0_U3J1J9", "channel":"b00bc992ef25f1a9a8d63291e20efc8d"}"""
+    val V2B5A2Json = """{"identifier":"V2B5A2", "filename":"1_V2B5A2", "channel":"b00bc992ef25f1a9a8d63291e20efc8d"}"""
+    val F6J3E7Json = """{"identifier":"F6J3E7", "filename":"0_F6J3E7", "channel":"b00bc992ef25f1a9a8d63291e20efc8d"}"""
+    val Q1I5I3Json = """{"identifier":"Q1I5I3", "filename":"0_Q1I5I3", "channel":"b00bc992ef25f1a9a8d63291e20efc8d"}"""
+    when(mockElasticUtil.getDocumentAsString("Q1I5I3")).thenReturn(Q1I5I3Json)
+    when(mockElasticUtil.getDocumentAsString("N3X6Y3")).thenReturn(N3X6Y3Json)
+    when(mockElasticUtil.getDocumentAsString("U3J1J9")).thenReturn(U3J1J9Json)
+    when(mockElasticUtil.getDocumentAsString("V2B5A2")).thenReturn(V2B5A2Json)
+    when(mockElasticUtil.getDocumentAsString("F6J3E7")).thenReturn(F6J3E7Json)
+
     when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new QRCodeImageGeneratorMapSource)
     new QRCodeImageGeneratorTask(jobConfig, mockKafkaUtil).process()
 //    assertThrows[JobExecutionException] {
