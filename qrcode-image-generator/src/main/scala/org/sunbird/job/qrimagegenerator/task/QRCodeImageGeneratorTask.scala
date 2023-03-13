@@ -30,8 +30,9 @@ class QRCodeImageGeneratorTask(config: QRCodeImageGeneratorConfig, kafkaConnecto
       .uid(config.qrCodeImageGeneratorFunction)
       .setParallelism(config.parallelism)
 
-    streamTask.getSideOutput(config.indexImageUrlOutTag).process(new QRCodeIndexImageUrlFunction(config))
-      .name("index-imageUrl-process").uid("index-imageUrl-process").setParallelism(config.parallelism)
+    if(config.indexImageURL)
+      streamTask.getSideOutput(config.indexImageUrlOutTag).process(new QRCodeIndexImageUrlFunction(config))
+        .name("index-imageUrl-process").uid("index-imageUrl-process").setParallelism(config.parallelism)
 
     env.execute(config.jobName)
   }
