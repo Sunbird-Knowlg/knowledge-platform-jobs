@@ -27,6 +27,7 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
   private val qrCodeWriter = new QRCodeWriter()
   private val fontStore: java.util.Map[String, Font] = new java.util.HashMap[String, Font]()
   private val logger = LoggerFactory.getLogger(classOf[QRCodeImageGeneratorUtil])
+  val isrRelativePathEnabled = config.getBoolean("cloudstorage.metadata.replace_absolute_path", false)
 
   @throws[WriterException]
   @throws[IOException]
@@ -270,12 +271,16 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
     logger.info("QRCodeImageGeneratorUtil::indexImageInDocument:: indexDocument:: " + indexDocument)
     if(indexDocument!=null && indexDocument.nonEmpty && !indexDocument.contains("url")) {
       val query = QueryBuilder.select("url").from(config.cassandraKeyspace, config.cassandraDialCodeImageTable)
-        .where(QueryBuilder.eq("filename", indexDocument.get("filename").toString))
-
+        .allowFiltering()
+        .where(QueryBuilder.eq("dialcode", indexDocument.get("identifier").toString))
+      logger.info("QRCodeImageGeneratorUtil::indexImageInDocument:: query:: " + query)
       val row: Row = cassandraUtil.findOne(query.toString)
       if(null != row && !row.isNull("url")) {
         val imageUrl = row.getString("url")
-        val updatedDocString = ScalaJsonUtil.serialize(indexDocument + ("imageUrl" -> imageUrl))
+        logger.info("QRCodeImageGeneratorUtil::indexImageInDocument:: imageUrl:: " + imageUrl)
+        val absoluteImageUrl = if (isrRelativePathEnabled) CSPMetaUtil.updateAbsolutePath(imageUrl)(config) else imageUrl
+        logger.info("QRCodeImageGeneratorUtil::indexImageInDocument:: absoluteImageUrl:: " + absoluteImageUrl)
+        val updatedDocString = ScalaJsonUtil.serialize(indexDocument + ("imageUrl" -> absoluteImageUrl))
         logger.info("QRCodeImageGeneratorUtil:indexImageInDocument: updatedDocString:: " + updatedDocString)
         esUtil.updateDocument(id, updatedDocString)
       }
