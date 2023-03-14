@@ -265,7 +265,7 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
   }
 
 
-  def indexImageInDocument(id: String)(esUtil: ElasticSearchUtil, cassandraUtil: CassandraUtil, config: QRCodeImageGeneratorConfig): Unit = {
+  def indexImageInDocument(id: String)(esUtil: ElasticSearchUtil, cassandraUtil: CassandraUtil): Unit = {
     val documentJson: String = esUtil.getDocumentAsString(id)
     val indexDocument = if (documentJson != null && documentJson.nonEmpty) ScalaJsonUtil.deserialize[mutable.Map[String, AnyRef]](documentJson) else mutable.Map[String, AnyRef]()
     logger.info("QRCodeImageGeneratorUtil::indexImageInDocument:: indexDocument:: " + indexDocument)
