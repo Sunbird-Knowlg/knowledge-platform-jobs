@@ -272,7 +272,7 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
     if(indexDocument!=null && indexDocument.nonEmpty && !indexDocument.contains("url")) {
       val query = QueryBuilder.select("url").from(config.cassandraKeyspace, config.cassandraDialCodeImageTable)
         .allowFiltering()
-        .where(QueryBuilder.eq("dialcode", indexDocument.get("identifier").toString))
+        .where(QueryBuilder.eq("dialcode", id))
       logger.info("QRCodeImageGeneratorUtil::indexImageInDocument:: query:: " + query)
       val row: Row = cassandraUtil.findOne(query.toString)
       if(null != row && !row.isNull("url")) {
