@@ -101,6 +101,8 @@ class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig,
           logger.info("QRCodeImageGeneratorService:processMessage: event.storagePath - " + event.storagePath + "  event.storageContainer - "+ event.storageContainer)
           val zipDownloadUrl = cloudStorageUtil.uploadFile(event.storagePath, zipFile, Some(false), container = event.storageContainer)
           logger.info("QRCodeImageGeneratorService:processMessage: zipDownloadUrl - " + zipDownloadUrl)
+          val newDownloadUrl = zipDownloadUrl.replaceAll("bmzbbujw9kal.compat.objectstorage.ap-mumbai-1.oraclecloud.com", "files.odev.oci.diksha.gov.in")
+          logger.info("QRCodeImageGeneratorService:processMessage: newDownloadUrl - " + newDownloadUrl)
           metrics.incCounter(config.cloudDbHitCount)
           logger.info("QRCodeImageGeneratorService:processMessage: event - " + event)
           qRCodeImageGeneratorUtil.updateCassandra(config.cassandraDialCodeBatchTable, 2, zipDownloadUrl(1), "processid", event.processId, metrics)

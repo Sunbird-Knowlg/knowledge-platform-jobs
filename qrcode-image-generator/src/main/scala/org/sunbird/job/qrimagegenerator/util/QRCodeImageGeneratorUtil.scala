@@ -55,6 +55,8 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
       try {
         val imageDownloadUrl = cloudStorageUtil.uploadFile(path, finalImageFile, Some(false), container = container)
         logger.info("QRCodeImageGeneratorUtil:createQRImages: imageDownloadUrl - " + imageDownloadUrl)
+        val newDownloadUrl = imageDownloadUrl.replaceAll("bmzbbujw9kal.compat.objectstorage.ap-mumbai-1.oraclecloud.com", "files.odev.oci.diksha.gov.in")
+        logger.info("QRCodeImageGeneratorService:processMessage: imageDownloadUrl - " + imageDownloadUrl)
         updateCassandra(config.cassandraDialCodeImageTable, 2, imageDownloadUrl(1), "filename", fileName, metrics)
       } catch {
         case e: Exception =>
