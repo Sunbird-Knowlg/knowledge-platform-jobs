@@ -103,7 +103,7 @@ class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig,
           logger.info("QRCodeImageGeneratorService:processMessage: zipDownloadUrl - " + zipDownloadUrl.toList)
           logger.info("QRCodeImageGeneratorService:processMessage: zipDownloadUrl - " + zipDownloadUrl.mkString(","))
           logger.info("QRCodeImageGeneratorService:processMessage: zipDownloadUrl(1) - " + zipDownloadUrl(1))
-          val newDownloadUrl = zipDownloadUrl(1).replaceAll("bmzbbujw9kal.compat.objectstorage.ap-mumbai-1.oraclecloud.com", "files.odev.oci.diksha.gov.in")
+          var newDownloadUrl = zipDownloadUrl(1).replaceAll("bmzbbujw9kal.compat.objectstorage.ap-mumbai-1.oraclecloud.com", "files.odev.oci.diksha.gov.in")
           logger.info("QRCodeImageGeneratorService:processMessage: newDownloadUrl before - " + newDownloadUrl)
           if(zipDownloadUrl(0).contains("//"))
           {

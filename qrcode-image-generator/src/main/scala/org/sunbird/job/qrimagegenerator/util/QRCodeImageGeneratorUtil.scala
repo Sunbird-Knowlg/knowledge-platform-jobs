@@ -58,7 +58,7 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
         logger.info("QRCodeImageGeneratorUtil:createQRImages: imageDownloadUrl - " + imageDownloadUrl.mkString(","))
         logger.info("QRCodeImageGeneratorUtil:createQRImages: imageDownloadUrl(1) - " + imageDownloadUrl(1))
 
-        val newDownloadUrl = imageDownloadUrl(1).replaceAll("bmzbbujw9kal.compat.objectstorage.ap-mumbai-1.oraclecloud.com", "files.odev.oci.diksha.gov.in")
+        var newDownloadUrl = imageDownloadUrl(1).replaceAll("bmzbbujw9kal.compat.objectstorage.ap-mumbai-1.oraclecloud.com", "files.odev.oci.diksha.gov.in")
         logger.info("QRCodeImageGeneratorService:processMessage: newDownloadUrl before - " + newDownloadUrl)
         if(imageDownloadUrl(0).contains("//"))
         {
