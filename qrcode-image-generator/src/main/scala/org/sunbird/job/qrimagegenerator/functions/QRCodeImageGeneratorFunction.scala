@@ -109,8 +109,7 @@ class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig,
           {
               val charToReplace = '/'
               val lastIndex = newDownloadUrl.lastIndexOf(charToReplace)
-              val newStr = newDownloadUrl.substring(0, lastIndex) + newDownloadUrl.substring(lastIndex).replaceFirst(charToReplace.toString, "")
-              newDownloadUrl = newStr
+              newDownloadUrl = newDownloadUrl.substring(0, lastIndex) + newDownloadUrl.substring(lastIndex).replaceFirst(charToReplace.toString, "")
               logger.info("QRCodeImageGeneratorUtil:createQRImages: newDownloadUrl after - " + newDownloadUrl)
           }
           metrics.incCounter(config.cloudDbHitCount)
