@@ -104,7 +104,15 @@ class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig,
           logger.info("QRCodeImageGeneratorService:processMessage: zipDownloadUrl - " + zipDownloadUrl.mkString(","))
           logger.info("QRCodeImageGeneratorService:processMessage: zipDownloadUrl(1) - " + zipDownloadUrl(1))
           val newDownloadUrl = zipDownloadUrl(1).replaceAll("bmzbbujw9kal.compat.objectstorage.ap-mumbai-1.oraclecloud.com", "files.odev.oci.diksha.gov.in")
-          logger.info("QRCodeImageGeneratorService:processMessage: newDownloadUrl - " + newDownloadUrl)
+          logger.info("QRCodeImageGeneratorService:processMessage: newDownloadUrl before - " + newDownloadUrl)
+          if(zipDownloadUrl(0).contains("//"))
+          {
+              val charToReplace = '/'
+              val lastIndex = newDownloadUrl.lastIndexOf(charToReplace)
+              val newStr = newDownloadUrl.substring(0, lastIndex) + newDownloadUrl.substring(lastIndex).replaceFirst(charToReplace.toString, "")
+              newDownloadUrl = newStr
+              logger.info("QRCodeImageGeneratorUtil:createQRImages: newDownloadUrl after - " + newDownloadUrl)
+          }
           metrics.incCounter(config.cloudDbHitCount)
           logger.info("QRCodeImageGeneratorService:processMessage: event - " + event)
           qRCodeImageGeneratorUtil.updateCassandra(config.cassandraDialCodeBatchTable, 2, newDownloadUrl, "processid", event.processId, metrics)
