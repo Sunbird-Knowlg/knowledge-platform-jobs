@@ -100,13 +100,14 @@ class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig,
           zipFile = new File(zipFileName)
           logger.info("QRCodeImageGeneratorService:processMessage: event.storagePath - " + event.storagePath + "  event.storageContainer - "+ event.storageContainer)
           val zipDownloadUrl = cloudStorageUtil.uploadFile(event.storagePath, zipFile, Some(false), container = event.storageContainer)
-          logger.info("QRCodeImageGeneratorService:processMessage: zipDownloadUrl - " + zipDownloadUrl)
+          logger.info("QRCodeImageGeneratorService:processMessage: zipDownloadUrl - " + zipDownloadUrl.toList)
+          logger.info("QRCodeImageGeneratorService:processMessage: zipDownloadUrl - " + zipDownloadUrl.mkString(","))
           logger.info("QRCodeImageGeneratorService:processMessage: zipDownloadUrl(1) - " + zipDownloadUrl(1))
           val newDownloadUrl = zipDownloadUrl(1).replaceAll("bmzbbujw9kal.compat.objectstorage.ap-mumbai-1.oraclecloud.com", "files.odev.oci.diksha.gov.in")
           logger.info("QRCodeImageGeneratorService:processMessage: newDownloadUrl - " + newDownloadUrl)
           metrics.incCounter(config.cloudDbHitCount)
           logger.info("QRCodeImageGeneratorService:processMessage: event - " + event)
-          qRCodeImageGeneratorUtil.updateCassandra(config.cassandraDialCodeBatchTable, 2, zipDownloadUrl(1), "processid", event.processId, metrics)
+          qRCodeImageGeneratorUtil.updateCassandra(config.cassandraDialCodeBatchTable, 2, newDownloadUrl, "processid", event.processId, metrics)
         }
         else {
           logger.info("QRCodeImageGeneratorService:processMessage: Skipping zip creation due to missing processId.")
