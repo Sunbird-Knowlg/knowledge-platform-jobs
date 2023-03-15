@@ -84,18 +84,25 @@ class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig,
           val maxAllowedCharacter: Int = config.getInt("max_allowed_character_for_file_name", 120)
           logger.info("QRCodeImageGeneratorService:processMessage: Generating zip for QR codes with processId " + event.processId)
           val storageFileName = if (event.storageFileName.isBlank) event.processId else event.storageFileName
+          logger.info("QRCodeImageGeneratorService:processMessage: storageFileName " + storageFileName)
           val qrZipFileName = if (storageFileName.length > maxAllowedCharacter) storageFileName.substring(0, maxAllowedCharacter) else storageFileName
+          logger.info("QRCodeImageGeneratorService:processMessage: qrZipFileName - " + qrZipFileName + "  tempFilePath - "+tempFilePath)
 
           // Merge available and generated image list
           generatedImages.foreach(f => availableImages += f)
 
           val zipFileName: String = tempFilePath + File.separator + qrZipFileName + ".zip"
+          logger.info("QRCodeImageGeneratorService:processMessage: zipFileName - " + zipFileName)
+
           val fileList: List[String] = availableImages.map(f => f.getName).toList
           FileUtils.zipIt(zipFileName, fileList, tempFilePath)
 
           zipFile = new File(zipFileName)
+          logger.info("QRCodeImageGeneratorService:processMessage: event.storagePath - " + event.storagePath + "  event.storageContainer - "+ event.storageContainer)
           val zipDownloadUrl = cloudStorageUtil.uploadFile(event.storagePath, zipFile, Some(false), container = event.storageContainer)
+          logger.info("QRCodeImageGeneratorService:processMessage: zipDownloadUrl - " + zipDownloadUrl)
           metrics.incCounter(config.cloudDbHitCount)
+          logger.info("QRCodeImageGeneratorService:processMessage: event - " + event)
           qRCodeImageGeneratorUtil.updateCassandra(config.cassandraDialCodeBatchTable, 2, zipDownloadUrl(1), "processid", event.processId, metrics)
         }
         else {
