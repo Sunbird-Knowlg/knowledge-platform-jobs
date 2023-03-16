@@ -53,21 +53,12 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
       fileList += finalImageFile
       try {
         logger.info("QRCodeImageGeneratorUtil:createQRImages: path before - " + path)
-        val newpath = path.replace("/", "")
-        logger.info("QRCodeImageGeneratorUtil:createQRImages: path after - " + newpath)
-        val imageDownloadUrl = cloudStorageUtil.uploadFile(newpath, finalImageFile, Some(false), container = container)
+        val imageDownloadUrl = cloudStorageUtil.uploadFile(path, finalImageFile, Some(false), container = container)
         logger.info("QRCodeImageGeneratorUtil:createQRImages: imageDownloadUrl - " + imageDownloadUrl.mkString(","))
         logger.info("QRCodeImageGeneratorUtil:createQRImages: imageDownloadUrl(1) - " + imageDownloadUrl(1))
 
         var newDownloadUrl = imageDownloadUrl(1).replaceAll("bmzbbujw9kal.compat.objectstorage.ap-mumbai-1.oraclecloud.com", "files.odev.oci.diksha.gov.in")
         logger.info("QRCodeImageGeneratorService:processMessage: newDownloadUrl before - " + newDownloadUrl)
-        if(imageDownloadUrl(0).contains("//"))
-        {
-            val charToReplace = '/'
-            val lastIndex = newDownloadUrl.lastIndexOf(charToReplace)
-            newDownloadUrl = newDownloadUrl.substring(0, lastIndex) + newDownloadUrl.substring(lastIndex).replaceFirst(charToReplace.toString, "")
-            logger.info("QRCodeImageGeneratorUtil:createQRImages: newDownloadUrl after - " + newDownloadUrl)
-        }
         updateCassandra(config.cassandraDialCodeImageTable, 2, newDownloadUrl, "filename", fileName, metrics)
       } catch {
         case e: Exception =>

@@ -99,20 +99,10 @@ class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig,
 
           zipFile = new File(zipFileName)
           logger.info("QRCodeImageGeneratorService:processMessage: event.storagePath - " + event.storagePath + "  event.storageContainer - "+ event.storageContainer)
-          logger.info("QRCodeImageGeneratorService:processMessage: event.storagePath - after " + event.storagePath.replace("/", ""))
-          val zipDownloadUrl = cloudStorageUtil.uploadFile(event.storagePath.replace("/", ""), zipFile, Some(false), container = event.storageContainer)
+          val zipDownloadUrl = cloudStorageUtil.uploadFile(event.storagePath, zipFile, Some(false), container = event.storageContainer)
           logger.info("QRCodeImageGeneratorService:processMessage: zipDownloadUrl - " + zipDownloadUrl.toList)
-          logger.info("QRCodeImageGeneratorService:processMessage: zipDownloadUrl - " + zipDownloadUrl.mkString(","))
           logger.info("QRCodeImageGeneratorService:processMessage: zipDownloadUrl(1) - " + zipDownloadUrl(1))
           var newDownloadUrl = zipDownloadUrl(1).replaceAll("bmzbbujw9kal.compat.objectstorage.ap-mumbai-1.oraclecloud.com", "files.odev.oci.diksha.gov.in")
-          logger.info("QRCodeImageGeneratorService:processMessage: newDownloadUrl before - " + newDownloadUrl)
-          if(zipDownloadUrl(0).contains("//"))
-          {
-              val charToReplace = '/'
-              val lastIndex = newDownloadUrl.lastIndexOf(charToReplace)
-              newDownloadUrl = newDownloadUrl.substring(0, lastIndex) + newDownloadUrl.substring(lastIndex).replaceFirst(charToReplace.toString, "")
-              logger.info("QRCodeImageGeneratorUtil:createQRImages: newDownloadUrl after - " + newDownloadUrl)
-          }
           metrics.incCounter(config.cloudDbHitCount)
           logger.info("QRCodeImageGeneratorService:processMessage: event - " + event)
           qRCodeImageGeneratorUtil.updateCassandra(config.cassandraDialCodeBatchTable, 2, newDownloadUrl, "processid", event.processId, metrics)
