@@ -77,7 +77,7 @@ class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig,
 
         val dialCodes: List[Map[String, AnyRef]] = event.dialCodes.filter(dialcode => dialcode.getOrElse("location", "").asInstanceOf[String].isEmpty)
         val qrGenRequest: QRCodeImageGeneratorRequest = QRCodeImageGeneratorRequest(dialCodes, imageConfig, config.lpTempFileLocation)
-        logger.info("QRCodeImageGeneratorRequest: " + qrGenRequest)
+        logger.info("QRCodeImageGeneratorRequest: " + qrGenRequest + "  storageContainer: "+event.storageContainer+"  storagePath: "+event.storagePath)
         val generatedImages: ListBuffer[File] = qRCodeImageGeneratorUtil.createQRImages(qrGenRequest, event.storageContainer, event.storagePath, metrics)
 
         if (!event.processId.isBlank) {
