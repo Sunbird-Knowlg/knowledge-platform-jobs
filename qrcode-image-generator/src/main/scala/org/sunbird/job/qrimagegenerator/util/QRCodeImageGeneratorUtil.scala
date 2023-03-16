@@ -53,9 +53,9 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
       fileList += finalImageFile
       try {
         logger.info("QRCodeImageGeneratorUtil:createQRImages: path before - " + path)
-        path = path.replace("/", "")
-        logger.info("QRCodeImageGeneratorUtil:createQRImages: path after - " + path)
-        val imageDownloadUrl = cloudStorageUtil.uploadFile(path, finalImageFile, Some(false), container = container)
+        val newpath = path.replace("/", "")
+        logger.info("QRCodeImageGeneratorUtil:createQRImages: path after - " + newpath)
+        val imageDownloadUrl = cloudStorageUtil.uploadFile(newpath, finalImageFile, Some(false), container = container)
         logger.info("QRCodeImageGeneratorUtil:createQRImages: imageDownloadUrl - " + imageDownloadUrl.mkString(","))
         logger.info("QRCodeImageGeneratorUtil:createQRImages: imageDownloadUrl(1) - " + imageDownloadUrl(1))
 
