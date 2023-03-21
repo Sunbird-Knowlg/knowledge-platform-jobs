@@ -34,14 +34,14 @@ trait MigrationObjectReader {
     val selectWhereId: Select.Where = selectId.from(config.contentKeyspaceName, config.contentTableName).where().and(QueryBuilder.eq("content_id", identifier))
     logger.info("MigrationObjectReader:: getContentBody:: ECML Body Fetch Query :: " + selectWhereId.toString)
     val rowId = cassandraUtil.findOne(selectWhereId.toString)
-    if (null != rowId) rowId.getString("body") else ""
+    if (null != rowId && null != rowId.getString("body") ) rowId.getString("body") else ""
   }
 
   def getAssessmentItemData(identifier: String, config: CSPMigratorConfig)(implicit cassandraUtil: CassandraUtil): Row = {
     logger.info("MigrationObjectReader ::: getAssessmentItemData ::: Reading Question External Data For : " + identifier)
     val select = QueryBuilder.select()
     val extProps = config.getConfig.getStringList("cassandra_fields_to_migrate.assessmentitem").asScala.toList
-    extProps.foreach(prop => if (lang3.StringUtils.equals("body", prop) | lang3.StringUtils.equals("answer", prop)) select.fcall("blobAsText", QueryBuilder.column(prop.toLowerCase())).as(prop.toLowerCase()) else select.column(prop.toLowerCase()).as(prop.toLowerCase()))
+    extProps.foreach(prop => select.fcall("blobAsText", QueryBuilder.column(prop.toLowerCase())).as(prop.toLowerCase()))
     val selectWhere: Select.Where = select.from(config.contentKeyspaceName, config.assessmentTableName).where().and(QueryBuilder.eq("question_id", identifier))
     logger.info("MigrationObjectReader ::: getAssessmentItemData:: Cassandra Fetch Query :: " + selectWhere.toString)
     cassandraUtil.findOne(selectWhere.toString)
@@ -52,7 +52,7 @@ trait MigrationObjectReader {
     val selectWhereId: Select.Where = selectId.from(config.hierarchyKeyspaceName, config.hierarchyTableName).where().and(QueryBuilder.eq("identifier", identifier))
     logger.info("MigrationObjectReader:: getCollectionHierarchy:: Hierarchy Fetch Query :: " + selectWhereId.toString)
     val rowId = cassandraUtil.findOne(selectWhereId.toString)
-    if (null != rowId) rowId.getString("hierarchy") else ""
+    if (null != rowId && null != rowId.getString("hierarchy")) rowId.getString("hierarchy") else ""
   }
 
   def getQuestionSetHierarchy(identifier: String, config: CSPMigratorConfig)(implicit cassandraUtil: CassandraUtil): String = {
@@ -60,7 +60,7 @@ trait MigrationObjectReader {
     val selectWhereId: Select.Where = selectId.from(config.qsHierarchyKeyspaceName, config.qsHierarchyTableName).where().and(QueryBuilder.eq("identifier", identifier))
     logger.info("MigrationObjectReader:: getQuestionSetHierarchy:: Hierarchy Fetch Query :: " + selectWhereId.toString)
     val rowId = cassandraUtil.findOne(selectWhereId.toString)
-    if (null != rowId) rowId.getString("hierarchy") else ""
+    if (null != rowId && null != rowId.getString("hierarchy")) rowId.getString("hierarchy") else ""
   }
 
 

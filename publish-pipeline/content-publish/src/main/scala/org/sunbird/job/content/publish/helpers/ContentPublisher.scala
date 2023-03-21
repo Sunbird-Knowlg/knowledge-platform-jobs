@@ -201,7 +201,12 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
           None
         case MimeType.ECML_Archive | MimeType.HTML_Archive | MimeType.H5P_Archive =>
           val latestFolderS3Url = ExtractableMimeTypeHelper.getCloudStoreURL(obj, cloudStorageUtil, config)
-          val updatedPreviewUrl = updatedMeta ++ Map("previewUrl" -> latestFolderS3Url, "streamingUrl" -> latestFolderS3Url)
+          val relativeLatestFolder = if(config.isrRelativePathEnabled) {
+            val paths = config.config.getStringList("cloudstorage.write_base_path").asScala.toArray
+            val repArray = CSPMetaUtil.getReplacementData(paths, config.getString("cloudstorage.read_base_path", ""))
+            StringUtils.replaceEach(latestFolderS3Url, paths, repArray)
+          } else latestFolderS3Url
+          val updatedPreviewUrl = updatedMeta ++ Map("previewUrl" -> relativeLatestFolder, "streamingUrl" -> latestFolderS3Url)
           Some(updatedPreviewUrl)
         case _ =>
           val artifactUrl = obj.getString("artifactUrl", null)

@@ -49,7 +49,5 @@ trait CSPCassandraMigrator extends MigrationObjectReader with MigrationObjectUpd
 			}
 			case _ => logger.info(s"""CSPCassandraMigrator:: process:: $identifier - $objectType :: NO CASSANDRA MIGRATION PERFORMED!! """)
 		}
-
 	}
-
 }

@@ -16,7 +16,7 @@ import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.migration.domain.Event
 import org.sunbird.job.migration.fixture.EventFixture
 import org.sunbird.job.task.{CassandraDataMigrationConfig, CassandraDataMigrationStreamTask}
-import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, JSONUtil}
+import org.sunbird.job.util.{CassandraUtil, JSONUtil}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 
 import java.util
@@ -33,7 +33,6 @@ class CassandraDataMigrationTaskTestSpec extends BaseTestSpec {
   val mockKafkaUtil: FlinkKafkaConnector = mock[FlinkKafkaConnector](Mockito.withSettings().serializable())
   val config: Config = ConfigFactory.load("test.conf").withFallback(ConfigFactory.systemEnvironment())
   val jobConfig: CassandraDataMigrationConfig = new CassandraDataMigrationConfig(config)
-  val cloudStorageUtil:CloudStorageUtil = new CloudStorageUtil(jobConfig)
   var cassandraUtils: CassandraUtil = _
 
   var currentMilliSecond = 1605816926271L

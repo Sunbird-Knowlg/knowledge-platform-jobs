@@ -3,6 +3,7 @@ package org.sunbird.job.livenodepublisher.publish.helpers
 import org.apache.commons.io.FilenameUtils
 import org.apache.commons.lang3.StringUtils
 import org.apache.tika.Tika
+import org.neo4j.driver.v1.StatementResult
 import org.slf4j.LoggerFactory
 import org.sunbird.job.livenodepublisher.task.LiveNodePublisherConfig
 import org.sunbird.job.domain.`object`.DefinitionCache
@@ -10,6 +11,7 @@ import org.sunbird.job.exception.InvalidInputException
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData, ObjectExtData}
 import org.sunbird.job.publish.helpers._
+import org.sunbird.job.util.CSPMetaUtil.updateRelativePath
 import org.sunbird.job.util._
 
 import java.io.{File, IOException}
@@ -31,7 +33,7 @@ trait LiveContentPublisher extends LiveObjectReader with ObjectValidator with Ob
   private val ignoreValidationMimeType = List(MimeType.Collection, MimeType.Plugin_Archive, MimeType.ASSETS)
   private val YOUTUBE_REGEX = "^(http(s)?:\\/\\/)?((w){3}.)?youtu(be|.be)?(\\.com)?\\/.+"
 
-  def getExtData(identifier: String, mimeType: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[ObjectExtData] = {
+  def getExtData(identifier: String, mimeType: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil, config: PublishConfig): Option[ObjectExtData] = {
     mimeType match {
       case MimeType.ECML_Archive =>
         val ecmlBody = getContentBody(identifier, readerConfig)
@@ -41,7 +43,7 @@ trait LiveContentPublisher extends LiveObjectReader with ObjectValidator with Ob
     }
   }
 
-  override def getHierarchy(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = None
+  override def getHierarchy(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil, config: PublishConfig): Option[Map[String, AnyRef]] = None
 
   override def getExtDatas(identifiers: List[String], readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = None
 
@@ -65,11 +67,16 @@ trait LiveContentPublisher extends LiveObjectReader with ObjectValidator with Ob
     //delete basePath if exists
     Files.deleteIfExists(new File(ExtractableMimeTypeHelper.getBasePath(obj.identifier, contentConfig.bundleLocation)).toPath)
 
-    if (contentConfig.isECARExtractionEnabled && contentConfig.extractableMimeTypes.contains(obj.mimeType)) {
-      ExtractableMimeTypeHelper.copyExtractedContentPackage(obj, contentConfig, "version", cloudStorageUtil)
-      ExtractableMimeTypeHelper.copyExtractedContentPackage(obj, contentConfig, "latest", cloudStorageUtil)
+    try {
+      if (contentConfig.isECARExtractionEnabled && contentConfig.extractableMimeTypes.contains(obj.mimeType)) {
+        ExtractableMimeTypeHelper.copyExtractedContentPackage(obj, contentConfig, "version", cloudStorageUtil)
+        ExtractableMimeTypeHelper.copyExtractedContentPackage(obj, contentConfig, "latest", cloudStorageUtil)
+      }
+    } catch {
+      case _:Exception => neo4JUtil.executeQuery(s"""MATCH (n:domain{IL_UNIQUE_ID:"${obj.identifier}"}) SET n.migrationVersion=0.5;""")
+        throw new InvalidInputException(s"Invalid input found For $obj.identifier")
     }
-    val updatedPreviewUrl = updatePreviewUrl(obj, updatedPragma, cloudStorageUtil, contentConfig).getOrElse(updatedPragma)
+    val updatedPreviewUrl = updatePreviewUrl(obj, updatedPragma, neo4JUtil, cloudStorageUtil, contentConfig).getOrElse(updatedPragma)
     Some(new ObjectData(obj.identifier, updatedPreviewUrl, obj.extData, obj.hierarchy))
   }
 
@@ -162,14 +169,17 @@ trait LiveContentPublisher extends LiveObjectReader with ObjectValidator with Ob
 
   def getObjectWithEcar(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, neo4JUtil: Neo4JUtil, cloudStorageUtil: CloudStorageUtil, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
     try {
-      logger.info("ContentPublisher:getObjectWithEcar: Ecar generation done for Content: " + data.identifier)
+      logger.info("LiveContentPublisher :: getObjectWithEcar:: Ecar generation done for Content: " + data.identifier)
       val ecarMap: Map[String, String] = generateEcar(data, pkgTypes)
       val variants: java.util.Map[String, java.util.Map[String, String]] = ecarMap.map { case (key, value) => key.toLowerCase -> Map[String, String]("ecarUrl" -> value, "size" -> httpUtil.getSize(value).toString).asJava }.asJava
-      logger.info("ContentPublisher ::: getObjectWithEcar ::: ecar map ::: " + ecarMap)
+      logger.info("LiveContentPublisher :: getObjectWithEcar :: ecar map :: " + ecarMap)
       val meta: Map[String, AnyRef] = Map("downloadUrl" -> ecarMap.getOrElse(EcarPackageType.FULL, ""), "variants" -> variants)
       new ObjectData(data.identifier, data.metadata ++ meta, data.extData, data.hierarchy)
     } catch {
       case _: java.lang.IllegalArgumentException => throw new InvalidInputException(s"Invalid input found For $data.identifier")
+      case iex@(_: java.lang.InterruptedException | _:java.io.FileNotFoundException) =>
+        neo4JUtil.executeQuery(s"""MATCH (n:domain{IL_UNIQUE_ID:"${data.identifier}"}) SET n.migrationVersion=0.5;""")
+        throw new InvalidInputException(s"Invalid input found For $data.identifier")
     }
   }
 
@@ -192,21 +202,29 @@ trait LiveContentPublisher extends LiveObjectReader with ObjectValidator with Ob
     } else None
   }
 
-  private def updatePreviewUrl(obj: ObjectData, updatedMeta: Map[String, AnyRef], cloudStorageUtil: CloudStorageUtil, config: LiveNodePublisherConfig): Option[Map[String, AnyRef]] = {
-    if (StringUtils.isNotBlank(obj.mimeType)) {
-      logger.debug("Checking Required Fields For: " + obj.mimeType)
-      obj.mimeType match {
-        case MimeType.Collection | MimeType.Plugin_Archive | MimeType.Android_Package | MimeType.ASSETS =>
-          None
-        case MimeType.ECML_Archive | MimeType.HTML_Archive | MimeType.H5P_Archive =>
-          val latestFolderS3Url = ExtractableMimeTypeHelper.getCloudStoreURL(obj, cloudStorageUtil, config)
-          val updatedPreviewUrl = updatedMeta ++ Map("previewUrl" -> latestFolderS3Url, "streamingUrl" -> latestFolderS3Url)
-          Some(updatedPreviewUrl)
-        case _ =>
-          val artifactUrl = obj.getString("artifactUrl", null)
-          val updatedPreviewUrl = updatedMeta ++ Map("previewUrl" -> artifactUrl)
-          if (config.isStreamingEnabled && !config.streamableMimeType.contains(obj.mimeType)) Some(updatedPreviewUrl ++ Map("streamingUrl" -> artifactUrl)) else Some(updatedPreviewUrl)
-      }
-    } else None
+  private def updatePreviewUrl(obj: ObjectData, updatedMeta: Map[String, AnyRef], neo4JUtil: Neo4JUtil, cloudStorageUtil: CloudStorageUtil, config: LiveNodePublisherConfig): Option[Map[String, AnyRef]] = {
+    try {
+      if (StringUtils.isNotBlank(obj.mimeType)) {
+        logger.debug("Checking Required Fields For: " + obj.mimeType)
+        obj.mimeType match {
+          case MimeType.Collection | MimeType.Plugin_Archive | MimeType.Android_Package | MimeType.ASSETS =>
+            None
+          case MimeType.ECML_Archive | MimeType.HTML_Archive | MimeType.H5P_Archive =>
+            val latestFolderS3Url = ExtractableMimeTypeHelper.getCloudStoreURL(obj, cloudStorageUtil, config)
+            val relativeLatestFolder = if(config.isrRelativePathEnabled) StringUtils.replaceEach(latestFolderS3Url, config.config.getStringList("cloudstorage.write_base_path").asScala.toArray, Array(config.getString("cloudstorage.read_base_path", ""))) else latestFolderS3Url
+            val updatedPreviewUrl = updatedMeta ++ Map("previewUrl" -> relativeLatestFolder, "streamingUrl" -> latestFolderS3Url)
+            Some(updatedPreviewUrl)
+          case _ =>
+            val artifactUrl = obj.getString("artifactUrl", null)
+            val updatedPreviewUrl = updatedMeta ++ Map("previewUrl" -> artifactUrl)
+            if (config.isStreamingEnabled && !config.streamableMimeType.contains(obj.mimeType)) Some(updatedPreviewUrl ++ Map("streamingUrl" -> artifactUrl)) else Some(updatedPreviewUrl)
+        }
+      } else None
+    } catch {
+      case ex: Exception => logger.debug("Exception for updatePreviewUrl: " + ex.getMessage)
+        val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"${obj.identifier}"}) SET n.migrationVersion=0.5;"""
+        val result: StatementResult = neo4JUtil.executeQuery(query)
+        None
+    }
   }
 }
