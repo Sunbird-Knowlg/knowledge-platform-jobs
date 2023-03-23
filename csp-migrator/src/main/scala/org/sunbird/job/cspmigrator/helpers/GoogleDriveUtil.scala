@@ -19,10 +19,6 @@ import java.util
 
 object GoogleDriveUtil {
   private[this] val logger = LoggerFactory.getLogger("GoogleDriveUtil")
-  val initialBackoffDelay: Int =  1200000 // 20 min
-  val maximumBackoffDelay: Int = 3900000 // 65 min
-  val incrementBackoffDelay: Int = 300000 // 5 min
-  var currentBackOffDelay: Int = initialBackoffDelay
 
   private def initialize(config: BaseJobConfig): Drive = {
     val jacksonFactory = new JacksonFactory
@@ -50,7 +46,6 @@ object GoogleDriveUtil {
   @throws[Exception]
   def downloadFile(fileId: String, saveDir: String)(implicit config: BaseJobConfig): File = {
     var file: File = null
-    while(file == null && currentBackOffDelay <= maximumBackoffDelay) {
       try {
         val drive = initialize(config)
         logger.info("GoogleDriveUtil:: downloadFile:: drive: " + drive + " || drive.files: " + drive.files().list())
@@ -72,42 +67,18 @@ object GoogleDriveUtil {
         file = new File(saveFilePath)
         file = Slug.createSlugFile(file)
         logger.info("GoogleDriveUtil :: downloadFile :: File Downloaded Successfully. Sluggified File Name: " + file.getAbsolutePath)
-        if (null != file && (currentBackOffDelay != initialBackoffDelay)) currentBackOffDelay = initialBackoffDelay
         return file
       } catch {
         case ge: GoogleJsonResponseException => logger.error("GoogleDriveUtil :: downloadFile :: GoogleJsonResponseException :: Error Occurred while downloading file having id " + fileId + " | Error is ::" + ge.getDetails.toString, ge)
           throw new ServerException("ERR_INVALID_UPLOAD_FILE_URL", "Invalid Response Received From Google API for file Id : " + fileId + " | Error is : " + ge.getDetails.toString)
         case he: HttpResponseException => logger.error("GoogleDriveUtil :: downloadFile :: HttpResponseException :: Error Occurred while downloading file having id " + fileId + " | Error is ::" + he.getContent, he)
-          if (he.getStatusCode == 403) {
-            if (currentBackOffDelay <= maximumBackoffDelay) delay(currentBackOffDelay)
-            else if (currentBackOffDelay == 2400000) currentBackOffDelay += 1500000
-            else currentBackOffDelay = currentBackOffDelay * incrementBackoffDelay
-          }
-          else throw new ServerException("ERR_INVALID_UPLOAD_FILE_URL", "Invalid Response Received From Google API for file Id : " + fileId + " | Error is : " + he.getContent)
+                  throw new ServerException("ERR_INVALID_UPLOAD_FILE_URL", "Invalid Response Received From Google API for file Id : " + fileId + " | Error is : " + he.getContent)
         case e: Exception =>
           logger.error("GoogleDriveUtil :: downloadFile :: Exception :: Error Occurred While Downloading Google Drive File having Id " + fileId + " : " + e.getMessage, e)
           if (e.isInstanceOf[ServerException]) throw e
           else throw new ServerException("ERR_INVALID_UPLOAD_FILE_URL", "Invalid Response Received From Google API for file Id : " + fileId + " | Error is : " + e.getMessage)
       }
-    }
     file
-  }
-
-  private def validateMimeType(fileId: String, mimeType: String, fileMimeType: String): Unit = {
-    val errMsg = "Invalid File Url! File MimeType Is Not Same As Object MimeType for File Id : " + fileId + " | File MimeType is : " + fileMimeType + " | Node MimeType is : " + mimeType
-    mimeType match {
-      case "application/vnd.ekstep.h5p-archive" =>
-        if (!(StringUtils.equalsIgnoreCase("application/x-zip", fileMimeType) || StringUtils.equalsIgnoreCase("application/zip", fileMimeType))) throw new ServerException("ERR_INVALID_UPLOAD_FILE_URL", errMsg)
-      case "application/epub" =>
-        if (!StringUtils.equalsIgnoreCase("application/epub+zip", fileMimeType)) throw new ServerException("ERR_INVALID_UPLOAD_FILE_URL", errMsg)
-      case "audio/mp3" =>
-        if (!StringUtils.equalsIgnoreCase("audio/mpeg", fileMimeType)) throw new ServerException("ERR_INVALID_UPLOAD_FILE_URL", errMsg)
-      case "application/vnd.ekstep.html-archive" =>
-        if (!StringUtils.equalsIgnoreCase("application/x-zip-compressed", fileMimeType)) throw new ServerException("ERR_INVALID_UPLOAD_FILE_URL", errMsg)
-      case _ =>
-        if (!StringUtils.equalsIgnoreCase(mimeType, fileMimeType)) throw new ServerException("ERR_INVALID_UPLOAD_FILE_URL", errMsg)
-
-    }
   }
 
   def delay(time: Int): Unit = {
