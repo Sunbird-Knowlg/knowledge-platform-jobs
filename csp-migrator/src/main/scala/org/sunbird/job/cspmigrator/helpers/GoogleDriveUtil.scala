@@ -81,12 +81,4 @@ object GoogleDriveUtil {
     file
   }
 
-  def delay(time: Int): Unit = {
-    logger.info("delay is called with : " + time)
-    try Thread.sleep(time)
-    catch {
-      case e: Exception => e.printStackTrace();
-    }
-  }
-
 }
