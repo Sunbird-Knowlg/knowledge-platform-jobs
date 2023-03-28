@@ -38,7 +38,7 @@ trait CSPCassandraMigrator extends MigrationObjectReader with MigrationObjectUpd
 				val collectionHierarchy: String = getCollectionHierarchy(identifier, config)(cassandraUtil)
 				logger.info(s"""CSPCassandraMigrator:: process:: $identifier - $objectType :: Fetched Hierarchy:: $collectionHierarchy""")
 				if(collectionHierarchy != null && collectionHierarchy.nonEmpty) {
-					val migratedCollectionHierarchy: String = extractAndValidateUrls(identifier, collectionHierarchy, config, httpUtil, cloudStorageUtil)
+					val migratedCollectionHierarchy: String = extractAndValidateUrls(identifier, collectionHierarchy, config, httpUtil, cloudStorageUtil, false)
 					updateCollectionHierarchy(identifier, migratedCollectionHierarchy, config)(cassandraUtil)
 					logger.info(s"""CSPCassandraMigrator:: process:: $identifier - $objectType :: Migrated Hierarchy:: $migratedCollectionHierarchy""")
 				}

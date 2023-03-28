@@ -89,7 +89,7 @@ trait MigrationObjectUpdater extends URLExtractor {
   }
 
 
-  def extractAndValidateUrls(identifier: String, contentString: String, config: CSPMigratorConfig, httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil): String = {
+  def extractAndValidateUrls(identifier: String, contentString: String, config: CSPMigratorConfig, httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil, isContent: Boolean = true): String = {
     val extractedUrls: List[String] = extractUrls(contentString)
     logger.info("MigrationObjectUpdater::extractAndValidateUrls:: extractedUrls : " + extractedUrls)
     if(extractedUrls.nonEmpty) {
@@ -98,7 +98,7 @@ trait MigrationObjectUpdater extends URLExtractor {
       val migratedString = if(config.copyMissingFiles) {
         extractedUrls.toSet[String].foreach(urlString => {
           // TODO: call a method to validate the url, upload to cloud set the url to migrated value
-          val tempUrlString = handleExternalURLS(urlString, identifier, config, httpUtil, cloudStorageUtil)
+          val tempUrlString = if(isContent) handleExternalURLS(urlString, identifier, config, httpUtil, cloudStorageUtil) else urlString
 
           config.keyValueMigrateStrings.keySet().toArray().map(migrateDomain => {
             if (StringUtils.isNotBlank(tempUrlString) && tempUrlString.contains(migrateDomain.asInstanceOf[String])) {
@@ -113,7 +113,7 @@ trait MigrationObjectUpdater extends URLExtractor {
       }else{
         extractedUrls.toSet[String].foreach(urlString => {
           logger.info("MigrationObjectUpdater::extractAndValidateUrls:: urlString : " + urlString)
-          val tempUrlString = handleExternalURLS(urlString, identifier, config, httpUtil, cloudStorageUtil)
+          val tempUrlString = if(isContent) handleExternalURLS(urlString, identifier, config, httpUtil, cloudStorageUtil) else urlString
           logger.info("MigrationObjectUpdater::extractAndValidateUrls:: tempUrlString : " + tempUrlString)
           tempContentString = if(StringUtils.isNotBlank(tempUrlString)) StringUtils.replace(tempContentString, urlString, tempUrlString) else StringUtils.replace(tempContentString, urlString, "")
         })
