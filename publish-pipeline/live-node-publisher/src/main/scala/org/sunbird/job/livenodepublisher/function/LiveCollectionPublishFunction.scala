@@ -193,7 +193,7 @@ class LiveCollectionPublishFunction(config: LiveNodePublisherConfig, httpUtil: H
             content.getOrElse("identifier", "").toString
           })
         } else {
-          logger.info("ContentAutoCreator :: searchContent :: Received 0 count while searching childNodes : ")
+          logger.info("CollectionPublishFunction :: searchContent :: Received 0 count while searching childNodes : ")
           List.empty[String]
         }
       } else {
