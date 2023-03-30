@@ -93,7 +93,7 @@ class LiveCollectionPublishFunction(config: LiveNodePublisherConfig, httpUtil: H
           metrics.incCounter(config.skippedEventCount)
           logger.info(s"""pkgVersion should be greater than or equal to the obj.pkgVersion for : ${obj.identifier}""")
         }
-        else if (isCollectionShallowCopy && shallowCopyOriginMigrationVersion != 1) {
+        else if (isCollectionShallowCopy && shallowCopyOriginMigrationVersion != 1.1) {
           pushSkipEvent(data, "Origin node is found to be not migrated", context)(metrics)
         }
         else if (addedResources.size != addedResourcesMigrationVersion.size) {
@@ -172,7 +172,7 @@ class LiveCollectionPublishFunction(config: LiveNodePublisherConfig, httpUtil: H
         put("request", new java.util.HashMap[String, AnyRef]() {
           put("filters", new java.util.HashMap[String, AnyRef]() {
             put("visibility", "Default")
-            put("identifiers", identifiers)
+            put("identifier", identifiers)
             if (fetchMigratedVersion) put("migratedVersion", 1.asInstanceOf[Number])
           })
           put("fields", config.searchFields)
