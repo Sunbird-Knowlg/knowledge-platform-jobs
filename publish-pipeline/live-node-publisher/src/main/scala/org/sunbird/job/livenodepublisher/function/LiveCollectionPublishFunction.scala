@@ -173,7 +173,7 @@ class LiveCollectionPublishFunction(config: LiveNodePublisherConfig, httpUtil: H
           put("filters", new java.util.HashMap[String, AnyRef]() {
             put("visibility", "Default")
             put("identifier", identifiers)
-            if (fetchMigratedVersion) put("migratedVersion", 1.asInstanceOf[Number])
+            if (fetchMigratedVersion) put("migrationVersion", 1.asInstanceOf[Number])
           })
           put("fields", config.searchFields)
         })
