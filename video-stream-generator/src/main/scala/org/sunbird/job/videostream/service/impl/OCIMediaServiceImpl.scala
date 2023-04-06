@@ -2,10 +2,11 @@ package org.sunbird.job.videostream.service.impl
 
 import org.slf4j.LoggerFactory
 import org.sunbird.job.util.HttpUtil
-import org.sunbird.job.videostream.helpers.{JsonUtility, MediaRequest, MediaResponse, MediaServiceHelper, OCIRequestBody, Response, ResponseCode}
+import org.sunbird.job.videostream.helpers.{MediaRequest, MediaResponse, MediaServiceHelper, OCIRequestBody, Response, ResponseCode}
 import org.sunbird.job.videostream.service.IMediaService
 import org.sunbird.job.videostream.task.VideoStreamGeneratorConfig
-
+import org.json4s._
+import org.json4s.jackson.JsonMethods._
 import scala.collection.immutable.HashMap
 
 object OCIMediaServiceImpl extends IMediaService {
@@ -43,18 +44,20 @@ object OCIMediaServiceImpl extends IMediaService {
           )
         ))
     }else {
-      Response.getFailureResponse(JsonUtility.toMap(mediaFlowResp.toString), "SERVER_ERROR", "Output Asset [ " + contentId + " ] Creation Failed for Job : " + mediaFlowResp.getId)
+      val jsonMap = parse(mediaFlowResp.toString).values.asInstanceOf[Map[String, AnyRef]]
+      Response.getFailureResponse(jsonMap, "SERVER_ERROR", "Output Asset [ " + contentId + " ] Creation Failed for Job : " + mediaFlowResp.getId)
     }
   }
 
   override def getJob(jobId: String)(implicit config: VideoStreamGeneratorConfig, httpUtil: HttpUtil): MediaResponse = {
     val mediaServiceHelper = new MediaServiceHelper()
     val mediaFlowResp = mediaServiceHelper.getWorkflowJob(jobId);
+    val jsonMap = parse(mediaFlowResp.toString).values.asInstanceOf[Map[String, AnyRef]]
     if (mediaFlowResp.getLifecycleState != "FAILED") {
       MediaResponse(mediaFlowResp.getId, System.currentTimeMillis().toString, new HashMap[String, AnyRef],
-        ResponseCode.OK.toString, JsonUtility.toMap(mediaFlowResp.toString))
+        ResponseCode.OK.toString, jsonMap)
     }else {
-      Response.getFailureResponse(JsonUtility.toMap(mediaFlowResp.toString), "SERVER_ERROR", "Get WorkFlowJob Failed for the Id : " + mediaFlowResp.getId)
+      Response.getFailureResponse(jsonMap, "SERVER_ERROR", "Get WorkFlowJob Failed for the Id : " + mediaFlowResp.getId)
     }
   }
 
