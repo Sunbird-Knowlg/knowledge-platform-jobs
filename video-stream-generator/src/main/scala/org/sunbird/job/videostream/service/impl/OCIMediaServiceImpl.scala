@@ -5,9 +5,9 @@ import org.sunbird.job.util.HttpUtil
 import org.sunbird.job.videostream.helpers.{MediaRequest, MediaResponse, MediaServiceHelper, OCIRequestBody, Response, ResponseCode}
 import org.sunbird.job.videostream.service.IMediaService
 import org.sunbird.job.videostream.task.VideoStreamGeneratorConfig
-import org.json4s._
-import org.json4s.jackson.JsonMethods._
 import scala.collection.immutable.HashMap
+import com.google.gson.Gson
+import java.util
 
 object OCIMediaServiceImpl extends IMediaService {
 
@@ -44,20 +44,22 @@ object OCIMediaServiceImpl extends IMediaService {
           )
         ))
     }else {
-      val jsonMap = parse(mediaFlowResp.toString).values.asInstanceOf[Map[String, AnyRef]]
-      Response.getFailureResponse(jsonMap, "SERVER_ERROR", "Output Asset [ " + contentId + " ] Creation Failed for Job : " + mediaFlowResp.getId)
+      Response.getFailureResponse(jsonToMap(mediaFlowResp.toString), "SERVER_ERROR", "Output Asset [ " + contentId + " ] Creation Failed for Job : " + mediaFlowResp.getId)
     }
+  }
+  def jsonToMap(json: String): Map[String, AnyRef] = {
+    val gson = new Gson()
+    gson.fromJson(json, new util.LinkedHashMap[String, AnyRef]().getClass).asInstanceOf[Map[String, AnyRef]]
   }
 
   override def getJob(jobId: String)(implicit config: VideoStreamGeneratorConfig, httpUtil: HttpUtil): MediaResponse = {
     val mediaServiceHelper = new MediaServiceHelper()
     val mediaFlowResp = mediaServiceHelper.getWorkflowJob(jobId);
-    val jsonMap = parse(mediaFlowResp.toString).values.asInstanceOf[Map[String, AnyRef]]
     if (mediaFlowResp.getLifecycleState != "FAILED") {
       MediaResponse(mediaFlowResp.getId, System.currentTimeMillis().toString, new HashMap[String, AnyRef],
-        ResponseCode.OK.toString, jsonMap)
+        ResponseCode.OK.toString, jsonToMap(mediaFlowResp.toString))
     }else {
-      Response.getFailureResponse(jsonMap, "SERVER_ERROR", "Get WorkFlowJob Failed for the Id : " + mediaFlowResp.getId)
+      Response.getFailureResponse(jsonToMap(mediaFlowResp.toString), "SERVER_ERROR", "Get WorkFlowJob Failed for the Id : " + mediaFlowResp.getId)
     }
   }
 
