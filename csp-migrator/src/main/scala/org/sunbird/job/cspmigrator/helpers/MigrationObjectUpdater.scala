@@ -150,15 +150,19 @@ trait MigrationObjectUpdater extends URLExtractor {
 
   def verifyFile(identifier: String, originalUrl: String, migrateUrl: String, migrateDomain: String, config: CSPMigratorConfig)(implicit httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil): Unit = {
     val updateMigrateUrl = updateAbsolutePath(migrateUrl)(config)
-    logger.info("MigrationObjectUpdater::verifyFile:: originalUrl :: " + originalUrl + " || updateMigrateUrl:: " + updateMigrateUrl)
+    logger.info("MigrationObjectUpdater::verifyFile:: originalUrl :: " + originalUrl + " || updateMigrateUrl:: " + updateMigrateUrl + " || identifier: " + identifier)
     if(httpUtil.getSize(updateMigrateUrl) <= 0) {
       if (config.copyMissingFiles) {
         if(FilenameUtils.getExtension(originalUrl) != null && !FilenameUtils.getExtension(originalUrl).isBlank && FilenameUtils.getExtension(originalUrl).nonEmpty) {
-          // code to download file from old cloud path and upload to new cloud path
-          val downloadedFile: File = downloadFile(s"/tmp/$identifier", originalUrl)
-          val exDomain: String = originalUrl.replace(migrateDomain, "")
-          val folderName: String = exDomain.substring(1, exDomain.indexOf(FilenameUtils.getName(originalUrl)) - 1)
-          cloudStorageUtil.uploadFile(folderName, downloadedFile)
+          try {
+            // code to download file from old cloud path and upload to new cloud path
+            val downloadedFile: File = downloadFile(s"/tmp/$identifier", originalUrl)
+            val exDomain: String = originalUrl.replace(migrateDomain, "")
+            val folderName: String = exDomain.substring(1, exDomain.indexOf(FilenameUtils.getName(originalUrl)) - 1)
+            cloudStorageUtil.uploadFile(folderName, downloadedFile)
+          } catch {
+            case f: IllegalArgumentException => logger.info("ERR_INVALID_FILE_URL", "File is not valid : " + originalUrl + " || identifier: " + identifier)
+          }
         }
       } else throw new ServerException("ERR_NEW_PATH_NOT_FOUND", "File not found in the new path to migrate: " + updateMigrateUrl)
     }
@@ -237,21 +241,26 @@ trait MigrationObjectUpdater extends URLExtractor {
     val relativePathPrefix: String = config.config.getString("cloudstorage.relative_path_prefix")
 
     if (StringUtils.isNotBlank(fileUrl) && !fileUrl.contains(relativePathPrefix) && !validCSPSource.exists(writeURL=> fileUrl.contains(writeURL))) {
-      val file = if(fileUrl.contains("drive.google.com")) getFile(contentId, fileUrl, config, httpUtil) else downloadFile(getBasePath(contentId, config), fileUrl)
-      logger.info("MigrationObjectUpdater :: update :: Icon downloaded for : " + contentId + " | appIconUrl : " + fileUrl)
+      try {
+        val file = if (fileUrl.contains("drive.google.com")) getFile(contentId, fileUrl, config, httpUtil) else downloadFile(getBasePath(contentId, config), fileUrl)
+        logger.info("MigrationObjectUpdater :: update :: Icon downloaded for : " + contentId + " | appIconUrl : " + fileUrl)
 
-      if (null == file || !file.exists) {
-        logger.info("Error Occurred while downloading appIcon file for " + contentId + " | File Url : " + fileUrl)
-        null
-      } else {
-        val urls = uploadArtifact(file, contentId, config, cloudStorageUtil)
-        val url = if (null != urls && StringUtils.isNotBlank(urls(1))) {
-          val blobUrl = urls(1)
-          logger.info("CSPNeo4jMigrator :: handleExternalURLS :: Icon Uploaded Successfully to cloud for : " + contentId + " | appIconUrl : " + fileUrl + " | appIconBlobUrl : " + blobUrl)
-          FileUtils.deleteQuietly(file)
-          blobUrl
-        } else null
-        url
+        if (null == file || !file.exists) {
+          logger.info("Error Occurred while downloading appIcon file for " + contentId + " | File Url : " + fileUrl)
+          null
+        } else {
+          val urls = uploadArtifact(file, contentId, config, cloudStorageUtil)
+          val url = if (null != urls && StringUtils.isNotBlank(urls(1))) {
+            val blobUrl = urls(1)
+            logger.info("CSPNeo4jMigrator :: handleExternalURLS :: Icon Uploaded Successfully to cloud for : " + contentId + " | appIconUrl : " + fileUrl + " | appIconBlobUrl : " + blobUrl)
+            FileUtils.deleteQuietly(file)
+            blobUrl
+          } else null
+          url
+        }
+      } catch {
+        case f: Exception => logger.info("ERR_INVALID_FILE_URL", "File is not valid to migrate: " + fileUrl + " || identifier: " + contentId)
+          fileUrl
       }
     } else fileUrl
   }
