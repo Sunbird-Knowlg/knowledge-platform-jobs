@@ -259,7 +259,7 @@ trait MigrationObjectUpdater extends URLExtractor {
           url
         }
       } catch {
-        case f: IllegalArgumentException => logger.info("ERR_INVALID_FILE_URL", "File is not valid to migrate: " + fileUrl + " || identifier: " + contentId)
+        case f: Exception => logger.info("ERR_INVALID_FILE_URL", "File is not valid to migrate: " + fileUrl + " || identifier: " + contentId)
           fileUrl
       }
     } else fileUrl
