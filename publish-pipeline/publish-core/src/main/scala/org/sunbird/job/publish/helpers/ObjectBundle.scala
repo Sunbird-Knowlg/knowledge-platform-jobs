@@ -42,7 +42,7 @@ trait ObjectBundle {
       val mimeType = data.getOrElse("mimeType", "").asInstanceOf[String]
       val objectType: String = if(!data.contains("objectType") || data.getOrElse("objectType", "").asInstanceOf[String].isBlank || data.getOrElse("objectType", "").asInstanceOf[String].isEmpty) {
         val metaData = Option(neo4JUtil.getNodeProperties(identifier)).getOrElse(neo4JUtil.getNodeProperties(identifier)).asScala.toMap
-        logger.info("ObjectBundle:: getManifestData:: if objectType does not exist identifier:: " + identifier + " || objectType:: " + objectType)
+        logger.info("ObjectBundle:: getManifestData:: if objectType does not exist identifier:: " + identifier)
         if (metaData == null || metaData.isEmpty) rootObjectType else metaData.getOrElse("IL_FUNC_OBJECT_TYPE", "").asInstanceOf[String]
       } else data.getOrElse("objectType", "").asInstanceOf[String] .replaceAll("Image", "")
       val contentDisposition = data.getOrElse("contentDisposition", "").asInstanceOf[String]
