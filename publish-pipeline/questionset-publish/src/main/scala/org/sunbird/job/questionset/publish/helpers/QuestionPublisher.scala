@@ -124,7 +124,7 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
     try {
       val objType = obj.getString("objectType", "")
       val objList = getDataForEcar(obj).getOrElse(List())
-      val (updatedObjList, dUrls) = getManifestData(obj.identifier, pkgType, objList)
+      val (updatedObjList, dUrls) = getManifestData(obj.identifier, objType, pkgType, objList)
       val downloadUrls: Map[AnyRef, List[String]] = dUrls.flatten.groupBy(_._1).map { case (k, v) => k -> v.map(_._2) }
       logger.info("QuestionPublisher ::: updateArtifactUrl ::: downloadUrls :::: " + downloadUrls)
       val duration: String = config.getString("media_download_duration", "300 seconds")

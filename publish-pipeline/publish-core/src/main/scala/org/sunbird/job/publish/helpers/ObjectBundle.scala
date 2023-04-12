@@ -36,13 +36,14 @@ trait ObjectBundle {
     Slug.makeSlug(contentName, isTransliterate = true) + "_" + System.currentTimeMillis() + "_" + identifier + "_" + metadata.getOrElse("pkgVersion", "") + (if (StringUtils.equals(EcarPackageType.FULL, pkgType)) ".ecar" else "_" + pkgType + ".ecar")
   }
 
-  def getManifestData(objIdentifier: String, pkgType: String, objList: List[Map[String, AnyRef]])(implicit defCache: DefinitionCache, neo4JUtil: Neo4JUtil, defConfig: DefinitionConfig, config: PublishConfig): (List[Map[String, AnyRef]], List[Map[AnyRef, String]]) = {
+  def getManifestData(objIdentifier: String, rootObjectType: String, pkgType: String, objList: List[Map[String, AnyRef]])(implicit defCache: DefinitionCache, neo4JUtil: Neo4JUtil, defConfig: DefinitionConfig, config: PublishConfig): (List[Map[String, AnyRef]], List[Map[AnyRef, String]]) = {
     objList.map(data => {
       val identifier = data.getOrElse("identifier", "").asInstanceOf[String].replaceAll(".img", "")
       val mimeType = data.getOrElse("mimeType", "").asInstanceOf[String]
       val objectType: String = if(!data.contains("objectType") || data.getOrElse("objectType", "").asInstanceOf[String].isBlank || data.getOrElse("objectType", "").asInstanceOf[String].isEmpty) {
         val metaData = Option(neo4JUtil.getNodeProperties(identifier)).getOrElse(neo4JUtil.getNodeProperties(identifier)).asScala.toMap
-        metaData.getOrElse("IL_FUNC_OBJECT_TYPE", "").asInstanceOf[String]
+        logger.info("ObjectBundle:: getManifestData:: metaData:: " + metaData)
+        if (metaData == null || metaData.isEmpty) rootObjectType else metaData.getOrElse("IL_FUNC_OBJECT_TYPE", "").asInstanceOf[String]
       } else data.getOrElse("objectType", "").asInstanceOf[String] .replaceAll("Image", "")
       val contentDisposition = data.getOrElse("contentDisposition", "").asInstanceOf[String]
       logger.info("ObjectBundle:: getManifestData:: identifier:: " + identifier + " || objectType:: " + objectType)
@@ -94,7 +95,7 @@ trait ObjectBundle {
     val objType = if(obj.getString("objectType", "").replaceAll("Image", "").equalsIgnoreCase("collection")) "content" else obj.getString("objectType", "").replaceAll("Image", "")
     logger.info("ObjectBundle ::: getObjectBundle ::: input objList :::: " + objList)
     // create manifest data
-    val (updatedObjList, dUrls) = getManifestData(obj.identifier, pkgType, objList)
+    val (updatedObjList, dUrls) = getManifestData(obj.identifier, objType, pkgType, objList)
     logger.info("ObjectBundle ::: getObjectBundle ::: updatedObjList :::: " + updatedObjList)
     val downloadUrls: Map[AnyRef, List[String]] = dUrls.flatten.groupBy(_._1).map { case (k, v) => k -> v.map(_._2) }
     logger.info("ObjectBundle ::: getObjectBundle ::: downloadUrls :::: " + downloadUrls)
