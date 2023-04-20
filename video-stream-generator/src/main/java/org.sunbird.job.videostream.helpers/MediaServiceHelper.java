@@ -50,6 +50,7 @@ public class MediaServiceHelper {
     }
 
     public String getStreamingPaths(String mediaWorkflowId, String gatewayDomain) {
+        String streamingURL = null;
         MediaServiceHelper helper = new MediaServiceHelper();
         MediaServicesClient mediaClient = helper.connectMediaService();
         MediaWorkflowJob job = getWorkflowJob(mediaWorkflowId);
@@ -61,7 +62,7 @@ public class MediaServiceHelper {
                 break;
             }
         }
-        String streamingURL = "https://" + gatewayDomain
+        streamingURL = "https://" + gatewayDomain
                 + "/" + mediaAssetId + "/master.m3u8";
         closeMediaClient(mediaClient);
         return streamingURL;

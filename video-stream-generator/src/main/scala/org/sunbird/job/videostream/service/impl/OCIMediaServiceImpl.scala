@@ -8,6 +8,8 @@ import org.sunbird.job.videostream.task.VideoStreamGeneratorConfig
 import scala.collection.immutable.HashMap
 import com.google.gson.Gson
 import java.util
+import org.sunbird.job.util.JSONUtil
+
 
 object OCIMediaServiceImpl extends IMediaService {
 
@@ -20,11 +22,12 @@ object OCIMediaServiceImpl extends IMediaService {
     val contentId = request.request.get("identifier").mkString
     val compartment_id = config.getConfig("oci.compartment_id")
     logger.info("compartment_id...{}",compartment_id)
-    val src_bucket = config.getConfig("oci.bucket.content_bucket_name")
+    val src_bucket = inputUrl.split("/")(3);
+    logger.info("src_bucket...{}",src_bucket)
     val dst_bucket = config.getConfig("oci.bucket.processed_bucket_name")
     val namespace = config.getConfig("oci.namespace")
     val temp = inputUrl.splitAt(inputUrl.lastIndexOf("/") + 1)
-    val src_video = temp._2
+    val src_video = inputUrl.substring(inputUrl.indexOf(inputUrl.split("/")(3))+inputUrl.split("/")(3).length+1, inputUrl.length)
     logger.info("src_video...{}",src_video)
     val prefix_input = config.getConfig("oci.stream.prefix_input")
     val media_flow_id = config.getConfig("oci.stream.work_flow_id")
@@ -44,7 +47,14 @@ object OCIMediaServiceImpl extends IMediaService {
           )
         ))
     }else {
-      Response.getFailureResponse(jsonToMap(mediaFlowResp.toString), "SERVER_ERROR", "Output Asset [ " + contentId + " ] Creation Failed for Job : " + mediaFlowResp.getId)
+      Response.getFailureResponse(HashMap[String, AnyRef](
+        "job" -> HashMap[String, AnyRef](
+          "id" -> mediaFlowResp.getId,
+          "status" -> mediaFlowResp.getLifecycleState.toString.toUpperCase,
+          "submittedOn" -> mediaFlowResp.getTimeCreated.toString,
+          "lastModifiedOn" -> mediaFlowResp.getTimeUpdated.toString
+        )
+      ), "SERVER_ERROR", "Output Asset [ " + contentId + " ] Creation Failed for Job : " + mediaFlowResp.getId)
     }
   }
   def jsonToMap(json: String): Map[String, AnyRef] = {
@@ -57,9 +67,23 @@ object OCIMediaServiceImpl extends IMediaService {
     val mediaFlowResp = mediaServiceHelper.getWorkflowJob(jobId);
     if (mediaFlowResp.getLifecycleState != "FAILED") {
       MediaResponse(mediaFlowResp.getId, System.currentTimeMillis().toString, new HashMap[String, AnyRef],
-        ResponseCode.OK.toString, jsonToMap(mediaFlowResp.toString))
+        ResponseCode.OK.toString, HashMap[String, AnyRef](
+          "job" -> HashMap[String, AnyRef](
+            "id" -> mediaFlowResp.getId,
+            "status" -> mediaFlowResp.getLifecycleState.toString.toUpperCase,
+            "submittedOn" -> mediaFlowResp.getTimeCreated.toString,
+            "lastModifiedOn" -> mediaFlowResp.getTimeUpdated.toString
+          )
+        ))
     }else {
-      Response.getFailureResponse(jsonToMap(mediaFlowResp.toString), "SERVER_ERROR", "Get WorkFlowJob Failed for the Id : " + mediaFlowResp.getId)
+      Response.getFailureResponse(HashMap[String, AnyRef](
+        "job" -> HashMap[String, AnyRef](
+          "id" -> mediaFlowResp.getId,
+          "status" -> mediaFlowResp.getLifecycleState.toString.toUpperCase,
+          "submittedOn" -> mediaFlowResp.getTimeCreated.toString,
+          "lastModifiedOn" -> mediaFlowResp.getTimeUpdated.toString
+        )
+      ), "SERVER_ERROR", "Get WorkFlowJob Failed for the Id : " + mediaFlowResp.getId)
     }
   }
 
@@ -68,7 +92,14 @@ object OCIMediaServiceImpl extends IMediaService {
     val mediaWorkFlowId = config.getConfig("oci.stream.mediaWorkFlowId")
     val gatewayDomain = config.getConfig("oci.stream.gateway_domain")
     val streamUrl = mediaServiceHelper.getStreamingPaths(mediaWorkFlowId, gatewayDomain)
-    Response.getSuccessResponse(HashMap[String, AnyRef]("streamUrl" -> streamUrl))
+    logger.info("streamUrl...{}",streamUrl)
+    if (streamUrl == null || streamUrl == None)  {
+      Response.getFailureResponse(new HashMap[String, AnyRef], "SERVER_ERROR", "Streaming Locator Creation Failed for Job : " + jobId)
+    }
+    else
+    {
+      Response.getSuccessResponse(HashMap[String, AnyRef]("streamUrl" -> streamUrl))
+    }
   }
 
   override def listJobs(listJobsRequest: MediaRequest): MediaResponse = {
