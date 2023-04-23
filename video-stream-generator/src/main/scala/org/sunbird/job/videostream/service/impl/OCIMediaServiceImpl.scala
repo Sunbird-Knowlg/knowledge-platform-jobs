@@ -89,9 +89,8 @@ object OCIMediaServiceImpl extends IMediaService {
 
   override def getStreamingPaths(jobId: String)(implicit config: VideoStreamGeneratorConfig, httpUtil: HttpUtil): MediaResponse = {
     val mediaServiceHelper = new MediaServiceHelper()
-    val mediaWorkFlowId = config.getConfig("oci.stream.mediaWorkFlowId")
     val gatewayDomain = config.getConfig("oci.stream.gateway_domain")
-    val streamUrl = mediaServiceHelper.getStreamingPaths(mediaWorkFlowId, gatewayDomain)
+    val streamUrl = mediaServiceHelper.getStreamingPaths(jobId, gatewayDomain)
     logger.info("streamUrl...{}",streamUrl)
     if (streamUrl == null || streamUrl == None)  {
       Response.getFailureResponse(new HashMap[String, AnyRef], "SERVER_ERROR", "Streaming Locator Creation Failed for Job : " + jobId)

@@ -51,35 +51,32 @@ public class MediaServiceHelper {
 
     public String getStreamingPaths(String mediaWorkflowId, String gatewayDomain) {
         String streamingURL = null;
-        MediaServiceHelper helper = new MediaServiceHelper();
-        MediaServicesClient mediaClient = helper.connectMediaService();
         MediaWorkflowJob job = getWorkflowJob(mediaWorkflowId);
         List<JobOutput> outputList = job.getOutputs();
         String mediaAssetId = null;
+        logger.debug("getStreamingPaths() gatewayDomain::{}", mediaWorkflowId, gatewayDomain);
         for (JobOutput output : outputList) {
             if (output.getObjectName().contains("master.m3u8")) {
                 mediaAssetId = output.getId();
                 break;
             }
         }
-        streamingURL = "https://" + gatewayDomain
-                + "/" + mediaAssetId + "/master.m3u8";
-        closeMediaClient(mediaClient);
+        streamingURL = "https://" + gatewayDomain + "/" + mediaAssetId + "/master.m3u8";
+        logger.debug("getStreamingPaths() streamingURL::{}", streamingURL);
         return streamingURL;
     }
 
     // Get Media Workflow Job
-    public MediaWorkflowJob getWorkflowJob(String mediaWorkflowId) {
-        logger.debug(" <<<< Entering getWorkflowJob() >>>> mediaWorkflowId::" + mediaWorkflowId);
-        MediaServiceHelper helper = new MediaServiceHelper();
-        MediaServicesClient mediaClient = helper.connectMediaService();
-        GetMediaWorkflowJobRequest request = GetMediaWorkflowJobRequest.builder().mediaWorkflowJobId(mediaWorkflowId)
+    public MediaWorkflowJob getWorkflowJob(String mediaWorkflowJobId) {
+        logger.debug(" <<<< Entering getWorkflowJob() >>>> mediaWorkflowId::" + mediaWorkflowJobId);
+        GetMediaWorkflowJobRequest request = GetMediaWorkflowJobRequest.builder().mediaWorkflowJobId(mediaWorkflowJobId)
                 .build();
+        MediaServicesClient mediaClient = connectMediaService();
         GetMediaWorkflowJobResponse response = mediaClient.getMediaWorkflowJob(request);
         MediaWorkflowJob mediaWorkflowJob = response.getMediaWorkflowJob();
         logger.debug("mediaWorkflowJob::::::::::::::" + mediaWorkflowJob);
         closeMediaClient(mediaClient);
-        logger.debug(" <<<< Exiting getWorkflowJob() >>>> mediaWorkflowId::" + mediaWorkflowId);
+        logger.debug(" <<<< Exiting getWorkflowJob() >>>> mediaWorkflowId::" + mediaWorkflowJobId);
         return mediaWorkflowJob;
     }
 
