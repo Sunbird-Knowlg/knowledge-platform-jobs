@@ -3,7 +3,8 @@ version: 2.0
 jobs:
   unit-tests:
     docker:
-      - image: circleci/openjdk:stretch
+      # - image: circleci/openjdk:stretch
+      - image: circleci/openjdk:11-stretch-node-browsers
     resource_class: medium
     working_directory: ~/kp
     steps:
