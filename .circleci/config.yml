@@ -3,7 +3,8 @@ version: 2.0
 jobs:
   unit-tests:
     docker:
-      - image: circleci/openjdk:stretch
+      # - image: circleci/openjdk:stretch
+      - image: circleci/openjdk:11-buster-node-browsers-legacy
     resource_class: medium
     working_directory: ~/kp
     steps:
