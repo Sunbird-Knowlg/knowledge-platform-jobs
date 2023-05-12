@@ -64,18 +64,21 @@ object OCIMediaServiceImpl extends IMediaService {
 
   override def getJob(jobId: String)(implicit config: VideoStreamGeneratorConfig, httpUtil: HttpUtil): MediaResponse = {
     val mediaServiceHelper = new MediaServiceHelper()
-    val mediaFlowResp = mediaServiceHelper.getWorkflowJob(jobId);
-    if (mediaFlowResp.getLifecycleState != "FAILED") {
-      MediaResponse(mediaFlowResp.getId, System.currentTimeMillis().toString, new HashMap[String, AnyRef],
-        ResponseCode.OK.toString, HashMap[String, AnyRef](
-          "job" -> HashMap[String, AnyRef](
-            "id" -> mediaFlowResp.getId,
-            "status" -> mediaFlowResp.getLifecycleState.toString.toUpperCase,
-            "submittedOn" -> mediaFlowResp.getTimeCreated.toString,
-            "lastModifiedOn" -> mediaFlowResp.getTimeUpdated.toString
-          )
-        ))
-    }else {
+    try
+    {
+      val mediaFlowResp = mediaServiceHelper.getWorkflowJob(jobId);
+      logger.info("LifecycleState...{}",mediaFlowResp.getLifecycleState)
+      if (mediaFlowResp.getLifecycleState != "FAILED") {
+        MediaResponse(mediaFlowResp.getId, System.currentTimeMillis().toString, new HashMap[String, AnyRef],
+          ResponseCode.OK.toString, HashMap[String, AnyRef](
+            "job" -> HashMap[String, AnyRef](
+              "id" -> mediaFlowResp.getId,
+              "status" -> mediaFlowResp.getLifecycleState.toString.toUpperCase,
+              "submittedOn" -> mediaFlowResp.getTimeCreated.toString,
+              "lastModifiedOn" -> mediaFlowResp.getTimeUpdated.toString
+            )
+          ))
+      } else {
       Response.getFailureResponse(HashMap[String, AnyRef](
         "job" -> HashMap[String, AnyRef](
           "id" -> mediaFlowResp.getId,
@@ -84,6 +87,9 @@ object OCIMediaServiceImpl extends IMediaService {
           "lastModifiedOn" -> mediaFlowResp.getTimeUpdated.toString
         )
       ), "SERVER_ERROR", "Get WorkFlowJob Failed for the Id : " + mediaFlowResp.getId)
+    } } catch {
+      case e: Exception => e.printStackTrace()
+      Response.getFailureResponse(new HashMap[String, AnyRef], "SERVER_ERROR", "Get WorkFlowJob Failed for Job : " + jobId)
     }
   }
 
