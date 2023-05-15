@@ -49,6 +49,7 @@ class VideoStreamService(implicit config: VideoStreamGeneratorConfig, httpUtil: 
       val streamStage = if (jobRequest.job_id != None) {
         val mediaResponse:MediaResponse = mediaService.getJob(jobRequest.job_id.get)
         logger.info("Get job details while saving: " + JSONUtil.serialize(mediaResponse.result))
+        logger.info("updateProcessingRequest mediaResponse.responseCode: " + mediaResponse.responseCode)
         if(mediaResponse.responseCode.contentEquals("OK")) {
           val job = mediaResponse.result.getOrElse("job", Map()).asInstanceOf[Map[String, AnyRef]]
           val jobStatus = job.getOrElse("status","").asInstanceOf[String]
@@ -65,10 +66,11 @@ class VideoStreamService(implicit config: VideoStreamGeneratorConfig, httpUtil: 
               logger.info("updatePreviewUrl COMPLETE : contentId ::" + contentId)
               StreamingStage(jobRequest.request_id, jobRequest.client_key, jobRequest.job_id.get, stageName, jobStatus, "FINISHED", iteration + 1);
             } else {
-              // TODO:: Set job status to FAILED
-              null
+              // Set job status to FAILED
+              val errMessage = job.getOrElse("error", Map()).asInstanceOf[Map[String, AnyRef]].getOrElse("errorMessage", "Error updating streamingUrl").asInstanceOf[String]
+              StreamingStage(jobRequest.request_id, jobRequest.client_key, jobRequest.job_id.get, stageName, jobStatus, "FAILED", iteration + 1, errMessage)
             }
-          } else if(jobStatus.equalsIgnoreCase("ERROR")){
+          } else if(jobStatus.equalsIgnoreCase("ERROR") || jobStatus.equalsIgnoreCase("FAILED")){
             val errMessage = job.getOrElse("error", Map()).asInstanceOf[Map[String, AnyRef]].getOrElse("errorMessage", "No error message").asInstanceOf[String]
             StreamingStage(jobRequest.request_id, jobRequest.client_key, jobRequest.job_id.get, stageName, jobStatus, "FAILED", iteration + 1, errMessage)
           } else {
@@ -163,7 +165,7 @@ class VideoStreamService(implicit config: VideoStreamGeneratorConfig, httpUtil: 
     })
 
     selectWhere.and(QueryBuilder.eq("job_name", VIDEO_STREAMING))
-
+    logger.info("readFromDB : Query ::" + selectWhere.toString)
     val result = cassandraUtil.find(selectWhere.toString).asScala.toList.map { jr =>
       JobRequest(jr.getString("client_key"), jr.getString("request_id"), Option(jr.getString("job_id")), jr.getString("status"), jr.getString("request_data"), jr.getInt("iteration"), stage=Option(jr.getString("stage")), stage_status=Option(jr.getString("stage_status")),job_name=Option(jr.getString("job_name")))
     }
