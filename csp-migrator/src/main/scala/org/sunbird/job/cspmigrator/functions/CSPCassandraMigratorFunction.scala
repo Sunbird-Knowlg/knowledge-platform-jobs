@@ -51,6 +51,7 @@ class CSPCassandraMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil
     logger.info("CSPCassandraMigratorFunction::processElement:: event edata : " + event.eData)
 
     val objMetadata: Map[String, AnyRef] = getMetadata(event.identifier)(neo4JUtil)
+    val identifier: String = objMetadata.getOrElse("identifier", "").asInstanceOf[String]
 
     try {
       val fieldsToMigrate: List[String] = if (config.getConfig.hasPath("neo4j_fields_to_migrate."+event.objectType.toLowerCase())) config.getConfig.getStringList("neo4j_fields_to_migrate."+event.objectType.toLowerCase()).asScala.toList
@@ -58,14 +59,22 @@ class CSPCassandraMigratorFunction(config: CSPMigratorConfig, httpUtil: HttpUtil
       val migratedMetadataFields: Map[String, String] =  fieldsToMigrate.flatMap(migrateField => {
         if(objMetadata.contains(migrateField)) {
           val metadataFieldValue = objMetadata.getOrElse(migrateField, "").asInstanceOf[String]
-          val migrateValue: String = StringUtils.replaceEach(metadataFieldValue, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
-          if(config.copyMissingFiles) verifyFile(event.identifier, metadataFieldValue, migrateValue, migrateField, config)(httpUtil, cloudStorageUtil)
+
+          val tempMetadataFieldValue = handleExternalURLS(metadataFieldValue, identifier, config, httpUtil, cloudStorageUtil)
+
+          val migrateValue: String = if (StringUtils.isNotBlank(tempMetadataFieldValue))
+            StringUtils.replaceEach(tempMetadataFieldValue, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
+          else null
+          if (config.copyMissingFiles && StringUtils.isNotBlank(migrateValue)) verifyFile(event.identifier, tempMetadataFieldValue, migrateValue, migrateField, config)(httpUtil, cloudStorageUtil)
+
           Map(migrateField -> migrateValue)
         } else Map.empty[String, String]
       }).filter(record => record._1.nonEmpty).toMap[String, String]
 
       val migratedObjMetadata = objMetadata ++ migratedMetadataFields
       logger.info("CSPCassandraMigratorFunction::processElement:: migratedObjMetadata : " + migratedObjMetadata)
+
+      updateNeo4j(migratedObjMetadata, event)(defCache, neo4JUtil, config)
 
       process(migratedObjMetadata, config, httpUtil, cassandraUtil, cloudStorageUtil)
 

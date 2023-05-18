@@ -38,7 +38,7 @@ class LiveCollectionPublishFunction(config: LiveNodePublisherConfig, httpUtil: H
   private var cache: DataCache = _
   private val COLLECTION_CACHE_KEY_PREFIX = "hierarchy_"
   private val COLLECTION_CACHE_KEY_SUFFIX = ":leafnodes"
-
+  private val PUBLISHED_STATUS_LIST = List("Live", "Unlisted")
   @transient var ec: ExecutionContext = _
   private val pkgTypes = List(EcarPackageType.SPINE, EcarPackageType.ONLINE)
 
@@ -70,74 +70,81 @@ class LiveCollectionPublishFunction(config: LiveNodePublisherConfig, httpUtil: H
     val readerConfig = ExtDataConfig(config.hierarchyKeyspaceName, config.hierarchyTableName, definition.getExternalPrimaryKey(), definition.getExternalProps())
     logger.info("Collection publishing started for : " + data.identifier)
     metrics.incCounter(config.collectionPublishEventCount)
-    val obj: ObjectData = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(neo4JUtil, cassandraUtil)
+    val obj: ObjectData = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(neo4JUtil, cassandraUtil, config)
     try {
-      val childNodesMetadata: List[String] = obj.metadata.getOrElse("childNodes", new java.util.ArrayList()).asInstanceOf[java.util.List[String]].asScala.toList
-      val addedResources: List[String] = searchContents(childNodesMetadata.toArray, config, httpUtil)
-      val addedResourcesMigrationVersion: List[String] = searchContents(childNodesMetadata.toArray, config, httpUtil, true)
-
-      val isCollectionShallowCopy = isContentShallowCopy(obj)
-      val shallowCopyOriginMigrationVersion: Double = if(isCollectionShallowCopy) {
-        val originId = obj.metadata.getOrElse("origin", "").asInstanceOf[String]
-        val originNodeMetadata = neo4JUtil.getNodeProperties(originId)
-        if (null != originNodeMetadata) {
-          originNodeMetadata.getOrDefault("migrationVersion", "0").toString.toDouble
-        } else 0
-      } else 0
-
-      if (obj.pkgVersion > data.pkgVersion) {
+      if (obj.pkgVersion > data.pkgVersion || !PUBLISHED_STATUS_LIST.contains(obj.metadata.getOrElse("status", "").asInstanceOf[String])) {
         metrics.incCounter(config.skippedEventCount)
-        logger.info(s"""pkgVersion should be greater than or equal to the obj.pkgVersion for : ${obj.identifier}""")
-      }
-      else if(isCollectionShallowCopy && shallowCopyOriginMigrationVersion != 1)  {
-        pushSkipEvent(data, "Origin node is found to be not migrated", context)(metrics)
-      }
-      else if(addedResources.size != addedResourcesMigrationVersion.size) {
-        val errorMessageIdentifiers = addedResources.filter(rec => !addedResourcesMigrationVersion.contains(rec)).mkString(",")
-        pushSkipEvent(data, "Non migrated contents found: " + errorMessageIdentifiers, context)(metrics)
+        logger.info(s"""Either object status is invalid OR Event pkgVersion is not greater than or equal to the obj.pkgVersion for : ${obj.identifier}""")
       } else {
-        val updObj = new ObjectData(obj.identifier, obj.metadata ++ Map("lastPublishedBy" -> data.lastPublishedBy, "dialcodes" -> obj.metadata.getOrElse("dialcodes",null)), obj.extData, obj.hierarchy)
+        val childNodesMetadata: List[String] = obj.metadata.getOrElse("childNodes", new java.util.ArrayList()).asInstanceOf[java.util.List[String]].asScala.toList
+        val addedResources: List[String] = searchContents(data.identifier, childNodesMetadata.toArray, config, httpUtil)
+        val addedResourcesMigrationVersion: List[String] = searchContents(data.identifier, childNodesMetadata.toArray, config, httpUtil, true)
 
-        // Pre-publish update
-        updateProcessingNode(updObj)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
+        val isCollectionShallowCopy = isContentShallowCopy(obj)
+        val shallowCopyOriginMigrationVersion: Double = if (isCollectionShallowCopy) {
+          val originId = obj.metadata.getOrElse("origin", "").asInstanceOf[String]
+          val originNodeMetadata = neo4JUtil.getNodeProperties(originId)
+          if (null != originNodeMetadata) {
+            originNodeMetadata.getOrDefault("migrationVersion", "0").toString.toDouble
+          } else 0
+        } else 0
 
-        val updatedObj = if (isCollectionShallowCopy) updateOriginPkgVersion(updObj)(neo4JUtil) else updObj
+        if (obj.pkgVersion > data.pkgVersion) {
+          metrics.incCounter(config.skippedEventCount)
+          logger.info(s"""pkgVersion should be greater than or equal to the obj.pkgVersion for : ${obj.identifier}""")
+        }
+        else if (isCollectionShallowCopy && shallowCopyOriginMigrationVersion != 1) {
+          pushSkipEvent(data, "Origin node is found to be not migrated", context)(metrics)
+        }
+        else if (addedResources.size != addedResourcesMigrationVersion.size) {
+          val errorMessageIdentifiers = addedResources.filter(rec => !addedResourcesMigrationVersion.contains(rec)).mkString(",")
+          pushSkipEvent(data, "Non migrated contents found: " + errorMessageIdentifiers, context)(metrics)
+        } else {
+          val updObj = new ObjectData(obj.identifier, obj.metadata ++ Map("lastPublishedBy" -> data.lastPublishedBy, "dialcodes" -> obj.metadata.getOrElse("dialcodes", null)), obj.extData, obj.hierarchy)
 
-        // Clear redis cache
-        cache.del(data.identifier)
-        cache.del(data.identifier + COLLECTION_CACHE_KEY_SUFFIX)
-        cache.del(COLLECTION_CACHE_KEY_PREFIX + data.identifier)
+          // Pre-publish update
+//          updateProcessingNode(updObj)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
 
-        val enrichedObj = enrichObject(updatedObj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
-        logger.info("CollectionPublishFunction:: Collection Object Enriched: " + enrichedObj.identifier)
-        val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
-        logger.info("CollectionPublishFunction:: ECAR generation completed for Collection Object: " + objWithEcar.identifier)
+          val updatedObj = if (isCollectionShallowCopy) updateOriginPkgVersion(updObj)(neo4JUtil) else updObj
 
-        val collRelationalMetadata = getRelationalMetadata(obj.identifier, readerConfig)(cassandraUtil).getOrElse(Map.empty[String, AnyRef])
+          // Clear redis cache
+          cache.del(data.identifier)
+          cache.del(data.identifier + COLLECTION_CACHE_KEY_SUFFIX)
+          cache.del(COLLECTION_CACHE_KEY_PREFIX + data.identifier)
 
-        val variantsJsonString = ScalaJsonUtil.serialize(objWithEcar.metadata("variants"))
-        val publishType = objWithEcar.getString("publish_type", "Public")
-        val successObj = new ObjectData(objWithEcar.identifier, objWithEcar.metadata + ("status" -> (if (publishType.equalsIgnoreCase("Unlisted")) "Unlisted" else "Live"), "variants" -> variantsJsonString, "identifier" -> objWithEcar.identifier), objWithEcar.extData, objWithEcar.hierarchy)
-        val children = successObj.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
+          val enrichedObjTemp = enrichObjectMetadata(updatedObj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
+          val enrichedObj = enrichedObjTemp.getOrElse(updatedObj)
+          logger.info("CollectionPublishFunction:: Collection Object Enriched: " + enrichedObj.identifier)
+          val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
+          logger.info("CollectionPublishFunction:: ECAR generation completed for Collection Object: " + objWithEcar.identifier)
 
-        // Collection - update and publish children - line 418 in PublishFinalizer
-        val updatedChildren = updateHierarchyMetadata(children, successObj.metadata, collRelationalMetadata)(config)
-        logger.info("CollectionPublishFunction:: Hierarchy Metadata updated for Collection Object: " + successObj.identifier + " || updatedChildren:: " + updatedChildren)
-        publishHierarchy(updatedChildren, successObj, readerConfig, config)(cassandraUtil)
+          val collRelationalMetadata = getRelationalMetadata(obj.identifier, readerConfig)(cassandraUtil).getOrElse(Map.empty[String, AnyRef])
 
-        if (!isCollectionShallowCopy) syncNodes(successObj, updatedChildren, List.empty)(esUtil, neo4JUtil, cassandraUtil, readerConfig, definition, config)
+          val variantsJsonString = ScalaJsonUtil.serialize(objWithEcar.metadata("variants"))
+          val publishType = objWithEcar.getString("publish_type", "Public")
+          val successObj = new ObjectData(objWithEcar.identifier, objWithEcar.metadata + ("status" -> (if (publishType.equalsIgnoreCase("Unlisted")) "Unlisted" else "Live"), "variants" -> variantsJsonString, "identifier" -> objWithEcar.identifier), objWithEcar.extData, objWithEcar.hierarchy)
+          val children = successObj.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
 
-        metrics.incCounter(config.collectionPublishSuccessEventCount)
-        logger.info("CollectionPublishFunction:: Collection publishing completed successfully for : " + data.identifier)
+          // Collection - update and publish children - line 418 in PublishFinalizer
+          val updatedChildren = updateHierarchyMetadata(children, successObj.metadata, collRelationalMetadata)(config)
+          logger.info("CollectionPublishFunction:: Hierarchy Metadata updated for Collection Object: " + successObj.identifier + " || updatedChildren:: " + updatedChildren)
+          publishHierarchy(updatedChildren, successObj, readerConfig, config)(cassandraUtil)
 
-        saveOnSuccess(new ObjectData(objWithEcar.identifier, objWithEcar.metadata.-("children") , objWithEcar.extData, objWithEcar.hierarchy))(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
-        logger.info("CollectionPublishFunction:: Published Collection Object metadata saved successfully to graph DB: " + objWithEcar.identifier)
+          if (!isCollectionShallowCopy) syncNodes(successObj, updatedChildren, List.empty)(esUtil, neo4JUtil, cassandraUtil, readerConfig, definition, config)
+
+          metrics.incCounter(config.collectionPublishSuccessEventCount)
+          logger.info("CollectionPublishFunction:: Collection publishing completed successfully for : " + data.identifier)
+
+          saveOnSuccess(new ObjectData(objWithEcar.identifier, objWithEcar.metadata.-("children"), objWithEcar.extData, objWithEcar.hierarchy))(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig, config)
+          logger.info("CollectionPublishFunction:: Published Collection Object metadata saved successfully to graph DB: " + objWithEcar.identifier)
+        }
       }
     } catch {
       case ex@(_: InvalidInputException | _: ClientException) => // ClientException - Invalid input exception.
         ex.printStackTrace()
         saveOnFailure(obj, List(ex.getMessage), data.pkgVersion)(neo4JUtil)
-        pushFailedEvent(data, null, ex, context)(metrics)
+        val exMsg = if(ex.getMessage.length>2500) ex.getMessage.substring(0,2500) else ex.getMessage
+        pushFailedEvent(data, exMsg, null, context)(metrics)
         logger.error(s"CollectionPublishFunction::Error while publishing collection :: ${data.partition} and Offset: ${data.offset}. Error : ${ex.getMessage}", ex)
       case ex: Exception =>
         ex.printStackTrace()
@@ -154,42 +161,46 @@ class LiveCollectionPublishFunction(config: LiveNodePublisherConfig, httpUtil: H
   }
 
   private def pushSkipEvent(event: Event, skipMessage: String, context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
-    val skipEvent = getFailedEvent(event.jobName, event.getMap(), skipMessage)
+    val skipEvent = if(skipMessage.length>500) getFailedEvent(event.jobName, event.getMap(), skipMessage.substring(0,500))  else getFailedEvent(event.jobName, event.getMap(), skipMessage)
     context.output(config.skippedEventOutTag, skipEvent)
     metrics.incCounter(config.skippedEventCount)
   }
 
-  private def searchContents(identifiers: Array[String], config: LiveNodePublisherConfig, httpUtil: HttpUtil, fetchMigratedVersion: Boolean = false): List[String] = {
-    val reqMap = new java.util.HashMap[String, AnyRef]() {
-      put("request", new java.util.HashMap[String, AnyRef]() {
-        put("filters", new java.util.HashMap[String, AnyRef]() {
-          put("visibility", "Default")
-          put("identifiers", identifiers)
-          if(fetchMigratedVersion) put("migratedVersion", 1.asInstanceOf[Number])
+  private def searchContents(collectionId: String, identifiers: Array[String], config: LiveNodePublisherConfig, httpUtil: HttpUtil, fetchMigratedVersion: Boolean = false): List[String] = {
+    try {
+      val reqMap = new java.util.HashMap[String, AnyRef]() {
+        put("request", new java.util.HashMap[String, AnyRef]() {
+          put("filters", new java.util.HashMap[String, AnyRef]() {
+            put("visibility", "Default")
+            put("identifiers", identifiers)
+            if (fetchMigratedVersion) put("migratedVersion", 1.asInstanceOf[Number])
+          })
+          put("fields", config.searchFields)
         })
-        put("fields", config.searchFields)
-      })
-    }
-
-    val requestUrl = s"${config.searchServiceBaseUrl}/v3/search"
-    logger.info("CollectionPublishFunction :: searchContent :: Search Content requestUrl: " + requestUrl)
-    logger.info("CollectionPublishFunction :: searchContent :: Search Content reqMap: " + reqMap)
-    val httpResponse = httpUtil.post(requestUrl, JSONUtil.serialize(reqMap))
-    if (httpResponse.status == 200) {
-      val response = JSONUtil.deserialize[Map[String, AnyRef]](httpResponse.body)
-      val result = response.getOrElse("result", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
-      val contents = result.getOrElse("content", List[Map[String,AnyRef]]()).asInstanceOf[List[Map[String,AnyRef]]]
-      val count = result.getOrElse("count", 0).asInstanceOf[Int]
-      if(count>0) {
-        contents.map(content => {
-          content.getOrElse("identifier","").toString
-        })
-      } else {
-        logger.info("ContentAutoCreator :: searchContent :: Received 0 count while searching childNodes : ")
-        List.empty[String]
       }
-    } else {
-      throw new ServerException("ERR_API_CALL", "Invalid Response received while searching childNodes : " + getErrorDetails(httpResponse))
+
+      val requestUrl = s"${config.searchServiceBaseUrl}/v3/search"
+      logger.info("CollectionPublishFunction :: searchContent :: Search Content requestUrl: " + requestUrl)
+      logger.info("CollectionPublishFunction :: searchContent :: Search Content reqMap: " + reqMap)
+      val httpResponse = httpUtil.post(requestUrl, JSONUtil.serialize(reqMap))
+      if (httpResponse.status == 200) {
+        val response = JSONUtil.deserialize[Map[String, AnyRef]](httpResponse.body)
+        val result = response.getOrElse("result", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
+        val contents = result.getOrElse("content", List[Map[String, AnyRef]]()).asInstanceOf[List[Map[String, AnyRef]]]
+        val count = result.getOrElse("count", 0).asInstanceOf[Int]
+        if (count > 0) {
+          contents.map(content => {
+            content.getOrElse("identifier", "").toString
+          })
+        } else {
+          logger.info("ContentAutoCreator :: searchContent :: Received 0 count while searching childNodes : ")
+          List.empty[String]
+        }
+      } else {
+        throw new ServerException("ERR_API_CALL", "Invalid Response received while searching childNodes : " + getErrorDetails(httpResponse))
+      }
+    } catch {
+      case ex: Exception => throw new InvalidInputException("Exception while searching children data for collection:: " + collectionId + " || ex: " + ex.getMessage)
     }
   }
 

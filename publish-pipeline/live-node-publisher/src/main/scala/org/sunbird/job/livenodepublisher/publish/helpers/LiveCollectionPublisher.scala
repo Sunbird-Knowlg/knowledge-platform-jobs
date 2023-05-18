@@ -34,14 +34,20 @@ trait LiveCollectionPublisher extends LiveObjectReader with SyncMessagesGenerato
   private val PUBLISHED_STATUS_LIST = List("Live", "Unlisted")
   private val COLLECTION_MIME_TYPE = "application/vnd.ekstep.content-collection"
 
-  override def getExtData(identifier: String, mimeType: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[ObjectExtData] = None
+  override def getExtData(identifier: String, mimeType: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil, config: PublishConfig): Option[ObjectExtData] = None
 
-  override def getHierarchy(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = {
-    val row: Row = getCollectionHierarchy(identifier, readerConfig)
-    if (null != row) {
-      val data: Map[String, AnyRef] = ScalaJsonUtil.deserialize[Map[String, AnyRef]](row.getString("hierarchy"))
-      Option(data)
-    } else Option(Map.empty[String, AnyRef])
+  override def getHierarchy(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil, config: PublishConfig): Option[Map[String, AnyRef]] = {
+    try {
+      val row: Row = getCollectionHierarchy(identifier, readerConfig)
+      if (null != row) {
+        val hierarchy = row.getString("hierarchy")
+        val updatedHierarchy = if (config.asInstanceOf[LiveNodePublisherConfig].isrRelativePathEnabled) CSPMetaUtil.updateAbsolutePath(hierarchy) else hierarchy
+        val data: Map[String, AnyRef] = if(updatedHierarchy.nonEmpty) ScalaJsonUtil.deserialize[Map[String, AnyRef]](updatedHierarchy) else Map.empty[String, AnyRef]
+        Option(data)
+      } else Option(Map.empty[String, AnyRef])
+    } catch {
+      case _: Exception => throw new InvalidInputException("Exception while reading Hierarchy for collection:: " + identifier)
+    }
   }
 
   private def getCollectionHierarchy(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Row = {
@@ -83,7 +89,7 @@ trait LiveCollectionPublisher extends LiveObjectReader with SyncMessagesGenerato
       val originData: Map[String, AnyRef] = obj.metadata.getOrElse("originData", "").asInstanceOf[Map[String, AnyRef]]
       getHierarchy(obj.metadata("origin").asInstanceOf[String], readerConfig).get
     } else getHierarchy(obj.identifier, readerConfig).get
-    logger.info("CollectionPublisher:: enrichObjectMetadata:: collectionHierarchy:: " + collectionHierarchy)
+    logger.info("LiveCollectionPublisher:: enrichObjectMetadata:: collectionHierarchy:: " + collectionHierarchy)
     val children = if (collectionHierarchy.nonEmpty) {
       collectionHierarchy.getOrElse("children", List.empty[Map[String, AnyRef]]).asInstanceOf[List[Map[String, AnyRef]]]
     } else List.empty[Map[String, AnyRef]]
@@ -96,8 +102,8 @@ trait LiveCollectionPublisher extends LiveObjectReader with SyncMessagesGenerato
       new ObjectData(obj.identifier, updatedCompatibilityLevelMeta ++ Map("childNodes" -> collectionChildNodes.filter(rec => !childNodesToRemove.contains(rec))), obj.extData, Option(collectionHierarchy + ("children" -> enrichedChildrenData.toList)))
     } else new ObjectData(obj.identifier, updatedCompatibilityLevelMeta, obj.extData, Option(collectionHierarchy ++ Map("children" -> toEnrichChildren.toList)))
 
-    logger.info("CollectionPublisher:: enrichObjectMetadata:: Collection data after processing for : " + enrichedObj.identifier + " | Metadata : " + enrichedObj.metadata)
-    logger.debug("CollectionPublisher:: enrichObjectMetadata:: Collection children data after processing : " + enrichedObj.hierarchy.get("children"))
+    logger.info("LiveCollectionPublisher:: enrichObjectMetadata:: Collection data after processing for : " + enrichedObj.identifier + " | Metadata : " + enrichedObj.metadata)
+    logger.debug("LiveCollectionPublisher:: enrichObjectMetadata:: Collection children data after processing : " + enrichedObj.hierarchy.get("children"))
 
     Some(enrichedObj)
   }
@@ -135,7 +141,16 @@ trait LiveCollectionPublisher extends LiveObjectReader with SyncMessagesGenerato
     nodes += obj
     nodeIds += obj.identifier
 
-    val ecarMap: Map[String, String] = generateEcar(updatedObj, pkgTypes)
+    val ecarMap: Map[String, String] = try{
+      generateEcar(updatedObj, pkgTypes)
+    } catch {
+      case ex@(_: org.sunbird.cloud.storage.exception.StorageServiceException | _: java.lang.NullPointerException | _:java.io.FileNotFoundException | _:java.io.IOException) => {
+        ex.printStackTrace()
+        throw new InvalidInputException(s"ECAR bundling failed for ${obj.identifier}:: " + ex.getMessage)
+      }
+      case anyEx: Exception => throw anyEx
+    }
+
     val variants: java.util.Map[String, java.util.Map[String, String]] = ecarMap.map { case (key, value) => key.toLowerCase -> Map[String, String]("ecarUrl" -> value, "size" -> httpUtil.getSize(value).toString).asJava }.asJava
     logger.info("CollectionPulisher ::: getObjectWithEcar ::: variants ::: " + variants)
 
@@ -145,13 +160,13 @@ trait LiveCollectionPublisher extends LiveObjectReader with SyncMessagesGenerato
 
   private def setCompatibilityLevel(obj: ObjectData, updatedMeta: Map[String, AnyRef]): Option[Map[String, AnyRef]] = {
     if (level4ContentTypes.contains(obj.getString("contentType", ""))) {
-      logger.info("CollectionPublisher:: setCompatibilityLevel:: setting compatibility level for content id : " + obj.identifier + " as 4.")
+      logger.info("LiveCollectionPublisher:: setCompatibilityLevel:: setting compatibility level for content id : " + obj.identifier + " as 4.")
       Some(updatedMeta ++ Map("compatibilityLevel" -> 4.asInstanceOf[AnyRef]))
     } else Some(updatedMeta)
   }
 
-  def getUnitsFromLiveContent(obj: ObjectData)(implicit cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): List[String] = {
-    logger.info("CollectionPublisher:: getUnitsFromLiveContent:: identifier: " + obj.identifier + " || pkgVersion: " + obj.metadata.getOrElse("pkgVersion", 1).asInstanceOf[Number])
+  def getUnitsFromLiveContent(obj: ObjectData)(implicit cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, config: PublishConfig): List[String] = {
+    logger.info("LiveCollectionPublisher:: getUnitsFromLiveContent:: identifier: " + obj.identifier + " || pkgVersion: " + obj.metadata.getOrElse("pkgVersion", 1).asInstanceOf[Number])
     val objHierarchy = getHierarchy(obj.identifier, readerConfig).get
     val children = objHierarchy.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]]
     getUnits(children)
@@ -194,10 +209,10 @@ trait LiveCollectionPublisher extends LiveObjectReader with SyncMessagesGenerato
     } else obj
   }
 
-  private def enrichChildren(toEnrichChildren: ListBuffer[Map[String, AnyRef]], collectionResourceChildNodes: mutable.HashSet[String], childNodesToRemove: ListBuffer[String])(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): ListBuffer[Map[String, AnyRef]] = {
+  private def enrichChildren(toEnrichChildren: ListBuffer[Map[String, AnyRef]], collectionResourceChildNodes: mutable.HashSet[String], childNodesToRemove: ListBuffer[String])(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, config: PublishConfig): ListBuffer[Map[String, AnyRef]] = {
     val newChildren = toEnrichChildren.toList
     newChildren.map(child => {
-      logger.info("CollectionPublisher:: enrichChildren:: child identifier:: " + child.getOrElse("identifier", "") + " || visibility:: " + child.getOrElse("visibility", "") + " || mimeType:: " + child.getOrElse("mimeType", "") + " || objectType:: " + child.getOrElse("objectType", ""))
+      logger.info("LiveCollectionPublisher:: enrichChildren:: child identifier:: " + child.getOrElse("identifier", "") + " || visibility:: " + child.getOrElse("visibility", "") + " || mimeType:: " + child.getOrElse("mimeType", "") + " || objectType:: " + child.getOrElse("objectType", ""))
       if (StringUtils.equalsIgnoreCase(child.getOrElse("visibility", "").asInstanceOf[String], "Parent") && StringUtils.equalsIgnoreCase(child.getOrElse("mimeType", "").asInstanceOf[String], COLLECTION_MIME_TYPE)) {
         val updatedChildrenData = enrichChildren(child.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]].to[ListBuffer], collectionResourceChildNodes, childNodesToRemove)
         toEnrichChildren(newChildren.indexOf(child)) = child + ("children" -> updatedChildrenData.toList)
@@ -220,7 +235,7 @@ trait LiveCollectionPublisher extends LiveObjectReader with SyncMessagesGenerato
       if (StringUtils.equalsIgnoreCase(child.getOrElse("visibility", "").asInstanceOf[String], "Default") && !EXPANDABLE_OBJECTS.contains(child.getOrElse("objectType", "").asInstanceOf[String])) {
         val childNode = Option(neo4JUtil.getNodeProperties(child.getOrElse("identifier", "").asInstanceOf[String])).getOrElse(neo4JUtil.getNodeProperties(child.getOrElse("identifier", "").asInstanceOf[String])).asScala.toMap
         if (PUBLISHED_STATUS_LIST.contains(childNode.getOrElse("status", "").asInstanceOf[String])) {
-          logger.info("CollectionPublisher:: enrichChildren:: fetched child node:: " + childNode.getOrElse("IL_UNIQUE_ID", "").asInstanceOf[String] + " || objectType:: " + childNode.getOrElse("IL_FUNC_OBJECT_TYPE", "").asInstanceOf[String])
+          logger.info("LiveCollectionPublisher:: enrichChildren:: fetched child node:: " + childNode.getOrElse("IL_UNIQUE_ID", "").asInstanceOf[String] + " || objectType:: " + childNode.getOrElse("IL_FUNC_OBJECT_TYPE", "").asInstanceOf[String])
           toEnrichChildren(newChildren.indexOf(child)) = childNode ++ Map("identifier" ->childNode.getOrElse("IL_UNIQUE_ID", "").asInstanceOf[String], "objectType" ->childNode.getOrElse("IL_FUNC_OBJECT_TYPE", "").asInstanceOf[String], "index" -> child.getOrElse("index", 0).asInstanceOf[AnyRef], "parent" -> child.getOrElse("parent", "").asInstanceOf[String], "depth" -> child.getOrElse("depth", 0).asInstanceOf[AnyRef]) - ("collections", "children", "IL_FUNC_OBJECT_TYPE", "IL_SYS_NODE_TYPE","IL_UNIQUE_ID")
         } else childNodesToRemove += child.getOrElse("identifier", "").asInstanceOf[String]
       }
@@ -232,7 +247,7 @@ trait LiveCollectionPublisher extends LiveObjectReader with SyncMessagesGenerato
 
   private def processCollection(obj: ObjectData, children: List[Map[String, AnyRef]])(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig): ObjectData = {
     val dataMap: mutable.Map[String, AnyRef] = processChildren(children)
-    logger.info("CollectionPublisher:: processCollection:: dataMap: " + dataMap)
+    logger.info("LiveCollectionPublisher:: processCollection:: dataMap: " + dataMap)
     val updatedObj: ObjectData = if (dataMap.nonEmpty) {
       val updatedMetadataMap: Map[String, AnyRef] = dataMap.flatMap(record => {
         if (!"concepts".equalsIgnoreCase(record._1) && !"keywords".equalsIgnoreCase(record._1)) {
@@ -314,7 +329,7 @@ trait LiveCollectionPublisher extends LiveObjectReader with SyncMessagesGenerato
   def enrichCollection(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig): ObjectData = {
     val nodeMetadata = mutable.Map.empty[String, AnyRef] ++ obj.metadata
     val contentId = obj.identifier
-    logger.info("CollectionPublisher:: enrichCollection:: Processing Collection Content :" + contentId)
+    logger.info("LiveCollectionPublisher:: enrichCollection:: Processing Collection Content :" + contentId)
     val content = obj.hierarchy.get
     if (content.isEmpty) return obj
     val leafCount = getLeafNodeCount(content)
@@ -347,7 +362,7 @@ trait LiveCollectionPublisher extends LiveObjectReader with SyncMessagesGenerato
     val updatedMetadata: Map[String, AnyRef] = try {
       setContentAndCategoryTypes(nodeMetadata.toMap)
     } catch {
-      case e: Exception => logger.error("CollectionPublisher:: enrichCollection:: Error while stringify mimeTypeCount or contentTypesCount:", e)
+      case e: Exception => logger.error("LiveCollectionPublisher:: enrichCollection:: Error while stringify mimeTypeCount or contentTypesCount:", e)
         nodeMetadata.toMap
     }
 
@@ -412,30 +427,30 @@ trait LiveCollectionPublisher extends LiveObjectReader with SyncMessagesGenerato
   }
 
   def generateTOC(obj: ObjectData, content: Map[String, AnyRef])(implicit cloudStorageUtil: CloudStorageUtil, config: PublishConfig): Array[String] = {
-    logger.info("CollectionPublisher:: generateTOC:: Write hierarchy to JSON File :" + obj.identifier)
+    logger.info("LiveCollectionPublisher:: generateTOC:: Write hierarchy to JSON File :" + obj.identifier)
     val file = new File(getTOCBasePath(obj.identifier) + "_toc.json")
     try {
       val data = ScalaJsonUtil.serialize(content)
       FileUtils.writeStringToFile(file, data, "UTF-8")
       if (file.exists) {
-        logger.debug("CollectionPublisher:: generateTOC:: Upload File to cloud storage :" + file.getName)
+        logger.debug("LiveCollectionPublisher:: generateTOC:: Upload File to cloud storage :" + file.getName)
         val uploadedFileUrl = cloudStorageUtil.uploadFile(getAWSPath(obj.identifier), file, Option.apply(true))
         if (null != uploadedFileUrl && uploadedFileUrl.length > 1) {
-          logger.info("CollectionPublisher:: generateTOC:: Update cloud storage url to node" + uploadedFileUrl(1))
+          logger.info("LiveCollectionPublisher:: generateTOC:: Update cloud storage url to node" + uploadedFileUrl(1))
           uploadedFileUrl
         } else Array.empty
       } else Array.empty
     } catch {
-      case e: JsonProcessingException => logger.error("CollectionPublisher:: generateTOC:: Error while parsing map object to string.", e)
-        throw new InvalidInputException("CollectionPublisher:: generateTOC:: Error while parsing map object to string.", e)
-      case e: Exception => logger.error("CollectionPublisher:: generateTOC:: Error while uploading file ", e)
-        throw new InvalidInputException("CollectionPublisher:: generateTOC:: Error while uploading file", e)
+      case e: JsonProcessingException => logger.error("LiveCollectionPublisher:: generateTOC:: Error while parsing map object to string.", e)
+        throw new InvalidInputException("LiveCollectionPublisher:: generateTOC:: Error while parsing map object to string.", e)
+      case e: Exception => logger.error("LiveCollectionPublisher:: generateTOC:: Error while uploading file ", e)
+        throw new InvalidInputException("LiveCollectionPublisher:: generateTOC:: Error while uploading file", e)
     } finally try {
-      logger.info("CollectionPublisher:: generateTOC:: Deleting Uploaded files")
+      logger.info("LiveCollectionPublisher:: generateTOC:: Deleting Uploaded files")
       FileUtils.deleteDirectory(file.getParentFile)
     } catch {
       case e: IOException =>
-        logger.error("CollectionPublisher:: generateTOC::Error while deleting file ", e)
+        logger.error("LiveCollectionPublisher:: generateTOC::Error while deleting file ", e)
     }
   }
 
@@ -524,12 +539,12 @@ trait LiveCollectionPublisher extends LiveObjectReader with SyncMessagesGenerato
         case _ => query.value(d._1, d._2)
       }
     })
-    logger.info(s"CollectionPublisher:: publishHierarchy:: Publishing Hierarchy data for $identifier | Query : ${query.toString}")
+    logger.info(s"LiveCollectionPublisher:: publishHierarchy:: Publishing Hierarchy data for $identifier | Query : ${query.toString}")
     val result = cassandraUtil.upsert(query.toString)
     if (result) {
-      logger.info(s"CollectionPublisher:: publishHierarchy:: Hierarchy data saved successfully for $identifier")
+      logger.info(s"LiveCollectionPublisher:: publishHierarchy:: Hierarchy data saved successfully for $identifier")
     } else {
-      val msg = s"CollectionPublisher:: publishHierarchy:: Hierarchy Data Insertion Failed For $identifier"
+      val msg = s"LiveCollectionPublisher:: publishHierarchy:: Hierarchy Data Insertion Failed For $identifier"
       logger.error(msg)
       throw new InvalidInputException(msg)
     }
@@ -556,40 +571,40 @@ trait LiveCollectionPublisher extends LiveObjectReader with SyncMessagesGenerato
     val nodeIds = ListBuffer.empty[String]
 
     getNodeForSyncing(children, nodes, nodeIds)
-    logger.info("CollectionPublisher:: syncNodes:: after getNodeForSyncing:: nodes:: " + nodes.toList + " || nodeIds:: " + nodeIds)
-    logger.info("CollectionPublisher:: syncNodes:: unitNodes:: " + unitNodes)
+    logger.info("LiveCollectionPublisher:: syncNodes:: after getNodeForSyncing:: nodes:: " + nodes.toList + " || nodeIds:: " + nodeIds)
+    logger.info("LiveCollectionPublisher:: syncNodes:: unitNodes:: " + unitNodes)
 
     // Filtering for removed nodes from Live version. nodeIds is list of nodes from Draft version. unitNodes is list of nodes from Live version.
     val orphanUnitNodes = if (unitNodes.nonEmpty) unitNodes.filter(unitNode => !nodeIds.contains(unitNode)) else unitNodes
-    logger.info("CollectionPublisher:: syncNodes:: after getNodeForSyncing:: orphanUnitNodes:: " + orphanUnitNodes)
+    logger.info("LiveCollectionPublisher:: syncNodes:: after getNodeForSyncing:: orphanUnitNodes:: " + orphanUnitNodes)
 
     if (nodes.isEmpty && orphanUnitNodes.isEmpty) return Map.empty
 
     val errors = mutable.Map.empty[String, String]
     val messages: Map[String, Map[String, AnyRef]] = getMessages(nodes.toList, definition, nestedFields, errors)(esUtil)
-    logger.info("CollectionPublisher:: syncNodes:: after getMessages:: messages:: " + messages)
-    if (errors.nonEmpty) logger.error("CollectionPublisher:: syncNodes:: Error! while forming ES document data from nodes, below nodes are ignored: " + errors)
+    logger.info("LiveCollectionPublisher:: syncNodes:: after getMessages:: messages:: " + messages)
+    if (errors.nonEmpty) logger.error("LiveCollectionPublisher:: syncNodes:: Error! while forming ES document data from nodes, below nodes are ignored: " + errors)
     if (messages.nonEmpty)
       try {
-        logger.info("CollectionPublisher:: syncNodes:: Number of units to be synced : " + messages.size + " || " + messages.keySet)
+        logger.info("LiveCollectionPublisher:: syncNodes:: Number of units to be synced : " + messages.size + " || " + messages.keySet)
         esUtil.bulkIndexWithIndexId(contentConfig.compositeSearchIndexName, contentConfig.compositeSearchIndexType, messages)
-        logger.info("CollectionPublisher:: syncNodes:: UnitIds synced : " + messages.keySet)
+        logger.info("LiveCollectionPublisher:: syncNodes:: UnitIds synced : " + messages.keySet)
       } catch {
         case e: Exception => e.printStackTrace()
-          logger.error("CollectionPublisher:: syncNodes:: Elastic Search indexing failed: " + e)
+          logger.error("LiveCollectionPublisher:: syncNodes:: Elastic Search indexing failed: " + e)
       }
 
     try //Unindexing not utilized units
       if (orphanUnitNodes.nonEmpty) orphanUnitNodes.map(unitNodeId => esUtil.deleteDocument(unitNodeId))
     catch {
       case e: Exception =>
-        logger.error("CollectionPublisher:: syncNodes:: Elastic Search indexing failed: " + e)
+        logger.error("LiveCollectionPublisher:: syncNodes:: Elastic Search indexing failed: " + e)
     }
 
     // Syncing collection metadata
     val doc: Map[String, AnyRef] = getDocument(new ObjectData(successObj.identifier, successObj.metadata.-("children"), successObj.extData, successObj.hierarchy), true, nestedFields)(esUtil)
     val jsonDoc: String = ScalaJsonUtil.serialize(doc)
-    logger.info("CollectionPublisher:: syncNodes:: collection doc: " + jsonDoc)
+    logger.info("LiveCollectionPublisher:: syncNodes:: collection doc: " + jsonDoc)
     esUtil.addDocument(successObj.identifier, jsonDoc)
 
     messages
@@ -600,7 +615,7 @@ trait LiveCollectionPublisher extends LiveObjectReader with SyncMessagesGenerato
       children.foreach((child: Map[String, AnyRef]) => {
         try {
           if (StringUtils.equalsIgnoreCase("Parent", child.getOrElse("visibility", "").asInstanceOf[String])) {
-            logger.info("CollectionPublisher:: getNodeForSyncing:: child identifier: " + child.getOrElse("identifier", "").asInstanceOf[String])
+            logger.info("LiveCollectionPublisher:: getNodeForSyncing:: child identifier: " + child.getOrElse("identifier", "").asInstanceOf[String])
 
             val nodeMetadata = mutable.Map() ++ child
 
@@ -615,7 +630,7 @@ trait LiveCollectionPublisher extends LiveObjectReader with SyncMessagesGenerato
 
             if (nodeMetadata.contains("children")) nodeMetadata.remove("children")
 
-            logger.info("CollectionPublisher:: getNodeForSyncing:: nodeMetadata: " + nodeMetadata)
+            logger.info("LiveCollectionPublisher:: getNodeForSyncing:: nodeMetadata: " + nodeMetadata)
 
             if (!nodeIds.contains(child.getOrElse("identifier", "").asInstanceOf[String])) {
               nodes += new ObjectData(child.getOrElse("identifier", "").asInstanceOf[String], nodeMetadata.toMap[String, AnyRef], Option(Map.empty[String, AnyRef]), Option(Map.empty[String, AnyRef]))
@@ -625,7 +640,7 @@ trait LiveCollectionPublisher extends LiveObjectReader with SyncMessagesGenerato
             getNodeForSyncing(child.getOrElse("children", List.empty).asInstanceOf[List[Map[String, AnyRef]]], nodes, nodeIds)
           }
         } catch {
-          case e: Exception => logger.error("CollectionPublisher:: getNodeForSyncing:: Error while generating node map. ", e)
+          case e: Exception => logger.error("LiveCollectionPublisher:: getNodeForSyncing:: Error while generating node map. ", e)
         }
       })
     }

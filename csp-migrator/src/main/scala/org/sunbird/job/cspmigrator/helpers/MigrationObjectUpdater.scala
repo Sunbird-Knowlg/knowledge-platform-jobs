@@ -10,8 +10,10 @@ import org.sunbird.job.cspmigrator.domain.Event
 import org.sunbird.job.cspmigrator.task.CSPMigratorConfig
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.exception.{InvalidInputException, ServerException}
-import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, JSONUtil, Neo4JUtil, ScalaJsonUtil}
+import org.sunbird.job.util.CSPMetaUtil.updateAbsolutePath
+import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, JSONUtil, Neo4JUtil, ScalaJsonUtil, Slug}
 
+import scala.collection.JavaConverters._
 import java.io.{File, IOException}
 import java.net.URL
 import java.util
@@ -38,8 +40,8 @@ trait MigrationObjectUpdater extends URLExtractor {
       .where(QueryBuilder.eq("question_id", identifier))
       .`with`(QueryBuilder.set("body", QueryBuilder.fcall("textAsBlob", updatedData.getOrElse("body", null))))
       .and(QueryBuilder.set("question", QueryBuilder.fcall("textAsBlob", updatedData.getOrElse("question", null))))
-      .and(QueryBuilder.set("editorstate", updatedData.getOrElse("editorState", null)))
-      .and(QueryBuilder.set("solutions", updatedData.getOrElse("solutions", null)))
+      .and(QueryBuilder.set("editorstate", QueryBuilder.fcall("textAsBlob", updatedData.getOrElse("editorstate", null))))
+      .and(QueryBuilder.set("solutions", QueryBuilder.fcall("textAsBlob", updatedData.getOrElse("solutions", null))))
 
     logger.info(s"""MigrationObjectUpdater:: updateAssessmentItemData:: Updating Assessment Body in Cassandra For $identifier : ${updateQuery.toString}""")
     val result = cassandraUtil.upsert(updateQuery.toString)
@@ -88,32 +90,51 @@ trait MigrationObjectUpdater extends URLExtractor {
 
 
   def extractAndValidateUrls(identifier: String, contentString: String, config: CSPMigratorConfig, httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil): String = {
-    val extractedUrls: List[String] = extarctUrls(contentString)
+    val extractedUrls: List[String] = extractUrls(contentString)
+    logger.info("MigrationObjectUpdater::extractAndValidateUrls:: extractedUrls : " + extractedUrls)
     if(extractedUrls.nonEmpty) {
-      if(config.copyMissingFiles) {
+      var tempContentString: String = contentString
+
+      val migratedString = if(config.copyMissingFiles) {
         extractedUrls.toSet[String].foreach(urlString => {
+          // TODO: call a method to validate the url, upload to cloud set the url to migrated value
+          val tempUrlString = handleExternalURLS(urlString, identifier, config, httpUtil, cloudStorageUtil)
+
           config.keyValueMigrateStrings.keySet().toArray().map(migrateDomain => {
-            if(urlString.contains(migrateDomain.asInstanceOf[String])) {
-              val migrateValue: String = StringUtils.replaceEach(urlString, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
-              verifyFile(identifier, urlString, migrateValue, migrateDomain.asInstanceOf[String], config)(httpUtil, cloudStorageUtil)
+            if (StringUtils.isNotBlank(tempUrlString) && tempUrlString.contains(migrateDomain.asInstanceOf[String])) {
+              tempContentString = StringUtils.replace(tempContentString, urlString, tempUrlString)
+
+              val migrateValue: String = StringUtils.replaceEach(tempUrlString, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
+              verifyFile(identifier, tempUrlString, migrateValue, migrateDomain.asInstanceOf[String], config)(httpUtil, cloudStorageUtil)
             }
           })
         })
+        tempContentString
+      }else{
+        extractedUrls.toSet[String].foreach(urlString => {
+          logger.info("MigrationObjectUpdater::extractAndValidateUrls:: urlString : " + urlString)
+          val tempUrlString = handleExternalURLS(urlString, identifier, config, httpUtil, cloudStorageUtil)
+          logger.info("MigrationObjectUpdater::extractAndValidateUrls:: tempUrlString : " + tempUrlString)
+          tempContentString = if(StringUtils.isNotBlank(tempUrlString)) StringUtils.replace(tempContentString, urlString, tempUrlString) else StringUtils.replace(tempContentString, urlString, "")
+        })
+        tempContentString
       }
-      StringUtils.replaceEach(contentString, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
+
+      StringUtils.replaceEach(migratedString, config.keyValueMigrateStrings.keySet().toArray().map(_.asInstanceOf[String]), config.keyValueMigrateStrings.values().toArray().map(_.asInstanceOf[String]))
     } else contentString
   }
 
 
   def downloadFile(downloadPath: String, fileUrl: String): File = try {
     createDirectory(downloadPath)
-    val file = new File(downloadPath + File.separator + FilenameUtils.getName(fileUrl))
+    var file = new File(downloadPath + File.separator + Slug.makeSlug(FilenameUtils.getName(fileUrl)))
     FileUtils.copyURLToFile(new URL(fileUrl), file)
+    file = Slug.createSlugFile(file)
+    logger.info("MigrationObjectUpdater:: downloadFile:: external URL file download status:: " + file.exists() + " || " + file.getAbsolutePath)
     file
   } catch {
-    case e: IOException =>
-      e.printStackTrace()
-      throw new ServerException("ERR_INVALID_FILE_URL", "File not found in the old path to migrate: " + fileUrl)
+    case e: IOException => logger.info("ERR_INVALID_FILE_URL", "File not found in the old path to migrate: " + fileUrl)
+      null
   }
 
   private def createDirectory(directoryName: String): Unit = {
@@ -128,24 +149,24 @@ trait MigrationObjectUpdater extends URLExtractor {
   }
 
   def verifyFile(identifier: String, originalUrl: String, migrateUrl: String, migrateDomain: String, config: CSPMigratorConfig)(implicit httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil): Unit = {
-    logger.info("MigrationObjectUpdater::verifyFile:: originalUrl :: " + originalUrl + " || migrateUrl:: " + migrateUrl)
-    if(httpUtil.getSize(migrateUrl) < 0) {
+    val updateMigrateUrl = updateAbsolutePath(migrateUrl)(config)
+    logger.info("MigrationObjectUpdater::verifyFile:: originalUrl :: " + originalUrl + " || updateMigrateUrl:: " + updateMigrateUrl)
+    if(httpUtil.getSize(updateMigrateUrl) <= 0) {
       if (config.copyMissingFiles) {
         if(FilenameUtils.getExtension(originalUrl) != null && !FilenameUtils.getExtension(originalUrl).isBlank && FilenameUtils.getExtension(originalUrl).nonEmpty) {
           // code to download file from old cloud path and upload to new cloud path
           val downloadedFile: File = downloadFile(s"/tmp/$identifier", originalUrl)
           val exDomain: String = originalUrl.replace(migrateDomain, "")
-          // TODO : BUCKET NAMES TO BE INCLUDED BASED ON CNAME DESIGN
           val folderName: String = exDomain.substring(1, exDomain.indexOf(FilenameUtils.getName(originalUrl)) - 1)
           cloudStorageUtil.uploadFile(folderName, downloadedFile)
         }
-      } else throw new ServerException("ERR_NEW_PATH_NOT_FOUND", "File not found in the new path to migrate: " + migrateUrl)
+      } else throw new ServerException("ERR_NEW_PATH_NOT_FOUND", "File not found in the new path to migrate: " + updateMigrateUrl)
     }
   }
 
 
   def metaDataQuery(objectType: String, objMetadata: Map[String, AnyRef])(definitionCache: DefinitionCache, config: CSPMigratorConfig): String = {
-    val version = "1.0"
+    val version = if(objectType.equalsIgnoreCase("itemset")) "2.0" else "1.0"
     val definition = definitionCache.getDefinition(objectType, version, config.definitionBasePath)
     val metadata = objMetadata - ("IL_UNIQUE_ID", "identifier", "IL_FUNC_OBJECT_TYPE", "IL_SYS_NODE_TYPE", "pkgVersion", "lastStatusChangedOn", "lastUpdatedOn", "status", "objectType", "publish_type")
     metadata.map(prop => {
@@ -182,6 +203,69 @@ trait MigrationObjectUpdater extends URLExtractor {
         }
       }
     }).mkString(",")
+  }
+
+  @throws[Exception]
+  private def getFile(identifier: String, fileUrl: String, config: CSPMigratorConfig, httpUtil: HttpUtil): File = {
+    try {
+      val fileId = fileUrl.split("download&id=")(1)
+      if (StringUtils.isBlank(fileId)) {
+        logger.info("Invalid fileUrl received for : " + identifier + " | fileUrl : " + fileUrl)
+        null
+      } else {
+        GoogleDriveUtil.downloadFile(fileId, getBasePath(identifier, config))(config)
+      }
+    } catch {
+      case e: ServerException =>{
+        logger.info("Invalid fileUrl received for : " + identifier + " | fileUrl : " + fileUrl + "Exception is : " + e.getMessage)
+        null
+      }
+      case ex: Exception => {
+        logger.info("Invalid fileUrl received for : " + identifier + " | fileUrl : " + fileUrl + "Exception is : " + ex.getMessage)
+        null
+      }
+    }
+  }
+
+  private def getBasePath(objectId: String, config: CSPMigratorConfig): String = {
+    if (StringUtils.isNotBlank(objectId)) config.temp_file_location + File.separator + objectId + File.separator + "_temp_" + System.currentTimeMillis
+    else config.temp_file_location + File.separator + "_temp_" + System.currentTimeMillis
+  }
+
+  def handleExternalURLS(fileUrl: String, contentId: String, config: CSPMigratorConfig, httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil): String = {
+    val validCSPSource: List[String] = config.config.getStringList("cloudstorage.write_base_path").asScala.toList
+    val relativePathPrefix: String = config.config.getString("cloudstorage.relative_path_prefix")
+
+    if (StringUtils.isNotBlank(fileUrl) && !fileUrl.contains(relativePathPrefix) && !validCSPSource.exists(writeURL=> fileUrl.contains(writeURL))) {
+      val file = if(fileUrl.contains("drive.google.com")) getFile(contentId, fileUrl, config, httpUtil) else downloadFile(getBasePath(contentId, config), fileUrl)
+      logger.info("MigrationObjectUpdater :: update :: Icon downloaded for : " + contentId + " | appIconUrl : " + fileUrl)
+
+      if (null == file || !file.exists) {
+        logger.info("Error Occurred while downloading appIcon file for " + contentId + " | File Url : " + fileUrl)
+        null
+      } else {
+        val urls = uploadArtifact(file, contentId, config, cloudStorageUtil)
+        val url = if (null != urls && StringUtils.isNotBlank(urls(1))) {
+          val blobUrl = urls(1)
+          logger.info("CSPNeo4jMigrator :: handleExternalURLS :: Icon Uploaded Successfully to cloud for : " + contentId + " | appIconUrl : " + fileUrl + " | appIconBlobUrl : " + blobUrl)
+          FileUtils.deleteQuietly(file)
+          blobUrl
+        } else null
+        url
+      }
+    } else fileUrl
+  }
+
+  private def uploadArtifact(uploadedFile: File, identifier: String, config: CSPMigratorConfig, cloudStorageUtil: CloudStorageUtil): Array[String] = {
+    try {
+      var folder = config.contentFolder
+      folder = folder + "/" + Slug.makeSlug(identifier, isTransliterate = true) + "/" + config.artifactFolder
+      cloudStorageUtil.uploadFile(folder, uploadedFile, Option(true))
+    } catch {
+      case e: Exception => e.printStackTrace()
+        logger.info("MigrationObjectUpdater :: uploadArtifact ::  Exception occurred while uploading artifact for : " + identifier + "Exception is : " + e.getMessage)
+        throw new ServerException("ERR_CONTENT_UPLOAD_FILE", "Error while uploading the File.", e)
+    }
   }
 
 }

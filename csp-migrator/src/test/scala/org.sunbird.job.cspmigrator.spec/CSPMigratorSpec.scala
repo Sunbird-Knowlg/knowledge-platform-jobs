@@ -60,7 +60,7 @@ class CSPMigratorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with
         )),
       "editorState" -> "{\"plugin\":{\"noOfExtPlugins\":14,\"extPlugins\":[{\"plugin\":\"org.ekstep.contenteditorfunctions\",\"version\":\"1.2\"},{\"plugin\":\"org.ekstep.keyboardshortcuts\",\"version\":\"1.0\"},{\"plugin\":\"org.ekstep.richtext\",\"version\":\"1.0\"},{\"plugin\":\"org.ekstep.iterator\",\"version\":\"1.0\"},{\"plugin\":\"org.ekstep.navigation\",\"version\":\"1.0\"},{\"plugin\":\"org.ekstep.mathtext\",\"version\":\"1.0\"},{\"plugin\":\"org.ekstep.libs.ckeditor\",\"version\":\"1.0\"},{\"plugin\":\"org.ekstep.questionunit\",\"version\":\"1.0\"},{\"plugin\":\"org.ekstep.keyboard\",\"version\":\"1.0\"},{\"plugin\":\"org.ekstep.questionunit.mcq\",\"version\":\"1.1\"},{\"plugin\":\"org.ekstep.questionunit.mtf\",\"version\":\"1.1\"},{\"plugin\":\"org.ekstep.questionunit.reorder\",\"version\":\"1.0\"},{\"plugin\":\"org.ekstep.questionunit.sequence\",\"version\":\"1.0\"},{\"plugin\":\"org.ekstep.questionunit.ftb\",\"version\":\"1.0\"}]},\"stage\":{\"noOfStages\":2,\"currentStage\":\"b8b47094-1d69-43a1-9c88-c02e760996c5\"},\"sidebar\":{\"selectedMenu\":\"settings\"}}",
       "objectType" -> "Content",
-      "appIcon" -> "https://ntpproductionall.blob.core.windows.net/ntp-content-production/content/do_31270597860728832015700/artifact/10-ps-tm_1550378309450.thumb.png",
+      "appIcon" -> "https://upload.wikimedia.org/wikipedia/en/c/c2/CC_201_01R_SDT_2009.jpg",
       "primaryCategory" -> "Learning Resource",
       "artifactUrl" -> "https://ntpproductionall.blob.core.windows.net/ntp-content-production/content/do_31270597860728832015700/artifact/1551025588108_do_31270597860728832015700.zip",
       "contentType" -> "Resource",
@@ -79,7 +79,7 @@ class CSPMigratorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with
       "code" -> "org.sunbird.zRuXiC",
       "description" -> "10 PS BITS",
       "streamingUrl" -> "https://ntpproductionall.blob.core.windows.net/ntp-content-production/content/ecml/do_31270597860728832015700-latest",
-      "posterImage" -> "https://ntpproductionall.blob.core.windows.net/ntp-content-production/content/do_31270069910858956813856/artifact/10-ps-tm_1550378309450.png",
+      "posterImage" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_31270069910858956813856/artifact/10-ps-tm_1550378309450.png",
       "idealScreenSize" -> "normal",
       "createdOn" -> "2019-02-24T15:39:39.209+0000",
       "copyrightYear" -> 2019.asInstanceOf[Number],
@@ -111,7 +111,7 @@ class CSPMigratorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with
     val migratedMetadata = cspneo4jMigrator.process(objectMetadata, jobConfig, mockHttpUtil, mockCloudUtil)
     fieldsToMigrate.map(migrateField => {
       jobConfig.keyValueMigrateStrings.keySet().toArray().map(key => {
-        assert(!migratedMetadata.getOrElse(migrateField, "").asInstanceOf[String].contains(key))
+        assert(migratedMetadata.getOrElse(migrateField, "") == null || !migratedMetadata.getOrElse(migrateField, "").asInstanceOf[String].contains(key))
       })
     })
   }

@@ -60,7 +60,7 @@ class ContentAutoCreatorSpec extends FlatSpec with Matchers with MockitoSugar {
 		when(mockHttpUtil.patch(contains("/content/v4/update"), anyString, any())).thenReturn(HTTPResponse(200, createResponse))
 		when(mockHttpUtil.postFilePath(contains("/content/v4/upload"), anyString, anyString, any())).thenReturn(HTTPResponse(200, uploadResponse))
 		when(mockHttpUtil.post(contains("/content/v4/review"), anyString, any())).thenReturn(HTTPResponse(200, reviewResponse))
-		when(mockHttpUtil.post(contains("/content/v3/publish"), anyString, any())).thenReturn(HTTPResponse(200, publishResponse))
+		when(mockHttpUtil.post(contains("/content/v4/publish"), anyString, any())).thenReturn(HTTPResponse(200, publishResponse))
 		val metadata = new util.HashMap[String, AnyRef]() {
 			put("identifier", "do_21344892893869670417014");
 			put("IL_UNIQUE_ID", "do_21344892893869670417014");
@@ -93,7 +93,7 @@ class ContentAutoCreatorSpec extends FlatSpec with Matchers with MockitoSugar {
 		when(mockHttpUtil.patch(contains("/content/v4/update"), anyString, any())).thenReturn(HTTPResponse(200, createResponse))
 		when(mockHttpUtil.postFilePath(contains("/content/v4/upload"), anyString, anyString, any())).thenReturn(HTTPResponse(200, uploadResponse))
 		when(mockHttpUtil.post(contains("/content/v4/review"), anyString, any())).thenReturn(HTTPResponse(200, reviewResponse))
-		when(mockHttpUtil.post(contains("/content/v3/publish"), anyString, any())).thenReturn(HTTPResponse(200, publishResponse))
+		when(mockHttpUtil.post(contains("/content/v4/publish"), anyString, any())).thenReturn(HTTPResponse(200, publishResponse))
 		when(mockHttpUtil.downloadFile(contains(".jpg"),anyString())).thenReturn(httpUtil.downloadFile(appIconUrl, downloadPath))
 		when(mockHttpUtil.downloadFile(endsWith("mp4"),anyString())).thenReturn(httpUtil.downloadFile(artifactUrl, downloadPath))
 		val isContentPublished = new TestContentAutoCreator().process(jobConfig, event, mockHttpUtil, mockNeo4JUtil, cloudUtil)
@@ -120,7 +120,7 @@ class ContentAutoCreatorSpec extends FlatSpec with Matchers with MockitoSugar {
 		when(mockHttpUtil.patch(contains("/content/v4/update"), anyString, any())).thenReturn(HTTPResponse(200, createResponse))
 		when(mockHttpUtil.postFilePath(contains("/content/v4/upload"), anyString, anyString, any())).thenReturn(HTTPResponse(200, uploadResponse))
 		when(mockHttpUtil.post(contains("/content/v4/review"), anyString, any())).thenReturn(HTTPResponse(200, reviewResponse))
-		when(mockHttpUtil.post(contains("/content/v3/publish"), anyString, any())).thenReturn(HTTPResponse(200, publishResponse))
+		when(mockHttpUtil.post(contains("/content/v4/publish"), anyString, any())).thenReturn(HTTPResponse(200, publishResponse))
 		when(mockHttpUtil.downloadFile(contains(".jpg"),anyString())).thenReturn(httpUtil.downloadFile(appIconUrl, downloadPath))
 		when(mockHttpUtil.downloadFile(endsWith("mp4"),anyString())).thenReturn(httpUtil.downloadFile(artifactUrl, downloadPath))
 		val isContentPublished = new TestContentAutoCreator().process(jobConfig, event, mockHttpUtil, mockNeo4JUtil, cloudUtil)
@@ -143,7 +143,7 @@ class ContentAutoCreatorSpec extends FlatSpec with Matchers with MockitoSugar {
 		when(mockHttpUtil.post(contains("/v3/search"), anyString, any())).thenReturn(HTTPResponse(200, searchResponse))
 		when(mockHttpUtil.get(anyString(), any())).thenReturn(HTTPResponse(200, contentResponse))
 		when(mockHttpUtil.post(contains("/content/v4/review"), anyString, any())).thenReturn(HTTPResponse(200, reviewResponse))
-		when(mockHttpUtil.post(contains("/content/v3/publish"), anyString, any())).thenReturn(HTTPResponse(200, publishResponse))
+		when(mockHttpUtil.post(contains("/content/v4/publish"), anyString, any())).thenReturn(HTTPResponse(200, publishResponse))
 		when(mockHttpUtil.downloadFile(contains(".jpg"),anyString())).thenReturn(httpUtil.downloadFile(appIconUrl, downloadPath))
 		when(mockHttpUtil.downloadFile(endsWith("mp4"),anyString())).thenReturn(httpUtil.downloadFile(artifactUrl, downloadPath))
 		val isContentPublished = new TestContentAutoCreator().process(jobConfig, event, mockHttpUtil, mockNeo4JUtil, cloudUtil)

@@ -41,16 +41,16 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     if (null != row) {
       val hierarchy = row.getString("hierarchy")
       val updatedHierarchy = if (config.asInstanceOf[ContentPublishConfig].isrRelativePathEnabled) CSPMetaUtil.updateAbsolutePath(hierarchy) else hierarchy
-      val data: Map[String, AnyRef] = ScalaJsonUtil.deserialize[Map[String, AnyRef]](updatedHierarchy)
+      val data: Map[String, AnyRef] = if(updatedHierarchy.nonEmpty) ScalaJsonUtil.deserialize[Map[String, AnyRef]](updatedHierarchy) else Map.empty[String, AnyRef]
       Option(data)
     } else Option(Map.empty[String, AnyRef])
   }
 
-  private def getLiveHierarchy(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil, config: ContentPublishConfig): Option[Map[String, AnyRef]] = {
+  private def getLiveHierarchy(identifier: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil, config: PublishConfig): Option[Map[String, AnyRef]] = {
     val row: Row = getCollectionHierarchy(identifier, readerConfig)
     if (null != row) {
       val hierarchy = row.getString("hierarchy")
-      val updatedHierarchy = if(config.isrRelativePathEnabled) CSPMetaUtil.updateAbsolutePath(hierarchy) else hierarchy
+      val updatedHierarchy = if(config.asInstanceOf[ContentPublishConfig].isrRelativePathEnabled) CSPMetaUtil.updateAbsolutePath(hierarchy) else hierarchy
       val data: Map[String, AnyRef] = ScalaJsonUtil.deserialize[Map[String, AnyRef]](updatedHierarchy)
       Option(data)
     } else Option(Map.empty[String, AnyRef])
@@ -218,12 +218,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       }
 
       if (StringUtils.equalsIgnoreCase(child.getOrElse("visibility", "").asInstanceOf[String], "Default") && EXPANDABLE_OBJECTS.contains(child.getOrElse("objectType", "").asInstanceOf[String])) {
-        val pkgVersion = child.getOrElse("pkgVersion", 0) match {
-          case _: Integer => child.getOrElse("pkgVersion", 0).asInstanceOf[Integer].doubleValue()
-          case _: Double => child.getOrElse("pkgVersion", 0).asInstanceOf[Double].doubleValue()
-          case _ => child.getOrElse("pkgVersion", "0").toString.toDouble
-        }
-        val childCollectionHierarchy = getHierarchy(child.getOrElse("identifier", "").asInstanceOf[String], pkgVersion, readerConfig).get
+        val childCollectionHierarchy = getLiveHierarchy(child.getOrElse("identifier", "").asInstanceOf[String], readerConfig).get
         if (childCollectionHierarchy.nonEmpty) {
           val childNodes = childCollectionHierarchy.getOrElse("childNodes", List.empty).asInstanceOf[List[String]]
           if (childNodes.nonEmpty && INCLUDE_CHILDNODE_OBJECTS.contains(child.getOrElse("objectType", "").asInstanceOf[String])) collectionResourceChildNodes ++= childNodes.toSet[String]

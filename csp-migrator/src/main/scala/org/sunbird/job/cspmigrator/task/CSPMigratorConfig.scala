@@ -84,5 +84,8 @@ class CSPMigratorConfig(override val config: Config) extends BaseJobConfig(confi
 
   val definitionBasePath: String = if (config.hasPath("schema.basePath")) config.getString("schema.basePath") else "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local"
 
+  val contentFolder: String = if (config.hasPath("cloud_storage.folder.content")) config.getString("cloud_storage.folder.content") else "content"
+  val artifactFolder: String = if (config.hasPath("cloud_storage.folder.artifact")) config.getString("cloud_storage.folder.artifact") else "artifact"
+  val temp_file_location: String = if (config.hasPath("download_path")) config.getString("download_path") else "/tmp"
   def getConfig: Config = config
 }

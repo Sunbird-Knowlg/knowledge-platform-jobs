@@ -36,6 +36,7 @@ class LiveContentPublishFunction(config: LiveNodePublisherConfig, httpUtil: Http
   val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
   private var cache: DataCache = _
   private val readerConfig = ExtDataConfig(config.contentKeyspaceName, config.contentTableName)
+  private val PUBLISHED_STATUS_LIST = List("Live", "Unlisted")
 
   @transient var ec: ExecutionContext = _
   private val pkgTypes = List(EcarPackageType.FULL, EcarPackageType.SPINE)
@@ -66,28 +67,29 @@ class LiveContentPublishFunction(config: LiveNodePublisherConfig, httpUtil: Http
   override def processElement(data: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
     logger.info("Content publishing started for : " + data.identifier)
     metrics.incCounter(config.contentPublishEventCount)
-    val obj: ObjectData = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(neo4JUtil, cassandraUtil)
+    val obj: ObjectData = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(neo4JUtil, cassandraUtil, config)
     try {
-      if (obj.pkgVersion > data.pkgVersion) {
+      if (obj.pkgVersion > data.pkgVersion || !PUBLISHED_STATUS_LIST.contains(obj.metadata.getOrElse("status", "").asInstanceOf[String])) {
         metrics.incCounter(config.skippedEventCount)
-        logger.info(s"""pkgVersion should be greater than or equal to the obj.pkgVersion for : ${obj.identifier}""")
+        logger.info(s"""Either object status is invalid OR Event pkgVersion is not greater than or equal to the obj.pkgVersion for : ${obj.identifier}""")
       } else {
         val messages: List[String] = validate(obj, obj.identifier, config, validateMetadata)
         if (messages.isEmpty) {
-          // Pre-publish update
-          updateProcessingNode(new ObjectData(obj.identifier, obj.metadata ++ Map("lastPublishedBy" -> data.lastPublishedBy), obj.extData, obj.hierarchy))(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
+//          // Pre-publish update
+//          updateProcessingNode(new ObjectData(obj.identifier, obj.metadata ++ Map("lastPublishedBy" -> data.lastPublishedBy), obj.extData, obj.hierarchy))(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
 
           val ecmlVerifiedObj = if (obj.mimeType.equalsIgnoreCase("application/vnd.ekstep.ecml-archive")) {
-            val ecarEnhancedObj = ExtractableMimeTypeHelper.processECMLBody(obj, config)(ec, cloudStorageUtil)
-            new ObjectData(obj.identifier, ecarEnhancedObj, obj.extData, obj.hierarchy)
+              val ecarEnhancedObj = ExtractableMimeTypeHelper.processECMLBody(obj, config)(ec, cloudStorageUtil)
+              new ObjectData(obj.identifier, ecarEnhancedObj, obj.extData, obj.hierarchy)
           } else obj
 
           // Clear redis cache
           cache.del(data.identifier)
-          val enrichedObj = enrichObject(ecmlVerifiedObj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
+          val enrichedObjTemp = enrichObjectMetadata(ecmlVerifiedObj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
+          val enrichedObj = enrichedObjTemp.getOrElse(ecmlVerifiedObj)
           val objWithEcar = getObjectWithEcar(enrichedObj, if (enrichedObj.getString("contentDisposition", "").equalsIgnoreCase("online-only")) List(EcarPackageType.SPINE) else pkgTypes)(ec, neo4JUtil, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
           logger.info("Ecar generation done for Content: " + objWithEcar.identifier)
-          saveOnSuccess(objWithEcar)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
+          saveOnSuccess(objWithEcar)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig, config)
           pushStreamingUrlEvent(enrichedObj, context)(metrics)
 
           metrics.incCounter(config.contentPublishSuccessEventCount)

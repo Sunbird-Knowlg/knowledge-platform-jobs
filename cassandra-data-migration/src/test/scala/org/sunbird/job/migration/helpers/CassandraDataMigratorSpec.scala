@@ -4,9 +4,13 @@ import com.typesafe.config.{Config, ConfigFactory}
 import org.cassandraunit.CQLDataLoader
 import org.cassandraunit.dataset.cql.FileCQLDataSet
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
+import org.sunbird.job.migration.domain.Event
+import org.sunbird.job.migration.fixture.EventFixture
 import org.sunbird.job.task.CassandraDataMigrationConfig
-import org.sunbird.job.util.CassandraUtil
+import org.sunbird.job.util.{CassandraUtil, JSONUtil}
 import org.sunbird.spec.BaseTestSpec
+
+import java.util
 
 class CassandraDataMigratorSpec extends BaseTestSpec {
 
@@ -39,9 +43,10 @@ class CassandraDataMigratorSpec extends BaseTestSpec {
 
   "CassandraDataMigrator " should "update the string " in {
     val content_id = "do_4567"
-    new TestCassandraDataMigrator().migrateData(jobConfig)(cassandraUtil)
-    val row = new TestCassandraDataMigrator().readColumnDataFromCassandra(content_id, jobConfig)(cassandraUtil)
-    val migratedData: String = row.getString(jobConfig.columnToMigrate)
+    val event = new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_1), 0, 10)
+    new TestCassandraDataMigrator().migrateData(event, jobConfig)(cassandraUtil)
+    val row = new TestCassandraDataMigrator().readColumnDataFromCassandra(content_id, event)(cassandraUtil)
+    val migratedData: String = row.getString(event.column)
     assert(migratedData.contains("\""+jobConfig.keyValueMigrateStrings.values().toArray().head))
   }
 
