@@ -12,7 +12,10 @@ import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.exception.{InvalidInputException, ServerException}
 import org.sunbird.job.util.CSPMetaUtil.updateAbsolutePath
 import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, JSONUtil, Neo4JUtil, ScalaJsonUtil, Slug}
+import org.sunbird.job.util.CSPMetaUtil.updateAbsolutePath
+import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, JSONUtil, Neo4JUtil, ScalaJsonUtil, Slug}
 
+import scala.collection.JavaConverters._
 import scala.collection.JavaConverters._
 import java.io.{File, IOException}
 import java.net.URL
