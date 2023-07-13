@@ -8,7 +8,7 @@ import org.sunbird.job.exception.InvalidEventException
 import org.sunbird.job.qrimagegenerator.domain.{Event, ImageConfig, QRCodeImageGeneratorRequest}
 import org.sunbird.job.qrimagegenerator.task.QRCodeImageGeneratorConfig
 import org.sunbird.job.qrimagegenerator.util.QRCodeImageGeneratorUtil
-import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, FileUtils}
+import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, ElasticSearchUtil, FileUtils}
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import java.io.File
@@ -17,6 +17,7 @@ import scala.collection.mutable.ListBuffer
 class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig,
                                    @transient var cassandraUtil: CassandraUtil = null,
                                    @transient var cloudStorageUtil: CloudStorageUtil = null,
+                                  @transient var esUtil: ElasticSearchUtil = null,
                                    @transient var qRCodeImageGeneratorUtil: QRCodeImageGeneratorUtil = null)
                                   (implicit val stringTypeInfo: TypeInformation[String])
   extends BaseProcessFunction[Event, String](config) {
@@ -26,7 +27,8 @@ class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig,
   override def open(parameters: Configuration): Unit = {
     cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort, config)
     cloudStorageUtil = new CloudStorageUtil(config)
-    qRCodeImageGeneratorUtil = new QRCodeImageGeneratorUtil(config, cassandraUtil, cloudStorageUtil)
+    esUtil = new ElasticSearchUtil(config.esConnectionInfo, config.dialcodeExternalIndex, config.dialcodeExternalIndexType)
+    qRCodeImageGeneratorUtil = new QRCodeImageGeneratorUtil(config, cassandraUtil, cloudStorageUtil, esUtil)
     super.open(parameters)
   }
 
@@ -101,6 +103,9 @@ class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig,
         else {
           logger.info("QRCodeImageGeneratorService:processMessage: Skipping zip creation due to missing processId.")
         }
+
+        if(config.indexImageURL)
+          context.output(config.indexImageUrlOutTag, event)
         logger.info("QRCodeImageGeneratorService:processMessage: Message processed successfully at " + System.currentTimeMillis)
       } else {
         logger.info("QRCodeImageGeneratorService: Eid other than BE_QR_IMAGE_GENERATOR or Dialcodes not present")
