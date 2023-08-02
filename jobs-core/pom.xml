@@ -79,9 +79,9 @@
             <version>0.1.1</version>
         </dependency>
         <dependency>
-            <groupId>org.sunbird</groupId>
-            <artifactId>cloud-store-sdk_2.12</artifactId>
-            <version>1.4.3</version>
+            <groupId>${CLOUD_STORE_GROUP_ID}</groupId>
+            <artifactId>${CLOUD_STORE_ARTIFACT_ID}</artifactId>
+            <version>${CLOUD_STORE_VERSION}</version>
             <exclusions>
                 <exclusion>
                     <artifactId>log4j</artifactId>
