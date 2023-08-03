@@ -3,8 +3,7 @@ version: 2.0
 jobs:
   unit-tests:
     docker:
-      # - image: circleci/openjdk:stretch
-      - image: cimg/openjdk:11.0
+      - image: circleci/openjdk:stretch
     resource_class: medium
     working_directory: ~/kp
     steps:
@@ -16,7 +15,7 @@ jobs:
       - run: 
           name: Installation of imagemagick
           command: |
-            sudo apt-get update || sudo apt-get update
+            sudo apt-get update --allow-releaseinfo-change || sudo apt-get update --allow-releaseinfo-change
             sudo apt-get install -y imagemagick
       - run:
           name: Execute coverage report
