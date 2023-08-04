@@ -37,9 +37,11 @@ trait CSPCassandraMigrator extends MigrationObjectReader with MigrationObjectUpd
 			case 	"Collection" | "CollectionImage" =>
 				val collectionHierarchy: String = getCollectionHierarchy(identifier, config)(cassandraUtil)
 				logger.info(s"""CSPCassandraMigrator:: process:: $identifier - $objectType :: Fetched Hierarchy:: $collectionHierarchy""")
-				val migratedCollectionHierarchy: String = extractAndValidateUrls(identifier, collectionHierarchy, config, httpUtil, cloudStorageUtil)
-				updateCollectionHierarchy(identifier, migratedCollectionHierarchy, config)(cassandraUtil)
-				logger.info(s"""CSPCassandraMigrator:: process:: $identifier - $objectType :: Migrated Hierarchy:: $migratedCollectionHierarchy""")
+				if(collectionHierarchy != null && collectionHierarchy.nonEmpty) {
+					val migratedCollectionHierarchy: String = extractAndValidateUrls(identifier, collectionHierarchy, config, httpUtil, cloudStorageUtil, false)
+					updateCollectionHierarchy(identifier, migratedCollectionHierarchy, config)(cassandraUtil)
+					logger.info(s"""CSPCassandraMigrator:: process:: $identifier - $objectType :: Migrated Hierarchy:: $migratedCollectionHierarchy""")
+				}
 			case "QuestionSet" | "QuestionSetImage" => {
 				val qsH: String = getQuestionSetHierarchy(identifier, config)(cassandraUtil)
 				logger.info(s"""CSPCassandraMigrator:: process:: $identifier - $objectType :: Fetched Hierarchy:: $qsH""")
