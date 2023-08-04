@@ -12,7 +12,10 @@ import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.exception.{InvalidInputException, ServerException}
 import org.sunbird.job.util.CSPMetaUtil.updateAbsolutePath
 import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, JSONUtil, Neo4JUtil, ScalaJsonUtil, Slug}
+import org.sunbird.job.util.CSPMetaUtil.updateAbsolutePath
+import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, JSONUtil, Neo4JUtil, ScalaJsonUtil, Slug}
 
+import scala.collection.JavaConverters._
 import scala.collection.JavaConverters._
 import java.io.{File, IOException}
 import java.net.URL
@@ -234,8 +237,9 @@ trait MigrationObjectUpdater extends URLExtractor {
 
   def handleExternalURLS(fileUrl: String, contentId: String, config: CSPMigratorConfig, httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil): String = {
     val validCSPSource: List[String] = config.config.getStringList("cloudstorage.write_base_path").asScala.toList
+    val relativePathPrefix: String = config.config.getString("cloudstorage.relative_path_prefix")
 
-    if (StringUtils.isNotBlank(fileUrl) && !validCSPSource.exists(writeURL=> fileUrl.contains(writeURL))) {
+    if (StringUtils.isNotBlank(fileUrl) && !fileUrl.contains(relativePathPrefix) && !validCSPSource.exists(writeURL=> fileUrl.contains(writeURL))) {
       val file = if(fileUrl.contains("drive.google.com")) getFile(contentId, fileUrl, config, httpUtil) else downloadFile(getBasePath(contentId, config), fileUrl)
       logger.info("MigrationObjectUpdater :: update :: Icon downloaded for : " + contentId + " | appIconUrl : " + fileUrl)
 
