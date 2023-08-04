@@ -20,6 +20,7 @@ import org.sunbird.job.util._
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import java.lang.reflect.Type
+import java.util
 import scala.concurrent.ExecutionContext
 import scala.collection.JavaConverters._
 
@@ -93,7 +94,7 @@ class LiveCollectionPublishFunction(config: LiveNodePublisherConfig, httpUtil: H
           metrics.incCounter(config.skippedEventCount)
           logger.info(s"""pkgVersion should be greater than or equal to the obj.pkgVersion for : ${obj.identifier}""")
         }
-        else if (isCollectionShallowCopy && shallowCopyOriginMigrationVersion != 1) {
+        else if (isCollectionShallowCopy && shallowCopyOriginMigrationVersion != 1.1) {
           pushSkipEvent(data, "Origin node is found to be not migrated", context)(metrics)
         }
         else if (addedResources.size != addedResourcesMigrationVersion.size) {
@@ -168,12 +169,16 @@ class LiveCollectionPublishFunction(config: LiveNodePublisherConfig, httpUtil: H
 
   private def searchContents(collectionId: String, identifiers: Array[String], config: LiveNodePublisherConfig, httpUtil: HttpUtil, fetchMigratedVersion: Boolean = false): List[String] = {
     try {
+      val migrationVersionList = new util.ArrayList[AnyRef]
+      migrationVersionList.add(1.asInstanceOf[Number])
+      migrationVersionList.add(1.1.asInstanceOf[Number])
+
       val reqMap = new java.util.HashMap[String, AnyRef]() {
         put("request", new java.util.HashMap[String, AnyRef]() {
           put("filters", new java.util.HashMap[String, AnyRef]() {
             put("visibility", "Default")
-            put("identifiers", identifiers)
-            if (fetchMigratedVersion) put("migratedVersion", 1.asInstanceOf[Number])
+            put("identifier", identifiers)
+            if (fetchMigratedVersion) put("migrationVersion", migrationVersionList.toArray)
           })
           put("fields", config.searchFields)
         })
@@ -193,7 +198,7 @@ class LiveCollectionPublishFunction(config: LiveNodePublisherConfig, httpUtil: H
             content.getOrElse("identifier", "").toString
           })
         } else {
-          logger.info("ContentAutoCreator :: searchContent :: Received 0 count while searching childNodes : ")
+          logger.info("CollectionPublishFunction :: searchContent :: Received 0 count while searching childNodes : ")
           List.empty[String]
         }
       } else {

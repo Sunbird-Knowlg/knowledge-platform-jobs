@@ -42,22 +42,28 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
       val data = dialcode("data").asInstanceOf[String]
       val text = dialcode("text").asInstanceOf[String]
       val fileName = dialcode("id").asInstanceOf[String]
-
+      logger.info("QRCodeImageGeneratorUtil:createQRImages: data - " + data+" text - "+text+" fileName - "+fileName)
       var qrImage = generateBaseImage(data, imageConfig.errorCorrectionLevel, imageConfig.pixelsPerBlock, imageConfig.qrCodeMargin, imageConfig.colourModel)
       if (null != text || !text.isBlank) {
         val textImage = getTextImage(text, imageConfig.textFontName, imageConfig.textFontSize, imageConfig.textCharacterSpacing, imageConfig.colourModel)
         qrImage = addTextToBaseImage(qrImage, textImage, imageConfig.colourModel, imageConfig.qrCodeMargin, imageConfig.pixelsPerBlock, imageConfig.qrCodeMarginBottom, imageConfig.imageMargin)
       }
+      logger.info("QRCodeImageGeneratorUtil:createQRImages: qrImage - " + qrImage)
       if (imageConfig.imageBorderSize > 0) drawBorder(qrImage, imageConfig.imageBorderSize, imageConfig.imageMargin)
       val finalImageFile = new File(req.tempFilePath + File.separator + fileName + "." + imageConfig.imageFormat)
       logger.info("QRCodeImageGeneratorUtil:createQRImages: creating file - " + finalImageFile.getAbsolutePath)
       finalImageFile.createNewFile
-      logger.info("QRCodeImageGeneratorUtil:createQRImages: created file - " + finalImageFile.getAbsolutePath)
       ImageIO.write(qrImage, imageConfig.imageFormat, finalImageFile)
       fileList += finalImageFile
       try {
-        val imageDownloadUrl = cloudStorageUtil.uploadFile(path, finalImageFile, Some(false), container = container)
-        updateCassandra(config.cassandraDialCodeImageTable, 2, imageDownloadUrl(1), "filename", fileName, metrics)
+        logger.info("QRCodeImageGeneratorUtil:createQRImages: path before - " + path)
+        logger.info("QRCodeImageGeneratorUtil:createQRImages: path after - " + path.replace("/", ""))
+        val imageDownloadUrl = cloudStorageUtil.uploadFile(path.replace("/", ""), finalImageFile, Some(false), container = container)
+        logger.info("QRCodeImageGeneratorUtil:createQRImages: imageDownloadUrl - " + imageDownloadUrl(1))
+        logger.info("QRCodeImageGeneratorUtil:createQRImages: config.cloudStorageEndpoint - " + config.cloudStorageEndpoint+"  config.cloudStorageProxyHost - "+config.cloudStorageProxyHost)
+        var newDownloadUrl = imageDownloadUrl(1).replaceAll(config.cloudStorageEndpoint, config.cloudStorageProxyHost)
+        logger.info("QRCodeImageGeneratorService:processMessage: newDownloadUrl before - " + newDownloadUrl)
+        updateCassandra(config.cassandraDialCodeImageTable, 2, newDownloadUrl, "filename", fileName, metrics)
       } catch {
         case e: Exception =>
           metrics.incCounter(config.dbFailureEventCount)

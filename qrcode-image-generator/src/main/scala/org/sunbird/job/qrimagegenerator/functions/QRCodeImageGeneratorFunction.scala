@@ -79,24 +79,33 @@ class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig,
 
         val dialCodes: List[Map[String, AnyRef]] = event.dialCodes.filter(dialcode => dialcode.getOrElse("location", "").asInstanceOf[String].isEmpty)
         val qrGenRequest: QRCodeImageGeneratorRequest = QRCodeImageGeneratorRequest(dialCodes, imageConfig, config.lpTempFileLocation)
-        logger.info("QRCodeImageGeneratorRequest: " + qrGenRequest)
+        logger.info("QRCodeImageGeneratorRequest: " + qrGenRequest + "  storageContainer: "+event.storageContainer+"  storagePath: "+event.storagePath)
         val generatedImages: ListBuffer[File] = qRCodeImageGeneratorUtil.createQRImages(qrGenRequest, event.storageContainer, event.storagePath, metrics)
 
         if (!event.processId.isBlank) {
           val maxAllowedCharacter: Int = config.getInt("max_allowed_character_for_file_name", 120)
           logger.info("QRCodeImageGeneratorService:processMessage: Generating zip for QR codes with processId " + event.processId)
           val storageFileName = if (event.storageFileName.isBlank) event.processId else event.storageFileName
+          logger.info("QRCodeImageGeneratorService:processMessage: storageFileName " + storageFileName)
           val qrZipFileName = if (storageFileName.length > maxAllowedCharacter) storageFileName.substring(0, maxAllowedCharacter) else storageFileName
+          logger.info("QRCodeImageGeneratorService:processMessage: qrZipFileName - " + qrZipFileName + "  tempFilePath - "+tempFilePath)
 
           // Merge available and generated image list
           generatedImages.foreach(f => availableImages += f)
 
           val zipFileName: String = tempFilePath + File.separator + qrZipFileName + ".zip"
+          logger.info("QRCodeImageGeneratorService:processMessage: zipFileName - " + zipFileName)
+
           val fileList: List[String] = availableImages.map(f => f.getName).toList
           FileUtils.zipIt(zipFileName, fileList, tempFilePath)
 
           zipFile = new File(zipFileName)
-          val zipDownloadUrl = cloudStorageUtil.uploadFile(event.storagePath, zipFile, Some(false), container = event.storageContainer)
+          logger.info("QRCodeImageGeneratorService:processMessage: event.storagePath - " + event.storagePath + "  event.storageContainer - "+ event.storageContainer)
+          val zipDownloadUrl = cloudStorageUtil.uploadFile(event.storagePath.replace("/", ""), zipFile, Some(false), container = event.storageContainer)
+          logger.info("QRCodeImageGeneratorService:processMessage: zipDownloadUrl - " + zipDownloadUrl(1))
+          logger.info("QRCodeImageGeneratorService:processMessage: config.cloudStorageEndpoint - " + config.cloudStorageEndpoint+"  config.cloudStorageProxyHost - "+config.cloudStorageProxyHost)
+          var newDownloadUrl = zipDownloadUrl(1).replaceAll(config.cloudStorageEndpoint, config.cloudStorageProxyHost)
+          logger.info("QRCodeImageGeneratorService:processMessage: newDownloadUrl - " + newDownloadUrl)
           metrics.incCounter(config.cloudDbHitCount)
           qRCodeImageGeneratorUtil.updateCassandra(config.cassandraDialCodeBatchTable, 2, zipDownloadUrl(1), "processid", event.processId, metrics)
         }
