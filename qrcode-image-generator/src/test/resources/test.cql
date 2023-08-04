@@ -1,6 +1,6 @@
-CREATE KEYSPACE dialcodes WITH replication = {'class': 'NetworkTopologyStrategy', 'datacenter1': '2'}  AND durable_writes = true;
+CREATE KEYSPACE IF NOT EXISTS dialcodes WITH replication = {'class': 'NetworkTopologyStrategy', 'datacenter1': '2'}  AND durable_writes = true;
 
-CREATE TABLE dialcodes.dialcode_images (
+CREATE TABLE IF NOT EXISTS dialcodes.dialcode_images (
     filename text PRIMARY KEY,
     channel text,
     config map<text, text>,
@@ -11,7 +11,7 @@ CREATE TABLE dialcodes.dialcode_images (
     url text
 );
 
-CREATE TABLE dialcodes.dialcode_batch (
+CREATE TABLE IF NOT EXISTS dialcodes.dialcode_batch (
     processid uuid PRIMARY KEY,
     channel text,
     config map<text, text>,
@@ -21,3 +21,5 @@ CREATE TABLE dialcodes.dialcode_batch (
     status int,
     url text
 );
+
+INSERT INTO dialcodes.dialcode_images(filename, channel, dialcode, url) VALUES ('0_Q1I5I3', 'b00bc992ef25f1a9a8d63291e20efc8d', 'Q1I5I3', 'https://sunbirddev.blob.core.windows.net/sunbird-content-dev/in.ekstep/0_Q1I5I3.png') ;
