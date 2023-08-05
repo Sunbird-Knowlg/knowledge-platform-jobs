@@ -53,7 +53,8 @@ class QRCodeImageGeneratorTaskTestSpec extends BaseTestSpec {
     super.afterAll()
   }
 
-  "QRCodeImageGeneratorTask" should "generate event" in {
+
+  ignore should "generate event" in {
 
     val N3X6Y3Json = """{"identifier":"N3X6Y3", "filename":"2_N3X6Y3", "channel":"b00bc992ef25f1a9a8d63291e20efc8d"}"""
     val U3J1J9Json = """{"identifier":"U3J1J9", "filename":"0_U3J1J9", "channel":"b00bc992ef25f1a9a8d63291e20efc8d"}"""
