@@ -20,7 +20,7 @@ jobs:
       - run:
           name: Execute coverage report
           command: |
-            mvn clean scoverage:report
+            mvn clean scoverage:report  -DCLOUD_STORE_GROUP_ID=$CLOUD_STORE_GROUP_ID -DCLOUD_STORE_ARTIFACT_ID=$CLOUD_STORE_ARTIFACT_ID -DCLOUD_STORE_VERSION=$CLOUD_STORE_VERSION
       - run:
           name: Save test results
           command: |
