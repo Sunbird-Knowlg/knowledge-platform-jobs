@@ -16,3 +16,4 @@ kubernets/config
 .factorypath
 bin/
 .settings/
+.vscode
