@@ -21,7 +21,7 @@ class CloudStorageUtil(config: BaseJobConfig) extends Serializable {
       val endPoint = config.getString("cloud_storage_endpoint", "")
       // TODO: endPoint defined to support "cephs3". Make code changes after cloud-store-sdk 2.11 support it.
       val storageEndPoint = if (StringUtils.isNotBlank(endPoint)) Option(endPoint) else None
-      storageService = StorageServiceFactory.getStorageService(StorageConfig(cloudStorageType, storageKey, storageSecret))
+      storageService = StorageServiceFactory.getStorageService(StorageConfig(cloudStorageType, storageKey, storageSecret,storageEndPoint))
     }
     storageService
   }
