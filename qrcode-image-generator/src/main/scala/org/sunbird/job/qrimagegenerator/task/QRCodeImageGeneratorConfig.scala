@@ -1,6 +1,7 @@
 package org.sunbird.job.qrimagegenerator.task
 
 import com.typesafe.config.Config
+import org.apache.commons.lang3.StringUtils
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.streaming.api.scala.OutputTag
@@ -58,7 +59,7 @@ class QRCodeImageGeneratorConfig(override val config: Config) extends BaseJobCon
   val cassandraDialCodeImageTable: String = config.getString("lms-cassandra.table.image")
   val cassandraDialCodeBatchTable: String = config.getString("lms-cassandra.table.batch")
 
-  val cloudStorageEndpoint: String = config.getString("cloud_storage_endpoint")
-  val cloudStorageProxyHost: String = config.getString("cloud_storage_proxy_host")
+  val cloudStorageEndpoint: String = if (config.hasPath("cloud_storage_endpoint")) config.getString("cloud_storage_endpoint") else ""
+  val cloudStorageProxyHost: String = if (config.hasPath("cloud_storage_proxy_host")) config.getString("cloud_storage_endpoint") else ""
   val indexImageURL: Boolean = if (config.hasPath("qr.image.indexImageUrl")) config.getBoolean("qr.image.indexImageUrl") else true
 }
