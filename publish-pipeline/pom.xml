@@ -19,12 +19,6 @@
         <module>content-publish</module>
         <module>live-node-publisher</module>
     </modules>
-    <dependencies><dependency>
-        <groupId>org.apache.flink</groupId>
-        <artifactId>flink-clients_${scala.version}</artifactId>
-        <version>${flink.version}</version>
-    </dependency>
-    </dependencies>
 
     <build>
         <pluginManagement>

@@ -60,15 +60,10 @@ class QRCodeImageGeneratorUtil(config: QRCodeImageGeneratorConfig, cassandraUtil
         logger.info("QRCodeImageGeneratorUtil:createQRImages: path after - " + path.replace("/", ""))
         val imageDownloadUrl = cloudStorageUtil.uploadFile(path.replace("/", ""), finalImageFile, Some(false), container = container)
         logger.info("QRCodeImageGeneratorUtil:createQRImages: imageDownloadUrl - " + imageDownloadUrl(1))
-        if(config.cloudStorageEndpoint.nonEmpty){
-          logger.info("QRCodeImageGeneratorUtil:createQRImages: config.cloudStorageEndpoint - " + config.cloudStorageEndpoint+"  config.cloudStorageProxyHost - "+config.cloudStorageProxyHost)
-          var newDownloadUrl = imageDownloadUrl(1).replaceAll(config.cloudStorageEndpoint, config.cloudStorageProxyHost)
-          logger.info("QRCodeImageGeneratorService:processMessage: newDownloadUrl before - " + newDownloadUrl)
-          updateCassandra(config.cassandraDialCodeImageTable, 2, newDownloadUrl, "filename", fileName, metrics)
-        } else {
-          updateCassandra(config.cassandraDialCodeImageTable, 2, imageDownloadUrl(1), "filename", fileName, metrics)
-        }
-
+        logger.info("QRCodeImageGeneratorUtil:createQRImages: config.cloudStorageEndpoint - " + config.cloudStorageEndpoint+"  config.cloudStorageProxyHost - "+config.cloudStorageProxyHost)
+        var newDownloadUrl = imageDownloadUrl(1).replaceAll(config.cloudStorageEndpoint, config.cloudStorageProxyHost)
+        logger.info("QRCodeImageGeneratorService:processMessage: newDownloadUrl before - " + newDownloadUrl)
+        updateCassandra(config.cassandraDialCodeImageTable, 2, newDownloadUrl, "filename", fileName, metrics)
       } catch {
         case e: Exception =>
           metrics.incCounter(config.dbFailureEventCount)

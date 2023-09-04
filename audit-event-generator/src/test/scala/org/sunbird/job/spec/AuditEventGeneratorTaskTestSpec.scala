@@ -13,9 +13,9 @@ import org.sunbird.job.util.JSONUtil
 import org.mockito.Mockito
 import org.mockito.Mockito.when
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.transaction.domain.Event
+import org.sunbird.job.auditevent.domain.Event
 import org.sunbird.job.fixture.EventFixture
-import org.sunbird.job.transaction.task.{AuditEventGeneratorConfig, AuditEventGeneratorStreamTask}
+import org.sunbird.job.auditevent.task.{AuditEventGeneratorConfig, AuditEventGeneratorStreamTask}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 
 class AuditEventGeneratorTaskTestSpec extends BaseTestSpec {

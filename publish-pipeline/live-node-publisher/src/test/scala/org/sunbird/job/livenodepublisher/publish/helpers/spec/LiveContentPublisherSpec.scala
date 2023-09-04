@@ -184,13 +184,13 @@ class LiveContentPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matc
   }
 
   "validateMetadata with mimeType application/msword and .pptx " should " not return exception messages if content is having valid artifactUrl" in {
-    val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/msword", "artifactUrl" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_112216616320983040129/artifact/performance_out_1491286194831.pptx"), None)
+    val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/msword", "artifactUrl" -> "https://ekstep-public-dev.s3-ap-south-1.amazonaws.com/content/do_112216616320983040129/artifact/performance_out_1491286194831.pptx"), None)
     val result: List[String] = new TestLiveContentPublisher().validateMetadata(data, data.identifier, jobConfig)
     result.size should be(0)
   }
 
   "validateMetadata with mimeType application/msword and .docx " should " not return exception messages if content is having valid artifactUrl" in {
-    val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/msword", "artifactUrl" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_112216615190192128128/artifact/prdassetstagging-2_1491286084107.docx"), None)
+    val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/msword", "artifactUrl" -> "https://ekstep-public-dev.s3-ap-south-1.amazonaws.com/content/do_112216615190192128128/artifact/prdassetstagging-2_1491286084107.docx"), None)
     val result: List[String] = new TestLiveContentPublisher().validateMetadata(data, data.identifier, jobConfig)
     result.size should be(0)
   }

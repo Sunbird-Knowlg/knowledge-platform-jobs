@@ -5,10 +5,10 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.mockito.Mockito
 import org.sunbird.job.Metrics
-import org.sunbird.job.transaction.domain.Event
+import org.sunbird.job.auditevent.domain.Event
 import org.sunbird.job.fixture.EventFixture
-import org.sunbird.job.transaction.functions.AuditEventGenerator
-import org.sunbird.job.transaction.task.AuditEventGeneratorConfig
+import org.sunbird.job.auditevent.functions.AuditEventGenerator
+import org.sunbird.job.auditevent.task.AuditEventGeneratorConfig
 import org.sunbird.job.util.JSONUtil
 import org.sunbird.spec.BaseTestSpec
 

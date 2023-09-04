@@ -1,10 +1,10 @@
 package org.sunbird.job.audithistory.task
 
+import com.typesafe.config.Config
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.sunbird.job.BaseJobConfig
 
-import com.typesafe.config.Config
 import java.util
 
 class AuditHistoryIndexerConfig(override val config: Config) extends BaseJobConfig(config, "audit-history-indexer") {
