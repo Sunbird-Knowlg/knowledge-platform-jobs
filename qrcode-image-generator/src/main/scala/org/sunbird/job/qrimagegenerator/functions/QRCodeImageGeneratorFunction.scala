@@ -104,11 +104,16 @@ class QRCodeImageGeneratorFunction(config: QRCodeImageGeneratorConfig,
           val zipDownloadUrl = cloudStorageUtil.uploadFile(event.storagePath.replace("/", ""), zipFile, Some(false), container = event.storageContainer)
           logger.info("QRCodeImageGeneratorService:processMessage: zipDownloadUrl - " + zipDownloadUrl(1))
           logger.info("QRCodeImageGeneratorService:processMessage: config.cloudStorageEndpoint - " + config.cloudStorageEndpoint+"  config.cloudStorageProxyHost - "+config.cloudStorageProxyHost)
-          var newDownloadUrl = zipDownloadUrl(1).replaceAll(config.cloudStorageEndpoint, config.cloudStorageProxyHost)
-          logger.info("QRCodeImageGeneratorService:processMessage: newDownloadUrl - " + newDownloadUrl)
           metrics.incCounter(config.cloudDbHitCount)
-          logger.info("QRCodeImageGeneratorService:processMessage: event - " + event)
-          qRCodeImageGeneratorUtil.updateCassandra(config.cassandraDialCodeBatchTable, 2, newDownloadUrl, "processid", event.processId, metrics)
+          if(config.cloudStorageEndpoint.nonEmpty){
+            var newDownloadUrl = zipDownloadUrl(1).replaceAll(config.cloudStorageEndpoint, config.cloudStorageProxyHost)
+            logger.info("QRCodeImageGeneratorService:processMessage: newDownloadUrl - " + newDownloadUrl)
+            logger.info("QRCodeImageGeneratorService:processMessage: event - " + event)
+            qRCodeImageGeneratorUtil.updateCassandra(config.cassandraDialCodeBatchTable, 2, newDownloadUrl, "processid", event.processId, metrics)
+          } else {
+            qRCodeImageGeneratorUtil.updateCassandra(config.cassandraDialCodeBatchTable, 2, zipDownloadUrl(1), "processid", event.processId, metrics)
+          }
+          
         }
         else {
           logger.info("QRCodeImageGeneratorService:processMessage: Skipping zip creation due to missing processId.")

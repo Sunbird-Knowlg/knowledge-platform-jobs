@@ -1,4 +1,4 @@
-package org.sunbird.job.auditevent.task
+package org.sunbird.job.transaction.task
 
 import java.io.File
 import java.util
@@ -9,14 +9,15 @@ import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.auditevent.domain.Event
-import org.sunbird.job.auditevent.functions.AuditEventGenerator
+import org.sunbird.job.transaction.domain.Event
+import org.sunbird.job.transaction.functions.AuditEventGenerator
 import org.sunbird.job.util.{FlinkUtil, HttpUtil}
 
 
 class AuditEventGeneratorStreamTask(config: AuditEventGeneratorConfig, kafkaConnector: FlinkKafkaConnector) {
   def process(): Unit = {
     implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
+//    implicit val env: StreamExecutionEnvironment = StreamExecutionEnvironment.createLocalEnvironment()
     implicit val eventTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
     implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
