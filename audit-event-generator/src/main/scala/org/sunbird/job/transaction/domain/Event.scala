@@ -1,4 +1,4 @@
-package org.sunbird.job.auditevent.domain
+package org.sunbird.job.transaction.domain
 
 import org.apache.commons.lang3.StringUtils
 import org.sunbird.job.domain.reader.JobRequest
