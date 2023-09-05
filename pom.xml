@@ -40,6 +40,7 @@
 				<module>csp-migrator</module>
 				<module>asset-enrichment</module>
 				<module>video-stream-generator</module>
+				<module>transaction-event-processor</module>
 			</modules>
 		</profile>
 		<profile>
