@@ -19,19 +19,6 @@
             <artifactId>flink-streaming-scala_${scala.version}</artifactId>
             <version>${flink.version}</version>
             <type>jar</type>
-        </dependency>
-<!--        <dependency>-->
-<!--            <groupId>org.sunbird</groupId>-->
-<!--            <artifactId>activity-aggregate-updater</artifactId>-->
-<!--            <version>1.0.0</version>-->
-<!--            <type>jar</type>-->
-<!--        </dependency>-->
-<!--        <dependency>-->
-<!--            <groupId>org.sunbird</groupId>-->
-<!--            <artifactId>relation-cache-updater</artifactId>-->
-<!--            <version>1.0.0</version>-->
-<!--            <type>jar</type>-->
-<!--        </dependency>-->
         <dependency>
             <groupId>org.sunbird</groupId>
             <artifactId>post-publish-processor</artifactId>
@@ -44,12 +31,6 @@
             <version>1.0.0</version>
             <type>jar</type>
         </dependency>
-<!--        <dependency>-->
-<!--            <groupId>org.sunbird</groupId>-->
-<!--            <artifactId>questionset-publish</artifactId>-->
-<!--            <version>1.0.0</version>-->
-<!--            <type>jar</type>-->
-<!--        </dependency>-->
         <dependency>
             <groupId>org.sunbird</groupId>
             <artifactId>content-publish</artifactId>
@@ -62,33 +43,9 @@
             <version>1.0.0</version>
             <type>jar</type>
         </dependency>
-<!--        <dependency>-->
-<!--            <groupId>org.sunbird</groupId>-->
-<!--            <artifactId>enrolment-reconciliation</artifactId>-->
-<!--            <version>1.0.0</version>-->
-<!--            <type>jar</type>-->
-<!--        </dependency>-->
-<!--        <dependency>-->
-<!--            <groupId>org.sunbird</groupId>-->
-<!--            <artifactId>collection-cert-pre-processor</artifactId>-->
-<!--            <version>1.0.0</version>-->
-<!--            <type>jar</type>-->
-<!--        </dependency>-->
-<!--        <dependency>-->
-<!--            <groupId>org.sunbird</groupId>-->
-<!--            <artifactId>collection-certificate-generator</artifactId>-->
-<!--            <version>1.0.0</version>-->
-<!--            <type>jar</type>-->
-<!--        </dependency>-->
         <dependency>
             <groupId>org.sunbird</groupId>
             <artifactId>asset-enrichment</artifactId>
-            <version>1.0.0</version>
-            <type>jar</type>
-        </dependency>
-        <dependency>
-            <groupId>org.sunbird</groupId>
-            <artifactId>audit-history-indexer</artifactId>
             <version>1.0.0</version>
             <type>jar</type>
         </dependency>
@@ -104,21 +61,9 @@
             <version>1.0.0</version>
             <type>jar</type>
         </dependency>
-<!--        <dependency>-->
-<!--            <groupId>org.sunbird</groupId>-->
-<!--            <artifactId>metrics-data-transformer</artifactId>-->
-<!--            <version>1.0.0</version>-->
-<!--            <type>jar</type>-->
-<!--        </dependency>-->
         <dependency>
             <groupId>org.sunbird</groupId>
             <artifactId>qrcode-image-generator</artifactId>
-            <version>1.0.0</version>
-            <type>jar</type>
-        </dependency>
-        <dependency>
-            <groupId>org.sunbird</groupId>
-            <artifactId>audit-event-generator</artifactId>
             <version>1.0.0</version>
             <type>jar</type>
         </dependency>
@@ -149,6 +94,12 @@
         <dependency>
             <groupId>org.sunbird</groupId>
             <artifactId>cassandra-data-migration</artifactId>
+            <version>1.0.0</version>
+            <type>jar</type>
+        </dependency>
+        <dependency>
+            <groupId>org.sunbird</groupId>
+            <artifactId>transaction-event-generator</artifactId>
             <version>1.0.0</version>
             <type>jar</type>
         </dependency>
