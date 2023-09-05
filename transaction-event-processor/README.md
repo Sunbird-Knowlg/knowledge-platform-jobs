@@ -1,6 +1,6 @@
-# Audit Event Generator
+# Transaction Event Processor
 
-Audit Event Generator job generates an audit event for every transaction in Graph updation for content data modification
+Transaction Event Processor job generates an audit event for every transaction in Graph updation for content data modification. The job utilizes the neo4j mutation data to create an index of transactions for audit purposes. For each neo4j transaction, the job will audit the old and new values of the updated object.
 
 ## Getting Started
 
@@ -24,7 +24,7 @@ mvn clean install
 Flink requires memory to be allocated for both job-manager and task manager. -yjm parameter assigns job-manager memory and -ytm assigns task-manager memory.
 
 ```
-./bin/flink run -m yarn-cluster -p 2 -yjm 1024m -ytm 1024m <knowledge-platform-jobs>/audit-event-generator/target/audit-event-generator-0.0.1.jar
+./bin/flink run -m yarn-cluster -p 2 -yjm 1024m -ytm 1024m <knowledge-platform-jobs>/transaction-event-processor/target/transaction-event-processor-0.0.1.jar
 ```
 
 ### Kubernetes
@@ -52,7 +52,7 @@ kubectl create -f knowledge-platform-job/kubernetes/taskmanager-deployment.yaml
 kubectl port-forward deployment/flink-jobmanager 8081:8081
 
 # Submit the job to the Kubernetes single node cluster flink-cluster
-./bin/flink run -m localhost:8081 <knowledge-platform-job>/audit-event-generator/target/audit-event-generator-0.0.1.jar
+./bin/flink run -m localhost:8081 <knowledge-platform-job>/transaction-event-processor/target/transaction-event-processor-0.0.1.jar
 
 # Commands to delete the pods created in the cluster
 kubectl delete deployment/flink-jobmanager
