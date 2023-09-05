@@ -9,7 +9,7 @@
 		<maven>3.0.0</maven>
 	</prerequisites>
 
-	<groupId>org.sunbird</groupId>
+    <groupId>org.sunbird</groupId>
 	<artifactId>knowledge-platform-jobs</artifactId>
 	<version>1.0</version>
 	<packaging>pom</packaging>
@@ -27,18 +27,12 @@
 			</activation>
 			<modules>
 				<module>jobs-core</module>
-<!--				<module>relation-cache-updater</module>-->
-<!--				<module>activity-aggregate-updater</module>-->
 				<module>post-publish-processor</module>
-<!--				<module>credential-generator</module>-->
 				<module>publish-pipeline</module>
 				<module>search-indexer</module>
-<!--				<module>enrolment-reconciliation</module>-->
 				<module>auto-creator-v2</module>
 				<module>content-auto-creator</module>
-				<module>audit-history-indexer</module>
-				<module>audit-event-generator</module>
-<!--				<module>metrics-data-transformer</module>-->
+				<module>transaction-event-processor</module>
 				<module>qrcode-image-generator</module>
 				<module>dialcode-context-updater</module>
 				<module>cassandra-data-migration</module>
