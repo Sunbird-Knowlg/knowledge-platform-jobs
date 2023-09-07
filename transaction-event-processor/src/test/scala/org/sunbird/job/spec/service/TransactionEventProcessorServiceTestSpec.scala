@@ -4,15 +4,18 @@ import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.mockito.Mockito
+import org.mockito.Mockito.when
 import org.slf4j.LoggerFactory
 import org.sunbird.job.Metrics
 import org.sunbird.job.transaction.domain.{AuditHistoryRecord, Event}
 import org.sunbird.job.fixture.EventFixture
 import org.sunbird.job.transaction.functions.{AuditEventGenerator, AuditHistoryIndexer}
+import org.sunbird.job.transaction.service.TransactionEventProcessorService
 import org.sunbird.job.transaction.task.TransactionEventProcessorConfig
 import org.sunbird.job.util.{ElasticSearchUtil, JSONUtil}
-import org.sunbird.spec.BaseTestSpec
+import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 
+import java.io.IOException
 import java.util
 
 class TransactionEventProcessorTestSpec extends BaseTestSpec {
@@ -129,7 +132,7 @@ class TransactionEventProcessorTestSpec extends BaseTestSpec {
   "TransactionEventProcessorService" should "generate es log" in {
     val inputEvent: Event = new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_9), 0, 10)
 
-    val auditHistoryRec: AuditHistoryRecord = auditHistoryIndexer.getAuditHistory(inputEvent);
+    val auditHistoryRec: AuditHistoryRecord = auditHistoryIndexer.getAuditHistory(inputEvent)
 
     auditHistoryRec.objectId should be(inputEvent.nodeUniqueId)
     auditHistoryRec.objectType should be(inputEvent.objectType)
@@ -139,7 +142,7 @@ class TransactionEventProcessorTestSpec extends BaseTestSpec {
   "TransactionEventProcessorService" should "generate with added relations" in {
     val inputEvent: Event = new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_10), 0, 11)
 
-    val auditHistoryRec: AuditHistoryRecord = auditHistoryIndexer.getAuditHistory(inputEvent);
+    val auditHistoryRec: AuditHistoryRecord = auditHistoryIndexer.getAuditHistory(inputEvent)
 
     auditHistoryRec.objectId should be(inputEvent.nodeUniqueId)
     auditHistoryRec.objectType should be(inputEvent.objectType)
@@ -149,10 +152,11 @@ class TransactionEventProcessorTestSpec extends BaseTestSpec {
   "TransactionEventProcessorService" should "generate with removed relations" in {
     val inputEvent: Event = new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_11), 0, 12)
 
-    val auditHistoryRec: AuditHistoryRecord = auditHistoryIndexer.getAuditHistory(inputEvent);
+    val auditHistoryRec: AuditHistoryRecord = auditHistoryIndexer.getAuditHistory(inputEvent)
 
     auditHistoryRec.objectId should be(inputEvent.nodeUniqueId)
     auditHistoryRec.objectType should be(inputEvent.objectType)
     auditHistoryRec.logRecord should be("""{"addedTags":[],"addedRelations":[],"properties":{},"removedRelations":[{"label":"qq\n","rel":"associatedTo","dir":"OUT","id":"do_113198273083662336127","relMetadata":{},"type":"AssessmentItem"}],"removedTags":[]}""")
   }
+
 }

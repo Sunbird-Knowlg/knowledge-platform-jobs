@@ -7,11 +7,12 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.functions.KeySelector
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
+import org.apache.flink.api.scala.createTypeInformation
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.transaction.domain.Event
-import org.sunbird.job.transaction.functions.{AuditEventGenerator, AuditHistoryIndexer}
-import org.sunbird.job.util.{ElasticSearchUtil, FlinkUtil, HttpUtil}
+import org.sunbird.job.transaction.domain.{Event, EventCache}
+import org.sunbird.job.transaction.functions.{AuditEventGenerator, AuditHistoryIndexer, ObsrvMetaDataGenerator}
+import org.sunbird.job.util.{ElasticSearchUtil, FlinkUtil}
 
 
 class TransactionEventProcessorStreamTask(config: TransactionEventProcessorConfig, kafkaConnector: FlinkKafkaConnector, esUtil: ElasticSearchUtil) {
@@ -45,6 +46,21 @@ class TransactionEventProcessorStreamTask(config: TransactionEventProcessorConfi
         .uid(config.auditHistoryIndexerFunction)
         .setParallelism(config.parallelism)
     }
+
+    val obsrvMetadataInputStream = env.addSource(kafkaConnector.kafkaJobRequestSource[EventCache](config.kafkaInputTopic)).name(config.transactionEventConsumer)
+      .uid(config.transactionEventConsumer).setParallelism(config.kafkaConsumerParallelism)
+
+    if(config.obsrvMetadataGenerator) {
+      val obsrvMetadataGeneratorStreamTask = obsrvMetadataInputStream.rebalance
+        .process(new ObsrvMetaDataGenerator(config))
+        .name(config.obsrvMetaDataGeneratorFunction)
+        .uid(config.obsrvMetaDataGeneratorFunction)
+        .setParallelism(config.parallelism)
+
+      obsrvMetadataGeneratorStreamTask.getSideOutput(config.obsrvAuditOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaObsrvOutputTopic))
+        .name(config.transactionEventProducer).uid(config.transactionEventProducer).setParallelism(config.kafkaProducerParallelism)
+    }
+
     env.execute(config.jobName)
   }
 }
