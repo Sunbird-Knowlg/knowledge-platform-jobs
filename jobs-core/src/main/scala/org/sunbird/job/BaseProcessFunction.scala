@@ -1,13 +1,14 @@
 package org.sunbird.job
 
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicLong
 import org.apache.flink.api.scala.metrics.ScalaGauge
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.{KeyedProcessFunction, ProcessFunction}
 import org.apache.flink.streaming.api.scala.function.ProcessWindowFunction
 import org.apache.flink.streaming.api.windowing.windows.{GlobalWindow, TimeWindow}
 import org.apache.flink.util.Collector
+
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicLong
 
 case class Metrics(metrics: ConcurrentHashMap[String, AtomicLong]) {
   def incCounter(metric: String): Unit = {
@@ -101,12 +102,17 @@ abstract class BaseProcessKeyedFunction[K, T, R](config: BaseJobConfig) extends 
   override def open(parameters: Configuration): Unit = {
     metricsList().map { metric =>
       getRuntimeContext.getMetricGroup.addGroup(config.jobName)
-        .gauge[Long, ScalaGauge[Long]](metric, ScalaGauge[Long]( () => metrics.getAndReset(metric) ))
+        .gauge[Long, ScalaGauge[Long]](metric, ScalaGauge[Long](() => metrics.getAndReset(metric)))
     }
+    open(parameters, metrics)
   }
 
+  def open(parameters: Configuration, metrics: Metrics): Unit = {}
+
   def processElement(event: T, context: KeyedProcessFunction[K, T, R]#Context, metrics: Metrics): Unit
+
   def onTimer(timestamp: Long, ctx: KeyedProcessFunction[K, T, R]#OnTimerContext, metrics: Metrics): Unit = {}
+
   def metricsList(): List[String]
 
   override def processElement(event: T, context: KeyedProcessFunction[K, T, R]#Context, out: Collector[R]): Unit = {

@@ -31,7 +31,7 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
   private val ignoreValidationMimeType = List(MimeType.Collection, MimeType.Plugin_Archive, MimeType.ASSETS)
   private val YOUTUBE_REGEX = "^(http(s)?:\\/\\/)?((w){3}.)?youtu(be|.be)?(\\.com)?\\/.+"
 
-  override def getExtData(identifier: String, pkgVersion: Double, mimeType: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[ObjectExtData] = {
+  override def getExtData(identifier: String, pkgVersion: Double, mimeType: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil, config: PublishConfig): Option[ObjectExtData] = {
     mimeType match {
       case MimeType.ECML_Archive =>
         val ecmlBody = getContentBody(identifier, readerConfig)
@@ -41,7 +41,7 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
     }
   }
 
-  override def getHierarchy(identifier: String, pkgVersion: Double, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = None
+  override def getHierarchy(identifier: String, pkgVersion: Double, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil, config: PublishConfig): Option[Map[String, AnyRef]] = None
 
   override def getExtDatas(identifiers: List[String], readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = None
 
@@ -201,7 +201,12 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
           None
         case MimeType.ECML_Archive | MimeType.HTML_Archive | MimeType.H5P_Archive =>
           val latestFolderS3Url = ExtractableMimeTypeHelper.getCloudStoreURL(obj, cloudStorageUtil, config)
-          val updatedPreviewUrl = updatedMeta ++ Map("previewUrl" -> latestFolderS3Url, "streamingUrl" -> latestFolderS3Url)
+          val relativeLatestFolder = if(config.isrRelativePathEnabled) {
+            val paths = config.config.getStringList("cloudstorage.write_base_path").asScala.toArray
+            val repArray = CSPMetaUtil.getReplacementData(paths, config.getString("cloudstorage.read_base_path", ""))
+            StringUtils.replaceEach(latestFolderS3Url, paths, repArray)
+          } else latestFolderS3Url
+          val updatedPreviewUrl = updatedMeta ++ Map("previewUrl" -> relativeLatestFolder, "streamingUrl" -> latestFolderS3Url)
           Some(updatedPreviewUrl)
         case _ =>
           val artifactUrl = obj.getString("artifactUrl", null)

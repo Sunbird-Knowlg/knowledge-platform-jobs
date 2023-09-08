@@ -3,7 +3,7 @@ version: 2.0
 jobs:
   unit-tests:
     docker:
-      - image: circleci/openjdk:stretch
+      - image: circleci/openjdk:14-jdk-buster-node-browsers-legacy
     resource_class: medium
     working_directory: ~/kp
     steps:
@@ -15,12 +15,12 @@ jobs:
       - run: 
           name: Installation of imagemagick
           command: |
-            sudo apt-get update || sudo apt-get update
+            sudo apt-get update --allow-releaseinfo-change || sudo apt-get update --allow-releaseinfo-change
             sudo apt-get install -y imagemagick
       - run:
           name: Execute coverage report
           command: |
-            mvn clean scoverage:report
+            mvn clean scoverage:report  -DCLOUD_STORE_GROUP_ID=$CLOUD_STORE_GROUP_ID -DCLOUD_STORE_ARTIFACT_ID=$CLOUD_STORE_ARTIFACT_ID -DCLOUD_STORE_VERSION=$CLOUD_STORE_VERSION
       - run:
           name: Save test results
           command: |

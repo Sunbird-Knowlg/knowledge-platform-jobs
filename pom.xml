@@ -27,22 +27,25 @@
 			</activation>
 			<modules>
 				<module>jobs-core</module>
-				<module>relation-cache-updater</module>
-				<module>activity-aggregate-updater</module>
+<!--				<module>relation-cache-updater</module>-->
+<!--				<module>activity-aggregate-updater</module>-->
 				<module>post-publish-processor</module>
-				<module>credential-generator</module>
+<!--				<module>credential-generator</module>-->
 				<module>publish-pipeline</module>
-				<module>video-stream-generator</module>
 				<module>search-indexer</module>
-				<module>enrolment-reconciliation</module>
+<!--				<module>enrolment-reconciliation</module>-->
 				<module>auto-creator-v2</module>
 				<module>content-auto-creator</module>
-				<module>asset-enrichment</module>
 				<module>audit-history-indexer</module>
 				<module>audit-event-generator</module>
-				<module>metrics-data-transformer</module>
+<!--				<module>metrics-data-transformer</module>-->
 				<module>qrcode-image-generator</module>
 				<module>dialcode-context-updater</module>
+				<module>cassandra-data-migration</module>
+				<module>live-video-stream-generator</module>
+				<module>csp-migrator</module>
+				<module>asset-enrichment</module>
+				<module>video-stream-generator</module>
 			</modules>
 		</profile>
 		<profile>
@@ -100,6 +103,20 @@
 			<version>${scala.maj.version}</version>
 		</dependency>
 	</dependencies>
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>javax.ws.rs</groupId>
+				<artifactId>javax.ws.rs-api</artifactId>
+				<version>2.1.1</version>
+			</dependency>
+			<dependency>
+				<groupId>jakarta.ws.rs</groupId>
+				<artifactId>jakarta.ws.rs-api</artifactId>
+				<version>2.1.6</version>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
 
 	<build>
 		<pluginManagement>

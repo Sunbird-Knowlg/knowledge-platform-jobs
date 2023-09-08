@@ -1,6 +1,7 @@
 package org.sunbird.job.publish.helpers
 
 import org.slf4j.LoggerFactory
+import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{ExtDataConfig, ObjectData, ObjectExtData}
 import org.sunbird.job.util.{CassandraUtil, Neo4JUtil}
 
@@ -10,7 +11,7 @@ trait ObjectReader {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[ObjectReader])
 
-  def getObject(identifier: String, pkgVersion: Double, mimeType: String, publishType: String, readerConfig: ExtDataConfig)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil): ObjectData = {
+  def getObject(identifier: String, pkgVersion: Double, mimeType: String, publishType: String, readerConfig: ExtDataConfig)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, config: PublishConfig): ObjectData = {
     logger.info("Reading editable object data for: " + identifier + " with pkgVersion: " + pkgVersion)
     val metadata = getMetadata(identifier, mimeType, publishType, pkgVersion)
     logger.info("Reading metadata for: " + identifier + " with metadata: " + metadata)
@@ -31,9 +32,9 @@ trait ObjectReader {
       metaData ++ Map[String, AnyRef]("identifier" -> id, "objectType" -> objType, "publish_type" -> publishType) - ("IL_UNIQUE_ID", "IL_FUNC_OBJECT_TYPE", "IL_SYS_NODE_TYPE")
   }
 
-  def getExtData(identifier: String, pkgVersion: Double, mimeType: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[ObjectExtData]
+  def getExtData(identifier: String, pkgVersion: Double, mimeType: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil, config: PublishConfig): Option[ObjectExtData]
 
-  def getHierarchy(identifier: String, pkgVersion: Double, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]]
+  def getHierarchy(identifier: String, pkgVersion: Double, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil, config: PublishConfig): Option[Map[String, AnyRef]]
 
   def getEditableObjId(identifier: String, pkgVersion: Double): String = {
     if (pkgVersion > 0) identifier + ".img" else identifier

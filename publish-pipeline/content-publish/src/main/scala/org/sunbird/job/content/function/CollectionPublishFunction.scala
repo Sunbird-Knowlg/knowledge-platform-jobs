@@ -45,8 +45,8 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
-    cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort)
-    neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName)
+    cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort, config)
+    neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName, config)
     esUtil = new ElasticSearchUtil(config.esConnectionInfo, config.compositeSearchIndexName, config.compositeSearchIndexType)
     cloudStorageUtil = new CloudStorageUtil(config)
     ec = ExecutionContexts.global
@@ -71,7 +71,8 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
     val readerConfig = ExtDataConfig(config.hierarchyKeyspaceName, config.hierarchyTableName, definition.getExternalPrimaryKey, definition.getExternalProps)
     logger.info("Collection publishing started for : " + data.identifier)
     metrics.incCounter(config.collectionPublishEventCount)
-    val obj: ObjectData = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(neo4JUtil, cassandraUtil)
+    val obj: ObjectData = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(neo4JUtil, cassandraUtil, config)
+    logger.info(s"KN-856: Step:1 - From DB Collection:  ${obj.identifier} | Hierarchy: ${obj.hierarchy}");
     try {
       if (obj.pkgVersion > data.pkgVersion) {
         metrics.incCounter(config.skippedEventCount)
@@ -82,9 +83,10 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
         if (messages.isEmpty) {
           // Pre-publish update
           updateProcessingNode(updObj)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
-
+          logger.info(s"KN-856: Step:2 - After updating processing status Collection:  ${updObj.identifier} | Hierarchy: ${updObj.hierarchy}");
           val isCollectionShallowCopy = isContentShallowCopy(updObj)
           val updatedObj = if (isCollectionShallowCopy) updateOriginPkgVersion(updObj)(neo4JUtil) else updObj
+          logger.info(s"KN-856: Step:3 - After shallow copy status check and update Collection:  ${updatedObj.identifier} | isCollectionShallowCopy: $isCollectionShallowCopy | Hierarchy: ${updatedObj.hierarchy}");
 
           // Clear redis cache
           cache.del(data.identifier)
@@ -93,42 +95,47 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
 
           // Collection - add step to remove units of already Live content from redis - line 243 in PublishFinalizer
           val unitNodes = if (obj.metadata("identifier").asInstanceOf[String].endsWith(".img")) {
-            val childNodes = getUnitsFromLiveContent(updatedObj)(cassandraUtil, readerConfig)
+            val childNodes = getUnitsFromLiveContent(updatedObj)(cassandraUtil, readerConfig, config)
             childNodes.filter(rec => rec.nonEmpty).foreach(childId => cache.del(COLLECTION_CACHE_KEY_PREFIX + childId))
             childNodes.filter(rec => rec.nonEmpty)
           } else  List.empty
 
           logger.info("CollectionPublishFunction:: Live unitNodes: " + unitNodes)
           val enrichedObj = enrichObject(updatedObj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
+          logger.info(s"KN-856: Step:4 - After enriching the object Collection:  ${enrichedObj.identifier} | Hierarchy: ${enrichedObj.hierarchy}");
           logger.info("CollectionPublishFunction:: Collection Object Enriched: " + enrichedObj.identifier)
           val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
           logger.info("CollectionPublishFunction:: ECAR generation completed for Collection Object: " + objWithEcar.identifier)
+          logger.info(s"KN-856: Step:5 - After WithEcar Collection:  ${objWithEcar.identifier} | Hierarchy: ${objWithEcar.hierarchy}");
 
-          val collRelationalMetadata = getRelationalMetadata(obj.identifier, obj.pkgVersion-1, readerConfig)(cassandraUtil).getOrElse(Map.empty[String, AnyRef])
+          val collRelationalMetadata = getRelationalMetadata(obj.identifier, obj.pkgVersion-1, readerConfig)(cassandraUtil, config).getOrElse(Map.empty[String, AnyRef])
 
-          val dialContextMap = if(config.enableDIALContextUpdate.equalsIgnoreCase("Yes")) fetchDialListForContextUpdate(obj)(neo4JUtil, cassandraUtil, readerConfig) else Map.empty[String, AnyRef]
+          val dialContextMap = if(config.enableDIALContextUpdate.equalsIgnoreCase("Yes")) fetchDialListForContextUpdate(obj)(neo4JUtil, cassandraUtil, readerConfig, config) else Map.empty[String, AnyRef]
           logger.info("CollectionPublishFunction:: dialContextMap: " + dialContextMap)
 
-          saveOnSuccess(new ObjectData(objWithEcar.identifier, objWithEcar.metadata.-("children"), objWithEcar.extData, objWithEcar.hierarchy))(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
+          saveOnSuccess(new ObjectData(objWithEcar.identifier, objWithEcar.metadata.-("children"), objWithEcar.extData, objWithEcar.hierarchy))(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig, config)
           logger.info("CollectionPublishFunction:: Published Collection Object metadata saved successfully to graph DB: " + objWithEcar.identifier)
 
           val variantsJsonString = ScalaJsonUtil.serialize(objWithEcar.metadata("variants"))
           val publishType = objWithEcar.getString("publish_type", "Public")
           val successObj = new ObjectData(objWithEcar.identifier, objWithEcar.metadata + ("status" -> (if (publishType.equalsIgnoreCase("Unlisted")) "Unlisted" else "Live"), "variants" -> variantsJsonString, "identifier" -> objWithEcar.identifier), objWithEcar.extData, objWithEcar.hierarchy)
           val children = successObj.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
-
+          logger.info(s"KN-856: Step:6 - After saveOnSuccess(Neo4J Save) Collection:  ${successObj.identifier} | Hierarchy: $children");
           // Collection - update and publish children - line 418 in PublishFinalizer
           val updatedChildren = updateHierarchyMetadata(children, successObj.metadata, collRelationalMetadata)(config)
+          logger.info(s"KN-856: Step:7 - After updateHierarchyMetadata Collection:  ${successObj.identifier} | Hierarchy: $updatedChildren");
           logger.info("CollectionPublishFunction:: Hierarchy Metadata updated for Collection Object: " + successObj.identifier + " || updatedChildren:: " + updatedChildren)
           publishHierarchy(updatedChildren, successObj, readerConfig, config)(cassandraUtil)
-
+          logger.info(s"KN-856: Step:8 - After publishHierarchy Collection:  ${successObj.identifier} | Hierarchy: $updatedChildren");
           //TODO: Save IMAGE Object with enrichedObj children and collRelationalMetadata when pkgVersion is 1 - verify with MaheshG
           if(data.pkgVersion == 1) {
             saveImageHierarchy(enrichedObj, readerConfig, collRelationalMetadata)(cassandraUtil)
+            logger.info(s"KN-856: Step:8.1 - After saveImageHierarchy Collection:  ${enrichedObj.identifier} | Hierarchy: ${enrichedObj.hierarchy}");
           }
 
           if (!isCollectionShallowCopy) syncNodes(successObj, updatedChildren, unitNodes)(esUtil, neo4JUtil, cassandraUtil, readerConfig, definition, config)
           pushPostProcessEvent(successObj, dialContextMap, context)(metrics)
+          logger.info(s"KN-856: Step:9 - After pushPostProcessEvent Collection:  ${successObj.identifier} | Hierarchy: ${successObj.hierarchy}");
           metrics.incCounter(config.collectionPublishSuccessEventCount)
           logger.info("CollectionPublishFunction:: Collection publishing completed successfully for : " + data.identifier)
         } else {

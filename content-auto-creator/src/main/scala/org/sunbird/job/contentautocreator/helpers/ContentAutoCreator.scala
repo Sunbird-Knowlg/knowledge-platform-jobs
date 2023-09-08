@@ -346,7 +346,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 	}
 
 	private def publishContent(channel: String, identifier: String, lastPublishedBy: String, config: ContentAutoCreatorConfig, httpUtil: HttpUtil): Unit = {
-		val requestUrl = s"${config.learningServiceBaseUrl}/content/v3/publish/" + identifier
+		val requestUrl = s"${config.contentServiceBaseUrl}/content/v4/publish/" + identifier
 		val reqMap = new java.util.HashMap[String, AnyRef]() {
 			put(ContentAutoCreatorConstants.REQUEST, new java.util.HashMap[String, AnyRef]() {
 				put(ContentAutoCreatorConstants.CONTENT, new java.util.HashMap[String, AnyRef]() {
@@ -422,6 +422,7 @@ trait ContentAutoCreator extends ContentCollectionUpdater {
 	}
 
 	private def getErrorDetails(httpResponse: HTTPResponse): String = {
+		logger.info("ContentAutoCreator:: getErrorDetails:: httpResponse.body:: " + httpResponse.body)
 		val response = JSONUtil.deserialize[Map[String, AnyRef]](httpResponse.body)
 		if (null != response) " | Response Code :" + httpResponse.status + " | Result : " + response.getOrElse("result", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]] + " | Error Message : " + response.getOrElse("params", Map[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
 		else " | Null Response Received."
