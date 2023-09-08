@@ -40,6 +40,7 @@ trait ObjectBundle {
     objList.map(data => {
       val identifier = data.getOrElse("identifier", "").asInstanceOf[String].replaceAll(".img", "")
       val mimeType = data.getOrElse("mimeType", "").asInstanceOf[String]
+      val visibility = data.getOrElse("visibility", "").asInstanceOf[String]
       val objectType: String = if(!data.contains("objectType") || data.getOrElse("objectType", "").asInstanceOf[String].isBlank || data.getOrElse("objectType", "").asInstanceOf[String].isEmpty) {
         val metaData = Option(neo4JUtil.getNodeProperties(identifier)).getOrElse(neo4JUtil.getNodeProperties(identifier)).asScala.toMap
         logger.info("ObjectBundle:: getManifestData:: if objectType does not exist identifier:: " + identifier)
