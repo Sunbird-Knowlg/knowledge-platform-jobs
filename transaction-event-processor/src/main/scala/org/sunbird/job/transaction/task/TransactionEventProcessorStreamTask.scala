@@ -10,8 +10,8 @@ import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.api.scala.createTypeInformation
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.transaction.domain.{Event, EventCache}
-import org.sunbird.job.transaction.functions.{AuditEventGenerator, AuditHistoryIndexer, ObsrvMetaDataGenerator}
+import org.sunbird.job.transaction.domain.Event
+import org.sunbird.job.transaction.functions.{AuditEventGenerator, AuditHistoryIndexer, ObsrvMetadataGenerator}
 import org.sunbird.job.util.{ElasticSearchUtil, FlinkUtil}
 
 
@@ -47,12 +47,9 @@ class TransactionEventProcessorStreamTask(config: TransactionEventProcessorConfi
         .setParallelism(config.parallelism)
     }
 
-    val obsrvMetadataInputStream = env.addSource(kafkaConnector.kafkaJobRequestSource[EventCache](config.kafkaInputTopic)).name(config.transactionEventConsumer)
-      .uid(config.transactionEventConsumer).setParallelism(config.kafkaConsumerParallelism)
-
     if(config.obsrvMetadataGenerator) {
-      val obsrvMetadataGeneratorStreamTask = obsrvMetadataInputStream.rebalance
-        .process(new ObsrvMetaDataGenerator(config))
+      val obsrvMetadataGeneratorStreamTask = inputStream.rebalance
+        .process(new ObsrvMetadataGenerator(config))
         .name(config.obsrvMetaDataGeneratorFunction)
         .uid(config.obsrvMetaDataGeneratorFunction)
         .setParallelism(config.parallelism)

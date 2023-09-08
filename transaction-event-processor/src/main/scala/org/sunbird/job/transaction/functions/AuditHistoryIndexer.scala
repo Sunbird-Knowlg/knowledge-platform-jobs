@@ -38,7 +38,7 @@ class AuditHistoryIndexer(config: TransactionEventProcessorConfig, var esUtil: E
                                 metrics: Metrics): Unit = {
         metrics.incCounter(config.totalEventsCount)
         if(event.isValid) {
-            processEvent(event, metrics)(esUtil, config)
+            processAuditHistoryEvent(event, metrics)(esUtil, config)
         } else metrics.incCounter(config.skippedEventCount)
     }
 }

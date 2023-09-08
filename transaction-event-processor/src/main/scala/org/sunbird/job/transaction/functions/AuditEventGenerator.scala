@@ -5,7 +5,7 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
-import org.sunbird.job.transaction.domain.{Event, EventCache}
+import org.sunbird.job.transaction.domain.Event
 import org.sunbird.job.transaction.service.TransactionEventProcessorService
 import org.sunbird.job.transaction.task.TransactionEventProcessorConfig
 import org.sunbird.job.exception.InvalidEventException
@@ -38,7 +38,7 @@ class AuditEventGenerator(config: TransactionEventProcessorConfig)
       metrics.incCounter(config.totalEventsCount)
       if(event.isValid) {
         logger.info("valid event: "+event.nodeUniqueId)
-        processEvent(event, context, metrics)(config)
+        processAuditEvent(event, context, metrics)(config)
       } else metrics.incCounter(config.skippedEventCount)
     } catch {
       case ex: Exception =>

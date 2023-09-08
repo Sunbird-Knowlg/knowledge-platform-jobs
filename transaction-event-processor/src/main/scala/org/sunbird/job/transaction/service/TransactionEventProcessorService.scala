@@ -1,4 +1,5 @@
 package org.sunbird.job.transaction.service
+
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
@@ -11,7 +12,6 @@ import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import com.google.gson.Gson
 import org.sunbird.job.exception.InvalidEventException
 import org.sunbird.job.transaction.task.TransactionEventProcessorConfig
-
 import java.io.IOException
 import java.util
 import java.text.SimpleDateFormat
@@ -37,7 +37,7 @@ trait TransactionEventProcessorService {
   }
 
   @throws(classOf[InvalidEventException])
-  def processEvent(message: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics)(implicit config: TransactionEventProcessorConfig): Unit = {
+  def processAuditEvent(message: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics)(implicit config: TransactionEventProcessorConfig): Unit = {
     logger.info("AUDIT Event::" + JSONUtil.serialize(message))
     logger.info("Input Message Received for : [" + message.nodeUniqueId + "], Txn Event createdOn:" + message.createdOn + ", Operation Type:" + message.operationType)
     try {
@@ -49,6 +49,44 @@ trait TransactionEventProcessorService {
       }
       else {
         logger.info("Skipped event as the objectype is not available, event =" + auditEventStr)
+        metrics.incCounter(config.emptyPropsEventCount)
+      }
+    } catch {
+      case e: Exception =>
+        logger.error("Failed to process message :: " + JSONUtil.serialize(message), e)
+        throw e
+    }
+  }
+
+  def processEvent(message: Event,context: ProcessFunction[Event, String]#Context,metrics: Metrics)(implicit config: TransactionEventProcessorConfig): Unit = {
+    logger.info("Event received : " + message)
+    val inputEvent = JSONUtil.serialize(message)
+    logger.info("Input Event :" + inputEvent)
+    logger.info("Input Message Received for : [" + message.nodeUniqueId + "], Txn Event createdOn:" + message.createdOn + ", Operation Type:" + message.operationType)
+    try {
+      val (eventStr, objectType) = getAuditMessage(message)(config, metrics)
+      if (StringUtils.isNotBlank(objectType)) {
+        val propertyMap = message.transactionData("properties").asInstanceOf[Map[String, AnyRef]]
+        val nvValues:Map[String, AnyRef] = propertyMap.collect{
+          case (key, value) if(value.isInstanceOf[Map[_,_]]) =>
+            val nestedMap = value.asInstanceOf[Map[String, AnyRef]]
+            val nvValue = nestedMap.get("nv").collect{ case s: String => s}
+            key -> nvValue.getOrElse("")
+        }
+        val propertiesWithNvValues = Map("properties" -> propertyMap.map {
+          case (key, _) => key -> nvValues.getOrElse(key, "")
+        })
+          logger.info("Properties -> " + propertiesWithNvValues)
+        if(message.getMap().containsKey("transactionData")) {
+          message.getMap().replace("transactionData", propertiesWithNvValues)
+        }
+        logger.info("New Event -> " + message.getMap())
+        context.output(config.obsrvAuditOutputTag, eventStr)
+        logger.info("Telemetry Audit Message Successfully Sent for : " + message.objectId + " :: event ::" + eventStr)
+        metrics.incCounter(config.successEventCount)
+      }
+      else {
+        logger.info("Skipped event as the objectype is not available, event =" + eventStr)
         metrics.incCounter(config.emptyPropsEventCount)
       }
     } catch {
@@ -201,7 +239,7 @@ trait TransactionEventProcessorService {
   }
 
   @throws(classOf[InvalidEventException])
-  def processEvent(event: Event, metrics: Metrics)(implicit esUtil: ElasticSearchUtil, config: TransactionEventProcessorConfig): Unit = {
+  def processAuditHistoryEvent(event: Event, metrics: Metrics)(implicit esUtil: ElasticSearchUtil, config: TransactionEventProcessorConfig): Unit = {
     if (event.isValid) {
       val identifier = event.nodeUniqueId
       logger.info("Audit learning event received : " + identifier)
@@ -236,5 +274,4 @@ trait TransactionEventProcessorService {
     val nodeUniqueId = StringUtils.replace(transactionDataMap.nodeUniqueId, ".img", "")
     AuditHistoryRecord(nodeUniqueId, transactionDataMap.objectType, transactionDataMap.label, transactionDataMap.graphId, transactionDataMap.userId, transactionDataMap.requestId, JSONUtil.serialize(transactionDataMap.transactionData), transactionDataMap.operationType, transactionDataMap.createdOnDate)
   }
-
 }
