@@ -14,7 +14,7 @@ import org.sunbird.job.{BaseProcessFunction, Metrics}
 class AuditEventGenerator(config: TransactionEventProcessorConfig)
                          (implicit mapTypeInfo: TypeInformation[util.Map[String, AnyRef]],
                           stringTypeInfo: TypeInformation[String])
-  extends BaseProcessFunction[Event, String](config) with TransactionEventProcessorService{
+  extends BaseProcessFunction[Event, String](config) with TransactionEventProcessorService {
 
   private[this] lazy val logger = LoggerFactory.getLogger(classOf[AuditEventGenerator])
 
@@ -36,14 +36,14 @@ class AuditEventGenerator(config: TransactionEventProcessorConfig)
                               metrics: Metrics): Unit = {
     try {
       metrics.incCounter(config.totalEventsCount)
-      if(event.isValid) {
-        logger.info("valid event: "+event.nodeUniqueId)
+      if (event.isValid) {
+        logger.info("valid event: " + event.nodeUniqueId)
         processAuditEvent(event, context, metrics)(config)
       } else metrics.incCounter(config.skippedEventCount)
     } catch {
       case ex: Exception =>
         metrics.incCounter(config.failedEventCount)
-        throw new InvalidEventException(ex.getMessage, Map("partition" -> event.partition,"offset" -> event.offset),ex)
+        throw new InvalidEventException(ex.getMessage, Map("partition" -> event.partition, "offset" -> event.offset), ex)
     }
   }
 }

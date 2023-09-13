@@ -7,15 +7,18 @@ import org.sunbird.job.Metrics
 import org.sunbird.job.util.{ElasticSearchUtil, JSONUtil}
 import org.sunbird.telemetry.TelemetryGenerator
 import org.sunbird.telemetry.TelemetryParams
-import org.sunbird.job.transaction.domain.{AuditHistoryRecord, Event}
+import org.sunbird.job.transaction.domain.{AuditHistoryRecord, Event, ObsrvEvent}
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import com.google.gson.Gson
 import org.sunbird.job.exception.InvalidEventException
 import org.sunbird.job.transaction.task.TransactionEventProcessorConfig
+import org.sunbird.telemetry.dto.Telemetry
+
+import scala.collection.JavaConverters._
 import java.io.IOException
 import java.util
 import java.text.SimpleDateFormat
-import java.util.{Calendar, Date, TimeZone}
+import java.util.{Calendar, Date, TimeZone, UUID}
 
 trait TransactionEventProcessorService {
   private[this] lazy val logger = LoggerFactory.getLogger(classOf[TransactionEventProcessorService])
@@ -58,7 +61,9 @@ trait TransactionEventProcessorService {
     }
   }
 
-  def processEvent(message: Event,context: ProcessFunction[Event, String]#Context,metrics: Metrics)(implicit config: TransactionEventProcessorConfig): Unit = {
+  def processEvent(message: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics)(implicit config: TransactionEventProcessorConfig): Unit = {
+    val telemetry: Telemetry = null
+
     logger.info("Event received : " + message)
     val inputEvent = JSONUtil.serialize(message)
     logger.info("Input Event :" + inputEvent)
@@ -67,21 +72,32 @@ trait TransactionEventProcessorService {
       val (eventStr, objectType) = getAuditMessage(message)(config, metrics)
       if (StringUtils.isNotBlank(objectType)) {
         val propertyMap = message.transactionData("properties").asInstanceOf[Map[String, AnyRef]]
-        val nvValues:Map[String, AnyRef] = propertyMap.collect{
-          case (key, value) if(value.isInstanceOf[Map[_,_]]) =>
+        val nvValues: Map[String, AnyRef] = propertyMap.collect {
+          case (key, value) if (value.isInstanceOf[Map[_, _]]) =>
             val nestedMap = value.asInstanceOf[Map[String, AnyRef]]
-            val nvValue = nestedMap.get("nv").collect{ case s: String => s}
+            val nvValue = nestedMap.get("nv").collect { case s: String => s }
             key -> nvValue.getOrElse("")
         }
+
         val propertiesWithNvValues = Map("properties" -> propertyMap.map {
           case (key, _) => key -> nvValues.getOrElse(key, "")
         })
-          logger.info("Properties -> " + propertiesWithNvValues)
-        if(message.getMap().containsKey("transactionData")) {
+
+        if (message.getMap().containsKey("transactionData")) {
           message.getMap().replace("transactionData", propertiesWithNvValues)
         }
-        logger.info("New Event -> " + message.getMap())
-        context.output(config.obsrvAuditOutputTag, eventStr)
+
+        val obsrvEvent = new ObsrvEvent(message.getMap(),message.partition,message.offset)
+        val scalaMap: Map[String, Any] = message.getMap().asScala.toMap
+        val updatedEvent = Map(
+          "events" -> obsrvEvent.addProcessedEvent(scalaMap),
+          "dataset" -> obsrvEvent.dataset,
+          "mid" -> obsrvEvent.msgid,
+          "syncts" -> obsrvEvent.syncts
+        )
+        val outputEvent = JSONUtil.serialize(updatedEvent)
+        logger.info("Output Event => " + outputEvent)
+        context.output(config.obsrvAuditOutputTag, outputEvent)
         logger.info("Telemetry Audit Message Successfully Sent for : " + message.objectId + " :: event ::" + eventStr)
         metrics.incCounter(config.successEventCount)
       }
@@ -95,6 +111,7 @@ trait TransactionEventProcessorService {
         throw e
     }
   }
+
 
   def getDefinition(objectType: String)(implicit config: TransactionEventProcessorConfig, metrics: Metrics): ObjectDefinition = {
     try {
@@ -208,7 +225,7 @@ trait TransactionEventProcessorService {
    *
    * @param relations
    */
-  private def getRelationProps(relations: List[Map[String, AnyRef]], objectDefinition: ObjectDefinition)(implicit config: TransactionEventProcessorConfig):List[String] = {
+  private def getRelationProps(relations: List[Map[String, AnyRef]], objectDefinition: ObjectDefinition)(implicit config: TransactionEventProcessorConfig): List[String] = {
     var relationProps = List[String]()
     if (relations.nonEmpty) {
       relations.foreach(rel => {
@@ -230,7 +247,7 @@ trait TransactionEventProcessorService {
    * @return
    */
   def computeDuration(oldDate: String, newDate: String): Long = {
-    val sdf:SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
+    val sdf: SimpleDateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
     val od = sdf.parse(oldDate)
     val nd = sdf.parse(newDate)
     val diff = nd.getTime - od.getTime

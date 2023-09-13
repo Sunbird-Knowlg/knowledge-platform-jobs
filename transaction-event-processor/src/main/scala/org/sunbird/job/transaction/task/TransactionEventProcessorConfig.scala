@@ -28,7 +28,7 @@ class TransactionEventProcessorConfig(override val config: Config) extends BaseJ
   val auditOutputTag: OutputTag[String] = OutputTag[String]("audit-event-tag")
   val obsrvAuditOutputTag: OutputTag[String] = OutputTag[String]("obsrv-metadata-tag")
 
-  val defaultChannel: String =config.getString("channel.default")
+  val defaultChannel: String = config.getString("channel.default")
 
   // Metric List
   val totalEventsCount = "total-events-count"

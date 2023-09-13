@@ -13,32 +13,32 @@ import java.util
 
 class AuditHistoryIndexer(config: TransactionEventProcessorConfig, var esUtil: ElasticSearchUtil)
                          (implicit mapTypeInfo: TypeInformation[util.Map[String, Any]],
-                           stringTypeInfo: TypeInformation[String])
-                          extends BaseProcessKeyedFunction[String, Event, String](config) with TransactionEventProcessorService{
+                          stringTypeInfo: TypeInformation[String])
+  extends BaseProcessKeyedFunction[String, Event, String](config) with TransactionEventProcessorService {
 
 
-    override def metricsList(): List[String] = {
-        List(config.totalEventsCount, config.successEventCount, config.failedEventCount, config.esFailedEventCount, config.skippedEventCount)
+  override def metricsList(): List[String] = {
+    List(config.totalEventsCount, config.successEventCount, config.failedEventCount, config.esFailedEventCount, config.skippedEventCount)
+  }
+
+  override def open(parameters: Configuration): Unit = {
+    super.open(parameters)
+    if (esUtil == null) {
+      esUtil = new ElasticSearchUtil(config.esConnectionInfo, config.auditHistoryIndex, config.auditHistoryIndexType)
     }
+  }
 
-    override def open(parameters: Configuration): Unit = {
-        super.open(parameters)
-        if (esUtil == null) {
-            esUtil = new ElasticSearchUtil(config.esConnectionInfo, config.auditHistoryIndex, config.auditHistoryIndexType)
-        }
-    }
+  override def close(): Unit = {
+    esUtil.close()
+    super.close()
+  }
 
-    override def close(): Unit = {
-        esUtil.close()
-        super.close()
-    }
-
-    override def processElement(event: Event,
-                                context: KeyedProcessFunction[String, Event, String]#Context,
-                                metrics: Metrics): Unit = {
-        metrics.incCounter(config.totalEventsCount)
-        if(event.isValid) {
-            processAuditHistoryEvent(event, metrics)(esUtil, config)
-        } else metrics.incCounter(config.skippedEventCount)
-    }
+  override def processElement(event: Event,
+                              context: KeyedProcessFunction[String, Event, String]#Context,
+                              metrics: Metrics): Unit = {
+    metrics.incCounter(config.totalEventsCount)
+    if (event.isValid) {
+      processAuditHistoryEvent(event, metrics)(esUtil, config)
+    } else metrics.incCounter(config.skippedEventCount)
+  }
 }

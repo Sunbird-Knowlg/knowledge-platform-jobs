@@ -10,7 +10,7 @@ import java.util.Date
 
 class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) extends JobRequest(eventMap, partition, offset) {
 
-  private val df:DateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
+  private val df: DateFormat = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
 
   private val IMAGE_SUFFIX = ".img"
 
@@ -33,7 +33,7 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
   def userId: String = readOrDefault[String]("userId", "")
 
   def transactionData: Map[String, AnyRef] = {
-    readOrDefault("transactionData",  new util.HashMap[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
+    readOrDefault("transactionData", new util.HashMap[String, AnyRef]()).asInstanceOf[Map[String, AnyRef]]
   }
 
   def nodeType: String = readOrDefault("nodeType", "")
