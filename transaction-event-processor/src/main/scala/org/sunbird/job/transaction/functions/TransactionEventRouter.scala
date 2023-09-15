@@ -2,28 +2,31 @@ package org.sunbird.job.transaction.functions
 
 import java.util
 import org.apache.flink.api.common.typeinfo.TypeInformation
-import org.apache.flink.api.scala.metrics.ScalaGauge
+import org.apache.flink.api.java.functions.KeySelector
 import org.apache.flink.configuration.Configuration
-import org.apache.flink.streaming.api.functions.ProcessFunction
+import org.apache.flink.streaming.api.functions.{KeyedProcessFunction, ProcessFunction}
 import org.slf4j.LoggerFactory
 import org.sunbird.job.transaction.domain.Event
 import org.sunbird.job.transaction.service.TransactionEventProcessorService
 import org.sunbird.job.transaction.task.TransactionEventProcessorConfig
 import org.sunbird.job.exception.InvalidEventException
+import org.sunbird.job.util.ElasticSearchUtil
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
-class AuditEventGenerator(config: TransactionEventProcessorConfig)
+class TransactionEventRouter(config: TransactionEventProcessorConfig, esUtil: ElasticSearchUtil)
+                            (implicit mapTypeInfo: TypeInformation[util.Map[String, AnyRef]],
+                             stringTypeInfo: TypeInformation[String])
   extends BaseProcessFunction[Event, String](config) with TransactionEventProcessorService {
 
   private[this] lazy val logger = LoggerFactory.getLogger(classOf[AuditEventGenerator])
 
+
   override def metricsList(): List[String] = {
-    List(config.totalEventsCount, config.successEventCount, config.failedEventCount, config.skippedEventCount, config.emptySchemaEventCount, config.emptyPropsEventCount
-      , config.totalAuditEventsCount, config.skippedAuditEventsCount, config.failedAuditEventsCount, config.auditEventSuccessCount)
+    List(config.totalEventsCount, config.successEventCount, config.failedEventCount, config.skippedEventCount, config.emptySchemaEventCount, config.emptyPropsEventCount)
   }
 
   override def open(parameters: Configuration): Unit = {
-   super.open(parameters)
+    super.open(parameters)
   }
 
   override def close(): Unit = {
@@ -35,12 +38,21 @@ class AuditEventGenerator(config: TransactionEventProcessorConfig)
                               context: ProcessFunction[Event, String]#Context,
                               metrics: Metrics): Unit = {
     try {
-      logger.info("Metrics -> "+ metrics)
-      metrics.incCounter(config.totalAuditEventsCount)
+      metrics.incCounter(config.totalEventsCount)
       if (event.isValid) {
-        logger.info("valid event: " + event.nodeUniqueId)
-        processAuditEvent(event, context, metrics)(config)
-      } else metrics.incCounter(config.skippedEventCount)
+        if(config.auditEventGenerator) {
+          val auditEvent = new AuditEventGenerator(config)
+          auditEvent.processElement(event, context, metrics)
+        }
+//        if(config.auditHistoryIndexer) {
+//          val auditHistoryEvent = new AuditHistoryIndexer(config,esUtil)
+//          auditHistoryEvent.processElement(event,)
+//        }
+        if(config.obsrvMetadataGenerator) {
+          val obsrvEvent = new ObsrvMetaDataGenerator(config)
+          obsrvEvent.processElement(event, context, metrics)
+        }
+      }else metrics.incCounter(config.skippedEventCount)
     } catch {
       case ex: Exception =>
         metrics.incCounter(config.failedEventCount)
@@ -48,3 +60,4 @@ class AuditEventGenerator(config: TransactionEventProcessorConfig)
     }
   }
 }
+

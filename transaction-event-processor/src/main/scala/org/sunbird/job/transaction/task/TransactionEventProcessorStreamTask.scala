@@ -7,57 +7,44 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.functions.KeySelector
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
-import org.apache.flink.api.scala.createTypeInformation
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
+import org.slf4j.LoggerFactory
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.transaction.domain.{Event, ObsrvEvent}
-import org.sunbird.job.transaction.functions.{AuditEventGenerator, AuditHistoryIndexer, ObsrvMetaDataGenerator}
+import org.sunbird.job.transaction.domain.Event
+import org.sunbird.job.transaction.functions.TransactionEventRouter
 import org.sunbird.job.util.{ElasticSearchUtil, FlinkUtil}
 
 
 class TransactionEventProcessorStreamTask(config: TransactionEventProcessorConfig, kafkaConnector: FlinkKafkaConnector, esUtil: ElasticSearchUtil) {
+
+  private[this] lazy val logger = LoggerFactory.getLogger(classOf[TransactionEventProcessorStreamTask])
   def process(): Unit = {
     implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
     //    implicit val env: StreamExecutionEnvironment = StreamExecutionEnvironment.createLocalEnvironment()
     implicit val eventTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
     implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
-    implicit val mapTypeInfoEs: TypeInformation[util.Map[String, Any]] = TypeExtractor.getForClass(classOf[util.Map[String, Any]])
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
 
     val inputStream = env.addSource(kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)).name(config.transactionEventConsumer)
       .uid(config.transactionEventConsumer).setParallelism(config.kafkaConsumerParallelism)
 
-    if (config.auditEventGenerator) {
-      val auditEventGeneratorStreamTask = inputStream.rebalance
-        .process(new AuditEventGenerator(config))
-        .name(config.auditEventGeneratorFunction)
-        .uid(config.auditEventGeneratorFunction)
-        .setParallelism(config.parallelism)
+    val transactionEvent = inputStream.rebalance.process(new TransactionEventRouter(config, esUtil)).name(config.transactionEventRouterFunction)
+      .uid(config.transactionEventRouterFunction).setParallelism(config.parallelism)
 
-      auditEventGeneratorStreamTask.getSideOutput(config.auditOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaOutputTopic))
+    if(config.auditEventGenerator) {
+      transactionEvent.getSideOutput(config.auditOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaOutputTopic))
         .name(config.transactionEventProducer).uid(config.transactionEventProducer).setParallelism(config.kafkaProducerParallelism)
     }
 
-    if (config.auditHistoryIndexer) {
-      inputStream.rebalance
-        .keyBy(new TransactionEventKeySelector)
-        .process(new AuditHistoryIndexer(config, esUtil))
-        .name(config.auditHistoryIndexerFunction)
-        .uid(config.auditHistoryIndexerFunction)
-        .setParallelism(config.parallelism)
-    }
-
-    if (config.obsrvMetadataGenerator) {
-      val obsrvMetadataGeneratorStreamTask = inputStream.rebalance
-        .process(new ObsrvMetaDataGenerator(config))
-        .name(config.obsrvMetaDataGeneratorFunction)
-        .uid(config.obsrvMetaDataGeneratorFunction)
-        .setParallelism(config.parallelism)
-
-      obsrvMetadataGeneratorStreamTask.getSideOutput(config.obsrvAuditOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaObsrvOutputTopic))
+    if(config.obsrvMetadataGenerator) {
+      transactionEvent.getSideOutput(config.obsrvAuditOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaObsrvOutputTopic))
         .name(config.transactionEventProducer).uid(config.transactionEventProducer).setParallelism(config.kafkaProducerParallelism)
     }
 
+//    if(config.auditHistoryIndexer) {
+//      inputStream.rebalance.keyBy(new TransactionEventKeySelector).process(new TransactionEventRouter(config, esUtil)).name(config.auditHistoryIndexerFunction)
+//        .uid(config.auditHistoryIndexerFunction).setParallelism(config.parallelism)
+//    }
     env.execute(config.jobName)
   }
 }

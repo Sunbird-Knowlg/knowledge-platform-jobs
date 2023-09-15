@@ -17,13 +17,15 @@ class TransactionEventProcessorConfig(override val config: Config) extends BaseJ
   // Kafka Topics Configuration
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
   val kafkaOutputTopic: String = config.getString("kafka.output.audit.topic")
+  val kafkaObsrvOutputTopic: String = config.getString("kafka.output.obsrv.topic")
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
   override val parallelism: Int = config.getInt("task.parallelism")
+
+  //Flink Jobs Configuration
   val kafkaProducerParallelism: Int = config.getInt("task.producer.parallelism")
   val auditEventGenerator: Boolean = config.getBoolean("job.audit-event-generator")
   val auditHistoryIndexer: Boolean = config.getBoolean("job.audit-history-indexer")
   val obsrvMetadataGenerator: Boolean = config.getBoolean("job.obsrv-metadata-generator")
-  val kafkaObsrvOutputTopic: String = config.getString("kafka.output.obsrv.topic")
 
   val auditOutputTag: OutputTag[String] = OutputTag[String]("audit-event-tag")
   val obsrvAuditOutputTag: OutputTag[String] = OutputTag[String]("obsrv-metadata-tag")
@@ -38,14 +40,17 @@ class TransactionEventProcessorConfig(override val config: Config) extends BaseJ
   val emptySchemaEventCount = "empty-schema-events-count"
   val emptyPropsEventCount = "empty-props-events-count"
   val esFailedEventCount = "elasticsearch-error-events-count"
-
+  val totalAuditEventsCount = "total-audit-events-count"
+  val skippedAuditEventsCount = "skipped-audit-events-count"
+  val failedAuditEventsCount = "failed-audit-events-count"
+  val auditEventSuccessCount = "audit-event-success-count"
   // Consumers
   val transactionEventConsumer = "transaction-event-processor-consumer"
   val auditEventGeneratorFunction = "audit-event-generator-function"
   val auditHistoryIndexerFunction = "audit-history-indexer-function"
   val obsrvMetaDataGeneratorFunction = "obsrv-metadata-generator-function"
+  val transactionEventRouterFunction = "transaction-event-router-function"
   val transactionEventProducer = "transaction-event-processor-producer"
-
 
   val basePath = config.getString("schema.basePath")
   val configVersion = "1.0"

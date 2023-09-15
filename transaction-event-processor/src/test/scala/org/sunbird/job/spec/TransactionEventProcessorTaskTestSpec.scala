@@ -47,25 +47,46 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
     super.afterAll()
   }
 
+//  "TransactionEventProcessorStreamTask" should "generate audit event" in {
+//    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new AuditEventMapSource)
+//    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaOutputTopic)).thenReturn(new AuditEventSink)
+//    if (jobConfig.auditEventGenerator) {
+//      new TransactionEventProcessorStreamTask(jobConfig, mockKafkaUtil, esUtil).process()
+//
+//      BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(2)
+//      BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skippedEventCount}").getValue() should be(0)
+//      BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.successEventCount}").getValue() should be(1)
+//      BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.failedEventCount}").getValue() should be(0)
+//
+//      AuditEventSink.values.size() should be(1)
+//      AuditEventSink.values.forEach(event => {
+//        val eventMap = JSONUtil.deserialize[Map[String, AnyRef]](event)
+//        eventMap("eid") should be("AUDIT")
+//        eventMap("ver") should be("3.0")
+//        eventMap("edata") shouldNot be(null)
+//      })
+//    }
+//  }
+
   "TransactionEventProcessorStreamTask" should "generate audit event" in {
     when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new AuditEventMapSource)
-    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaOutputTopic)).thenReturn(new AuditEventSink)
+    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaObsrvOutputTopic)).thenReturn(new AuditEventSink)
     if (jobConfig.auditEventGenerator) {
-      new TransactionEventProcessorStreamTask(jobConfig, mockKafkaUtil, esUtil).process()
+            new TransactionEventProcessorStreamTask(jobConfig, mockKafkaUtil, esUtil).process()
 
-      BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(2)
-      BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skippedEventCount}").getValue() should be(0)
-      BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.successEventCount}").getValue() should be(1)
-      BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.failedEventCount}").getValue() should be(0)
+            BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(2)
+            BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skippedEventCount}").getValue() should be(0)
+            BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.successEventCount}").getValue() should be(1)
+            BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.failedEventCount}").getValue() should be(0)
 
-      AuditEventSink.values.size() should be(1)
-      AuditEventSink.values.forEach(event => {
-        val eventMap = JSONUtil.deserialize[Map[String, AnyRef]](event)
-        eventMap("eid") should be("AUDIT")
-        eventMap("ver") should be("3.0")
-        eventMap("edata") shouldNot be(null)
-      })
-    }
+            AuditEventSink.values.size() should be(1)
+            AuditEventSink.values.forEach(event => {
+              val eventMap = JSONUtil.deserialize[Map[String, AnyRef]](event)
+              eventMap("eid") should be("AUDIT")
+              eventMap("ver") should be("3.0")
+              eventMap("edata") shouldNot be(null)
+            })
+          }
   }
 
  "TransactionEventProcessorStreamTask" should "not generate audit event" in {
@@ -141,7 +162,7 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
     when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new AuditHistoryMapSource)
 
       try {
-        new TransactionEventProcessorStreamTask(jobConfig, mockKafkaUtil, esUtil).process()
+        new TransactionEventProcessorStreamTask(jobConfig, mockKafkaUtil,esUtil).process()
       } catch {
         case ex: JobExecutionException =>
           BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(1)

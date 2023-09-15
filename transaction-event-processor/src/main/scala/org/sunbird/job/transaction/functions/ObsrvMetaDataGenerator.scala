@@ -12,8 +12,7 @@ import org.sunbird.job.transaction.task.TransactionEventProcessorConfig
 
 import java.util
 
-class ObsrvMetaDataGenerator(config: TransactionEventProcessorConfig)(implicit mapTypeInfo: TypeInformation[util.Map[String, AnyRef]],
-                                                                      stringTypeInfo: TypeInformation[String])
+class ObsrvMetaDataGenerator(config: TransactionEventProcessorConfig)
   extends BaseProcessFunction[Event, String](config) with TransactionEventProcessorService {
 
   private[this] lazy val logger = LoggerFactory.getLogger(classOf[ObsrvMetaDataGenerator])
@@ -34,7 +33,7 @@ class ObsrvMetaDataGenerator(config: TransactionEventProcessorConfig)(implicit m
   override def processElement(event: Event,
                               context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
     try {
-      metrics.incCounter(config.totalEventsCount)
+//      metrics.incCounter(config.totalEventsCount)
       if (event.isValid) {
         logger.info("valid event: " + event.nodeUniqueId)
         processEvent(event, context, metrics)(config)

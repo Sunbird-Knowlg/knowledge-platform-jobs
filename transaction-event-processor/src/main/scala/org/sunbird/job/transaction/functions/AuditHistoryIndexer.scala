@@ -12,8 +12,6 @@ import org.sunbird.job.{BaseProcessKeyedFunction, Metrics}
 import java.util
 
 class AuditHistoryIndexer(config: TransactionEventProcessorConfig, var esUtil: ElasticSearchUtil)
-                         (implicit mapTypeInfo: TypeInformation[util.Map[String, Any]],
-                          stringTypeInfo: TypeInformation[String])
   extends BaseProcessKeyedFunction[String, Event, String](config) with TransactionEventProcessorService {
 
 
@@ -36,7 +34,7 @@ class AuditHistoryIndexer(config: TransactionEventProcessorConfig, var esUtil: E
   override def processElement(event: Event,
                               context: KeyedProcessFunction[String, Event, String]#Context,
                               metrics: Metrics): Unit = {
-    metrics.incCounter(config.totalEventsCount)
+//    metrics.incCounter(config.totalEventsCount)
     if (event.isValid) {
       processAuditHistoryEvent(event, metrics)(esUtil, config)
     } else metrics.incCounter(config.skippedEventCount)

@@ -14,7 +14,7 @@ import org.sunbird.job.exception.InvalidEventException
 import org.sunbird.job.transaction.task.TransactionEventProcessorConfig
 import org.sunbird.telemetry.dto.Telemetry
 
-import scala.collection.JavaConverters._
+
 import java.io.IOException
 import java.util
 import java.text.SimpleDateFormat
@@ -88,15 +88,11 @@ trait TransactionEventProcessorService {
         }
 
         val obsrvEvent = new ObsrvEvent(message.getMap(),message.partition,message.offset)
-        val scalaMap: Map[String, Any] = message.getMap().asScala.toMap
-        val updatedEvent = Map(
-          "events" -> obsrvEvent.addProcessedEvent(scalaMap),
-          "dataset" -> obsrvEvent.dataset,
-          "mid" -> obsrvEvent.msgid,
-          "syncts" -> obsrvEvent.syncts
-        )
+        val updatedEvent = obsrvEvent.updateEvent
+
         val outputEvent = JSONUtil.serialize(updatedEvent)
         logger.info("Output Event => " + outputEvent)
+
         context.output(config.obsrvAuditOutputTag, outputEvent)
         logger.info("Telemetry Audit Message Successfully Sent for : " + message.objectId + " :: event ::" + eventStr)
         metrics.incCounter(config.successEventCount)
