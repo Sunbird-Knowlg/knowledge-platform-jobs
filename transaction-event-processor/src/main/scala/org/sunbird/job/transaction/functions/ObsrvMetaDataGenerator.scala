@@ -18,7 +18,8 @@ class ObsrvMetaDataGenerator(config: TransactionEventProcessorConfig)
   private[this] lazy val logger = LoggerFactory.getLogger(classOf[ObsrvMetaDataGenerator])
 
   override def metricsList(): List[String] = {
-    List(config.totalEventsCount, config.successEventCount, config.failedEventCount, config.skippedEventCount, config.emptySchemaEventCount, config.emptyPropsEventCount)
+    List(config.totalEventsCount, config.successEventCount, config.failedEventCount, config.esFailedEventCount, config.skippedEventCount,
+      config.totalObsrvMetaDataGeneratorEventsCount, config.skippedObsrvMetaDataGeneratorEventsCount, config.failedObsrvMetaDataGeneratorEventsCount, config.obsrvMetaDataGeneratorEventsSuccessCount)
   }
 
   override def open(parameters: Configuration): Unit = {
@@ -33,14 +34,14 @@ class ObsrvMetaDataGenerator(config: TransactionEventProcessorConfig)
   override def processElement(event: Event,
                               context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
     try {
-//      metrics.incCounter(config.totalEventsCount)
+      metrics.incCounter(config.totalObsrvMetaDataGeneratorEventsCount)
       if (event.isValid) {
-        logger.info("valid event: " + event.nodeUniqueId)
+        logger.info("valid obsrv metadata generator event: " + event.nodeUniqueId)
         processEvent(event, context, metrics)(config)
-      } else metrics.incCounter(config.skippedEventCount)
+      } else metrics.incCounter(config.skippedObsrvMetaDataGeneratorEventsCount)
     } catch {
       case ex: Exception =>
-        metrics.incCounter(config.failedEventCount)
+        metrics.incCounter(config.failedObsrvMetaDataGeneratorEventsCount)
         throw new InvalidEventException(ex.getMessage, Map("partition" -> event.partition, "offset" -> event.offset), ex)
     }
   }

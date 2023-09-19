@@ -74,7 +74,7 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
     if (jobConfig.auditEventGenerator) {
             new TransactionEventProcessorStreamTask(jobConfig, mockKafkaUtil, esUtil).process()
 
-            BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(2)
+            BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalAuditEventsCount}").getValue() should be(2)
             BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skippedEventCount}").getValue() should be(0)
             BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.successEventCount}").getValue() should be(1)
             BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.failedEventCount}").getValue() should be(0)
@@ -91,7 +91,7 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
 
  "TransactionEventProcessorStreamTask" should "not generate audit event" in {
     when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new AuditEventMapSource)
-    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaOutputTopic)).thenReturn(new AuditEventSink)
+    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaAuditOutputTopic)).thenReturn(new AuditEventSink)
 
     val setBoolean = config.withValue("job.audit-event-generator", ConfigValueFactory.fromAnyRef(false))
     val newConfig: TransactionEventProcessorConfig = new TransactionEventProcessorConfig(setBoolean)
@@ -108,7 +108,7 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
 
   "TransactionEventProcessorStreamTask" should "increase metric for unknown schema" in {
     when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new RandomObjectTypeAuditEventGeneratorMapSource)
-    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaOutputTopic)).thenReturn(new AuditEventSink)
+    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaAuditOutputTopic)).thenReturn(new AuditEventSink)
     if (jobConfig.auditEventGenerator) {
 
       new TransactionEventProcessorStreamTask(jobConfig, mockKafkaUtil, esUtil).process()

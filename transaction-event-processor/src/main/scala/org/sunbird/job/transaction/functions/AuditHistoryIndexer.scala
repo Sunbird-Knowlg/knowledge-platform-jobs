@@ -3,6 +3,7 @@ package org.sunbird.job.transaction.functions
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.KeyedProcessFunction
+import org.slf4j.LoggerFactory
 import org.sunbird.job.transaction.domain.Event
 import org.sunbird.job.transaction.service.TransactionEventProcessorService
 import org.sunbird.job.transaction.task.TransactionEventProcessorConfig
@@ -12,11 +13,15 @@ import org.sunbird.job.{BaseProcessKeyedFunction, Metrics}
 import java.util
 
 class AuditHistoryIndexer(config: TransactionEventProcessorConfig, var esUtil: ElasticSearchUtil)
+                         (implicit mapTypeInfo: TypeInformation[util.Map[String, AnyRef]],
+                          stringTypeInfo: TypeInformation[String])
   extends BaseProcessKeyedFunction[String, Event, String](config) with TransactionEventProcessorService {
 
+  private[this] lazy val logger = LoggerFactory.getLogger(classOf[AuditHistoryIndexer])
 
   override def metricsList(): List[String] = {
-    List(config.totalEventsCount, config.successEventCount, config.failedEventCount, config.esFailedEventCount, config.skippedEventCount)
+    List(config.totalEventsCount, config.successEventCount, config.failedEventCount, config.esFailedEventCount, config.skippedEventCount,
+      config.totalAuditHistoryEventsCount, config.skippedAuditHistoryEventsCount, config.failedAuditHistoryEventsCount, config.auditHistoryEventSuccessCount)
   }
 
   override def open(parameters: Configuration): Unit = {
@@ -34,9 +39,10 @@ class AuditHistoryIndexer(config: TransactionEventProcessorConfig, var esUtil: E
   override def processElement(event: Event,
                               context: KeyedProcessFunction[String, Event, String]#Context,
                               metrics: Metrics): Unit = {
-//    metrics.incCounter(config.totalEventsCount)
+    metrics.incCounter(config.totalAuditHistoryEventsCount)
     if (event.isValid) {
+      logger.info("Valid Audit History Event: " + event.nodeUniqueId)
       processAuditHistoryEvent(event, metrics)(esUtil, config)
-    } else metrics.incCounter(config.skippedEventCount)
+    } else metrics.incCounter(config.skippedAuditHistoryEventsCount)
   }
 }

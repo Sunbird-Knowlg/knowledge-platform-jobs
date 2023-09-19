@@ -1,18 +1,20 @@
 package org.sunbird.job.transaction.functions
 
-import java.util
 import org.apache.flink.api.common.typeinfo.TypeInformation
-import org.apache.flink.api.scala.metrics.ScalaGauge
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
+import org.sunbird.job.exception.InvalidEventException
 import org.sunbird.job.transaction.domain.Event
 import org.sunbird.job.transaction.service.TransactionEventProcessorService
 import org.sunbird.job.transaction.task.TransactionEventProcessorConfig
-import org.sunbird.job.exception.InvalidEventException
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
+import java.util
+
 class AuditEventGenerator(config: TransactionEventProcessorConfig)
+                         (implicit mapTypeInfo: TypeInformation[util.Map[String, AnyRef]],
+                          stringTypeInfo: TypeInformation[String])
   extends BaseProcessFunction[Event, String](config) with TransactionEventProcessorService {
 
   private[this] lazy val logger = LoggerFactory.getLogger(classOf[AuditEventGenerator])
@@ -35,15 +37,14 @@ class AuditEventGenerator(config: TransactionEventProcessorConfig)
                               context: ProcessFunction[Event, String]#Context,
                               metrics: Metrics): Unit = {
     try {
-      logger.info("Metrics -> "+ metrics)
       metrics.incCounter(config.totalAuditEventsCount)
       if (event.isValid) {
-        logger.info("valid event: " + event.nodeUniqueId)
+        logger.info("valid audit event: " + event.nodeUniqueId)
         processAuditEvent(event, context, metrics)(config)
-      } else metrics.incCounter(config.skippedEventCount)
+      } else metrics.incCounter(config.skippedAuditEventsCount)
     } catch {
       case ex: Exception =>
-        metrics.incCounter(config.failedEventCount)
+        metrics.incCounter(config.failedAuditEventsCount)
         throw new InvalidEventException(ex.getMessage, Map("partition" -> event.partition, "offset" -> event.offset), ex)
     }
   }

@@ -16,7 +16,7 @@ class TransactionEventProcessorConfig(override val config: Config) extends BaseJ
 
   // Kafka Topics Configuration
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
-  val kafkaOutputTopic: String = config.getString("kafka.output.audit.topic")
+  val kafkaAuditOutputTopic: String = config.getString("kafka.output.audit.topic")
   val kafkaObsrvOutputTopic: String = config.getString("kafka.output.obsrv.topic")
   override val kafkaConsumerParallelism: Int = config.getInt("task.consumer.parallelism")
   override val parallelism: Int = config.getInt("task.parallelism")
@@ -27,6 +27,7 @@ class TransactionEventProcessorConfig(override val config: Config) extends BaseJ
   val auditHistoryIndexer: Boolean = config.getBoolean("job.audit-history-indexer")
   val obsrvMetadataGenerator: Boolean = config.getBoolean("job.obsrv-metadata-generator")
 
+  val outputTag: OutputTag[String] = OutputTag[String]("output-tag")
   val auditOutputTag: OutputTag[String] = OutputTag[String]("audit-event-tag")
   val obsrvAuditOutputTag: OutputTag[String] = OutputTag[String]("obsrv-metadata-tag")
 
@@ -40,10 +41,26 @@ class TransactionEventProcessorConfig(override val config: Config) extends BaseJ
   val emptySchemaEventCount = "empty-schema-events-count"
   val emptyPropsEventCount = "empty-props-events-count"
   val esFailedEventCount = "elasticsearch-error-events-count"
+
+  //Audit Event Generator Metric List
   val totalAuditEventsCount = "total-audit-events-count"
   val skippedAuditEventsCount = "skipped-audit-events-count"
   val failedAuditEventsCount = "failed-audit-events-count"
   val auditEventSuccessCount = "audit-event-success-count"
+
+  //Audit Event Generator Metric List
+  val totalAuditHistoryEventsCount = "total-audit-history-events-count"
+  val skippedAuditHistoryEventsCount = "skipped-audit-history-events-count"
+  val failedAuditHistoryEventsCount = "failed-audit-history-events-count"
+  val auditHistoryEventSuccessCount = "audit-history-event-success-count"
+
+  //Obsrv MetaData Generator Metric List
+  val totalObsrvMetaDataGeneratorEventsCount = "total-obsrv-metadata-events-count"
+  val skippedObsrvMetaDataGeneratorEventsCount = "skipped-obsrv-metadata-events-count"
+  val failedObsrvMetaDataGeneratorEventsCount = "failed-obsrv-metadata-events-count"
+  val obsrvMetaDataGeneratorEventsSuccessCount = "audit-obsrv-metadata-success-count"
+
+
   // Consumers
   val transactionEventConsumer = "transaction-event-processor-consumer"
   val auditEventGeneratorFunction = "audit-event-generator-function"

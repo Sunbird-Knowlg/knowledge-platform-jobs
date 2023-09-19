@@ -13,7 +13,7 @@ import org.sunbird.job.exception.InvalidEventException
 import org.sunbird.job.util.ElasticSearchUtil
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
-class TransactionEventRouter(config: TransactionEventProcessorConfig, esUtil: ElasticSearchUtil)
+class TransactionEventRouter(config: TransactionEventProcessorConfig)
                             (implicit mapTypeInfo: TypeInformation[util.Map[String, AnyRef]],
                              stringTypeInfo: TypeInformation[String])
   extends BaseProcessFunction[Event, String](config) with TransactionEventProcessorService {
@@ -40,18 +40,7 @@ class TransactionEventRouter(config: TransactionEventProcessorConfig, esUtil: El
     try {
       metrics.incCounter(config.totalEventsCount)
       if (event.isValid) {
-        if(config.auditEventGenerator) {
-          val auditEvent = new AuditEventGenerator(config)
-          auditEvent.processElement(event, context, metrics)
-        }
-//        if(config.auditHistoryIndexer) {
-//          val auditHistoryEvent = new AuditHistoryIndexer(config,esUtil)
-//          auditHistoryEvent.processElement(event,)
-//        }
-        if(config.obsrvMetadataGenerator) {
-          val obsrvEvent = new ObsrvMetaDataGenerator(config)
-          obsrvEvent.processElement(event, context, metrics)
-        }
+        logger.info("Valid event -> " + event.nodeUniqueId)
       }else metrics.incCounter(config.skippedEventCount)
     } catch {
       case ex: Exception =>

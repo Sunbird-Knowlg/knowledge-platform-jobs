@@ -14,9 +14,6 @@ import java.util.concurrent.atomic.AtomicLong
 case class Metrics(metrics: ConcurrentHashMap[String, AtomicLong]) {
   private[this] lazy val logger = LoggerFactory.getLogger(classOf[Metrics])
   def incCounter(metric: String): Unit = {
-    logger.info("Metrics: " + metrics)
-    logger.info("Metric key: " + metric)
-    logger.info("Metric value: " + metrics.get(metric))
     metrics.get(metric).getAndIncrement()
   }
 
@@ -30,11 +27,8 @@ case class Metrics(metrics: ConcurrentHashMap[String, AtomicLong]) {
 trait JobMetrics {
   private[this] lazy val logger = LoggerFactory.getLogger(classOf[JobMetrics])
   def registerMetrics(metrics: List[String]): Metrics = {
-    logger.info("Metrics list -> " + metrics)
     val metricMap = new ConcurrentHashMap[String, AtomicLong]()
     metrics.map { metric => metricMap.put(metric, new AtomicLong(0L)) }
-    logger.info("Metric map -> " + metricMap)
-    logger.info("Metrics(metricMap) -> " + Metrics(metricMap))
     Metrics(metricMap)
   }
 }
