@@ -36,7 +36,7 @@ class ObsrvMetaDataGenerator(config: TransactionEventProcessorConfig)
     try {
       metrics.incCounter(config.totalObsrvMetaDataGeneratorEventsCount)
       if (event.isValid) {
-        logger.info("valid obsrv metadata generator event: " + event.nodeUniqueId)
+        logger.info("Valid obsrv metadata generator event: " + event.nodeUniqueId)
         processEvent(event, context, metrics)(config)
       } else metrics.incCounter(config.skippedObsrvMetaDataGeneratorEventsCount)
     } catch {

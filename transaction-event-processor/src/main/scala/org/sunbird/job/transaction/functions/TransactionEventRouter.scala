@@ -2,15 +2,13 @@ package org.sunbird.job.transaction.functions
 
 import java.util
 import org.apache.flink.api.common.typeinfo.TypeInformation
-import org.apache.flink.api.java.functions.KeySelector
 import org.apache.flink.configuration.Configuration
-import org.apache.flink.streaming.api.functions.{KeyedProcessFunction, ProcessFunction}
+import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.transaction.domain.Event
 import org.sunbird.job.transaction.service.TransactionEventProcessorService
 import org.sunbird.job.transaction.task.TransactionEventProcessorConfig
 import org.sunbird.job.exception.InvalidEventException
-import org.sunbird.job.util.ElasticSearchUtil
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 class TransactionEventRouter(config: TransactionEventProcessorConfig)
@@ -18,7 +16,7 @@ class TransactionEventRouter(config: TransactionEventProcessorConfig)
                              stringTypeInfo: TypeInformation[String])
   extends BaseProcessFunction[Event, String](config) with TransactionEventProcessorService {
 
-  private[this] lazy val logger = LoggerFactory.getLogger(classOf[AuditEventGenerator])
+  private[this] lazy val logger = LoggerFactory.getLogger(classOf[TransactionEventRouter])
 
 
   override def metricsList(): List[String] = {
