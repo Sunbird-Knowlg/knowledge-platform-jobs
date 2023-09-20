@@ -14,6 +14,9 @@ import java.util.concurrent.atomic.AtomicLong
 case class Metrics(metrics: ConcurrentHashMap[String, AtomicLong]) {
   private[this] lazy val logger = LoggerFactory.getLogger(classOf[Metrics])
   def incCounter(metric: String): Unit = {
+    logger.info("Metrics: " + metrics)
+    logger.info("Metric key: " + metric)
+    logger.info("Metric value: " + metrics.get(metric))
     metrics.get(metric).getAndIncrement()
   }
 

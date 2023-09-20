@@ -28,14 +28,13 @@ class TransactionEventProcessorStreamTask(config: TransactionEventProcessorConfi
     val inputStream = env.addSource(kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)).name(config.transactionEventConsumer)
       .uid(config.transactionEventConsumer).setParallelism(config.kafkaConsumerParallelism)
 
-    val transactionEventProcessorStreamTask = inputStream.rebalance
+    inputStream.rebalance
       .process(new TransactionEventRouter(config))
       .name(config.transactionEventRouterFunction)
       .uid(config.transactionEventRouterFunction)
       .setParallelism(config.parallelism)
 
-    if(config.auditEventGenerator)
-      {
+    if(config.auditEventGenerator) {
         val auditEventGeneratorStreamTask = inputStream.rebalance
           .process(new AuditEventGenerator(config))
           .name(config.auditEventGeneratorFunction)
@@ -65,8 +64,6 @@ class TransactionEventProcessorStreamTask(config: TransactionEventProcessorConfi
       obsrvMetadataGeneratorStreamTask.getSideOutput(config.obsrvAuditOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaObsrvOutputTopic))
         .name(config.transactionEventProducer).uid(config.transactionEventProducer).setParallelism(config.kafkaProducerParallelism)
     }
-
-
 
     env.execute(config.jobName)
   }

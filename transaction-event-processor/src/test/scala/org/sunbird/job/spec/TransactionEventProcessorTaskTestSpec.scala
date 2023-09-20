@@ -53,10 +53,10 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
     if (jobConfig.auditEventGenerator) {
       new TransactionEventProcessorStreamTask(jobConfig, mockKafkaUtil, esUtil).process()
 
-      BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(2)
-      BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skippedEventCount}").getValue() should be(0)
-      BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.successEventCount}").getValue() should be(1)
-      BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.failedEventCount}").getValue() should be(0)
+      BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalAuditEventsCount}").getValue() should be(2)
+      BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skippedAuditEventsCount}").getValue() should be(0)
+      BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.auditEventSuccessCount}").getValue() should be(1)
+      BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.failedAuditEventsCount}").getValue() should be(0)
 
       AuditEventSink.values.size() should be(1)
       AuditEventSink.values.forEach(event => {
@@ -78,9 +78,9 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
 
       new TransactionEventProcessorStreamTask(newConfig, mockKafkaUtil, esUtil).process()
 
-      BaseMetricsReporter.gaugeMetrics(s"${newConfig.jobName}.${newConfig.totalEventsCount}").getValue() should be(2)
-      BaseMetricsReporter.gaugeMetrics(s"${newConfig.jobName}.${newConfig.skippedEventCount}").getValue() should be(2)
-      BaseMetricsReporter.gaugeMetrics(s"${newConfig.jobName}.${newConfig.successEventCount}").getValue() should be(0)
+      BaseMetricsReporter.gaugeMetrics(s"${newConfig.jobName}.${newConfig.totalAuditEventsCount}").getValue() should be(2)
+      BaseMetricsReporter.gaugeMetrics(s"${newConfig.jobName}.${newConfig.skippedAuditEventsCount}").getValue() should be(2)
+      BaseMetricsReporter.gaugeMetrics(s"${newConfig.jobName}.${newConfig.auditEventSuccessCount}").getValue() should be(0)
 
     }
   }
@@ -92,10 +92,10 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
 
       new TransactionEventProcessorStreamTask(jobConfig, mockKafkaUtil, esUtil).process()
 
-      BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(1)
+      BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalAuditEventsCount}").getValue() should be(1)
       BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.emptySchemaEventCount}").getValue() should be(1)
       BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.emptyPropsEventCount}").getValue() should be(1)
-      BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.successEventCount}").getValue() should be(0)
+      BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.auditEventSuccessCount}").getValue() should be(0)
     }
   }
 
@@ -110,11 +110,11 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
       if (jobConfig.auditHistoryIndexer) {
         new TransactionEventProcessorStreamTask(jobConfig, mockKafkaUtil, esUtil).process()
 
-        BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(2)
-        BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.successEventCount}").getValue() should be(0)
-        BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.failedEventCount}").getValue() should be(1)
+        BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalAuditHistoryEventsCount}").getValue() should be(2)
+        BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.auditHistoryEventSuccessCount}").getValue() should be(0)
+        BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.failedAuditHistoryEventsCount}").getValue() should be(1)
         BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.esFailedEventCount}").getValue() should be(1)
-        BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skippedEventCount}").getValue() should be(0)
+        BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skippedAuditHistoryEventsCount}").getValue() should be(0)
       }
     }
 
@@ -128,11 +128,11 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
     val newConfig: TransactionEventProcessorConfig = new TransactionEventProcessorConfig(setBoolean)
     if (newConfig.auditHistoryIndexer) {
       new TransactionEventProcessorStreamTask(newConfig, mockKafkaUtil, esUtil).process()
-      BaseMetricsReporter.gaugeMetrics(s"${newConfig.jobName}.${newConfig.totalEventsCount}").getValue() should be(2)
-      BaseMetricsReporter.gaugeMetrics(s"${newConfig.jobName}.${newConfig.successEventCount}").getValue() should be(2)
-      BaseMetricsReporter.gaugeMetrics(s"${newConfig.jobName}.${newConfig.failedEventCount}").getValue() should be(0)
+      BaseMetricsReporter.gaugeMetrics(s"${newConfig.jobName}.${newConfig.totalAuditHistoryEventsCount}").getValue() should be(2)
+      BaseMetricsReporter.gaugeMetrics(s"${newConfig.jobName}.${newConfig.auditHistoryEventSuccessCount}").getValue() should be(2)
+      BaseMetricsReporter.gaugeMetrics(s"${newConfig.jobName}.${newConfig.failedAuditHistoryEventsCount}").getValue() should be(0)
       BaseMetricsReporter.gaugeMetrics(s"${newConfig.jobName}.${newConfig.esFailedEventCount}").getValue() should be(0)
-      BaseMetricsReporter.gaugeMetrics(s"${newConfig.jobName}.${newConfig.skippedEventCount}").getValue() should be(0)
+      BaseMetricsReporter.gaugeMetrics(s"${newConfig.jobName}.${newConfig.skippedAuditHistoryEventsCount}").getValue() should be(0)
       server.close()
     }
   }
@@ -144,11 +144,11 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
         new TransactionEventProcessorStreamTask(jobConfig, mockKafkaUtil,esUtil).process()
       } catch {
         case ex: JobExecutionException =>
-          BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(1)
-          BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.successEventCount}").getValue() should be(0)
-          BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.failedEventCount}").getValue() should be(0)
+          BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalAuditHistoryEventsCount}").getValue() should be(1)
+          BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.auditHistoryEventSuccessCount}").getValue() should be(0)
+          BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.failedAuditHistoryEventsCount}").getValue() should be(0)
           BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.esFailedEventCount}").getValue() should be(1)
-          BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skippedEventCount}").getValue() should be(0)
+          BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skippedAuditHistoryEventsCount}").getValue() should be(0)
       }
     }
 }

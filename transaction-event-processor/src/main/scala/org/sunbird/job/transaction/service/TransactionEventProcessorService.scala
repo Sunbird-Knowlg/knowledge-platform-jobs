@@ -48,7 +48,7 @@ trait TransactionEventProcessorService {
       if (StringUtils.isNotBlank(objectType)) {
         context.output(config.auditOutputTag, auditEventStr)
         logger.info("Telemetry Audit Message Successfully Sent for : " + message.objectId + " :: event ::" + auditEventStr)
-        metrics.incCounter(config.successEventCount)
+        metrics.incCounter(config.auditEventSuccessCount)
       }
       else {
         logger.info("Skipped event as the objectype is not available, event =" + auditEventStr)
@@ -62,9 +62,6 @@ trait TransactionEventProcessorService {
   }
 
   def processEvent(message: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics)(implicit config: TransactionEventProcessorConfig): Unit = {
-    val telemetry: Telemetry = null
-
-    logger.info("Event received : " + message)
     val inputEvent = JSONUtil.serialize(message)
     logger.info("Input Event :" + inputEvent)
     logger.info("Input Message Received for : [" + message.nodeUniqueId + "], Txn Event createdOn:" + message.createdOn + ", Operation Type:" + message.operationType)
@@ -91,11 +88,10 @@ trait TransactionEventProcessorService {
         val updatedEvent = obsrvEvent.updateEvent
 
         val outputEvent = JSONUtil.serialize(updatedEvent)
-        logger.info("Output Event => " + outputEvent)
 
         context.output(config.obsrvAuditOutputTag, outputEvent)
         logger.info("Telemetry Audit Message Successfully Sent for : " + message.objectId + " :: event ::" + eventStr)
-        metrics.incCounter(config.successEventCount)
+        metrics.incCounter(config.obsrvMetaDataGeneratorEventsSuccessCount)
       }
       else {
         logger.info("Skipped event as the objectype is not available, event =" + eventStr)
@@ -262,7 +258,7 @@ trait TransactionEventProcessorService {
         val indexName = getIndexName(event.ets)
         esUtil.addDocumentWithIndex(document, indexName)
         logger.info("Audit record created for " + identifier)
-        metrics.incCounter(config.successEventCount)
+        metrics.incCounter(config.auditHistoryEventSuccessCount)
       } catch {
         case ex: IOException =>
           logger.error("Error while indexing message :: " + event.getJson + " :: " + ex.getMessage)
@@ -271,7 +267,7 @@ trait TransactionEventProcessorService {
           throw new InvalidEventException(ex.getMessage, Map("partition" -> event.partition, "offset" -> event.offset), ex)
         case ex: Exception =>
           logger.error("Error while processing message :: " + event.getJson + " :: ", ex)
-          metrics.incCounter(config.failedEventCount)
+          metrics.incCounter(config.failedAuditHistoryEventsCount)
       }
     }
     else logger.info("Learning event not qualified for audit")
