@@ -33,7 +33,6 @@ class BaseJobConfig(val config: Config, val jobName: String) extends Serializabl
   // By default checkpointing timeout is 10 mins
   val checkpointingTimeout: Long = if (config.hasPath("task.checkpointing.timeout")) config.getLong("task.checkpointing.timeout") else 600000L
 
-
   // LMS Cassandra DB Config
   val lmsDbHost: String = config.getString("lms-cassandra.host")
   val lmsDbPort: Int = config.getInt("lms-cassandra.port")
