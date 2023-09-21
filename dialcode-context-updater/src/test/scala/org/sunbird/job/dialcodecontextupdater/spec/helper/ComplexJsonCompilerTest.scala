@@ -5,7 +5,7 @@ import org.sunbird.job.util.ComplexJsonCompiler
 
 
 class ComplexJsonCompilerTest {
-  val contextMapFile: String = "https://raw.githubusercontent.com/project-sunbird/knowledge-platform-jobs/dialcode-context-updater/dialcode-context-updater/src/main/resources/contextMapping.json"
+  val contextMapFile: String = "https://raw.githubusercontent.com/project-sunbird/knowledge-platform-jobs/master/dialcode-context-updater/src/main/resources/contextMapping.json"
   @Test
   @throws[Exception]
   def testTBUnit(): Unit = {
