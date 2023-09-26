@@ -17,52 +17,44 @@ import org.sunbird.job.util.{ElasticSearchUtil, FlinkUtil}
 
 class TransactionEventProcessorStreamTask(config: TransactionEventProcessorConfig, kafkaConnector: FlinkKafkaConnector, esUtil: ElasticSearchUtil) {
 
-  private[this] lazy val logger = LoggerFactory.getLogger(classOf[TransactionEventProcessorStreamTask])
   def process(): Unit = {
     implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
     //    implicit val env: StreamExecutionEnvironment = StreamExecutionEnvironment.createLocalEnvironment()
     implicit val eventTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
     implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
+    implicit val mapEsTypeInfo: TypeInformation[util.Map[String, Any]] = TypeExtractor.getForClass(classOf[util.Map[String, Any]])
 
     val inputStream = env.addSource(kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)).name(config.transactionEventConsumer)
       .uid(config.transactionEventConsumer).setParallelism(config.kafkaConsumerParallelism)
 
-    inputStream.rebalance
+    val processorStreamTask = inputStream.rebalance
       .process(new TransactionEventRouter(config))
       .name(config.transactionEventRouterFunction)
       .uid(config.transactionEventRouterFunction)
       .setParallelism(config.parallelism)
 
-    if(config.auditEventGenerator) {
-        val auditEventGeneratorStreamTask = inputStream.rebalance
-          .process(new AuditEventGenerator(config))
-          .name(config.auditEventGeneratorFunction)
-          .uid(config.auditEventGeneratorFunction)
-          .setParallelism(config.parallelism)
+    val sideOutput = processorStreamTask.getSideOutput(config.outputTag)
 
-        auditEventGeneratorStreamTask.getSideOutput(config.auditOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaAuditOutputTopic))
-          .name(config.transactionEventProducer).uid(config.transactionEventProducer).setParallelism(config.kafkaProducerParallelism)
-      }
+    if (config.auditEventGenerator) {
+      val auditStream = sideOutput.process(new AuditEventGenerator(config)).name(config.auditEventGeneratorFunction)
+        .uid(config.auditEventGeneratorFunction).setParallelism(config.parallelism)
 
-    if(config.auditHistoryIndexer) {
-      inputStream.rebalance
-        .keyBy(new TransactionEventKeySelector)
-        .process(new AuditHistoryIndexer(config, esUtil))
-        .name(config.auditHistoryIndexerFunction)
-        .uid(config.auditHistoryIndexerFunction)
-        .setParallelism(config.parallelism)
+      auditStream.getSideOutput(config.auditOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaAuditOutputTopic))
+        .name(config.auditEventProducer).uid(config.auditEventProducer).setParallelism(config.kafkaProducerParallelism)
     }
 
     if (config.obsrvMetadataGenerator) {
-      val obsrvMetadataGeneratorStreamTask = inputStream.rebalance
-        .process(new ObsrvMetaDataGenerator(config))
-        .name(config.obsrvMetaDataGeneratorFunction)
-        .uid(config.obsrvMetaDataGeneratorFunction)
-        .setParallelism(config.parallelism)
+      val obsrvStream = sideOutput.process(new ObsrvMetaDataGenerator(config)).name(config.obsrvMetaDataGeneratorFunction)
+        .uid(config.obsrvMetaDataGeneratorFunction).setParallelism(config.parallelism)
 
-      obsrvMetadataGeneratorStreamTask.getSideOutput(config.obsrvAuditOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaObsrvOutputTopic))
-        .name(config.transactionEventProducer).uid(config.transactionEventProducer).setParallelism(config.kafkaProducerParallelism)
+      obsrvStream.getSideOutput(config.obsrvAuditOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaObsrvOutputTopic))
+        .name(config.obsrvEventProducer).uid(config.obsrvEventProducer).setParallelism(config.kafkaProducerParallelism)
+    }
+
+    if (config.auditHistoryIndexer) {
+      sideOutput.keyBy(new TransactionEventKeySelector).process(new AuditHistoryIndexer(config, esUtil)).name(config.auditHistoryIndexerFunction)
+        .uid(config.auditHistoryIndexerFunction).setParallelism(config.parallelism)
     }
 
     env.execute(config.jobName)

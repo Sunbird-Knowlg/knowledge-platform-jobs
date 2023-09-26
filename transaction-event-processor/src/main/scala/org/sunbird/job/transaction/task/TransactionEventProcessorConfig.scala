@@ -6,6 +6,7 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.streaming.api.scala.OutputTag
 import org.sunbird.job.BaseJobConfig
+import org.sunbird.job.transaction.domain.Event
 
 class TransactionEventProcessorConfig(override val config: Config) extends BaseJobConfig(config, "transaction-event-processor") {
 
@@ -13,6 +14,7 @@ class TransactionEventProcessorConfig(override val config: Config) extends BaseJ
 
   implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
   implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
+  implicit val eventTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
 
   // Kafka Topics Configuration
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
@@ -27,7 +29,7 @@ class TransactionEventProcessorConfig(override val config: Config) extends BaseJ
   val auditHistoryIndexer: Boolean = config.getBoolean("job.audit-history-indexer")
   val obsrvMetadataGenerator: Boolean = config.getBoolean("job.obsrv-metadata-generator")
 
-  val outputTag: OutputTag[String] = OutputTag[String]("output-tag")
+  val outputTag: OutputTag[Event] = OutputTag[Event]("output-tag")
   val auditOutputTag: OutputTag[String] = OutputTag[String]("audit-event-tag")
   val obsrvAuditOutputTag: OutputTag[String] = OutputTag[String]("obsrv-metadata-tag")
 
@@ -68,6 +70,9 @@ class TransactionEventProcessorConfig(override val config: Config) extends BaseJ
   val obsrvMetaDataGeneratorFunction = "obsrv-metadata-generator-function"
   val transactionEventRouterFunction = "transaction-event-router-function"
   val transactionEventProducer = "transaction-event-processor-producer"
+  val auditEventProducer = "audit-event-generator-producer"
+  val obsrvEventProducer = "obsrv-metadata-generator-producer"
+
 
   val basePath = config.getString("schema.basePath")
   val configVersion = "1.0"

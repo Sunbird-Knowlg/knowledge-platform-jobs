@@ -39,6 +39,7 @@ class TransactionEventRouter(config: TransactionEventProcessorConfig)
       metrics.incCounter(config.totalEventsCount)
       if (event.isValid) {
         logger.info("Valid event -> " + event.nodeUniqueId)
+        context.output(config.outputTag,event)
       }else metrics.incCounter(config.skippedEventCount)
     } catch {
       case ex: Exception =>
