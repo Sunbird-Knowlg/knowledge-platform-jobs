@@ -94,7 +94,6 @@ trait TransactionEventProcessorService {
         metrics.incCounter(config.obsrvMetaDataGeneratorEventsSuccessCount)
       }
       else {
-        logger.info("Skipped event as the objectype is not available, event =" + eventStr)
         metrics.incCounter(config.emptyPropsEventCount)
       }
     } catch {

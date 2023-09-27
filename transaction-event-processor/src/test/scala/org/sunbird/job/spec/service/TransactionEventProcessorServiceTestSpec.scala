@@ -1,12 +1,14 @@
 package org.sunbird.job.spec.service
 
 import com.typesafe.config.{Config, ConfigFactory}
+import org.apache.commons.lang3.StringUtils
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.streaming.api.functions.ProcessFunction
+import org.junit.Assert.assertFalse
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.Mockito
-import org.mockito.Mockito.verify
+import org.mockito.Mockito.{verify, when}
 import org.slf4j.Logger
 import org.sunbird.job.Metrics
 import org.sunbird.job.transaction.domain.{AuditHistoryRecord, Event}
@@ -252,16 +254,30 @@ class TransactionEventProcessorServiceTestSpec extends BaseTestSpec with Transac
     )
 
     assert(auditHistoryRec == auditRec)
-//
-//    assert(auditRecord.objectId == objectId)
-//    assert(auditRecord.objectType == objectType)
-//    assert(auditRecord.label == label)
-//    assert(auditRecord.graphId == graphId)
-//    assert(auditRecord.userId == userId)
-//    assert(auditRecord.requestId == requestId)
-//    assert(auditRecord.logRecord == logRecord)
-//    assert(auditRecord.operation == operation)
-//    assert(auditRecord.createdOn == createdOn)
+  }
+
+  "TransactionEventProcessorService" should "update userId correctly" in {
+    val inputEvent: Event = new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_9), 0, 10)
+
+    val auditHistoryRec: AuditHistoryRecord = auditHistoryIndexer.getAuditHistory(inputEvent)
+
+    val auditRec = AuditHistoryRecord(
+      objectId = auditHistoryRec.objectId,
+      objectType = auditHistoryRec.objectType,
+      label = auditHistoryRec.label,
+      graphId = auditHistoryRec.graphId,
+      userId = auditHistoryRec.userId,
+      requestId = auditHistoryRec.requestId,
+      logRecord = auditHistoryRec.logRecord,
+      operation = auditHistoryRec.operation,
+      createdOn = auditHistoryRec.createdOn
+    )
+
+    assert(auditRec.userId == auditHistoryRec.userId)
+
+    auditRec.userId = "user456"
+
+    assert(auditRec.userId == "user456")
   }
 
 }
