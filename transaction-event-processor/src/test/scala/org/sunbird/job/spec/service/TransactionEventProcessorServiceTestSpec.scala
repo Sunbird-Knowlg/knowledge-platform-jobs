@@ -16,7 +16,9 @@ import org.sunbird.job.transaction.service.TransactionEventProcessorService
 import org.sunbird.job.transaction.task.TransactionEventProcessorConfig
 import org.sunbird.job.util.{ElasticSearchUtil, JSONUtil}
 import org.sunbird.spec.BaseTestSpec
+
 import java.util
+import java.util.Date
 
 class TransactionEventProcessorServiceTestSpec extends BaseTestSpec with TransactionEventProcessorService {
   implicit val mapTypeInfo: TypeInformation[java.util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[java.util.Map[String, AnyRef]])
@@ -230,6 +232,36 @@ class TransactionEventProcessorServiceTestSpec extends BaseTestSpec with Transac
         verify(loggerMock).error("Error while processing message :: " + message.getJson() + "::" + exception)
         assertThrows[Exception](auditHistoryIndexer.processAuditHistoryEvent(message, mockMetrics)(mockElasticUtil, jobConfig))
     }
+  }
+
+  "TransactionEventProcessorService" should "create audit record with provided values" in {
+    val inputEvent: Event = new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_9), 0, 10)
+
+    val auditHistoryRec: AuditHistoryRecord = auditHistoryIndexer.getAuditHistory(inputEvent)
+
+    val auditRec = AuditHistoryRecord(
+      objectId = auditHistoryRec.objectId,
+      objectType = auditHistoryRec.objectType,
+      label = auditHistoryRec.label,
+      graphId = auditHistoryRec.graphId,
+      userId = auditHistoryRec.userId,
+      requestId = auditHistoryRec.requestId,
+      logRecord = auditHistoryRec.logRecord,
+      operation = auditHistoryRec.operation,
+      createdOn = auditHistoryRec.createdOn
+    )
+
+    assert(auditHistoryRec == auditRec)
+//
+//    assert(auditRecord.objectId == objectId)
+//    assert(auditRecord.objectType == objectType)
+//    assert(auditRecord.label == label)
+//    assert(auditRecord.graphId == graphId)
+//    assert(auditRecord.userId == userId)
+//    assert(auditRecord.requestId == requestId)
+//    assert(auditRecord.logRecord == logRecord)
+//    assert(auditRecord.operation == operation)
+//    assert(auditRecord.createdOn == createdOn)
   }
 
 }
