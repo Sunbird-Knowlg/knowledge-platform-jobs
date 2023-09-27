@@ -46,19 +46,16 @@ class TransactionEventProcessorConfig(override val config: Config) extends BaseJ
 
   //Audit Event Generator Metric List
   val totalAuditEventsCount = "total-audit-events-count"
-  val skippedAuditEventsCount = "skipped-audit-events-count"
   val failedAuditEventsCount = "failed-audit-events-count"
   val auditEventSuccessCount = "audit-event-success-count"
 
   //Audit Event Generator Metric List
   val totalAuditHistoryEventsCount = "total-audit-history-events-count"
-  val skippedAuditHistoryEventsCount = "skipped-audit-history-events-count"
   val failedAuditHistoryEventsCount = "failed-audit-history-events-count"
   val auditHistoryEventSuccessCount = "audit-history-event-success-count"
 
   //Obsrv MetaData Generator Metric List
   val totalObsrvMetaDataGeneratorEventsCount = "total-obsrv-metadata-events-count"
-  val skippedObsrvMetaDataGeneratorEventsCount = "skipped-obsrv-metadata-events-count"
   val failedObsrvMetaDataGeneratorEventsCount = "failed-obsrv-metadata-events-count"
   val obsrvMetaDataGeneratorEventsSuccessCount = "audit-obsrv-metadata-success-count"
 
@@ -69,7 +66,6 @@ class TransactionEventProcessorConfig(override val config: Config) extends BaseJ
   val auditHistoryIndexerFunction = "audit-history-indexer-function"
   val obsrvMetaDataGeneratorFunction = "obsrv-metadata-generator-function"
   val transactionEventRouterFunction = "transaction-event-router-function"
-  val transactionEventProducer = "transaction-event-processor-producer"
   val auditEventProducer = "audit-event-generator-producer"
   val obsrvEventProducer = "obsrv-metadata-generator-producer"
 
@@ -82,6 +78,5 @@ class TransactionEventProcessorConfig(override val config: Config) extends BaseJ
 
   val timeZone = if (config.hasPath("timezone")) config.getString("timezone") else "IST"
   val auditHistoryIndex = "kp_audit_log"
-  val operationCreate = "CREATE"
   val auditHistoryIndexType = "ah"
 }

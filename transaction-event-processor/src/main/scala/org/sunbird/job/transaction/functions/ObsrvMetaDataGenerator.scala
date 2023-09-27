@@ -15,11 +15,9 @@ import java.util
 class ObsrvMetaDataGenerator(config: TransactionEventProcessorConfig)
   extends BaseProcessFunction[Event, String](config) with TransactionEventProcessorService {
 
-  private[this] lazy val logger = LoggerFactory.getLogger(classOf[ObsrvMetaDataGenerator])
-
   override def metricsList(): List[String] = {
     List(config.totalEventsCount, config.successEventCount, config.failedEventCount, config.esFailedEventCount, config.skippedEventCount,
-      config.totalObsrvMetaDataGeneratorEventsCount, config.skippedObsrvMetaDataGeneratorEventsCount, config.failedObsrvMetaDataGeneratorEventsCount, config.obsrvMetaDataGeneratorEventsSuccessCount)
+      config.totalObsrvMetaDataGeneratorEventsCount, config.failedObsrvMetaDataGeneratorEventsCount, config.obsrvMetaDataGeneratorEventsSuccessCount)
   }
 
   override def open(parameters: Configuration): Unit = {
@@ -35,10 +33,7 @@ class ObsrvMetaDataGenerator(config: TransactionEventProcessorConfig)
                               context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
     try {
       metrics.incCounter(config.totalObsrvMetaDataGeneratorEventsCount)
-      if (event.isValid) {
-        logger.info("Valid obsrv metadata generator event: " + event.nodeUniqueId)
-        processEvent(event, context, metrics)(config)
-      } else metrics.incCounter(config.skippedObsrvMetaDataGeneratorEventsCount)
+      processEvent(event, context, metrics)(config)
     } catch {
       case ex: Exception =>
         metrics.incCounter(config.failedObsrvMetaDataGeneratorEventsCount)

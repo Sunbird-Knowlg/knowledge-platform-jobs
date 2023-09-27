@@ -50,7 +50,7 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
   }
 
   "TransactionEventProcessorStreamTask" should "handle invalid events and increase metric count" in {
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new EventMapSource)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new failedEventMapSource)
     try {
       new TransactionEventProcessorStreamTask(jobConfig, mockKafkaUtil, esUtil).process()
     } catch {
@@ -59,6 +59,20 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
         BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.successEventCount}").getValue() should be(0)
         BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.failedEventCount}").getValue() should be(1)
         BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skippedEventCount}").getValue() should be(0)
+        throw new InvalidEventException(any[String])
+    }
+  }
+
+  "TransactionEventProcessorStreamTask" should "skip events and increase metric count" in {
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new skippedEventMapSource)
+    try {
+      new TransactionEventProcessorStreamTask(jobConfig, mockKafkaUtil, esUtil).process()
+    } catch {
+      case ex: JobExecutionException =>
+        BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(1)
+        BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.successEventCount}").getValue() should be(0)
+        BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.failedEventCount}").getValue() should be(0)
+        BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skippedEventCount}").getValue() should be(1)
         throw new InvalidEventException(any[String])
     }
   }
@@ -72,7 +86,6 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
       new TransactionEventProcessorStreamTask(newConfig, mockKafkaUtil, esUtil).process()
 
       BaseMetricsReporter.gaugeMetrics(s"${newConfig.jobName}.${newConfig.totalAuditEventsCount}").getValue() should be(2)
-      BaseMetricsReporter.gaugeMetrics(s"${newConfig.jobName}.${newConfig.skippedAuditEventsCount}").getValue() should be(0)
       BaseMetricsReporter.gaugeMetrics(s"${newConfig.jobName}.${newConfig.auditEventSuccessCount}").getValue() should be(1)
       BaseMetricsReporter.gaugeMetrics(s"${newConfig.jobName}.${newConfig.failedAuditEventsCount}").getValue() should be(0)
 
@@ -95,7 +108,6 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
       new TransactionEventProcessorStreamTask(jobConfig, mockKafkaUtil, esUtil).process()
 
       BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalAuditEventsCount}").getValue() should be(2)
-      BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skippedAuditEventsCount}").getValue() should be(2)
       BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.auditEventSuccessCount}").getValue() should be(0)
 
     }
@@ -129,7 +141,6 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
       BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.auditHistoryEventSuccessCount}").getValue() should be(0)
       BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.failedAuditHistoryEventsCount}").getValue() should be(1)
       BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.esFailedEventCount}").getValue() should be(1)
-      BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skippedAuditHistoryEventsCount}").getValue() should be(0)
     }
   }
 
@@ -147,7 +158,6 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
       BaseMetricsReporter.gaugeMetrics(s"${newConfig.jobName}.${newConfig.auditHistoryEventSuccessCount}").getValue() should be(2)
       BaseMetricsReporter.gaugeMetrics(s"${newConfig.jobName}.${newConfig.failedAuditHistoryEventsCount}").getValue() should be(0)
       BaseMetricsReporter.gaugeMetrics(s"${newConfig.jobName}.${newConfig.esFailedEventCount}").getValue() should be(0)
-      BaseMetricsReporter.gaugeMetrics(s"${newConfig.jobName}.${newConfig.skippedAuditHistoryEventsCount}").getValue() should be(0)
       server.close()
     }
   }
@@ -163,7 +173,6 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
         BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.auditHistoryEventSuccessCount}").getValue() should be(0)
         BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.failedAuditHistoryEventsCount}").getValue() should be(0)
         BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.esFailedEventCount}").getValue() should be(1)
-        BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skippedAuditHistoryEventsCount}").getValue() should be(0)
     }
   }
 
@@ -174,7 +183,6 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
       new TransactionEventProcessorStreamTask(jobConfig, mockKafkaUtil, esUtil).process()
 
       BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalObsrvMetaDataGeneratorEventsCount}").getValue() should be(2)
-      BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skippedObsrvMetaDataGeneratorEventsCount}").getValue() should be(2)
       BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.obsrvMetaDataGeneratorEventsSuccessCount}").getValue() should be(0)
     }
   }
@@ -190,7 +198,6 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
       new TransactionEventProcessorStreamTask(newConfig, mockKafkaUtil, esUtil).process()
 
       BaseMetricsReporter.gaugeMetrics(s"${newConfig.jobName}.${newConfig.totalObsrvMetaDataGeneratorEventsCount}").getValue() should be(2)
-      BaseMetricsReporter.gaugeMetrics(s"${newConfig.jobName}.${newConfig.skippedObsrvMetaDataGeneratorEventsCount}").getValue() should be(0)
       BaseMetricsReporter.gaugeMetrics(s"${newConfig.jobName}.${newConfig.obsrvMetaDataGeneratorEventsSuccessCount}").getValue() should be(2)
       BaseMetricsReporter.gaugeMetrics(s"${newConfig.jobName}.${newConfig.failedObsrvMetaDataGeneratorEventsCount}").getValue() should be(0)
     }
@@ -210,7 +217,6 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
         BaseMetricsReporter.gaugeMetrics(s"${newConfig.jobName}.${newConfig.totalObsrvMetaDataGeneratorEventsCount}").getValue() should be(2)
         BaseMetricsReporter.gaugeMetrics(s"${newConfig.jobName}.${newConfig.obsrvMetaDataGeneratorEventsSuccessCount}").getValue() should be(0)
         BaseMetricsReporter.gaugeMetrics(s"${newConfig.jobName}.${newConfig.failedObsrvMetaDataGeneratorEventsCount}").getValue() should be(1)
-        BaseMetricsReporter.gaugeMetrics(s"${newConfig.jobName}.${newConfig.skippedObsrvMetaDataGeneratorEventsCount}").getValue() should be(0)
     }
   }
 
@@ -224,7 +230,6 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
         BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(1)
         BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.successEventCount}").getValue() should be(0)
         BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.failedEventCount}").getValue() should be(1)
-        BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skippedEventCount}").getValue() should be(0)
     }
   }
 }
@@ -266,7 +271,16 @@ class failedEventMapSource extends SourceFunction[Event] {
   override def run(ctx: SourceContext[Event]) {
 
     ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_14), 0, 10))
-//    ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_3), 0, 10))
+  }
+
+  override def cancel(): Unit = {}
+}
+
+class skippedEventMapSource extends SourceFunction[Event] {
+
+  override def run(ctx: SourceContext[Event]) {
+
+    ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_13), 0, 10))
   }
 
   override def cancel(): Unit = {}

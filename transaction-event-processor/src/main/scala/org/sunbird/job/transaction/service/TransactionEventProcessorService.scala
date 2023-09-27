@@ -84,7 +84,7 @@ trait TransactionEventProcessorService {
           message.getMap().replace("transactionData", propertiesWithNvValues)
         }
 
-        val obsrvEvent = new ObsrvEvent(message.getMap(),message.partition,message.offset)
+        val obsrvEvent = new ObsrvEvent(message.getMap(), message.partition, message.offset)
         val updatedEvent = obsrvEvent.updateEvent
 
         val outputEvent = JSONUtil.serialize(updatedEvent)

@@ -17,15 +17,13 @@ class AuditEventGenerator(config: TransactionEventProcessorConfig)
                           stringTypeInfo: TypeInformation[String])
   extends BaseProcessFunction[Event, String](config) with TransactionEventProcessorService {
 
-  private[this] lazy val logger = LoggerFactory.getLogger(classOf[AuditEventGenerator])
-
   override def metricsList(): List[String] = {
     List(config.totalEventsCount, config.successEventCount, config.failedEventCount, config.skippedEventCount, config.emptySchemaEventCount, config.emptyPropsEventCount
-      , config.totalAuditEventsCount, config.skippedAuditEventsCount, config.failedAuditEventsCount, config.auditEventSuccessCount)
+      , config.totalAuditEventsCount, config.failedAuditEventsCount, config.auditEventSuccessCount)
   }
 
   override def open(parameters: Configuration): Unit = {
-   super.open(parameters)
+    super.open(parameters)
   }
 
   override def close(): Unit = {
@@ -38,10 +36,7 @@ class AuditEventGenerator(config: TransactionEventProcessorConfig)
                               metrics: Metrics): Unit = {
     try {
       metrics.incCounter(config.totalAuditEventsCount)
-      if (event.isValid) {
-        logger.info("valid audit event: " + event.nodeUniqueId)
-        processAuditEvent(event, context, metrics)(config)
-      } else metrics.incCounter(config.skippedAuditEventsCount)
+      processAuditEvent(event, context, metrics)(config)
     } catch {
       case ex: Exception =>
         metrics.incCounter(config.failedAuditEventsCount)

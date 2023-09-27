@@ -17,11 +17,9 @@ class AuditHistoryIndexer(config: TransactionEventProcessorConfig, var esUtil: E
                           stringTypeInfo: TypeInformation[String])
   extends BaseProcessKeyedFunction[String, Event, String](config) with TransactionEventProcessorService {
 
-  private[this] lazy val logger = LoggerFactory.getLogger(classOf[AuditHistoryIndexer])
-
   override def metricsList(): List[String] = {
     List(config.totalEventsCount, config.successEventCount, config.failedEventCount, config.esFailedEventCount, config.skippedEventCount,
-      config.totalAuditHistoryEventsCount, config.skippedAuditHistoryEventsCount, config.failedAuditHistoryEventsCount, config.auditHistoryEventSuccessCount)
+      config.totalAuditHistoryEventsCount, config.failedAuditHistoryEventsCount, config.auditHistoryEventSuccessCount)
   }
 
   override def open(parameters: Configuration): Unit = {
@@ -40,9 +38,6 @@ class AuditHistoryIndexer(config: TransactionEventProcessorConfig, var esUtil: E
                               context: KeyedProcessFunction[String, Event, String]#Context,
                               metrics: Metrics): Unit = {
     metrics.incCounter(config.totalAuditHistoryEventsCount)
-    if (event.isValid) {
-      logger.info("Valid Audit History Event: " + event.nodeUniqueId)
-      processAuditHistoryEvent(event, metrics)(esUtil, config)
-    } else metrics.incCounter(config.skippedAuditHistoryEventsCount)
+    processAuditHistoryEvent(event, metrics)(esUtil, config)
   }
 }

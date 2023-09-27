@@ -17,17 +17,14 @@ class ObsrvEvent(eventMap: java.util.Map[String, Any], override val partition: I
 
   def syncts = readOrDefault("syncts", System.currentTimeMillis())
 
-  def updatedList = {
-    Map("events" -> List(eventMap.asScala.toMap).foldRight(eventsList)(_ :: _))
-  }
+  def updatedList = Map("events" -> List(eventMap.asScala.toMap).foldRight(eventsList)(_ :: _))
 
   def updateEvent = {
-    val updatedEvent = updatedList ++ Map(
+    updatedList ++ Map(
       "dataset" -> dataset,
       "mid" -> msgid,
       "syncts" -> syncts
     )
-    updatedEvent
   }
 }
 
