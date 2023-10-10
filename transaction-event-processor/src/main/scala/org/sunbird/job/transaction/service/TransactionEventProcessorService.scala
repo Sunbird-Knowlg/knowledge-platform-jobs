@@ -74,12 +74,9 @@ trait TransactionEventProcessorService {
             val nvValue = nestedMap.get("nv").collect { case s: String => s }
             key -> nvValue.getOrElse("")
         }
-        logger.info("Updated properties: " + nvValues)
 
-        if(message.getMap().containsKey("transactionData")){
-          message.getMap().remove("transactionData")
-          message.getMap().putAll(nvValues.asJava)
-        }
+        message.getMap().remove("transactionData")
+        message.getMap().putAll(nvValues.asJava)
         logger.info("Modified event: " + message)
 
         val obsrvEvent = new ObsrvEvent(message.getMap(), message.partition, message.offset)
