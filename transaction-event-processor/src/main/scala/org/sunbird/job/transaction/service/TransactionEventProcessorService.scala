@@ -12,13 +12,12 @@ import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import com.google.gson.Gson
 import org.sunbird.job.exception.InvalidEventException
 import org.sunbird.job.transaction.task.TransactionEventProcessorConfig
-import org.sunbird.telemetry.dto.Telemetry
-
-
+import scala.collection.JavaConverters._
 import java.io.IOException
 import java.util
 import java.text.SimpleDateFormat
 import java.util.{Calendar, Date, TimeZone, UUID}
+import scala.collection.convert.ImplicitConversions.`map AsScala`
 
 trait TransactionEventProcessorService {
   private[this] lazy val logger = LoggerFactory.getLogger(classOf[TransactionEventProcessorService])
@@ -76,17 +75,12 @@ trait TransactionEventProcessorService {
             key -> nvValue.getOrElse("")
         }
 
-        val propertiesWithNvValues = Map("properties" -> propertyMap.map {
-          case (key, _) => key -> nvValues.getOrElse(key, "")
-        })
-
-        if (message.getMap().containsKey("transactionData")) {
-          message.getMap().replace("transactionData", propertiesWithNvValues)
-        }
+        message.getMap().remove("transactionData")
+        message.getMap().putAll(nvValues.asJava)
+        logger.info("Modified event: " + message)
 
         val obsrvEvent = new ObsrvEvent(message.getMap(), message.partition, message.offset)
         val updatedEvent = obsrvEvent.updateEvent
-
         val outputEvent = JSONUtil.serialize(updatedEvent)
 
         context.output(config.obsrvAuditOutputTag, outputEvent)

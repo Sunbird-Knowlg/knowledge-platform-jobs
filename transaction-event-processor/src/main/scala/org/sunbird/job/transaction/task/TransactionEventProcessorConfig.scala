@@ -25,9 +25,9 @@ class TransactionEventProcessorConfig(override val config: Config) extends BaseJ
 
   //Flink Jobs Configuration
   val kafkaProducerParallelism: Int = config.getInt("task.producer.parallelism")
-  val auditEventGenerator: Boolean = config.getBoolean("job.audit-event-generator")
-  val auditHistoryIndexer: Boolean = config.getBoolean("job.audit-history-indexer")
-  val obsrvMetadataGenerator: Boolean = config.getBoolean("job.obsrv-metadata-generator")
+  val auditEventGenerator: Boolean = if (config.hasPath("job.audit-event-generator")) config.getBoolean("job.audit-event-generator") else true
+  val auditHistoryIndexer: Boolean = if (config.hasPath("job.audit-history-indexer")) config.getBoolean("job.audit-history-indexer") else false
+  val obsrvMetadataGenerator: Boolean = if (config.hasPath("job.obsrv-metadata-generator")) config.getBoolean("job.obsrv-metadata-generator") else false
 
   val outputTag: OutputTag[Event] = OutputTag[Event]("output-tag")
   val auditOutputTag: OutputTag[String] = OutputTag[String]("audit-event-tag")
