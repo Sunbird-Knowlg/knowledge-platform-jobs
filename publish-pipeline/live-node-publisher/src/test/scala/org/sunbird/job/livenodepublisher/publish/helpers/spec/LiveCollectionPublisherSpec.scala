@@ -1,6 +1,6 @@
 package org.sunbird.job.livenodepublisher.publish.helpers.spec
 
-import akka.dispatch.ExecutionContexts
+//import akka.dispatch.ExecutionContexts
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.commons.lang3.StringUtils
 import org.cassandraunit.CQLDataLoader
@@ -22,7 +22,8 @@ import org.sunbird.job.util._
 import java.text.SimpleDateFormat
 import java.util
 import java.util.Date
-import scala.concurrent.ExecutionContextExecutor
+import java.util.concurrent.Executors
+import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 
 class LiveCollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
 
@@ -31,7 +32,7 @@ class LiveCollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with M
   val config: Config = ConfigFactory.load("test.conf").withFallback(ConfigFactory.systemEnvironment())
   val jobConfig: LiveNodePublisherConfig = new LiveNodePublisherConfig(config)
   implicit val cloudStorageUtil: CloudStorageUtil = new CloudStorageUtil(jobConfig)
-  implicit val ec: ExecutionContextExecutor = ExecutionContexts.global
+  implicit val ec: ExecutionContextExecutor = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(1))
   implicit val defCache: DefinitionCache = new DefinitionCache()
   implicit val defConfig: DefinitionConfig = DefinitionConfig(jobConfig.schemaSupportVersionMap, jobConfig.definitionBasePath)
   implicit val publishConfig: PublishConfig = jobConfig.asInstanceOf[PublishConfig]

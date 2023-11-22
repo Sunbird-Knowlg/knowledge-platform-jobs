@@ -60,7 +60,9 @@ object ComplexJsonCompiler {
         returnMap
       } else mutable.Map.empty
     }
-    else if(record._2.isInstanceOf[Map[String, AnyRef]])  mutable.Map(record._1 -> resolveReferences(record._2.asInstanceOf[Map[String, AnyRef]].head, consolidatedSchemaMap, definitionsMap))
-    else mutable.Map(record._1 -> record._2)
+    else record._2 match {
+      case map: Map[String, AnyRef] => mutable.Map(record._1 -> resolveReferences(map.head, consolidatedSchemaMap, definitionsMap))
+      case _ => mutable.Map(record._1 -> record._2)
+    }
   }
 }
