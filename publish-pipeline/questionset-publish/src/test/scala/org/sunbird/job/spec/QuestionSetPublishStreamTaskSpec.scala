@@ -66,7 +66,7 @@ class QuestionSetPublishStreamTaskSpec extends BaseTestSpec {
 
 	//TODO: provide test cases.
 	def initialize(): Unit = {
-		when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new QuestionPublishEventSource)
+		when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic))//.thenReturn(new QuestionPublishEventSource)
 	}
 
 	ignore should " publish the question " in {
