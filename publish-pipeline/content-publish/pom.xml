@@ -17,10 +17,10 @@
         Content publish job
     </description>
 
-<!--    <properties>-->
-<!--        <maven.compiler.source>11</maven.compiler.source>-->
-<!--        <maven.compiler.target>11</maven.compiler.target>-->
-<!--    </properties>-->
+    <!--    <properties>-->
+    <!--        <maven.compiler.source>11</maven.compiler.source>-->
+    <!--        <maven.compiler.target>11</maven.compiler.target>-->
+    <!--    </properties>-->
 
     <dependencies>
         <dependency>
@@ -59,17 +59,17 @@
             <artifactId>zookeeper</artifactId>
             <version>3.7.2</version>
             <exclusions>
-            <exclusion>
-                <artifactId>netty-codec</artifactId>
-                <groupId>io.netty</groupId>
-            </exclusion>
+                <exclusion>
+                    <artifactId>netty-codec</artifactId>
+                    <groupId>io.netty</groupId>
+                </exclusion>
             </exclusions>
         </dependency>
-                    <dependency>
-                        <groupId>com.google.protobuf</groupId>
-                        <artifactId>protobuf-java</artifactId>
-                        <version>3.16.3</version>
-                    </dependency>
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>3.16.3</version>
+        </dependency>
         <!-- <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-common</artifactId>
@@ -104,7 +104,7 @@
                     <artifactId>jackson-databind</artifactId>
                     <groupId>om.fasterxml.jackson.core</groupId>
                 </exclusion>
-            </exclusions>  
+            </exclusions>
         </dependency> -->
         <dependency>
             <groupId>com.google.code.gson</groupId>
@@ -173,6 +173,18 @@
             <groupId>org.cassandraunit</groupId>
             <artifactId>cassandra-unit</artifactId>
             <version>3.11.2.0</version>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.yaml</groupId>
+                    <artifactId>snakeyaml</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <version>1.33</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

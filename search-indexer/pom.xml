@@ -17,9 +17,9 @@
         Search Indexer Flink Job
     </description>
     <properties>
-		<encoding>UTF-8</encoding>
-		<scoverage.plugin.version>1.4.0</scoverage.plugin.version>
-	</properties>
+        <encoding>UTF-8</encoding>
+        <scoverage.plugin.version>1.4.0</scoverage.plugin.version>
+    </properties>
 
     <dependencies>
         <dependency>
@@ -28,11 +28,11 @@
             <version>${flink.version}</version>
             <scope>provided</scope>
         </dependency>
-                    <dependency>
-                        <groupId>com.google.protobuf</groupId>
-                        <artifactId>protobuf-java</artifactId>
-                        <version>3.16.3</version>
-                    </dependency>
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>3.16.3</version>
+        </dependency>
         <!-- <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
@@ -81,7 +81,7 @@
                     <artifactId>jackson-databind</artifactId>
                     <groupId>om.fasterxml.jackson.core</groupId>
                 </exclusion>
-            </exclusions>  
+            </exclusions>
         </dependency> -->
         <dependency>
             <groupId>com.google.code.gson</groupId>
@@ -101,7 +101,7 @@
                     <artifactId>hadoop-common</artifactId>
                     <groupId>org.apache.hadoop</groupId>
                 </exclusion>
-            </exclusions>  
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>io.netty</groupId>
@@ -128,7 +128,7 @@
                     <artifactId>netty-codec</artifactId>
                     <groupId>io.netty</groupId>
                 </exclusion>
-            </exclusions>  
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.apache.flink</groupId>
@@ -171,8 +171,8 @@
     </dependencies>
 
     <build>
-    		<sourceDirectory>src/main/scala</sourceDirectory>
-		    <testSourceDirectory>src/test/scala</testSourceDirectory>
+        <sourceDirectory>src/main/scala</sourceDirectory>
+        <testSourceDirectory>src/test/scala</testSourceDirectory>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -283,16 +283,16 @@
                     </execution>
                 </executions>
             </plugin>
-			<plugin>
-				<groupId>org.scoverage</groupId>
-				<artifactId>scoverage-maven-plugin</artifactId>
-				<version>${scoverage.plugin.version}</version>
-				<configuration>
-					<scalaVersion>${scala.version}</scalaVersion>
-					<aggregate>true</aggregate>
-					<highlighting>true</highlighting>
-				</configuration>
-			</plugin>
+            <plugin>
+                <groupId>org.scoverage</groupId>
+                <artifactId>scoverage-maven-plugin</artifactId>
+                <version>${scoverage.plugin.version}</version>
+                <configuration>
+                    <scalaVersion>${scala.version}</scalaVersion>
+                    <aggregate>true</aggregate>
+                    <highlighting>true</highlighting>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 

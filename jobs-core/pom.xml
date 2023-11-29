@@ -28,7 +28,7 @@
                     <artifactId>log4j</artifactId>
                     <groupId>log4j</groupId>
                 </exclusion>
-            </exclusions>  
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>com.google.code.gson</groupId>
@@ -84,6 +84,16 @@
             <version>2.12.0</version>
         </dependency>
         <dependency>
+            <groupId>com.typesafe</groupId>
+            <artifactId>config</artifactId>
+            <version>1.4.2</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.code.gson</groupId>
+            <artifactId>gson</artifactId>
+            <version>2.4</version>
+        </dependency>
+        <dependency>
             <groupId>redis.clients</groupId>
             <artifactId>jedis</artifactId>
             <version>2.9.0</version>
@@ -102,7 +112,7 @@
                     <artifactId>netty-codec</artifactId>
                     <groupId>io.netty</groupId>
                 </exclusion>
-            </exclusions>  
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>com.konghq</groupId>
@@ -114,7 +124,7 @@
             <artifactId>neo4j-java-driver</artifactId>
             <version>1.7.5</version>
         </dependency>
-        
+
         <dependency>
             <groupId>com.moparisthebest</groupId>
             <artifactId>junidecode</artifactId>
@@ -126,18 +136,22 @@
             <version>1.2</version>
         </dependency>
         <dependency>
-            <groupId>${CLOUD_STORE_GROUP_ID}</groupId>
-            <artifactId>${CLOUD_STORE_ARTIFACT_ID}</artifactId>
-            <version>${CLOUD_STORE_VERSION}</version>
+            <groupId>org.sunbird</groupId>
+            <artifactId>cloud-store-sdk_2.12</artifactId>
+            <version>1.4.7</version>
             <exclusions>
                 <exclusion>
-                        <artifactId>java-xmlbuilder</artifactId>
-                        <groupId>com.jamesmurty.utils</groupId>
+                    <artifactId>java-xmlbuilder</artifactId>
+                    <groupId>com.jamesmurty.utils</groupId>
                 </exclusion>
-                    <exclusion>
-                        <groupId>commons-io</groupId>
-                        <artifactId>commons-io</artifactId>
-                    </exclusion>
+                <exclusion>
+                    <groupId>commons-io</groupId>
+                    <artifactId>commons-io</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>commons-io</groupId>
+                    <artifactId>commons-io</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
         <dependency>
@@ -183,7 +197,7 @@
                     <artifactId>log4j</artifactId>
                     <groupId>log4j</groupId>
                 </exclusion>
-            </exclusions>  
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>com.opentable.components</groupId>
@@ -222,12 +236,6 @@
                 </exclusion>
             </exclusions>
         </dependency>
-<!--        <dependency>-->
-<!--            <groupId>org.yaml</groupId>-->
-<!--            <artifactId>snakeyaml</artifactId>-->
-<!--            <version>2.0</version>-->
-<!--            <scope>compile</scope>-->
-<!--        </dependency>-->
         <dependency>
             <groupId>org.codehaus.jettison</groupId>
             <artifactId>jettison</artifactId>
@@ -237,6 +245,7 @@
             <groupId>org.cassandraunit</groupId>
             <artifactId>cassandra-unit</artifactId>
             <version>3.11.2.0</version>
+            <scope>test</scope>
             <exclusions>
                 <exclusion>
                     <artifactId>jackson-mapper-asl</artifactId>
@@ -250,7 +259,16 @@
                     <artifactId>snakeyaml</artifactId>
                     <groupId>org.yaml</groupId>
                 </exclusion>
+                <exclusion>
+                    <groupId>org.yaml</groupId>
+                    <artifactId>snakeyaml</artifactId>
+                </exclusion>
             </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <version>1.33</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -267,7 +285,7 @@
                     <artifactId>elasticsearch</artifactId>
                     <groupId>org.elasticsearch</groupId>
                 </exclusion>
-            </exclusions>  
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>co.elastic.clients</groupId>

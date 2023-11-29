@@ -94,7 +94,7 @@
                     <artifactId>netty-codec</artifactId>
                     <groupId>io.netty</groupId>
                 </exclusion>
-            </exclusions>   
+            </exclusions>
 
         </dependency>
         <dependency>
@@ -119,7 +119,17 @@
                     <artifactId>netty-codec</artifactId>
                     <groupId>io.netty</groupId>
                 </exclusion>
-            </exclusions>  
+                <exclusion>
+                    <groupId>org.yaml</groupId>
+                    <artifactId>snakeyaml</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <version>1.33</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 

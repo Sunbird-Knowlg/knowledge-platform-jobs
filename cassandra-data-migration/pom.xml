@@ -16,11 +16,11 @@
     <description>
         Cassandra Data Migration Flink Job
     </description>
-    
+
     <properties>
-		<encoding>UTF-8</encoding>
-		<scoverage.plugin.version>1.4.0</scoverage.plugin.version>
-	</properties>
+        <encoding>UTF-8</encoding>
+        <scoverage.plugin.version>1.4.0</scoverage.plugin.version>
+    </properties>
 
     <dependencies>
         <dependency>
@@ -52,7 +52,7 @@
                     <artifactId>gson</artifactId>
                     <groupId>com.google.code.gson</groupId>
                 </exclusion>
-            </exclusions>  
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>joda-time</groupId>
@@ -121,7 +121,17 @@
                     <artifactId>netty-codec</artifactId>
                     <groupId>io.netty</groupId>
                 </exclusion>
-            </exclusions> 
+                <exclusion>
+                    <groupId>org.yaml</groupId>
+                    <artifactId>snakeyaml</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <version>1.33</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
@@ -238,16 +248,16 @@
                     </execution>
                 </executions>
             </plugin>
-			<plugin>
-				<groupId>org.scoverage</groupId>
-				<artifactId>scoverage-maven-plugin</artifactId>
-				<version>${scoverage.plugin.version}</version>
-				<configuration>
-					<scalaVersion>${scala.version}</scalaVersion>
-					<aggregate>true</aggregate>
-					<highlighting>true</highlighting>
-				</configuration>
-			</plugin>
+            <plugin>
+                <groupId>org.scoverage</groupId>
+                <artifactId>scoverage-maven-plugin</artifactId>
+                <version>${scoverage.plugin.version}</version>
+                <configuration>
+                    <scalaVersion>${scala.version}</scalaVersion>
+                    <aggregate>true</aggregate>
+                    <highlighting>true</highlighting>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 

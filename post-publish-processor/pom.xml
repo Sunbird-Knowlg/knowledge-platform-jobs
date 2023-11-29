@@ -80,7 +80,7 @@
                     <artifactId>jackson-databind</artifactId>
                     <groupId>om.fasterxml.jackson.core</groupId>
                 </exclusion>
-            </exclusions>  
+            </exclusions>
         </dependency> -->
         <dependency>
             <groupId>com.google.code.gson</groupId>
@@ -171,11 +171,12 @@
             <groupId>org.cassandraunit</groupId>
             <artifactId>cassandra-unit</artifactId>
             <version>3.11.2.0</version>
+            <scope>test</scope>
             <exclusions>
-<!--                                <exclusion>
-                                    <artifactId>jackson-mapper-asl</artifactId>
-                                    <groupId>org.codehaus.jackson</groupId>
-                                </exclusion>-->
+                <!--                                <exclusion>
+                                                    <artifactId>jackson-mapper-asl</artifactId>
+                                                    <groupId>org.codehaus.jackson</groupId>
+                                                </exclusion>-->
                 <exclusion>
                     <artifactId>netty-codec</artifactId>
                     <groupId>io.netty</groupId>
@@ -184,7 +185,16 @@
                     <artifactId>netty-handler</artifactId>
                     <groupId>io.netty</groupId>
                 </exclusion>
+                <exclusion>
+                    <groupId>org.yaml</groupId>
+                    <artifactId>snakeyaml</artifactId>
+                </exclusion>
             </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <version>1.33</version>
             <scope>test</scope>
         </dependency>
     </dependencies>

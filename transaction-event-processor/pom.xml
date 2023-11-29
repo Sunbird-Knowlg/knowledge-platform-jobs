@@ -16,11 +16,11 @@
     <description>
         Transaction Event Processor Flink Job
     </description>
-    
+
     <properties>
-		<encoding>UTF-8</encoding>
-		<scoverage.plugin.version>1.4.0</scoverage.plugin.version>
-	</properties>
+        <encoding>UTF-8</encoding>
+        <scoverage.plugin.version>1.4.0</scoverage.plugin.version>
+    </properties>
 
     <dependencies>
         <dependency>
@@ -32,8 +32,8 @@
                     <artifactId>gson</artifactId>
                     <groupId>com.google.code.gson</groupId>
                 </exclusion>
-            </exclusions>  
-<!--            <scope>provided</scope>-->
+            </exclusions>
+            <!--            <scope>provided</scope>-->
         </dependency>
         <!-- https://mvnrepository.com/artifact/com.google.code.gson/gson -->
         <dependency>
@@ -41,11 +41,11 @@
             <artifactId>gson</artifactId>
             <version>2.10.1</version>
         </dependency>
-                    <dependency>
-                        <groupId>com.google.protobuf</groupId>
-                        <artifactId>protobuf-java</artifactId>
-                        <version>3.16.3</version>
-                    </dependency>
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>3.16.3</version>
+        </dependency>
         <!-- <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
@@ -94,7 +94,7 @@
                     <artifactId>jackson-databind</artifactId>
                     <groupId>om.fasterxml.jackson.core</groupId>
                 </exclusion>
-            </exclusions>  
+            </exclusions>
         </dependency> -->
         <dependency>
             <groupId>io.netty</groupId>
@@ -128,13 +128,13 @@
                     <artifactId>netty-codec</artifactId>
                     <groupId>io.netty</groupId>
                 </exclusion>
-            </exclusions>  
-             <!-- <exclusions>
-                <exclusion>
-                    <artifactId>hadoop-common</artifactId>
-                    <groupId>org.apache.hadoop</groupId>
-                </exclusion>
-            </exclusions>   -->
+            </exclusions>
+            <!-- <exclusions>
+               <exclusion>
+                   <artifactId>hadoop-common</artifactId>
+                   <groupId>org.apache.hadoop</groupId>
+               </exclusion>
+           </exclusions>   -->
         </dependency>
         <dependency>
             <groupId>joda-time</groupId>
@@ -328,16 +328,16 @@
                     </execution>
                 </executions>
             </plugin>
-			<plugin>
-				<groupId>org.scoverage</groupId>
-				<artifactId>scoverage-maven-plugin</artifactId>
-				<version>${scoverage.plugin.version}</version>
-				<configuration>
-					<scalaVersion>${scala.version}</scalaVersion>
-					<aggregate>true</aggregate>
-					<highlighting>true</highlighting>
-				</configuration>
-			</plugin>
+            <plugin>
+                <groupId>org.scoverage</groupId>
+                <artifactId>scoverage-maven-plugin</artifactId>
+                <version>${scoverage.plugin.version}</version>
+                <configuration>
+                    <scalaVersion>${scala.version}</scalaVersion>
+                    <aggregate>true</aggregate>
+                    <highlighting>true</highlighting>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 

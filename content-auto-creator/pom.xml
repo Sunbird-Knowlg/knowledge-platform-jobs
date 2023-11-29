@@ -16,11 +16,11 @@
     <description>
         Content Auto Creator Flink Job
     </description>
-    
+
     <properties>
-		<encoding>UTF-8</encoding>
-		<scoverage.plugin.version>1.4.0</scoverage.plugin.version>
-	</properties>
+        <encoding>UTF-8</encoding>
+        <scoverage.plugin.version>1.4.0</scoverage.plugin.version>
+    </properties>
 
     <dependencies>
         <dependency>
@@ -52,7 +52,7 @@
                     <artifactId>gson</artifactId>
                     <groupId>com.google.code.gson</groupId>
                 </exclusion>
-            </exclusions> 
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>joda-time</groupId>
@@ -113,7 +113,17 @@
                     <artifactId>netty-codec</artifactId>
                     <groupId>io.netty</groupId>
                 </exclusion>
-            </exclusions> 
+                <exclusion>
+                    <groupId>org.yaml</groupId>
+                    <artifactId>snakeyaml</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <version>1.33</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>com.google.apis</groupId>
@@ -135,12 +145,12 @@
             <groupId>com.google.api-client</groupId>
             <artifactId>google-api-client</artifactId>
             <version>1.20.0</version>
-                       <exclusions>
+            <exclusions>
                 <exclusion>
                     <artifactId>google-oauth-client</artifactId>
                     <groupId>com.google.oauth-client</groupId>
                 </exclusion>
-            </exclusions>   
+            </exclusions>
 
         </dependency>
         <dependency>
@@ -275,16 +285,16 @@
                     </execution>
                 </executions>
             </plugin>
-			<plugin>
-				<groupId>org.scoverage</groupId>
-				<artifactId>scoverage-maven-plugin</artifactId>
-				<version>${scoverage.plugin.version}</version>
-				<configuration>
-					<scalaVersion>${scala.version}</scalaVersion>
-					<aggregate>true</aggregate>
-					<highlighting>true</highlighting>
-				</configuration>
-			</plugin>
+            <plugin>
+                <groupId>org.scoverage</groupId>
+                <artifactId>scoverage-maven-plugin</artifactId>
+                <version>${scoverage.plugin.version}</version>
+                <configuration>
+                    <scalaVersion>${scala.version}</scalaVersion>
+                    <aggregate>true</aggregate>
+                    <highlighting>true</highlighting>
+                </configuration>
+            </plugin>
         </plugins>
     </build>
 

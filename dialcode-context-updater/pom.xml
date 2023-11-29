@@ -77,7 +77,7 @@
                     <artifactId>jackson-databind</artifactId>
                     <groupId>om.fasterxml.jackson.core</groupId>
                 </exclusion>
-            </exclusions>  
+            </exclusions>
         </dependency> -->
         <dependency>
             <groupId>com.google.code.gson</groupId>
@@ -121,7 +121,7 @@
             <version>1.0.0</version>
             <type>test-jar</type>
             <scope>test</scope>
-             <exclusions>
+            <exclusions>
                 <exclusion>
                     <artifactId>hadoop-common</artifactId>
                     <groupId>org.apache.hadoop</groupId>
@@ -174,6 +174,7 @@
             <groupId>org.cassandraunit</groupId>
             <artifactId>cassandra-unit</artifactId>
             <version>3.11.2.0</version>
+            <scope>test</scope>
             <exclusions>
                 <exclusion>
                     <artifactId>netty-codec</artifactId>
@@ -183,11 +184,20 @@
                     <artifactId>netty-handler</artifactId>
                     <groupId>io.netty</groupId>
                 </exclusion>
-<!--                <exclusion>-->
-<!--                    <artifactId>jackson-mapper-asl</artifactId>-->
-<!--                    <groupId>org.codehaus.jackson</groupId>-->
-<!--                </exclusion>-->
+                <!--                <exclusion>-->
+                <!--                    <artifactId>jackson-mapper-asl</artifactId>-->
+                <!--                    <groupId>org.codehaus.jackson</groupId>-->
+                <!--                </exclusion>-->
+                <exclusion>
+                    <groupId>org.yaml</groupId>
+                    <artifactId>snakeyaml</artifactId>
+                </exclusion>
             </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <version>1.33</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
