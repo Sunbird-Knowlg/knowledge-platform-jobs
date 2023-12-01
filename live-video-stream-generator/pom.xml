@@ -35,19 +35,10 @@
             <version>2.8.9</version>
         </dependency>
         <dependency>
-            <groupId>org.elasticsearch</groupId>
-            <artifactId>elasticsearch</artifactId>
-            <version>6.8.22</version>
-        </dependency>
-        <dependency>
             <groupId>org.sunbird</groupId>
             <artifactId>jobs-core</artifactId>
             <version>1.0.0</version>
             <exclusions>
-                <exclusion>
-                    <artifactId>elasticsearch</artifactId>
-                    <groupId>org.elasticsearch</groupId>
-                </exclusion>
                 <exclusion>
                     <artifactId>gson</artifactId>
                     <groupId>com.google.code.gson</groupId>

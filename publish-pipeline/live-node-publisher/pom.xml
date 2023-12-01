@@ -38,10 +38,11 @@
             <artifactId>gson</artifactId>
             <version>2.10.1</version>
         </dependency>
+        <!-- https://mvnrepository.com/artifact/com.fasterxml.jackson.dataformat/jackson-dataformat-cbor -->
         <dependency>
-            <groupId>org.elasticsearch</groupId>
-            <artifactId>elasticsearch</artifactId>
-            <version>6.8.22</version>
+            <groupId>com.fasterxml.jackson.dataformat</groupId>
+            <artifactId>jackson-dataformat-cbor</artifactId>
+            <version>2.12.2</version>
         </dependency>
         <dependency>
             <groupId>org.sunbird</groupId>
@@ -51,12 +52,12 @@
             <scope>test</scope>
             <exclusions>
                 <exclusion>
-                    <groupId>org.yaml</groupId>
-                    <artifactId>snakeyaml</artifactId>
+                    <groupId>com.fasterxml.jackson.dataformat</groupId>
+                    <artifactId>jackson-dataformat-cbor</artifactId>
                 </exclusion>
                 <exclusion>
-                    <artifactId>elasticsearch</artifactId>
-                    <groupId>org.elasticsearch</groupId>
+                    <groupId>org.yaml</groupId>
+                    <artifactId>snakeyaml</artifactId>
                 </exclusion>
                 <exclusion>
                     <artifactId>gson</artifactId>

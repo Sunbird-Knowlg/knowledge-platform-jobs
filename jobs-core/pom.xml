@@ -23,12 +23,12 @@
             <artifactId>flink-streaming-scala_${scala.version}</artifactId>
             <version>${flink.version}</version>
             <scope>compile</scope>
-            <exclusions>
+<!--            <exclusions>
                 <exclusion>
                     <artifactId>log4j</artifactId>
                     <groupId>log4j</groupId>
                 </exclusion>
-            </exclusions>
+            </exclusions>-->
         </dependency>
         <dependency>
             <groupId>com.google.code.gson</groupId>
@@ -73,11 +73,11 @@
             <artifactId>gson</artifactId>
             <version>2.4</version>
         </dependency>
-        <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
-            <artifactId>jackson-databind</artifactId>
-            <version>2.12.7.1</version>
-        </dependency>
+<!--        <dependency>-->
+<!--            <groupId>com.fasterxml.jackson.core</groupId>-->
+<!--            <artifactId>jackson-databind</artifactId>-->
+<!--            <version>2.12.7.1</version>-->
+<!--        </dependency>-->
         <dependency>
             <groupId>com.fasterxml.jackson.module</groupId>
             <artifactId>jackson-module-scala_${scala.version}</artifactId>
@@ -151,6 +151,10 @@
                 <exclusion>
                     <groupId>commons-io</groupId>
                     <artifactId>commons-io</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-reload4j</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
