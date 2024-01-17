@@ -1,0 +1,1 @@
+│  result from cassandara ResultSet[ exhausted: false, Columns[identifier(varchar), batchcode(varchar), channel(varchar), dialcode_index(double), generated_on(varchar), metadata(varchar), published_on(varch │
