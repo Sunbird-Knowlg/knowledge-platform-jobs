@@ -144,8 +144,8 @@ class LiveContentPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matc
     result.size should be(0)
   }
 
-  "validateMetadata with mimeType application/pdf " should " throw InvalidInputException invalid artifactUrl" ignore {
-    val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/pdf", "artifactUrl" -> "https://www.youtube.com/"), None)
+  "validateMetadata with mimeType application/pdf " should " throw InvalidInputException invalid artifactUrl" in {
+    val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/pdf", "artifactUrl" -> "https://www.youtube.com/6Js8tBCfbWkfailingthis"), None)
     assertThrows[InvalidInputException] {
       new TestLiveContentPublisher().validateMetadata(data, data.identifier, jobConfig)
     }
