@@ -98,10 +98,16 @@
             <scope>test</scope>
             <exclusions>
                 <exclusion>
-                    <artifactId>netty-codec</artifactId>
-                    <groupId>io.netty</groupId>
+                    <groupId>org.yaml</groupId>
+                    <artifactId>snakeyaml</artifactId>
                 </exclusion>
             </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <version>1.33</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.scalatest</groupId>

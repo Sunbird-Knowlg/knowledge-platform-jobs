@@ -25,8 +25,8 @@ class JobRequestDeserializationSchema[T <: JobRequest](implicit ct: ClassTag[T])
     try {
       val result = JSONUtil.deserialize[java.util.HashMap[String, AnyRef]](record.value())
       val args = Array(result, record.partition(), record.offset()).asInstanceOf[Array[AnyRef]]
-      ct.runtimeClass.getConstructor(classOf[java.util.Map[String, AnyRef]], Integer.TYPE, java.lang.Long.TYPE)
-        .newInstance(args:_*).asInstanceOf[T]
+      out.collect(ct.runtimeClass.getConstructor(classOf[java.util.Map[String, AnyRef]], Integer.TYPE, java.lang.Long.TYPE)
+        .newInstance(args: _*).asInstanceOf[T])
     } catch {
       case ex: Exception =>
         ex.printStackTrace()

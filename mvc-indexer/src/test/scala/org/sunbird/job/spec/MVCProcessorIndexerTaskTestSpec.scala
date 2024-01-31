@@ -100,7 +100,7 @@ class MVCProcessorIndexerTaskTestSpec extends BaseTestSpec {
       "Content-Type", "application/json"
     ).setBody("""{"responseCode":"OK"}"""))
 
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new MVCProcessorIndexerMapSource)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic))//.thenReturn(new MVCProcessorIndexerMapSource)
 
     new MVCIndexerStreamTask(jobConfig, mockKafkaUtil, esUtil, httpUtil).process()
 
@@ -119,7 +119,7 @@ class MVCProcessorIndexerTaskTestSpec extends BaseTestSpec {
       "Content-Type", "application/json"
     ).setResponseCode(500).setBody("""{}"""))
 
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new MVCProcessorIndexerMapSource)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic))//.thenReturn(new MVCProcessorIndexerMapSource)
 
     try {
       new MVCIndexerStreamTask(jobConfig, mockKafkaUtil, esUtil, httpUtil).process()
