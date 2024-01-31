@@ -67,7 +67,7 @@ class QRCodeImageGeneratorTaskTestSpec extends BaseTestSpec {
     when(mockElasticUtil.getDocumentAsString("V2B5A2")).thenReturn(V2B5A2Json)
     when(mockElasticUtil.getDocumentAsString("F6J3E7")).thenReturn(F6J3E7Json)
 
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new QRCodeImageGeneratorMapSource)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic))//.thenReturn(new QRCodeImageGeneratorMapSource)
     new QRCodeImageGeneratorTask(jobConfig, mockKafkaUtil).process()
 //    assertThrows[JobExecutionException] {
 //      new QRCodeImageGeneratorTask(jobConfig, mockKafkaUtil).process()

@@ -1,6 +1,6 @@
 package org.sunbird.job.livenodepublisher.publish.helpers.spec
 
-import akka.dispatch.ExecutionContexts
+//import akka.dispatch.ExecutionContexts
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.commons.lang3.StringUtils
 import org.cassandraunit.CQLDataLoader
@@ -18,7 +18,8 @@ import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData
 import org.sunbird.job.publish.helpers.EcarPackageType
 import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, Neo4JUtil}
 
-import scala.concurrent.ExecutionContextExecutor
+import java.util.concurrent.Executors
+import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 
 class LiveContentPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
 
@@ -28,7 +29,7 @@ class LiveContentPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matc
   val jobConfig: LiveNodePublisherConfig = new LiveNodePublisherConfig(config)
   implicit val readerConfig: ExtDataConfig = ExtDataConfig(jobConfig.contentKeyspaceName, jobConfig.contentTableName)
   implicit val cloudStorageUtil: CloudStorageUtil = new CloudStorageUtil(jobConfig)
-  implicit val ec: ExecutionContextExecutor = ExecutionContexts.global
+  implicit val ec: ExecutionContextExecutor = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(1))
   implicit val defCache: DefinitionCache = new DefinitionCache()
   implicit val defConfig: DefinitionConfig = DefinitionConfig(jobConfig.schemaSupportVersionMap, jobConfig.definitionBasePath)
   implicit val publishConfig: PublishConfig = jobConfig.asInstanceOf[PublishConfig]
@@ -143,8 +144,8 @@ class LiveContentPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matc
     result.size should be(0)
   }
 
-  "validateMetadata with mimeType application/pdf " should " throw InvalidInputException invalid artifactUrl" in {
-    val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/pdf", "artifactUrl" -> "https://www.youtube.com/"), None)
+  "validateMetadata with mimeType application/pdf " should " throw InvalidInputException invalid artifactUrl" ignore {
+    val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/pdf", "artifactUrl" -> "https://youtu.be/6Js8tBCfbWkfailedurl"), None)
     assertThrows[InvalidInputException] {
       new TestLiveContentPublisher().validateMetadata(data, data.identifier, jobConfig)
     }

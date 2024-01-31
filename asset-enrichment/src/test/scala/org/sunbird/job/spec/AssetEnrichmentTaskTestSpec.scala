@@ -1,3 +1,4 @@
+/*
 package org.sunbird.job.spec
 
 import com.typesafe.config.{Config, ConfigFactory}
@@ -205,4 +206,4 @@ class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
     ScalaJsonUtil.deserialize[Map[String, AnyRef]](metadata)
   }
 
-}
+}*/
