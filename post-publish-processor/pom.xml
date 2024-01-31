@@ -185,8 +185,6 @@
                     <artifactId>netty-handler</artifactId>
                     <groupId>io.netty</groupId>
                 </exclusion>
-            </exclusions>
-            <exclusions>
                 <exclusion>
                     <groupId>org.yaml</groupId>
                     <artifactId>snakeyaml</artifactId>
