@@ -1,5 +1,5 @@
 # sunbird-knowledge-platform-jobs
-Background and pipeline jobs of Knowledge Platform 
+Background and pipeline jobs of Knowledge Platform
 
 ## Knowledge-platform-jobs local setup
 This readme file contains the instruction to set up and run the knowledge-platform-jobs in local machine.
