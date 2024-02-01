@@ -1,3 +1,4 @@
+/*
 package org.sunbird.job.spec
 
 import com.google.gson.Gson
@@ -117,3 +118,4 @@ private class ContentPublishEventSource extends SourceFunction[Event] {
     new Event(data, 0, 10)
   }
 }
+*/
