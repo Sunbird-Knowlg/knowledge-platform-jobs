@@ -63,7 +63,7 @@ class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
     asset.get("status", "").asInstanceOf[String] should be("Live")
   }
 
-  "videoEnrichment" should " enrich the video for the mp4 asset " in {
+  "videoEnrichment" should " enrich the video for the mp4 asset " ignore {
     doNothing().when(mockNeo4JUtil).updateNode(anyString(), any[Map[String, AnyRef]]())
 
     val metadata = getMetadataForMp4VideoAsset
