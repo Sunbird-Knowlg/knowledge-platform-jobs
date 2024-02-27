@@ -33,6 +33,8 @@
 				<module>auto-creator-v2</module>
 				<module>content-auto-creator</module>
 				<module>transaction-event-processor</module>
+				<module>audit-history-indexer</module>
+				<module>audit-event-generator</module>
 				<module>qrcode-image-generator</module>
 				<module>dialcode-context-updater</module>
 				<module>cassandra-data-migration</module>
