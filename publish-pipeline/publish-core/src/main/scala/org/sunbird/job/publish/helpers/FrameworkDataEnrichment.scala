@@ -21,7 +21,7 @@ trait FrameworkDataEnrichment {
 	//private val fwMetaFields = List("boardIds", "subjectIds", "mediumIds", "topicsIds", "gradeLevelIds", "targetBoardIds", "targetSubjectIds", "targetMediumIds", "targetTopicIds", "targetGradeLevelIds")
 	//private val fwMetaMap = Map(("se_boardIds", "se_boards") -> List("boardIds", "targetBoardIds"), ("se_subjectIds", "se_subjects") -> List("subjectIds", "targetSubjectIds"), ("se_mediumIds", "se_mediums") -> List("mediumIds", "targetMediumIds"), ("se_topicIds", "se_topics") -> List("topicsIds", "targetTopicIds"), ("se_gradeLevelIds", "se_gradeLevels") -> List("gradeLevelIds", "targetGradeLevelIds"))
 
-	private val frameworkCategorySearchMetadataMapping: HashMap[String, String] = HashMap[String, String]("se_boards" -> "board", "se_subjects"-> "subject", "se_mediums" -> "medium", "se_topics"-> "topic", "se_gradeLevels"-> "gradeLevel")
+	//private val frameworkCategorySearchMetadataMapping: HashMap[String, String] = HashMap[String, String]("se_boards" -> "board", "se_subjects"-> "subject", "se_mediums" -> "medium", "se_topics"-> "topic", "se_gradeLevels"-> "gradeLevel")
 
 	def enrichFrameworkData(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, config: PublishConfig): ObjectData = {
 		val (fwMetaFields, fwMetaMap) : (List[String], Map[(String, String), List[String]]) =
@@ -45,10 +45,19 @@ trait FrameworkDataEnrichment {
 		}
 	}
 
-	private def revalidateFrameworkCategoryMetadata(obj: ObjectData, enMetadata: Map[String, AnyRef]) : Map[String, AnyRef] = {
+	private def revalidateFrameworkCategoryMetadata(obj: ObjectData, enMetadata: Map[String, AnyRef])(implicit neo4JUtil: Neo4JUtil) : Map[String, AnyRef] = {
+
+		val masterCategories: List[Map[String, AnyRef]] = getMasterCategory("domain", "Category")
+		val frameworkCategorySearchMetadataMapping: Map[String, String] = masterCategories.flatMap(category =>
+			Map(category.getOrElse("searchLabelFieldName", "").asInstanceOf[String] ->
+				category.getOrElse("code", "").asInstanceOf[String])).toMap
+
+		logger.info("frameworkCategorySearchMetadataMapping:: " + frameworkCategorySearchMetadataMapping)
+
 		val updatedFwData: immutable.Iterable[(String, AnyRef)] = frameworkCategorySearchMetadataMapping.map(category => {
 			val data: AnyRef = obj.metadata.getOrElse(category._2, null)
-			if(data != null) Map(category._1 -> getList(data)) else Map.empty
+			val se_data: AnyRef = enMetadata.getOrElse(category._1, null)
+			if(se_data == null && data != null) Map(category._1 -> getList(data)) else Map.empty
 		}).filter(rec => rec.nonEmpty).flatten
 
 		enMetadata ++ updatedFwData
