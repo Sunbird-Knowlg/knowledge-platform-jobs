@@ -112,7 +112,7 @@
         </dependency>
         <dependency>
             <groupId>org.sunbird</groupId>
-            <artifactId>transaction-event-generator</artifactId>
+            <artifactId>transaction-event-processor</artifactId>
             <version>1.0.0</version>
             <type>jar</type>
         </dependency>
