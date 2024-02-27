@@ -19,6 +19,7 @@
             <artifactId>flink-streaming-scala_${scala.version}</artifactId>
             <version>${flink.version}</version>
             <type>jar</type>
+        </dependency>
         <dependency>
             <groupId>org.sunbird</groupId>
             <artifactId>post-publish-processor</artifactId>
