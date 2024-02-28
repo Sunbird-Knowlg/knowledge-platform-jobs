@@ -3,7 +3,7 @@ version: 2.0
 jobs:
   unit-tests:
     docker:
-      - image: cimg/openjdk:17.0
+      - image: openjdk:17-jdk-slim
     resource_class: medium
     working_directory: ~/kp
     steps:
