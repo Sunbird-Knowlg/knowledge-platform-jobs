@@ -3,7 +3,7 @@ version: 2.0
 jobs:
   unit-tests:
     docker:
-      - image: circleci/openjdk:17-jdk-buster-node-browsers-legacy
+      - image: cimg/openjdk:17.0
     resource_class: medium
     working_directory: ~/kp
     steps:
@@ -12,8 +12,6 @@ jobs:
           keys:
             - kp-jobs-dependency-cache-{{ checksum "pom.xml" }} # appends cache key with a hash of pom.xml fi
             - kp-jobs-dependency-cache- # fallback in case previous cache key is not foun
-      - setup_remote_docker:
-          version: default
       - run: 
           name: Installation of imagemagick
           command: |
