@@ -3,7 +3,7 @@ version: 2.0
 jobs:
   unit-tests:
     docker:
-      - image: circleci/openjdk:17-jdk-buster-node-browsers-legacy
+      - image: circleci/openjdk:14-jdk-buster-node-browsers-legacy
     resource_class: medium
     working_directory: ~/kp
     steps:
