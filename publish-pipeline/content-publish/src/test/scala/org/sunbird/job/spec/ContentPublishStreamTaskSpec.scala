@@ -74,7 +74,7 @@ class ContentPublishStreamTaskSpec extends BaseTestSpec {
   }
 
   def initialize(): Unit = {
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new ContentPublishEventSource)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)) //.thenReturn(new ContentPublishEventSource)
   }
 
   def getTimeStamp: String = {

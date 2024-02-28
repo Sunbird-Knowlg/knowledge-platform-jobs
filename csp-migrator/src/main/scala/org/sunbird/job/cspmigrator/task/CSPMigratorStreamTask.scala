@@ -1,13 +1,14 @@
 package org.sunbird.job.cspmigrator.task
 
 import com.typesafe.config.ConfigFactory
+import org.apache.flink.api.common.eventtime.WatermarkStrategy
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
-import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.cspmigrator.domain.Event
-import org.sunbird.job.cspmigrator.functions.{CSPNeo4jMigratorFunction, CSPCassandraMigratorFunction}
+import org.sunbird.job.cspmigrator.functions.{CSPCassandraMigratorFunction, CSPNeo4jMigratorFunction}
 import org.sunbird.job.util.{FlinkUtil, HttpUtil}
 
 import java.io.File
@@ -22,7 +23,7 @@ class CSPMigratorStreamTask(config: CSPMigratorConfig, kafkaConnector: FlinkKafk
     implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
 
-    val processStreamTask = env.addSource(kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)).name(config.eventConsumer)
+    val processStreamTask = env.fromSource(kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic), WatermarkStrategy.noWatermarks[Event](), config.eventConsumer)
       .uid(config.eventConsumer).setParallelism(config.kafkaConsumerParallelism)
       .rebalance
       .process(new CSPNeo4jMigratorFunction(config, httpUtil))
@@ -34,13 +35,13 @@ class CSPMigratorStreamTask(config: CSPMigratorConfig, kafkaConnector: FlinkKafk
     val cassandraStream = processStreamTask.getSideOutput(config.cassandraMigrationOutputTag).process(new CSPCassandraMigratorFunction(config, httpUtil))
       .name(config.cassandraMigratorFunction).uid(config.cassandraMigratorFunction).setParallelism(config.cassandraMigratorParallelism)
 
-    processStreamTask.getSideOutput(config.failedEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaFailedTopic))
-    processStreamTask.getSideOutput(config.generateVideoStreamingOutTag).addSink(kafkaConnector.kafkaStringSink(config.liveVideoStreamingTopic))
-    processStreamTask.getSideOutput(config.liveContentNodePublishEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.liveContentNodeRepublishTopic))
-    processStreamTask.getSideOutput(config.liveQuestionNodePublishEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.liveQuestionNodeRepublishTopic))
+    processStreamTask.getSideOutput(config.failedEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.kafkaFailedTopic))
+    processStreamTask.getSideOutput(config.generateVideoStreamingOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.liveVideoStreamingTopic))
+    processStreamTask.getSideOutput(config.liveContentNodePublishEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.liveContentNodeRepublishTopic))
+    processStreamTask.getSideOutput(config.liveQuestionNodePublishEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.liveQuestionNodeRepublishTopic))
 
-    cassandraStream.getSideOutput(config.liveCollectionNodePublishEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.liveContentNodeRepublishTopic))
-    cassandraStream.getSideOutput(config.liveQuestionSetNodePublishEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.liveQuestionNodeRepublishTopic))
+    cassandraStream.getSideOutput(config.liveCollectionNodePublishEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.liveContentNodeRepublishTopic))
+    cassandraStream.getSideOutput(config.liveQuestionSetNodePublishEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.liveQuestionNodeRepublishTopic))
 
     env.execute(config.jobName)
   }
