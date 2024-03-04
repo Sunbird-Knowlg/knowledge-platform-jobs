@@ -363,7 +363,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
     when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
     new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
 
-    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.compositeSearchIndex, jobConfig.compositeSearchIndexType)
+    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.compositeSearchIndex)
     val data = elasticUtil.getDocumentAsString("do_1132247274257203201191")
     data.isEmpty should be(false)
     data.contains("do_1132247274257203201191") should be(true)
@@ -378,7 +378,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
     when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
     new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
 
-    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.compositeSearchIndex, jobConfig.compositeSearchIndexType)
+    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.compositeSearchIndex)
     val data = elasticUtil.getDocumentAsString("do_1132247274257203201191")
     data.isEmpty should be(false)
     data.contains("do_1132247274257203201191") should be(true)
@@ -395,7 +395,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
     when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
     new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
 
-    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.compositeSearchIndex, jobConfig.compositeSearchIndexType)
+    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.compositeSearchIndex)
     val data = elasticUtil.getDocumentAsString("do_1132247274257203201191")
     data should be(null)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(2)
@@ -410,7 +410,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
     when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
     new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
 
-    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.compositeSearchIndex, jobConfig.compositeSearchIndexType)
+    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.compositeSearchIndex)
     val data = elasticUtil.getDocumentAsString("do_1132247274257203201191")
     data should be(null)
   }
@@ -420,7 +420,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
     when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
     new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
 
-    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.dialcodeExternalIndex, jobConfig.dialcodeExternalIndexType)
+    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.dialcodeExternalIndex)
     val data = elasticUtil.getDocumentAsString("X8R3W4")
     data.isEmpty should be(false)
     data.contains("X8R3W4") should be(true)
@@ -435,7 +435,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
     when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
     new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
 
-    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.dialcodeExternalIndex, jobConfig.dialcodeExternalIndexType)
+    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.dialcodeExternalIndex)
     val data = elasticUtil.getDocumentAsString("X8R3W4")
     data.isEmpty should be(false)
     data.contains("X8R3W4") should be(true)
@@ -452,7 +452,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
     when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
     new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
 
-    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.dialcodeExternalIndex, jobConfig.dialcodeExternalIndexType)
+    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.dialcodeExternalIndex)
     val data = elasticUtil.getDocumentAsString("X8R3W4")
     data should be(null)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(2)
@@ -467,7 +467,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
     when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
     new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
 
-    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.dialcodeExternalIndex, jobConfig.dialcodeExternalIndexType)
+    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.dialcodeExternalIndex)
     val data = elasticUtil.getDocumentAsString("X8R3W4")
     data should be(null)
   }
@@ -477,7 +477,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
     when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
     new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
 
-    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.dialcodeMetricIndex, jobConfig.dialcodeMetricIndexType)
+    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.dialcodeMetricIndex)
     val data = elasticUtil.getDocumentAsString("QR1234")
     data.isEmpty should be(false)
     data.contains("QR1234") should be(true)
@@ -492,7 +492,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
     when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
     new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
 
-    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.dialcodeMetricIndex, jobConfig.dialcodeMetricIndexType)
+    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.dialcodeMetricIndex)
     val data = elasticUtil.getDocumentAsString("QR1234")
     data.isEmpty should be(false)
     data.contains("QR1234") should be(true)
@@ -509,7 +509,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
     when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
     new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
 
-    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.dialcodeMetricIndex, jobConfig.dialcodeMetricIndexType)
+    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.dialcodeMetricIndex)
     val data = elasticUtil.getDocumentAsString("QR1234")
     data should be(null)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(2)
@@ -522,7 +522,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
     when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new CompositeSearchEventSource(List[String](EventFixture.DIALCODE_METRIC_UNKNOWN)))
     when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
     new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
-    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.dialcodeMetricIndex, jobConfig.dialcodeMetricIndexType)
+    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.dialcodeMetricIndex)
     val data = elasticUtil.getDocumentAsString("QR1234")
     data should be(null)
   }
