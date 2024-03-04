@@ -57,7 +57,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
     elasticContainer.waitingFor(Wait.forListeningPort())
     elasticContainer.start()
     Thread.sleep(20000)
-    println("elasticContainer.getHttpHostAddress -->" +elasticContainer.getHttpHostAddress + " host accessible -->"+elasticContainer.isHostAccessible)
+    
     restClient = RestClient
       .builder(HttpHost.create(elasticContainer.getHttpHostAddress))
       .setRequestConfigCallback(new RestClientBuilder.RequestConfigCallback() {
