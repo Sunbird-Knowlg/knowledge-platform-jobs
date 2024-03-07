@@ -14,11 +14,14 @@ trait AutoCreator extends ObjectUpdater with CollectionUpdater with HierarchyEnr
 
 	private[this] val logger = LoggerFactory.getLogger(classOf[AutoCreator])
 
-	def getObject(identifier: String, objType: String, downloadUrl: String, metaUrl: Option[String] = None)(implicit config: AutoCreatorV2Config, httpUtil: HttpUtil, objDef: ObjectDefinition): ObjectData = {
+	def getObject(identifier: String, objType: String, downloadUrl: String, metaUrl: Option[String] = None)(implicit config: AutoCreatorV2Config, httpUtil: HttpUtil, defCache: DefinitionCache): ObjectData = {
 		val extractPath = extractDataZip(identifier, downloadUrl)
 		val manifestData = getObjectDetails(identifier, extractPath, objType, metaUrl)
-		val metadata = manifestData.filterKeys(k => !(objDef.getRelationLabels().contains(k) || objDef.externalProperties.contains(k)))
-		val extData = manifestData.filterKeys(k => objDef.externalProperties.contains(k))
+		val schemaVersion = manifestData.getOrElse("schemaVersion", "").asInstanceOf[String]
+		val defVer = if (StringUtils.equalsIgnoreCase("1.1", schemaVersion)) schemaVersion else config.schemaSupportVersionMap.getOrElse(objType.toLowerCase(), "1.0").asInstanceOf[String]
+		val definition: ObjectDefinition = defCache.getDefinition(objType, defVer, config.definitionBasePath)
+		val metadata = manifestData.filterKeys(k => !(definition.getRelationLabels().contains(k) || definition.externalProperties.contains(k)))
+		val extData = manifestData.filterKeys(k => definition.externalProperties.contains(k))
 		val hierarchy = getHierarchy(extractPath, objType)(config)
 		val externalData = if (hierarchy.nonEmpty) extData ++ Map("hierarchy" -> hierarchy) else extData
 		new ObjectData(identifier, objType, metadata, Some(externalData), Some(hierarchy))
@@ -41,7 +44,8 @@ trait AutoCreator extends ObjectUpdater with CollectionUpdater with HierarchyEnr
       .find(p => StringUtils.equalsIgnoreCase(identifier, p.getOrElse("identifier", "").asInstanceOf[String])).getOrElse(Map())
     if (metaUrl.nonEmpty) {
       // TODO: deprecate setting "origin" after single sourcing refactoring.
-      val originData = s"""{\"identifier\": \"$identifier\",\"repository\":\"${metaUrl.head}\"}"""
+			val repoUrl = if(StringUtils.isNotBlank(metaUrl.head) && StringUtils.contains(metaUrl.head, "fields")) metaUrl.head.split("\\?")(0) else metaUrl.head
+      val originData = s"""{\"identifier\": \"$identifier\",\"repository\":\"${repoUrl}\"}"""
       val originDetails = Map[String, AnyRef]("origin" -> identifier, "originData" -> originData)
       val metadata = getMetaUrlData(metaUrl.head, objectType)(httpUtil) ++ originDetails
       manifestMetadata.++(metadata)
@@ -97,11 +101,14 @@ trait AutoCreator extends ObjectUpdater with CollectionUpdater with HierarchyEnr
 		children.flatMap(ch => {
 			logger.info("Processing Children Having Identifier : " + ch._1)
 			val objType = ch._2.asInstanceOf[Map[String, AnyRef]].getOrElse("objectType", "").asInstanceOf[String]
-			val definition: ObjectDefinition = defCache.getDefinition(objType, config.schemaSupportVersionMap.getOrElse(objType.toLowerCase(), "1.0").asInstanceOf[String], config.definitionBasePath)
+			val schemaVersion = ch._2.asInstanceOf[Map[String, AnyRef]].getOrElse("schemaVersion", "").asInstanceOf[String]
+			val defVer: String = if(StringUtils.equalsIgnoreCase("1.1", schemaVersion)) schemaVersion else config.schemaSupportVersionMap.getOrElse(objType.toLowerCase(), "1.0").asInstanceOf[String]
+			val definition: ObjectDefinition = defCache.getDefinition(objType, defVer, config.definitionBasePath)
 			val downloadUrl = ch._2.asInstanceOf[Map[String, AnyRef]].getOrElse("downloadUrl", "").asInstanceOf[String]
 			val props = definition.getSchemaProps() ++ definition.getExternalProps().keySet.toList
-			val repository = s"""${config.sourceBaseUrl}/${objType.toLowerCase}/v1/read/${ch._1}?fields=${props.mkString(",")}"""
-			val obj: ObjectData = getObject(ch._1, objType, downloadUrl, Some(repository))(config, httpUtil, definition)
+			val apiVer = if (StringUtils.equalsIgnoreCase("1.1", schemaVersion)) "v2" else "v1"
+			val repository = s"""${config.sourceBaseUrl}/${objType.toLowerCase}/${apiVer}/read/${ch._1}?fields=${props.mkString(",")}"""
+			val obj: ObjectData = getObject(ch._1, objType, downloadUrl, Some(repository))(config, httpUtil, defCache)
 			logger.debug("Graph metadata for " + obj.identifier + " : " + obj.metadata)
 			val enObj = enrichMetadata(obj, ch._2.asInstanceOf[Map[String, AnyRef]], overrideCloudProps = true)(config)
 			logger.debug("Enriched metadata for " + enObj.identifier + " : " + enObj.metadata)

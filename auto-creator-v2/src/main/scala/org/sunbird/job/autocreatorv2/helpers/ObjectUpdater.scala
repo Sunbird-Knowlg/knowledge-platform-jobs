@@ -17,7 +17,7 @@ trait ObjectUpdater {
 		val metadata = data - ("identifier", "objectType")
 		val metaQuery = metaDataQuery(metadata, objectDef)
 		val query = s"""MERGE (n:domain{IL_UNIQUE_ID:"$identifier"}) ON CREATE SET $metaQuery ON MATCH SET $metaQuery;"""
-		logger.debug("Graph Query: " + query)
+		logger.info("Graph Query: " + query)
 		val result: StatementResult = neo4JUtil.executeQuery(query)
 		if (null != result) {
 			logger.info("Object graph data stored successfully for " + identifier)
@@ -41,7 +41,7 @@ trait ObjectUpdater {
 				case _ => query.value(d._1, d._2)
 			}
 		})
-		logger.debug(s"Saving object external data for $identifier | Query : ${query.toString}")
+		logger.info(s"Saving object external data for $identifier | Query : ${query.toString}")
 		val result = cassandraUtil.upsert(query.toString)
 		if (result) {
 			logger.info(s"Object external data saved successfully for ${identifier}")
