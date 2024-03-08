@@ -99,8 +99,6 @@ class ElasticSearchUtil(connectionInfo: String, indexName: String, batchSize: In
     } catch {
       case e: IOException =>
         logger.error(s"ElasticSearchUtil:: Error while adding document to index : $indexName : " + e.getMessage)
-        e.printStackTrace()
-        throw e
     }
   }
 
