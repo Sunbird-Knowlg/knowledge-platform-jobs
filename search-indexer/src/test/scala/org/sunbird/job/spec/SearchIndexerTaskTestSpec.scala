@@ -44,15 +44,15 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
   val config: Config = ConfigFactory.load("test.conf")
   val jobConfig = new SearchIndexerConfig(config)
   val mockElasticUtil = mock[ElasticSearchUtil](Mockito.withSettings().serializable())
-  var elasticContainer = new ElasticsearchContainer(DockerImageName.parse("docker.elastic.co/elasticsearch/elasticsearch").withTag("7.17.13"))
+  var elasticContainer = new ElasticsearchContainer(DockerImageName.parse(jobConfig.esImage).withTag(jobConfig.esImageTag))
   var restClient: RestClient = _
   val defCache = new DefinitionCache()
 
   def setupElasticContainer(): Unit = {
     elasticContainer.setHostAccessible(true)
-    elasticContainer.setPortBindings(List("9200:9200").asJava)
-    elasticContainer.withEnv("ES_JAVA_OPTS", "-Xms128m -Xmx512m")
-    elasticContainer.withEnv("xpack.security.enabled", "false")
+    elasticContainer.setPortBindings(jobConfig.esPorts)
+    elasticContainer.withEnv(jobConfig.esJavaOptsKey, jobConfig.esJavaOpts)
+    elasticContainer.withEnv(jobConfig.xpackSecurityKey, jobConfig.xpackSecurityEnabled)
     elasticContainer.withStartupTimeout(Duration.ofSeconds(60))
     elasticContainer.waitingFor(Wait.forListeningPort())
     elasticContainer.start()
