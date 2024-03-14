@@ -8,6 +8,8 @@ import org.apache.flink.streaming.api.functions.sink.SinkFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext
 import org.apache.flink.test.util.MiniClusterWithClientResource
+import org.apache.http.HttpHost
+import org.elasticsearch.client.{Request, RestClient, RestClientBuilder}
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.Mockito
 import org.mockito.Mockito.{doNothing, times, verify, when}
@@ -19,8 +21,11 @@ import org.sunbird.job.searchindexer.functions.{CompositeSearchIndexerFunction, 
 import org.sunbird.job.searchindexer.task.{SearchIndexerConfig, SearchIndexerStreamTask}
 import org.sunbird.job.util.{ElasticSearchUtil, ScalaJsonUtil}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
-import pl.allegro.tech.embeddedelasticsearch.EmbeddedElastic
-
+import org.apache.http.client.config.RequestConfig
+import org.testcontainers.containers.wait.strategy.Wait
+import org.testcontainers.elasticsearch.ElasticsearchContainer
+import org.testcontainers.utility.DockerImageName
+import java.time.Duration
 import java.util
 import scala.collection.JavaConverters._
 
@@ -39,23 +44,40 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
   val config: Config = ConfigFactory.load("test.conf")
   val jobConfig = new SearchIndexerConfig(config)
   val mockElasticUtil = mock[ElasticSearchUtil](Mockito.withSettings().serializable())
-  var embeddedElastic: EmbeddedElastic = _
+  var elasticContainer = new ElasticsearchContainer(DockerImageName.parse(jobConfig.esImage).withTag(jobConfig.esImageTag))
+  var restClient: RestClient = _
   val defCache = new DefinitionCache()
+
+  def setupElasticContainer(): Unit = {
+    elasticContainer.setHostAccessible(true)
+    elasticContainer.setPortBindings(jobConfig.esPorts)
+    elasticContainer.withEnv(jobConfig.esJavaOptsKey, jobConfig.esJavaOpts)
+    elasticContainer.withEnv(jobConfig.xpackSecurityKey, jobConfig.xpackSecurityEnabled)
+    elasticContainer.withStartupTimeout(Duration.ofSeconds(60))
+    elasticContainer.waitingFor(Wait.forListeningPort())
+    elasticContainer.start()
+    Thread.sleep(20000)
+    
+    restClient = RestClient
+      .builder(HttpHost.create(elasticContainer.getHttpHostAddress))
+      .setRequestConfigCallback(new RestClientBuilder.RequestConfigCallback() {
+        override def customizeRequestConfig(requestConfigBuilder: RequestConfig.Builder): RequestConfig.Builder = {
+          requestConfigBuilder.setConnectionRequestTimeout(-1)
+        }
+      }).build()
+  }
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
-
-    embeddedElastic = EmbeddedElastic.builder()
-      .withElasticVersion("6.8.22")
-      .withEsJavaOpts("-Xms128m -Xmx512m")
-      .build()
-      .start()
+    setupElasticContainer()
     flinkCluster.before()
   }
 
   override protected def afterAll(): Unit = {
     super.afterAll()
-    embeddedElastic.stop()
+    if(elasticContainer != null){
+      elasticContainer.stop()
+    }
     flinkCluster.after()
   }
 
@@ -341,7 +363,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
     when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
     new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
 
-    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.compositeSearchIndex, jobConfig.compositeSearchIndexType)
+    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.compositeSearchIndex)
     val data = elasticUtil.getDocumentAsString("do_1132247274257203201191")
     data.isEmpty should be(false)
     data.contains("do_1132247274257203201191") should be(true)
@@ -356,7 +378,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
     when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
     new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
 
-    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.compositeSearchIndex, jobConfig.compositeSearchIndexType)
+    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.compositeSearchIndex)
     val data = elasticUtil.getDocumentAsString("do_1132247274257203201191")
     data.isEmpty should be(false)
     data.contains("do_1132247274257203201191") should be(true)
@@ -368,12 +390,12 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
   }
 
   "Composite Search Indexer" should " create and delete the Data Node " in {
-    embeddedElastic.deleteIndices()
+    restClient.performRequest(new Request("DELETE", "/_all"))
     when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new CompositeSearchEventSource(List[String](EventFixture.DATA_NODE_CREATE, EventFixture.DATA_NODE_DELETE)))
     when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
     new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
 
-    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.compositeSearchIndex, jobConfig.compositeSearchIndexType)
+    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.compositeSearchIndex)
     val data = elasticUtil.getDocumentAsString("do_1132247274257203201191")
     data should be(null)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(2)
@@ -383,12 +405,12 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
   }
 
   "Composite Search Indexer" should " do nothing for the Data Node due to UNKNOWN Operation " in {
-    embeddedElastic.deleteIndices()
+    restClient.performRequest(new Request("DELETE", "/_all"))
     when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new CompositeSearchEventSource(List[String](EventFixture.DATA_NODE_UNKNOWN)))
     when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
     new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
 
-    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.compositeSearchIndex, jobConfig.compositeSearchIndexType)
+    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.compositeSearchIndex)
     val data = elasticUtil.getDocumentAsString("do_1132247274257203201191")
     data should be(null)
   }
@@ -398,7 +420,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
     when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
     new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
 
-    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.dialcodeExternalIndex, jobConfig.dialcodeExternalIndexType)
+    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.dialcodeExternalIndex)
     val data = elasticUtil.getDocumentAsString("X8R3W4")
     data.isEmpty should be(false)
     data.contains("X8R3W4") should be(true)
@@ -413,7 +435,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
     when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
     new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
 
-    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.dialcodeExternalIndex, jobConfig.dialcodeExternalIndexType)
+    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.dialcodeExternalIndex)
     val data = elasticUtil.getDocumentAsString("X8R3W4")
     data.isEmpty should be(false)
     data.contains("X8R3W4") should be(true)
@@ -425,12 +447,12 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
   }
 
   "Composite Search Indexer" should " create and delete the External Dialcode Data " in {
-    embeddedElastic.deleteIndices()
+    restClient.performRequest(new Request("DELETE", "/_all"))
     when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new CompositeSearchEventSource(List[String](EventFixture.DIALCODE_EXTERNAL_CREATE, EventFixture.DIALCODE_EXTERNAL_DELETE)))
     when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
     new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
 
-    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.dialcodeExternalIndex, jobConfig.dialcodeExternalIndexType)
+    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.dialcodeExternalIndex)
     val data = elasticUtil.getDocumentAsString("X8R3W4")
     data should be(null)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(2)
@@ -440,12 +462,12 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
   }
 
   "Composite Search Indexer" should " do nothing for the External Dialcode Data due to UNKNOWN Operation " in {
-    embeddedElastic.deleteIndices()
+    restClient.performRequest(new Request("DELETE", "/_all"))
     when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new CompositeSearchEventSource(List[String](EventFixture.DIALCODE_EXTERNAL_UNKNOWN)))
     when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
     new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
 
-    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.dialcodeExternalIndex, jobConfig.dialcodeExternalIndexType)
+    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.dialcodeExternalIndex)
     val data = elasticUtil.getDocumentAsString("X8R3W4")
     data should be(null)
   }
@@ -455,7 +477,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
     when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
     new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
 
-    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.dialcodeMetricIndex, jobConfig.dialcodeMetricIndexType)
+    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.dialcodeMetricIndex)
     val data = elasticUtil.getDocumentAsString("QR1234")
     data.isEmpty should be(false)
     data.contains("QR1234") should be(true)
@@ -470,7 +492,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
     when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
     new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
 
-    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.dialcodeMetricIndex, jobConfig.dialcodeMetricIndexType)
+    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.dialcodeMetricIndex)
     val data = elasticUtil.getDocumentAsString("QR1234")
     data.isEmpty should be(false)
     data.contains("QR1234") should be(true)
@@ -482,12 +504,12 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
   }
 
   "Composite Search Indexer" should " create and delete the Dialcode Metrics Data " in {
-    embeddedElastic.deleteIndices()
+    restClient.performRequest(new Request("DELETE", "/_all"))
     when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new CompositeSearchEventSource(List[String](EventFixture.DIALCODE_METRIC_CREATE, EventFixture.DIALCODE_METRIC_DELETE)))
     when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
     new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
 
-    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.dialcodeMetricIndex, jobConfig.dialcodeMetricIndexType)
+    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.dialcodeMetricIndex)
     val data = elasticUtil.getDocumentAsString("QR1234")
     data should be(null)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(2)
@@ -500,7 +522,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
     when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new CompositeSearchEventSource(List[String](EventFixture.DIALCODE_METRIC_UNKNOWN)))
     when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
     new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
-    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.dialcodeMetricIndex, jobConfig.dialcodeMetricIndexType)
+    val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.dialcodeMetricIndex)
     val data = elasticUtil.getDocumentAsString("QR1234")
     data should be(null)
   }
@@ -522,7 +544,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
   }
 
   "Composite Search Indexer" should " give error for the External Dialcode Data due to UNKNOWN objectType " in {
-    embeddedElastic.deleteIndices()
+    restClient.performRequest(new Request("DELETE", "/_all"))
     when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new CompositeSearchEventSource(List[String](EventFixture.DATA_NODE_FAILED)))
     when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
     intercept[Exception] {

@@ -23,7 +23,7 @@ class CompositeSearchIndexerFunction(config: SearchIndexerConfig,
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
-    elasticUtil = new ElasticSearchUtil(config.esConnectionInfo, config.compositeSearchIndex, config.compositeSearchIndexType)
+    elasticUtil = new ElasticSearchUtil(config.esConnectionInfo, config.compositeSearchIndex)
     createCompositeSearchIndex()(elasticUtil)
   }
 
