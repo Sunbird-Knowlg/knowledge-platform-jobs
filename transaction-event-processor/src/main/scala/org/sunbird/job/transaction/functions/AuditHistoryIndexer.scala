@@ -25,7 +25,7 @@ class AuditHistoryIndexer(config: TransactionEventProcessorConfig, var esUtil: E
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
     if (esUtil == null) {
-      esUtil = new ElasticSearchUtil(config.esConnectionInfo, config.auditHistoryIndex)
+      esUtil = new ElasticSearchUtil(config.esConnectionInfo, config.auditHistoryIndex, config.auditHistoryIndexType)
     }
   }
 

@@ -2,8 +2,8 @@ version: 2.0
 
 jobs:
   unit-tests:
-    machine:
-      image: ubuntu-2004:202201-02
+    docker:
+      - image: circleci/openjdk:14-jdk-buster-node-browsers-legacy
     resource_class: medium
     working_directory: ~/kp
     steps:

@@ -72,11 +72,4 @@ class SearchIndexerConfig(override val config: Config) extends BaseJobConfig(con
   val ignoredFields: List[String] = if (config.hasPath("ignored.fields")) config.getStringList("ignored.fields").asScala.toList else List("responseDeclaration", "body")
 
   val isrRelativePathEnabled: Boolean = if (config.hasPath("cloudstorage.metadata.replace_absolute_path")) config.getBoolean("cloudstorage.metadata.replace_absolute_path") else false
-  val esImage: String = if (config.hasPath("es.image")) config.getString("es.image") else "docker.elastic.co/elasticsearch/elasticsearch"
-  val esImageTag: String = if (config.hasPath("es.imageTag")) config.getString("es.imageTag") else "7.17.13"
-  val esPorts : util.List[String] = if (config.hasPath("es.ports")) config.getStringList("es.ports") else List("9200:9200").asJava
-  val esJavaOpts: String = if (config.hasPath("es.javaOpts")) config.getString("es.javaOpts") else "-Xms128m -Xmx512m"
-  val esJavaOptsKey: String = if (config.hasPath("es.javaOptsKey")) config.getString("es.javaOptsKey") else "ES_JAVA_OPTS"
-  val xpackSecurityEnabled: String = if (config.hasPath("es.xpackSecurityEnabled")) config.getString("es.xpackSecurityEnabled") else "false"
-  val xpackSecurityKey: String = if (config.hasPath("es.xpackSecurityKey")) config.getString("es.xpackSecurityKey") else "xpack.security.enabled"
 }

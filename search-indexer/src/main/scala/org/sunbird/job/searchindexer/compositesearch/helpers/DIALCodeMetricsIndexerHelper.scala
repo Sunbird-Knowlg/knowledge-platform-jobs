@@ -11,7 +11,7 @@ trait DIALCodeMetricsIndexerHelper {
 
   def createDialCodeIndex()(esUtil: ElasticSearchUtil): Boolean = {
     val settings: String = """{"number_of_shards":5}"""
-    val mappings: String = """{"dynamic":false,"properties":{"dial_code":{"type":"keyword"},"total_dial_scans_local":{"type":"double"},"total_dial_scans_global":{"type":"double"},"average_scans_per_day":{"type":"double"},"last_scan":{"type":"date","format":"strict_date_optional_time||epoch_millis"},"first_scan":{"type":"date","format":"strict_date_optional_time||epoch_millis"}}}"""
+    val mappings: String = """{"dcm":{"dynamic":false,"properties":{"dial_code":{"type":"keyword"},"total_dial_scans_local":{"type":"double"},"total_dial_scans_global":{"type":"double"},"average_scans_per_day":{"type":"double"},"last_scan":{"type":"date","format":"strict_date_optional_time||epoch_millis"},"first_scan":{"type":"date","format":"strict_date_optional_time||epoch_millis"}}}}"""
     esUtil.addIndex(settings, mappings)
   }
 

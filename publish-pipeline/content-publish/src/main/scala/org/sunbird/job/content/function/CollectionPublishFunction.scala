@@ -47,7 +47,7 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
     super.open(parameters)
     cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort, config)
     neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName, config)
-    esUtil = new ElasticSearchUtil(config.esConnectionInfo, config.compositeSearchIndexName)
+    esUtil = new ElasticSearchUtil(config.esConnectionInfo, config.compositeSearchIndexName, config.compositeSearchIndexType)
     cloudStorageUtil = new CloudStorageUtil(config)
     ec = ExecutionContexts.global
     definitionCache = new DefinitionCache()
