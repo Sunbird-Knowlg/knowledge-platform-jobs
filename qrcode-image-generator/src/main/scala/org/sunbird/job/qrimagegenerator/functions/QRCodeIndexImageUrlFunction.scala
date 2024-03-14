@@ -24,7 +24,7 @@ class QRCodeIndexImageUrlFunction(config: QRCodeImageGeneratorConfig,
 
   override def open(parameters: Configuration): Unit = {
     cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort, config)
-    esUtil = new ElasticSearchUtil(config.esConnectionInfo, config.dialcodeExternalIndex, config.dialcodeExternalIndexType)
+    esUtil = new ElasticSearchUtil(config.esConnectionInfo, config.dialcodeExternalIndex)
     qRCodeImageGeneratorUtil = new QRCodeImageGeneratorUtil(config, cassandraUtil, cloudStorageUtil, esUtil)
     super.open(parameters)
   }
