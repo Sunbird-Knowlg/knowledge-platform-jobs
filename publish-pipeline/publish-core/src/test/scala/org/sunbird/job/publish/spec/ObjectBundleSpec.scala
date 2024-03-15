@@ -25,8 +25,7 @@ class ObjectBundleSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
   implicit val publishConfig: PublishConfig = new PublishConfig(config, "")
   //	implicit val cloudStorageUtil: CloudStorageUtil = new CloudStorageUtil(publishConfig)
   implicit val mockNeo4JUtil: Neo4JUtil = mock[Neo4JUtil](Mockito.withSettings().serializable())
-  implicit val ec: ExecutionContextExecutor = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(5))
-
+  implicit val ec: ExecutionContextExecutor = ExecutionContext.global
   val definitionBasePath: String = if (config.hasPath("schema.basePath")) config.getString("schema.basePath") else "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local"
   val schemaSupportVersionMap = if (config.hasPath("schema.supportedVersion")) config.getObject("schema.supportedVersion").unwrapped().asScala.toMap else Map[String, AnyRef]()
   implicit val defCache = new DefinitionCache()

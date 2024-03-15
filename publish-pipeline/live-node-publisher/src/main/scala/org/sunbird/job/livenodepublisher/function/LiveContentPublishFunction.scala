@@ -22,7 +22,7 @@ import org.sunbird.job.{BaseProcessFunction, Metrics}
 import java.lang.reflect.Type
 import java.util.UUID
 import java.util.concurrent.Executors
-import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
+import scala.concurrent.ExecutionContext
 
 class LiveContentPublishFunction(config: LiveNodePublisherConfig, httpUtil: HttpUtil,
                                  @transient var neo4JUtil: Neo4JUtil = null,
@@ -47,7 +47,7 @@ class LiveContentPublishFunction(config: LiveNodePublisherConfig, httpUtil: Http
     cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort, config)
     neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName, config)
     cloudStorageUtil = new CloudStorageUtil(config)
-    implicit val ec: ExecutionContextExecutor = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(5))
+    ec = ExecutionContext.global
     definitionCache = new DefinitionCache()
     definitionConfig = DefinitionConfig(config.schemaSupportVersionMap, config.definitionBasePath)
     cache = new DataCache(config, new RedisConnect(config), config.nodeStore, List())

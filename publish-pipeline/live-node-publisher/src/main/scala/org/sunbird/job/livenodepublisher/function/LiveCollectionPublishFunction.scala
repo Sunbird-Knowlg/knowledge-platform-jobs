@@ -50,7 +50,7 @@ class LiveCollectionPublishFunction(config: LiveNodePublisherConfig, httpUtil: H
     neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName, config)
     esUtil = new ElasticSearchUtil(config.esConnectionInfo, config.compositeSearchIndexName, config.compositeSearchIndexType)
     cloudStorageUtil = new CloudStorageUtil(config)
-    implicit val ec: ExecutionContextExecutor = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(5))
+    ec = ExecutionContext.global
     definitionCache = new DefinitionCache()
     definitionConfig = DefinitionConfig(config.schemaSupportVersionMap, config.definitionBasePath)
     cache = new DataCache(config, new RedisConnect(config), config.nodeStore, List())

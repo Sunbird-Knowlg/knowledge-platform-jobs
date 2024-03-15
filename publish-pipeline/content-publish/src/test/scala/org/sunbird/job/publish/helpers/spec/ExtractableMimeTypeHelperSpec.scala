@@ -10,11 +10,11 @@ import org.sunbird.job.publish.core.ObjectData
 import org.sunbird.job.util.CloudStorageUtil
 
 import java.util.concurrent.Executors
-import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
+import scala.concurrent.ExecutionContext
 
 class ExtractableMimeTypeHelperSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
 
-  implicit val ec: ExecutionContextExecutor = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(5))
+  implicit val ec: ExecutionContext = ExecutionContext.global
   val config: Config = ConfigFactory.load("test.conf").withFallback(ConfigFactory.systemEnvironment())
   val jobConfig: ContentPublishConfig = new ContentPublishConfig(config)
   implicit val cloudStorageUtil = new CloudStorageUtil(jobConfig)

@@ -32,7 +32,7 @@ class LiveCollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with M
   val config: Config = ConfigFactory.load("test.conf").withFallback(ConfigFactory.systemEnvironment())
   val jobConfig: LiveNodePublisherConfig = new LiveNodePublisherConfig(config)
   implicit val cloudStorageUtil: CloudStorageUtil = new CloudStorageUtil(jobConfig)
-  implicit val ec: ExecutionContextExecutor = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(1))
+  implicit val ec: ExecutionContextExecutor = ExecutionContext.global
   implicit val defCache: DefinitionCache = new DefinitionCache()
   implicit val defConfig: DefinitionConfig = DefinitionConfig(jobConfig.schemaSupportVersionMap, jobConfig.definitionBasePath)
   implicit val publishConfig: PublishConfig = jobConfig.asInstanceOf[PublishConfig]

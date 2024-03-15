@@ -15,7 +15,7 @@ import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
 
 class ExtractableMimeTypeHelperSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
 
-  implicit val ec: ExecutionContextExecutor = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(1))
+  implicit val ec: ExecutionContextExecutor = ExecutionContext.global
   val config: Config = ConfigFactory.load("test.conf").withFallback(ConfigFactory.systemEnvironment())
   val jobConfig: LiveNodePublisherConfig = new LiveNodePublisherConfig(config)
   implicit val cloudStorageUtil = new CloudStorageUtil(jobConfig)
