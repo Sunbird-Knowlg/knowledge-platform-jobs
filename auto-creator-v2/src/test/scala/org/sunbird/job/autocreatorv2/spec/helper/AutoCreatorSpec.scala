@@ -58,7 +58,7 @@ class AutoCreatorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with
 
 	"getObject" should "return a valid object" in {
 		val downloadUrl = "https://dockstorage.blob.core.windows.net/sunbird-content-dock/questionset/do_113244425048121344131/added1_1616751462043_do_113244425048121344131_1_SPINE.ecar"
-		val result = new TestAutoCreator().getObject("do_113244425048121344131", "QuestionSet", downloadUrl)(jobConfig, httpUtil, qsDefinition)
+		val result = new TestAutoCreator().getObject("do_113244425048121344131", "QuestionSet", downloadUrl)(jobConfig, httpUtil, defCache)
 		result.identifier shouldEqual "do_113244425048121344131"
 		result.metadata.nonEmpty shouldBe(true)
 	}

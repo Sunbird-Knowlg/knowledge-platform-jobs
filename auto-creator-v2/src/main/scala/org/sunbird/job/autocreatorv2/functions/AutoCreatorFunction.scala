@@ -1,5 +1,6 @@
 package org.sunbird.job.autocreatorv2.functions
 
+import org.apache.commons.lang3.StringUtils
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
@@ -48,8 +49,11 @@ class AutoCreatorFunction(config: AutoCreatorV2Config, httpUtil: HttpUtil,
     if (event.isValid) {
       logger.info("Processing event for bulk approval operation having identifier : " + event.objectId)
       logger.debug("event edata : " + event.eData)
-      val definition: ObjectDefinition = defCache.getDefinition(event.objectType, config.schemaSupportVersionMap.getOrElse(event.objectType.toLowerCase(), "1.0").asInstanceOf[String], config.definitionBasePath)
-      val obj: ObjectData = getObject(event.objectId, event.objectType, event.downloadUrl, event.repository)(config, httpUtil, definition)
+      val obj: ObjectData = getObject(event.objectId, event.objectType, event.downloadUrl, event.repository)(config, httpUtil, defCache)
+      val schemaVersion = obj.metadata.getOrElse("schemaVersion", "1.0").asInstanceOf[String]
+      val defVer: String = if (StringUtils.equalsIgnoreCase("1.1", schemaVersion)) schemaVersion else config.schemaSupportVersionMap.getOrElse(event.objectType.toLowerCase(), "1.0").asInstanceOf[String]
+      logger.info("Fetching Schema With Version " + defVer)
+      val definition: ObjectDefinition = defCache.getDefinition(event.objectType, defVer, config.definitionBasePath)
       logger.debug("Constructed the ObjectData for " + obj.identifier)
       val enObj = enrichMetadata(obj, event.metadata)(config)
       logger.info("Enriched metadata for " + enObj.identifier)
