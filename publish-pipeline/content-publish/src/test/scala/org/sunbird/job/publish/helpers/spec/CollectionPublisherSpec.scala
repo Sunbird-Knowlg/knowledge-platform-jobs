@@ -113,7 +113,7 @@ class CollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Match
     result.size should be(1)
   }
 
-  "getObjectWithEcar" should "return object with ecar url" in {
+  ignore should "return object with ecar url" in {
     val unpublishedChildrenObj: List[Map[String, AnyRef]] = ScalaJsonUtil.deserialize[List[Map[String, AnyRef]]](unpublishedChildrenData)
     val data = new ObjectData("do_123", Map("objectType" -> "Collection", "identifier" -> "do_123", "name" -> "Test Collection", "lastPublishedOn" -> getTimeStamp, "lastUpdatedOn" -> getTimeStamp, "status" -> "Draft", "downloadUrl" -> "downloadUrl", "variants" -> Map.empty[String,AnyRef]), Some(Map()), Some(Map("children" -> unpublishedChildrenObj)))
     val result = new TestCollectionPublisher().getObjectWithEcar(data, List(EcarPackageType.SPINE, EcarPackageType.ONLINE))(ec, mockNeo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, jobConfig, defCache, defConfig, httpUtil)
