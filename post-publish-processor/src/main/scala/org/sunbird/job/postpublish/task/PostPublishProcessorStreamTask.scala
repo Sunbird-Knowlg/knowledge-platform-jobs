@@ -1,10 +1,11 @@
 package org.sunbird.job.postpublish.task
 
 import com.typesafe.config.ConfigFactory
+import org.apache.flink.api.common.eventtime.WatermarkStrategy
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
-import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.postpublish.domain.Event
 import org.sunbird.job.postpublish.functions._
@@ -24,7 +25,7 @@ class PostPublishProcessorStreamTask(config: PostPublishProcessorConfig, kafkaCo
 
     val source = kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)
 
-    val processStreamTask = env.addSource(source).name(config.inputConsumerName)
+    val processStreamTask = env.fromSource(source, WatermarkStrategy.noWatermarks[Event](), config.inputConsumerName)
       .uid(config.inputConsumerName).setParallelism(config.kafkaConsumerParallelism)
       .rebalance
       .process(new PostPublishEventRouter(config, httpUtil))
@@ -39,20 +40,20 @@ class PostPublishProcessorStreamTask(config: PostPublishProcessorConfig, kafkaCo
       .name("shallow-content-publish").uid("shallow-content-publish")
       .setParallelism(config.shallowCopyParallelism)
 
-    shallowCopyPublishStream.getSideOutput(config.publishEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.contentPublishTopic))
+    shallowCopyPublishStream.getSideOutput(config.publishEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.contentPublishTopic))
       .name("shallow-content-publish-producer").uid("shallow-content-publish-producer")
 
     val linkDialCodeStream = processStreamTask.getSideOutput(config.linkDIALCodeOutTag)
       .process(new DIALCodeLinkFunction(config, httpUtil))
       .name("dialcode-link-process").uid("dialcode-link-process").setParallelism(config.linkDialCodeParallelism)
 
-    linkDialCodeStream.getSideOutput(config.generateQRImageOutTag).addSink(kafkaConnector.kafkaStringSink(config.QRImageGeneratorTopic))
+    linkDialCodeStream.getSideOutput(config.generateQRImageOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.QRImageGeneratorTopic))
 
     val dialcodeContextUpdaterStream = processStreamTask.getSideOutput(config.dialcodeContextOutTag)
       .process(new DialCodeContextUpdaterFunction(config))
       .name("dialcode-context-updater-process").uid("dialcode-context-updater-process").setParallelism(config.dialcodeContextUpdaterParallelism)
 
-    dialcodeContextUpdaterStream.getSideOutput(config.dialcodeContextUpdaterOutTag).addSink(kafkaConnector.kafkaStringSink(config.dialcodeContextUpdaterTopic))
+    dialcodeContextUpdaterStream.getSideOutput(config.dialcodeContextUpdaterOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.dialcodeContextUpdaterTopic))
 
     env.execute(config.jobName)
   }

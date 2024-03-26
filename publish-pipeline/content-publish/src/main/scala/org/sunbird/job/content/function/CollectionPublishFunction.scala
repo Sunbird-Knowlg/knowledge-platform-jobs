@@ -1,6 +1,6 @@
 package org.sunbird.job.content.function
 
-import akka.dispatch.ExecutionContexts
+//import akka.dispatch.ExecutionContexts
 import com.google.gson.reflect.TypeToken
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
@@ -21,6 +21,7 @@ import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import java.lang.reflect.Type
 import java.util.UUID
+import java.util.concurrent.Executors
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
 
@@ -49,7 +50,7 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
     neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName, config)
     esUtil = new ElasticSearchUtil(config.esConnectionInfo, config.compositeSearchIndexName, config.compositeSearchIndexType)
     cloudStorageUtil = new CloudStorageUtil(config)
-    ec = ExecutionContexts.global
+    ec = ExecutionContext.global
     definitionCache = new DefinitionCache()
     definitionConfig = DefinitionConfig(config.schemaSupportVersionMap, config.definitionBasePath)
     cache = new DataCache(config, new RedisConnect(config), config.nodeStore, List())

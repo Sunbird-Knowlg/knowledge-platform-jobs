@@ -1,6 +1,6 @@
 package org.sunbird.job.livenodepublisher.publish.helpers.spec
 
-import akka.dispatch.ExecutionContexts
+//import akka.dispatch.ExecutionContexts
 import com.typesafe.config.{Config, ConfigFactory}
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
@@ -10,9 +10,12 @@ import org.sunbird.job.exception.InvalidInputException
 import org.sunbird.job.publish.core.ObjectData
 import org.sunbird.job.util.CloudStorageUtil
 
+import java.util.concurrent.Executors
+import scala.concurrent.{ExecutionContext, ExecutionContextExecutor}
+
 class ExtractableMimeTypeHelperSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
 
-  implicit val ec = ExecutionContexts.global
+  implicit val ec: ExecutionContextExecutor = ExecutionContext.global
   val config: Config = ConfigFactory.load("test.conf").withFallback(ConfigFactory.systemEnvironment())
   val jobConfig: LiveNodePublisherConfig = new LiveNodePublisherConfig(config)
   implicit val cloudStorageUtil = new CloudStorageUtil(jobConfig)

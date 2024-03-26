@@ -77,7 +77,7 @@ class LiveVideoStreamGeneratorTaskTestSpec extends BaseTestSpec {
   }
 
   ignore should "submit a job" in {
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new VideoStreamGeneratorMapSource)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic))//.thenReturn(new VideoStreamGeneratorMapSource)
 
     when(mockHttpUtil.post_map(contains("/oauth2/token"), any[Map[String, AnyRef]](), any[Map[String, String]]())).thenReturn(HTTPResponse(200, accessTokenResp))
     when(mockHttpUtil.put(contains("/providers/Microsoft.Media/mediaServices/"+jobConfig.getSystemConfig("azure.account.name")+"/assets/asset-"), anyString(), any())).thenReturn(HTTPResponse(200, assetJson))

@@ -1,6 +1,6 @@
 package org.sunbird.job.publish.helpers.spec
 
-import akka.dispatch.ExecutionContexts
+//import akka.dispatch.ExecutionContexts
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.commons.lang3.StringUtils
 import org.cassandraunit.CQLDataLoader
@@ -18,7 +18,8 @@ import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData
 import org.sunbird.job.publish.helpers.EcarPackageType
 import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, Neo4JUtil}
 
-import scala.concurrent.ExecutionContextExecutor
+import java.util.concurrent.Executors
+import scala.concurrent.ExecutionContext
 
 class ContentPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
 
@@ -28,7 +29,7 @@ class ContentPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers
   val jobConfig: ContentPublishConfig = new ContentPublishConfig(config)
   implicit val readerConfig: ExtDataConfig = ExtDataConfig(jobConfig.contentKeyspaceName, jobConfig.contentTableName)
   implicit val cloudStorageUtil: CloudStorageUtil = new CloudStorageUtil(jobConfig)
-  implicit val ec: ExecutionContextExecutor = ExecutionContexts.global
+  implicit val ec: ExecutionContext = ExecutionContext.global
   implicit val defCache: DefinitionCache = new DefinitionCache()
   implicit val defConfig: DefinitionConfig = DefinitionConfig(jobConfig.schemaSupportVersionMap, jobConfig.definitionBasePath)
   implicit val publishConfig: PublishConfig = jobConfig.asInstanceOf[PublishConfig]
