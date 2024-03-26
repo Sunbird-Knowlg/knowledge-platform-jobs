@@ -80,10 +80,6 @@
                     <groupId>org.apache.flink</groupId>
                 </exclusion>
                 <exclusion>
-                    <artifactId>flink-clients</artifactId>
-                    <groupId>org.apache.flink</groupId>
-                </exclusion>
-                <exclusion>
                     <artifactId>junit-jupiter</artifactId>
                     <groupId>org.junit.jupiter</groupId>
                 </exclusion>
