@@ -56,7 +56,7 @@
             <groupId>org.apache.flink</groupId>
             <artifactId>flink-rpc-akka-loader</artifactId>
             <version>1.15.2</version>
-            <scope>test</scope>
+            <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.flink</groupId>
