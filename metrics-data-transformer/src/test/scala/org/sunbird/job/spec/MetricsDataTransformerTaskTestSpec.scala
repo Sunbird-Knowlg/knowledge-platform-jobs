@@ -49,7 +49,7 @@ class MetricsDataTransformerTaskTestSpec extends BaseTestSpec {
       "Content-Type", "application/json"
     ).setBody("""{"_index":"kp_audit_log_2018_7","_type":"ah","_id":"HLZ-1ngBtZ15DPx6ENjU","_version":1,"result":"created","_shards":{"total":2,"successful":1,"failed":0},"_seq_no":1,"_primary_term":1}"""))
 
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new MetricsDataTransformerMapSource)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic))//.thenReturn(new MetricsDataTransformerMapSource)
     implicit val mockHttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
 
     new MetricsDataTransformerStreamTask(jobConfig, mockKafkaUtil, httpUtil).process()

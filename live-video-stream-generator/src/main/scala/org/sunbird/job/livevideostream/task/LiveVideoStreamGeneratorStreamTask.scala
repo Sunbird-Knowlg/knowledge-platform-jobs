@@ -3,10 +3,11 @@ package org.sunbird.job.livevideostream.task
 import java.io.File
 import java.util
 import com.typesafe.config.ConfigFactory
+import org.apache.flink.api.common.eventtime.WatermarkStrategy
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
-import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.livevideostream.domain.Event
 import org.sunbird.job.livevideostream.functions.LiveVideoStreamGenerator
@@ -21,7 +22,7 @@ class LiveVideoStreamGeneratorStreamTask(config: LiveVideoStreamGeneratorConfig,
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
 
     val source = kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)
-    env.addSource(source).name(config.videoStreamConsumer)
+    env.fromSource(source, WatermarkStrategy.noWatermarks[Event](), config.videoStreamConsumer)
       .uid(config.videoStreamConsumer).setParallelism(config.kafkaConsumerParallelism)
       .rebalance
       .keyBy(_.identifier)

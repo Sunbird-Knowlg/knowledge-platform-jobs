@@ -14,6 +14,7 @@ import org.cassandraunit.utils.EmbeddedCassandraServerHelper
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.Mockito
 import org.mockito.Mockito.when
+import org.mockito.stubbing.OngoingStubbing
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.content.function.CollectionPublishFunction
 import org.sunbird.job.content.publish.domain.Event
@@ -74,7 +75,7 @@ class ContentPublishStreamTaskSpec extends BaseTestSpec {
   }
 
   def initialize(): Unit = {
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new ContentPublishEventSource)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).asInstanceOf[OngoingStubbing[ContentPublishEventSource]].thenReturn(new ContentPublishEventSource)
   }
 
   def getTimeStamp: String = {

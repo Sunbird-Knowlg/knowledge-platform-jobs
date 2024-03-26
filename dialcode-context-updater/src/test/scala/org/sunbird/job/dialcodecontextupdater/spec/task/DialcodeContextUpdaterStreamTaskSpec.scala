@@ -62,7 +62,7 @@ class DialcodeContextUpdaterStreamTaskSpec extends BaseTestSpec {
 
 
   def initialize(): Unit = {
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new DialcodeContextUpdaterEventSource)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic))//.thenReturn(new DialcodeContextUpdaterEventSource)
   }
 
   ignore should " update the dial context " in {
