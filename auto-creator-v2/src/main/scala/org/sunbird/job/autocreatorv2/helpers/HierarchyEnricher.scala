@@ -57,7 +57,7 @@ trait HierarchyEnricher {
 	}
 
 	def getChildData(data: Map[String, AnyRef])(implicit config: AutoCreatorV2Config): Map[String, AnyRef] = {
-		val props = config.cloudProps ++ List("objectType")
+		val props = config.cloudProps ++ List("objectType","schemaVersion")
 		props.filter(x => data.get(x).nonEmpty).map(prop => (prop, data.getOrElse(prop, ""))).toMap
 	}
 
