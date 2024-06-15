@@ -96,8 +96,7 @@ abstract class AzureMediaService extends IMediaService {
 
     val baseUrl: String = new StringBuilder().append(config.getConfig("azure_mediakind.api.endpoint")+"/ams/")
       .append(projectName).mkString
-
-
+    
     apiName.toLowerCase() match {
       case "asset" => baseUrl + "/assets/assetId"
       case "job" => baseUrl + "/transforms/" + transformName + "/jobs/jobIdentifier"
