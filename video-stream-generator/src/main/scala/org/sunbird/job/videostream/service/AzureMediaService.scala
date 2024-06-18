@@ -13,7 +13,6 @@ import scala.collection.immutable.HashMap
 abstract class AzureMediaService extends IMediaService {
 
   private var API_ACCESS_TOKEN: String = ""
-
   private def getToken()(implicit config: VideoStreamGeneratorConfig, httpUtil: HttpUtil): String = {
     val tenant = config.getSystemConfig("azure.tenant")
     val clientKey = config.getSystemConfig("azure.token.client_key")
@@ -51,9 +50,11 @@ abstract class AzureMediaService extends IMediaService {
   }
 
   protected def createAsset(assetId: String, jobId: String)(implicit config: VideoStreamGeneratorConfig, httpUtil: HttpUtil): MediaResponse = {
+    val accountName: String = config.getConfig("azure_mediakind.account_name")
     val url = getApiUrl("asset").replace("assetId", assetId)
     val requestBody = AzureRequestBody.create_asset.replace("assetId", assetId)
       .replace("assetDescription", "Output Asset for " + jobId)
+      .replace("assetStorageAccountName", accountName)
     val response:MediaResponse = Response.getResponse(httpUtil.put(url, requestBody, getDefaultHeader()))
     if(response.responseCode == "OK"){
       response
@@ -64,7 +65,7 @@ abstract class AzureMediaService extends IMediaService {
 
   protected def createStreamingLocator(streamingLocatorName: String, assetName: String)(implicit config: VideoStreamGeneratorConfig, httpUtil: HttpUtil): MediaResponse = {
     val url = getApiUrl("stream_locator").replace("streamingLocatorName", streamingLocatorName)
-    val streamingPolicyName = config.getConfig("azure.stream.policy_name")
+    val streamingPolicyName = config.getConfig("azure_mediakind.stream.policy_name")
     val reqBody = AzureRequestBody.create_stream_locator.replace("assetId", assetName).replace("policyName", streamingPolicyName)
     Response.getResponse(httpUtil.put(url, reqBody, getDefaultHeader()))
   }
@@ -90,42 +91,34 @@ abstract class AzureMediaService extends IMediaService {
   }
 
   protected def getApiUrl(apiName: String)(implicit config: VideoStreamGeneratorConfig, httpUtil: HttpUtil): String = {
-    val subscriptionId: String = config.getSystemConfig("azure.subscription_id")
-    val resourceGroupName: String = config.getSystemConfig("azure.resource_group_name")
-    val accountName: String = config.getSystemConfig("azure.account_name")
-    val apiVersion: String = config.getConfig("azure.api.version")
-    val transformName: String = config.getConfig("azure.transform.default")
+    val transformName: String = config.getConfig("azure_mediakind.transform.default")
+    val projectName:String = config.getConfig("azure_mediakind.project_name")
 
-    val baseUrl: String = new StringBuilder().append(config.getConfig("azure.api.endpoint")+"/subscriptions/")
-      .append(subscriptionId)
-      .append("/resourceGroups/")
-      .append(resourceGroupName)
-      .append("/providers/Microsoft.Media/mediaServices/")
-      .append(accountName).mkString
+    val baseUrl: String = new StringBuilder().append(config.getConfig("azure_mediakind.api.endpoint")+"/ams/")
+      .append(projectName).mkString
 
 
     apiName.toLowerCase() match {
-      case "asset" => baseUrl + "/assets/assetId?api-version=" + apiVersion
-      case "job" => baseUrl + "/transforms/" + transformName + "/jobs/jobIdentifier?api-version=" + apiVersion
-      case "stream_locator" => baseUrl + "/streamingLocators/streamingLocatorName?api-version=" + apiVersion
-      case "list_paths" => baseUrl + "/streamingLocators/streamingLocatorName/listPaths?api-version=" + apiVersion
+      case "asset" => baseUrl + "/assets/assetId"
+      case "job" => baseUrl + "/transforms/" + transformName + "/jobs/jobIdentifier"
+      case "stream_locator" => baseUrl + "/streamingLocators/streamingLocatorName"
+      case "list_paths" => baseUrl + "/streamingLocators/streamingLocatorName/listPaths"
       case _ => throw new MediaServiceException("ERR_INVALID_API_NAME", "Please Provide Valid Media Service API Name")
     }
   }
 
   protected def getDefaultHeader()(implicit config: VideoStreamGeneratorConfig, httpUtil: HttpUtil): Map[String, String] = {
-    val accessToken = if (StringUtils.isNotBlank(API_ACCESS_TOKEN)) API_ACCESS_TOKEN else getToken()
-    val authToken = "Bearer " + accessToken
+    val authToken = config.getConfig("azure_mediakind.auth_token")
     HashMap[String, String](
-      "Content-Type" -> "application/json",
-      "Accept" -> "application/json",
-      "Authorization" -> authToken
+      "content-type" -> "application/json",
+      "accept" -> "application/json",
+      "x-mkio-token" -> authToken
     )
   }
 
   protected def prepareStreamingUrl(streamLocatorName: String, jobId: String)(implicit config: VideoStreamGeneratorConfig, httpUtil: HttpUtil): Map[String, AnyRef] = {
-    val streamType = config.getConfig("azure.stream.protocol")
-    val streamHost = config.getConfig("azure.stream.base_url")
+    val streamType = config.getConfig("azure_mediakind.stream.protocol")
+    val streamHost = config.getConfig("azure_mediakind.stream.base_url")
     var url = ""
     val listPathResponse = getStreamUrls(streamLocatorName)
     if (listPathResponse.responseCode.equalsIgnoreCase("OK")) {

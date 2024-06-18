@@ -58,13 +58,12 @@ class VideoStreamServiceTestSpec extends BaseTestSpec {
 
   "VideoStreamService" should "submit job request" in {
     when(mockHttpUtil.post_map(contains("/oauth2/token"), any[Map[String, AnyRef]](), any[Map[String, String]]())).thenReturn(HTTPResponse(200, accessTokenResp))
-    when(mockHttpUtil.put(contains("/providers/Microsoft.Media/mediaServices/"+jobConfig.getSystemConfig("azure.account.name")+"/assets/asset-"), anyString(), any())).thenReturn(HTTPResponse(200, assetJson))
+    when(mockHttpUtil.put(contains(jobConfig.getConfig("azure_mediakind.project_name")+"/assets/asset-"), anyString(), any())).thenReturn(HTTPResponse(200, assetJson))
     when(mockHttpUtil.put(contains("transforms/media_transform_default/jobs"), anyString(), any())).thenReturn(HTTPResponse(200, submitJobJson))
     when(mockHttpUtil.get(contains("transforms/media_transform_default/jobs"), any())).thenReturn(HTTPResponse(200, getJobJson))
-
-    when(mockHttpUtil.post(contains("/streamingLocators/sl-do_3126597193576939521910_1605816926271/listPaths?api-version="), any(), any())).thenReturn(HTTPResponse(200, getStreamUrlJson))
-    when(mockHttpUtil.put(contains("/streamingLocators/sl-do_3126597193576939521910_1605816926271?api-version="), any(), any())).thenReturn(HTTPResponse(400, getJobJson))
-    when(mockHttpUtil.get(contains("/streamingLocators/sl-do_3126597193576939521910_1605816926271?api-version="), any())).thenReturn(HTTPResponse(200, getStreamLocatorJson))
+    when(mockHttpUtil.post(contains("/streamingLocators/sl-do_3126597193576939521910_1605816926271/listPaths"), any(), any())).thenReturn(HTTPResponse(200, getStreamUrlJson))
+    when(mockHttpUtil.put(contains("/streamingLocators/sl-do_3126597193576939521910_1605816926271"), any(), any())).thenReturn(HTTPResponse(400, getJobJson))
+    when(mockHttpUtil.get(contains("/streamingLocators/sl-do_3126597193576939521910_1605816926271"), any())).thenReturn(HTTPResponse(200, getStreamLocatorJson))
     when(mockHttpUtil.patch(contains(jobConfig.contentV4Update), any(), any())).thenReturn(HTTPResponse(200, getJobJson))
     doNothing().when(mockMetrics).incCounter(any())
 
