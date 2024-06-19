@@ -13,32 +13,7 @@ import scala.collection.immutable.HashMap
 abstract class AzureMediaService extends IMediaService {
 
   private var API_ACCESS_TOKEN: String = ""
-  private def getToken()(implicit config: VideoStreamGeneratorConfig, httpUtil: HttpUtil): String = {
-    val tenant = config.getSystemConfig("azure.tenant")
-    val clientKey = config.getSystemConfig("azure.token.client_key")
-    val clientSecret = config.getSystemConfig("azure.token.client_secret")
-    val loginUrl = config.getConfig("azure.login.endpoint") + "/" + tenant + "/oauth2/token"
-
-    val data = Map[String, String](
-      "grant_type" -> "client_credentials",
-      "client_id" -> clientKey,
-      "client_secret" -> clientSecret,
-      "resource" -> "https://management.core.windows.net/"
-    )
-
-    val header = Map[String, String](
-      "Content-Type" -> "application/x-www-form-urlencoded",
-      "Keep-Alive" -> "true"
-    )
-
-    val response:MediaResponse = Response.getResponse(httpUtil.post_map(loginUrl, data, header))
-    if(response.responseCode == "OK"){
-      response.result("access_token").asInstanceOf[String]
-    } else {
-      throw new Exception("Error while getting the azure access token::"+JSONUtil.serialize(response))
-    }
-  }
-
+  
   protected def getJobDetails(jobId: String)(implicit config: VideoStreamGeneratorConfig, httpUtil: HttpUtil): MediaResponse = {
     val url = getApiUrl("job").replace("jobIdentifier", jobId)
     val response:MediaResponse = Response.getResponse(httpUtil.get(url, getDefaultHeader()))
