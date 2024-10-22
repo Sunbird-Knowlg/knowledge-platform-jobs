@@ -1,4 +1,4 @@
-FROM sunbird/flink:1.13.5-scala_2.12-java11
+FROM sunbirded.azurecr.io/flink:1.13.5-scala_2.12-java11
 
 USER root
 RUN apt-get update
