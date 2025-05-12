@@ -1,39 +1,29 @@
 <configuration>
-  <!-- GCS FileSystem implementation -->
+  <!-- GCP Configuration -->
   <property>
     <name>fs.gs.impl</name>
     <value>com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem</value>
   </property>
-  
-  <!-- GCS AbstractFileSystem implementation -->
   <property>
     <name>fs.AbstractFileSystem.gs.impl</name>
     <value>com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS</value>
   </property>
-  
-  <!-- Enable Application Default Credentials (ADC) for authentication -->
   <property>
     <name>fs.gs.auth.type</name>
     <value>ADC</value>
   </property>
 
-  <!-- Optional: Enable service account authentication (using ADC) -->
-  <!-- This configuration allows automatic service account management in supported environments -->
+  <!-- Azure Configuration -->
   <property>
-    <name>fs.gs.auth.service.account.enable</name>
-    <value>true</value>
+    <name>fs.azure</name>
+    <value>org.apache.hadoop.fs.azure.NativeAzureFileSystem</value>
   </property>
-
-  <!-- Optional: Specify the GCS bucket to be used (if needed) -->
-  <!-- <property> -->
-  <!--   <name>fs.gs.bucket</name> -->
-  <!--   <value>your-bucket-name</value> -->
-  <!-- </property> -->
-
-  <!-- Optional: Set custom GCS endpoint (for non-Google Cloud environments) -->
-  <!-- <property> -->
-  <!--   <name>fs.gs.endpoint</name> -->
-  <!--   <value>https://storage.googleapis.com</value> -->
-  <!-- </property> -->
-
+  <property>
+        <name>fs.azure.account.auth.type</name>
+        <value>OAuth</value>
+    </property>
+    <property>
+        <name>fs.azure.account.oauth.provider.type</name>
+        <value>org.apache.hadoop.fs.azurebfs.oauth2.ManagedIdentityTokenProvider</value>
+    </property>
 </configuration>
