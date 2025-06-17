@@ -1,0 +1,29 @@
+<configuration>
+  <!-- GCP Configuration -->
+  <property>
+    <name>fs.gs.impl</name>
+    <value>com.google.cloud.hadoop.fs.gcs.GoogleHadoopFileSystem</value>
+  </property>
+  <property>
+    <name>fs.AbstractFileSystem.gs.impl</name>
+    <value>com.google.cloud.hadoop.fs.gcs.GoogleHadoopFS</value>
+  </property>
+  <property>
+    <name>fs.gs.auth.type</name>
+    <value>ADC</value>
+  </property>
+
+  <!-- Azure Configuration -->
+  <property>
+    <name>fs.azure</name>
+    <value>org.apache.hadoop.fs.azure.NativeAzureFileSystem</value>
+  </property>
+  <property>
+        <name>fs.azure.account.auth.type</name>
+        <value>OAuth</value>
+    </property>
+    <property>
+        <name>fs.azure.account.oauth.provider.type</name>
+        <value>org.apache.hadoop.fs.azurebfs.oauth2.ManagedIdentityTokenProvider</value>
+    </property>
+</configuration>
