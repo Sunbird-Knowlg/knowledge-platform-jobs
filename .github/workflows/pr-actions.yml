@@ -197,7 +197,7 @@ jobs:
           mvn sonar:sonar -DCLOUD_STORE_GROUP_ID=$CLOUD_STORE_GROUP_ID \
             -DCLOUD_STORE_ARTIFACT_ID=$CLOUD_STORE_ARTIFACT_ID \
             -DCLOUD_STORE_VERSION=$CLOUD_STORE_VERSION \
-            -Dsonar.projectKey=Sunbird-Knowlg_knowledge-platform \
-            -Dsonar.organization=chethann007-local \
+            -Dsonar.projectKey=Sunbird-Knowlg_knowledge-platform-jobs \
+            -Dsonar.organization=sunbird-knowlg-1 \
             -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.coverage.jacoco.xmlReportPaths=jobs-core/target/site/jacoco/jacoco.xml,asset-enrichment/target/site/jacoco/jacoco.xml
