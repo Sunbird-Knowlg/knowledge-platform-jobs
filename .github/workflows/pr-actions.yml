@@ -41,11 +41,7 @@ jobs:
             -DCLOUD_STORE_ARTIFACT_ID=$CLOUD_STORE_ARTIFACT_ID \
             -DCLOUD_STORE_VERSION=$CLOUD_STORE_VERSION
           cd jobs-core
-          mvn clean install -DskipTests \
-            -DCLOUD_STORE_GROUP_ID=$CLOUD_STORE_GROUP_ID \
-            -DCLOUD_STORE_ARTIFACT_ID=$CLOUD_STORE_ARTIFACT_ID \
-            -DCLOUD_STORE_VERSION=$CLOUD_STORE_VERSION
-          mvn clean test \
+          mvn clean package \
             -DCLOUD_STORE_GROUP_ID=$CLOUD_STORE_GROUP_ID \
             -DCLOUD_STORE_ARTIFACT_ID=$CLOUD_STORE_ARTIFACT_ID \
             -DCLOUD_STORE_VERSION=$CLOUD_STORE_VERSION \
@@ -76,7 +72,7 @@ jobs:
         uses: actions/upload-artifact@v4.6.2
         with:
           name: job-core-artifact
-          path: jobs-core/target/*.jar
+          path: jobs-core/target/job-core-1.0.0.jar
           retention-days: 1
 
       - name: Upload job-core jacoco report
