@@ -61,6 +61,13 @@ jobs:
           only-summary: false
           list-tests: 'all'
 
+      - name: Set up JDK17
+        uses: actions/setup-java@v3
+        with:
+            java-version: '17'
+            distribution: 'temurin'
+            cache: 'maven' 
+
       - name: Run SonarQube Analysis for jobs-core
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
@@ -153,6 +160,13 @@ jobs:
           fail-on-error: false
           only-summary: false
           list-tests: 'all'
+
+      - name: Set up JDK17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven' 
 
       - name: Run SonarQube Analysis for asset-enrichment
         env:
