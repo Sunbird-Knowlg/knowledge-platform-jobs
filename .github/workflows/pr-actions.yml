@@ -41,6 +41,10 @@ jobs:
             -DCLOUD_STORE_ARTIFACT_ID=$CLOUD_STORE_ARTIFACT_ID \
             -DCLOUD_STORE_VERSION=$CLOUD_STORE_VERSION
           cd jobs-core
+          mvn clean install -DskipTests \
+            -DCLOUD_STORE_GROUP_ID=$CLOUD_STORE_GROUP_ID \
+            -DCLOUD_STORE_ARTIFACT_ID=$CLOUD_STORE_ARTIFACT_ID \
+            -DCLOUD_STORE_VERSION=$CLOUD_STORE_VERSION
           mvn clean test \
             -DCLOUD_STORE_GROUP_ID=$CLOUD_STORE_GROUP_ID \
             -DCLOUD_STORE_ARTIFACT_ID=$CLOUD_STORE_ARTIFACT_ID \
