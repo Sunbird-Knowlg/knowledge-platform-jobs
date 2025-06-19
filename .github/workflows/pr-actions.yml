@@ -99,6 +99,7 @@ jobs:
       CLOUD_STORAGE_SECRET: ${{ secrets.CLOUD_STORAGE_SECRET }}
       CLOUD_STORAGE_CONTAINER: ${{ vars.CLOUD_STORAGE_CONTAINER }}
       CONTENT_YOUTUBE_API_KEY: ${{ secrets.CONTENT_YOUTUBE_API_KEY }}
+      MAVEN_OPTS: -Dmaven.repo.local=${{ github.workspace }}/.m2/repository
     steps:
       - uses: actions/checkout@v3
 
