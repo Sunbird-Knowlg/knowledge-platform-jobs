@@ -61,18 +61,28 @@ jobs:
           only-summary: false
           list-tests: 'all'
 
+      - name: Run SonarQube Analysis for jobs-core
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          CLOUD_STORE_GROUP_ID: ${{ vars.CLOUD_STORE_GROUP_ID }}
+          CLOUD_STORE_ARTIFACT_ID: ${{ vars.CLOUD_STORE_ARTIFACT_ID }}
+          CLOUD_STORE_VERSION: ${{ vars.CLOUD_STORE_VERSION }}
+        working-directory: jobs-core
+        run: |
+          mvn sonar:sonar \
+            -DCLOUD_STORE_GROUP_ID=$CLOUD_STORE_GROUP_ID \
+            -DCLOUD_STORE_ARTIFACT_ID=$CLOUD_STORE_ARTIFACT_ID \
+            -DCLOUD_STORE_VERSION=$CLOUD_STORE_VERSION \
+            -Dsonar.projectKey=Sunbird-Knowlg_knowledge-platform-jobs \
+            -Dsonar.organization=sunbird-knowlg-1 \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+
       - name: Upload Maven local repository
         uses: actions/upload-artifact@v4.6.2
         with:
           name: maven-repo
           path: ~/.m2/repository
-          retention-days: 1
-
-      - name: Upload job-core jacoco report
-        uses: actions/upload-artifact@v4.6.2
-        with:
-          name: job-core-jacoco-report
-          path: jobs-core/target/site/jacoco/jacoco.xml
           retention-days: 1
 
   coverage-asset-enrichment:
@@ -100,6 +110,7 @@ jobs:
         with:
           java-version: '11'
           distribution: 'temurin'
+          cache: 'maven'
 
       - name: Install ImageMagick
         run: |
@@ -143,43 +154,13 @@ jobs:
           only-summary: false
           list-tests: 'all'
 
-      - name: Upload asset-enrichment jacoco report
-        uses: actions/upload-artifact@v4.6.2
-        with:
-          name: asset-enrichment-jacoco-report
-          path: asset-enrichment/target/site/jacoco/jacoco.xml
-          retention-days: 1
-
-  sonar-analysis:
-    needs: [root-pom-build-and-coverage-job-core, coverage-asset-enrichment]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Download job-core jacoco report
-        uses: actions/download-artifact@v4.3.0
-        with:
-          name: job-core-jacoco-report
-          path: jobs-core/target/site/jacoco/
-
-      - name: Download asset-enrichment jacoco report
-        uses: actions/download-artifact@v4.3.0
-        with:
-          name: asset-enrichment-jacoco-report
-          path: asset-enrichment/target/site/jacoco/
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v3
-        with:
-          java-version: '17'
-          distribution: 'temurin'
-
-      - name: Run SonarQube Analysis
+      - name: Run SonarQube Analysis for asset-enrichment
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           CLOUD_STORE_GROUP_ID: ${{ vars.CLOUD_STORE_GROUP_ID }}
           CLOUD_STORE_ARTIFACT_ID: ${{ vars.CLOUD_STORE_ARTIFACT_ID }}
           CLOUD_STORE_VERSION: ${{ vars.CLOUD_STORE_VERSION }}
+        working-directory: asset-enrichment
         run: |
           mvn sonar:sonar \
             -DCLOUD_STORE_GROUP_ID=$CLOUD_STORE_GROUP_ID \
@@ -188,4 +169,4 @@ jobs:
             -Dsonar.projectKey=Sunbird-Knowlg_knowledge-platform-jobs \
             -Dsonar.organization=sunbird-knowlg-1 \
             -Dsonar.host.url=https://sonarcloud.io \
-            -Dsonar.coverage.jacoco.xmlReportPaths=jobs-core/target/site/jacoco/jacoco.xml,asset-enrichment/target/site/jacoco/jacoco.xml
+            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
