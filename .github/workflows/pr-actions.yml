@@ -1,0 +1,208 @@
+name: PR Code Coverage and SonarQube Analysis
+
+# Trigger workflow on pull request to any branch
+on:
+  pull_request:
+    branches: ['**']
+
+jobs:
+  # Job 1: Build root POM and jobs-core module with coverage
+  root-pom-build-and-coverage-job-core:
+    runs-on: ubuntu-latest
+    outputs:
+      maven-cache-key: ${{ steps.cache-maven.outputs.cache-primary-key }}
+    env:
+      # Cloud storage configuration for dependencies
+      CLOUD_STORE_GROUP_ID: ${{ vars.CLOUD_STORE_GROUP_ID }}
+      CLOUD_STORE_ARTIFACT_ID: ${{ vars.CLOUD_STORE_ARTIFACT_ID }}
+      CLOUD_STORE_VERSION: ${{ vars.CLOUD_STORE_VERSION }}
+      SCHEMA_BASE_PATH: ${{ vars.SCHEMA_BASE_PATH }}
+      BLOB_IMAGE_CONTENT_PATH: ${{ vars.BLOB_IMAGE_CONTENT_PATH }}
+    steps:
+      - uses: actions/checkout@v3
+
+      # Set up Java 11 for building and testing
+      - name: Set up JDK11
+        uses: actions/setup-java@v3
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      # Cache Maven dependencies for faster builds
+      - name: Cache Maven packages
+        id: cache-maven
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      # Build root POM and jobs-core module with tests and coverage
+      - name: Build root POM and job-core
+        run: |
+          # Install root POM without tests
+          mvn clean install -N -DskipTests \
+            -DCLOUD_STORE_GROUP_ID=$CLOUD_STORE_GROUP_ID \
+            -DCLOUD_STORE_ARTIFACT_ID=$CLOUD_STORE_ARTIFACT_ID \
+            -DCLOUD_STORE_VERSION=$CLOUD_STORE_VERSION
+          # Build jobs-core with tests and coverage
+          cd jobs-core
+          mvn clean install \
+            -DCLOUD_STORE_GROUP_ID=$CLOUD_STORE_GROUP_ID \
+            -DCLOUD_STORE_ARTIFACT_ID=$CLOUD_STORE_ARTIFACT_ID \
+            -DCLOUD_STORE_VERSION=$CLOUD_STORE_VERSION \
+            org.jacoco:jacoco-maven-plugin:0.8.8:prepare-agent \
+            test \
+            org.jacoco:jacoco-maven-plugin:0.8.8:report \
+            surefire-report:report
+
+      # Generate test summary report
+      - name: Test Summary
+        uses: dorny/test-reporter@v2.1.0
+        if: always()
+        with:
+          name: Test Results
+          path: 'jobs-core/target/surefire-reports/*.xml'
+          reporter: java-junit
+          fail-on-error: false
+          only-summary: false
+          list-tests: 'all'
+
+      # Set up Java 17 for SonarQube analysis (SonarQube requires JDK 17+)
+      - name: Set up JDK17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven' 
+
+      # Run SonarQube analysis for jobs-core module
+      - name: Run SonarQube Analysis for jobs-core
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          CLOUD_STORE_GROUP_ID: ${{ vars.CLOUD_STORE_GROUP_ID }}
+          CLOUD_STORE_ARTIFACT_ID: ${{ vars.CLOUD_STORE_ARTIFACT_ID }}
+          CLOUD_STORE_VERSION: ${{ vars.CLOUD_STORE_VERSION }}
+        working-directory: jobs-core
+        run: |
+          mvn sonar:sonar \
+            -DCLOUD_STORE_GROUP_ID=$CLOUD_STORE_GROUP_ID \
+            -DCLOUD_STORE_ARTIFACT_ID=$CLOUD_STORE_ARTIFACT_ID \
+            -DCLOUD_STORE_VERSION=$CLOUD_STORE_VERSION \
+            -Dsonar.projectKey=Sunbird-Knowlg_knowledge-platform-jobs \
+            -Dsonar.organization=sunbird-knowlg-1 \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+
+      # Upload Maven repository for other jobs to use
+      - name: Upload Maven local repository
+        uses: actions/upload-artifact@v4.6.2
+        with:
+          name: maven-repo
+          path: ~/.m2/repository
+          retention-days: 1
+
+  # Job 2: Build and test asset-enrichment module with coverage
+  coverage-asset-enrichment:
+    needs: root-pom-build-and-coverage-job-core  # Depends on jobs-core being built first
+    runs-on: ubuntu-latest
+    env:
+      # Cloud storage and content processing configuration
+      CLOUD_STORE_GROUP_ID: ${{ vars.CLOUD_STORE_GROUP_ID }}
+      CLOUD_STORE_ARTIFACT_ID: ${{ vars.CLOUD_STORE_ARTIFACT_ID }}
+      CLOUD_STORE_VERSION: ${{ vars.CLOUD_STORE_VERSION }}
+      SCHEMA_BASE_PATH: ${{ vars.SCHEMA_BASE_PATH }}
+      BLOB_IMAGE_CONTENT_PATH: ${{ vars.BLOB_IMAGE_CONTENT_PATH }}
+      BLOB_VIDEO_CONTENT_PATH: ${{ vars.BLOB_VIDEO_CONTENT_PATH }}
+      CLOUD_STORAGE_READ_BASE_PATH: ${{ vars.CLOUD_STORAGE_READ_BASE_PATH }}
+      CLOUD_STORAGE_WRITE_BASE_PATH: ${{ vars.CLOUD_STORAGE_WRITE_BASE_PATH }}
+      CLOUD_STORAGE_TYPE: ${{ vars.CLOUD_STORAGE_TYPE }}
+      CLOUD_STORAGE_KEY: ${{ secrets.CLOUD_STORAGE_KEY }}
+      CLOUD_STORAGE_SECRET: ${{ secrets.CLOUD_STORAGE_SECRET }}
+      CLOUD_STORAGE_CONTAINER: ${{ vars.CLOUD_STORAGE_CONTAINER }}
+      CONTENT_YOUTUBE_API_KEY: ${{ secrets.CONTENT_YOUTUBE_API_KEY }}
+    steps:
+      - uses: actions/checkout@v3
+
+      # Set up Java 11 for building and testing
+      - name: Set up JDK11
+        uses: actions/setup-java@v3
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      # Install ImageMagick for image processing tests
+      - name: Install ImageMagick
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y imagemagick
+
+      # Restore Maven repository from previous job
+      - name: Restore Maven local repository
+        uses: actions/download-artifact@v4.3.0
+        with:
+          name: maven-repo
+          path: ~/.m2/repository
+
+      # Cache Maven dependencies
+      - name: Cache Maven packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      # Build asset-enrichment module with tests and coverage
+      - name: Build and Generate Coverage Report
+        run: |
+          cd asset-enrichment
+          mvn clean test \
+            -DCLOUD_STORE_GROUP_ID=$CLOUD_STORE_GROUP_ID \
+            -DCLOUD_STORE_ARTIFACT_ID=$CLOUD_STORE_ARTIFACT_ID \
+            -DCLOUD_STORE_VERSION=$CLOUD_STORE_VERSION \
+            org.jacoco:jacoco-maven-plugin:0.8.8:prepare-agent \
+            test \
+            org.jacoco:jacoco-maven-plugin:0.8.8:report \
+            surefire-report:report
+
+      # Generate test summary report
+      - name: Test Summary
+        uses: dorny/test-reporter@v2.1.0
+        if: always()
+        with:
+          name: Test Results
+          path: 'asset-enrichment/target/surefire-reports/*.xml'
+          reporter: java-junit
+          fail-on-error: false
+          only-summary: false
+          list-tests: 'all'
+
+      # Set up Java 17 for SonarQube analysis
+      - name: Set up JDK17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven' 
+
+      # Run SonarQube analysis for asset-enrichment module
+      - name: Run SonarQube Analysis for asset-enrichment
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          CLOUD_STORE_GROUP_ID: ${{ vars.CLOUD_STORE_GROUP_ID }}
+          CLOUD_STORE_ARTIFACT_ID: ${{ vars.CLOUD_STORE_ARTIFACT_ID }}
+          CLOUD_STORE_VERSION: ${{ vars.CLOUD_STORE_VERSION }}
+        working-directory: asset-enrichment
+        run: |
+          mvn sonar:sonar \
+            -DCLOUD_STORE_GROUP_ID=$CLOUD_STORE_GROUP_ID \
+            -DCLOUD_STORE_ARTIFACT_ID=$CLOUD_STORE_ARTIFACT_ID \
+            -DCLOUD_STORE_VERSION=$CLOUD_STORE_VERSION \
+            -Dsonar.projectKey=Sunbird-Knowlg_knowledge-platform-jobs \
+            -Dsonar.organization=sunbird-knowlg-1 \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml

@@ -39,6 +39,8 @@ class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
   implicit val mockNeo4JUtil: Neo4JUtil = mock[Neo4JUtil](Mockito.withSettings().serializable())
   implicit val cloudUtil: CloudStorageUtil = new CloudStorageUtil(jobConfig)
   implicit val youTubeUtil: YouTubeUtil = new YouTubeUtil(jobConfig)
+  val imagePath = config.getString("blob.input.contentImagePath")
+  val videoPath = config.getString("blob.input.contentVideoPath")
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
@@ -53,13 +55,18 @@ class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
   "enrichImage()" should " enrich the image for the asset " in {
     doNothing().when(mockNeo4JUtil).updateNode(anyString(), any[Map[String, AnyRef]]())
 
+    val contentId = imagePath.split("/").dropWhile(_ != "content").drop(1).headOption.getOrElse("")
     val metadata = getMetadataForImageAsset
-    val asset = getAsset(EventFixture.IMAGE_ASSET, metadata)
+    val updatedMetadata = metadata.updated("cloudStorageKey", s"content/$contentId/artifact/${imagePath.split("/").last}")
+    
+    val asset = getAsset(EventFixture.IMAGE_ASSET, updatedMetadata)
     new ImageEnrichmentFunction(jobConfig).enrichImage(asset)(jobConfig, definitionUtil, cloudUtil, mockNeo4JUtil)
     val variants = ScalaJsonUtil.deserialize[Map[String, String]](asset.get("variants", "").asInstanceOf[String])
     variants.size should be(3)
     variants.keys should contain allOf("high", "medium", "low")
-    variants.getOrElse("high", "") should be("https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_113233717480390656195/artifact/bitcoin-4_1545114579639.jpg")
+    // The high variant should have .high before the file extension
+    val expectedHighVariant = imagePath.replace(".jpg", ".high.jpg")
+    variants.getOrElse("high", "") should be(expectedHighVariant)
     asset.get("status", "").asInstanceOf[String] should be("Live")
   }
 
@@ -172,14 +179,16 @@ class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
   }
 
   "ImageResizerUtil" should " replace the provided files " in {
-    val imageUrl = "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_113233717480390656195/artifact/bitcoin-4_1545114579639.jpg"
+    val imageUrl = s"$imagePath"
+    val contentId = imagePath.split("/").dropWhile(_ != "content").drop(1).headOption.getOrElse("unknown")
+    val fileName = imagePath.substring(imagePath.lastIndexOf("/") + 1)
     try {
-      val file = FileUtils.copyURLToFile("do_113233717480390656195", imageUrl, imageUrl.substring(imageUrl.lastIndexOf("/") + 1))
-      val newFile = new File("/tmp/do_113233717480390656195/1617194149349_temp/bitcoin-4_1545114579640.jpg")
+      val file = FileUtils.copyURLToFile(contentId, imageUrl, fileName)
+      val newFile = new File(s"/tmp/$contentId/1617194149349_temp/${fileName.replace(".jpg", ".jpg")}")
       val result = new ImageResizerUtil().replace(file.get, newFile)
-      result.getAbsolutePath should endWith("bitcoin-4_1545114579640.jpg")
+      result.getAbsolutePath should endWith(fileName.replace(".jpg", ".jpg"))
     } finally {
-      FileUtils.deleteDirectory(new File(s"/tmp/do_113233717480390656195"))
+      FileUtils.deleteDirectory(new File(s"/tmp/$contentId"))
     }
   }
 
@@ -191,12 +200,14 @@ class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
   }
 
   def getMetadataForImageAsset: Map[String, AnyRef] = {
-    val metadata = """{"ownershipType": ["createdBy"], "code": "org.ekstep0.07321483804683715", "prevStatus": "Processing", "downloadUrl": "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_113233717480390656195/artifact/bitcoin-4_1545114579639.jpg", "channel": "b00bc992ef25f1a9a8d63291e20efc8d", "language": ["English"], "mimeType": "image/jpeg","idealScreenSize": "normal", "createdOn": "2021-03-11T06:27:08.370+0000", "primaryCategory": "Certificate Template", "contentDisposition": "inline", "artifactUrl": "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_113233717480390656195/artifact/bitcoin-4_1545114579639.jpg", "contentEncoding": "identity", "lastUpdatedOn": "2021-03-11T06:27:10.254+0000", "contentType": "Asset", "dialcodeRequired": "No", "audience": ["Student"], "creator": "Reviewer User", "lastStatusChangedOn": "2021-03-11T06:27:10.237+0000", "visibility": "Default", "os": ["All"], "IL_SYS_NODE_TYPE": "DATA_NODE", "cloudStorageKey": "content/do_113233717480390656195/artifact/bitcoin-4_1545114579639.jpg", "mediaType": "image", "osId": "org.ekstep.quiz.app", "version": 2, "versionKey": "1615444030254", "license": "CC BY 4.0", "idealScreenDensity": "hdpi", "s3Key": "content/do_113233717480390656195/artifact/bitcoin-4_1545114579639.jpg", "framework": "NCF", "size": 86402.0, "createdBy": "95e4942d-cbe8-477d-aebd-ad8e6de4bfc8", "compatibilityLevel": 1, "IL_FUNC_OBJECT_TYPE": "Asset", "name": "bitcoin-4 1545114579639", "IL_UNIQUE_ID": "do_113233717480390656195", "status": "Live"}"""
+    val contentId = imagePath.split("/").dropWhile(_ != "content").drop(1).headOption.getOrElse("unknown")
+    val fileName = imagePath.split("/").lastOption.getOrElse("unknown")
+    val metadata = s"""{"ownershipType": ["createdBy"], "code": "org.ekstep0.07321483804683715", "prevStatus": "Processing", "downloadUrl": "$imagePath", "channel": "b00bc992ef25f1a9a8d63291e20efc8d", "language": ["English"], "mimeType": "image/jpeg","idealScreenSize": "normal", "createdOn": "2021-03-11T06:27:08.370+0000", "primaryCategory": "Certificate Template", "contentDisposition": "inline", "artifactUrl": "$imagePath", "contentEncoding": "identity", "lastUpdatedOn": "2021-03-11T06:27:10.254+0000", "contentType": "Asset", "dialcodeRequired": "No", "audience": ["Student"], "creator": "Reviewer User", "lastStatusChangedOn": "2021-03-11T06:27:10.237+0000", "visibility": "Default", "os": ["All"], "IL_SYS_NODE_TYPE": "DATA_NODE", "cloudStorageKey": "content/$contentId/artifact/$fileName", "mediaType": "image", "osId": "org.ekstep.quiz.app", "version": 2, "versionKey": "1615444030254", "license": "CC BY 4.0", "idealScreenDensity": "hdpi", "s3Key": "content/$contentId/artifact/$fileName", "framework": "NCF", "size": 86402.0, "createdBy": "95e4942d-cbe8-477d-aebd-ad8e6de4bfc8", "compatibilityLevel": 1, "IL_FUNC_OBJECT_TYPE": "Asset", "name": "$fileName", "IL_UNIQUE_ID": "$contentId", "status": "Live"}"""
     ScalaJsonUtil.deserialize[Map[String, AnyRef]](metadata)
   }
 
   def getMetadataForMp4VideoAsset: Map[String, AnyRef] = {
-    val metadata = """{"artifactUrl": "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/kp_ft_1563562323128/artifact/sample_1563562323191.mp4", "ownershipType": ["createdBy"], "code": "Test_Asset_15_MB", "apoc_json": "{\"batch\": true}", "channel": "in.ekstep", "organisation": ["Sunbird", "QA ORG"], "language": ["English"], "mimeType": "video/mp4", "media": "video", "idealScreenSize": "normal", "createdOn": "2019-03-06T13:13:13.917+0000", "apoc_text": "APOC", "primaryCategory": "Asset", "appId": "local.sunbird.portal", "contentDisposition": "inline", "contentEncoding": "identity", "lastUpdatedOn": "2019-03-06T13:13:13.917+0000", "contentType": "Asset", "dialcodeRequired": "No", "apoc_num": 1, "audience": ["Learner"], "creator": "Creation", "createdFor": ["ORG_001", "0123653943740170242"], "visibility": "Default", "os": ["All"], "IL_SYS_NODE_TYPE": "DATA_NODE", "consumerId": "9393568c-3a56-47dd-a9a3-34da3c821638", "mediaType": "content", "osId": "org.ekstep.quiz.app", "versionKey": "1551877993917", "idealScreenDensity": "hdpi", "framework": "NCFCOPY", "createdBy": "874ed8a5-782e-4f6c-8f36-e0288455901e", "compatibilityLevel": 1.0, "IL_FUNC_OBJECT_TYPE": "Asset", "name": "Test_Asset_15_MB", "IL_UNIQUE_ID": "do_1127129845261680641588", "status": "Draft"}"""
+    val metadata = s"""{"artifactUrl": "$videoPath", "ownershipType": ["createdBy"], "code": "Test_Asset_15_MB", "apoc_json": "{\\"batch\\": true}", "channel": "in.ekstep", "organisation": ["Sunbird", "QA ORG"], "language": ["English"], "mimeType": "video/mp4", "media": "video", "idealScreenSize": "normal", "createdOn": "2019-03-06T13:13:13.917+0000", "apoc_text": "APOC", "primaryCategory": "Asset", "appId": "local.sunbird.portal", "contentDisposition": "inline", "contentEncoding": "identity", "lastUpdatedOn": "2019-03-06T13:13:13.917+0000", "contentType": "Asset", "dialcodeRequired": "No", "apoc_num": 1, "audience": ["Learner"], "creator": "Creation", "createdFor": ["ORG_001", "0123653943740170242"], "visibility": "Default", "os": ["All"], "IL_SYS_NODE_TYPE": "DATA_NODE", "consumerId": "9393568c-3a56-47dd-a9a3-34da3c821638", "mediaType": "content", "osId": "org.ekstep.quiz.app", "versionKey": "1551877993917", "idealScreenDensity": "hdpi", "framework": "NCFCOPY", "createdBy": "874ed8a5-782e-4f6c-8f36-e0288455901e", "compatibilityLevel": 1.0, "IL_FUNC_OBJECT_TYPE": "Asset", "name": "Test_Asset_15_MB", "IL_UNIQUE_ID": "do_1127129845261680641588", "status": "Draft"}"""
     ScalaJsonUtil.deserialize[Map[String, AnyRef]](metadata)
   }
 

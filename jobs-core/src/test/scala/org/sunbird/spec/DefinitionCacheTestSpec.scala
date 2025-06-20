@@ -7,9 +7,9 @@ import org.sunbird.job.domain.`object`.DefinitionCache
 
 class DefinitionCacheTestSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
 
-  val config: Config = ConfigFactory.load("test.conf")
+  val config: Config = ConfigFactory.load("base-test.conf")
   val definitionCache = new DefinitionCache()
-  val basePath = "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local"
+  val basePath = config.getString("schema.basePath")
 
   "DefinitionCache" should "return the definition for the objectType and version specified " in {
     val definition = definitionCache.getDefinition("collection", "1.0", basePath)
