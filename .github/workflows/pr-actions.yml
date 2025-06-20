@@ -294,3 +294,82 @@ jobs:
             -Dsonar.organization=sunbird-knowlg-1 \
             -Dsonar.host.url=https://sonarcloud.io \
             -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+
+  # Job 4: Build and test qrcode-image-generator module with coverage
+  coverage-qrcode-image-generator:
+    needs: root-pom-build-and-coverage-job-core
+    runs-on: ubuntu-latest
+    env:
+      CLOUD_STORE_GROUP_ID: ${{ vars.CLOUD_STORE_GROUP_ID }}
+      CLOUD_STORE_ARTIFACT_ID: ${{ vars.CLOUD_STORE_ARTIFACT_ID }}
+      CLOUD_STORE_VERSION: ${{ vars.CLOUD_STORE_VERSION }}
+      SCHEMA_BASE_PATH: ${{ vars.SCHEMA_BASE_PATH }}
+      CLOUD_STORAGE_CONTAINER: ${{ vars.CLOUD_STORAGE_CONTAINER }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up JDK11
+        uses: actions/setup-java@v3
+        with:
+          java-version: '11'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Restore Maven local repository
+        uses: actions/download-artifact@v4.3.0
+        with:
+          name: maven-repo
+          path: ~/.m2/repository
+
+      - name: Cache Maven packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+      - name: Build and Generate Coverage Report
+        run: |
+          cd qrcode-image-generator
+          mvn clean test \
+            -DCLOUD_STORE_GROUP_ID=$CLOUD_STORE_GROUP_ID \
+            -DCLOUD_STORE_ARTIFACT_ID=$CLOUD_STORE_ARTIFACT_ID \
+            -DCLOUD_STORE_VERSION=$CLOUD_STORE_VERSION \
+            org.jacoco:jacoco-maven-plugin:0.8.8:prepare-agent \
+            test \
+            org.jacoco:jacoco-maven-plugin:0.8.8:report \
+            surefire-report:report
+      - name: Test Summary
+        uses: dorny/test-reporter@v2.1.0
+        if: always()
+        with:
+          name: Test Results
+          path: 'qrcode-image-generator/target/surefire-reports/*.xml'
+          reporter: java-junit
+          fail-on-error: false
+          only-summary: false
+          list-tests: 'all'
+
+      - name: Set up JDK17
+        uses: actions/setup-java@v3
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: 'maven' 
+
+      - name: Run SonarQube Analysis for qrcode-image-generator
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+          CLOUD_STORE_GROUP_ID: ${{ vars.CLOUD_STORE_GROUP_ID }}
+          CLOUD_STORE_ARTIFACT_ID: ${{ vars.CLOUD_STORE_ARTIFACT_ID }}
+          CLOUD_STORE_VERSION: ${{ vars.CLOUD_STORE_VERSION }}
+        working-directory: qrcode-image-generator
+        run: |
+          mvn sonar:sonar \
+            -DCLOUD_STORE_GROUP_ID=$CLOUD_STORE_GROUP_ID \
+            -DCLOUD_STORE_ARTIFACT_ID=$CLOUD_STORE_ARTIFACT_ID \
+            -DCLOUD_STORE_VERSION=$CLOUD_STORE_VERSION \
+            -Dsonar.projectKey=Sunbird-Knowlg_knowledge-platform-jobs \
+            -Dsonar.organization=sunbird-knowlg-1 \
+            -Dsonar.host.url=https://sonarcloud.io \
+            -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
