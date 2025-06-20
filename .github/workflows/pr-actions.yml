@@ -2,7 +2,7 @@ name: PR Code Coverage and SonarQube Analysis
 
 # Trigger workflow on pull request to any branch
 on:
-  push:
+  pull_request:
     branches: ['**']
 
 jobs:
