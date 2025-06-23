@@ -1,0 +1,86 @@
+name: Build and Push Flink Image
+
+on:
+  push:
+    tags:
+      - '*'
+      
+env:
+  CLOUD_STORE_GROUP_ID: ${{ vars.CLOUD_STORE_GROUP_ID || 'org.sunbird' }}
+  CLOUD_STORE_ARTIFACT_ID: ${{ vars.CLOUD_STORE_ARTIFACT_ID || 'cloud-store-sdk_2.12' }}
+  CLOUD_STORE_VERSION: ${{ vars.CLOUD_STORE_VERSION || '1.4.6' }}
+  
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Cache Maven packages
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Set up JDK 11 and Maven
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '11'
+
+      - name: Set up Maven 3.8.7
+        uses: s4u/setup-maven-action@v1.11.0
+        with:
+          maven-version: 3.8.7
+
+      - name: Login Docker Registry
+        run: |        
+          case "${{ vars.REGISTRY_PROVIDER }}" in
+          "gcp")
+            echo "${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}" | base64 --decode > $HOME/gcloud-key.json
+            gcloud auth activate-service-account --key-file=$HOME/gcloud-key.json
+            gcloud auth configure-docker ${{ secrets.REGISTRY_NAME }}
+            REGISTRY_URL=$(echo "${{ secrets.REGISTRY_URL }}" | tr '[:upper:]' '[:lower:]') 
+            ;;
+          "azure" | "dockerhub")
+            echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login "${{ secrets.REGISTRY_NAME }}" \
+            --username "${{ secrets.REGISTRY_USERNAME }}" --password-stdin
+            REGISTRY_URL="$(echo "${{ secrets.REGISTRY_URL }}/$(basename "${{ github.workspace }}")" | tr '[:upper:]' '[:lower:]')"
+            ;;
+          *)
+            REPO_NAME_LOWERCASE=$(echo "${GITHUB_REPOSITORY}" | tr '[:upper:]' '[:lower:]')
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            REGISTRY_URL="ghcr.io/$REPO_NAME_LOWERCASE"
+            ;;
+            esac
+            echo "REGISTRY_URL=${REGISTRY_URL}" >> $GITHUB_ENV
+
+      - name: Build flink
+        run: |
+          mvn clean install -DskipTests \
+          -DCLOUD_STORE_GROUP_ID=${CLOUD_STORE_GROUP_ID}  \
+          -DCLOUD_STORE_ARTIFACT_ID=${CLOUD_STORE_ARTIFACT_ID} \
+          -DCLOUD_STORE_VERSION=${CLOUD_STORE_VERSION}
+
+      - name: Package flink
+        working-directory: jobs-distribution
+        run: |
+          mvn package -DskipTests
+
+      - name: Build Docker Image
+        working-directory: jobs-distribution
+        run: |
+          IMAGE_TAG=$(echo "${{ github.ref_name }}_$(echo $GITHUB_SHA | cut -c1-7)" | tr '[:upper:]' '[:lower:]')
+          docker build -t ${REGISTRY_URL}:${IMAGE_TAG} .
+
+          echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_ENV
+     
+      - name: Push Docker Image
+        run: |
+          docker push ${REGISTRY_URL}:${IMAGE_TAG}
+          echo "Pushed Docker image: ${REGISTRY_URL}:${IMAGE_TAG}"
