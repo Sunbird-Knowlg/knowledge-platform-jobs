@@ -1,4 +1,5 @@
 FROM sunbird/flink:1.13.5-scala_2.12-java11
+
 USER root
 RUN apt-get update && apt-get dist-upgrade -y && \
     apt-get install -y --no-install-recommends bash curl libcurl4 libdb5.3 libexpat1 libgcrypt20 libldap-2.4-2 libzstd1 zlib1g imagemagick && \
