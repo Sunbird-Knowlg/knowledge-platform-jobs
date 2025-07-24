@@ -132,7 +132,7 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
     server.enqueue(new MockResponse().setHeader("X-Elastic-Product", "Elasticsearch").setHeader(
       "Content-Type", "application/json"
     ).setBody(
-      """{"name": "MacBook-Air.local","cluster_name": "elasticsearch","cluster_uuid": "9ra4wTGZSamseO3I99w","version": {"number": "7.17.13","build_flavor": "default","build_type": "tar","build_hash": "2b211dbb8bfd7f5b44d356bdfe54b1050c13","build_date": "2023-08-31T17:33:19.958690787Z","build_snapshot": false,"lucene_version": "8.11.1","minimum_wire_compatibility_version": "6.8.0","minimum_index_compatibility_version": "6.0.0-beta1"},"tagline": "You Know, for Search"}
+      """{"name": "MacBook-Air.local","cluster_name": "elasticsearch","cluster_uuid": "9ra4wTGZSamseO3I99w","version": {"number": "7.10.2","build_flavor": "default","build_type": "tar","build_hash": "2b211dbb8bfd7f5b44d356bdfe54b1050c13","build_date": "2023-08-31T17:33:19.958690787Z","build_snapshot": false,"lucene_version": "8.11.1","minimum_wire_compatibility_version": "6.8.0","minimum_index_compatibility_version": "6.0.0-beta1"},"tagline": "You Know, for Search"}
         |,{"_index":"kp_audit_log_2018_7","_type":"_doc","_id":"HLZ-1ngBtZ15DPx6ENjU","_version":1,"result":"created","_shards":{"total":2,"successful":0,"failed":1},"_seq_no":1,"_primary_term":1}""".stripMargin))
 
     when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new AuditHistoryMapSource)
@@ -150,7 +150,7 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
     server.enqueue(new MockResponse().setHeader("X-Elastic-Product", "Elasticsearch").setHeader(
       "Content-Type", "application/json"
     ).setBody(
-      """{"name": "MacBook-Air.local","cluster_name": "elasticsearch","cluster_uuid": "9ra4wTGZEFPeO3I99w","version": {"number": "7.17.13","build_flavor": "default","build_type": "tar","build_hash": "2b211dbb8bf7f5b44d356bdfe54b1050c13","build_date": "2023-08-31T17:33:19.958690787Z","build_snapshot": false,"lucene_version": "8.11.1","minimum_wire_compatibility_version": "6.8.0","minimum_index_compatibility_version": "6.0.0-beta1"},"tagline": "You Know, for Search"}
+      """{"name": "MacBook-Air.local","cluster_name": "elasticsearch","cluster_uuid": "9ra4wTGZEFPeO3I99w","version": {"number": "7.10.2","build_flavor": "default","build_type": "tar","build_hash": "2b211dbb8bf7f5b44d356bdfe54b1050c13","build_date": "2023-08-31T17:33:19.958690787Z","build_snapshot": false,"lucene_version": "8.11.1","minimum_wire_compatibility_version": "6.8.0","minimum_index_compatibility_version": "6.0.0-beta1"},"tagline": "You Know, for Search"}
         |,{"_index":"kp_audit_log_2018_7","_type":"_doc","_id":"HLZ-1ngBtZ15DPx6ENjU","_version":1,"result":"created","_shards":{"total":2,"successful":1,"failed":0},"_seq_no":1,"_primary_term":1}""".stripMargin))
 
     when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new AuditHistoryMapSource)
