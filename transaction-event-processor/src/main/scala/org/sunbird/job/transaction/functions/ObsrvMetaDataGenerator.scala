@@ -17,7 +17,7 @@ class ObsrvMetaDataGenerator(config: TransactionEventProcessorConfig)
 
   override def metricsList(): List[String] = {
     List(config.totalEventsCount, config.successEventCount, config.failedEventCount, config.esFailedEventCount, config.skippedEventCount,
-      config.totalObsrvMetaDataGeneratorEventsCount, config.failedObsrvMetaDataGeneratorEventsCount, config.obsrvMetaDataGeneratorEventsSuccessCount)
+      config.totalObsrvMetaDataGeneratorEventsCount, config.failedObsrvMetaDataGeneratorEventsCount, config.obsrvMetaDataGeneratorEventsSuccessCount, config.emptyPropsEventCount)
   }
 
   override def open(parameters: Configuration): Unit = {
