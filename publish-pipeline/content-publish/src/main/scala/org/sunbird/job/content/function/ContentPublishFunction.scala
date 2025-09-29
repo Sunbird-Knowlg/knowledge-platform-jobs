@@ -16,7 +16,7 @@ import org.sunbird.job.exception.InvalidInputException
 import org.sunbird.job.helper.FailedEventHelper
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
 import org.sunbird.job.publish.helpers.EcarPackageType
-import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, Neo4JUtil}
+import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, Neo4JUtil, ScalaJsonUtil}
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import java.lang.reflect.Type
@@ -90,6 +90,9 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
           saveOnSuccess(objWithEcar)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig, config)
           pushStreamingUrlEvent(enrichedObj, context)(metrics)
           pushMVCProcessorEvent(enrichedObj, context)(metrics)
+          if(config.isAISearchEnabled) {
+            pushContentMetadataEvent(enrichedObj, context)(metrics)
+          }
 
           if(obj.metadata.contains("dialcodes") && config.enableDIALContextUpdate.equalsIgnoreCase("Yes")) {
             //pushDIALcodeContextUpdaterEvent for linked and delinked DIAL codes
@@ -196,5 +199,110 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
     val event = s"""{"eid":"BE_JOB_REQUEST", "ets": $ets, "mid": "$mid", "actor": {"id": "Post Publish Processor", "type": "System"}, "context":{"pdata":{"ver":"1.0","id":"org.ekstep.platform"}, "channel":"$channelId","env":"${config.jobEnv}"},"object":{"ver":"$ver","id":"${obj.identifier}"},"edata": {"action":"post-publish-process","iteration":1,"identifier":"${obj.identifier}","channel":"$channelId","contentType":"$contentType","status":"$status", "addContextDialCodes": ${addContextDialCodes}, "removeContextDialCodes": ${removeContextDialCodes} }}""".stripMargin
     logger.info(s"Video Streaming Event for identifier ${obj.identifier}  is  : $event")
     event
+  }
+
+  private def pushContentMetadataEvent(obj: ObjectData, context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
+    val event = getContentMetadataEvent(obj)
+    context.output(config.contentMetadataEventOutTag, event)
+    try {
+      if (metrics != null) {
+        metrics.incCounter(config.contentPublishSuccessEventCount)
+      }
+    } catch {
+      case e: Exception =>
+        logger.error(s"Error incrementing metrics for ${obj.identifier}: ${e.getMessage}")
+    }
+  }
+
+  def getContentMetadataEvent(obj: ObjectData): String = {
+    // Standard fields
+    val standardFields = Map(
+      "name" -> obj.getString("name", ""),
+      "description" -> obj.getString("description", ""),
+      "keywords" -> obj.metadata.getOrElse("keywords", List.empty),
+      "appIcon" -> obj.getString("appIcon", ""),
+      "mimeType" -> obj.getString("mimeType", ""),
+      "gradeLevel" -> obj.metadata.getOrElse("gradeLevel", List.empty),
+      "identifier" -> obj.getString("identifier", ""),
+      "medium" -> obj.metadata.getOrElse("medium", List.empty),
+      "pkgVersion" -> obj.metadata.getOrElse("pkgVersion", 0),
+      "board" -> obj.getString("board", ""),
+      "subject" -> obj.metadata.getOrElse("subject", List.empty),
+      "resourceType" -> obj.getString("resourceType", ""),
+      "primaryCategory" -> obj.getString("primaryCategory", ""),
+      "contentType" -> obj.getString("contentType", ""),
+      "channel" -> obj.getString("channel", ""),
+      "organisation" -> obj.metadata.getOrElse("organisation", List.empty),
+      "trackable" -> obj.metadata.getOrElse("trackable", Map.empty),
+      "artifactUrl" -> obj.getString("artifactUrl", ""),
+      "license" -> obj.getString("license", ""),
+      "author" -> obj.getString("author", ""),
+      "creator" -> obj.getString("creator", ""),
+      "audience" -> obj.metadata.getOrElse("audience", List.empty)
+    )
+    
+    // Get framework-specific fields
+    val frameworkFields = getFrameworkFields(obj)
+    
+    // Combine standard and framework fields
+    val allFields = standardFields ++ frameworkFields
+    
+    val eventDataJson = ScalaJsonUtil.serialize(allFields)
+    logger.info(s"Content Metadata Event for identifier ${obj.identifier} is: $eventDataJson")
+    eventDataJson
+  }
+  
+  private def getFrameworkFields(obj: ObjectData): Map[String, AnyRef] = {
+    val frameworkId = obj.getString("framework", "")
+    if (frameworkId.isEmpty) {
+      Map.empty[String, AnyRef]
+    } else {
+      // Get all metadata keys that could be framework categories
+      val potentialFrameworkKeys = obj.metadata.keys.filter { key =>
+        // Include framework category fields but exclude standard fields and internal fields
+        !isStandardField(key) && !isInternalField(key) && hasFrameworkValue(obj.metadata.getOrElse(key, ""))
+      }
+      
+      val frameworkFields = potentialFrameworkKeys.map { key =>
+        val value = obj.metadata.getOrElse(key, "")
+        key -> value
+      }.toMap
+      
+      frameworkFields
+    }
+  }
+  
+  private def isStandardField(key: String): Boolean = {
+    val standardFieldsList = Set(
+      "name", "description", "keywords", "appIcon", "mimeType", "gradeLevel", 
+      "identifier", "medium", "pkgVersion", "board", "subject", "resourceType", 
+      "primaryCategory", "contentType", "channel", "organisation", "trackable",
+      "artifactUrl", "license", "author", "creator", "audience", "framework", "copyright",
+      "lastStatusChangedOn", "publish_type", "mediaType", "discussionForum",
+      "createdFor", "size", "compatibilityLevel", "os", "lockKey", "code",
+      "showNotification", "version", "language", "dialcodeRequired", "lastSubmittedOn",
+      "interceptionPoints", "idealScreenSize", "contentEncoding", "consumerId",
+      "osId", "contentDisposition", "previewUrl", "credentials",
+      "idealScreenDensity", "lastUpdatedOn", "createdOn", "lastPublishedOn",
+      "lastPublishedBy", "createdBy", "lastUpdatedBy", "objectType", "visibility",
+      "ownershipType", "nodeType", "status", "versionKey"
+    )
+    standardFieldsList.contains(key)
+  }
+  
+  private def isInternalField(key: String): Boolean = {
+    key.startsWith("IL_") || key.startsWith("SYS_") || key.startsWith("_") ||
+    Set("versionKey", "status", "createdOn", "lastUpdatedOn", "lastPublishedOn", 
+        "createdBy", "lastUpdatedBy", "lastPublishedBy", "objectType", "visibility", 
+        "ownershipType", "nodeType").contains(key)
+  }
+  
+  private def hasFrameworkValue(value: AnyRef): Boolean = {
+    value match {
+      case s: String => s.nonEmpty && !s.trim.isEmpty
+      case l: List[_] => l.nonEmpty
+      case a: Array[_] => a.nonEmpty
+      case _ => value != null
+    }
   }
 }

@@ -23,6 +23,7 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
   val postPublishTopic: String = config.getString("kafka.post_publish.topic")
   val mvcTopic: String = config.getString("kafka.mvc.topic")
+  val contentMetadataTopic: String = config.getString("kafka.content_metadata.topic")
   val kafkaErrorTopic: String = config.getString("kafka.error.topic")
   val inputConsumerName = "content-publish-consumer"
 
@@ -67,6 +68,7 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
   val generatePostPublishProcessTag: OutputTag[String] = OutputTag[String]("post-publish-process-request")
   val mvcProcessorTag: OutputTag[String] = OutputTag[String]("mvc-processor-request")
   val dialcodeContextUpdaterOutTag: OutputTag[String] = OutputTag[String]("dialcode-context-updater-request")
+  val contentMetadataEventOutTag: OutputTag[String] = OutputTag[String]("content-metadata-event-request")
 
   // Service Urls
   val printServiceBaseUrl: String = config.getString("service.print.basePath")
@@ -100,4 +102,6 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
   val enableDIALContextUpdate: String = if (config.hasPath("enableDIALContextUpdate")) config.getString("enableDIALContextUpdate") else "No"
 
   val isrRelativePathEnabled: Boolean = if (config.hasPath("cloudstorage.metadata.replace_absolute_path")) config.getBoolean("cloudstorage.metadata.replace_absolute_path") else false
+
+  val isAISearchEnabled: Boolean = if (config.hasPath("ai_search_enabled")) config.getBoolean("ai_search_enabled") else false
 }

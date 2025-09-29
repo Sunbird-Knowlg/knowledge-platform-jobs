@@ -135,6 +135,9 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
 
           if (!isCollectionShallowCopy) syncNodes(successObj, updatedChildren, unitNodes)(esUtil, neo4JUtil, cassandraUtil, readerConfig, definition, config)
           pushPostProcessEvent(successObj, dialContextMap, context)(metrics)
+          if(config.isAISearchEnabled) {
+            pushContentMetadataEvent(successObj, context)(metrics)
+          }
           logger.info(s"KN-856: Step:9 - After pushPostProcessEvent Collection:  ${successObj.identifier} | Hierarchy: ${successObj.hierarchy}");
           metrics.incCounter(config.collectionPublishSuccessEventCount)
           logger.info("CollectionPublishFunction:: Collection publishing completed successfully for : " + data.identifier)
@@ -191,6 +194,114 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
     val failedEvent = if (error == null) getFailedEvent(event.jobName, event.getMap(), errorMessage) else getFailedEvent(event.jobName, event.getMap(), error)
     context.output(config.failedEventOutTag, failedEvent)
     metrics.incCounter(config.collectionPublishFailedEventCount)
+  }
+
+  private def pushContentMetadataEvent(obj: ObjectData, context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
+    val event = getContentMetadataEvent(obj)
+    context.output(config.contentMetadataEventOutTag, event)
+    try {
+      if (metrics != null) {
+        metrics.incCounter(config.collectionPublishSuccessEventCount)
+      }
+    } catch {
+      case e: Exception =>
+        logger.error(s"Error incrementing metrics for ${obj.identifier}: ${e.getMessage}")
+    }
+  }
+
+  def getContentMetadataEvent(obj: ObjectData): String = {
+    // Standard fields
+    val standardFields = Map(
+      "name" -> obj.getString("name", ""),
+      "description" -> obj.getString("description", ""),
+      "keywords" -> obj.metadata.getOrElse("keywords", List.empty),
+      "appIcon" -> obj.getString("appIcon", ""),
+      "mimeType" -> obj.getString("mimeType", ""),
+      "gradeLevel" -> obj.metadata.getOrElse("gradeLevel", List.empty),
+      "identifier" -> obj.getString("identifier", ""),
+      "medium" -> obj.metadata.getOrElse("medium", List.empty),
+      "pkgVersion" -> obj.metadata.getOrElse("pkgVersion", 0),
+      "board" -> obj.getString("board", ""),
+      "subject" -> obj.metadata.getOrElse("subject", List.empty),
+      "resourceType" -> obj.getString("resourceType", ""),
+      "primaryCategory" -> obj.getString("primaryCategory", ""),
+      "contentType" -> obj.getString("contentType", ""),
+      "channel" -> obj.getString("channel", ""),
+      "organisation" -> obj.metadata.getOrElse("organisation", List.empty),
+      "trackable" -> obj.metadata.getOrElse("trackable", Map.empty),
+      "artifactUrl" -> obj.getString("artifactUrl", ""),
+      "license" -> obj.getString("license", ""),
+      "author" -> obj.getString("author", ""),
+      "creator" -> obj.getString("creator", ""),
+      "audience" -> obj.metadata.getOrElse("audience", List.empty)
+    )
+    
+    // Get framework-specific fields
+    val frameworkFields = getFrameworkFields(obj)
+    
+    // Combine standard and framework fields
+    val allFields = standardFields ++ frameworkFields
+    
+    val eventDataJson = ScalaJsonUtil.serialize(allFields)
+    logger.info(s"Content Metadata Event for collection ${obj.identifier} is: $eventDataJson")
+    eventDataJson
+  }
+  
+  private def getFrameworkFields(obj: ObjectData): Map[String, AnyRef] = {
+    val frameworkId = obj.getString("framework", "")
+    if (frameworkId.isEmpty) {
+      Map.empty[String, AnyRef]
+    } else {
+      // Get all metadata keys that could be framework categories
+      val potentialFrameworkKeys = obj.metadata.keys.filter { key =>
+        val isStandard = isStandardField(key)
+        val isInternal = isInternalField(key)
+        val hasValue = hasFrameworkValue(obj.metadata.getOrElse(key, ""))
+        // Include framework category fields but exclude standard fields and internal fields
+        !isStandard && !isInternal && hasValue
+      }
+      
+      val frameworkFields = potentialFrameworkKeys.map { key =>
+        val value = obj.metadata.getOrElse(key, "")
+        key -> value
+      }.toMap
+      
+      frameworkFields
+    }
+  }
+  
+  private def isStandardField(key: String): Boolean = {
+    val standardFieldsList = Set(
+      "name", "description", "keywords", "appIcon", "mimeType", "gradeLevel", 
+      "identifier", "medium", "pkgVersion", "board", "subject", "resourceType", 
+      "primaryCategory", "contentType", "channel", "organisation", "trackable",
+      "artifactUrl", "license", "author", "creator", "audience", "framework", "copyright",
+      "lastStatusChangedOn", "publish_type", "mediaType", "discussionForum",
+      "createdFor", "size", "compatibilityLevel", "os", "lockKey", "code",
+      "showNotification", "version", "language", "dialcodeRequired", "lastSubmittedOn",
+      "interceptionPoints", "idealScreenSize", "contentEncoding", "consumerId",
+      "osId", "contentDisposition", "previewUrl", "credentials",
+      "idealScreenDensity", "lastUpdatedOn", "createdOn", "lastPublishedOn",
+      "lastPublishedBy", "createdBy", "lastUpdatedBy", "objectType", "visibility",
+      "ownershipType", "nodeType", "status", "versionKey"
+    )
+    standardFieldsList.contains(key)
+  }
+  
+  private def isInternalField(key: String): Boolean = {
+    key.startsWith("IL_") || key.startsWith("SYS_") || key.startsWith("_") ||
+    Set("versionKey", "status", "createdOn", "lastUpdatedOn", "lastPublishedOn", 
+        "createdBy", "lastUpdatedBy", "lastPublishedBy", "objectType", "visibility", 
+        "ownershipType", "nodeType").contains(key)
+  }
+  
+  private def hasFrameworkValue(value: AnyRef): Boolean = {
+    value match {
+      case s: String => s.nonEmpty && !s.trim.isEmpty
+      case l: List[_] => l.nonEmpty
+      case a: Array[_] => a.nonEmpty
+      case _ => value != null
+    }
   }
 
 }
