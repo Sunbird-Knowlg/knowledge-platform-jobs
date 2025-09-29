@@ -280,7 +280,7 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
       "createdFor", "size", "compatibilityLevel", "os", "lockKey", "code",
       "showNotification", "version", "language", "dialcodeRequired", "lastSubmittedOn",
       "interceptionPoints", "idealScreenSize", "contentEncoding", "consumerId",
-      "osId", "contentDisposition", "previewUrl", "credentials", "pkgVersion",
+      "osId", "contentDisposition", "previewUrl", "credentials",
       "idealScreenDensity", "lastUpdatedOn", "createdOn", "lastPublishedOn",
       "lastPublishedBy", "createdBy", "lastUpdatedBy", "objectType", "visibility",
       "ownershipType", "nodeType", "status", "versionKey"
