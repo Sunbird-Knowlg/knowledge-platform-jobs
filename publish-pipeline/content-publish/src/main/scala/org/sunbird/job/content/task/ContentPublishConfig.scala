@@ -102,4 +102,6 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
   val enableDIALContextUpdate: String = if (config.hasPath("enableDIALContextUpdate")) config.getString("enableDIALContextUpdate") else "No"
 
   val isrRelativePathEnabled: Boolean = if (config.hasPath("cloudstorage.metadata.replace_absolute_path")) config.getBoolean("cloudstorage.metadata.replace_absolute_path") else false
+
+  val isAISearchEnabled: Boolean = if (config.hasPath("ai_search_enabled")) config.getBoolean("ai_search_enabled") else false
 }

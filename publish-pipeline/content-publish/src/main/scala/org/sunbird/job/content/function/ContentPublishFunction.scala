@@ -90,7 +90,9 @@ class ContentPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil,
           saveOnSuccess(objWithEcar)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig, config)
           pushStreamingUrlEvent(enrichedObj, context)(metrics)
           pushMVCProcessorEvent(enrichedObj, context)(metrics)
-          pushContentMetadataEvent(enrichedObj, context)(metrics)
+          if(config.isAISearchEnabled) {
+            pushContentMetadataEvent(enrichedObj, context)(metrics)
+          }
 
           if(obj.metadata.contains("dialcodes") && config.enableDIALContextUpdate.equalsIgnoreCase("Yes")) {
             //pushDIALcodeContextUpdaterEvent for linked and delinked DIAL codes

@@ -135,7 +135,9 @@ class CollectionPublishFunction(config: ContentPublishConfig, httpUtil: HttpUtil
 
           if (!isCollectionShallowCopy) syncNodes(successObj, updatedChildren, unitNodes)(esUtil, neo4JUtil, cassandraUtil, readerConfig, definition, config)
           pushPostProcessEvent(successObj, dialContextMap, context)(metrics)
-          pushContentMetadataEvent(successObj, context)(metrics)
+          if(config.isAISearchEnabled) {
+            pushContentMetadataEvent(successObj, context)(metrics)
+          }
           logger.info(s"KN-856: Step:9 - After pushPostProcessEvent Collection:  ${successObj.identifier} | Hierarchy: ${successObj.hierarchy}");
           metrics.incCounter(config.collectionPublishSuccessEventCount)
           logger.info("CollectionPublishFunction:: Collection publishing completed successfully for : " + data.identifier)
