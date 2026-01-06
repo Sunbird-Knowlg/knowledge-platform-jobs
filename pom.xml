@@ -36,7 +36,6 @@
 				<module>dialcode-context-updater</module>
 				<module>cassandra-data-migration</module>
 				<module>live-video-stream-generator</module>
-				<module>csp-migrator</module>
 				<module>asset-enrichment</module>
 				<module>video-stream-generator</module>
 			</modules>
