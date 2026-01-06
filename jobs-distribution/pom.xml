@@ -70,12 +70,6 @@
         </dependency>
         <dependency>
             <groupId>org.sunbird</groupId>
-            <artifactId>live-video-stream-generator</artifactId>
-            <version>1.0.0</version>
-            <type>jar</type>
-        </dependency>
-        <dependency>
-            <groupId>org.sunbird</groupId>
             <artifactId>cassandra-data-migration</artifactId>
             <version>1.0.0</version>
             <type>jar</type>
