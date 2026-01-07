@@ -60,9 +60,26 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
   // Redis Configurations
   val nodeStore: Int = config.getInt("redis.database.contentCache.id")
 
+  // Question/QuestionSet Configurations (merged from questionset-publish)
+  val questionKeyspaceName: String = if (config.hasPath("question.keyspace")) config.getString("question.keyspace") else contentKeyspaceName
+  val questionTableName: String = if (config.hasPath("question.table")) config.getString("question.table") else contentTableName
+  val questionSetKeyspaceName: String = if (config.hasPath("questionset.keyspace")) config.getString("questionset.keyspace") else hierarchyKeyspaceName
+  val questionSetTableName: String = if (config.hasPath("questionset.table")) config.getString("questionset.table") else hierarchyTableName
+  val cacheDbId: Int = if (config.hasPath("redis.database.qsCache.id")) config.getInt("redis.database.qsCache.id") else nodeStore
+
+  // Question/QuestionSet Metrics
+  val questionPublishEventCount = "question-publish-count"
+  val questionPublishSuccessEventCount = "question-publish-success-count"
+  val questionPublishFailedEventCount = "question-publish-failed-count"
+  val questionSetPublishEventCount = "questionset-publish-count"
+  val questionSetPublishSuccessEventCount = "questionset-publish-success-count"
+  val questionSetPublishFailedEventCount = "questionset-publish-failed-count"
+
   // Out Tags
   val contentPublishOutTag: OutputTag[Event] = OutputTag[Event]("content-publish")
   val collectionPublishOutTag: OutputTag[Event] = OutputTag[Event]("collection-publish")
+  val questionPublishOutTag: OutputTag[Event] = OutputTag[Event]("question-publish")
+  val questionSetPublishOutTag: OutputTag[Event] = OutputTag[Event]("questionset-publish")
   val generateVideoStreamingOutTag: OutputTag[String] = OutputTag[String]("video-streaming-generator-request")
   val failedEventOutTag: OutputTag[String] = OutputTag[String]("failed-event")
   val generatePostPublishProcessTag: OutputTag[String] = OutputTag[String]("post-publish-process-request")
@@ -71,13 +88,16 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
   val contentMetadataEventOutTag: OutputTag[String] = OutputTag[String]("content-metadata-event-request")
 
   // Service Urls
-  val printServiceBaseUrl: String = config.getString("service.print.basePath")
+  val printServiceBaseUrl: String = if (config.hasPath("service.print.basePath")) 
+    config.getString("service.print.basePath") else config.getString("service.print.basePath")
+  val printServiceEnabled: Boolean = if (config.hasPath("service.print.enabled")) 
+    config.getBoolean("service.print.enabled") else true
 
   val definitionBasePath: String = if (config.hasPath("schema.basePath")) config.getString("schema.basePath") else "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local"
   val schemaSupportVersionMap: Map[String, AnyRef] = if (config.hasPath("schema.supportedVersion")) config.getObject("schema.supportedVersion").unwrapped().asScala.toMap else Map[String, AnyRef]()
 
-  val supportedObjectType: util.List[String] = if (config.hasPath("content.objectType")) config.getStringList("content.objectType") else util.Arrays.asList[String]("Content", "ContentImage")
-  val supportedMimeType: util.List[String] = if (config.hasPath("content.mimeType")) config.getStringList("content.mimeType") else util.Arrays.asList[String]("application/pdf")
+  val supportedObjectType: util.List[String] = if (config.hasPath("content.objectType")) config.getStringList("content.objectType") else util.Arrays.asList[String]("Content", "ContentImage", "Collection", "CollectionImage", "Question", "QuestionImage", "QuestionSet", "QuestionSetImage")
+  val supportedMimeType: util.List[String] = if (config.hasPath("content.mimeType")) config.getStringList("content.mimeType") else util.Arrays.asList[String]("application/pdf", "application/vnd.sunbird.question", "application/vnd.sunbird.questionset")
   val streamableMimeType: util.List[String] = if (config.hasPath("content.stream.mimeType")) config.getStringList("content.stream.mimeType") else util.Arrays.asList[String]("video/mp4")
   val isStreamingEnabled: Boolean = if (config.hasPath("content.stream.enabled")) config.getBoolean("content.stream.enabled") else false
   val assetDownloadDuration: String = if (config.hasPath("content.asset_download_duration")) config.getString("content.asset_download_duration") else "60 seconds"

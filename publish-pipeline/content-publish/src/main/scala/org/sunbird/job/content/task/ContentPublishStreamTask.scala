@@ -6,7 +6,7 @@ import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.content.function.{CollectionPublishFunction, ContentPublishFunction, PublishEventRouter}
+import org.sunbird.job.content.function.{CollectionPublishFunction, ContentPublishFunction, PublishEventRouter, QuestionPublishFunction, QuestionSetPublishFunction}
 import org.sunbird.job.content.publish.domain.Event
 import org.sunbird.job.util.{FlinkUtil, HttpUtil}
 
@@ -41,6 +41,14 @@ class ContentPublishStreamTask(config: ContentPublishConfig, kafkaConnector: Fli
     		  .name("collection-publish-process").uid("collection-publish-process").setParallelism(1)
     collectionPublish.getSideOutput(config.generatePostPublishProcessTag).addSink(kafkaConnector.kafkaStringSink(config.postPublishTopic))
     collectionPublish.getSideOutput(config.failedEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
+
+    val questionPublish = processStreamTask.getSideOutput(config.questionPublishOutTag).process(new QuestionPublishFunction(config, httpUtil))
+      .name("question-publish-process").uid("question-publish-process").setParallelism(1)
+    questionPublish.getSideOutput(config.failedEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
+
+    val questionSetPublish = processStreamTask.getSideOutput(config.questionSetPublishOutTag).process(new QuestionSetPublishFunction(config, httpUtil))
+      .name("questionset-publish-process").uid("questionset-publish-process").setParallelism(1)
+    questionSetPublish.getSideOutput(config.failedEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
 
     env.execute(config.jobName)
   }

@@ -32,6 +32,27 @@ class Event(eventMap: java.util.Map[String, Any], partition: Int, offset: Long) 
     pkgVersion.doubleValue()
   }
 
+  def objectId: String = identifier
+  
+  def schemaVersion: String = readOrDefault[String]("edata.metadata.schemaVersion", "1.0")
+  
+  def getEventContext(): Map[String, AnyRef] = {
+    val mid: String = readOrDefault[String]("mid", "")
+    val requestId: String = readOrDefault[String]("edata.requestId", "")
+    
+    val defaultFeature = objectType match {
+      case "Content" | "ContentImage" => "ContentPublish"
+      case "Collection" | "CollectionImage" => "CollectionPublish"
+      case "Question" | "QuestionImage" => "QuestionPublish"
+      case "QuestionSet" | "QuestionSetImage" => "QuestionsetPublish"
+      case _ => readOrDefault[String]("edata.action", "publish")
+    }
+    
+    val featureName: String = readOrDefault[String]("edata.featureName", defaultFeature)
+    
+    Map("mid" -> mid, "requestId" -> requestId, "featureName" -> featureName)
+  }
+
   def validEvent(config: ContentPublishConfig): Boolean = {
     ((StringUtils.equals("publish", action) && StringUtils.isNotBlank(identifier))
       && (config.supportedObjectType.contains(objectType) && config.supportedMimeType.contains(mimeType))
