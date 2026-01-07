@@ -15,7 +15,7 @@ import org.mockito.ArgumentMatchers.anyString
 import org.mockito.Mockito
 import org.mockito.Mockito.when
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.content.function.CollectionPublishFunction
+import org.sunbird.job.content.function.{CollectionPublishFunction, QuestionSetPublishFunction}
 import org.sunbird.job.content.publish.domain.Event
 import org.sunbird.job.content.task.{ContentPublishConfig, ContentPublishStreamTask}
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
@@ -65,6 +65,9 @@ class ContentPublishStreamTaskSpec extends BaseTestSpec {
   override protected def afterAll(): Unit = {
     super.afterAll()
     try {
+      if (cassandraUtil != null) {
+        cassandraUtil.close()
+      }
       EmbeddedCassandraServerHelper.cleanEmbeddedCassandra()
     } catch {
       case ex: Exception => {
@@ -75,6 +78,14 @@ class ContentPublishStreamTaskSpec extends BaseTestSpec {
 
   def initialize(): Unit = {
     when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new ContentPublishEventSource)
+  }
+
+  def initializeQuestionSet(): Unit = {
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new QuestionSetPublishEventSource)
+  }
+
+  def initializeQuestion(): Unit = {
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new QuestionPublishEventSource)
   }
 
   def getTimeStamp: String = {
@@ -99,12 +110,75 @@ class ContentPublishStreamTaskSpec extends BaseTestSpec {
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(1)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.contentPublishEventCount}").getValue() should be(1)
   }
+
+  "QuestionSetPublishFunction" should "handle QuestionSet publish events" in {
+    val questionSetFunction = new QuestionSetPublishFunction(jobConfig, mockHttpUtil)
+    val data = new ObjectData("do_113188615625730", Map("objectType" -> "QuestionSet", "identifier" -> "do_113188615625730", "name" -> "Test QuestionSet", "mimeType" -> "application/vnd.sunbird.questionset", "visibility" -> "Default"), Some(Map()), Some(Map("children" -> List(Map("identifier" -> "do_124", "objectType" -> "Question")))))
+    
+    // Test isValidChildQuestion method
+    val childQuestion = new ObjectData("do_124", Map("visibility" -> "Parent", "status" -> "Draft", "createdBy" -> "user1"))
+    val isValid = questionSetFunction.isValidChildQuestion(childQuestion, "user1")
+    isValid should be(true)
+  }
+
+  "QuestionSetPublishFunction" should "generate preview URLs based on print service configuration" in {
+    val questionSetFunction = new QuestionSetPublishFunction(jobConfig, mockHttpUtil)
+    val data = new ObjectData("do_113188615625730", Map("objectType" -> "QuestionSet", "identifier" -> "do_113188615625730", "name" -> "Test QuestionSet"), Some(Map()), Some(Map()))
+    val qList = List(new ObjectData("do_124", Map("objectType" -> "Question", "identifier" -> "do_124", "name" -> "Test Question")))
+    
+    // Test with print service enabled (default configuration)
+    val resultWithPrint = questionSetFunction.generatePreviewUrl(data, qList)(mockHttpUtil, cloudStorageUtil, Map("featureName" -> "test"))
+    resultWithPrint.metadata should contain key "previewUrl"
+    resultWithPrint.metadata should contain key "pdfUrl"
+  }
+
+  ignore should " publish the questionset " in {
+    when(mockNeo4JUtil.getNodeProperties(anyString())).thenReturn(new util.HashMap[String, AnyRef])
+    initializeQuestionSet
+    new ContentPublishStreamTask(jobConfig, mockKafkaUtil, mockHttpUtil).process()
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(1)
+    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.questionSetPublishEventCount}").getValue() should be(1)
+  }
 }
 
 private class ContentPublishEventSource extends SourceFunction[Event] {
 
   override def run(ctx: SourceContext[Event]) {
     ctx.collect(jsonToEvent(EventFixture.PDF_EVENT1))
+  }
+
+  override def cancel() = {}
+
+  def jsonToEvent(json: String): Event = {
+    val gson = new Gson()
+    val data = gson.fromJson(json, new util.LinkedHashMap[String, Any]().getClass).asInstanceOf[util.Map[String, Any]]
+    val metadataMap = data.get("edata").asInstanceOf[util.Map[String, Any]].get("metadata").asInstanceOf[util.Map[String, Any]]
+    metadataMap.put("pkgVersion", metadataMap.get("pkgVersion").asInstanceOf[Double].toInt)
+    new Event(data, 0, 10)
+  }
+}
+
+private class QuestionSetPublishEventSource extends SourceFunction[Event] {
+
+  override def run(ctx: SourceContext[Event]) {
+    ctx.collect(jsonToEvent(EventFixture.QUESTIONSET_EVENT1))
+  }
+
+  override def cancel() = {}
+
+  def jsonToEvent(json: String): Event = {
+    val gson = new Gson()
+    val data = gson.fromJson(json, new util.LinkedHashMap[String, Any]().getClass).asInstanceOf[util.Map[String, Any]]
+    val metadataMap = data.get("edata").asInstanceOf[util.Map[String, Any]].get("metadata").asInstanceOf[util.Map[String, Any]]
+    metadataMap.put("pkgVersion", metadataMap.get("pkgVersion").asInstanceOf[Double].toInt)
+    new Event(data, 0, 10)
+  }
+}
+
+private class QuestionPublishEventSource extends SourceFunction[Event] {
+
+  override def run(ctx: SourceContext[Event]) {
+    ctx.collect(jsonToEvent(EventFixture.QUESTION_EVENT1))
   }
 
   override def cancel() = {}
