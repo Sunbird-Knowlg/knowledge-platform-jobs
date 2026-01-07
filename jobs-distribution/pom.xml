@@ -52,18 +52,6 @@
         </dependency>
         <dependency>
             <groupId>org.sunbird</groupId>
-            <artifactId>auto-creator-v2</artifactId>
-            <version>1.0.0</version>
-            <type>jar</type>
-        </dependency>
-        <dependency>
-            <groupId>org.sunbird</groupId>
-            <artifactId>content-auto-creator</artifactId>
-            <version>1.0.0</version>
-            <type>jar</type>
-        </dependency>
-        <dependency>
-            <groupId>org.sunbird</groupId>
             <artifactId>qrcode-image-generator</artifactId>
             <version>1.0.0</version>
             <type>jar</type>
@@ -76,19 +64,7 @@
         </dependency>
         <dependency>
             <groupId>org.sunbird</groupId>
-            <artifactId>csp-migrator</artifactId>
-            <version>1.0.0</version>
-            <type>jar</type>
-        </dependency>
-        <dependency>
-            <groupId>org.sunbird</groupId>
             <artifactId>live-node-publisher</artifactId>
-            <version>1.0.0</version>
-            <type>jar</type>
-        </dependency>
-        <dependency>
-            <groupId>org.sunbird</groupId>
-            <artifactId>live-video-stream-generator</artifactId>
             <version>1.0.0</version>
             <type>jar</type>
         </dependency>

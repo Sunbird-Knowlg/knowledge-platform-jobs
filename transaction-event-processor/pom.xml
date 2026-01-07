@@ -222,7 +222,7 @@
                 <configuration>
                     <reportsDirectory>${project.build.directory}/surefire-reports</reportsDirectory>
                     <junitxml>.</junitxml>
-                    <filereports>audit-event-generator-testsuite.txt</filereports>
+                    <filereports>transaction-event-processor-testsuite.txt</filereports>
                 </configuration>
                 <executions>
                     <execution>
