@@ -27,7 +27,6 @@
 			</activation>
 			<modules>
 				<module>jobs-core</module>
-				<module>post-publish-processor</module>
 				<module>publish-pipeline</module>
 				<module>search-indexer</module>
 				<module>transaction-event-processor</module>
