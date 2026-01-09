@@ -28,7 +28,7 @@
         </dependency>
         <dependency>
             <groupId>org.sunbird</groupId>
-            <artifactId>content-publish</artifactId>
+            <artifactId>knowlg-publish</artifactId>
             <version>1.0.0</version>
             <type>jar</type>
         </dependency>
