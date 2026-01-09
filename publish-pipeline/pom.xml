@@ -15,7 +15,6 @@
 
     <modules>
         <module>publish-core</module>
-<!--        <module>questionset-publish</module>-->
         <module>content-publish</module>
         <module>live-node-publisher</module>
     </modules>
