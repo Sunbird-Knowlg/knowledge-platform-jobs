@@ -136,8 +136,9 @@ class QuestionSetPublishFunction(config: ContentPublishConfig, httpUtil: HttpUti
           logger.info(s"Feature: ${featureName} | processElement :::  obj hierarchy post enrichment :: " + ScalaJsonUtil.serialize(enrichedObj.hierarchy.get))
           // Generate ECAR
           val objWithEcar = generateECAR(enrichedObj, pkgTypes)(ec, neo4JUtil, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil, data.eventContext)
-          // Generate PDF URL
-          val updatedObj = generatePreviewUrl(objWithEcar, qList)(httpUtil, cloudStorageUtil, data.eventContext)
+          // Deprecating Print Service - setting empty preview and PDF URLs
+          logger.info(s"Feature: ${featureName} | skipping PDF and preview URL generation")
+          val updatedObj = new ObjectData(objWithEcar.identifier, objWithEcar.metadata ++ Map("previewUrl" -> "", "pdfUrl" -> ""), objWithEcar.extData, objWithEcar.hierarchy)
           saveOnSuccess(updatedObj)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig, config)
           logger.info(LoggerUtil.getExitLogs(config.jobName, requestId, s"Feature: ${featureName} | QuestionSet publishing completed successfully for : ${data.identifier}"))
           metrics.incCounter(config.questionSetPublishSuccessEventCount)
@@ -184,20 +185,6 @@ class QuestionSetPublishFunction(config: ContentPublishConfig, httpUtil: HttpUti
     logger.info(s"Feature: ${featureName} | QuestionSetPublishFunction ::: generateECAR ::: ecar map ::: " + ecarMap)
     val meta: Map[String, AnyRef] = Map("downloadUrl" -> ecarMap.getOrElse(EcarPackageType.FULL.toString, ""), "variants" -> variants, "size" -> httpUtil.getSize(ecarMap.getOrElse(EcarPackageType.FULL.toString, "")).asInstanceOf[AnyRef])
     new ObjectData(data.identifier, data.metadata ++ meta, data.extData, data.hierarchy)
-  }
-
-  def generatePreviewUrl(data: ObjectData, qList: List[ObjectData])(implicit httpUtil: HttpUtil, cloudStorageUtil: CloudStorageUtil, eventContext: Map[String, AnyRef]): ObjectData = {
-    val featureName = eventContext.getOrElse("featureName", "").asInstanceOf[String]
-    
-    if (config.printServiceEnabled) {
-      val (pdfUrl, previewUrl) = getPdfFileUrl(qList, data, "questionSetTemplate.vm", config.printServiceBaseUrl, System.currentTimeMillis().toString)(httpUtil, cloudStorageUtil)
-      logger.info(s"Feature: ${featureName} | generatePreviewUrl ::: finalPdfUrl ::: " + pdfUrl.getOrElse(""))
-      logger.info(s"Feature: ${featureName} | generatePreviewUrl ::: finalPreviewUrl ::: " + previewUrl.getOrElse(""))
-      new ObjectData(data.identifier, data.metadata ++ Map("previewUrl" -> previewUrl.getOrElse(""), "pdfUrl" -> pdfUrl.getOrElse("")), data.extData, data.hierarchy)
-    } else {
-      logger.info(s"Feature: ${featureName} | generatePreviewUrl ::: Print service is disabled, skipping PDF and preview URL generation")
-      new ObjectData(data.identifier, data.metadata ++ Map("previewUrl" -> "", "pdfUrl" -> ""), data.extData, data.hierarchy)
-    }
   }
 
   def isValidChildQuestion(obj: ObjectData, createdBy: String): Boolean = {

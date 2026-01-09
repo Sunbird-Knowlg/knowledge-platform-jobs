@@ -121,17 +121,6 @@ class ContentPublishStreamTaskSpec extends BaseTestSpec {
     isValid should be(true)
   }
 
-  "QuestionSetPublishFunction" should "generate preview URLs based on print service configuration" in {
-    val questionSetFunction = new QuestionSetPublishFunction(jobConfig, mockHttpUtil)
-    val data = new ObjectData("do_113188615625730", Map("objectType" -> "QuestionSet", "identifier" -> "do_113188615625730", "name" -> "Test QuestionSet"), Some(Map()), Some(Map()))
-    val qList = List(new ObjectData("do_124", Map("objectType" -> "Question", "identifier" -> "do_124", "name" -> "Test Question")))
-    
-    // Test with print service enabled (default configuration)
-    val resultWithPrint = questionSetFunction.generatePreviewUrl(data, qList)(mockHttpUtil, cloudStorageUtil, Map("featureName" -> "test"))
-    resultWithPrint.metadata should contain key "previewUrl"
-    resultWithPrint.metadata should contain key "pdfUrl"
-  }
-
   ignore should " publish the questionset " in {
     when(mockNeo4JUtil.getNodeProperties(anyString())).thenReturn(new util.HashMap[String, AnyRef])
     initializeQuestionSet

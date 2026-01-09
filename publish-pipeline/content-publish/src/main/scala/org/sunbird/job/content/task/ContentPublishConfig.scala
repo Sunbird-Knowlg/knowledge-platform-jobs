@@ -87,11 +87,6 @@ class ContentPublishConfig(override val config: Config) extends PublishConfig(co
   val dialcodeContextUpdaterOutTag: OutputTag[String] = OutputTag[String]("dialcode-context-updater-request")
   val contentMetadataEventOutTag: OutputTag[String] = OutputTag[String]("content-metadata-event-request")
 
-  // Service Urls
-  val printServiceBaseUrl: String = if (config.hasPath("service.print.basePath")) 
-    config.getString("service.print.basePath") else config.getString("service.print.basePath")
-  val printServiceEnabled: Boolean = if (config.hasPath("service.print.enabled")) 
-    config.getBoolean("service.print.enabled") else true
 
   val definitionBasePath: String = if (config.hasPath("schema.basePath")) config.getString("schema.basePath") else "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local"
   val schemaSupportVersionMap: Map[String, AnyRef] = if (config.hasPath("schema.supportedVersion")) config.getObject("schema.supportedVersion").unwrapped().asScala.toMap else Map[String, AnyRef]()
