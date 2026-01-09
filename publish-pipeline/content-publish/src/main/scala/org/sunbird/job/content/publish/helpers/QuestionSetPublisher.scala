@@ -13,7 +13,7 @@ import org.sunbird.job.util.{CSPMetaUtil, CassandraUtil, CloudStorageUtil, JSONU
 import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 
-trait QuestionSetPublisher extends ObjectReader with ObjectValidator with ObjectUpdater with ObjectEnrichment with EcarGenerator with QuestionPdfGenerator {
+trait QuestionSetPublisher extends ObjectReader with ObjectValidator with ObjectUpdater with ObjectEnrichment with EcarGenerator {
 
 	private[this] val logger = LoggerFactory.getLogger(classOf[QuestionSetPublisher])
 
