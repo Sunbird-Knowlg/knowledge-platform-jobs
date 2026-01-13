@@ -1,19 +1,19 @@
-package org.sunbird.job.searchindexer.functions
+package org.sunbird.job.transaction.functions
 
 import com.google.gson.reflect.TypeToken
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.KeyedProcessFunction
 import org.slf4j.LoggerFactory
-import org.sunbird.job.searchindexer.compositesearch.domain.Event
-import org.sunbird.job.searchindexer.task.SearchIndexerConfig
+import org.sunbird.job.transaction.domain.Event
+import org.sunbird.job.transaction.task.TransactionEventProcessorConfig
 import org.sunbird.job.{BaseProcessKeyedFunction, Metrics}
 
 import java.lang.reflect.Type
 
-class TransactionEventRouter(config: SearchIndexerConfig)
+class SearchIndexerRouter(config: TransactionEventProcessorConfig)
   extends BaseProcessKeyedFunction[String, Event, String](config) {
 
-  private[this] val logger = LoggerFactory.getLogger(classOf[TransactionEventRouter])
+  private[this] val logger = LoggerFactory.getLogger(classOf[SearchIndexerRouter])
   val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
 
   override def open(parameters: Configuration): Unit = {
@@ -26,7 +26,7 @@ class TransactionEventRouter(config: SearchIndexerConfig)
 
   override def processElement(event: Event, context: KeyedProcessFunction[String, Event, String]#Context, metrics: Metrics): Unit = {
     metrics.incCounter(config.totalEventsCount)
-    if (event.validEvent(config.restrictObjectTypes)) {
+    if (event.searchIndexerIsValid(config.restrictObjectTypes)) {
       event.nodeType match {
         case "SET" | "DATA_NODE" => context.output(config.compositeSearchDataOutTag, event)
         case "EXTERNAL" => context.output(config.dialCodeExternalOutTag, event)

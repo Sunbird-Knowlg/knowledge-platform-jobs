@@ -12,20 +12,33 @@ import org.sunbird.job.{BaseProcessKeyedFunction, Metrics}
 
 import java.util
 
-class AuditHistoryIndexer(config: TransactionEventProcessorConfig, var esUtil: ElasticSearchUtil)
-                         (implicit mapTypeInfo: TypeInformation[util.Map[String, AnyRef]],
-                          stringTypeInfo: TypeInformation[String])
-  extends BaseProcessKeyedFunction[String, Event, String](config) with TransactionEventProcessorService {
+class AuditHistoryIndexer(
+    config: TransactionEventProcessorConfig,
+    var esUtil: ElasticSearchUtil
+)(implicit
+    mapTypeInfo: TypeInformation[util.Map[String, AnyRef]],
+    stringTypeInfo: TypeInformation[String]
+) extends BaseProcessKeyedFunction[String, Event, String](config)
+    with TransactionEventProcessorService {
 
   override def metricsList(): List[String] = {
-    List(config.totalEventsCount, config.successEventCount, config.failedEventCount, config.esFailedEventCount, config.skippedEventCount,
-      config.totalAuditHistoryEventsCount, config.failedAuditHistoryEventsCount, config.auditHistoryEventSuccessCount)
+    List(
+      config.totalEventsCount,
+      config.successEventCount,
+      config.failedEventCount,
+      config.esFailedEventCount,
+      config.skippedEventCount,
+      config.totalAuditHistoryEventsCount,
+      config.failedAuditHistoryEventsCount,
+      config.auditHistoryEventSuccessCount
+    )
   }
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
     if (esUtil == null) {
-      esUtil = new ElasticSearchUtil(config.esConnectionInfo, config.auditHistoryIndex)
+      esUtil =
+        new ElasticSearchUtil(config.esConnectionInfo, config.auditHistoryIndex)
     }
   }
 
@@ -34,9 +47,11 @@ class AuditHistoryIndexer(config: TransactionEventProcessorConfig, var esUtil: E
     super.close()
   }
 
-  override def processElement(event: Event,
-                              context: KeyedProcessFunction[String, Event, String]#Context,
-                              metrics: Metrics): Unit = {
+  override def processElement(
+      event: Event,
+      context: KeyedProcessFunction[String, Event, String]#Context,
+      metrics: Metrics
+  ): Unit = {
     metrics.incCounter(config.totalAuditHistoryEventsCount)
     processAuditHistoryEvent(event, metrics)(esUtil, config)
   }
