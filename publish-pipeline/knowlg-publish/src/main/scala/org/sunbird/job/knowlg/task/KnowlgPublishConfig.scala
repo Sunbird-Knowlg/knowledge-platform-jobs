@@ -52,6 +52,10 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
   val contentTableName: String = config.getString("content.table")
   val hierarchyKeyspaceName: String = config.getString("hierarchy.keyspace")
   val hierarchyTableName: String = config.getString("hierarchy.table")
+  
+  // Collection hierarchy relationships table configuration
+  val collectionHierarchyKeyspaceName: String = if (config.hasPath("collection_hierarchy.keyspace")) config.getString("collection_hierarchy.keyspace") else "dev_hierarchy_store"
+  val collectionHierarchyTableName: String = if (config.hasPath("collection_hierarchy.table")) config.getString("collection_hierarchy.table") else "hierarchy_relations"
 
   // JanusGraph Configurations
 
