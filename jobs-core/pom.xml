@@ -79,9 +79,9 @@
             <version>0.1.1</version>
         </dependency>
         <dependency>
-            <groupId>${CLOUD_STORE_GROUP_ID}</groupId>
-            <artifactId>${CLOUD_STORE_ARTIFACT_ID}</artifactId>
-            <version>${CLOUD_STORE_VERSION}</version>
+            <groupId>org.sunbird</groupId>
+            <artifactId>cloud-store-sdk_2.12</artifactId>
+            <version>1.4.9</version>
             <exclusions>
                 <exclusion>
                     <artifactId>log4j</artifactId>
@@ -223,6 +223,12 @@
             <groupId>com.twitter</groupId>
             <artifactId>storehaus-cache_${scala.version}</artifactId>
             <version>0.15.0</version>
+        </dependency>
+        <!-- Required for AWS IAM role-based authentication (web identity tokens) -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>sts</artifactId>
+            <version>2.20.0</version>
         </dependency>
     </dependencies>
 
