@@ -9,7 +9,7 @@ import org.neo4j.driver.v1.exceptions.ClientException
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cache.{DataCache, RedisConnect}
 import org.sunbird.job.knowlg.publish.domain.Event
-import org.sunbird.job.knowlg.publish.helpers.{CollectionPublisher, HierarchyRelationshipHelper}
+import org.sunbird.job.knowlg.publish.helpers.CollectionPublisher
 import org.sunbird.job.knowlg.task.KnowlgPublishConfig
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.exception.InvalidInputException
@@ -40,7 +40,6 @@ class CollectionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
   private var cache: DataCache = _
   private val COLLECTION_CACHE_KEY_PREFIX = "hierarchy_"
   private val COLLECTION_CACHE_KEY_SUFFIX = ":leafnodes"
-  private val hierarchyRelationshipHelper = new HierarchyRelationshipHelper()
 
   @transient var ec: ExecutionContext = _
   private val pkgTypes = List(EcarPackageType.SPINE, EcarPackageType.ONLINE)
@@ -131,7 +130,7 @@ class CollectionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
           logger.info(s"KN-856: Step:8 - After publishHierarchy Collection:  ${successObj.identifier} | Hierarchy: $updatedChildren");
           
           // Update collection hierarchy relationships
-          hierarchyRelationshipHelper.updateHierarchyRelationships(successObj)(cassandraUtil, config)
+          updateHierarchyRelationships(successObj)(cassandraUtil, config)
           logger.info(s"After updateHierarchyRelationships Collection:  ${successObj.identifier}");
           
           //TODO: Save IMAGE Object with enrichedObj children and collRelationalMetadata when pkgVersion is 1 - verify with MaheshG
