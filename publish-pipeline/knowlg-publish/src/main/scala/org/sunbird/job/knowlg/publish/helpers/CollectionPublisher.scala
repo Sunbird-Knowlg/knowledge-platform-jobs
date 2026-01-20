@@ -3,6 +3,7 @@ package org.sunbird.job.knowlg.publish.helpers
 import com.datastax.driver.core.Row
 import com.datastax.driver.core.querybuilder.{Insert, QueryBuilder, Select}
 import com.fasterxml.jackson.core.JsonProcessingException
+import org.apache.commons.collections.CollectionUtils
 import org.apache.commons.io.FileUtils
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
@@ -714,15 +715,20 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
         
         // Generate relationship data using exact logic from RelationCacheUpdater
         val leafNodesMap = getLeafNodes(rootId, javaHierarchy)
-        val optionalNodesMap = getOptionalNodes(rootId, javaHierarchy)
-        val ancestorsMap = getAncestors(rootId, javaHierarchy)
-        
-        // Store in Cassandra
+        logger.info("Leaf-nodes cache updating for: " + leafNodesMap.size)
         storeRelationshipData(rootId, "leafnodes", leafNodesMap)
+        
+        val optionalNodesMap = getOptionalNodes(rootId, javaHierarchy)
+        logger.info("Optional-nodes cache updating for: " + optionalNodesMap.size)
         storeRelationshipData(rootId, "optionalnodes", optionalNodesMap)
+        
+        val ancestorsMap = getAncestors(rootId, javaHierarchy)
+        logger.info("Ancestors cache updating for: "+ ancestorsMap.size)
         storeRelationshipData(rootId, "ancestors", ancestorsMap)
         
-        logger.info(s"Hierarchy relationships updated for collection: $rootId - leafnodes: ${leafNodesMap.size}, optionalnodes: ${optionalNodesMap.size}, ancestors: ${ancestorsMap.size}")
+        logger.info(s"Hierarchy relationships updated for collection: $rootId")
+      } else {
+        logger.warn("Hierarchy Empty: " + obj.identifier)
       }
     } catch {
       case ex: Exception =>
@@ -737,8 +743,8 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     val leafNodesMap = if (StringUtils.equalsIgnoreCase(mimeType, "application/vnd.ekstep.content-collection")) {
       val leafNodes = getOrComposeLeafNodes(hierarchy, false)
       val map: Map[String, List[String]] = if (leafNodes.nonEmpty) Map() + (identifier -> leafNodes) else Map()
-      val children = getChildrenForRelationships(hierarchy)
-      val childLeafNodesMap = if (org.apache.commons.collections.CollectionUtils.isNotEmpty(children)) {
+      val children = getChildren(hierarchy)
+      val childLeafNodesMap = if (CollectionUtils.isNotEmpty(children)) {
         children.asScala.map(child => {
           val childId = child.get("identifier").asInstanceOf[String]
           getLeafNodes(childId, child)
@@ -753,15 +759,15 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     if (hierarchy.containsKey("leafNodes") && !compose)
       hierarchy.getOrDefault("leafNodes", java.util.Arrays.asList()).asInstanceOf[java.util.List[String]].asScala.toList
     else {
-      val children = getChildrenForRelationships(hierarchy)
-      val childCollections = children.asScala.filter(c => isCollectionForRelationships(c))
+      val children = getChildren(hierarchy)
+      val childCollections = children.asScala.filter(c => isCollection(c))
       val leafList = childCollections.map(coll => getOrComposeLeafNodes(coll, true)).flatten.toList
-      val ids = children.asScala.filterNot(c => isCollectionForRelationships(c)).map(c => c.getOrDefault("identifier", "").asInstanceOf[String]).filter(id => StringUtils.isNotBlank(id))
+      val ids = children.asScala.filterNot(c => isCollection(c)).map(c => c.getOrDefault("identifier", "").asInstanceOf[String]).filter(id => StringUtils.isNotBlank(id))
       leafList ++ ids
     }
   }
 
-  private def isCollectionForRelationships(content: java.util.Map[String, AnyRef]): Boolean = {
+  private def isCollection(content: java.util.Map[String, AnyRef]): Boolean = {
     StringUtils.equalsIgnoreCase(content.getOrDefault("mimeType", "").asInstanceOf[String], "application/vnd.ekstep.content-collection")
   }
 
@@ -770,8 +776,8 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     val optionalNodesMap = if (StringUtils.equalsIgnoreCase(mimeType, "application/vnd.ekstep.content-collection")) {
       val optionalNodes = getOrComposeOptionalNodes(hierarchy, false)
       val map: Map[String, List[String]] = if (optionalNodes.nonEmpty) Map() + (identifier -> optionalNodes) else Map()
-      val children = getChildrenForRelationships(hierarchy)
-      val childOptionalNodesMap = if (org.apache.commons.collections.CollectionUtils.isNotEmpty(children)) {
+      val children = getChildren(hierarchy)
+      val childOptionalNodesMap = if (CollectionUtils.isNotEmpty(children)) {
         children.asScala.map(child => {
           val childId = child.get("identifier").asInstanceOf[String]
           getOptionalNodes(childId, child)
@@ -783,14 +789,14 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
   }
 
   private def getOrComposeOptionalNodes(hierarchy: java.util.Map[String, AnyRef], compose: Boolean = true): List[String] = {
-    val children = getChildrenForRelationships(hierarchy)
-    val ids = children.asScala.filter(c => isOptionalForRelationships(c)).map(c => c.getOrDefault("identifier", "").asInstanceOf[String]).filter(id => StringUtils.isNotBlank(id))
-    val childCollections = children.asScala.filterNot(c => isOptionalForRelationships(c))
+    val children = getChildren(hierarchy)
+    val ids = children.asScala.filter(c => isOptional(c)).map(c => c.getOrDefault("identifier", "").asInstanceOf[String]).filter(id => StringUtils.isNotBlank(id))
+    val childCollections = children.asScala.filterNot(c => isOptional(c))
     val optionalList = childCollections.map(coll => getOrComposeOptionalNodes(coll, true)).flatten.toList
     optionalList ++ ids
   }
 
-  private def isOptionalForRelationships(content: java.util.Map[String, AnyRef]): Boolean = {
+  private def isOptional(content: java.util.Map[String, AnyRef]): Boolean = {
     val optionalMap = content.getOrDefault("relationalMetadata", new java.util.HashMap[String, AnyRef]()).asInstanceOf[java.util.Map[String, AnyRef]]
     StringUtils.equalsIgnoreCase(optionalMap.getOrDefault("optional", "").toString, "true")
   }
@@ -800,7 +806,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     val isCollection = (StringUtils.equalsIgnoreCase(mimeType, "application/vnd.ekstep.content-collection"))
     val ancestors = if (isCollection) identifier :: parents else parents
     val ancestorsMap = if (isCollection) {
-      getChildrenForRelationships(hierarchy).asScala.map(child => {
+      getChildren(hierarchy).asScala.map(child => {
         val childId = child.get("identifier").asInstanceOf[String]
         getAncestors(childId, child, ancestors)
       }).filter(m => m.nonEmpty).reduceOption((a, b) => {
@@ -815,9 +821,9 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     ancestorsMap.filter(m => m._2.nonEmpty)
   }
 
-  private def getChildrenForRelationships(hierarchy: java.util.Map[String, AnyRef]) = {
+  private def getChildren(hierarchy: java.util.Map[String, AnyRef]) = {
     val children = hierarchy.getOrDefault("children", java.util.Arrays.asList()).asInstanceOf[java.util.List[java.util.Map[String, AnyRef]]]
-    if (org.apache.commons.collections.CollectionUtils.isEmpty(children)) List().asJava else children
+    if (CollectionUtils.isEmpty(children)) List().asJava else children
   }
 
   /**
@@ -835,9 +841,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
         insertQuery.value("node_ids", nodeIds.asJava) // Convert to Java List for Cassandra list<text>
         
         val result = cassandraUtil.upsert(insertQuery.toString)
-        if (result) {
-          logger.debug(s"Stored relationship data: $relationshipKey -> ${nodeIds.size} nodes")
-        } else {
+        if (!result) {
           logger.error(s"Failed to store relationship data for key: $relationshipKey")
         }
       }
