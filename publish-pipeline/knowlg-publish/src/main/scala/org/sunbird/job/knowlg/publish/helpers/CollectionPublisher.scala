@@ -3,7 +3,7 @@ package org.sunbird.job.knowlg.publish.helpers
 import com.datastax.driver.core.Row
 import com.datastax.driver.core.querybuilder.{Insert, QueryBuilder, Select}
 import com.fasterxml.jackson.core.JsonProcessingException
-import org.apache.commons.collections.CollectionUtils
+import org.apache.commons.collections.{CollectionUtils, MapUtils}
 import org.apache.commons.io.FileUtils
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
@@ -706,23 +706,19 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
    */
   def updateHierarchyRelationships(obj: ObjectData)(implicit cassandraUtil: CassandraUtil, config: KnowlgPublishConfig): Unit = {
     try {
-      val hierarchy = obj.hierarchy.getOrElse(Map.empty[String, AnyRef])
-      if (hierarchy.nonEmpty) {
-        val rootId = obj.identifier.replace(".img", "")
-        
-        // Convert Scala Map to Java Map for compatibility with original logic
-        val javaHierarchy = ScalaJsonUtil.deserialize[java.util.Map[String, AnyRef]](ScalaJsonUtil.serialize(hierarchy))
-        
-        // Generate relationship data using exact logic from RelationCacheUpdater
-        val leafNodesMap = getLeafNodes(rootId, javaHierarchy)
+      val rootId = obj.identifier.replace(".img", "")
+      val hierarchy = getHierarchyFromDb(rootId)
+      
+      if (MapUtils.isNotEmpty(hierarchy)) {
+        val leafNodesMap = getLeafNodes(rootId, hierarchy)
         logger.info("Leaf-nodes cache updating for: " + leafNodesMap.size)
         storeRelationshipData(rootId, "leafnodes", leafNodesMap)
         
-        val optionalNodesMap = getOptionalNodes(rootId, javaHierarchy)
+        val optionalNodesMap = getOptionalNodes(rootId, hierarchy)
         logger.info("Optional-nodes cache updating for: " + optionalNodesMap.size)
         storeRelationshipData(rootId, "optionalnodes", optionalNodesMap)
         
-        val ancestorsMap = getAncestors(rootId, javaHierarchy)
+        val ancestorsMap = getAncestors(rootId, hierarchy)
         logger.info("Ancestors cache updating for: "+ ancestorsMap.size)
         storeRelationshipData(rootId, "ancestors", ancestorsMap)
         
@@ -733,11 +729,32 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     } catch {
       case ex: Exception =>
         logger.error(s"Error updating hierarchy relationships for ${obj.identifier}: ${ex.getMessage}", ex)
-        // Don't fail the entire publish process for relationship storage errors
     }
   }
 
-  // Exact logic from RelationCacheUpdater
+  /**
+   * Reads hierarchy from database as JSON string and parses with ObjectMapper
+   * Reuses existing getCollectionHierarchy method but parses with ObjectMapper like RelationCacheUpdater
+   */
+  private def getHierarchyFromDb(identifier: String)(implicit cassandraUtil: CassandraUtil, config: KnowlgPublishConfig): java.util.Map[String, AnyRef] = {
+    val readerConfig = ExtDataConfig(config.hierarchyKeyspaceName, config.hierarchyTableName)
+    val row: Row = getCollectionHierarchy(identifier, readerConfig)
+    
+    if (null != row) {
+      val hierarchyJson = row.getString("hierarchy")
+      val updatedHierarchyJson = if (config.isrRelativePathEnabled) CSPMetaUtil.updateAbsolutePath(hierarchyJson) else hierarchyJson
+      val mapper = new com.fasterxml.jackson.databind.ObjectMapper()
+      mapper.configure(com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+      mapper.configure(com.fasterxml.jackson.core.JsonParser.Feature.ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER, true)
+      
+      if (StringUtils.isNotBlank(updatedHierarchyJson))
+        mapper.readValue(updatedHierarchyJson, classOf[java.util.Map[String, AnyRef]])
+      else new java.util.HashMap[String, AnyRef]()
+    } else {
+      new java.util.HashMap[String, AnyRef]()
+    }
+  }
+
   private def getLeafNodes(identifier: String, hierarchy: java.util.Map[String, AnyRef]): Map[String, List[String]] = {
     val mimeType = hierarchy.getOrDefault("mimeType", "").asInstanceOf[String]
     val leafNodesMap = if (StringUtils.equalsIgnoreCase(mimeType, "application/vnd.ekstep.content-collection")) {
@@ -810,8 +827,6 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
         val childId = child.get("identifier").asInstanceOf[String]
         getAncestors(childId, child, ancestors)
       }).filter(m => m.nonEmpty).reduceOption((a, b) => {
-        // Here we are merging the Resource ancestors where it is used multiple times - Functional.
-        // convert maps to seq, to keep duplicate keys and concat then group by key - Code explanation.
         val grouped = (a.toSeq ++ b.toSeq).groupBy(_._1)
         grouped.mapValues(_.map(_._2).toList.flatten.distinct)
       }).getOrElse(Map())
@@ -826,19 +841,14 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     if (CollectionUtils.isEmpty(children)) List().asJava else children
   }
 
-  /**
-   * Stores relationship data in Cassandra/YugabyteDB using list<text>
-   */
   private def storeRelationshipData(rootId: String, relationshipType: String, dataMap: Map[String, List[String]])
                                    (implicit cassandraUtil: CassandraUtil, config: KnowlgPublishConfig): Unit = {
     try {
       dataMap.foreach { case (identifier, nodeIds) =>
         val relationshipKey = if (StringUtils.isNotBlank(rootId)) s"${rootId}:${identifier}:${relationshipType}" else s"${identifier}:${relationshipType}"
-        
-        // Use Cassandra QueryBuilder for proper list<text> handling
         val insertQuery = QueryBuilder.insertInto(config.collectionHierarchyKeyspaceName, config.collectionHierarchyTableName)
         insertQuery.value("relationship_key", relationshipKey)
-        insertQuery.value("node_ids", nodeIds.asJava) // Convert to Java List for Cassandra list<text>
+        insertQuery.value("node_ids", nodeIds.asJava)
         
         val result = cassandraUtil.upsert(insertQuery.toString)
         if (!result) {

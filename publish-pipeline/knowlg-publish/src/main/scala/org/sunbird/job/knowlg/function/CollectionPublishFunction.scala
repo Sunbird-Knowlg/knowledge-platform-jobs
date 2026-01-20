@@ -129,9 +129,9 @@ class CollectionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
           publishHierarchy(updatedChildren, successObj, readerConfig, config)(cassandraUtil)
           logger.info(s"KN-856: Step:8 - After publishHierarchy Collection:  ${successObj.identifier} | Hierarchy: $updatedChildren");
           
-          // Update collection hierarchy relationships
-          updateHierarchyRelationships(successObj)(cassandraUtil, config)
-          logger.info(s"After updateHierarchyRelationships Collection:  ${successObj.identifier}");
+          // Update collection hierarchy relationships - use enrichedObj which has complete hierarchy
+          updateHierarchyRelationships(enrichedObj)(cassandraUtil, config)
+          logger.info(s"After updateHierarchyRelationships Collection:  ${enrichedObj.identifier}");
           
           //TODO: Save IMAGE Object with enrichedObj children and collRelationalMetadata when pkgVersion is 1 - verify with MaheshG
           if(data.pkgVersion == 1) {
