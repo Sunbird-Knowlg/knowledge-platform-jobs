@@ -19,7 +19,7 @@ class CloudStorageUtil(config: BaseJobConfig) extends Serializable {
       val storageKey = config.getString("cloud_storage_key", "")
       val storageSecret = config.getString("cloud_storage_secret", "")
       val endPoint = config.getString("cloud_storage_endpoint", "")
-      val storageRegion = config.getString("cloud_storage_region", "ap-south-1")
+      val storageRegion = if (StringUtils.isNotBlank(config.getString("cloud_storage_region", ""))) Option(config.getString("cloud_storage_region", "")) else None
       val authType = config.getString("cloud_storage_auth_type", "access_key")
       val storageEndPoint = if (StringUtils.isNotBlank(endPoint)) Option(endPoint) else None
       val storageAuthType = Option(authType)
