@@ -4,6 +4,7 @@ import java.util
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
+import org.apache.flink.connector.kafka.source.KafkaSource
 import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
 import org.apache.flink.streaming.api.functions.source.SourceFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext
@@ -67,7 +68,7 @@ class QRCodeImageGeneratorTaskTestSpec extends BaseTestSpec {
     when(mockElasticUtil.getDocumentAsString("V2B5A2")).thenReturn(V2B5A2Json)
     when(mockElasticUtil.getDocumentAsString("F6J3E7")).thenReturn(F6J3E7Json)
 
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new QRCodeImageGeneratorMapSource)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(mock[KafkaSource[Event]](Mockito.withSettings().serializable()))
     new QRCodeImageGeneratorTask(jobConfig, mockKafkaUtil).process()
 //    assertThrows[JobExecutionException] {
 //      new QRCodeImageGeneratorTask(jobConfig, mockKafkaUtil).process()

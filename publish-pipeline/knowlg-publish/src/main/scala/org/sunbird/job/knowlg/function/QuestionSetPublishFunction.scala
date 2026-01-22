@@ -1,6 +1,5 @@
 package org.sunbird.job.knowlg.function
 
-import akka.dispatch.ExecutionContexts
 import com.google.gson.reflect.TypeToken
 import org.apache.commons.lang3.StringUtils
 import org.apache.flink.api.common.typeinfo.TypeInformation
@@ -65,7 +64,7 @@ class QuestionSetPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil
     cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort, config)
     janusGraphUtil = new JanusGraphUtil(config)
     cloudStorageUtil = new CloudStorageUtil(config)
-    ec = ExecutionContexts.global
+    ec = ExecutionContext.global
     definitionCache = new DefinitionCache()
     definitionConfig = DefinitionConfig(config.schemaSupportVersionMap, config.definitionBasePath)
     cache = new DataCache(config, new RedisConnect(config), config.cacheDbId, List())

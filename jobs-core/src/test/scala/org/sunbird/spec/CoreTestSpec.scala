@@ -52,24 +52,49 @@ class CoreTestSpec extends BaseSpec with Matchers with MockitoSugar {
 
   "StringSerialization functionality" should "be able to serialize the input data as String" in {
     val topic: String = "topic-test"
-    val partition: Int = 0
-    val offset: Long = 1
-    val group: String = "group-test"
-    val key: Array[Byte] = null
-    val value: Array[Byte] = Array[Byte](1)
     val stringDeSerialization = new StringDeserializationSchema()
     val stringSerialization = new StringSerializationSchema(topic, Some("kafka-key"))
     val mapSerialization: MapSerializationSchema = new MapSerializationSchema(topic, Some("kafka-key"))
     val mapDeSerialization = new MapDeserializationSchema()
+
     import org.apache.kafka.clients.consumer.ConsumerRecord
-    val cRecord: ConsumerRecord[Array[Byte], Array[Byte]] = new ConsumerRecord[Array[Byte], Array[Byte]](topic, partition, offset, key, value)
-    stringDeSerialization.deserialize(cRecord)
-    stringSerialization.serialize("test", System.currentTimeMillis())
-    stringDeSerialization.isEndOfStream("") should be(false)
+    val cRecord: ConsumerRecord[Array[Byte], Array[Byte]] = new ConsumerRecord[Array[Byte], Array[Byte]](
+      topic, 0, 1, null, "test".getBytes
+    )
+
+    // Test deserialization with collector (new Flink 1.15 API)
+    import org.apache.flink.util.Collector
+    import scala.collection.mutable.ListBuffer
+    val stringResults = ListBuffer[String]()
+    val stringCollector = new Collector[String] {
+      override def collect(record: String): Unit = stringResults += record
+      override def close(): Unit = {}
+    }
+    stringDeSerialization.deserialize(cRecord, stringCollector)
+    stringResults.nonEmpty should be(true)
+
+    // Test serialization with null context (new Flink 1.15 API - context can be null)
+    val producerRecord = stringSerialization.serialize("test", null, System.currentTimeMillis())
+    producerRecord should not be null
+
+    // Test map serialization
     val map = new util.HashMap[String, AnyRef]()
     map.put("country_code", "IN")
     map.put("country", "INDIA")
-    mapSerialization.serialize(map, System.currentTimeMillis())
+    val mapRecord = mapSerialization.serialize(map, null, System.currentTimeMillis())
+    mapRecord should not be null
+
+    // Test map deserialization
+    val mapCRecord: ConsumerRecord[Array[Byte], Array[Byte]] = new ConsumerRecord[Array[Byte], Array[Byte]](
+      topic, 0, 1, null, "{\"country_code\":\"IN\",\"country\":\"INDIA\"}".getBytes
+    )
+    val mapResults = ListBuffer[util.Map[String, AnyRef]]()
+    val mapCollector = new Collector[util.Map[String, AnyRef]] {
+      override def collect(record: util.Map[String, AnyRef]): Unit = mapResults += record
+      override def close(): Unit = {}
+    }
+    mapDeSerialization.deserialize(mapCRecord, mapCollector)
+    mapResults.nonEmpty should be(true)
   }
 
   "DataCache" should "be able to add the data into redis" in intercept[JedisDataException]{

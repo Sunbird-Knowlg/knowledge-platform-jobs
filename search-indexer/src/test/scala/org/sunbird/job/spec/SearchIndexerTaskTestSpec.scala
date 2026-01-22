@@ -3,6 +3,8 @@ package org.sunbird.job.spec
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
+import org.apache.flink.connector.kafka.sink.KafkaSink
+import org.apache.flink.connector.kafka.source.KafkaSource
 import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
 import org.apache.flink.streaming.api.functions.sink.SinkFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction
@@ -359,8 +361,8 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
   }
 
   "Composite Search Indexer" should " sync the Data Node " in {
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new CompositeSearchEventSource(List[String](EventFixture.DATA_NODE_CREATE)))
-    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(mock[KafkaSource[Event]](Mockito.withSettings().serializable())); // Original: new CompositeSearchEventSource(List[String](EventFixture.DATA_NODE_CREATE)))
+    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(mock[KafkaSink[String]](Mockito.withSettings().serializable()))
     new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
 
     val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.compositeSearchIndex)
@@ -374,8 +376,8 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
   }
 
   "Composite Search Indexer" should " update the Data Node " in {
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new CompositeSearchEventSource(List[String](EventFixture.DATA_NODE_UPDATE)))
-    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(mock[KafkaSource[Event]](Mockito.withSettings().serializable())); // Original: new CompositeSearchEventSource(List[String](EventFixture.DATA_NODE_UPDATE)))
+    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(mock[KafkaSink[String]](Mockito.withSettings().serializable()))
     new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
 
     val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.compositeSearchIndex)
@@ -391,8 +393,8 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
 
   "Composite Search Indexer" should " create and delete the Data Node " in {
     restClient.performRequest(new Request("DELETE", "/_all"))
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new CompositeSearchEventSource(List[String](EventFixture.DATA_NODE_CREATE, EventFixture.DATA_NODE_DELETE)))
-    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(mock[KafkaSource[Event]](Mockito.withSettings().serializable())); // Original: new CompositeSearchEventSource(List[String](EventFixture.DATA_NODE_CREATE, EventFixture.DATA_NODE_DELETE)))
+    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(mock[KafkaSink[String]](Mockito.withSettings().serializable()))
     new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
 
     val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.compositeSearchIndex)
@@ -406,8 +408,8 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
 
   "Composite Search Indexer" should " do nothing for the Data Node due to UNKNOWN Operation " in {
     restClient.performRequest(new Request("DELETE", "/_all"))
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new CompositeSearchEventSource(List[String](EventFixture.DATA_NODE_UNKNOWN)))
-    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(mock[KafkaSource[Event]](Mockito.withSettings().serializable())); // Original: new CompositeSearchEventSource(List[String](EventFixture.DATA_NODE_UNKNOWN)))
+    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(mock[KafkaSink[String]](Mockito.withSettings().serializable()))
     new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
 
     val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.compositeSearchIndex)
@@ -416,8 +418,8 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
   }
 
   "Composite Search Indexer" should " sync the External Dialcode Data " in {
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new CompositeSearchEventSource(List[String](EventFixture.DIALCODE_EXTERNAL_CREATE)))
-    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(mock[KafkaSource[Event]](Mockito.withSettings().serializable())); // Original: new CompositeSearchEventSource(List[String](EventFixture.DIALCODE_EXTERNAL_CREATE)))
+    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(mock[KafkaSink[String]](Mockito.withSettings().serializable()))
     new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
 
     val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.dialcodeExternalIndex)
@@ -431,8 +433,8 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
   }
 
   "Composite Search Indexer" should " update the External Dialcode Data " in {
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new CompositeSearchEventSource(List[String](EventFixture.DIALCODE_EXTERNAL_UPDATE)))
-    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(mock[KafkaSource[Event]](Mockito.withSettings().serializable())); // Original: new CompositeSearchEventSource(List[String](EventFixture.DIALCODE_EXTERNAL_UPDATE)))
+    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(mock[KafkaSink[String]](Mockito.withSettings().serializable()))
     new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
 
     val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.dialcodeExternalIndex)
@@ -448,8 +450,8 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
 
   "Composite Search Indexer" should " create and delete the External Dialcode Data " in {
     restClient.performRequest(new Request("DELETE", "/_all"))
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new CompositeSearchEventSource(List[String](EventFixture.DIALCODE_EXTERNAL_CREATE, EventFixture.DIALCODE_EXTERNAL_DELETE)))
-    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(mock[KafkaSource[Event]](Mockito.withSettings().serializable())); // Original: new CompositeSearchEventSource(List[String](EventFixture.DIALCODE_EXTERNAL_CREATE, EventFixture.DIALCODE_EXTERNAL_DELETE)))
+    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(mock[KafkaSink[String]](Mockito.withSettings().serializable()))
     new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
 
     val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.dialcodeExternalIndex)
@@ -463,8 +465,8 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
 
   "Composite Search Indexer" should " do nothing for the External Dialcode Data due to UNKNOWN Operation " in {
     restClient.performRequest(new Request("DELETE", "/_all"))
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new CompositeSearchEventSource(List[String](EventFixture.DIALCODE_EXTERNAL_UNKNOWN)))
-    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(mock[KafkaSource[Event]](Mockito.withSettings().serializable())); // Original: new CompositeSearchEventSource(List[String](EventFixture.DIALCODE_EXTERNAL_UNKNOWN)))
+    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(mock[KafkaSink[String]](Mockito.withSettings().serializable()))
     new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
 
     val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.dialcodeExternalIndex)
@@ -473,8 +475,8 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
   }
 
   "Composite Search Indexer" should " sync the Dialcode Metrics Data " in {
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new CompositeSearchEventSource(List[String](EventFixture.DIALCODE_METRIC_CREATE)))
-    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(mock[KafkaSource[Event]](Mockito.withSettings().serializable())); // Original: new CompositeSearchEventSource(List[String](EventFixture.DIALCODE_METRIC_CREATE)))
+    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(mock[KafkaSink[String]](Mockito.withSettings().serializable()))
     new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
 
     val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.dialcodeMetricIndex)
@@ -488,8 +490,8 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
   }
 
   "Composite Search Indexer" should " update the Dialcode Metrics Data " in {
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new CompositeSearchEventSource(List[String](EventFixture.DIALCODE_METRIC_UPDATE)))
-    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(mock[KafkaSource[Event]](Mockito.withSettings().serializable())); // Original: new CompositeSearchEventSource(List[String](EventFixture.DIALCODE_METRIC_UPDATE)))
+    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(mock[KafkaSink[String]](Mockito.withSettings().serializable()))
     new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
 
     val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.dialcodeMetricIndex)
@@ -505,8 +507,8 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
 
   "Composite Search Indexer" should " create and delete the Dialcode Metrics Data " in {
     restClient.performRequest(new Request("DELETE", "/_all"))
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new CompositeSearchEventSource(List[String](EventFixture.DIALCODE_METRIC_CREATE, EventFixture.DIALCODE_METRIC_DELETE)))
-    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(mock[KafkaSource[Event]](Mockito.withSettings().serializable())); // Original: new CompositeSearchEventSource(List[String](EventFixture.DIALCODE_METRIC_CREATE, EventFixture.DIALCODE_METRIC_DELETE)))
+    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(mock[KafkaSink[String]](Mockito.withSettings().serializable()))
     new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
 
     val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.dialcodeMetricIndex)
@@ -519,8 +521,8 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
   }
 
   "Composite Search Indexer" should " do nothing for the Dialcode Metrics Data due to UNKNOWN Operation " in {
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new CompositeSearchEventSource(List[String](EventFixture.DIALCODE_METRIC_UNKNOWN)))
-    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(mock[KafkaSource[Event]](Mockito.withSettings().serializable())); // Original: new CompositeSearchEventSource(List[String](EventFixture.DIALCODE_METRIC_UNKNOWN)))
+    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(mock[KafkaSink[String]](Mockito.withSettings().serializable()))
     new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
     val elasticUtil = new ElasticSearchUtil(jobConfig.esConnectionInfo, jobConfig.dialcodeMetricIndex)
     val data = elasticUtil.getDocumentAsString("QR1234")
@@ -528,16 +530,16 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
   }
 
   "Composite Search Indexer" should " do nothing due to UNKNOWN Node Type " in {
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new CompositeSearchEventSource(List[String](EventFixture.UNKNOWN_NODE_TYPE)))
-    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(mock[KafkaSource[Event]](Mockito.withSettings().serializable())); // Original: new CompositeSearchEventSource(List[String](EventFixture.UNKNOWN_NODE_TYPE)))
+    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(mock[KafkaSink[String]](Mockito.withSettings().serializable()))
     new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(1)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skippedEventCount}").getValue() should be(1)
   }
 
   "Composite Search Indexer" should " do nothing due to FALSE value of INDEX of the Data " in {
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new CompositeSearchEventSource(List[String](EventFixture.INDEX_FALSE)))
-    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(mock[KafkaSource[Event]](Mockito.withSettings().serializable())); // Original: new CompositeSearchEventSource(List[String](EventFixture.INDEX_FALSE)))
+    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(mock[KafkaSink[String]](Mockito.withSettings().serializable()))
     new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(1)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.skippedEventCount}").getValue() should be(1)
@@ -545,8 +547,8 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
 
   "Composite Search Indexer" should " give error for the External Dialcode Data due to UNKNOWN objectType " in {
     restClient.performRequest(new Request("DELETE", "/_all"))
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new CompositeSearchEventSource(List[String](EventFixture.DATA_NODE_FAILED)))
-    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(new CompositeSearchFailedEventSink)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(mock[KafkaSource[Event]](Mockito.withSettings().serializable())); // Original: new CompositeSearchEventSource(List[String](EventFixture.DATA_NODE_FAILED)))
+    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaErrorTopic)).thenReturn(mock[KafkaSink[String]](Mockito.withSettings().serializable()))
     intercept[Exception] {
       new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
     }
@@ -554,7 +556,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
   }
 
   "Search Indexer" should " ignore the event with restricted ObjectTypes " in {
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new CompositeSearchEventSource(List[String](EventFixture.DATA_NODE_IGNORE)))
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(mock[KafkaSource[Event]](Mockito.withSettings().serializable())); // Original: new CompositeSearchEventSource(List[String](EventFixture.DATA_NODE_IGNORE)))
     new SearchIndexerStreamTask(jobConfig, mockKafkaUtil).process()
 
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(1)

@@ -5,6 +5,8 @@ import com.typesafe.config.{Config, ConfigFactory, ConfigValueFactory}
 import okhttp3.mockwebserver.{MockResponse, MockWebServer}
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
+import org.apache.flink.connector.kafka.sink.KafkaSink
+import org.apache.flink.connector.kafka.source.KafkaSource
 import org.apache.flink.runtime.client.JobExecutionException
 import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
 import org.apache.flink.streaming.api.functions.sink.SinkFunction
@@ -50,7 +52,7 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
   }
 
   "TransactionEventProcessorStreamTask" should "handle invalid events and increase metric count" in {
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new failedEventMapSource)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(mock[KafkaSource[Event]](Mockito.withSettings().serializable()))
     try {
       new TransactionEventProcessorStreamTask(jobConfig, mockKafkaUtil, esUtil).process()
     } catch {
@@ -64,7 +66,7 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
   }
 
   "TransactionEventProcessorStreamTask" should "skip events and increase metric count" in {
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new skippedEventMapSource)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(mock[KafkaSource[Event]](Mockito.withSettings().serializable()))
     try {
       new TransactionEventProcessorStreamTask(jobConfig, mockKafkaUtil, esUtil).process()
     } catch {
@@ -78,8 +80,8 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
   }
 
   "TransactionEventProcessorStreamTask" should "generate audit event" in {
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new AuditEventMapSource)
-    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaAuditOutputTopic)).thenReturn(new AuditEventSink)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(mock[KafkaSource[Event]](Mockito.withSettings().serializable()))
+    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaAuditOutputTopic)).thenReturn(mock[KafkaSink[String]](Mockito.withSettings().serializable()))
     val setBoolean = config.withValue("job.audit-event-generator", ConfigValueFactory.fromAnyRef(true))
     val newConfig: TransactionEventProcessorConfig = new TransactionEventProcessorConfig(setBoolean)
     if (newConfig.auditEventGenerator) {
@@ -100,8 +102,8 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
   }
 
   "TransactionEventProcessorStreamTask" should "not generate audit event" in {
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new AuditEventMapSource)
-    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaAuditOutputTopic)).thenReturn(new AuditEventSink)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(mock[KafkaSource[Event]](Mockito.withSettings().serializable()))
+    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaAuditOutputTopic)).thenReturn(mock[KafkaSink[String]](Mockito.withSettings().serializable()))
 
     if (jobConfig.auditEventGenerator) {
 
@@ -114,8 +116,8 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
   }
 
   "TransactionEventProcessorStreamTask" should "increase metric for unknown schema" in {
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new RandomObjectTypeAuditEventGeneratorMapSource)
-    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaAuditOutputTopic)).thenReturn(new AuditEventSink)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(mock[KafkaSource[Event]](Mockito.withSettings().serializable()))
+    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaAuditOutputTopic)).thenReturn(mock[KafkaSink[String]](Mockito.withSettings().serializable()))
     if (jobConfig.auditEventGenerator) {
 
       new TransactionEventProcessorStreamTask(jobConfig, mockKafkaUtil, esUtil).process()
@@ -135,7 +137,7 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
       """{"name": "MacBook-Air.local","cluster_name": "elasticsearch","cluster_uuid": "9ra4wTGZSamseO3I99w","version": {"number": "7.10.2","build_flavor": "default","build_type": "tar","build_hash": "2b211dbb8bfd7f5b44d356bdfe54b1050c13","build_date": "2023-08-31T17:33:19.958690787Z","build_snapshot": false,"lucene_version": "8.11.1","minimum_wire_compatibility_version": "6.8.0","minimum_index_compatibility_version": "6.0.0-beta1"},"tagline": "You Know, for Search"}
         |,{"_index":"kp_audit_log_2018_7","_type":"_doc","_id":"HLZ-1ngBtZ15DPx6ENjU","_version":1,"result":"created","_shards":{"total":2,"successful":0,"failed":1},"_seq_no":1,"_primary_term":1}""".stripMargin))
 
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new AuditHistoryMapSource)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(mock[KafkaSource[Event]](Mockito.withSettings().serializable()))
     if (jobConfig.auditHistoryIndexer) {
       new TransactionEventProcessorStreamTask(jobConfig, mockKafkaUtil, esUtil).process()
 
@@ -153,7 +155,7 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
       """{"name": "MacBook-Air.local","cluster_name": "elasticsearch","cluster_uuid": "9ra4wTGZEFPeO3I99w","version": {"number": "7.10.2","build_flavor": "default","build_type": "tar","build_hash": "2b211dbb8bf7f5b44d356bdfe54b1050c13","build_date": "2023-08-31T17:33:19.958690787Z","build_snapshot": false,"lucene_version": "8.11.1","minimum_wire_compatibility_version": "6.8.0","minimum_index_compatibility_version": "6.0.0-beta1"},"tagline": "You Know, for Search"}
         |,{"_index":"kp_audit_log_2018_7","_type":"_doc","_id":"HLZ-1ngBtZ15DPx6ENjU","_version":1,"result":"created","_shards":{"total":2,"successful":1,"failed":0},"_seq_no":1,"_primary_term":1}""".stripMargin))
 
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new AuditHistoryMapSource)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(mock[KafkaSource[Event]](Mockito.withSettings().serializable()))
     val setBoolean = config.withValue("job.audit-history-indexer", ConfigValueFactory.fromAnyRef(true))
     val newConfig: TransactionEventProcessorConfig = new TransactionEventProcessorConfig(setBoolean)
     if (newConfig.auditHistoryIndexer) {
@@ -167,7 +169,7 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
   }
 
   "TransactionEventProcessorStreamTask" should "throw exception and increase es error count" in {
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new AuditHistoryMapSource)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(mock[KafkaSource[Event]](Mockito.withSettings().serializable()))
 
     try {
       new TransactionEventProcessorStreamTask(jobConfig, mockKafkaUtil, esUtil).process()
@@ -181,8 +183,8 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
   }
 
   "TransactionEventProcessorStreamTask" should "not generate obsrv event" in {
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new AuditEventMapSource)
-    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaObsrvOutputTopic)).thenReturn(new AuditEventSink)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(mock[KafkaSource[Event]](Mockito.withSettings().serializable()))
+    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaObsrvOutputTopic)).thenReturn(mock[KafkaSink[String]](Mockito.withSettings().serializable()))
     if (jobConfig.obsrvMetadataGenerator) {
       new TransactionEventProcessorStreamTask(jobConfig, mockKafkaUtil, esUtil).process()
 
@@ -195,8 +197,8 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
     val setBoolean = config.withValue("job.obsrv-metadata-generator", ConfigValueFactory.fromAnyRef(true))
     val newConfig: TransactionEventProcessorConfig = new TransactionEventProcessorConfig(setBoolean)
 
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](newConfig.kafkaInputTopic)).thenReturn(new EventMapSource)
-    when(mockKafkaUtil.kafkaStringSink(newConfig.kafkaObsrvOutputTopic)).thenReturn(new AuditEventSink)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](newConfig.kafkaInputTopic)).thenReturn(mock[KafkaSource[Event]](Mockito.withSettings().serializable()))
+    when(mockKafkaUtil.kafkaStringSink(newConfig.kafkaObsrvOutputTopic)).thenReturn(mock[KafkaSink[String]](Mockito.withSettings().serializable()))
 
     if (newConfig.obsrvMetadataGenerator) {
       new TransactionEventProcessorStreamTask(newConfig, mockKafkaUtil, esUtil).process()
@@ -211,8 +213,8 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
     val setBoolean = config.withValue("job.obsrv-metadata-generator", ConfigValueFactory.fromAnyRef(true))
     val newConfig: TransactionEventProcessorConfig = new TransactionEventProcessorConfig(setBoolean)
 
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](newConfig.kafkaInputTopic)).thenReturn(new EventMapSource)
-    when(mockKafkaUtil.kafkaStringSink(newConfig.kafkaObsrvOutputTopic)).thenReturn(new AuditEventSink)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](newConfig.kafkaInputTopic)).thenReturn(mock[KafkaSource[Event]](Mockito.withSettings().serializable()))
+    when(mockKafkaUtil.kafkaStringSink(newConfig.kafkaObsrvOutputTopic)).thenReturn(mock[KafkaSink[String]](Mockito.withSettings().serializable()))
 
     try {
       new TransactionEventProcessorStreamTask(newConfig, mockKafkaUtil, esUtil).process()
@@ -225,7 +227,7 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
   }
 
   "TransactionEventProcessorStreamTask" should "throw exception in TransactionEventRouter" in {
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new failedEventMapSource)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(mock[KafkaSource[Event]](Mockito.withSettings().serializable()))
 
     try {
       new TransactionEventProcessorStreamTask(jobConfig, mockKafkaUtil, esUtil).process()

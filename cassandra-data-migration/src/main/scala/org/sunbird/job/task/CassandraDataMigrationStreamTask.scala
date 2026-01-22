@@ -1,6 +1,7 @@
 package org.sunbird.job.task
 
 import com.typesafe.config.ConfigFactory
+import org.apache.flink.api.common.eventtime.WatermarkStrategy
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
@@ -24,7 +25,8 @@ class CassandraDataMigrationStreamTask(config: CassandraDataMigrationConfig, kaf
     implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
 
-    val cassandraDataMigratorStream = env.addSource(kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)).name(config.eventConsumer)
+    val source = kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)
+    val cassandraDataMigratorStream = env.fromSource(source, WatermarkStrategy.noWatermarks(), config.eventConsumer)
       .uid(config.eventConsumer).setParallelism(config.kafkaConsumerParallelism)
       .rebalance
       .process(new CassandraDataMigrationFunction(config))

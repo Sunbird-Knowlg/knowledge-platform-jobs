@@ -1,9 +1,8 @@
 package org.sunbird.job.util
 
 import org.apache.flink.api.common.restartstrategy.RestartStrategies
-import org.apache.flink.runtime.state.StateBackend
-import org.apache.flink.runtime.state.filesystem.FsStateBackend
-import org.apache.flink.streaming.api.TimeCharacteristic
+import org.apache.flink.runtime.state.hashmap.HashMapStateBackend
+import org.apache.flink.runtime.state.storage.FileSystemCheckpointStorage
 import org.apache.flink.streaming.api.environment.CheckpointConfig
 import org.apache.flink.streaming.api.environment.CheckpointConfig.ExternalizedCheckpointCleanup
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
@@ -16,7 +15,7 @@ object FlinkUtil {
     env.getConfig.setUseSnapshotCompression(config.enableCompressedCheckpointing)
     env.enableCheckpointing(config.checkpointingInterval)
     env.getCheckpointConfig.setCheckpointTimeout(config.checkpointingTimeout)
-    
+
 
     /**
      * Use Blob storage as distributed state backend if enabled
@@ -24,16 +23,19 @@ object FlinkUtil {
 
     config.enableDistributedCheckpointing match {
       case Some(true) => {
-        val stateBackend: StateBackend = new FsStateBackend(s"${config.checkpointingBaseUrl.getOrElse("")}/${config.jobName}", true)
+        val stateBackend = new HashMapStateBackend()
         env.setStateBackend(stateBackend)
+        val checkpointStorage = new FileSystemCheckpointStorage(
+          s"${config.checkpointingBaseUrl.getOrElse("")}/${config.jobName}"
+        )
+        env.getCheckpointConfig.setCheckpointStorage(checkpointStorage)
         val checkpointConfig: CheckpointConfig = env.getCheckpointConfig
-        checkpointConfig.enableExternalizedCheckpoints(ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION)
+        checkpointConfig.setExternalizedCheckpointCleanup(ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION)
         checkpointConfig.setMinPauseBetweenCheckpoints(config.checkpointingPauseSeconds)
       }
       case _ => // Do nothing
     }
 
-    env.setStreamTimeCharacteristic(TimeCharacteristic.IngestionTime)
     env.setRestartStrategy(RestartStrategies.fixedDelayRestart(config.restartAttempts, config.delayBetweenAttempts))
     env
   }

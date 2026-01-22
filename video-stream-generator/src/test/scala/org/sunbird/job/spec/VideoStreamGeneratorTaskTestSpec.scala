@@ -5,6 +5,7 @@ import com.datastax.driver.core.Row
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
+import org.apache.flink.connector.kafka.source.KafkaSource
 import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
 import org.apache.flink.streaming.api.functions.source.SourceFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext
@@ -78,7 +79,7 @@ class VideoStreamGeneratorTaskTestSpec extends BaseTestSpec {
   }
 
   ignore should "submit a job" in {
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new VideoStreamGeneratorMapSource)
+    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(mock[KafkaSource[Event]](Mockito.withSettings().serializable()))
 
     // when(mockHttpUtil.post_map(contains("/oauth2/token"), any[Map[String, AnyRef]](), any[Map[String, String]]())).thenReturn(HTTPResponse(200, accessTokenResp))
     when(mockHttpUtil.put(contains(jobConfig.getConfig("azure_mediakind.project_name")+"/assets/asset-"), anyString(), any())).thenReturn(HTTPResponse(200, assetJson))
