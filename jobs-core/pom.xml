@@ -171,6 +171,13 @@
             <artifactId>java-xmlbuilder</artifactId>
             <version>1.2</version>
         </dependency>
+        <!-- Ensure a consistent Guava version across modules to avoid runtime NoSuchMethodError
+             (some Google libraries pull in older guava-jdk5 which lacks methods used at runtime) -->
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>21.0</version>
+        </dependency>
         <dependency>
             <groupId>org.scalatest</groupId>
             <artifactId>scalatest_${scala.version}</artifactId>
