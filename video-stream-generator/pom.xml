@@ -167,6 +167,9 @@
                                         <exclude>META-INF/*.SF</exclude>
                                         <exclude>META-INF/*.DSA</exclude>
                                         <exclude>META-INF/*.RSA</exclude>
+                                        <!-- Exclude multi-release versioned class files (e.g. META-INF/versions/15) which
+                                             may contain classfile versions newer than the build JDK and break shading. -->
+                                        <exclude>META-INF/versions/**</exclude>
                                     </excludes>
                                 </filter>
                             </filters>
