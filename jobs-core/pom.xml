@@ -73,11 +73,11 @@
                 </exclusion>
             </exclusions>
         </dependency>
-        <!-- Guava 30.1-jre required for jclouds (cloud-store-sdk) - SimpleTimeLimiter.create() needs 23.0+ -->
+        <!-- Guava 31.1-jre required for jclouds (cloud-store-sdk) - SimpleTimeLimiter.create() needs 23.0+ -->
         <dependency>
             <groupId>com.google.guava</groupId>
             <artifactId>guava</artifactId>
-            <version>30.1-jre</version>
+            <version>31.1-jre</version>
         </dependency>
         <!-- Netty dependencies compatible with both Flink 1.13.6 and Cassandra driver 3.7.0 -->
         <dependency>
@@ -131,6 +131,10 @@
                     <groupId>org.apache.zookeeper</groupId>
                     <artifactId>zookeeper</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>com.google.guava</groupId>
+                    <artifactId>guava</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
         <dependency>
@@ -168,6 +172,10 @@
                 <exclusion>
                     <groupId>org.slf4j</groupId>
                     <artifactId>slf4j-reload4j</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.google.guava</groupId>
+                    <artifactId>guava</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
