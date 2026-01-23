@@ -26,7 +26,7 @@ import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext
 
 class QuestionSetPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
-                                 @transient var neo4JUtil: Neo4JUtil = null,
+                                 @transient var janusGraphUtil: JanusGraphUtil = null,
                                  @transient var cassandraUtil: CassandraUtil = null,
                                  @transient var cloudStorageUtil: CloudStorageUtil = null,
                                  @transient var definitionCache: DefinitionCache = null,
@@ -63,7 +63,7 @@ class QuestionSetPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
     cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort, config)
-    neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName, config)
+    janusGraphUtil = new JanusGraphUtil(config)
     cloudStorageUtil = new CloudStorageUtil(config)
     ec = ExecutionContexts.global
     definitionCache = new DefinitionCache()
@@ -106,7 +106,7 @@ class QuestionSetPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil
       val readerConfig = ExtDataConfig(config.questionSetKeyspaceName, config.questionSetTableName, definition.getExternalPrimaryKey, definition.getExternalProps)
       val qDef: ObjectDefinition = definitionCache.getDefinition("Question", data.schemaVersion, config.definitionBasePath)
       val qReaderConfig = ExtDataConfig(config.questionKeyspaceName, qDef.getExternalTable, qDef.getExternalPrimaryKey, qDef.getExternalProps)
-      val objData = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(neo4JUtil, cassandraUtil, config)
+      val objData = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(janusGraphUtil, cassandraUtil, config)
       val obj = if (StringUtils.isNotBlank(data.lastPublishedBy)) {
         val newMeta = objData.metadata ++ Map("lastPublishedBy" -> data.lastPublishedBy)
         new ObjectData(objData.identifier, newMeta, objData.extData, objData.hierarchy)
@@ -126,29 +126,29 @@ class QuestionSetPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil
         //TODO: Remove below statement
         childQuestions.foreach(ch => logger.info(s"Feature: ${featureName} | child questions which are going to be published.  identifier : ${ch.identifier} , visibility: ${ch.getString("visibility", "")} , createdBy: ${ch.getString("createdBy", "")}"))
         // Publish Child Questions
-        QuestionPublishUtil.publishQuestions(obj.identifier, childQuestions, data.pkgVersion, data.lastPublishedBy)(ec, neo4JUtil, cassandraUtil, qReaderConfig, cloudStorageUtil, definitionCache, definitionConfig, config, httpUtil, data.eventContext)
+        QuestionPublishUtil.publishQuestions(obj.identifier, childQuestions, data.pkgVersion, data.lastPublishedBy)(ec, janusGraphUtil, cassandraUtil, qReaderConfig, cloudStorageUtil, definitionCache, definitionConfig, config, httpUtil, data.eventContext)
         val pubMsgs: List[String] = isChildrenPublished(childQuestions, data.publishType, qReaderConfig)
         if (pubMsgs.isEmpty) {
           // Enrich Object as well as hierarchy
-          val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
+          val enrichedObj = enrichObject(obj)(janusGraphUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
           logger.info(s"Feature: ${featureName} | processElement ::: object enrichment done for ${obj.identifier} | requestId: ${requestId}")
           logger.info(s"Feature: ${featureName} | processElement :::  obj metadata post enrichment :: " + ScalaJsonUtil.serialize(enrichedObj.metadata))
           logger.info(s"Feature: ${featureName} | processElement :::  obj hierarchy post enrichment :: " + ScalaJsonUtil.serialize(enrichedObj.hierarchy.get))
           // Generate ECAR
-          val objWithEcar = generateECAR(enrichedObj, pkgTypes)(ec, neo4JUtil, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil, data.eventContext)
+          val objWithEcar = generateECAR(enrichedObj, pkgTypes)(ec, janusGraphUtil, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil, data.eventContext)
           // Deprecating Print Service - setting empty preview and PDF URLs
           logger.info(s"Feature: ${featureName} | skipping PDF and preview URL generation")
           val updatedObj = new ObjectData(objWithEcar.identifier, objWithEcar.metadata ++ Map("previewUrl" -> "", "pdfUrl" -> ""), objWithEcar.extData, objWithEcar.hierarchy)
-          saveOnSuccess(updatedObj)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig, config)
+          saveOnSuccess(updatedObj)(janusGraphUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig, config)
           logger.info(LoggerUtil.getExitLogs(config.jobName, requestId, s"Feature: ${featureName} | QuestionSet publishing completed successfully for : ${data.identifier}"))
           metrics.incCounter(config.questionSetPublishSuccessEventCount)
         } else {
-          saveOnFailure(obj, pubMsgs, data.pkgVersion)(neo4JUtil)
+          saveOnFailure(obj, pubMsgs, data.pkgVersion)(janusGraphUtil)
           metrics.incCounter(config.questionSetPublishFailedEventCount)
           logger.info(LoggerUtil.getExitLogs(config.jobName, requestId, s"Feature: ${featureName} | QuestionSet publishing failed for : ${data.identifier} | Errors: ${pubMsgs.mkString("; ")}"))
         }
       } else {
-        saveOnFailure(obj, messages, data.pkgVersion)(neo4JUtil)
+        saveOnFailure(obj, messages, data.pkgVersion)(janusGraphUtil)
         metrics.incCounter(config.questionSetPublishFailedEventCount)
         logger.info(LoggerUtil.getExitLogs(config.jobName, requestId, s"Feature: ${featureName} | QuestionSet publishing failed for : ${data.identifier} because of data validation failed. | Errors: ${messages.mkString("; ")} "))
       }
@@ -163,12 +163,12 @@ class QuestionSetPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil
     }
   }
 
-  //TODO: Implement Multiple Data Read From Neo4j and Use it here.
+  //TODO: Implement Multiple Data Read From Graph DB and Use it here.
   def isChildrenPublished(children: List[ObjectData], publishType: String, readerConfig: ExtDataConfig): List[String] = {
     val messages = ListBuffer[String]()
     children.foreach(q => {
       val id = q.identifier.replace(".img", "")
-      val obj = getObject(id, 0, q.mimeType, publishType, readerConfig)(neo4JUtil, cassandraUtil, config)
+      val obj = getObject(id, 0, q.mimeType, publishType, readerConfig)(janusGraphUtil, cassandraUtil, config)
       logger.info(s"question metadata for $id : ${obj.metadata}")
       if (!List("Live", "Unlisted").contains(obj.getString("status", ""))) {
         logger.info("Question publishing failed for : " + id)
@@ -178,7 +178,7 @@ class QuestionSetPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil
     messages.toList
   }
 
-  def generateECAR(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, neo4JUtil: Neo4JUtil, cloudStorageUtil: CloudStorageUtil, config: KnowlgPublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil, eventContext: Map[String, AnyRef]): ObjectData = {
+  def generateECAR(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, janusGraphUtil: JanusGraphUtil, cloudStorageUtil: CloudStorageUtil, config: KnowlgPublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil, eventContext: Map[String, AnyRef]): ObjectData = {
     val featureName = eventContext.getOrElse("featureName", "").asInstanceOf[String]
     val ecarMap: Map[String, String] = generateEcar(data, pkgTypes)
     val variants: java.util.Map[String, java.util.Map[String, String]] = ecarMap.map { case (key, value) => key.toLowerCase -> Map[String, String]("ecarUrl" -> value, "size" -> httpUtil.getSize(value).toString).asJava }.asJava

@@ -5,7 +5,7 @@ import com.google.gson.reflect.TypeToken
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
-import org.neo4j.driver.v1.exceptions.ClientException
+
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cache.{DataCache, RedisConnect}
 import org.sunbird.job.knowlg.publish.domain.Event
@@ -16,15 +16,16 @@ import org.sunbird.job.exception.InvalidInputException
 import org.sunbird.job.helper.FailedEventHelper
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
 import org.sunbird.job.publish.helpers.EcarPackageType
-import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, Neo4JUtil, ScalaJsonUtil}
+import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, JanusGraphUtil, ScalaJsonUtil}
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import java.lang.reflect.Type
 import java.util.UUID
+import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext
 
 class ContentPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
-                             @transient var neo4JUtil: Neo4JUtil = null,
+                             @transient var janusGraphUtil: JanusGraphUtil = null,
                              @transient var cassandraUtil: CassandraUtil = null,
                              @transient var cloudStorageUtil: CloudStorageUtil = null,
                              @transient var definitionCache: DefinitionCache = null,
@@ -43,7 +44,7 @@ class ContentPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
     cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort, config)
-    neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName, config)
+    janusGraphUtil = new JanusGraphUtil(config)
     cloudStorageUtil = new CloudStorageUtil(config)
     ec = ExecutionContexts.global
     definitionCache = new DefinitionCache()
@@ -66,7 +67,7 @@ class ContentPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
   override def processElement(data: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
     logger.info("Content publishing started for : " + data.identifier)
     metrics.incCounter(config.contentPublishEventCount)
-    val obj: ObjectData = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(neo4JUtil, cassandraUtil, config)
+    val obj: ObjectData = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(janusGraphUtil, cassandraUtil, config)
     try {
       if (obj.pkgVersion > data.pkgVersion) {
         metrics.incCounter(config.skippedEventCount)
@@ -75,7 +76,7 @@ class ContentPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
         val messages: List[String] = validate(obj, obj.identifier, config, validateMetadata)
         if (messages.isEmpty) {
           // Pre-publish update
-          updateProcessingNode(new ObjectData(obj.identifier, obj.metadata ++ Map("lastPublishedBy" -> data.lastPublishedBy), obj.extData, obj.hierarchy))(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
+          updateProcessingNode(new ObjectData(obj.identifier, obj.metadata ++ Map("lastPublishedBy" -> data.lastPublishedBy), obj.extData, obj.hierarchy))(janusGraphUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
 
           val ecmlVerifiedObj = if (obj.mimeType.equalsIgnoreCase("application/vnd.ekstep.ecml-archive")) {
             val ecarEnhancedObj = ExtractableMimeTypeHelper.processECMLBody(obj, config)(ec, cloudStorageUtil)
@@ -84,10 +85,10 @@ class ContentPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
 
           // Clear redis cache
           cache.del(data.identifier)
-          val enrichedObj = enrichObject(ecmlVerifiedObj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
-          val objWithEcar = getObjectWithEcar(enrichedObj, if (enrichedObj.getString("contentDisposition", "").equalsIgnoreCase("online-only")) List(EcarPackageType.SPINE) else pkgTypes)(ec, neo4JUtil, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
+          val enrichedObj = enrichObject(ecmlVerifiedObj)(janusGraphUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
+          val objWithEcar = getObjectWithEcar(enrichedObj, if (enrichedObj.getString("contentDisposition", "").equalsIgnoreCase("online-only")) List(EcarPackageType.SPINE) else pkgTypes)(ec, janusGraphUtil, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
           logger.info("Ecar generation done for Content: " + objWithEcar.identifier)
-          saveOnSuccess(objWithEcar)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig, config)
+          saveOnSuccess(objWithEcar)(janusGraphUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig, config)
           pushStreamingUrlEvent(enrichedObj, context)(metrics)
           pushMVCProcessorEvent(enrichedObj, context)(metrics)
           if(config.isAISearchEnabled) {
@@ -96,27 +97,27 @@ class ContentPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
 
           if(obj.metadata.contains("dialcodes") && config.enableDIALContextUpdate.equalsIgnoreCase("Yes")) {
             //pushDIALcodeContextUpdaterEvent for linked and delinked DIAL codes
-            pushDIALcodeContextUpdaterEvent(obj, context)(neo4JUtil, metrics)
+            pushDIALcodeContextUpdaterEvent(obj, context)(janusGraphUtil, metrics)
           }
 
           metrics.incCounter(config.contentPublishSuccessEventCount)
           logger.info("Content publishing completed successfully for : " + data.identifier)
         } else {
-          saveOnFailure(obj, messages, data.pkgVersion)(neo4JUtil)
+          saveOnFailure(obj, messages, data.pkgVersion)(janusGraphUtil)
           val errorMessages = messages.mkString("; ")
           pushFailedEvent(data, errorMessages, null, context)(metrics)
           logger.info("Content publishing failed for : " + data.identifier)
         }
       }
     } catch {
-      case ex@(_: InvalidInputException | _: ClientException | _:java.lang.IllegalArgumentException) => // ClientException - Invalid input exception.
+      case ex@(_: InvalidInputException | _:java.lang.IllegalArgumentException) => // Invalid input exception.
         ex.printStackTrace()
-        saveOnFailure(obj, List(ex.getMessage), data.pkgVersion)(neo4JUtil)
+        saveOnFailure(obj, List(ex.getMessage), data.pkgVersion)(janusGraphUtil)
         pushFailedEvent(data, null, ex, context)(metrics)
         logger.error("Error while publishing content :: " + ex.getMessage)
       case ex: Exception =>
         ex.printStackTrace()
-        saveOnFailure(obj, List(ex.getMessage), data.pkgVersion)(neo4JUtil)
+        saveOnFailure(obj, List(ex.getMessage), data.pkgVersion)(janusGraphUtil)
         logger.error(s"Error while processing message for Partition: ${data.partition} and Offset: ${data.offset}. Error : ${ex.getMessage}", ex)
         throw ex
     }
@@ -173,22 +174,22 @@ class ContentPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
 
 
 
-  private def pushDIALcodeContextUpdaterEvent(obj: ObjectData, context: ProcessFunction[Event, String]#Context)(implicit neo4JUtil: Neo4JUtil, metrics: Metrics): Unit = {
+  private def pushDIALcodeContextUpdaterEvent(obj: ObjectData, context: ProcessFunction[Event, String]#Context)(implicit janusGraphUtil: JanusGraphUtil, metrics: Metrics): Unit = {
     val nodeId: String = obj.identifier.replaceAll(".img","")
     val draftDialcode = obj.metadata.getOrElse("dialcodes", List.empty[String]).asInstanceOf[List[String]]
-    val publishedDialCode = if(obj.pkgVersion>0) neo4JUtil.getNodeProperties(nodeId).getOrDefault("dialcodes",List.empty[String]).asInstanceOf[List[String]] else List.empty[String]
+    val publishedDialCode = if(obj.pkgVersion>0) janusGraphUtil.getNodeProperties(nodeId).asScala.getOrElse("dialcodes",new java.util.ArrayList[String]()).asInstanceOf[java.util.List[String]].asScala.toList else List.empty[String]
 
     val addContextDialCodes: Map[List[String], String] = if(draftDialcode!=null && draftDialcode.nonEmpty) Map(draftDialcode -> nodeId) else Map.empty[List[String], String]
     val removeContextDialCodes: Map[List[String], String] = if(publishedDialCode!=null && publishedDialCode.nonEmpty && publishedDialCode.exists(dialcode => !draftDialcode.contains(dialcode))) Map(publishedDialCode.filter(dialcode => !draftDialcode.contains(dialcode)) -> nodeId) else Map.empty[List[String], String]
 
     if(addContextDialCodes.nonEmpty || removeContextDialCodes.nonEmpty) {
-      val event = getDIALcodeContextUpdaterEvent(obj, addContextDialCodes, removeContextDialCodes)(neo4JUtil)
+      val event = getDIALcodeContextUpdaterEvent(obj, addContextDialCodes, removeContextDialCodes)(janusGraphUtil)
       context.output(config.dialcodeContextUpdaterOutTag, event)
       metrics.incCounter(config.dialcodeContextUpdaterEventCount)
     }
   }
 
-  def getDIALcodeContextUpdaterEvent(obj: ObjectData, addContextDialCodes: Map[List[String], String], removeContextDialCodes: Map[List[String], String])(implicit neo4JUtil: Neo4JUtil): String = {
+  def getDIALcodeContextUpdaterEvent(obj: ObjectData, addContextDialCodes: Map[List[String], String], removeContextDialCodes: Map[List[String], String])(implicit janusGraphUtil: JanusGraphUtil): String = {
     val ets = System.currentTimeMillis
     val mid = s"""LP.$ets.${UUID.randomUUID}"""
     val channelId = obj.getString("channel", "")

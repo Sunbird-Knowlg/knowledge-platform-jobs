@@ -78,7 +78,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
 
   override def getHierarchies(identifiers: List[String], readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = None
 
-  override def enrichObjectMetadata(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig, definitionCache: DefinitionCache, definitionConfig: DefinitionConfig): Option[ObjectData] = {
+  override def enrichObjectMetadata(obj: ObjectData)(implicit janusGraphUtil: JanusGraphUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig, definitionCache: DefinitionCache, definitionConfig: DefinitionConfig): Option[ObjectData] = {
     val contentConfig = config.asInstanceOf[KnowlgPublishConfig]
     val extraMeta = Map("pkgVersion" -> (obj.pkgVersion + 1).asInstanceOf[AnyRef], "lastPublishedOn" -> getTimeStamp,
       "flagReasons" -> null, "body" -> null, "publishError" -> null, "variants" -> null, "downloadUrl" -> null)
@@ -137,7 +137,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
 
   override def deleteExternalData(obj: ObjectData, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Unit = None
 
-  def getObjectWithEcar(obj: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: KnowlgPublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
+  def getObjectWithEcar(obj: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, janusGraphUtil: JanusGraphUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: KnowlgPublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
    val collRelationalMetadata = getRelationalMetadata(obj.identifier, obj.pkgVersion-1, readerConfig).getOrElse(Map.empty[String, AnyRef])
     // Line 1107 in PublishFinalizer
     val children = obj.hierarchy.getOrElse(Map()).getOrElse("children", List()).asInstanceOf[List[Map[String, AnyRef]]]
@@ -193,9 +193,9 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     originData.nonEmpty && originData.getOrElse("copyType", "").asInstanceOf[String].equalsIgnoreCase("shallow")
   }
 
-  def updateOriginPkgVersion(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil): ObjectData = {
+  def updateOriginPkgVersion(obj: ObjectData)(implicit janusGraphUtil: JanusGraphUtil): ObjectData = {
     val originId = obj.metadata.getOrElse("origin", "").asInstanceOf[String]
-    val originNodeMetadata = Option(neo4JUtil.getNodeProperties(originId)).getOrElse(neo4JUtil.getNodeProperties(originId))
+    val originNodeMetadata = Option(janusGraphUtil.getNodeProperties(originId)).getOrElse(janusGraphUtil.getNodeProperties(originId))
     if (null != originNodeMetadata) {
       val originPkgVer: Double = originNodeMetadata.getOrDefault("pkgVersion", "0").toString.toDouble
       if (originPkgVer != 0) {
@@ -208,7 +208,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     } else obj
   }
 
-  private def enrichChildren(toEnrichChildren: ListBuffer[Map[String, AnyRef]], collectionResourceChildNodes: mutable.HashSet[String], childNodesToRemove: ListBuffer[String])(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, config: PublishConfig): ListBuffer[Map[String, AnyRef]] = {
+  private def enrichChildren(toEnrichChildren: ListBuffer[Map[String, AnyRef]], collectionResourceChildNodes: mutable.HashSet[String], childNodesToRemove: ListBuffer[String])(implicit janusGraphUtil: JanusGraphUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, config: PublishConfig): ListBuffer[Map[String, AnyRef]] = {
     val newChildren = toEnrichChildren.toList
     newChildren.map(child => {
       logger.info("CollectionPublisher:: enrichChildren:: child identifier:: " + child.getOrElse("identifier", "") + " || visibility:: " + child.getOrElse("visibility", "") + " || mimeType:: " + child.getOrElse("mimeType", "") + " || objectType:: " + child.getOrElse("objectType", ""))
@@ -227,7 +227,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       }
 
       if (StringUtils.equalsIgnoreCase(child.getOrElse("visibility", "").asInstanceOf[String], "Default") && !EXPANDABLE_OBJECTS.contains(child.getOrElse("objectType", "").asInstanceOf[String])) {
-        val childNode = Option(neo4JUtil.getNodeProperties(child.getOrElse("identifier", "").asInstanceOf[String])).getOrElse(neo4JUtil.getNodeProperties(child.getOrElse("identifier", "").asInstanceOf[String])).asScala.toMap
+        val childNode = Option(janusGraphUtil.getNodeProperties(child.getOrElse("identifier", "").asInstanceOf[String])).getOrElse(janusGraphUtil.getNodeProperties(child.getOrElse("identifier", "").asInstanceOf[String])).asScala.toMap
         if (PUBLISHED_STATUS_LIST.contains(childNode.getOrElse("status", "").asInstanceOf[String])) {
           logger.info("CollectionPublisher:: enrichChildren:: fetched child node:: " + childNode.getOrElse("IL_UNIQUE_ID", "").asInstanceOf[String] + " || objectType:: " + childNode.getOrElse("IL_FUNC_OBJECT_TYPE", "").asInstanceOf[String])
           toEnrichChildren(newChildren.indexOf(child)) = childNode ++ Map("identifier" ->childNode.getOrElse("IL_UNIQUE_ID", "").asInstanceOf[String], "objectType" ->childNode.getOrElse("IL_FUNC_OBJECT_TYPE", "").asInstanceOf[String], "index" -> child.getOrElse("index", 0).asInstanceOf[AnyRef], "parent" -> child.getOrElse("parent", "").asInstanceOf[String], "depth" -> child.getOrElse("depth", 0).asInstanceOf[AnyRef]) - ("collections", "children", "IL_FUNC_OBJECT_TYPE", "IL_SYS_NODE_TYPE","IL_UNIQUE_ID")
@@ -239,7 +239,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
   }
 
 
-  private def processCollection(obj: ObjectData, children: List[Map[String, AnyRef]])(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig): ObjectData = {
+  private def processCollection(obj: ObjectData, children: List[Map[String, AnyRef]])(implicit janusGraphUtil: JanusGraphUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig): ObjectData = {
     val dataMap: mutable.Map[String, AnyRef] = processChildren(children)
     logger.info("CollectionPublisher:: processCollection:: dataMap: " + dataMap)
     val updatedObj: ObjectData = if (dataMap.nonEmpty) {
@@ -320,7 +320,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     dataMap
   }
 
-  def enrichCollection(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig): ObjectData = {
+  def enrichCollection(obj: ObjectData)(implicit janusGraphUtil: JanusGraphUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, cloudStorageUtil: CloudStorageUtil, config: PublishConfig): ObjectData = {
     val nodeMetadata = mutable.Map.empty[String, AnyRef] ++ obj.metadata
     val contentId = obj.identifier
     logger.info("CollectionPublisher:: enrichCollection:: Processing Collection Content :" + contentId)
@@ -558,7 +558,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     new ObjectData(obj.identifier, obj.metadata ++ Map("children" -> childrenMap, "objectType" -> "content"), obj.extData, Option(obj.hierarchy.get + ("children" -> nextLevelNodes)))
   }
 
-  def syncNodes(successObj: ObjectData, children: List[Map[String, AnyRef]], unitNodes: List[String])(implicit esUtil: ElasticSearchUtil, neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, definition: ObjectDefinition, config: PublishConfig): Map[String, Map[String, AnyRef]] = {
+  def syncNodes(successObj: ObjectData, children: List[Map[String, AnyRef]], unitNodes: List[String])(implicit esUtil: ElasticSearchUtil, janusGraphUtil: JanusGraphUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, definition: ObjectDefinition, config: PublishConfig): Map[String, Map[String, AnyRef]] = {
     val contentConfig = config.asInstanceOf[KnowlgPublishConfig]
     val nestedFields = contentConfig.nestedFields.asScala.toList
     val nodes = ListBuffer.empty[ObjectData]
@@ -604,7 +604,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     messages
   }
 
-  private def getNodeForSyncing(children: List[Map[String, AnyRef]], nodes: ListBuffer[ObjectData], nodeIds: ListBuffer[String])(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): Unit = {
+  private def getNodeForSyncing(children: List[Map[String, AnyRef]], nodes: ListBuffer[ObjectData], nodeIds: ListBuffer[String])(implicit janusGraphUtil: JanusGraphUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig): Unit = {
     if (children.nonEmpty) {
       children.foreach((child: Map[String, AnyRef]) => {
         try {
@@ -659,7 +659,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     result
   }
 
-  def fetchDialListForContextUpdate(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, config: PublishConfig): Map[String, AnyRef] = {
+  def fetchDialListForContextUpdate(obj: ObjectData)(implicit janusGraphUtil: JanusGraphUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, config: PublishConfig): Map[String, AnyRef] = {
     val isCollectionShallowCopy = isContentShallowCopy(obj)
 
     val DialContextMap: Map[String, AnyRef] = if (isCollectionShallowCopy) Map.empty[String, AnyRef] else {

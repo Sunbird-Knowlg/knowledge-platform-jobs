@@ -27,7 +27,7 @@ import scala.concurrent.ExecutionContextExecutor
 
 class CollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
 
-  implicit val mockNeo4JUtil: Neo4JUtil = mock[Neo4JUtil](Mockito.withSettings().serializable())
+  implicit val mockJanusGraphUtil: JanusGraphUtil = mock[JanusGraphUtil](Mockito.withSettings().serializable())
   implicit var cassandraUtil: CassandraUtil = _
   val config: Config = ConfigFactory.load("test.conf").withFallback(ConfigFactory.systemEnvironment())
   val jobConfig: KnowlgPublishConfig = new KnowlgPublishConfig(config)
@@ -115,7 +115,7 @@ class CollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Match
   "getObjectWithEcar" should "return object with ecar url" in {
     val unpublishedChildrenObj: List[Map[String, AnyRef]] = ScalaJsonUtil.deserialize[List[Map[String, AnyRef]]](unpublishedChildrenData)
     val data = new ObjectData("do_123", Map("objectType" -> "Collection", "identifier" -> "do_123", "name" -> "Test Collection", "lastPublishedOn" -> getTimeStamp, "lastUpdatedOn" -> getTimeStamp, "status" -> "Draft", "downloadUrl" -> "downloadUrl", "variants" -> Map.empty[String,AnyRef]), Some(Map()), Some(Map("children" -> unpublishedChildrenObj)))
-    val result = new TestCollectionPublisher().getObjectWithEcar(data, List(EcarPackageType.SPINE, EcarPackageType.ONLINE))(ec, mockNeo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, jobConfig, defCache, defConfig, httpUtil)
+    val result = new TestCollectionPublisher().getObjectWithEcar(data, List(EcarPackageType.SPINE, EcarPackageType.ONLINE))(ec, mockJanusGraphUtil, cassandraUtil, readerConfig, cloudStorageUtil, jobConfig, defCache, defConfig, httpUtil)
     StringUtils.isNotBlank(result.metadata.getOrElse("downloadUrl", "").asInstanceOf[String])
   }
 
@@ -148,7 +148,7 @@ class CollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Match
     val publishedCollectionNodeMetadataObj: Map[String,AnyRef] = ScalaJsonUtil.deserialize[Map[String,AnyRef]](publishedCollectionNodeMetadata)
     val data = new ObjectData("do_123", publishedCollectionNodeMetadataObj, Some(Map.empty[String, AnyRef]))
     val syncChildrenData = ScalaJsonUtil.deserialize[List[Map[String, AnyRef]]](publishedChildrenData)
-    val messages: Map[String, Map[String, AnyRef]] = new TestCollectionPublisher().syncNodes(data, syncChildrenData, List.empty)(mockElasticUtil, mockNeo4JUtil, cassandraUtil, readerConfig, definition, jobConfig)
+    val messages: Map[String, Map[String, AnyRef]] = new TestCollectionPublisher().syncNodes(data, syncChildrenData, List.empty)(mockElasticUtil, mockJanusGraphUtil, cassandraUtil, readerConfig, definition, jobConfig)
 
     assert(messages != null && messages.size > 0)
   }
@@ -212,7 +212,7 @@ class CollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Match
       }
     }
     val collectionObj = new ObjectData("do_123", Map("objectType" -> "Collection", "identifier" -> "do_123", "name" -> "Test Collection","origin" -> "do_456", "originData" -> Map("name" -> "Contemporary India  I", "copyType" -> "deep", "license" -> "CC BY 4.0", "organisation" -> Array("NCERT"))), Some(Map()), Some(Map()))
-    when(mockNeo4JUtil.getNodeProperties(anyString())).thenReturn(metaData)
+    when(mockJanusGraphUtil.getNodeProperties(anyString())).thenReturn(metaData)
     val originObj = new TestCollectionPublisher().updateOriginPkgVersion(collectionObj)
     assert(originObj.metadata("originData").asInstanceOf[Map[String,AnyRef]]("pkgVersion") == 3)
   }
@@ -226,7 +226,7 @@ class CollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Match
 
   "fetchDialListForContextUpdate" should "fetch the list of added and removed QR codes" in {
     val nodeObj = new ObjectData("do_21354027142511820812318.img", Map("objectType" -> "Collection", "identifier" -> "do_21354027142511820812318", "name" -> "DialCodeHierarchy", "lastPublishedOn" -> getTimeStamp, "lastUpdatedOn" -> getTimeStamp, "status" -> "Draft", "pkgVersion" -> 1.asInstanceOf[Number], "versionKey" -> "1652871771396"), Some(Map()), Some(Map()))
-    val DIALListMap = new TestCollectionPublisher().fetchDialListForContextUpdate(nodeObj)(mockNeo4JUtil, cassandraUtil, readerConfig, jobConfig)
+    val DIALListMap = new TestCollectionPublisher().fetchDialListForContextUpdate(nodeObj)(mockJanusGraphUtil, cassandraUtil, readerConfig, jobConfig)
     println("DIALListMap:: " + DIALListMap)
     assert(DIALListMap.nonEmpty)
   }

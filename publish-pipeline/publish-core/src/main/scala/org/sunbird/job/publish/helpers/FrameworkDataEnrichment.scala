@@ -3,7 +3,7 @@ package org.sunbird.job.publish.helpers
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.publish.core.ObjectData
-import org.sunbird.job.util.Neo4JUtil
+import org.sunbird.job.util.JanusGraphUtil
 
 import java.util
 import org.apache.commons.collections.CollectionUtils
@@ -23,7 +23,7 @@ trait FrameworkDataEnrichment {
 
 	// private val frameworkCategorySearchMetadataMapping: HashMap[String, String] = HashMap[String, String]("se_boards" -> "board", "se_subjects"-> "subject", "se_mediums" -> "medium", "se_topics"-> "topic", "se_gradeLevels"-> "gradeLevel")
 
-	def enrichFrameworkData(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, config: PublishConfig): ObjectData = {
+	def enrichFrameworkData(obj: ObjectData)(implicit janusGraphUtil: JanusGraphUtil, config: PublishConfig): ObjectData = {
 		val (fwMetaFields, fwMetaMap) : (List[String], Map[(String, String), List[String]]) =
 			if(StringUtils.equalsIgnoreCase(config.getString("master.category.validation.enabled", "Yes"), "Yes"))
 				getFrameworkCategoryMetadata("domain", "Category")
@@ -36,7 +36,7 @@ trait FrameworkDataEnrichment {
 		new ObjectData(obj.identifier, finalMeta, obj.extData, obj.hierarchy)
 	}
 
-	private def enrichFwData(obj: ObjectData, fwMetaFields: List[String], fwMetaMap: Map[(String, String), List[String]])(implicit neo4JUtil: Neo4JUtil): Map[String, AnyRef] = {
+	private def enrichFwData(obj: ObjectData, fwMetaFields: List[String], fwMetaMap: Map[(String, String), List[String]])(implicit janusGraphUtil: JanusGraphUtil): Map[String, AnyRef] = {
 		val mFwId: List[String] = getList(obj.metadata.getOrElse("framework", "")) ::: getList(obj.metadata.getOrElse("targetFWIds", List()))
 		if (mFwId.isEmpty) Map() else {
 			val labels: Map[String, List[String]] = getLabels(obj.identifier, obj.metadata, fwMetaFields)
@@ -45,7 +45,7 @@ trait FrameworkDataEnrichment {
 		}
 	}
 
-	private def revalidateFrameworkCategoryMetadata(obj: ObjectData, enMetadata: Map[String, AnyRef])(implicit neo4JUtil: Neo4JUtil) : Map[String, AnyRef] = {
+	private def revalidateFrameworkCategoryMetadata(obj: ObjectData, enMetadata: Map[String, AnyRef])(implicit janusGraphUtil: JanusGraphUtil) : Map[String, AnyRef] = {
 
 		val masterCategories: List[Map[String, AnyRef]] = getMasterCategory("domain", "Category")
 		val frameworkCategorySearchMetadataMapping: Map[String, String] = masterCategories.flatMap(category =>
@@ -63,13 +63,13 @@ trait FrameworkDataEnrichment {
 		enMetadata ++ updatedFwData
 	}
 
-	private def getLabels(identifier: String, metadata: Map[String, AnyRef], fwMetaFields: List[String])(implicit neo4JUtil: Neo4JUtil): Map[String, List[String]] = {
+	private def getLabels(identifier: String, metadata: Map[String, AnyRef], fwMetaFields: List[String])(implicit janusGraphUtil: JanusGraphUtil): Map[String, List[String]] = {
 		val fwMetaIds = fwMetaFields.flatMap(meta => getList(metadata.getOrElse(meta, List())))
 		if (fwMetaIds.isEmpty) {
 			logger.info("No framework categories are present for identifier : " + identifier)
 			Map()
 		} else {
-			val nameMap: Map[String, String] = neo4JUtil.getNodesName(fwMetaIds)
+			val nameMap: Map[String, String] = janusGraphUtil.getNodesName(fwMetaIds)
 			if (nameMap.isEmpty) Map() else {
 				fwMetaFields.flatMap(meta => {
 					val metaNames: List[String] = getList(metadata.getOrElse(meta, List())).map(id => nameMap.getOrElse(id, ""))
@@ -88,7 +88,7 @@ trait FrameworkDataEnrichment {
 		}).filter((x: String) => StringUtils.isNotBlank(x) && !StringUtils.equals(" ", x))
 	}
 
-	def getFrameworkCategoryMetadata(graphId: String, objectType: String)(implicit neo4JUtil: Neo4JUtil): (List[String], Map[(String, String), List[String]]) ={
+	def getFrameworkCategoryMetadata(graphId: String, objectType: String)(implicit janusGraphUtil: JanusGraphUtil): (List[String], Map[(String, String), List[String]]) ={
 		val masterCategories: List[Map[String, AnyRef]] = getMasterCategory(graphId, objectType)
 		val fwMetaFields: List[String] = masterCategories.flatMap(category =>
 			List(category.getOrElse("orgIdFieldName", "").asInstanceOf[String],
@@ -101,12 +101,12 @@ trait FrameworkDataEnrichment {
 	}
 
 
-	def getMasterCategory(graphId: String, objectType: String)(implicit neo4JUtil: Neo4JUtil): List[Map[String, AnyRef]] = {
+	def getMasterCategory(graphId: String, objectType: String)(implicit janusGraphUtil: JanusGraphUtil): List[Map[String, AnyRef]] = {
 		if (FrameworkMasterCategoryMap.containsKey("masterCategories") && null != FrameworkMasterCategoryMap.get("masterCategories")) {
 			val masterCategories: Map[String, AnyRef] = FrameworkMasterCategoryMap.get("masterCategories")
 			masterCategories.map(obj => obj._2.asInstanceOf[Map[String, AnyRef]]).toList
 		}else{
-			val nodes: util.List[util.Map[String, AnyRef]] = neo4JUtil.getNodePropertiesWithObjectType(objectType)
+			val nodes: util.List[util.Map[String, AnyRef]] = janusGraphUtil.getNodePropertiesWithObjectType(objectType)
 			if(CollectionUtils.isEmpty(nodes)){
 				logger.info("No Framework Master Category found.")
 				List()

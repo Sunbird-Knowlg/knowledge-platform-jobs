@@ -20,7 +20,7 @@ import org.sunbird.job.dialcodecontextupdater.domain.Event
 import org.sunbird.job.dialcodecontextupdater.fixture.EventFixture
 import org.sunbird.job.dialcodecontextupdater.functions.DialcodeContextUpdaterFunction
 import org.sunbird.job.dialcodecontextupdater.task.{DialcodeContextUpdaterConfig, DialcodeContextUpdaterStreamTask}
-import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, JSONUtil, Neo4JUtil}
+import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, JSONUtil, JanusGraphUtil}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 
 import java.util
@@ -40,7 +40,7 @@ class DialcodeContextUpdaterStreamTaskSpec extends BaseTestSpec {
   implicit val jobConfig: DialcodeContextUpdaterConfig = new DialcodeContextUpdaterConfig(config)
 
   implicit val mockHttpUtil: HttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
-  val mockNeo4JUtil: Neo4JUtil = mock[Neo4JUtil](Mockito.withSettings().serializable())
+  val mockJanusGraphUtil: JanusGraphUtil = mock[JanusGraphUtil](Mockito.withSettings().serializable())
   var cassandraUtil: CassandraUtil = _
   var mockMetrics: Metrics = mock[Metrics](Mockito.withSettings().serializable())
 
@@ -66,7 +66,7 @@ class DialcodeContextUpdaterStreamTaskSpec extends BaseTestSpec {
   }
 
   ignore should " update the dial context " in {
-    when(mockNeo4JUtil.getNodeProperties(anyString())).thenReturn(new util.HashMap[String, AnyRef])
+    when(mockJanusGraphUtil.getNodeProperties(anyString())).thenReturn(new util.HashMap[String, AnyRef])
     initialize()
     new DialcodeContextUpdaterStreamTask(jobConfig, mockKafkaUtil, mockHttpUtil).process()
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(1)

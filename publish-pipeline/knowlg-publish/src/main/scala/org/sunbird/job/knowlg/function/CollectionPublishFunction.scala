@@ -5,7 +5,7 @@ import com.google.gson.reflect.TypeToken
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
-import org.neo4j.driver.v1.exceptions.ClientException
+
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cache.{DataCache, RedisConnect}
 import org.sunbird.job.knowlg.publish.domain.Event
@@ -25,7 +25,7 @@ import scala.collection.mutable
 import scala.concurrent.ExecutionContext
 
 class CollectionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
-                                @transient var neo4JUtil: Neo4JUtil = null,
+                                @transient var janusGraphUtil: JanusGraphUtil = null,
                                 @transient var cassandraUtil: CassandraUtil = null,
                                 @transient var esUtil: ElasticSearchUtil = null,
                                 @transient var cloudStorageUtil: CloudStorageUtil = null,
@@ -46,7 +46,7 @@ class CollectionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
     cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort, config)
-    neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName, config)
+    janusGraphUtil = new JanusGraphUtil(config)
     esUtil = new ElasticSearchUtil(config.esConnectionInfo, config.compositeSearchIndexName)
     cloudStorageUtil = new CloudStorageUtil(config)
     ec = ExecutionContexts.global
@@ -71,7 +71,7 @@ class CollectionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
     val readerConfig = ExtDataConfig(config.hierarchyKeyspaceName, config.hierarchyTableName, definition.getExternalPrimaryKey, definition.getExternalProps)
     logger.info("Collection publishing started for : " + data.identifier)
     metrics.incCounter(config.collectionPublishEventCount)
-    val obj: ObjectData = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(neo4JUtil, cassandraUtil, config)
+    val obj: ObjectData = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(janusGraphUtil, cassandraUtil, config)
     logger.info(s"KN-856: Step:1 - From DB Collection:  ${obj.identifier} | Hierarchy: ${obj.hierarchy}");
     try {
       if (obj.pkgVersion > data.pkgVersion) {
@@ -82,10 +82,10 @@ class CollectionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
         val messages: List[String] = List.empty[String] // validate(obj, obj.identifier, validateMetadata)
         if (messages.isEmpty) {
           // Pre-publish update
-          updateProcessingNode(updObj)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
+          updateProcessingNode(updObj)(janusGraphUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
           logger.info(s"KN-856: Step:2 - After updating processing status Collection:  ${updObj.identifier} | Hierarchy: ${updObj.hierarchy}");
           val isCollectionShallowCopy = isContentShallowCopy(updObj)
-          val updatedObj = if (isCollectionShallowCopy) updateOriginPkgVersion(updObj)(neo4JUtil) else updObj
+          val updatedObj = if (isCollectionShallowCopy) updateOriginPkgVersion(updObj)(janusGraphUtil) else updObj
           logger.info(s"KN-856: Step:3 - After shallow copy status check and update Collection:  ${updatedObj.identifier} | isCollectionShallowCopy: $isCollectionShallowCopy | Hierarchy: ${updatedObj.hierarchy}");
 
           // Clear redis cache
@@ -101,19 +101,19 @@ class CollectionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
           } else  List.empty
 
           logger.info("CollectionPublishFunction:: Live unitNodes: " + unitNodes)
-          val enrichedObj = enrichObject(updatedObj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
+          val enrichedObj = enrichObject(updatedObj)(janusGraphUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
           logger.info(s"KN-856: Step:4 - After enriching the object Collection:  ${enrichedObj.identifier} | Hierarchy: ${enrichedObj.hierarchy}");
           logger.info("CollectionPublishFunction:: Collection Object Enriched: " + enrichedObj.identifier)
-          val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
+          val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, janusGraphUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
           logger.info("CollectionPublishFunction:: ECAR generation completed for Collection Object: " + objWithEcar.identifier)
           logger.info(s"KN-856: Step:5 - After WithEcar Collection:  ${objWithEcar.identifier} | Hierarchy: ${objWithEcar.hierarchy}");
 
           val collRelationalMetadata = getRelationalMetadata(obj.identifier, obj.pkgVersion-1, readerConfig)(cassandraUtil, config).getOrElse(Map.empty[String, AnyRef])
 
-          val dialContextMap = if(config.enableDIALContextUpdate.equalsIgnoreCase("Yes")) fetchDialListForContextUpdate(obj)(neo4JUtil, cassandraUtil, readerConfig, config) else Map.empty[String, AnyRef]
+          val dialContextMap = if(config.enableDIALContextUpdate.equalsIgnoreCase("Yes")) fetchDialListForContextUpdate(obj)(janusGraphUtil, cassandraUtil, readerConfig, config) else Map.empty[String, AnyRef]
           logger.info("CollectionPublishFunction:: dialContextMap: " + dialContextMap)
 
-          saveOnSuccess(new ObjectData(objWithEcar.identifier, objWithEcar.metadata.-("children"), objWithEcar.extData, objWithEcar.hierarchy))(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig, config)
+          saveOnSuccess(new ObjectData(objWithEcar.identifier, objWithEcar.metadata.-("children"), objWithEcar.extData, objWithEcar.hierarchy))(janusGraphUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig, config)
           logger.info("CollectionPublishFunction:: Published Collection Object metadata saved successfully to graph DB: " + objWithEcar.identifier)
 
           val variantsJsonString = ScalaJsonUtil.serialize(objWithEcar.metadata("variants"))
@@ -133,7 +133,7 @@ class CollectionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
             logger.info(s"KN-856: Step:8.1 - After saveImageHierarchy Collection:  ${enrichedObj.identifier} | Hierarchy: ${enrichedObj.hierarchy}");
           }
 
-          if (!isCollectionShallowCopy) syncNodes(successObj, updatedChildren, unitNodes)(esUtil, neo4JUtil, cassandraUtil, readerConfig, definition, config)
+          if (!isCollectionShallowCopy) syncNodes(successObj, updatedChildren, unitNodes)(esUtil, janusGraphUtil, cassandraUtil, readerConfig, definition, config)
           pushPostProcessEvent(successObj, dialContextMap, context)(metrics)
           if(config.isAISearchEnabled) {
             pushContentMetadataEvent(successObj, context)(metrics)
@@ -142,21 +142,21 @@ class CollectionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
           metrics.incCounter(config.collectionPublishSuccessEventCount)
           logger.info("CollectionPublishFunction:: Collection publishing completed successfully for : " + data.identifier)
         } else {
-          saveOnFailure(obj, messages, data.pkgVersion)(neo4JUtil)
+          saveOnFailure(obj, messages, data.pkgVersion)(janusGraphUtil)
           val errorMessages = messages.mkString("; ")
           pushFailedEvent(data, errorMessages, null, context)(metrics)
           logger.info("CollectionPublishFunction:: Collection publishing failed for : " + data.identifier)
         }
       }
     } catch {
-      case ex@(_: InvalidInputException | _: ClientException) => // ClientException - Invalid input exception.
+      case ex: InvalidInputException => // Invalid input exception.
         ex.printStackTrace()
-        saveOnFailure(obj, List(ex.getMessage), data.pkgVersion)(neo4JUtil)
+        saveOnFailure(obj, List(ex.getMessage), data.pkgVersion)(janusGraphUtil)
         pushFailedEvent(data, null, ex, context)(metrics)
         logger.error(s"CollectionPublishFunction::Error while publishing collection :: ${data.partition} and Offset: ${data.offset}. Error : ${ex.getMessage}", ex)
       case ex: Exception =>
         ex.printStackTrace()
-        saveOnFailure(obj, List(ex.getMessage), data.pkgVersion)(neo4JUtil)
+        saveOnFailure(obj, List(ex.getMessage), data.pkgVersion)(janusGraphUtil)
         logger.error(s"CollectionPublishFunction::Error while processing message for Partition: ${data.partition} and Offset: ${data.offset}. Error : ${ex.getMessage}", ex)
         throw ex
     }

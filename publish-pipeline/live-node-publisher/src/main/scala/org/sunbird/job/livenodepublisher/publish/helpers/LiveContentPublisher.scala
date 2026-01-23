@@ -3,7 +3,6 @@ package org.sunbird.job.livenodepublisher.publish.helpers
 import org.apache.commons.io.FilenameUtils
 import org.apache.commons.lang3.StringUtils
 import org.apache.tika.Tika
-import org.neo4j.driver.v1.StatementResult
 import org.slf4j.LoggerFactory
 import org.sunbird.job.livenodepublisher.task.LiveNodePublisherConfig
 import org.sunbird.job.domain.`object`.DefinitionCache
@@ -11,8 +10,8 @@ import org.sunbird.job.exception.InvalidInputException
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData, ObjectExtData}
 import org.sunbird.job.publish.helpers._
-import org.sunbird.job.util.CSPMetaUtil.updateRelativePath
 import org.sunbird.job.util._
+import org.sunbird.job.util.CSPMetaUtil.updateRelativePath
 
 import java.io.{File, IOException}
 import java.nio.file.Files
@@ -49,7 +48,7 @@ trait LiveContentPublisher extends LiveObjectReader with ObjectValidator with Ob
 
   override def getHierarchies(identifiers: List[String], readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = None
 
-  override def enrichObjectMetadata(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig,
+  override def enrichObjectMetadata(obj: ObjectData)(implicit janusGraphUtil: JanusGraphUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig,
                                                      cloudStorageUtil: CloudStorageUtil, config: PublishConfig, definitionCache: DefinitionCache,
                                                      definitionConfig: DefinitionConfig): Option[ObjectData] = {
     val contentConfig = config.asInstanceOf[LiveNodePublisherConfig]
@@ -73,10 +72,10 @@ trait LiveContentPublisher extends LiveObjectReader with ObjectValidator with Ob
         ExtractableMimeTypeHelper.copyExtractedContentPackage(obj, contentConfig, "latest", cloudStorageUtil)
       }
     } catch {
-      case _:Exception => neo4JUtil.executeQuery(s"""MATCH (n:domain{IL_UNIQUE_ID:"${obj.identifier}"}) SET n.migrationVersion=0.5;""")
+      case _:Exception => janusGraphUtil.updateNode(obj.identifier, Map("migrationVersion" -> 0.5.asInstanceOf[AnyRef]))
         throw new InvalidInputException(s"Invalid input found For $obj.identifier")
     }
-    val updatedPreviewUrl = updatePreviewUrl(obj, updatedPragma, neo4JUtil, cloudStorageUtil, contentConfig).getOrElse(updatedPragma)
+    val updatedPreviewUrl = updatePreviewUrl(obj, updatedPragma, janusGraphUtil, cloudStorageUtil, contentConfig).getOrElse(updatedPragma)
     Some(new ObjectData(obj.identifier, updatedPreviewUrl, obj.extData, obj.hierarchy))
   }
 
@@ -167,7 +166,7 @@ trait LiveContentPublisher extends LiveObjectReader with ObjectValidator with Ob
     false
   }
 
-  def getObjectWithEcar(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, neo4JUtil: Neo4JUtil, cloudStorageUtil: CloudStorageUtil, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
+  def getObjectWithEcar(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, janusGraphUtil: JanusGraphUtil, cloudStorageUtil: CloudStorageUtil, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
     try {
       logger.info("LiveContentPublisher :: getObjectWithEcar:: Ecar generation done for Content: " + data.identifier)
       val ecarMap: Map[String, String] = generateEcar(data, pkgTypes)
@@ -178,7 +177,7 @@ trait LiveContentPublisher extends LiveObjectReader with ObjectValidator with Ob
     } catch {
       case _: java.lang.IllegalArgumentException => throw new InvalidInputException(s"Invalid input found For $data.identifier")
       case iex@(_: java.lang.InterruptedException | _:java.io.FileNotFoundException) =>
-        neo4JUtil.executeQuery(s"""MATCH (n:domain{IL_UNIQUE_ID:"${data.identifier}"}) SET n.migrationVersion=0.5;""")
+        janusGraphUtil.updateNode(data.identifier, Map("migrationVersion" -> 0.5.asInstanceOf[AnyRef]))
         throw new InvalidInputException(s"Invalid input found For $data.identifier")
     }
   }
@@ -202,7 +201,7 @@ trait LiveContentPublisher extends LiveObjectReader with ObjectValidator with Ob
     } else None
   }
 
-  private def updatePreviewUrl(obj: ObjectData, updatedMeta: Map[String, AnyRef], neo4JUtil: Neo4JUtil, cloudStorageUtil: CloudStorageUtil, config: LiveNodePublisherConfig): Option[Map[String, AnyRef]] = {
+  private def updatePreviewUrl(obj: ObjectData, updatedMeta: Map[String, AnyRef], janusGraphUtil: JanusGraphUtil, cloudStorageUtil: CloudStorageUtil, config: LiveNodePublisherConfig): Option[Map[String, AnyRef]] = {
     try {
       if (StringUtils.isNotBlank(obj.mimeType)) {
         logger.debug("Checking Required Fields For: " + obj.mimeType)
@@ -222,8 +221,7 @@ trait LiveContentPublisher extends LiveObjectReader with ObjectValidator with Ob
       } else None
     } catch {
       case ex: Exception => logger.debug("Exception for updatePreviewUrl: " + ex.getMessage)
-        val query = s"""MATCH (n:domain{IL_UNIQUE_ID:"${obj.identifier}"}) SET n.migrationVersion=0.5;"""
-        val result: StatementResult = neo4JUtil.executeQuery(query)
+        janusGraphUtil.updateNode(obj.identifier, Map("migrationVersion" -> 0.5.asInstanceOf[AnyRef]))
         None
     }
   }

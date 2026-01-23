@@ -7,7 +7,7 @@ import org.scalatestplus.mockito.MockitoSugar
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{ExtDataConfig, ObjectExtData}
 import org.sunbird.job.publish.helpers.ObjectReader
-import org.sunbird.job.util.{CassandraUtil, Neo4JUtil}
+import org.sunbird.job.util.{CassandraUtil, JanusGraphUtil}
 
 import scala.collection.JavaConverters._
 
@@ -21,12 +21,12 @@ class ObjectReaderTestSpec extends FlatSpec with BeforeAndAfterAll with Matchers
     super.afterAll()
   }
 
-  implicit val mockNeo4JUtil: Neo4JUtil = mock[Neo4JUtil](Mockito.withSettings().serializable())
+  implicit val mockJanusGraphUtil: JanusGraphUtil = mock[JanusGraphUtil](Mockito.withSettings().serializable())
   implicit val mockCassandraUtil: CassandraUtil = mock[CassandraUtil](Mockito.withSettings().serializable())
   implicit val config: PublishConfig = mock[PublishConfig](Mockito.withSettings().serializable())
 
   "Object Reader " should " read the metadata " in {
-    when(mockNeo4JUtil.getNodeProperties("do_123.img")).thenReturn(Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123.img", "IL_UNIQUE_ID" -> "do_123.img", "pkgVersion" -> 2.0.asInstanceOf[AnyRef]).asJava)
+    when(mockJanusGraphUtil.getNodeProperties("do_123.img")).thenReturn(Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123.img", "IL_UNIQUE_ID" -> "do_123.img", "pkgVersion" -> 2.0.asInstanceOf[AnyRef]).asJava)
     val objectReader = new TestObjectReader()
     val readerConfig = ExtDataConfig("test", "test")
     val obj = objectReader.getObject("do_123", 2, "", "Public", readerConfig)

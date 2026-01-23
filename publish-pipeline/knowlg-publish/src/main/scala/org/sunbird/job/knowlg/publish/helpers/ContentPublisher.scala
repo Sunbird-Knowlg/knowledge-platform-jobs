@@ -47,7 +47,7 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
 
   override def getHierarchies(identifiers: List[String], readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = None
 
-  override def enrichObjectMetadata(obj: ObjectData)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig,
+  override def enrichObjectMetadata(obj: ObjectData)(implicit janusGraphUtil: JanusGraphUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig,
                                                      cloudStorageUtil: CloudStorageUtil, config: PublishConfig, definitionCache: DefinitionCache,
                                                      definitionConfig: DefinitionConfig): Option[ObjectData] = {
     val contentConfig = config.asInstanceOf[KnowlgPublishConfig]
@@ -161,7 +161,7 @@ trait ContentPublisher extends ObjectReader with ObjectValidator with ObjectEnri
     false
   }
 
-  def getObjectWithEcar(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, neo4JUtil: Neo4JUtil, cloudStorageUtil: CloudStorageUtil, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
+  def getObjectWithEcar(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, janusGraphUtil: JanusGraphUtil, cloudStorageUtil: CloudStorageUtil, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
     try {
       logger.info("ContentPublisher:getObjectWithEcar: Ecar generation done for Content: " + data.identifier)
       val ecarMap: Map[String, String] = generateEcar(data, pkgTypes)

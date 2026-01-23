@@ -5,7 +5,7 @@ import com.google.gson.reflect.TypeToken
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.ProcessFunction
-import org.neo4j.driver.v1.exceptions.ClientException
+
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cache.{DataCache, RedisConnect}
 import org.sunbird.job.domain.`object`.DefinitionCache
@@ -16,7 +16,7 @@ import org.sunbird.job.livenodepublisher.publish.helpers.{ExtractableMimeTypeHel
 import org.sunbird.job.livenodepublisher.task.LiveNodePublisherConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
 import org.sunbird.job.publish.helpers.EcarPackageType
-import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, Neo4JUtil}
+import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, JanusGraphUtil}
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import java.lang.reflect.Type
@@ -24,7 +24,7 @@ import java.util.UUID
 import scala.concurrent.ExecutionContext
 
 class LiveContentPublishFunction(config: LiveNodePublisherConfig, httpUtil: HttpUtil,
-                                 @transient var neo4JUtil: Neo4JUtil = null,
+                                 @transient var janusGraphUtil: JanusGraphUtil = null,
                                  @transient var cassandraUtil: CassandraUtil = null,
                                  @transient var cloudStorageUtil: CloudStorageUtil = null,
                                  @transient var definitionCache: DefinitionCache = null,
@@ -44,7 +44,7 @@ class LiveContentPublishFunction(config: LiveNodePublisherConfig, httpUtil: Http
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
     cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort, config)
-    neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName, config)
+    janusGraphUtil = new JanusGraphUtil(config)
     cloudStorageUtil = new CloudStorageUtil(config)
     ec = ExecutionContexts.global
     definitionCache = new DefinitionCache()
@@ -67,7 +67,7 @@ class LiveContentPublishFunction(config: LiveNodePublisherConfig, httpUtil: Http
   override def processElement(data: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
     logger.info("Content publishing started for : " + data.identifier)
     metrics.incCounter(config.contentPublishEventCount)
-    val obj: ObjectData = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(neo4JUtil, cassandraUtil, config)
+    val obj: ObjectData = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(janusGraphUtil, cassandraUtil, config)
     try {
       if (obj.pkgVersion > data.pkgVersion || !PUBLISHED_STATUS_LIST.contains(obj.metadata.getOrElse("status", "").asInstanceOf[String])) {
         metrics.incCounter(config.skippedEventCount)
@@ -76,7 +76,7 @@ class LiveContentPublishFunction(config: LiveNodePublisherConfig, httpUtil: Http
         val messages: List[String] = validate(obj, obj.identifier, config, validateMetadata)
         if (messages.isEmpty) {
 //          // Pre-publish update
-//          updateProcessingNode(new ObjectData(obj.identifier, obj.metadata ++ Map("lastPublishedBy" -> data.lastPublishedBy), obj.extData, obj.hierarchy))(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
+//          updateProcessingNode(new ObjectData(obj.identifier, obj.metadata ++ Map("lastPublishedBy" -> data.lastPublishedBy), obj.extData, obj.hierarchy))(janusGraphUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig)
 
           val ecmlVerifiedObj = if (obj.mimeType.equalsIgnoreCase("application/vnd.ekstep.ecml-archive")) {
               val ecarEnhancedObj = ExtractableMimeTypeHelper.processECMLBody(obj, config)(ec, cloudStorageUtil)
@@ -85,18 +85,18 @@ class LiveContentPublishFunction(config: LiveNodePublisherConfig, httpUtil: Http
 
           // Clear redis cache
           cache.del(data.identifier)
-          val enrichedObjTemp = enrichObjectMetadata(ecmlVerifiedObj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
+          val enrichedObjTemp = enrichObjectMetadata(ecmlVerifiedObj)(janusGraphUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
           val enrichedObj = enrichedObjTemp.getOrElse(ecmlVerifiedObj)
-          val objWithEcar = getObjectWithEcar(enrichedObj, if (enrichedObj.getString("contentDisposition", "").equalsIgnoreCase("online-only")) List(EcarPackageType.SPINE) else pkgTypes)(ec, neo4JUtil, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
+          val objWithEcar = getObjectWithEcar(enrichedObj, if (enrichedObj.getString("contentDisposition", "").equalsIgnoreCase("online-only")) List(EcarPackageType.SPINE) else pkgTypes)(ec, janusGraphUtil, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
           logger.info("Ecar generation done for Content: " + objWithEcar.identifier)
-          saveOnSuccess(objWithEcar)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig, config)
+          saveOnSuccess(objWithEcar)(janusGraphUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig, config)
           pushStreamingUrlEvent(enrichedObj, context)(metrics)
 
           metrics.incCounter(config.contentPublishSuccessEventCount)
           logger.info("Content publishing completed successfully for : " + data.identifier)
           logger.info(s"""{ identifier: \"${data.identifier}\", mimetype: \"${data.mimeType}\", status: \"Success\"}""")
         } else {
-          saveOnFailure(obj, messages, data.pkgVersion)(neo4JUtil)
+          saveOnFailure(obj, messages, data.pkgVersion)(janusGraphUtil)
           val errorMessages = messages.mkString("; ")
           pushFailedEvent(data, errorMessages, null, context)(metrics)
           logger.info("Content publishing failed for : " + data.identifier)
@@ -104,15 +104,15 @@ class LiveContentPublishFunction(config: LiveNodePublisherConfig, httpUtil: Http
         }
       }
     } catch {
-      case ex@(_: InvalidInputException | _: ClientException | _:java.lang.IllegalArgumentException) => // ClientException - Invalid input exception.
+      case ex@(_: InvalidInputException | _:java.lang.IllegalArgumentException) => // Invalid input exception.
         ex.printStackTrace()
-        saveOnFailure(obj, List(ex.getMessage), data.pkgVersion)(neo4JUtil)
+        saveOnFailure(obj, List(ex.getMessage), data.pkgVersion)(janusGraphUtil)
         pushFailedEvent(data, null, ex, context)(metrics)
         logger.error("Error while publishing content :: " + ex.getMessage)
         logger.info(s"""{ identifier: \"${data.identifier}\", mimetype: \"${data.mimeType}\", status: \"Failed\"}""")
       case ex: Exception =>
         ex.printStackTrace()
-        saveOnFailure(obj, List(ex.getMessage), data.pkgVersion)(neo4JUtil)
+        saveOnFailure(obj, List(ex.getMessage), data.pkgVersion)(janusGraphUtil)
         logger.error(s"""Error while processing message for Partition: ${data.partition} and Offset: ${data.offset}. Error : ${ex.getMessage}""", ex)
         logger.info(s"""{ identifier: \"${data.identifier}\", mimetype: \"${data.mimeType}\", status: \"Failed\"}""")
         throw ex

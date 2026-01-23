@@ -10,13 +10,13 @@ import org.sunbird.job.assetenricment.models.Asset
 import org.sunbird.job.assetenricment.task.AssetEnrichmentConfig
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.exception.InvalidEventException
-import org.sunbird.job.util.{CloudStorageUtil, Neo4JUtil}
+import org.sunbird.job.util.{CloudStorageUtil, JanusGraphUtil}
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import scala.collection.JavaConverters._
 
 class ImageEnrichmentFunction(config: AssetEnrichmentConfig,
-                              @transient var neo4JUtil: Neo4JUtil = null)
+                              @transient var janusGraphUtil: JanusGraphUtil = null)
   extends BaseProcessFunction[Event, String](config)
     with ImageEnrichmentHelper with OptimizerHelper {
 
@@ -26,7 +26,7 @@ class ImageEnrichmentFunction(config: AssetEnrichmentConfig,
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
-    neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName, config)
+    janusGraphUtil = new JanusGraphUtil(config)
   }
 
   override def close(): Unit = {
@@ -40,13 +40,13 @@ class ImageEnrichmentFunction(config: AssetEnrichmentConfig,
     val asset = Asset(event.data)
     try {
       if (asset.validate(config.contentUploadContextDriven)) replaceArtifactUrl(asset)(cloudStorageUtil)
-      asset.putAll(getMetadata(event.id)(neo4JUtil))
+      asset.putAll(getMetadata(event.id)(janusGraphUtil))
       val mimeType = asset.get("mimeType", "").asInstanceOf[String]
       if (config.unsupportedMimeTypes.contains(mimeType) || !StringUtils.startsWithIgnoreCase(mimeType, "image")) {
-        saveImageVariants(Map(), asset)(neo4JUtil)
+        saveImageVariants(Map(), asset)(janusGraphUtil)
         metrics.incCounter(config.ignoredImageEnrichmentEventCount)
       } else {
-        enrichImage(asset)(config, definitionCache, cloudStorageUtil, neo4JUtil)
+        enrichImage(asset)(config, definitionCache, cloudStorageUtil, janusGraphUtil)
         metrics.incCounter(config.successImageEnrichmentEventCount)
       }
     } catch {
@@ -61,8 +61,8 @@ class ImageEnrichmentFunction(config: AssetEnrichmentConfig,
     List(config.successImageEnrichmentEventCount, config.failedImageEnrichmentEventCount, config.imageEnrichmentEventCount, config.ignoredImageEnrichmentEventCount)
   }
 
-  def getMetadata(identifier: String)(neo4JUtil: Neo4JUtil): Map[String, AnyRef] = {
-    val metadata = neo4JUtil.getNodeProperties(identifier).asScala.toMap
+  def getMetadata(identifier: String)(janusGraphUtil: JanusGraphUtil): Map[String, AnyRef] = {
+    val metadata = janusGraphUtil.getNodeProperties(identifier).asScala.toMap
     if (metadata != null && metadata.nonEmpty) metadata else throw new Exception(s"Received null or Empty metadata for identifier: $identifier.")
   }
 

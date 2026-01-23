@@ -21,7 +21,7 @@ import org.sunbird.job.livenodepublisher.publish.domain.Event
 import org.sunbird.job.livenodepublisher.task.{LiveNodePublisherConfig, LiveNodePublisherStreamTask}
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.ExtDataConfig
-import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, Neo4JUtil}
+import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, JanusGraphUtil}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 
 import java.text.SimpleDateFormat
@@ -46,7 +46,7 @@ class LiveNodePublisherStreamTaskSpec extends BaseTestSpec {
   implicit val readerConfig: ExtDataConfig = ExtDataConfig(jobConfig.hierarchyKeyspaceName, jobConfig.hierarchyTableName, definition.getExternalPrimaryKey, definition.getExternalProps)
 
   val mockHttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
-  implicit val mockNeo4JUtil: Neo4JUtil = mock[Neo4JUtil](Mockito.withSettings().serializable())
+  implicit val mockJanusGraphUtil: JanusGraphUtil = mock[JanusGraphUtil](Mockito.withSettings().serializable())
   var cassandraUtil: CassandraUtil = _
   val publishConfig: PublishConfig = new PublishConfig(config, "")
   val cloudStorageUtil: CloudStorageUtil = new CloudStorageUtil(publishConfig)
@@ -82,7 +82,7 @@ class LiveNodePublisherStreamTaskSpec extends BaseTestSpec {
   }
 
   ignore should " publish the content " in {
-    when(mockNeo4JUtil.getNodeProperties(anyString())).thenReturn(new util.HashMap[String, AnyRef])
+    when(mockJanusGraphUtil.getNodeProperties(anyString())).thenReturn(new util.HashMap[String, AnyRef])
     initialize
     new LiveNodePublisherStreamTask(jobConfig, mockKafkaUtil, mockHttpUtil).process()
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(1)
