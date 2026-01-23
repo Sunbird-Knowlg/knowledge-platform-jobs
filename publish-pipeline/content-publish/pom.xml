@@ -39,6 +39,12 @@
             <artifactId>joda-time</artifactId>
             <version>2.10.6</version>
         </dependency>
+        <!-- Ensure a compatible Guava is packaged (jclouds / cloud-store-sdk requires >=23.0) -->
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>31.1-jre</version>
+        </dependency>
         <dependency>
             <groupId>org.sunbird</groupId>
             <artifactId>jobs-core</artifactId>
