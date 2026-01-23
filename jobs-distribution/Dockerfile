@@ -5,6 +5,12 @@ RUN apt-get update
 RUN apt-get update && apt-get dist-upgrade -y && \
     apt-get install -y --no-install-recommends bash curl libcurl4 libdb5.3 libexpat1 libgcrypt20 libldap-2.4-2 libzstd1 zlib1g imagemagick && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Remove old Guava and add Guava 31.1-jre for jclouds compatibility (SimpleTimeLimiter.create needs 23.0+)
+RUN rm -f $FLINK_HOME/lib/guava-*.jar 2>/dev/null || true
+ADD https://repo1.maven.org/maven2/com/google/guava/guava/31.1-jre/guava-31.1-jre.jar $FLINK_HOME/lib/
+ADD https://repo1.maven.org/maven2/com/google/guava/failureaccess/1.0.1/failureaccess-1.0.1.jar $FLINK_HOME/lib/
+RUN chmod 644 $FLINK_HOME/lib/guava-31.1-jre.jar $FLINK_HOME/lib/failureaccess-1.0.1.jar
 COPY target/jobs-distribution-1.0.tar.gz /tmp
 USER flink
 RUN tar -xvf /tmp/jobs-distribution-1.0.tar.gz -C $FLINK_HOME/lib/
