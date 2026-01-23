@@ -67,7 +67,17 @@
                     <groupId>io.netty</groupId>
                     <artifactId>*</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>com.google.guava</groupId>
+                    <artifactId>guava</artifactId>
+                </exclusion>
             </exclusions>
+        </dependency>
+        <!-- Guava 30.1-jre required for jclouds (cloud-store-sdk) - SimpleTimeLimiter.create() needs 23.0+ -->
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>30.1-jre</version>
         </dependency>
         <!-- Netty dependencies compatible with both Flink 1.13.6 and Cassandra driver 3.7.0 -->
         <dependency>
