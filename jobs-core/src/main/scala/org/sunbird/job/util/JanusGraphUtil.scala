@@ -45,17 +45,15 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
 
   def getNodeProperties(identifier: String): java.util.Map[String, AnyRef] = {
     try {
-      val result = g.V().has("IL_UNIQUE_ID", identifier).valueMap().next()
+      val result = g.V().has("IL_UNIQUE_ID", identifier).elementMap().next()
       if (result != null) {
-        // valueMap returns Map<String, List<Object>>, we might need to flatten it if single values are expected
-        // However, Neo4jUtil return Map<String, AnyRef>.
-        // Let's check how it's used. For now, converting to simpler map.
+        // elementMap returns Map<Object, Object> with single values (not lists)
+        // Filter out special keys like T.id and T.label
         val map = new util.HashMap[String, AnyRef]()
         result.forEach((k, v) => {
-          if (v.asInstanceOf[util.List[AnyRef]].size() == 1) {
-              map.put(k.toString, v.asInstanceOf[util.List[AnyRef]].get(0))
-          } else {
-              map.put(k.toString, v)
+          // Only add string keys (skip T.id, T.label, etc.)
+          if (k.isInstanceOf[String] && v != null) {
+            map.put(k.toString, v)
           }
         })
         if (isrRelativePathEnabled) CSPMetaUtil.updateAbsolutePath(map)(config) else map
@@ -69,17 +67,16 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
 
   def getNodePropertiesWithObjectType(objectType: String): util.List[util.Map[String, AnyRef]] = {
     try {
-        val traversal = g.V().has("IL_FUNC_OBJECT_TYPE", objectType).has("IL_SYS_NODE_TYPE", "DATA_NODE").valueMap()
+        val traversal = g.V().has("IL_FUNC_OBJECT_TYPE", objectType).has("IL_SYS_NODE_TYPE", "DATA_NODE").elementMap()
         val result = new util.ArrayList[util.Map[String, AnyRef]]()
         while(traversal.hasNext) {
              val item = traversal.next()
              val map = new util.HashMap[String, AnyRef]()
              item.forEach((k, v) => {
-                if (v.asInstanceOf[util.List[AnyRef]].size() == 1) {
-                  map.put(k.toString, v.asInstanceOf[util.List[AnyRef]].get(0))
-                } else {
-                  map.put(k.toString, v)
-                }
+               // Only add string keys (skip T.id, T.label, etc.)
+               if (k.isInstanceOf[String] && v != null) {
+                 map.put(k.toString, v)
+               }
              })
              result.add(map)
         }
