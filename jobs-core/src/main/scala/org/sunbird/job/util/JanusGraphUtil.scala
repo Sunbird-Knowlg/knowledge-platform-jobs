@@ -45,17 +45,15 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
 
   def getNodeProperties(identifier: String): java.util.Map[String, AnyRef] = {
     try {
-      val result = g.V().has("IL_UNIQUE_ID", identifier).elementMap().next()
+      val result: java.util.Map[AnyRef, AnyRef] = g.V().has("IL_UNIQUE_ID", identifier).elementMap().next()
       if (result != null) {
         // elementMap returns Map<Object, Object> with single values (not lists)
         // Filter out special keys like T.id and T.label
         val map = new util.HashMap[String, AnyRef]()
-        result.forEach((k, v) => {
-          // Only add string keys (skip T.id, T.label, etc.)
-          if (k.isInstanceOf[String] && v != null) {
-            map.put(k.toString, v)
-          }
-        })
+        result.asScala.foreach {
+          case (k: String, v: AnyRef) if v != null => map.put(k, v)
+          case _ => // Skip non-string keys (T.id, T.label, etc.) or null values
+        }
         if (isrRelativePathEnabled) CSPMetaUtil.updateAbsolutePath(map)(config) else map
       } else null
     } catch {
@@ -70,14 +68,12 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
         val traversal = g.V().has("IL_FUNC_OBJECT_TYPE", objectType).has("IL_SYS_NODE_TYPE", "DATA_NODE").elementMap()
         val result = new util.ArrayList[util.Map[String, AnyRef]]()
         while(traversal.hasNext) {
-             val item = traversal.next()
+             val item = traversal.next().asInstanceOf[java.util.Map[AnyRef, AnyRef]]
              val map = new util.HashMap[String, AnyRef]()
-             item.forEach((k, v) => {
-               // Only add string keys (skip T.id, T.label, etc.)
-               if (k.isInstanceOf[String] && v != null) {
-                 map.put(k.toString, v)
-               }
-             })
+             item.asScala.foreach {
+               case (k: String, v: AnyRef) if v != null => map.put(k, v)
+               case _ => // Skip non-string keys (T.id, T.label, etc.) or null values
+             }
              result.add(map)
         }
       if (isrRelativePathEnabled) CSPMetaUtil.updateAbsolutePath(result)(config) else result
