@@ -105,6 +105,7 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
   def updateNodeProperty(identifier: String, key: String, value: String): Unit = {
     try {
        g.V().has("IL_UNIQUE_ID", identifier).property(key, value).id().next()
+       g.tx().commit()
        logger.info(s"Successfully Updated node with identifier: $identifier")
     } catch {
       case e: Exception =>
@@ -136,6 +137,7 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
           traversal.property(k, v)
       })
       traversal.id().next()
+      g.tx().commit()
       logger.info(s"Successfully Updated node with identifier: $identifier")
     } catch {
        case e: Exception =>
@@ -147,6 +149,7 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
   def deleteNode(identifier: String): Unit = {
     try {
       g.V().has("IL_UNIQUE_ID", identifier).drop().iterate()
+      g.tx().commit()
       logger.info(s"Successfully Deleted node with identifier: $identifier")
     } catch {
       case e: Exception =>
