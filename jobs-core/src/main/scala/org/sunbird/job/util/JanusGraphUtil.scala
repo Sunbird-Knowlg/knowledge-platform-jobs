@@ -2,8 +2,14 @@ package org.sunbird.job.util
 
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.commons.lang3.StringUtils
+import org.apache.tinkerpop.gremlin.driver.Cluster
+import org.apache.tinkerpop.gremlin.driver.remote.DriverRemoteConnection
+import org.apache.tinkerpop.gremlin.process.traversal.AnonymousTraversalSource.traversal
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversalSource
+import org.apache.tinkerpop.gremlin.structure.io.graphson.GraphSONMapper
+import org.apache.tinkerpop.gremlin.util.ser.GraphSONMessageSerializerV3
 import org.janusgraph.core.{JanusGraph, JanusGraphFactory}
+import org.janusgraph.graphdb.tinkerpop.JanusGraphIoRegistry
 import org.slf4j.LoggerFactory
 import org.sunbird.job.BaseJobConfig
 
@@ -16,20 +22,44 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
   private val graphId = "domain" // Assuming 'domain' as default
   private val LOG_IDENTIFIER = "learning_graph_events"
 
-  private val graph: JanusGraph = {
-    val route = config.getString("janusgraph.route", "localhost:8182")
-    val hosts = route.split(",").map(_.split(":")(0))
-    val port = route.split(",").headOption.map(_.split(":")(1)).getOrElse("8182")
+  @transient private lazy val cluster: Cluster = {
+    val host = config.getString("janusgraph.host", "localhost")
+    val port = config.getInt("janusgraph.port", 8182)
+    
+    logger.info(s"Connecting to Remote JanusGraph at $host:$port")
+    
+    val builder = GraphSONMapper.build().addRegistry(JanusGraphIoRegistry.instance())
+    val serializer = new GraphSONMessageSerializerV3(builder)
+
+    Cluster.build()
+      .addContactPoint(host)
+      .port(port)
+      .serializer(serializer)
+      .maxWaitForConnection(30000)
+      .create()
+  }
+
+  @transient private lazy val g: GraphTraversalSource = {
+    traversal().withRemote(DriverRemoteConnection.using(cluster, "g"))
+  }
+
+  @transient private lazy val graph: JanusGraph = {
+    val storageHost = config.getString("janusgraph.storage.host", "localhost")
+    val storagePort = config.getString("janusgraph.storage.port", "9042")
+    val storageBackend = config.getString("janusgraph.storage.backend", "cql")
+    val keyspace = config.getString("janusgraph.storage.keyspace", "janusgraph")
 
     val map = new java.util.HashMap[String, AnyRef]()
-    map.put("storage.backend", config.getString("janusgraph.storage.backend", "cql"))
-    map.put("storage.hostname", hosts.mkString(","))
-    map.put("storage.port", config.getString("janusgraph.storage.port", "9042"))
+    map.put("storage.backend", storageBackend)
+    map.put("storage.hostname", storageHost)
+    map.put("storage.port", storagePort)
+    map.put("storage.cql.keyspace", keyspace)
     map.put("storage.cql.read-consistency-level", config.getString("janusgraph.storage.cql.read-consistency-level", "ONE"))
     map.put("storage.cql.write-consistency-level", config.getString("janusgraph.storage.cql.write-consistency-level", "ONE"))
     map.put("storage.cql.local-datacenter", config.getString("janusgraph.storage.cql.local-datacenter", "datacenter1"))
     map.put("log.learning_graph_events.backend", config.getString("janusgraph.log.learning_graph_events.backend", "default"))
 
+    logger.info(s"Initializing Direct JanusGraph Instance. Storage: $storageHost:$storagePort, Keyspace: $keyspace")
     val conf = new org.apache.commons.configuration2.MapConfiguration(map)
     JanusGraphFactory.open(conf)
   }
@@ -39,6 +69,8 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
   Runtime.getRuntime.addShutdownHook(new Thread() {
     override def run(): Unit = {
       try {
+        if (null != g) g.close()
+        if (null != cluster) cluster.close()
         if (null != graph) graph.close()
       } catch {
         case e: Throwable => e.printStackTrace()
@@ -47,7 +79,6 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
   })
 
   def getNodeProperties(identifier: String): java.util.Map[String, AnyRef] = {
-    val g = graph.traversal() // Read-only traversal
     try {
       val result: java.util.Map[AnyRef, AnyRef] = g.V().has("IL_UNIQUE_ID", identifier).elementMap().next()
       if (result != null) {
@@ -62,13 +93,10 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
       case e: Exception =>
         logger.error(s"Error fetching node properties for $identifier", e)
         null
-    } finally {
-        try { g.close() } catch { case _: Exception => } // Close traversal source if needed
     }
   }
 
   def getNodePropertiesWithObjectType(objectType: String): util.List[util.Map[String, AnyRef]] = {
-    val g = graph.traversal()
     try {
         val traversal = g.V().has("IL_FUNC_OBJECT_TYPE", objectType).has("IL_SYS_NODE_TYPE", "DATA_NODE").elementMap()
         val result = new util.ArrayList[util.Map[String, AnyRef]]()
@@ -86,13 +114,10 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
       case e: Exception =>
         logger.error(s"Error fetching properties for objectType $objectType", e)
         null
-    } finally {
-        try { g.close() } catch { case _: Exception => }
     }
   }
 
   def getNodesName(identifiers: List[String]): Map[String, String] = {
-    val g = graph.traversal()
     try {
         val traversal = g.V().has("IL_UNIQUE_ID", org.apache.tinkerpop.gremlin.process.traversal.P.within(identifiers.asJava)).project[String]("id", "name").by("IL_UNIQUE_ID").by("name")
         val result = scala.collection.mutable.Map[String, String]()
@@ -107,8 +132,6 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
       case e: Exception =>
         logger.error(s"Error fetching node names for ${identifiers.mkString(",")}", e)
         Map()
-    } finally {
-        try { g.close() } catch { case _: Exception => }
     }
   }
 
