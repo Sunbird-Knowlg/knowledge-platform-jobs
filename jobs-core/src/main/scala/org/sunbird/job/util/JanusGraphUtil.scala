@@ -24,7 +24,7 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
     val map = new java.util.HashMap[String, AnyRef]()
     map.put("storage.backend", config.getString("janusgraph.storage.backend", "cql"))
     map.put("storage.hostname", hosts.mkString(","))
-    map.put("storage.port", port)
+    map.put("storage.port", config.getString("janusgraph.storage.port", "9042"))
     map.put("storage.cql.read-consistency-level", config.getString("janusgraph.storage.cql.read-consistency-level", "ONE"))
     map.put("storage.cql.write-consistency-level", config.getString("janusgraph.storage.cql.write-consistency-level", "ONE"))
     map.put("storage.cql.local-datacenter", config.getString("janusgraph.storage.cql.local-datacenter", "datacenter1"))
