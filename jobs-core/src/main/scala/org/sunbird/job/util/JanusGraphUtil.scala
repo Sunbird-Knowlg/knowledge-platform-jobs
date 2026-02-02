@@ -2,10 +2,8 @@ package org.sunbird.job.util
 
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.commons.lang3.StringUtils
-import org.apache.tinkerpop.gremlin.driver.Cluster
-import org.apache.tinkerpop.gremlin.driver.remote.DriverRemoteConnection
-import org.apache.tinkerpop.gremlin.process.traversal.AnonymousTraversalSource.traversal
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversalSource
+import org.janusgraph.core.{JanusGraph, JanusGraphFactory}
 import org.slf4j.LoggerFactory
 import org.sunbird.job.BaseJobConfig
 
@@ -15,28 +13,33 @@ import scala.collection.JavaConverters._
 class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
 
   private val logger = LoggerFactory.getLogger(classOf[JanusGraphUtil])
-  private val graphId = "domain" // Assuming 'domain' as default, can be configurable if needed
+  private val graphId = "domain" // Assuming 'domain' as default
+  private val LOG_IDENTIFIER = "learning_graph_events"
 
-  private val cluster: Cluster = {
-    val builder = Cluster.build()
+  private val graph: JanusGraph = {
     val route = config.getString("janusgraph.route", "localhost:8182")
     val hosts = route.split(",").map(_.split(":")(0))
-    val port = route.split(",").headOption.map(_.split(":")(1).toInt).getOrElse(8182)
-    
-    hosts.foreach(builder.addContactPoint)
-    builder.port(port)
-    builder.create()
-  }
+    val port = route.split(",").headOption.map(_.split(":")(1)).getOrElse("8182")
 
-  private val g: GraphTraversalSource = traversal().withRemote(DriverRemoteConnection.using(cluster, "g"))
+    val map = new java.util.HashMap[String, AnyRef]()
+    map.put("storage.backend", config.getString("janusgraph.storage.backend", "cql"))
+    map.put("storage.hostname", hosts.mkString(","))
+    map.put("storage.port", port)
+    map.put("storage.cql.read-consistency-level", config.getString("janusgraph.storage.cql.read-consistency-level", "ONE"))
+    map.put("storage.cql.write-consistency-level", config.getString("janusgraph.storage.cql.write-consistency-level", "ONE"))
+    map.put("storage.cql.local-datacenter", config.getString("janusgraph.storage.cql.local-datacenter", "datacenter1"))
+    map.put("log.learning_graph_events.backend", config.getString("janusgraph.log.learning_graph_events.backend", "default"))
+
+    val conf = new org.apache.commons.configuration2.MapConfiguration(map)
+    JanusGraphFactory.open(conf)
+  }
 
   val isrRelativePathEnabled = config.getBoolean("cloudstorage.metadata.replace_absolute_path", false)
 
   Runtime.getRuntime.addShutdownHook(new Thread() {
     override def run(): Unit = {
       try {
-        g.close()
-        cluster.close()
+        if (null != graph) graph.close()
       } catch {
         case e: Throwable => e.printStackTrace()
       }
@@ -44,15 +47,14 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
   })
 
   def getNodeProperties(identifier: String): java.util.Map[String, AnyRef] = {
+    val g = graph.traversal() // Read-only traversal
     try {
       val result: java.util.Map[AnyRef, AnyRef] = g.V().has("IL_UNIQUE_ID", identifier).elementMap().next()
       if (result != null) {
-        // elementMap returns Map<Object, Object> with single values (not lists)
-        // Filter out special keys like T.id and T.label
         val map = new util.HashMap[String, AnyRef]()
         result.asScala.foreach {
           case (k: String, v: AnyRef) if v != null => map.put(k, v)
-          case _ => // Skip non-string keys (T.id, T.label, etc.) or null values
+          case _ =>
         }
         if (isrRelativePathEnabled) CSPMetaUtil.updateAbsolutePath(map)(config) else map
       } else null
@@ -60,10 +62,13 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
       case e: Exception =>
         logger.error(s"Error fetching node properties for $identifier", e)
         null
+    } finally {
+        try { g.close() } catch { case _: Exception => } // Close traversal source if needed
     }
   }
 
   def getNodePropertiesWithObjectType(objectType: String): util.List[util.Map[String, AnyRef]] = {
+    val g = graph.traversal()
     try {
         val traversal = g.V().has("IL_FUNC_OBJECT_TYPE", objectType).has("IL_SYS_NODE_TYPE", "DATA_NODE").elementMap()
         val result = new util.ArrayList[util.Map[String, AnyRef]]()
@@ -72,7 +77,7 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
              val map = new util.HashMap[String, AnyRef]()
              item.asScala.foreach {
                case (k: String, v: AnyRef) if v != null => map.put(k, v)
-               case _ => // Skip non-string keys (T.id, T.label, etc.) or null values
+               case _ =>
              }
              result.add(map)
         }
@@ -81,10 +86,13 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
       case e: Exception =>
         logger.error(s"Error fetching properties for objectType $objectType", e)
         null
+    } finally {
+        try { g.close() } catch { case _: Exception => }
     }
   }
 
   def getNodesName(identifiers: List[String]): Map[String, String] = {
+    val g = graph.traversal()
     try {
         val traversal = g.V().has("IL_UNIQUE_ID", org.apache.tinkerpop.gremlin.process.traversal.P.within(identifiers.asJava)).project[String]("id", "name").by("IL_UNIQUE_ID").by("name")
         val result = scala.collection.mutable.Map[String, String]()
@@ -99,27 +107,26 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
       case e: Exception =>
         logger.error(s"Error fetching node names for ${identifiers.mkString(",")}", e)
         Map()
+    } finally {
+        try { g.close() } catch { case _: Exception => }
     }
   }
 
   def updateNodeProperty(identifier: String, key: String, value: String): Unit = {
+    val tx = graph.buildTransaction().logIdentifier(LOG_IDENTIFIER).start()
+    val g = tx.traversal()
     try {
        g.V().has("IL_UNIQUE_ID", identifier).property(key, value).id().next()
-       g.tx().commit()
+       tx.commit()
        logger.info(s"Successfully Updated node with identifier: $identifier")
     } catch {
       case e: Exception =>
+        tx.rollback()
         logger.error(s"Unable to update the node with identifier: $identifier", e)
         throw new Exception(s"Unable to update the node with identifier: $identifier")
     }
   }
   
-  // This method in JanusGraphUtil took a raw Cypher query.
-  // We cannot easily support raw Cypher queries with Gremlin unless we parse them.
-  // HOWEVER, most likely usages are simple updates.
-  // I need to check usages of executeQuery to see what it's doing.
-  // For now, I will throw an exception or log error if used.
-  // Or better, I should have checked usages of executeQuery before.
   def executeQuery(query: String) = {
       logger.error("executeQuery is NOT SUPPORTED in JanusGraphUtil. Please refactor to use typed methods.")
       throw new UnsupportedOperationException("executeQuery is NOT SUPPORTED in JanusGraphUtil")
@@ -131,28 +138,34 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
 
   def updateNode(identifier: String, metadata: Map[String, AnyRef]): Unit = {
     val updatedMetadata = if (isrRelativePathEnabled) CSPMetaUtil.updateRelativePath(metadata.asJava)(config) else metadata.asJava
+    val tx = graph.buildTransaction().logIdentifier(LOG_IDENTIFIER).start()
+    val g = tx.traversal()
     try {
       val traversal = g.V().has("IL_UNIQUE_ID", identifier)
       updatedMetadata.forEach((k, v) => {
           traversal.property(k, v)
       })
       traversal.id().next()
-      g.tx().commit()
+      tx.commit()
       logger.info(s"Successfully Updated node with identifier: $identifier")
     } catch {
        case e: Exception =>
+        tx.rollback()
         logger.error(s"Unable to update the node with identifier: $identifier", e)
         throw new Exception(s"Unable to update the node with identifier: $identifier")
     }
   }
 
   def deleteNode(identifier: String): Unit = {
+    val tx = graph.buildTransaction().logIdentifier(LOG_IDENTIFIER).start()
+    val g = tx.traversal()
     try {
       g.V().has("IL_UNIQUE_ID", identifier).drop().iterate()
-      g.tx().commit()
+      tx.commit()
       logger.info(s"Successfully Deleted node with identifier: $identifier")
     } catch {
       case e: Exception =>
+        tx.rollback()
         logger.error(s"Unable to delete the node with identifier: $identifier", e)
         throw new Exception(s"Unable to delete the node with identifier: $identifier")
     }
