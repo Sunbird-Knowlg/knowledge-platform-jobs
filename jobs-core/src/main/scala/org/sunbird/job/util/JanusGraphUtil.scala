@@ -104,7 +104,7 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
 
   def updateNodeProperty(identifier: String, key: String, value: String): Unit = {
     try {
-       g.V().has("IL_UNIQUE_ID", identifier).property(key, value).next()
+       g.V().has("IL_UNIQUE_ID", identifier).property(key, value).id().next()
        logger.info(s"Successfully Updated node with identifier: $identifier")
     } catch {
       case e: Exception =>
@@ -135,7 +135,7 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
       updatedMetadata.forEach((k, v) => {
           traversal.property(k, v)
       })
-      traversal.next()
+      traversal.id().next()
       logger.info(s"Successfully Updated node with identifier: $identifier")
     } catch {
        case e: Exception =>
