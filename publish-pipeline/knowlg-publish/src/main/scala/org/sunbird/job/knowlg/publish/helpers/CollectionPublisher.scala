@@ -106,7 +106,15 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       val childNodesToRemove = ListBuffer.empty[String]
       val collectionResourceChildNodes: mutable.HashSet[String] = mutable.HashSet.empty[String]
       val enrichedChildrenData = enrichChildren(toEnrichChildren, collectionResourceChildNodes, childNodesToRemove)
-      val collectionChildNodes = (updatedCompatibilityLevelMeta.getOrElse("childNodes", new java.util.ArrayList()).asInstanceOf[java.util.List[String]].asScala.toList ++ collectionResourceChildNodes).distinct
+      val childNodesVal = updatedCompatibilityLevelMeta.getOrElse("childNodes", new java.util.ArrayList())
+      val childNodesList = childNodesVal match {
+        case s: String => ScalaJsonUtil.deserialize[List[String]](s)
+        case l: java.util.List[_] => l.asScala.toList.asInstanceOf[List[String]]
+        case l: List[_] => l.asInstanceOf[List[String]]
+        case null => List.empty[String]
+        case _ => List.empty[String]
+      }
+      val collectionChildNodes = (childNodesList ++ collectionResourceChildNodes).distinct
       new ObjectData(obj.identifier, updatedCompatibilityLevelMeta ++ Map("childNodes" -> collectionChildNodes.filter(rec => !childNodesToRemove.contains(rec))), obj.extData, Option(collectionHierarchy + ("children" -> enrichedChildrenData.toList)))
     } else new ObjectData(obj.identifier, updatedCompatibilityLevelMeta, obj.extData, Option(collectionHierarchy ++ Map("children" -> toEnrichChildren.toList)))
 
