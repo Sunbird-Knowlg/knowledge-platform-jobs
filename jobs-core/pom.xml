@@ -75,10 +75,6 @@
             <exclusions>
                 <exclusion>
                     <groupId>org.apache.tinkerpop</groupId>
-                    <artifactId>gremlin-groovy</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.apache.tinkerpop</groupId>
                     <artifactId>tinkergraph-gremlin</artifactId>
                 </exclusion>
             </exclusions>
@@ -264,6 +260,36 @@
             <groupId>com.twitter</groupId>
             <artifactId>storehaus-cache_${scala.version}</artifactId>
             <version>0.15.0</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-configuration2</artifactId>
+            <version>2.7</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-text</artifactId>
+            <version>1.8</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.9</version>
+        </dependency>
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>32.1.2-jre</version>
+        </dependency>
+        <dependency>
+            <groupId>org.reflections</groupId>
+            <artifactId>reflections</artifactId>
+            <version>0.10.2</version>
+        </dependency>
+        <dependency>
+            <groupId>org.javatuples</groupId>
+            <artifactId>javatuples</artifactId>
+            <version>1.2</version>
         </dependency>
     </dependencies>
 
