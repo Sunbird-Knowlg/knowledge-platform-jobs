@@ -2,14 +2,7 @@ package org.sunbird.job.util
 
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.commons.lang3.StringUtils
-import org.apache.tinkerpop.gremlin.driver.Cluster
-import org.apache.tinkerpop.gremlin.driver.remote.DriverRemoteConnection
-import org.apache.tinkerpop.gremlin.process.traversal.AnonymousTraversalSource.traversal
-import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversalSource
-import org.apache.tinkerpop.gremlin.structure.io.graphson.GraphSONMapper
-import org.apache.tinkerpop.gremlin.util.ser.GraphSONMessageSerializerV3
 import org.janusgraph.core.{JanusGraph, JanusGraphFactory}
-import org.janusgraph.graphdb.tinkerpop.JanusGraphIoRegistry
 import org.slf4j.LoggerFactory
 import org.sunbird.job.BaseJobConfig
 
@@ -21,27 +14,6 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
   private val logger = LoggerFactory.getLogger(classOf[JanusGraphUtil])
   private val graphId = "domain" // Assuming 'domain' as default
   private val LOG_IDENTIFIER = "learning_graph_events"
-
-  @transient private lazy val cluster: Cluster = {
-    val host = config.getString("janusgraph.host", "localhost")
-    val port = config.getInt("janusgraph.port", 8182)
-    
-    logger.info(s"Connecting to Remote JanusGraph at $host:$port")
-    
-    val builder = GraphSONMapper.build().addRegistry(JanusGraphIoRegistry.instance())
-    val serializer = new GraphSONMessageSerializerV3(builder)
-
-    Cluster.build()
-      .addContactPoint(host)
-      .port(port)
-      .serializer(serializer)
-      .maxWaitForConnection(30000)
-      .create()
-  }
-
-  @transient private lazy val g: GraphTraversalSource = {
-    traversal().withRemote(DriverRemoteConnection.using(cluster, "g"))
-  }
 
   @transient private lazy val graph: JanusGraph = {
     val storageHost = config.getString("janusgraph.storage.host", "localhost")
@@ -69,8 +41,6 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
   Runtime.getRuntime.addShutdownHook(new Thread() {
     override def run(): Unit = {
       try {
-        if (null != g) g.close()
-        if (null != cluster) cluster.close()
         if (null != graph) graph.close()
       } catch {
         case e: Throwable => e.printStackTrace()
@@ -79,8 +49,9 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
   })
 
   def getNodeProperties(identifier: String): java.util.Map[String, AnyRef] = {
+    val tx = graph.buildTransaction().start()
     try {
-      val result: java.util.Map[AnyRef, AnyRef] = g.V().has("IL_UNIQUE_ID", identifier).elementMap().next()
+      val result: java.util.Map[AnyRef, AnyRef] = tx.traversal().V().has("IL_UNIQUE_ID", identifier).elementMap().next()
       if (result != null) {
         val map = new util.HashMap[String, AnyRef]()
         result.asScala.foreach {
@@ -93,12 +64,15 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
       case e: Exception =>
         logger.error(s"Error fetching node properties for $identifier", e)
         null
+    } finally {
+      tx.rollback()
     }
   }
 
   def getNodePropertiesWithObjectType(objectType: String): util.List[util.Map[String, AnyRef]] = {
+    val tx = graph.buildTransaction().start()
     try {
-        val traversal = g.V().has("IL_FUNC_OBJECT_TYPE", objectType).has("IL_SYS_NODE_TYPE", "DATA_NODE").elementMap()
+        val traversal = tx.traversal().V().has("IL_FUNC_OBJECT_TYPE", objectType).has("IL_SYS_NODE_TYPE", "DATA_NODE").elementMap()
         val result = new util.ArrayList[util.Map[String, AnyRef]]()
         while(traversal.hasNext) {
              val item = traversal.next().asInstanceOf[java.util.Map[AnyRef, AnyRef]]
@@ -114,12 +88,15 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
       case e: Exception =>
         logger.error(s"Error fetching properties for objectType $objectType", e)
         null
+    } finally {
+      tx.rollback()
     }
   }
 
   def getNodesName(identifiers: List[String]): Map[String, String] = {
+    val tx = graph.buildTransaction().start()
     try {
-        val traversal = g.V().has("IL_UNIQUE_ID", org.apache.tinkerpop.gremlin.process.traversal.P.within(identifiers.asJava)).project[String]("id", "name").by("IL_UNIQUE_ID").by("name")
+        val traversal = tx.traversal().V().has("IL_UNIQUE_ID", org.apache.tinkerpop.gremlin.process.traversal.P.within(identifiers.asJava)).project[String]("id", "name").by("IL_UNIQUE_ID").by("name")
         val result = scala.collection.mutable.Map[String, String]()
         while(traversal.hasNext) {
             val item = traversal.next()
@@ -132,6 +109,8 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
       case e: Exception =>
         logger.error(s"Error fetching node names for ${identifiers.mkString(",")}", e)
         Map()
+    } finally {
+      tx.rollback()
     }
   }
 
