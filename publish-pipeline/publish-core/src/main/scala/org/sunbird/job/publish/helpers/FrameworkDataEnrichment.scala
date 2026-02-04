@@ -85,15 +85,13 @@ trait FrameworkDataEnrichment {
 		(obj match {
 			case obj: List[String] => obj.distinct
 			case obj: String =>
-				try {
-					if (obj.startsWith("[") && obj.endsWith("]")) {
-						ScalaJsonUtil.deserialize[List[String]](obj).distinct
-					} else {
-						List(obj).distinct
+				if (obj.startsWith("[") && obj.endsWith("]")) {
+					try {
+						org.sunbird.job.util.ScalaJsonUtil.deserialize[List[String]](obj).distinct
+					} catch {
+						case _: Exception => List(obj).distinct
 					}
-				} catch {
-					case e: Exception => List(obj).distinct
-				}
+				} else List(obj).distinct
 			case obj: util.List[String] => obj.asScala.toList.distinct
 			case _ => List.empty
 		}).filter((x: String) => StringUtils.isNotBlank(x) && !StringUtils.equals(" ", x))

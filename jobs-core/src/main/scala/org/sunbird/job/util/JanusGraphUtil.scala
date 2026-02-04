@@ -145,6 +145,7 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
     try {
       val traversal = g.V().has("IL_UNIQUE_ID", identifier)
       updatedMetadata.forEach((k, v) => {
+          traversal.properties(k).drop()
           traversal.property(k, v)
       })
       traversal.id().next()
