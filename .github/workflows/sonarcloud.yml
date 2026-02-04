@@ -20,6 +20,8 @@ jobs:
   sonarcloud-scan:
     name: SonarCloud Code Analysis
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     
     steps:
       - name: Checkout code
