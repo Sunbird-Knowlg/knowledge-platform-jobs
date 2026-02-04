@@ -13,6 +13,8 @@ import org.sunbird.job.publish.config.PublishConfig
 import scala.collection.JavaConverters._
 import scala.collection.immutable
 import scala.collection.immutable.HashMap
+import org.sunbird.job.util.ScalaJsonUtil
+
 
 trait FrameworkDataEnrichment {
 
@@ -82,7 +84,16 @@ trait FrameworkDataEnrichment {
 	private def getList(obj: AnyRef): List[String] = {
 		(obj match {
 			case obj: List[String] => obj.distinct
-			case obj: String => List(obj).distinct
+			case obj: String =>
+				try {
+					if (obj.startsWith("[") && obj.endsWith("]")) {
+						ScalaJsonUtil.deserialize[List[String]](obj).distinct
+					} else {
+						List(obj).distinct
+					}
+				} catch {
+					case e: Exception => List(obj).distinct
+				}
 			case obj: util.List[String] => obj.asScala.toList.distinct
 			case _ => List.empty
 		}).filter((x: String) => StringUtils.isNotBlank(x) && !StringUtils.equals(" ", x))

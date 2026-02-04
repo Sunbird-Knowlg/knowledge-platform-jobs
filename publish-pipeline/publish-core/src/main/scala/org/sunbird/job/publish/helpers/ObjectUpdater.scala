@@ -86,6 +86,10 @@ trait ObjectUpdater {
              (prop._1 -> ScalaJsonUtil.serialize(prop._2))
           case _: List[String] | _: util.List[String] =>
              (prop._1 -> ScalaJsonUtil.serialize(prop._2))
+          case _: Array[String] =>
+            (prop._1 -> ScalaJsonUtil.serialize(prop._2))
+          case arr: Array[_] =>
+             (prop._1 -> ScalaJsonUtil.serialize(arr))
           case _ =>
              (prop._1 -> prop._2)
         }
@@ -95,6 +99,10 @@ trait ObjectUpdater {
             (prop._1 -> ScalaJsonUtil.serialize(prop._2))
           case _: List[String] | _: util.List[String] =>
             (prop._1 -> ScalaJsonUtil.serialize(prop._2))
+          case _: Array[String] =>
+            (prop._1 -> ScalaJsonUtil.serialize(prop._2))
+          case arr: Array[_] =>
+             (prop._1 -> ScalaJsonUtil.serialize(arr))
           case _ =>
             (prop._1 -> prop._2)
         }
