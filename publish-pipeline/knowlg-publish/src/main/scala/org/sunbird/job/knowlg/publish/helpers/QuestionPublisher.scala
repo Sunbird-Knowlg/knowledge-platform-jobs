@@ -38,7 +38,11 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
     logger.info("Validating Question External Data For : " + obj.identifier)
     val messages = ListBuffer[String]()
     if (obj.extData.getOrElse(Map()).getOrElse("body", "").asInstanceOf[String].isEmpty) messages += s"""There is no body available for : $identifier"""
-    val interactionTypes = obj.metadata.getOrElse("interactionTypes", new util.ArrayList[String]()).asInstanceOf[util.List[String]].asScala.toList
+    val interactionTypes = obj.metadata.getOrElse("interactionTypes", new util.ArrayList[String]()) match {
+      case value: util.List[String] => value.asScala.toList
+      case value: String => ScalaJsonUtil.deserialize[List[String]](value)
+      case _ => List.empty[String]
+    }
     if (interactionTypes.nonEmpty) {
       if (obj.extData.get.getOrElse("responseDeclaration", "").asInstanceOf[String].isEmpty) messages += s"""There is no responseDeclaration available for : $identifier"""
       if (obj.extData.get.getOrElse("interactions", "").asInstanceOf[String].isEmpty) messages += s"""There is no interactions available for : $identifier"""

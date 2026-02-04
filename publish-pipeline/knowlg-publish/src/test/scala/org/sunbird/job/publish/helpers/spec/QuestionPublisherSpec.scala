@@ -75,6 +75,12 @@ class QuestionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matcher
     result.size should be(3)
   }
 
+  "validateQuestion with interactionTypes as String" should "validate the Question external data without exception" in {
+    val data = new ObjectData("do_124", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_124", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "interactionTypes" -> "[\"choice\"]"), Some(Map[String, AnyRef]("body" -> "body", "answer" -> "answer")))
+    val result: List[String] = new TestQuestionPublisher().validateQuestion(data, data.identifier)
+    result.size should be(3)
+  }
+
   "saveExternalData " should "save external data to cassandra table" in {
     val data = new ObjectData("do_123", Map[String, AnyRef](), Some(Map[String, AnyRef]("body" -> "body", "answer" -> "answer")))
     new TestQuestionPublisher().saveExternalData(data, readerConfig)
