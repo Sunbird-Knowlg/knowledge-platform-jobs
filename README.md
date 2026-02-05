@@ -187,7 +187,7 @@ mvn clean install -DskipTests
 <!--            <scope>provided</scope>-->
 </dependency>
 ```
-5. Comment the default flink StreamExecutionEnvironment in the job's StreamTask file (Example: ContentPublishStreamTask.scala) and add code to create local StreamExecutionEnvironment.
+5. Comment the default flink StreamExecutionEnvironment in the job's StreamTask file (Example: KnowlgPublishStreamTask.scala) and add code to create local StreamExecutionEnvironment.
 ```shell
 //    implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
       implicit val env: StreamExecutionEnvironment = StreamExecutionEnvironment.createLocalEnvironment()

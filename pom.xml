@@ -27,17 +27,12 @@
 			</activation>
 			<modules>
 				<module>jobs-core</module>
-				<module>post-publish-processor</module>
 				<module>publish-pipeline</module>
 				<module>search-indexer</module>
-				<module>auto-creator-v2</module>
-				<module>content-auto-creator</module>
 				<module>transaction-event-processor</module>
 				<module>qrcode-image-generator</module>
 				<module>dialcode-context-updater</module>
 				<module>cassandra-data-migration</module>
-				<module>live-video-stream-generator</module>
-				<module>csp-migrator</module>
 				<module>asset-enrichment</module>
 				<module>video-stream-generator</module>
 			</modules>
@@ -61,7 +56,7 @@
 		<scala.version>2.12</scala.version>
 		<scala.maj.version>2.12.11</scala.maj.version>
 		<flink.version>1.13.6</flink.version>
-		<kafka.version>2.4.1</kafka.version>
+		<kafka.version>3.7.1</kafka.version>
 		<jackson-jaxrs.version>1.9.13</jackson-jaxrs.version>
 		<scoverage.plugin.version>1.4.0</scoverage.plugin.version>
 	</properties>
@@ -115,6 +110,11 @@
 	<build>
 		<pluginManagement>
 			<plugins>
+				<plugin>
+					<groupId>org.sonarsource.scanner.maven</groupId>
+					<artifactId>sonar-maven-plugin</artifactId>
+					<version>3.9.1.2184</version>
+				</plugin>
 				<plugin>
 					<groupId>org.apache.maven.plugins</groupId>
 					<artifactId>maven-compiler-plugin</artifactId>
