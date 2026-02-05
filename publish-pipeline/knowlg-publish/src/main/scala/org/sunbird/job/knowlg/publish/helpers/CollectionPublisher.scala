@@ -298,7 +298,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     }
   }
 
-  private def processChild(childMetadata: Map[String, AnyRef]): Map[String, AnyRef] = {
+  def processChild(childMetadata: Map[String, AnyRef]): Map[String, AnyRef] = {
     val taggingProperties = List("language", "domain", "ageGroup", "genre", "theme", "keywords")
     val result: Map[String, AnyRef] = childMetadata.flatMap(prop => {
       if (taggingProperties.contains(prop._1)) {
