@@ -143,11 +143,15 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
     val tx = graph.buildTransaction().logIdentifier(LOG_IDENTIFIER).start()
     val g = tx.traversal()
     try {
-      val traversal = g.V().has("IL_UNIQUE_ID", identifier)
       updatedMetadata.forEach((k, v) => {
-          traversal.property(k, v)
+          g.V().has("IL_UNIQUE_ID", identifier).properties(k).drop().iterate()
+          if (v.isInstanceOf[util.List[_]]) {
+            val list = v.asInstanceOf[util.List[_]]
+            list.forEach(item => g.V().has("IL_UNIQUE_ID", identifier).property(k, item).iterate())
+          } else {
+            g.V().has("IL_UNIQUE_ID", identifier).property(k, v).iterate()
+          }
       })
-      traversal.id().next()
       tx.commit()
       logger.info(s"Successfully Updated node with identifier: $identifier")
     } catch {
