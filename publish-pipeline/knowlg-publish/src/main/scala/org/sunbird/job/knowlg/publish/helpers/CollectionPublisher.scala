@@ -303,7 +303,17 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     val result: Map[String, AnyRef] = childMetadata.flatMap(prop => {
       if (taggingProperties.contains(prop._1)) {
         childMetadata(prop._1) match {
-          case propStrValue: String => Map(prop._1 -> Set(propStrValue))
+          case propStrValue: String =>
+            if (propStrValue.startsWith("[") && propStrValue.endsWith("]")) {
+              try {
+                val strList = ScalaJsonUtil.deserialize[List[String]](propStrValue)
+                Map(prop._1 -> strList.toSet)
+              } catch {
+                case _: Exception => Map(prop._1 -> Set(propStrValue))
+              }
+            } else {
+              Map(prop._1 -> Set(propStrValue))
+            }
           case propListValue: List[_] => Map(prop._1 -> propListValue.toSet)
           case propVal: java.util.List[String] => Map(prop._1 -> propVal.asScala.toSet[String])
           case _ => Map.empty[String, AnyRef]

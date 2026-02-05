@@ -239,4 +239,18 @@ class CollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Match
 }
 
 
+  "processChild" should "handle stringified JSON arrays for tagging properties" in {
+    val childMetadata = Map("language" -> "[\"English\"]", "identifier" -> "do_123", "objectType" -> "Content")
+    val result = new TestCollectionPublisher().processChild(childMetadata)
+    result("language").asInstanceOf[Set[String]] should contain("English")
+    result("language").asInstanceOf[Set[String]] should not contain("[\"English\"]")
+  }
+
+  "processChild" should "handle plain strings for tagging properties" in {
+    val childMetadata = Map("language" -> "English", "identifier" -> "do_123", "objectType" -> "Content")
+    val result = new TestCollectionPublisher().processChild(childMetadata)
+    result("language").asInstanceOf[Set[String]] should contain("English")
+  }
+
+}
 class TestCollectionPublisher extends CollectionPublisher {}
