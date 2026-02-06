@@ -25,7 +25,7 @@ trait ObjectUpdater {
     val editId = obj.dbId
     val identifier = obj.identifier
     val metadataUpdate = getMetadata(obj)(definitionCache, definitionConfig)
-    val finalMetadata = metadataUpdate ++ Map("status" -> status, "pkgVersion" -> obj.pkgVersion, "prevStatus" -> "Processing") ++ getAuditProps()
+    val finalMetadata = metadataUpdate ++ Map("status" -> status, "pkgVersion" -> obj.pkgVersion, "prevStatus" -> "Processing", "IL_FUNC_OBJECT_TYPE" -> obj.dbObjType, "IL_SYS_NODE_TYPE" -> "DATA_NODE", "objectType" -> obj.dbObjType) ++ getAuditProps()
     
     logger.info(s"ObjectUpdater:: saveOnSuccess:: Updating node ${obj.identifier} with DB ID ${obj.dbId} | pkgVersion : ${obj.pkgVersion}" )
 
@@ -50,7 +50,7 @@ trait ObjectUpdater {
     val prevState = obj.getString("status", "Draft")
     val identifier = obj.dbId
     val metadataUpdate = getMetadata(obj)(definitionCache, config)
-    val finalMetadata = metadataUpdate ++ Map("status" -> status, "prevState" -> prevState) ++ getAuditProps()
+    val finalMetadata = metadataUpdate ++ Map("status" -> status, "prevState" -> prevState, "IL_FUNC_OBJECT_TYPE" -> obj.dbObjType, "IL_SYS_NODE_TYPE" -> "DATA_NODE", "objectType" -> obj.dbObjType) ++ getAuditProps()
     
     logger.info(s"ObjectUpdater:: updateProcessingNode:: Updating node $identifier to Processing status")
     janusGraphUtil.updateNode(identifier, finalMetadata.asInstanceOf[Map[String, AnyRef]])
