@@ -1,5 +1,9 @@
 name: Build and Push Flink Image
 
+# Limit default GITHUB_TOKEN permissions for this workflow
+permissions:
+  contents: read
+
 on:
   push:
     tags:
