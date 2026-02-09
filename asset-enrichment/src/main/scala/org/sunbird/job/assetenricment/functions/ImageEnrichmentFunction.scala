@@ -62,8 +62,8 @@ class ImageEnrichmentFunction(config: AssetEnrichmentConfig,
   }
 
   def getMetadata(identifier: String)(janusGraphUtil: JanusGraphUtil): Map[String, AnyRef] = {
-    val metadata = janusGraphUtil.getNodeProperties(identifier).asScala.toMap
-    if (metadata != null && metadata.nonEmpty) metadata else throw new Exception(s"Received null or Empty metadata for identifier: $identifier.")
+    val metadata = janusGraphUtil.getNodeProperties(identifier)
+    if (metadata != null && !metadata.isEmpty) metadata.asScala.toMap else throw new Exception(s"Received null or Empty metadata for identifier: $identifier.")
   }
 
 }

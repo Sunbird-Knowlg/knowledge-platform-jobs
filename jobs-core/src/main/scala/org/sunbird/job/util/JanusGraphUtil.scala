@@ -3,6 +3,7 @@ package org.sunbird.job.util
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.commons.lang3.StringUtils
 import org.janusgraph.core.{JanusGraph, JanusGraphFactory}
+import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__
 import org.slf4j.LoggerFactory
 import org.sunbird.job.BaseJobConfig
 
@@ -15,25 +16,34 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
   private val graphId = "domain" // Assuming 'domain' as default
   private val LOG_IDENTIFIER = "learning_graph_events"
 
-  @transient private lazy val graph: JanusGraph = {
-    val storageHost = config.getString("janusgraph.storage.host", "localhost")
-    val storagePort = config.getString("janusgraph.storage.port", "9042")
-    val storageBackend = config.getString("janusgraph.storage.backend", "cql")
-    val keyspace = config.getString("janusgraph.storage.keyspace", "janusgraph")
+  @transient private var _graph: JanusGraph = null
 
-    val map = new java.util.HashMap[String, AnyRef]()
-    map.put("storage.backend", storageBackend)
-    map.put("storage.hostname", storageHost)
-    map.put("storage.port", storagePort)
-    map.put("storage.cql.keyspace", keyspace)
-    map.put("storage.cql.read-consistency-level", config.getString("janusgraph.storage.cql.read-consistency-level", "ONE"))
-    map.put("storage.cql.write-consistency-level", config.getString("janusgraph.storage.cql.write-consistency-level", "ONE"))
-    map.put("storage.cql.local-datacenter", config.getString("janusgraph.storage.cql.local-datacenter", "datacenter1"))
-    map.put("log.learning_graph_events.backend", config.getString("janusgraph.log.learning_graph_events.backend", "default"))
+  private def graph: JanusGraph = {
+    if (_graph == null) {
+      synchronized {
+        if (_graph == null) {
+          val storageHost = config.getString("janusgraph.storage.host", "localhost")
+          val storagePort = config.getString("janusgraph.storage.port", "9042")
+          val storageBackend = config.getString("janusgraph.storage.backend", "cql")
+          val keyspace = config.getString("janusgraph.storage.keyspace", "janusgraph")
 
-    logger.info(s"Initializing Direct JanusGraph Instance. Storage: $storageHost:$storagePort, Keyspace: $keyspace")
-    val conf = new org.apache.commons.configuration2.MapConfiguration(map)
-    JanusGraphFactory.open(conf)
+          val map = new java.util.HashMap[String, AnyRef]()
+          map.put("storage.backend", storageBackend)
+          map.put("storage.hostname", storageHost)
+          map.put("storage.port", storagePort)
+          map.put("storage.cql.keyspace", keyspace)
+          map.put("storage.cql.read-consistency-level", config.getString("janusgraph.storage.cql.read-consistency-level", "ONE"))
+          map.put("storage.cql.write-consistency-level", config.getString("janusgraph.storage.cql.write-consistency-level", "ONE"))
+          map.put("storage.cql.local-datacenter", config.getString("janusgraph.storage.cql.local-datacenter", "datacenter1"))
+          map.put("log.learning_graph_events.backend", config.getString("janusgraph.log.learning_graph_events.backend", "default"))
+
+          logger.info(s"Initializing Direct JanusGraph Instance. Storage: $storageHost:$storagePort, Keyspace: $keyspace")
+          val conf = new org.apache.commons.configuration2.MapConfiguration(map)
+          _graph = JanusGraphFactory.open(conf)
+        }
+      }
+    }
+    _graph
   }
 
   val isrRelativePathEnabled = config.getBoolean("cloudstorage.metadata.replace_absolute_path", false)
@@ -41,7 +51,7 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
   Runtime.getRuntime.addShutdownHook(new Thread() {
     override def run(): Unit = {
       try {
-        if (null != graph) graph.close()
+        if (null != _graph) _graph.close()
       } catch {
         case e: Throwable => e.printStackTrace()
       }
@@ -51,7 +61,8 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
   def getNodeProperties(identifier: String): java.util.Map[String, AnyRef] = {
     val tx = graph.buildTransaction().start()
     try {
-      val result: java.util.Map[AnyRef, AnyRef] = tx.traversal().V().has("IL_UNIQUE_ID", identifier).elementMap().next()
+      val traversal = tx.traversal().V().has("IL_UNIQUE_ID", identifier).elementMap()
+      val result: java.util.Map[AnyRef, AnyRef] = if (traversal.hasNext) traversal.next() else null
       if (result != null) {
         val map = new util.HashMap[String, AnyRef]()
         result.asScala.foreach {
@@ -96,12 +107,12 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
   def getNodesName(identifiers: List[String]): Map[String, String] = {
     val tx = graph.buildTransaction().start()
     try {
-        val traversal = tx.traversal().V().has("IL_UNIQUE_ID", org.apache.tinkerpop.gremlin.process.traversal.P.within(identifiers.asJava)).project[String]("id", "name").by("IL_UNIQUE_ID").by("name")
+        val traversal = tx.traversal().V().has("IL_UNIQUE_ID", org.apache.tinkerpop.gremlin.process.traversal.P.within(identifiers.asJava)).project[String]("id", "name").by("IL_UNIQUE_ID").by(__.coalesce(__.values("name"), __.constant("")))
         val result = scala.collection.mutable.Map[String, String]()
         while(traversal.hasNext) {
             val item = traversal.next()
             val id = item.get("id").asInstanceOf[String]
-             val name = if(item.containsKey("name")) item.get("name").asInstanceOf[String] else ""
+             val name = item.get("name").asInstanceOf[String]
             result.put(id, name)
         }
         result.toMap
@@ -144,12 +155,14 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
     val g = tx.traversal()
     try {
       updatedMetadata.forEach((k, v) => {
-          g.V().has("IL_UNIQUE_ID", identifier).properties(k).drop().iterate()
-          if (v.isInstanceOf[util.List[_]]) {
-            val list = v.asInstanceOf[util.List[_]]
-            list.forEach(item => g.V().has("IL_UNIQUE_ID", identifier).property(k, item).iterate())
-          } else {
-            g.V().has("IL_UNIQUE_ID", identifier).property(k, v).iterate()
+          if (v != null) {
+            g.V().has("IL_UNIQUE_ID", identifier).properties(k).drop().iterate()
+            if (v.isInstanceOf[util.List[_]]) {
+              val list = v.asInstanceOf[util.List[_]]
+              list.forEach(item => if(item != null) g.V().has("IL_UNIQUE_ID", identifier).property(k, item).iterate())
+            } else {
+              g.V().has("IL_UNIQUE_ID", identifier).property(k, v).iterate()
+            }
           }
       })
       tx.commit()
