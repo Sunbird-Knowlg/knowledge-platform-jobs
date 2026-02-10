@@ -41,7 +41,7 @@ trait ObjectBundle {
       val identifier = data.getOrElse("identifier", "").asInstanceOf[String].replaceAll(".img", "")
       val mimeType = data.getOrElse("mimeType", "").asInstanceOf[String]
       val objectType: String = if(!data.contains("objectType") || data.getOrElse("objectType", "").asInstanceOf[String].isBlank || data.getOrElse("objectType", "").asInstanceOf[String].isEmpty) {
-        val metaData = Option(neo4JUtil.getNodeProperties(identifier)).getOrElse(neo4JUtil.getNodeProperties(identifier)).asScala.toMap
+        val nodeProps = Option(janusGraphUtil.getNodeProperties(identifier)).getOrElse(janusGraphUtil.getNodeProperties(identifier))
         val metaData = if (nodeProps != null) nodeProps.asScala.toMap else Map.empty[String, AnyRef]
         logger.info("ObjectBundle:: getManifestData:: if objectType does not exist identifier:: " + identifier)
         if (metaData.isEmpty) rootObjectType else metaData.getOrElse("IL_FUNC_OBJECT_TYPE", "").asInstanceOf[String]
