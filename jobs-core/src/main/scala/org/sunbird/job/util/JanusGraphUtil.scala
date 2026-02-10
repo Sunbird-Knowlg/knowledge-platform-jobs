@@ -80,10 +80,10 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
     }
   }
 
-  def getNodePropertiesWithObjectType(objectType: String): util.List[util.Map[String, AnyRef]] = {
+  def getNodePropertiesWithObjectType(objectType: String, limit: Int = 100): util.List[util.Map[String, AnyRef]] = {
     val tx = graph.buildTransaction().start()
     try {
-        val traversal = tx.traversal().V().has("IL_FUNC_OBJECT_TYPE", objectType).has("IL_SYS_NODE_TYPE", "DATA_NODE").elementMap()
+        val traversal = tx.traversal().V().has("IL_FUNC_OBJECT_TYPE", objectType).has("IL_SYS_NODE_TYPE", "DATA_NODE").limit(limit).elementMap()
         val result = new util.ArrayList[util.Map[String, AnyRef]]()
         while(traversal.hasNext) {
              val item = traversal.next().asInstanceOf[java.util.Map[AnyRef, AnyRef]]
@@ -143,10 +143,6 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
   def executeQuery(query: String) = {
       logger.error("executeQuery is NOT SUPPORTED in JanusGraphUtil. Please refactor to use typed methods.")
       throw new UnsupportedOperationException("executeQuery is NOT SUPPORTED in JanusGraphUtil")
-  }
-
-  def getNodesProps(identifiers: List[String]): Map[String, AnyRef] = {
-    Map()
   }
 
   def updateNode(identifier: String, metadata: Map[String, AnyRef]): Unit = {
