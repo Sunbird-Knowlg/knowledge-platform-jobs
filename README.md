@@ -315,3 +315,67 @@ To ensure the GitHub Actions workflows in this repository function correctly, th
 
 Ensure these secrets and variables are added to the repository settings under **Settings > Secrets and variables > Actions**.
 By ensuring these prerequisites are met, the workflows in this repository will execute successfully.
+
+---
+
+# SonarCloud Code Scanning
+
+This repository is configured with SonarCloud for continuous code quality and security analysis.
+
+## Workflow Features
+
+- **Automated code scanning** on push to main/master branches
+- **Scheduled scans** run weekly (every Monday at 00:00 UTC)
+- **Manual trigger** option via GitHub Actions UI
+- **Code coverage** analysis using JaCoCo
+- **Security vulnerability** detection
+- **Code smell** and bug detection
+- **Technical debt** tracking
+
+## SonarCloud Workflows
+
+### 1. Pull Request Analysis (`pr-actions.yml`)
+Runs on every pull request to analyze code changes and provide feedback before merging:
+- Analyzes `jobs-core`, `asset-enrichment`, `search-indexer`, and `qrcode-image-generator` modules
+- Generates test coverage reports
+- Provides quality gate status and code review comments
+
+### 2. Main Branch Analysis (`sonarcloud.yml`)
+Runs on push to main/master branches and on schedule:
+- Comprehensive analysis of all modules
+- Tracks code quality trends over time
+- Provides historical metrics and insights
+
+## Prerequisites
+
+To enable SonarCloud analysis, the following secret must be configured:
+
+- **`SONAR_TOKEN`**: Authentication token for SonarCloud
+  - Generate this token from [SonarCloud Account Settings](https://sonarcloud.io/account/security)
+  - Add it to repository secrets: **Settings > Secrets and variables > Actions > New repository secret**
+
+## Configuration Files
+
+- **`sonar-project.properties`**: Main SonarCloud configuration file at repository root
+  - Defines project key, organization, and analysis settings
+  - Configures source directories and exclusions
+  - Specifies coverage report paths
+
+- **`.github/workflows/sonarcloud.yml`**: GitHub Actions workflow for code scanning
+  - Builds project with Maven
+  - Runs tests and generates coverage reports
+  - Performs SonarCloud analysis
+
+## Viewing Results
+
+SonarCloud analysis results can be viewed at:
+- **Project Dashboard**: [https://sonarcloud.io/project/overview?id=Sunbird-Knowlg_knowledge-platform-jobs](https://sonarcloud.io/project/overview?id=Sunbird-Knowlg_knowledge-platform-jobs)
+- **Pull Request Decorations**: Quality gate status and issues are automatically posted as PR comments
+
+## Manual Trigger
+
+To manually trigger a SonarCloud scan:
+1. Go to **Actions** tab in GitHub
+2. Select **SonarCloud Code Scanning** workflow
+3. Click **Run workflow**
+4. Select the branch and click **Run workflow** button
