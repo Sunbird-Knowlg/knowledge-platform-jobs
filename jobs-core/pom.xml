@@ -72,12 +72,7 @@
             <groupId>org.janusgraph</groupId>
             <artifactId>janusgraph-core</artifactId>
             <version>1.0.0</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.apache.tinkerpop</groupId>
-                    <artifactId>tinkergraph-gremlin</artifactId>
-                </exclusion>
-            </exclusions>
+
         </dependency>
         <dependency>
             <groupId>org.janusgraph</groupId>

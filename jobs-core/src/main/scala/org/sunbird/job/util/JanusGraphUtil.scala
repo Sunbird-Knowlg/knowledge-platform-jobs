@@ -3,7 +3,7 @@ package org.sunbird.job.util
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.commons.lang3.StringUtils
 import org.janusgraph.core.{JanusGraph, JanusGraphFactory}
-import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__
+
 import org.slf4j.LoggerFactory
 import org.sunbird.job.BaseJobConfig
 
@@ -107,13 +107,19 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
   def getNodesName(identifiers: List[String]): Map[String, String] = {
     val tx = graph.buildTransaction().start()
     try {
-        val traversal = tx.traversal().V().has("IL_UNIQUE_ID", org.apache.tinkerpop.gremlin.process.traversal.P.within(identifiers.asJava)).project[String]("id", "name").by("IL_UNIQUE_ID").by(__.coalesce(__.values("name"), __.constant("")))
+        val g = tx.traversal()
         val result = scala.collection.mutable.Map[String, String]()
-        while(traversal.hasNext) {
-            val item = traversal.next()
-            val id = item.get("id").asInstanceOf[String]
-             val name = item.get("name").asInstanceOf[String]
-            result.put(id, name)
+        identifiers.foreach { identifier =>
+          try {
+            val traversal = g.V().has("IL_UNIQUE_ID", identifier).values[String]("name")
+            if (traversal.hasNext) {
+              result.put(identifier, traversal.next())
+            } else {
+              result.put(identifier, "")
+            }
+          } catch {
+            case e: Exception => result.put(identifier, "")
+          }
         }
         result.toMap
     } catch {
