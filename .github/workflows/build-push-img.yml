@@ -1,8 +1,9 @@
 name: Build and Push Flink Image
 
-# Limit default GITHUB_TOKEN permissions for this workflow
+# GITHUB_TOKEN needs packages: write to push to ghcr.io (GitHub Container Registry)
 permissions:
   contents: read
+  packages: write
 
 on:
   push:
