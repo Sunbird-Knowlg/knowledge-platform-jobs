@@ -38,17 +38,18 @@ trait ObjectBundle {
 
   def getManifestData(objIdentifier: String, rootObjectType: String, pkgType: String, objList: List[Map[String, AnyRef]])(implicit defCache: DefinitionCache, janusGraphUtil: JanusGraphUtil, defConfig: DefinitionConfig, config: PublishConfig): (List[Map[String, AnyRef]], List[Map[AnyRef, String]]) = {
     objList.map(data => {
-      val identifier = data.getOrElse("identifier", "").asInstanceOf[String].replaceAll(".img", "")
+      val identifier = data.getOrElse("identifier", "").asInstanceOf[String]
+      val pkgIdentifier = identifier.replaceAll(".img", "")
       val mimeType = data.getOrElse("mimeType", "").asInstanceOf[String]
       val objectType: String = if(!data.contains("objectType") || data.getOrElse("objectType", "").asInstanceOf[String].isBlank || data.getOrElse("objectType", "").asInstanceOf[String].isEmpty) {
-        val nodeProps = Option(janusGraphUtil.getNodeProperties(identifier)).getOrElse(janusGraphUtil.getNodeProperties(identifier))
+        val nodeProps = Option(janusGraphUtil.getNodeProperties(identifier)).getOrElse(janusGraphUtil.getNodeProperties(pkgIdentifier))
         val metaData = if (nodeProps != null) nodeProps.asScala.toMap else Map.empty[String, AnyRef]
         logger.info("ObjectBundle:: getManifestData:: if objectType does not exist identifier:: " + identifier)
         if (metaData.isEmpty) rootObjectType else metaData.getOrElse("IL_FUNC_OBJECT_TYPE", "").asInstanceOf[String]
       } else data.getOrElse("objectType", "").asInstanceOf[String] .replaceAll("Image", "")
       val contentDisposition = data.getOrElse("contentDisposition", "").asInstanceOf[String]
       logger.info("ObjectBundle:: getManifestData:: identifier:: " + identifier + " || objectType:: " + objectType)
-      val dUrlMap: Map[AnyRef, String] = getDownloadUrls(identifier, pkgType, isOnline(mimeType, contentDisposition), data)
+      val dUrlMap: Map[AnyRef, String] = getDownloadUrls(pkgIdentifier, pkgType, isOnline(mimeType, contentDisposition), data)
       val updatedObj: Map[String, AnyRef] = data.map(entry =>
         if (dUrlMap.contains(entry._2)) {
           (entry._1, dUrlMap.getOrElse(entry._2.asInstanceOf[String], "").asInstanceOf[AnyRef])
@@ -58,7 +59,7 @@ trait ObjectBundle {
             m.map(entry => {
               entry._1 match {
                 case "baseUrl" => (entry._1, "")
-                case "src" => (entry._1, getRelativePath(identifier, entry._2.asInstanceOf[String]))
+                case "src" => (entry._1, getRelativePath(pkgIdentifier, entry._2.asInstanceOf[String]))
                 case _ => entry
               }
             })
@@ -75,10 +76,10 @@ trait ObjectBundle {
       val downloadUrl: String = updatedObj.getOrElse("downloadUrl", "").asInstanceOf[String]
       val dUrl: String = if (StringUtils.isNotBlank(downloadUrl)) downloadUrl else updatedObj.getOrElse("artifactUrl", "").asInstanceOf[String]
       val dMap = if (StringUtils.equalsIgnoreCase(contentDisposition, "online-only")) Map("downloadUrl" -> null) else Map("downloadUrl" -> dUrl)
-      val downloadUrls: Map[AnyRef, String] = dUrlMap.keys.flatMap(key => Map(key -> identifier)).toMap
+      val downloadUrls: Map[AnyRef, String] = dUrlMap.keys.flatMap(key => Map(key -> pkgIdentifier)).toMap
 
       // TODO: Addressing visibility "Parent" issue for collection children as expected by Mobile - ContentBundle.java line120 - start
-      val mergedMeta = if(!identifier.equalsIgnoreCase(objIdentifier) && (objectType.equalsIgnoreCase("Content")
+      val mergedMeta = if(!pkgIdentifier.equalsIgnoreCase(objIdentifier) && (objectType.equalsIgnoreCase("Content")
         || objectType.equalsIgnoreCase("Collection") || objectType.equalsIgnoreCase("QuestionSet"))) {
           updatedObj + ("visibility" -> "Parent") ++ dMap
         } else updatedObj ++ dMap

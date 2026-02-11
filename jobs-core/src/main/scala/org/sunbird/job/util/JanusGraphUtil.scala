@@ -62,7 +62,7 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
     val tx = graph.buildTransaction().start()
     try {
       val traversal = tx.traversal().V().has("IL_UNIQUE_ID", identifier).elementMap()
-      val result: java.util.Map[AnyRef, AnyRef] = if (traversal.hasNext) traversal.next() else null
+      val result: java.util.Map[AnyRef, AnyRef] = if (traversal.hasNext) traversal.next().asInstanceOf[java.util.Map[AnyRef, AnyRef]] else null
       if (result != null) {
         val map = new util.HashMap[String, AnyRef]()
         result.asScala.foreach {
