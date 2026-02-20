@@ -22,7 +22,7 @@ import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.fixture.EventFixture
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{ExtDataConfig, ObjectData}
-import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, Neo4JUtil}
+import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, JanusGraphUtil}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 
 import java.text.SimpleDateFormat
@@ -47,7 +47,7 @@ class KnowlgPublishStreamTaskSpec extends BaseTestSpec {
   implicit val readerConfig: ExtDataConfig = ExtDataConfig(jobConfig.hierarchyKeyspaceName, jobConfig.hierarchyTableName, definition.getExternalPrimaryKey, definition.getExternalProps)
 
   val mockHttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
-  implicit val mockNeo4JUtil: Neo4JUtil = mock[Neo4JUtil](Mockito.withSettings().serializable())
+  implicit val mockJanusGraphUtil: JanusGraphUtil = mock[JanusGraphUtil](Mockito.withSettings().serializable())
   var cassandraUtil: CassandraUtil = _
   val publishConfig: PublishConfig = new PublishConfig(config, "")
   val cloudStorageUtil: CloudStorageUtil = new CloudStorageUtil(publishConfig)
@@ -96,7 +96,7 @@ class KnowlgPublishStreamTaskSpec extends BaseTestSpec {
 
   "fetchDialListForContextUpdate" should "fetch the list of added and removed QR codes" in {
     val nodeObj = new ObjectData("do_21354027142511820812318.img", Map("objectType" -> "Collection", "identifier" -> "do_21354027142511820812318", "name" -> "DialCodeHierarchy", "lastPublishedOn" -> getTimeStamp, "lastUpdatedOn" -> getTimeStamp, "status" -> "Draft", "pkgVersion" -> 1.asInstanceOf[Number], "versionKey" -> "1652871771396", "channel" -> "0126825293972439041", "contentType" -> "TextBook"), Some(Map()), Some(Map()))
-    val DIALListMap = new CollectionPublishFunction(jobConfig, mockHttpUtil).fetchDialListForContextUpdate(nodeObj)(mockNeo4JUtil, cassandraUtil, readerConfig, jobConfig)
+    val DIALListMap = new CollectionPublishFunction(jobConfig, mockHttpUtil).fetchDialListForContextUpdate(nodeObj)(mockJanusGraphUtil, cassandraUtil, readerConfig, jobConfig)
     assert(DIALListMap.nonEmpty)
 
     val postProcessEvent = new CollectionPublishFunction(jobConfig, mockHttpUtil).getPostProcessEvent(nodeObj, DIALListMap)
@@ -104,7 +104,7 @@ class KnowlgPublishStreamTaskSpec extends BaseTestSpec {
   }
 
   ignore should " publish the content " in {
-    when(mockNeo4JUtil.getNodeProperties(anyString())).thenReturn(new util.HashMap[String, AnyRef])
+    when(mockJanusGraphUtil.getNodeProperties(anyString())).thenReturn(new util.HashMap[String, AnyRef])
     initialize
     new KnowlgPublishStreamTask(jobConfig, mockKafkaUtil, mockHttpUtil).process()
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(1)
@@ -122,7 +122,7 @@ class KnowlgPublishStreamTaskSpec extends BaseTestSpec {
   }
 
   ignore should " publish the questionset " in {
-    when(mockNeo4JUtil.getNodeProperties(anyString())).thenReturn(new util.HashMap[String, AnyRef])
+    when(mockJanusGraphUtil.getNodeProperties(anyString())).thenReturn(new util.HashMap[String, AnyRef])
     initializeQuestionSet
     new KnowlgPublishStreamTask(jobConfig, mockKafkaUtil, mockHttpUtil).process()
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(1)

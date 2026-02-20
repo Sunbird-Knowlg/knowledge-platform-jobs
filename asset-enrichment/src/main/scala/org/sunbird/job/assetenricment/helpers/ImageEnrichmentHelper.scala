@@ -6,7 +6,7 @@ import org.sunbird.job.assetenricment.models.Asset
 import org.sunbird.job.assetenricment.task.AssetEnrichmentConfig
 import org.sunbird.job.assetenricment.util.{AssetFileUtils, ImageResizerUtil}
 import org.sunbird.job.domain.`object`.DefinitionCache
-import org.sunbird.job.util.{CloudStorageUtil, FileUtils, Neo4JUtil, ScalaJsonUtil, Slug}
+import org.sunbird.job.util.{CloudStorageUtil, FileUtils, JanusGraphUtil, ScalaJsonUtil, Slug}
 
 import java.io.File
 import scala.collection.mutable
@@ -17,17 +17,17 @@ trait ImageEnrichmentHelper {
   private val CONTENT_FOLDER = "content"
   private val ARTIFACT_FOLDER = "artifact"
 
-  def enrichImage(asset: Asset)(implicit config: AssetEnrichmentConfig, definitionCache: DefinitionCache, cloudStorageUtil: CloudStorageUtil, neo4JUtil: Neo4JUtil): Unit = {
+  def enrichImage(asset: Asset)(implicit config: AssetEnrichmentConfig, definitionCache: DefinitionCache, cloudStorageUtil: CloudStorageUtil, janusGraphUtil: JanusGraphUtil): Unit = {
     val downloadUrl = asset.get("artifactUrl", "").asInstanceOf[String]
     try {
       val variantsMap = optimizeImage(asset.identifier, downloadUrl)(config, definitionCache, cloudStorageUtil)
-      saveImageVariants(variantsMap, asset)(neo4JUtil)
+      saveImageVariants(variantsMap, asset)(janusGraphUtil)
     } catch {
       case e: Exception =>
         logger.error(s"Something Went Wrong While Performing Asset Enrichment operation.Content Id: ${asset.identifier}", e)
         asset.put("processingError", e.getMessage)
         asset.put("status", "Failed")
-        neo4JUtil.updateNode(asset.identifier, asset.getMetadata)
+        janusGraphUtil.updateNode(asset.identifier, asset.getMetadata)
         throw e
     }
   }
@@ -97,11 +97,11 @@ trait ImageEnrichmentHelper {
     } else 0.toDouble
   }
 
-  def saveImageVariants(variantsMap: Map[String, String], asset: Asset)(implicit neo4JUtil: Neo4JUtil): Unit = {
+  def saveImageVariants(variantsMap: Map[String, String], asset: Asset)(implicit janusGraphUtil: JanusGraphUtil): Unit = {
     if (variantsMap.nonEmpty) asset.put("variants", ScalaJsonUtil.serialize(variantsMap))
     asset.put("status", "Live")
     logger.info(s"Processed Image for identifier: ${asset.identifier}. Updating metadata.")
-    neo4JUtil.updateNode(asset.identifier, asset.getMetadata)
+    janusGraphUtil.updateNode(asset.identifier, asset.getMetadata)
   }
 
   def upload(file: File, identifier: String)(implicit cloudStorageUtil: CloudStorageUtil): Array[String] = {

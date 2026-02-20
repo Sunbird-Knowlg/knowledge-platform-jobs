@@ -53,9 +53,8 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
   val hierarchyKeyspaceName: String = config.getString("hierarchy.keyspace")
   val hierarchyTableName: String = config.getString("hierarchy.table")
 
-  // Neo4J Configurations
-  val graphRoutePath: String = config.getString("neo4j.routePath")
-  val graphName: String = config.getString("neo4j.graph")
+  // JanusGraph Configurations
+
 
   // Redis Configurations
   val nodeStore: Int = config.getInt("redis.database.contentCache.id")

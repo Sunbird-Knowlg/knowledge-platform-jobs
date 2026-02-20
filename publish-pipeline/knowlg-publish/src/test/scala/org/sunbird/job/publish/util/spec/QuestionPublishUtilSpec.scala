@@ -15,7 +15,7 @@ import org.sunbird.job.knowlg.task.KnowlgPublishConfig
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
-import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, Neo4JUtil}
+import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, JanusGraphUtil}
 
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContextExecutor
@@ -23,7 +23,7 @@ import scala.concurrent.ExecutionContextExecutor
 class QuestionPublishUtilSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
 
   implicit val ec: ExecutionContextExecutor = ExecutionContexts.global
-  implicit val mockNeo4JUtil: Neo4JUtil = mock[Neo4JUtil](Mockito.withSettings().serializable())
+  implicit val mockJanusGraphUtil: JanusGraphUtil = mock[JanusGraphUtil](Mockito.withSettings().serializable())
   implicit var cassandraUtil: CassandraUtil = _
   val config: Config = ConfigFactory.load("test.conf").withFallback(ConfigFactory.systemEnvironment())
   val jobConfig: KnowlgPublishConfig = new KnowlgPublishConfig(config)
@@ -65,7 +65,7 @@ class QuestionPublishUtilSpec extends FlatSpec with BeforeAndAfterAll with Match
   }
 
   "publishQuestions" should "publish questions in questionset successfully" in {
-    when(mockNeo4JUtil.getNodeProperties("do_113188615625731")).thenReturn(Map[String, AnyRef](
+    when(mockJanusGraphUtil.getNodeProperties("do_113188615625731")).thenReturn(Map[String, AnyRef](
       "identifier" -> "do_113188615625731", 
       "objectType" -> "Question", 
       "IL_FUNC_OBJECT_TYPE" -> "Question", 
@@ -90,7 +90,7 @@ class QuestionPublishUtilSpec extends FlatSpec with BeforeAndAfterAll with Match
     ))
     val objList: List[ObjectData] = List(obj1)
     
-    val publishedQuestions = QuestionPublishUtil.publishQuestions(identifier, objList, 1, "test-user")(ec, mockNeo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, defCache, defConfig, jobConfig, httpUtil, Map("featureName" -> "test"))
+    val publishedQuestions = QuestionPublishUtil.publishQuestions(identifier, objList, 1, "test-user")(ec, mockJanusGraphUtil, cassandraUtil, readerConfig, cloudStorageUtil, defCache, defConfig, jobConfig, httpUtil, Map("featureName" -> "test"))
     
     publishedQuestions should not be empty
     publishedQuestions.size should be(1)
@@ -98,7 +98,7 @@ class QuestionPublishUtilSpec extends FlatSpec with BeforeAndAfterAll with Match
   }
 
   "publishQuestions" should "handle questions with lastPublishedBy" in {
-    when(mockNeo4JUtil.getNodeProperties("do_113188615625732")).thenReturn(Map[String, AnyRef](
+    when(mockJanusGraphUtil.getNodeProperties("do_113188615625732")).thenReturn(Map[String, AnyRef](
       "identifier" -> "do_113188615625732", 
       "objectType" -> "Question", 
       "IL_FUNC_OBJECT_TYPE" -> "Question", 
@@ -123,7 +123,7 @@ class QuestionPublishUtilSpec extends FlatSpec with BeforeAndAfterAll with Match
     ))
     val objList: List[ObjectData] = List(obj1)
     
-    val publishedQuestions = QuestionPublishUtil.publishQuestions(identifier, objList, 1, "publisher-user")(ec, mockNeo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, defCache, defConfig, jobConfig, httpUtil, Map("featureName" -> "test"))
+    val publishedQuestions = QuestionPublishUtil.publishQuestions(identifier, objList, 1, "publisher-user")(ec, mockJanusGraphUtil, cassandraUtil, readerConfig, cloudStorageUtil, defCache, defConfig, jobConfig, httpUtil, Map("featureName" -> "test"))
     
     publishedQuestions should not be empty
     publishedQuestions.size should be(1)
@@ -135,13 +135,13 @@ class QuestionPublishUtilSpec extends FlatSpec with BeforeAndAfterAll with Match
     val identifier = "do_125"
     val objList: List[ObjectData] = List()
     
-    val publishedQuestions = QuestionPublishUtil.publishQuestions(identifier, objList, 1, "test-user")(ec, mockNeo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, defCache, defConfig, jobConfig, httpUtil, Map("featureName" -> "test"))
+    val publishedQuestions = QuestionPublishUtil.publishQuestions(identifier, objList, 1, "test-user")(ec, mockJanusGraphUtil, cassandraUtil, readerConfig, cloudStorageUtil, defCache, defConfig, jobConfig, httpUtil, Map("featureName" -> "test"))
     
     publishedQuestions should be(empty)
   }
 
   "publishQuestions" should "handle questions without artifactUrl" in {
-    when(mockNeo4JUtil.getNodeProperties("do_113188615625733")).thenReturn(Map[String, AnyRef](
+    when(mockJanusGraphUtil.getNodeProperties("do_113188615625733")).thenReturn(Map[String, AnyRef](
       "identifier" -> "do_113188615625733", 
       "objectType" -> "Question", 
       "IL_FUNC_OBJECT_TYPE" -> "Question", 
@@ -168,7 +168,7 @@ class QuestionPublishUtilSpec extends FlatSpec with BeforeAndAfterAll with Match
     ))
     val objList: List[ObjectData] = List(obj1)
     
-    val publishedQuestions = QuestionPublishUtil.publishQuestions(identifier, objList, 1, "test-user")(ec, mockNeo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, defCache, defConfig, jobConfig, httpUtil, Map("featureName" -> "test"))
+    val publishedQuestions = QuestionPublishUtil.publishQuestions(identifier, objList, 1, "test-user")(ec, mockJanusGraphUtil, cassandraUtil, readerConfig, cloudStorageUtil, defCache, defConfig, jobConfig, httpUtil, Map("featureName" -> "test"))
     
     publishedQuestions should not be empty
     publishedQuestions.size should be(1)

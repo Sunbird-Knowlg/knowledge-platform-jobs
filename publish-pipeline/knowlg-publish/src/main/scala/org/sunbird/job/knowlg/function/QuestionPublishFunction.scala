@@ -15,14 +15,14 @@ import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
 import org.sunbird.job.publish.helpers.EcarPackageType
-import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, LoggerUtil, Neo4JUtil}
+import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, JanusGraphUtil, LoggerUtil}
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import java.lang.reflect.Type
 import scala.concurrent.ExecutionContext
 
 class QuestionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
-                              @transient var neo4JUtil: Neo4JUtil = null,
+                              @transient var janusGraphUtil: JanusGraphUtil = null,
                               @transient var cassandraUtil: CassandraUtil = null,
                               @transient var cloudStorageUtil: CloudStorageUtil = null,
                               @transient var definitionCache: DefinitionCache = null,
@@ -49,7 +49,7 @@ class QuestionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
     cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort, config)
-    neo4JUtil = new Neo4JUtil(config.graphRoutePath, config.graphName, config)
+    janusGraphUtil = new JanusGraphUtil(config)
     cloudStorageUtil = new CloudStorageUtil(config)
     ec = ExecutionContexts.global
     definitionCache = new DefinitionCache()
@@ -93,7 +93,7 @@ class QuestionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
       
       val definition: ObjectDefinition = definitionCache.getDefinition(data.objectType, data.schemaVersion, config.definitionBasePath)
       val readerConfig = ExtDataConfig(config.questionKeyspaceName, definition.getExternalTable, definition.getExternalPrimaryKey, definition.getExternalProps)
-      val objData = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(neo4JUtil, cassandraUtil, config)
+      val objData = getObject(data.identifier, data.pkgVersion, data.mimeType, data.publishType, readerConfig)(janusGraphUtil, cassandraUtil, config)
       val obj = if (StringUtils.isNotBlank(data.lastPublishedBy)) {
         val newMeta = objData.metadata ++ Map("lastPublishedBy" -> data.lastPublishedBy)
         new ObjectData(objData.identifier, newMeta, objData.extData, objData.hierarchy)
@@ -102,14 +102,14 @@ class QuestionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
       val messages: List[String] = validate(obj, obj.identifier, validateQuestion)
       if (messages.isEmpty) {
         cache.del(obj.identifier)
-        val enrichedObj = enrichObject(obj)(neo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
-        val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, neo4JUtil, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
+        val enrichedObj = enrichObject(obj)(janusGraphUtil, cassandraUtil, readerConfig, cloudStorageUtil, config, definitionCache, definitionConfig)
+        val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, janusGraphUtil, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
         logger.info(s"Feature: ${featureName} | Ecar generation done for Question: ${objWithEcar.identifier} | requestId: ${requestId}")
-        saveOnSuccess(objWithEcar)(neo4JUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig, config)
+        saveOnSuccess(objWithEcar)(janusGraphUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig, config)
         metrics.incCounter(config.questionPublishSuccessEventCount)
         logger.info(LoggerUtil.getExitLogs(config.jobName, requestId, s"Feature: ${featureName} | Question publishing completed successfully for : ${data.identifier}"))
       } else {
-        saveOnFailure(obj, messages, data.pkgVersion)(neo4JUtil)
+        saveOnFailure(obj, messages, data.pkgVersion)(janusGraphUtil)
         metrics.incCounter(config.questionPublishFailedEventCount)
         logger.info(LoggerUtil.getExitLogs(config.jobName, requestId, s"Feature: ${featureName} | Question publishing failed for : ${data.identifier} because of data validation failed. | Errors: ${messages.mkString(", ")}"))
       }
