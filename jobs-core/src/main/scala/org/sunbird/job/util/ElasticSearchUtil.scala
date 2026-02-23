@@ -146,7 +146,7 @@ class ElasticSearchUtil(connectionInfo: String, indexName: String, batchSize: In
           count += 1
           val document = ScalaJsonUtil.serialize(jsonObjects(key).asInstanceOf[Map[String, AnyRef]])
           logger.debug("ElasticSearchUtil:: bulkIndexWithIndexId:: document: " + document)
-          val doc: util.Map[String, AnyRef] = mapper.readValue(document, new TypeReference[util.Map[String, AnyRef]]() {})
+          val doc = mapper.readValue(document, new TypeReference[util.Map[String, AnyRef]]() {})
           val updatedDoc = checkDocStringLength(doc)
           logger.debug("ElasticSearchUtil:: bulkIndexWithIndexId:: doc: " + updatedDoc)
           request.add(new IndexRequest(indexName).id(key).source(updatedDoc))

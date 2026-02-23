@@ -1,5 +1,9 @@
 name: PR Code Coverage and SonarQube Analysis
 
+# Limit default GITHUB_TOKEN permissions for this workflow
+permissions:
+  contents: read
+
 # Trigger workflow on pull request to any branch
 on:
   pull_request:
