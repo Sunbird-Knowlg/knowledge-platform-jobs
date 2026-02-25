@@ -21,6 +21,7 @@ import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import java.lang.reflect.Type
 import java.util.UUID
+import scala.collection.JavaConverters._
 import scala.collection.mutable
 import scala.concurrent.ExecutionContext
 
@@ -127,6 +128,11 @@ class CollectionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
           logger.info("CollectionPublishFunction:: Hierarchy Metadata updated for Collection Object: " + successObj.identifier + " || updatedChildren:: " + updatedChildren)
           publishHierarchy(updatedChildren, successObj, readerConfig, config)(cassandraUtil)
           logger.info(s"KN-856: Step:8 - After publishHierarchy Collection:  ${successObj.identifier} | Hierarchy: $updatedChildren");
+          
+          // Update collection hierarchy relationships - use enrichedObj which has complete hierarchy
+          updateHierarchyRelationships(enrichedObj)(cassandraUtil, config)
+          logger.info(s"After updateHierarchyRelationships Collection:  ${enrichedObj.identifier}");
+          
           //TODO: Save IMAGE Object with enrichedObj children and collRelationalMetadata when pkgVersion is 1 - verify with MaheshG
           if(data.pkgVersion == 1) {
             saveImageHierarchy(enrichedObj, readerConfig, collRelationalMetadata)(cassandraUtil)
