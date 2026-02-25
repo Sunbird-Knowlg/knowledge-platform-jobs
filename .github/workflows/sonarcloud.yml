@@ -51,12 +51,12 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
-          mvn clean verify \
+          mvn clean \
+            org.jacoco:jacoco-maven-plugin:0.8.8:prepare-agent \
+            verify \
             -DCLOUD_STORE_GROUP_ID=${CLOUD_STORE_GROUP_ID} \
             -DCLOUD_STORE_ARTIFACT_ID=${CLOUD_STORE_ARTIFACT_ID} \
             -DCLOUD_STORE_VERSION=${CLOUD_STORE_VERSION} \
-            -DskipTests=true \
-            org.jacoco:jacoco-maven-plugin:0.8.8:prepare-agent \
             org.jacoco:jacoco-maven-plugin:0.8.8:report
 
       # Set up Java 17 for SonarCloud analysis (required by SonarQube scanner)
