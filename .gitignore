@@ -17,6 +17,3 @@ kubernets/config
 bin/
 .settings/
 .vscode
-.claude/agents/flink-architect.md
-.claude/agents/scala-architect.md
-.claude/agents/system-design-thinking.md
