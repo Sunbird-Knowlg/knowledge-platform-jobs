@@ -32,6 +32,12 @@
             <groupId>org.apache.kafka</groupId>
             <artifactId>kafka-clients</artifactId>
             <version>${kafka.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.lz4</groupId>
+                    <artifactId>lz4-java</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>
@@ -41,17 +47,17 @@
         <dependency>
             <groupId>com.google.code.gson</groupId>
             <artifactId>gson</artifactId>
-            <version>2.4</version>
+            <version>2.8.9</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>2.10.0</version>
+            <version>2.15.4</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.module</groupId>
             <artifactId>jackson-module-scala_${scala.version}</artifactId>
-            <version>2.10.0</version>
+            <version>2.15.4</version>
         </dependency>
         <dependency>
             <groupId>redis.clients</groupId>
@@ -72,12 +78,23 @@
             <groupId>org.janusgraph</groupId>
             <artifactId>janusgraph-core</artifactId>
             <version>1.0.0</version>
-
+            <exclusions>
+                <exclusion>
+                    <groupId>commons-lang</groupId>
+                    <artifactId>commons-lang</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.janusgraph</groupId>
             <artifactId>janusgraph-cql</artifactId>
             <version>1.0.0</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>commons-lang</groupId>
+                    <artifactId>commons-lang</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.janusgraph</groupId>
@@ -90,12 +107,12 @@
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-handler</artifactId>
-            <version>4.1.100.Final</version>
+            <version>4.1.129.Final</version>
         </dependency>
         <dependency>
             <groupId>io.netty</groupId>
             <artifactId>netty-transport-native-epoll</artifactId>
-            <version>4.1.100.Final</version>
+            <version>4.1.129.Final</version>
             <classifier>linux-x86_64</classifier>
         </dependency>
 
@@ -129,12 +146,43 @@
                     <groupId>org.apache.zookeeper</groupId>
                     <artifactId>zookeeper</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>at.yawk.lz4</groupId>
+                    <artifactId>lz4-java</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.lz4</groupId>
+                    <artifactId>lz4-java</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <!-- Override jclouds to 2.5.0+ to fix JAVA_LETTER_OR_DIGIT compatibility issue with Guava 32.x and Java 11+ -->
+        <dependency>
+            <groupId>org.apache.jclouds</groupId>
+            <artifactId>jclouds-core</artifactId>
+            <version>2.5.0</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.google.code.gson</groupId>
+                    <artifactId>gson</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.jclouds.provider</groupId>
+            <artifactId>azureblob</artifactId>
+            <version>2.5.0</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.google.code.gson</groupId>
+                    <artifactId>gson</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
         <dependency>
             <groupId>org.apache.zookeeper</groupId>
             <artifactId>zookeeper</artifactId>
-            <version>3.7.2</version>
+            <version>3.8.4</version>
             <exclusions>
                 <exclusion>
                     <groupId>io.netty</groupId>
@@ -157,7 +205,7 @@
         <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-common</artifactId>
-            <version>3.3.3</version>
+            <version>3.4.2</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.apache.avro</groupId>
@@ -167,12 +215,20 @@
                     <groupId>org.slf4j</groupId>
                     <artifactId>slf4j-reload4j</artifactId>
                 </exclusion>
+                <exclusion>
+                    <groupId>org.codehaus.jackson</groupId>
+                    <artifactId>jackson-mapper-asl</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.codehaus.jackson</groupId>
+                    <artifactId>jackson-core-asl</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
         <dependency>
             <groupId>org.apache.avro</groupId>
             <artifactId>avro</artifactId>
-            <version>1.11.4</version>
+            <version>1.11.5</version>
         </dependency>
         <dependency>
             <groupId>com.jamesmurty.utils</groupId>
@@ -253,17 +309,26 @@
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-configuration2</artifactId>
-            <version>2.7</version>
+            <version>2.10.1</version>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-text</artifactId>
-            <version>1.8</version>
+            <version>1.10.0</version>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
-            <version>3.9</version>
+            <version>3.18.0</version>
+        </dependency>
+        <dependency>
+            <groupId>commons-io</groupId>
+            <artifactId>commons-io</artifactId>
+            <version>2.14.0</version>
+        </dependency>
+        <dependency>
+            <groupId>at.yawk.lz4</groupId>
+            <artifactId>lz4-java</artifactId>
         </dependency>
         <dependency>
             <groupId>com.google.guava</groupId>
