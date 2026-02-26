@@ -9,9 +9,10 @@ class DefinitionCacheTestSpec extends FlatSpec with BeforeAndAfterAll with Match
 
   val config: Config = ConfigFactory.load("base-test.conf")
   val definitionCache = new DefinitionCache()
-  val basePath = config.getString("schema.basePath")
+  val basePath: String = if (config.hasPath("schema.basePath")) config.getString("schema.basePath") else ""
 
   "DefinitionCache" should "return the definition for the objectType and version specified " in {
+    assume(basePath.nonEmpty, "SCHEMA_BASE_PATH not configured, skipping")
     val definition = definitionCache.getDefinition("collection", "1.0", basePath)
     definition should not be(null)
 
@@ -22,6 +23,7 @@ class DefinitionCacheTestSpec extends FlatSpec with BeforeAndAfterAll with Match
   }
 
   it should "return the definition for the object type" in {
+    assume(basePath.nonEmpty, "SCHEMA_BASE_PATH not configured, skipping")
     val definition = definitionCache.getDefinition("Collection", "1.0", basePath)
     val schema = definition.schema
     val config = definition.config
@@ -31,12 +33,14 @@ class DefinitionCacheTestSpec extends FlatSpec with BeforeAndAfterAll with Match
   }
 
   it should "return relation labels" in {
+    assume(basePath.nonEmpty, "SCHEMA_BASE_PATH not configured, skipping")
     val definition = definitionCache.getDefinition("Collection", "1.0", basePath)
     definition.relationLabel("Content", "IN", "hasSequenceMember") should be(Some("collections"))
     definition.relationLabel("ContentImage", "OUT", "hasSequenceMember") should be(Some("children"))
   }
 
-  it should "return external properties"  in {
+  it should "return external properties" in {
+    assume(basePath.nonEmpty, "SCHEMA_BASE_PATH not configured, skipping")
     val definition = definitionCache.getDefinition("Collection", "1.0", basePath)
     definition.externalProperties.size should be >= 1
     definition.externalProperties contains("hierarchy")

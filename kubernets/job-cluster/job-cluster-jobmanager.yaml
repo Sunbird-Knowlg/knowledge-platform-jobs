@@ -27,7 +27,7 @@ spec:
                "-Dparallelism.default=1", 
                "-Dblob.server.port=6124", 
                "-Dqueryable-state.server.ports=6125",
-               "-Djobmanager.heap.size=1024m"]
+               "-Djobmanager.memory.process.size=1024m"]
         ports:
         - containerPort: 6123
           name: rpc

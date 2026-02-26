@@ -1,6 +1,7 @@
 package org.sunbird.job.knowlg.task
 
 import com.typesafe.config.ConfigFactory
+import org.apache.flink.api.common.eventtime.WatermarkStrategy
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
@@ -22,8 +23,8 @@ class KnowlgPublishStreamTask(config: KnowlgPublishConfig, kafkaConnector: Flink
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
 
     val source = kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)
-    val processStreamTask = env.addSource(source).name(config.inputConsumerName)
-      .uid(config.inputConsumerName).setParallelism(config.kafkaConsumerParallelism)
+    val processStreamTask = env.fromSource(source, WatermarkStrategy.noWatermarks(), config.inputConsumerName)
+      .name(config.inputConsumerName).uid(config.inputConsumerName).setParallelism(config.kafkaConsumerParallelism)
       .rebalance
       .process(new PublishEventRouter(config))
       .name("publish-event-router").uid("publish-event-router")
@@ -32,23 +33,23 @@ class KnowlgPublishStreamTask(config: KnowlgPublishConfig, kafkaConnector: Flink
     val contentPublish = processStreamTask.getSideOutput(config.contentPublishOutTag).process(new ContentPublishFunction(config, httpUtil))
       .name("content-publish-process").uid("content-publish-process").setParallelism(1)
 
-    contentPublish.getSideOutput(config.generateVideoStreamingOutTag).addSink(kafkaConnector.kafkaStringSink(config.postPublishTopic))
-    contentPublish.getSideOutput(config.mvcProcessorTag).addSink(kafkaConnector.kafkaStringSink(config.mvcTopic))
-    contentPublish.getSideOutput(config.contentMetadataEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.contentMetadataTopic))
-    contentPublish.getSideOutput(config.failedEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
+    contentPublish.getSideOutput(config.generateVideoStreamingOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.postPublishTopic))
+    contentPublish.getSideOutput(config.mvcProcessorTag).sinkTo(kafkaConnector.kafkaStringSink(config.mvcTopic))
+    contentPublish.getSideOutput(config.contentMetadataEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.contentMetadataTopic))
+    contentPublish.getSideOutput(config.failedEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
 
    val collectionPublish = processStreamTask.getSideOutput(config.collectionPublishOutTag).process(new CollectionPublishFunction(config, httpUtil))
     		  .name("collection-publish-process").uid("collection-publish-process").setParallelism(1)
-    collectionPublish.getSideOutput(config.generatePostPublishProcessTag).addSink(kafkaConnector.kafkaStringSink(config.postPublishTopic))
-    collectionPublish.getSideOutput(config.failedEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
+    collectionPublish.getSideOutput(config.generatePostPublishProcessTag).sinkTo(kafkaConnector.kafkaStringSink(config.postPublishTopic))
+    collectionPublish.getSideOutput(config.failedEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
 
     val questionPublish = processStreamTask.getSideOutput(config.questionPublishOutTag).process(new QuestionPublishFunction(config, httpUtil))
       .name("question-publish-process").uid("question-publish-process").setParallelism(1)
-    questionPublish.getSideOutput(config.failedEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
+    questionPublish.getSideOutput(config.failedEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
 
     val questionSetPublish = processStreamTask.getSideOutput(config.questionSetPublishOutTag).process(new QuestionSetPublishFunction(config, httpUtil))
       .name("questionset-publish-process").uid("questionset-publish-process").setParallelism(1)
-    questionSetPublish.getSideOutput(config.failedEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
+    questionSetPublish.getSideOutput(config.failedEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
 
     env.execute(config.jobName)
   }

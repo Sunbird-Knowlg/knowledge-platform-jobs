@@ -63,7 +63,7 @@ class AssetEnrichmentConfig(override val config: Config) extends BaseJobConfig(c
   val thumbnailSize: Int = if (config.hasPath("thumbnail.max.size.pixel")) config.getInt("thumbnail.max.size.pixel") else 150
 
   // Schema Definition Util for Image Enrichment
-  val definitionBasePath: String = if (config.hasPath("schema.base_path")) config.getString("schema.base_path") else "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local"
+  val definitionBasePath: String = if (config.hasPath("schema.base_path")) config.getString("schema.base_path") else "https://eddevlda72f12a.blob.core.windows.net/ed-devl-public-4e0bb10266/schemas/local"
   val schemaSupportVersionMap: Map[String, String] = if (config.hasPath("schema.supported_version")) config.getAnyRef("schema.supported_version").asInstanceOf[util.Map[String, String]].asScala.toMap else Map[String, String]()
 
   val unsupportedMimeTypes: util.List[String] = if (config.hasPath("unsupported.mimetypes")) config.getStringList("unsupported.mimetypes") else util.Arrays.asList[String]("image/svg+xml")

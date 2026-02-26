@@ -4,7 +4,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 import org.mockito.Mockito
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar.mock
-import org.sunbird.job.domain.`object`.DefinitionCache
+import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.util.{CloudStorageUtil, JanusGraphUtil, ScalaJsonUtil}
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ObjectData}
@@ -29,10 +29,14 @@ class EcarGeneratorSpec extends FlatSpec with BeforeAndAfterAll with Matchers {
   implicit val mockJanusGraphUtil: JanusGraphUtil = mock[JanusGraphUtil](Mockito.withSettings().serializable())
   val definitionBasePath: String = if (config.hasPath("schema.basePath")) config.getString("schema.basePath") else "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local"
   val schemaSupportVersionMap = if (config.hasPath("schema.supportedVersion")) config.getObject("schema.supportedVersion").unwrapped().asScala.toMap else Map[String, AnyRef]()
-  implicit val defCache = new DefinitionCache()
+  implicit val defCache = new DefinitionCache() {
+    override def getDefinition(objectType: String, version: String, basePath: String): ObjectDefinition =
+      new ObjectDefinition(objectType, version, Map.empty, Map.empty)
+  }
   implicit val defConfig = DefinitionConfig(schemaSupportVersionMap, definitionBasePath)
 
   "Object Ecar Generator generateEcar" should "return a Map containing Packaging Type and its url after uploading it to cloud" in {
+    assume(config.hasPath("cloud_storage_container"), "Cloud storage not configured, skipping")
 
     val hierarchy = Map("identifier" -> "do_123", "children" -> List(Map("identifier" -> "do_234", "name" -> "Children-1", "objectType" -> "Question"), Map("identifier" -> "do_345", "name" -> "Children-2", "objectType" -> "Question")))
     val metadata = Map("identifier" -> "do_123", "appIcon" -> "https://dev.sunbirded.org/content/preview/assets/icons/avatar_anonymous.png", "identifier" -> "do_123", "objectType" -> "QuestionSet", "name" -> "Test QuestionSet", "status" -> "Live")

@@ -49,20 +49,20 @@
         </dependency>
         <dependency>
             <groupId>org.apache.flink</groupId>
-            <artifactId>flink-test-utils_${scala.version}</artifactId>
+            <artifactId>flink-test-utils</artifactId>
             <version>${flink.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.flink</groupId>
-            <artifactId>flink-runtime_${scala.version}</artifactId>
+            <artifactId>flink-runtime</artifactId>
             <version>${flink.version}</version>
             <scope>test</scope>
             <classifier>tests</classifier>
         </dependency>
         <dependency>
             <groupId>org.apache.flink</groupId>
-            <artifactId>flink-streaming-java_${scala.version}</artifactId>
+            <artifactId>flink-streaming-java</artifactId>
             <version>${flink.version}</version>
             <scope>test</scope>
             <classifier>tests</classifier>
@@ -84,6 +84,24 @@
             <artifactId>cassandra-unit</artifactId>
             <version>3.11.2.0</version>
             <scope>test</scope>
+        </dependency>
+        <!-- Force SnakeYAML 1.33 to override transitive 2.0 (incompatible with cassandra-unit's Constructor(Class) API) -->
+        <dependency>
+            <groupId>org.yaml</groupId>
+            <artifactId>snakeyaml</artifactId>
+            <version>1.33</version>
+        </dependency>
+        <!-- Force Guava 27.0.1 — last version retaining CharMatcher.DIGIT used by cassandra-all 3.11.4 (removed in Guava 28) -->
+        <dependency>
+            <groupId>com.google.guava</groupId>
+            <artifactId>guava</artifactId>
+            <version>27.0.1-jre</version>
+        </dependency>
+        <!-- Force JNA 5.x with ARM64 macOS support (cassandra-all 3.11.4 bundles JNA 4.x which has no darwin-aarch64 native library) -->
+        <dependency>
+            <groupId>net.java.dev.jna</groupId>
+            <artifactId>jna</artifactId>
+            <version>5.12.1</version>
         </dependency>
     </dependencies>
 

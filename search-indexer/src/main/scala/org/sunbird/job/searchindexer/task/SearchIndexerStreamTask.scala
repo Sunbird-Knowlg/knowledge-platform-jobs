@@ -1,6 +1,7 @@
 package org.sunbird.job.searchindexer.task
 
 import com.typesafe.config.ConfigFactory
+import org.apache.flink.api.common.eventtime.WatermarkStrategy
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.functions.KeySelector
 import org.apache.flink.api.java.typeutils.TypeExtractor
@@ -23,8 +24,8 @@ class SearchIndexerStreamTask(config: SearchIndexerConfig, kafkaConnector: Flink
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
 
     val source = kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)
-    val processStreamTask = env.addSource(source).name(config.searchIndexerConsumer)
-      .uid(config.searchIndexerConsumer).setParallelism(config.kafkaConsumerParallelism)
+    val processStreamTask = env.fromSource(source, WatermarkStrategy.noWatermarks(), config.searchIndexerConsumer)
+      .name(config.searchIndexerConsumer).uid(config.searchIndexerConsumer).setParallelism(config.kafkaConsumerParallelism)
       .rebalance
       .keyBy(new SearchIndexerKeySelector())
       .process(new TransactionEventRouter(config))
@@ -38,9 +39,9 @@ class SearchIndexerStreamTask(config: SearchIndexerConfig, kafkaConnector: Flink
     val dialcodeMetricStream = processStreamTask.getSideOutput(config.dialCodeMetricOutTag).process(new DIALCodeMetricsIndexerFunction(config))
       .name("dialcode-metric-indexer").uid("dialcode-metric-indexer").setParallelism(config.dialCodeMetricIndexerParallelism)
 
-    compositeSearchStream.getSideOutput(config.failedEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
-    dialcodeExternalStream.getSideOutput(config.failedEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
-    dialcodeMetricStream.getSideOutput(config.failedEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
+    compositeSearchStream.getSideOutput(config.failedEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
+    dialcodeExternalStream.getSideOutput(config.failedEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
+    dialcodeMetricStream.getSideOutput(config.failedEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
 
     env.execute(config.jobName)
   }

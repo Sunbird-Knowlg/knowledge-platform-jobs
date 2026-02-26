@@ -12,5 +12,5 @@
     <logger name="org.cassandraunit" level="ERROR"/>
     <logger name="com.datastax.driver.core" level="ERROR"/>
     <logger name="com.outworkers.phantom" level="ERROR"/>
-    <logger name="org.apache.cassandra" level="off"/>
+    <logger name="org.apache.cassandra" level="ERROR"/>
 </configuration>

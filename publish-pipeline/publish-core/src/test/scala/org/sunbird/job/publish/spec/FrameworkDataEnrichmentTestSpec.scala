@@ -86,7 +86,7 @@ class FrameworkDataEnrichmentTestSpec extends FlatSpec with BeforeAndAfterAll wi
 	}
 
 	"getFrameworkCategoryMetadata from database" should "return touple values" in {
-		when(mockJanusGraphUtil.getNodePropertiesWithObjectType(ArgumentMatchers.anyString())).thenReturn(getGraphData())
+		when(mockJanusGraphUtil.getNodePropertiesWithObjectType(ArgumentMatchers.anyString(), ArgumentMatchers.anyInt())).thenReturn(getGraphData())
 		//enrichFrameworkMasterCategoryMap()
 		val node : (List[String], Map[(String, String), List[String]]) = new TestFrameworkDataEnrichment().getFrameworkCategoryMetadata("domain", "Category")
 		node._1.asInstanceOf[List[String]] should have length(6)

@@ -1,6 +1,6 @@
 package org.sunbird.job.livenodepublisher.function
 
-import akka.dispatch.ExecutionContexts
+import scala.concurrent.ExecutionContext
 import com.google.gson.reflect.TypeToken
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.configuration.Configuration
@@ -46,7 +46,7 @@ class LiveContentPublishFunction(config: LiveNodePublisherConfig, httpUtil: Http
     cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort, config)
     janusGraphUtil = new JanusGraphUtil(config)
     cloudStorageUtil = new CloudStorageUtil(config)
-    ec = ExecutionContexts.global
+    ec = ExecutionContext.global
     definitionCache = new DefinitionCache()
     definitionConfig = DefinitionConfig(config.schemaSupportVersionMap, config.definitionBasePath)
     cache = new DataCache(config, new RedisConnect(config), config.nodeStore, List())

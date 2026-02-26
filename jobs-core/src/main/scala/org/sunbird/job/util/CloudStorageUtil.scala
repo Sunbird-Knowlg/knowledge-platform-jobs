@@ -11,7 +11,7 @@ class CloudStorageUtil(config: BaseJobConfig) extends Serializable {
 
   val cloudStorageType: String = config.getString("cloud_storage_type", "azure")
   var storageService: BaseStorageService = null
-  val container: String = getContainerName
+  lazy val container: String = getContainerName
 
   @throws[Exception]
   def getService: BaseStorageService = {

@@ -1,6 +1,6 @@
 package org.sunbird.job.livenodepublisher.publish.helpers.spec
 
-import akka.dispatch.ExecutionContexts
+import scala.concurrent.ExecutionContext
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.commons.lang3.StringUtils
 import org.cassandraunit.CQLDataLoader
@@ -31,7 +31,7 @@ class LiveCollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with M
   val config: Config = ConfigFactory.load("test.conf").withFallback(ConfigFactory.systemEnvironment())
   val jobConfig: LiveNodePublisherConfig = new LiveNodePublisherConfig(config)
   implicit val cloudStorageUtil: CloudStorageUtil = new CloudStorageUtil(jobConfig)
-  implicit val ec: ExecutionContextExecutor = ExecutionContexts.global
+  implicit val ec: ExecutionContextExecutor = ExecutionContext.global
   implicit val defCache: DefinitionCache = new DefinitionCache()
   implicit val defConfig: DefinitionConfig = DefinitionConfig(jobConfig.schemaSupportVersionMap, jobConfig.definitionBasePath)
   implicit val publishConfig: PublishConfig = jobConfig.asInstanceOf[PublishConfig]

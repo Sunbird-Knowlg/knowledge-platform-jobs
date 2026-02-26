@@ -1,13 +1,13 @@
 package org.sunbird.job.publish.spec
 
-import akka.dispatch.ExecutionContexts
+import scala.concurrent.ExecutionContext
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.commons.lang3.StringUtils
 import org.mockito.Mockito
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
 import org.scalatestplus.mockito.MockitoSugar.mock
-import org.sunbird.job.domain.`object`.DefinitionCache
+import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.exception.InvalidInputException
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ObjectData}
@@ -24,10 +24,13 @@ class ObjectBundleSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
   implicit val publishConfig: PublishConfig = new PublishConfig(config, "")
   //	implicit val cloudStorageUtil: CloudStorageUtil = new CloudStorageUtil(publishConfig)
   implicit val mockJanusGraphUtil: JanusGraphUtil = mock[JanusGraphUtil](Mockito.withSettings().serializable())
-  implicit val ec: ExecutionContextExecutor = ExecutionContexts.global
+  implicit val ec: ExecutionContextExecutor = ExecutionContext.global
   val definitionBasePath: String = if (config.hasPath("schema.basePath")) config.getString("schema.basePath") else "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local"
   val schemaSupportVersionMap = if (config.hasPath("schema.supportedVersion")) config.getObject("schema.supportedVersion").unwrapped().asScala.toMap else Map[String, AnyRef]()
-  implicit val defCache = new DefinitionCache()
+  implicit val defCache = new DefinitionCache() {
+    override def getDefinition(objectType: String, version: String, basePath: String): ObjectDefinition =
+      new ObjectDefinition(objectType, version, Map.empty, Map.empty)
+  }
   implicit val defConfig = DefinitionConfig(schemaSupportVersionMap, definitionBasePath)
 
   "validUrl" should "return true for valid url input" in {

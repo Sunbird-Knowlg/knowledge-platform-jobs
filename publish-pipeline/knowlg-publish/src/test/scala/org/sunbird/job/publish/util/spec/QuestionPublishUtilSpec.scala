@@ -1,6 +1,6 @@
 package org.sunbird.job.publish.util.spec
 
-import akka.dispatch.ExecutionContexts
+import scala.concurrent.ExecutionContext
 import com.typesafe.config.{Config, ConfigFactory}
 import org.cassandraunit.CQLDataLoader
 import org.cassandraunit.dataset.cql.FileCQLDataSet
@@ -22,7 +22,7 @@ import scala.concurrent.ExecutionContextExecutor
 
 class QuestionPublishUtilSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
 
-  implicit val ec: ExecutionContextExecutor = ExecutionContexts.global
+  implicit val ec: ExecutionContextExecutor = ExecutionContext.global
   implicit val mockJanusGraphUtil: JanusGraphUtil = mock[JanusGraphUtil](Mockito.withSettings().serializable())
   implicit var cassandraUtil: CassandraUtil = _
   val config: Config = ConfigFactory.load("test.conf").withFallback(ConfigFactory.systemEnvironment())

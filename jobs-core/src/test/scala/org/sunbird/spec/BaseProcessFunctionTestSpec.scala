@@ -4,6 +4,7 @@ import com.google.gson.Gson
 import com.typesafe.config.{Config, ConfigFactory}
 import net.manub.embeddedkafka.EmbeddedKafka._
 import net.manub.embeddedkafka.{EmbeddedKafka, EmbeddedKafkaConfig}
+import org.apache.flink.api.common.eventtime.WatermarkStrategy
 import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.test.util.MiniClusterWithClientResource
@@ -115,27 +116,27 @@ class BaseProcessFunctionTestSpec extends BaseSpec with Matchers {
 
 
     val mapStream =
-      env.addSource(kafkaConnector.kafkaMapSource(bsConfig.kafkaMapInputTopic)).name("map-event-consumer")
+      env.fromSource(kafkaConnector.kafkaMapSource(bsConfig.kafkaMapInputTopic), WatermarkStrategy.noWatermarks(), "map-event-consumer").name("map-event-consumer")
         .process(new TestMapStreamFunc(bsConfig)).name("TestMapEventStream")
 
     mapStream.getSideOutput(bsConfig.mapOutputTag)
-      .addSink(kafkaConnector.kafkaMapSink(bsConfig.kafkaMapOutputTopic))
+      .sinkTo(kafkaConnector.kafkaMapSink(bsConfig.kafkaMapOutputTopic))
       .name("Map-Event-Producer")
 
     val stringStream =
-      env.addSource(kafkaConnector.kafkaStringSource(bsConfig.kafkaStringInputTopic)).name("string-event-consumer")
+      env.fromSource(kafkaConnector.kafkaStringSource(bsConfig.kafkaStringInputTopic), WatermarkStrategy.noWatermarks(), "string-event-consumer").name("string-event-consumer")
         .process(new TestStringStreamFunc(bsConfig)).name("TestStringEventStream")
 
     stringStream.getSideOutput(bsConfig.stringOutputTag)
-      .addSink(kafkaConnector.kafkaStringSink(bsConfig.kafkaStringOutputTopic))
+      .sinkTo(kafkaConnector.kafkaStringSink(bsConfig.kafkaStringOutputTopic))
       .name("String-Producer")
 
     val jobReqStream =
-      env.addSource(kafkaConnector.kafkaJobRequestSource[TestJobRequest](bsConfig.kafkaJobReqInputTopic)).name("job-request-event-consumer")
+      env.fromSource(kafkaConnector.kafkaJobRequestSource[TestJobRequest](bsConfig.kafkaJobReqInputTopic), WatermarkStrategy.noWatermarks(), "job-request-event-consumer").name("job-request-event-consumer")
         .process(new TestJobRequestStreamFunc(bsConfig)).name("TestJobRequestEventStream")
 
     jobReqStream.getSideOutput(bsConfig.jobRequestOutputTag)
-      .addSink(kafkaConnector.kafkaJobRequestSink[TestJobRequest](bsConfig.kafkaJobReqOutputTopic))
+      .sinkTo(kafkaConnector.kafkaJobRequestSink[TestJobRequest](bsConfig.kafkaJobReqOutputTopic))
       .name("JobRequest-Event-Producer")
 
     Future {

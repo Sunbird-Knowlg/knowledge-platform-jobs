@@ -1,6 +1,7 @@
 package org.sunbird.job.qrimagegenerator.task
 
 import com.typesafe.config.ConfigFactory
+import org.apache.flink.api.common.eventtime.WatermarkStrategy
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
@@ -20,7 +21,7 @@ class QRCodeImageGeneratorTask(config: QRCodeImageGeneratorConfig, kafkaConnecto
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
 
     val source = kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)
-    val streamTask = env.addSource(source)
+    val streamTask = env.fromSource(source, WatermarkStrategy.noWatermarks(), config.eventConsumer)
       .name(config.eventConsumer)
       .uid(config.eventConsumer)
       .rebalance

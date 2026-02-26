@@ -3,6 +3,7 @@ package org.sunbird.job.transaction.task
 import java.io.File
 import java.util
 import com.typesafe.config.ConfigFactory
+import org.apache.flink.api.common.eventtime.WatermarkStrategy
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.functions.KeySelector
 import org.apache.flink.api.java.typeutils.TypeExtractor
@@ -25,7 +26,8 @@ class TransactionEventProcessorStreamTask(config: TransactionEventProcessorConfi
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
     implicit val mapEsTypeInfo: TypeInformation[util.Map[String, Any]] = TypeExtractor.getForClass(classOf[util.Map[String, Any]])
 
-    val inputStream = env.addSource(kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)).name(config.transactionEventConsumer)
+    val source = kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)
+    val inputStream = env.fromSource(source, WatermarkStrategy.noWatermarks(), config.transactionEventConsumer).name(config.transactionEventConsumer)
       .uid(config.transactionEventConsumer).setParallelism(config.kafkaConsumerParallelism)
 
     val processorStreamTask = inputStream.rebalance
@@ -40,7 +42,7 @@ class TransactionEventProcessorStreamTask(config: TransactionEventProcessorConfi
       val auditStream = sideOutput.process(new AuditEventGenerator(config)).name(config.auditEventGeneratorFunction)
         .uid(config.auditEventGeneratorFunction).setParallelism(config.parallelism)
 
-      auditStream.getSideOutput(config.auditOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaAuditOutputTopic))
+      auditStream.getSideOutput(config.auditOutputTag).sinkTo(kafkaConnector.kafkaStringSink(config.kafkaAuditOutputTopic))
         .name(config.auditEventProducer).uid(config.auditEventProducer).setParallelism(config.kafkaProducerParallelism)
     }
 
@@ -48,7 +50,7 @@ class TransactionEventProcessorStreamTask(config: TransactionEventProcessorConfi
       val obsrvStream = sideOutput.process(new ObsrvMetaDataGenerator(config)).name(config.obsrvMetaDataGeneratorFunction)
         .uid(config.obsrvMetaDataGeneratorFunction).setParallelism(config.parallelism)
 
-      obsrvStream.getSideOutput(config.obsrvAuditOutputTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaObsrvOutputTopic))
+      obsrvStream.getSideOutput(config.obsrvAuditOutputTag).sinkTo(kafkaConnector.kafkaStringSink(config.kafkaObsrvOutputTopic))
         .name(config.obsrvEventProducer).uid(config.obsrvEventProducer).setParallelism(config.kafkaProducerParallelism)
     }
 

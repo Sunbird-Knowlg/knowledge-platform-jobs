@@ -206,15 +206,15 @@ kafka-console-producer.sh --broker-list kafka:9092 --topic sunbirddev.publish.jo
 ### Running flink :
 1. Download the Apache flink
 ```shell
-wget https://dlcdn.apache.org/flink/flink-1.12.7/flink-1.12.7-bin-scala_2.12.tgz
+wget https://dlcdn.apache.org/flink/flink-1.15.2/flink-1.15.2-bin-scala_2.12.tgz
 ```
 2. Extract the downloaded folder
 ```shell
-tar xzf flink-1.12.7-bin-scala_2.12.tgz
+tar xzf flink-1.15.2-bin-scala_2.12.tgz
 ```
 3. Change the directory & Start the flink cluster.
 ```shell
-cd flink-1.12.7
+cd flink-1.15.2
 ./bin/start-cluster.sh
 ```
 4. Open web view to check jobmanager and taskmanager
@@ -248,7 +248,7 @@ mvn clean install -DskipTests
 2. Start all databases, zookeper and kafka containers in docker
 3. Start flink (if not started) and submit the job to flink. Example:
 ```shell
-cd flink-1.12.7
+cd flink-1.15.2
 ./bin/start-cluster.sh
 ./bin/flink run -m localhost:8081 /user/test/workspace/knowledge-platform-jobs/publish-pipeline/content-publish/target/content-publish-1.0.0.jar
 ```

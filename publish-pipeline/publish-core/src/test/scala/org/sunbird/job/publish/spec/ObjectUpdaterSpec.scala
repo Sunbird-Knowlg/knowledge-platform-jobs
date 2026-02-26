@@ -5,7 +5,7 @@ import org.mockito.Mockito
 import org.mockito.Mockito.when
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
-import org.sunbird.job.domain.`object`.DefinitionCache
+import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
 import org.sunbird.job.publish.helpers.ObjectUpdater
@@ -19,8 +19,11 @@ class ObjectUpdaterSpec extends FlatSpec with BeforeAndAfterAll with Matchers wi
   implicit val mockCassandraUtil: CassandraUtil = mock[CassandraUtil](Mockito.withSettings().serializable())
   implicit val config: PublishConfig = mock[PublishConfig](Mockito.withSettings().serializable())
   implicit val readerConfig = ExtDataConfig("test", "test")
-  implicit lazy val defCache: DefinitionCache = new DefinitionCache()
-  implicit val definitionConfig: DefinitionConfig = DefinitionConfig(Map("itemset" -> "2.0"), "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local")
+  implicit lazy val defCache: DefinitionCache = new DefinitionCache() {
+    override def getDefinition(objectType: String, version: String, basePath: String): ObjectDefinition =
+      new ObjectDefinition(objectType, version, Map.empty, Map.empty)
+  }
+  implicit val definitionConfig: DefinitionConfig = DefinitionConfig(Map("itemset" -> "2.0"), "https://eddevlda72f12a.blob.core.windows.net/ed-devl-public-4e0bb10266/schemas/local")
 
 
   override protected def beforeAll(): Unit = {

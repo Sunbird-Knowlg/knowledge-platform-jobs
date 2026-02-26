@@ -87,7 +87,7 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
   val contentMetadataEventOutTag: OutputTag[String] = OutputTag[String]("content-metadata-event-request")
 
 
-  val definitionBasePath: String = if (config.hasPath("schema.basePath")) config.getString("schema.basePath") else "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local"
+  val definitionBasePath: String = if (config.hasPath("schema.basePath")) config.getString("schema.basePath") else "https://eddevlda72f12a.blob.core.windows.net/ed-devl-public-4e0bb10266/schemas/local"
   val schemaSupportVersionMap: Map[String, AnyRef] = if (config.hasPath("schema.supportedVersion")) config.getObject("schema.supportedVersion").unwrapped().asScala.toMap else Map[String, AnyRef]()
 
   val supportedObjectType: util.List[String] = if (config.hasPath("content.objectType")) config.getStringList("content.objectType") else util.Arrays.asList[String]("Content", "ContentImage", "Collection", "CollectionImage", "Question", "QuestionImage", "QuestionSet", "QuestionSetImage")

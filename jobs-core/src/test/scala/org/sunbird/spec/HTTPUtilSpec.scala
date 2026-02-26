@@ -11,14 +11,16 @@ class HTTPUtilSpec extends FlatSpec with Matchers {
 
   val httpUtil = new HttpUtil
   val config: Config = ConfigFactory.load("base-test.conf")
-  val imagePath = config.getString("blob.input.contentImagePath")
+  val imagePath: String = if (config.hasPath("blob.input.contentImagePath")) config.getString("blob.input.contentImagePath") else ""
 
   "get" should "return success response" in {
+    assume(imagePath.nonEmpty, "BLOB_IMAGE_CONTENT_PATH not configured, skipping")
     val resp: HTTPResponse = httpUtil.get(s"$imagePath")
     assert(resp.isSuccess)
   }
 
   "post" should "return success response" in {
+    assume(imagePath.nonEmpty, "BLOB_IMAGE_CONTENT_PATH not configured, skipping")
     val reqMap = new java.util.HashMap[String, AnyRef]() {
       put("request", new java.util.HashMap[String, AnyRef]() {
         put("filters", new java.util.HashMap[String, AnyRef]() {
@@ -35,12 +37,14 @@ class HTTPUtilSpec extends FlatSpec with Matchers {
   }
 
   "getSize" should "return file size" in {
+    assume(imagePath.nonEmpty, "BLOB_IMAGE_CONTENT_PATH not configured, skipping")
     val resp: Int = httpUtil.getSize(s"$imagePath")
     println(resp)
     assert(resp>0)
   }
 
   "downloadFile" should "download file from provided Url" in {
+    assume(imagePath.nonEmpty, "BLOB_IMAGE_CONTENT_PATH not configured, skipping")
     val fileUrl = s"$imagePath"
     val httpUtil = new HttpUtil
     val downloadPath = "/tmp/content" + File.separator + "_temp_" + System.currentTimeMillis

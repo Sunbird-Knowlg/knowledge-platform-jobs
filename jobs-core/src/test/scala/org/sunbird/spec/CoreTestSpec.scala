@@ -4,6 +4,7 @@ import java.util
 
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
+import org.apache.flink.util.Collector
 import org.scalatest.Matchers
 import org.scalatestplus.mockito.MockitoSugar
 import org.sunbird.fixture.EventFixture
@@ -19,6 +20,7 @@ class CoreTestSpec extends BaseSpec with Matchers with MockitoSugar {
   val baseConfig: BaseJobConfig = new BaseJobConfig(config, "base-job")
 
   "RedisConnect functionality" should "be able to connect to redis" in {
+    assume(redisAvailable, "Embedded Redis unavailable on this platform, skipping")
     val redisConnection = new RedisConnect(baseConfig)
     val status = redisConnection.getConnection(2)
     status.isConnected should be(true)
@@ -27,6 +29,7 @@ class CoreTestSpec extends BaseSpec with Matchers with MockitoSugar {
 
 
   "DataCache hgetAllWithRetry function" should "be able to retrieve the map data from Redis" in {
+    assume(redisAvailable, "Embedded Redis unavailable on this platform, skipping")
     val redisConnection = new RedisConnect(baseConfig)
     val map = new util.HashMap[String, String]()
     map.put("country_code", "IN")
@@ -63,45 +66,55 @@ class CoreTestSpec extends BaseSpec with Matchers with MockitoSugar {
     val mapDeSerialization = new MapDeserializationSchema()
     import org.apache.kafka.clients.consumer.ConsumerRecord
     val cRecord: ConsumerRecord[Array[Byte], Array[Byte]] = new ConsumerRecord[Array[Byte], Array[Byte]](topic, partition, offset, key, value)
-    stringDeSerialization.deserialize(cRecord)
-    stringSerialization.serialize("test", System.currentTimeMillis())
-    stringDeSerialization.isEndOfStream("") should be(false)
+    val stringCollector = new Collector[String] {
+      override def collect(record: String): Unit = {}
+      override def close(): Unit = {}
+    }
+    stringDeSerialization.deserialize(cRecord, stringCollector)
+    stringSerialization.serialize("test", null, System.currentTimeMillis())
     val map = new util.HashMap[String, AnyRef]()
     map.put("country_code", "IN")
     map.put("country", "INDIA")
-    mapSerialization.serialize(map, System.currentTimeMillis())
+    mapSerialization.serialize(map, null, System.currentTimeMillis())
   }
 
-  "DataCache" should "be able to add the data into redis" in intercept[JedisDataException]{
-    val redisConnection = new RedisConnect(baseConfig)
-    val deviceData = new util.HashMap[String, String]()
-    deviceData.put("country_code", "IN")
-    deviceData.put("country", "INDIA")
+  "DataCache" should "be able to add the data into redis" in {
+    assume(redisAvailable, "Embedded Redis unavailable on this platform, skipping")
+    intercept[JedisDataException] {
+      val redisConnection = new RedisConnect(baseConfig)
+      val deviceData = new util.HashMap[String, String]()
+      deviceData.put("country_code", "IN")
+      deviceData.put("country", "INDIA")
 
-    val deviceFields = List("country_code", "country", "state_code", "st" +
-      "ate", "city", "district_custom", "state_code_custom",
-      "state_custom", "user_declared_state", "user_declared_district", "devicespec", "firstaccess")
-    val dataCache = new DataCache(baseConfig, redisConnection, 2, deviceFields)
-    dataCache.init()
-    dataCache.isExists("device_10") should be(false)
-    dataCache.hmSet("device_1", deviceData)
-    val redisData = dataCache.hgetAllWithRetry("device_1")
-    redisData.size should be(2)
-    redisData should not be (null)
-    redisConnection.getConnection(2).close()
-    dataCache.hmSet("device_1", deviceData)
-    dataCache.getWithRetry(null)
+      val deviceFields = List("country_code", "country", "state_code", "st" +
+        "ate", "city", "district_custom", "state_code_custom",
+        "state_custom", "user_declared_state", "user_declared_district", "devicespec", "firstaccess")
+      val dataCache = new DataCache(baseConfig, redisConnection, 2, deviceFields)
+      dataCache.init()
+      dataCache.isExists("device_10") should be(false)
+      dataCache.hmSet("device_1", deviceData)
+      val redisData = dataCache.hgetAllWithRetry("device_1")
+      redisData.size should be(2)
+      redisData should not be (null)
+      redisConnection.getConnection(2).close()
+      dataCache.hmSet("device_1", deviceData)
+      dataCache.getWithRetry(null)
+    }
   }
 
 
-  "DataCache" should "thorw an jedis exception when invalid action happen" in  intercept[JedisDataException]{
-    val redisConnection = new RedisConnect(baseConfig)
-    val dataCache = new DataCache(baseConfig, redisConnection, 2, List())
-    dataCache.init()
-    dataCache.hgetAllWithRetry(null)
+  "DataCache" should "thorw an jedis exception when invalid action happen" in {
+    assume(redisAvailable, "Embedded Redis unavailable on this platform, skipping")
+    intercept[JedisDataException] {
+      val redisConnection = new RedisConnect(baseConfig)
+      val dataCache = new DataCache(baseConfig, redisConnection, 2, List())
+      dataCache.init()
+      dataCache.hgetAllWithRetry(null)
+    }
   }
 
   "DataCache setWithRetry function" should "be able to set the data from Redis" in {
+    assume(redisAvailable, "Embedded Redis unavailable on this platform, skipping")
     val redisConnection = new RedisConnect(baseConfig)
     val dataCache = new DataCache(baseConfig, redisConnection, 4, List("identifier"))
     dataCache.init()

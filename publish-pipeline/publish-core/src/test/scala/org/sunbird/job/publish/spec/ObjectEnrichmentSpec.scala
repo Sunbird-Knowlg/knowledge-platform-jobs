@@ -5,7 +5,7 @@ import org.mockito.Mockito
 import org.mockito.Mockito.when
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
-import org.sunbird.job.domain.`object`.DefinitionCache
+import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
 import org.sunbird.job.publish.helpers.ObjectEnrichment
@@ -29,9 +29,10 @@ class ObjectEnrichmentSpec extends FlatSpec with BeforeAndAfterAll with Matchers
   implicit val mockCassandraUtil: CassandraUtil = mock[CassandraUtil](Mockito.withSettings().serializable())
   implicit val readerConfig = ExtDataConfig("test", "test")
   implicit lazy val defCache: DefinitionCache = new DefinitionCache()
-  implicit lazy val definitionConfig: DefinitionConfig = DefinitionConfig(Map("questionset" -> "1.0"), "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local")
+  implicit lazy val definitionConfig: DefinitionConfig = DefinitionConfig(Map("questionset" -> "1.0"), "https://eddevlda72f12a.blob.core.windows.net/ed-devl-public-4e0bb10266/schemas/local")
 
   "ObjectEnrichment enrichObject" should " enrich the object with Framework data and thumbnail " in {
+    assume(config.hasPath("cloud_storage_container"), "Cloud storage not configured, skipping")
 
 //    when(mockJanusGraphUtil.getNodesName(any[List[String]])).thenReturn(any())
     when(mockJanusGraphUtil.getNodesName(List("NCERT"))).thenReturn(Map("NCERT"-> "NCERT"))

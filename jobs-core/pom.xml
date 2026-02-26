@@ -25,7 +25,12 @@
         </dependency>
         <dependency>
             <groupId>org.apache.flink</groupId>
-            <artifactId>flink-connector-kafka_${scala.version}</artifactId>
+            <artifactId>flink-connector-kafka</artifactId>
+            <version>${flink.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.flink</groupId>
+            <artifactId>flink-connector-base</artifactId>
             <version>${flink.version}</version>
         </dependency>
         <dependency>
@@ -261,7 +266,7 @@
         </dependency>
         <dependency>
             <groupId>org.apache.flink</groupId>
-            <artifactId>flink-test-utils_${scala.version}</artifactId>
+            <artifactId>flink-test-utils</artifactId>
             <version>${flink.version}</version>
             <scope>test</scope>
         </dependency>
@@ -300,6 +305,19 @@
             <groupId>org.elasticsearch.client</groupId>
             <artifactId>elasticsearch-rest-high-level-client</artifactId>
             <version>7.10.2</version>
+            <exclusions>
+                <!-- Exclude elasticsearch's repackaged JNA (5.5.0, no darwin-aarch64) so net.java.dev.jna:jna with ARM64 support wins -->
+                <exclusion>
+                    <groupId>org.elasticsearch</groupId>
+                    <artifactId>jna</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <!-- Force JNA 5.x with ARM64 macOS support (cassandra-all 3.11.4 bundles JNA 4.x which has no darwin-aarch64 native library) -->
+        <dependency>
+            <groupId>net.java.dev.jna</groupId>
+            <artifactId>jna</artifactId>
+            <version>5.12.1</version>
         </dependency>
         <dependency>
             <groupId>com.twitter</groupId>
