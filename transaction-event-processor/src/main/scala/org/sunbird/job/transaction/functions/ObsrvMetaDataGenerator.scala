@@ -13,11 +13,21 @@ import org.sunbird.job.transaction.task.TransactionEventProcessorConfig
 import java.util
 
 class ObsrvMetaDataGenerator(config: TransactionEventProcessorConfig)
-  extends BaseProcessFunction[Event, String](config) with TransactionEventProcessorService {
+    extends BaseProcessFunction[Event, String](config)
+    with TransactionEventProcessorService {
 
   override def metricsList(): List[String] = {
-    List(config.totalEventsCount, config.successEventCount, config.failedEventCount, config.esFailedEventCount, config.skippedEventCount,
-      config.totalObsrvMetaDataGeneratorEventsCount, config.failedObsrvMetaDataGeneratorEventsCount, config.obsrvMetaDataGeneratorEventsSuccessCount, config.emptyPropsEventCount)
+    List(
+      config.totalEventsCount,
+      config.successEventCount,
+      config.failedEventCount,
+      config.esFailedEventCount,
+      config.skippedEventCount,
+      config.totalObsrvMetaDataGeneratorEventsCount,
+      config.failedObsrvMetaDataGeneratorEventsCount,
+      config.obsrvMetaDataGeneratorEventsSuccessCount,
+      config.emptyPropsEventCount
+    )
   }
 
   override def open(parameters: Configuration): Unit = {
@@ -29,17 +39,22 @@ class ObsrvMetaDataGenerator(config: TransactionEventProcessorConfig)
   }
 
   @throws(classOf[InvalidEventException])
-  override def processElement(event: Event,
-                              context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
+  override def processElement(
+      event: Event,
+      context: ProcessFunction[Event, String]#Context,
+      metrics: Metrics
+  ): Unit = {
     try {
       metrics.incCounter(config.totalObsrvMetaDataGeneratorEventsCount)
       processEvent(event, context, metrics)(config)
     } catch {
       case ex: Exception =>
         metrics.incCounter(config.failedObsrvMetaDataGeneratorEventsCount)
-        throw new InvalidEventException(ex.getMessage, Map("partition" -> event.partition, "offset" -> event.offset), ex)
+        throw new InvalidEventException(
+          ex.getMessage,
+          Map("partition" -> event.partition, "offset" -> event.offset),
+          ex
+        )
     }
   }
 }
-
-

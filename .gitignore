@@ -17,3 +17,6 @@ kubernets/config
 bin/
 .settings/
 .vscode
+.metals
+.*env*
+.scala*
