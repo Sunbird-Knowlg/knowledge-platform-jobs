@@ -274,6 +274,11 @@
 				<artifactId>akka-stream_${scala.version}</artifactId>
 				<version>${akka.version}</version>
 			</dependency>
+			<dependency>
+				<groupId>org.yaml</groupId>
+				<artifactId>snakeyaml</artifactId>
+				<version>1.33</version>
+			</dependency>
 		</dependencies>
 	</dependencyManagement>
 

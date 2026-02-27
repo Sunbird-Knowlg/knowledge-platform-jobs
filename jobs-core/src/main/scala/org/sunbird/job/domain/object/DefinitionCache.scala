@@ -31,8 +31,8 @@ class DefinitionCache extends Serializable {
     val objectName = objectType.toLowerCase.replace("image", "")
     val path = s"${basePath}/${objectName}/${version}/"
     val definition = try {
-      val schemaMap: Map[String, AnyRef] = ScalaJsonUtil.deserialize[Map[String, AnyRef]](fileToString(path, "schema.json"))
-      val configMap: Map[String, AnyRef] = ScalaJsonUtil.deserialize[Map[String, AnyRef]](fileToString(path, "config.json"))
+      val schemaMap: Map[String, AnyRef] = toScala(ScalaJsonUtil.deserialize[java.util.Map[String, AnyRef]](fileToString(path, "schema.json"))).asInstanceOf[Map[String, AnyRef]]
+      val configMap: Map[String, AnyRef] = toScala(ScalaJsonUtil.deserialize[java.util.Map[String, AnyRef]](fileToString(path, "config.json"))).asInstanceOf[Map[String, AnyRef]]
       new ObjectDefinition(objectType, version, schemaMap, configMap)
     } catch {
       case ex: Exception =>  {
@@ -43,6 +43,15 @@ class DefinitionCache extends Serializable {
     }
     if (definition != null) put(objectType, version, definition)
     definition
+  }
+
+  private def toScala(obj: AnyRef): Any = {
+    import scala.collection.JavaConverters._
+    obj match {
+      case map: java.util.Map[_, _] => map.asScala.map { case (k, v) => (k.toString, toScala(v.asInstanceOf[AnyRef])) }.toMap
+      case list: java.util.List[_] => list.asScala.map(v => toScala(v.asInstanceOf[AnyRef])).toList
+      case _ => obj
+    }
   }
 
   private def fileToString(basePath: String, fileName: String): String = {

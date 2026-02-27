@@ -13,6 +13,8 @@ import org.sunbird.job.BaseJobConfig
 import org.sunbird.job.domain.reader.JobRequest
 import org.sunbird.job.serde.{JobRequestDeserializationSchema, JobRequestSerializationSchema, MapDeserializationSchema, MapSerializationSchema, StringDeserializationSchema, StringSerializationSchema}
 
+import scala.reflect.Manifest
+
 class FlinkKafkaConnector(config: BaseJobConfig) extends Serializable {
 
   def kafkaMapSource(kafkaTopic: String): SourceFunction[util.Map[String, AnyRef]] = {
@@ -40,7 +42,7 @@ class FlinkKafkaConnector(config: BaseJobConfig) extends Serializable {
       new JobRequestSerializationSchema[T](kafkaTopic), config.kafkaProducerProperties, Semantic.AT_LEAST_ONCE)
   }
 
-  // New KafkaSource and KafkaSink methods for Flink 1.15+
+  // New KafkaSource and KafkaSink methods for Flink 1.15+ (Production use)
   def kafkaMapSourceV2(kafkaTopic: String): KafkaSource[util.Map[String, AnyRef]] = {
     KafkaSource.builder[util.Map[String, AnyRef]]()
       .setBootstrapServers(config.kafkaBrokerServers)
