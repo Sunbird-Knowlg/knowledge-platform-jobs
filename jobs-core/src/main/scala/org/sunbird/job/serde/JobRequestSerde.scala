@@ -3,9 +3,12 @@ package org.sunbird.job.serde
 import java.nio.charset.StandardCharsets
 
 import com.google.gson.Gson
+import org.apache.flink.api.common.serialization.SerializationSchema
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
+import org.apache.flink.connector.kafka.source.reader.deserializer.KafkaRecordDeserializationSchema
 import org.apache.flink.streaming.connectors.kafka.{KafkaDeserializationSchema, KafkaSerializationSchema}
+import org.apache.flink.util.Collector
 import org.apache.kafka.clients.consumer.ConsumerRecord
 import org.apache.kafka.clients.producer.ProducerRecord
 import org.slf4j.LoggerFactory
@@ -14,7 +17,11 @@ import org.sunbird.job.util.JSONUtil
 
 import scala.reflect.{ClassTag, classTag}
 
-class JobRequestDeserializationSchema[T <: JobRequest](implicit ct: ClassTag[T]) extends KafkaDeserializationSchema[T]  {
+class JobRequestDeserializationSchema[T <: JobRequest](implicit ct: ClassTag[T]) extends KafkaDeserializationSchema[T] with KafkaRecordDeserializationSchema[T] {
+
+  override def open(context: org.apache.flink.api.common.serialization.DeserializationSchema.InitializationContext): Unit = {
+    super[KafkaDeserializationSchema].open(context)
+  }
 
   override def isEndOfStream(nextElement: T): Boolean = false
   private[this] val logger = LoggerFactory.getLogger(classOf[JobRequestDeserializationSchema[JobRequest]])
@@ -35,12 +42,25 @@ class JobRequestDeserializationSchema[T <: JobRequest](implicit ct: ClassTag[T])
     }
   }
 
+  override def deserialize(record: ConsumerRecord[Array[Byte], Array[Byte]], out: Collector[T]): Unit = {
+    out.collect(deserialize(record))
+  }
+
   override def getProducedType: TypeInformation[T] = TypeExtractor.getForClass(classTag[T].runtimeClass).asInstanceOf[TypeInformation[T]]
 }
 
-class JobRequestSerializationSchema[T <: JobRequest: Manifest](topic: String) extends KafkaSerializationSchema[T] {
+class JobRequestSerializationSchema[T <: JobRequest: Manifest](topic: String) extends KafkaSerializationSchema[T] with SerializationSchema[T] {
+
+  override def open(context: org.apache.flink.api.common.serialization.SerializationSchema.InitializationContext): Unit = {
+    super[KafkaSerializationSchema].open(context)
+  }
+
   override def serialize(element: T, timestamp: java.lang.Long): ProducerRecord[Array[Byte], Array[Byte]] = {
     new ProducerRecord[Array[Byte], Array[Byte]](topic, Option(element.kafkaKey()).map(_.getBytes(StandardCharsets.UTF_8)).orNull,
       element.getJson().getBytes(StandardCharsets.UTF_8))
+  }
+
+  override def serialize(element: T): Array[Byte] = {
+    element.getJson().getBytes(StandardCharsets.UTF_8)
   }
 }

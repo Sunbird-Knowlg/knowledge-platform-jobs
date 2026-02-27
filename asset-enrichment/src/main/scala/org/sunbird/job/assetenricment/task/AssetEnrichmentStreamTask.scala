@@ -1,6 +1,7 @@
 package org.sunbird.job.assetenricment.task
 
 import com.typesafe.config.ConfigFactory
+import org.apache.flink.api.common.eventtime.WatermarkStrategy
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
@@ -19,8 +20,8 @@ class AssetEnrichmentStreamTask(config: AssetEnrichmentConfig, kafkaConnector: F
     implicit val eventTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
 
-    val source = kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)
-    val processStreamTask = env.addSource(source).name(config.assetEnrichmentConsumer)
+    val source = kafkaConnector.kafkaJobRequestSourceV2[Event](config.kafkaInputTopic)
+    val processStreamTask = env.fromSource(source, WatermarkStrategy.noWatermarks(), config.assetEnrichmentConsumer)
       .uid(config.assetEnrichmentConsumer).setParallelism(config.kafkaConsumerParallelism)
       .rebalance
       .process(new AssetEnrichmentEventRouter(config))
@@ -33,7 +34,7 @@ class AssetEnrichmentStreamTask(config: AssetEnrichmentConfig, kafkaConnector: F
     val videoStream = processStreamTask.getSideOutput(config.videoEnrichmentDataOutTag).process(new VideoEnrichmentFunction(config))
       .name("video-enrichment-process").uid("video-enrichment-process").setParallelism(config.videoEnrichmentIndexerParallelism)
 
-    videoStream.getSideOutput(config.generateVideoStreamingOutTag).addSink(kafkaConnector.kafkaStringSink(config.videoStreamingTopic))
+    videoStream.getSideOutput(config.generateVideoStreamingOutTag).sinkTo(kafkaConnector.kafkaStringSinkV2(config.videoStreamingTopic))
     env.execute(config.jobName)
   }
 }

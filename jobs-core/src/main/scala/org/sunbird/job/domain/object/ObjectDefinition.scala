@@ -17,7 +17,11 @@ class ObjectDefinition(val objectType: String, val version: String, val schema: 
       val relation = r._2.asInstanceOf[Map[String, AnyRef]]
       val direction = relation.getOrElse("direction", "").asInstanceOf[String].toUpperCase
       val relType = relation.getOrElse("type", "").asInstanceOf[String]
-      val objectTypes = relation.getOrElse("objects", List[String]()).asInstanceOf[List[String]]
+      val objects = relation.getOrElse("objects", List[String]())
+      val objectTypes = if (objects.isInstanceOf[java.util.List[_]]) {
+        import scala.collection.JavaConverters._
+        objects.asInstanceOf[java.util.List[String]].asScala.toList
+      } else objects.asInstanceOf[List[String]]
       objectTypes.flatMap(objType => Map(relationKey(objType, direction, relType) -> label)).toMap
     })
   }
