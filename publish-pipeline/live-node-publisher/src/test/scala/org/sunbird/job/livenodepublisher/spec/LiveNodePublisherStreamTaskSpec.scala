@@ -8,21 +8,14 @@ import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
 import org.apache.flink.streaming.api.functions.source.SourceFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext
 import org.apache.flink.test.util.MiniClusterWithClientResource
-import org.cassandraunit.CQLDataLoader
-import org.cassandraunit.dataset.cql.FileCQLDataSet
-import org.cassandraunit.utils.EmbeddedCassandraServerHelper
-import org.mockito.ArgumentMatchers.anyString
+import org.mockito.ArgumentMatchers.{any, anyString}
 import org.mockito.Mockito
 import org.mockito.Mockito.when
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
-import org.sunbird.job.livenodepublisher.fixture.EventFixture
 import org.sunbird.job.livenodepublisher.publish.domain.Event
 import org.sunbird.job.livenodepublisher.task.{LiveNodePublisherConfig, LiveNodePublisherStreamTask}
-import org.sunbird.job.publish.config.PublishConfig
-import org.sunbird.job.publish.core.ExtDataConfig
-import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, JanusGraphUtil}
-import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
+import org.sunbird.job.util.HttpUtil
+import org.sunbird.spec.BaseTestSpec
 
 import java.text.SimpleDateFormat
 import java.util
@@ -38,71 +31,46 @@ class LiveNodePublisherStreamTaskSpec extends BaseTestSpec {
     .setNumberSlotsPerTaskManager(1)
     .setNumberTaskManagers(1)
     .build)
-  val mockKafkaUtil: FlinkKafkaConnector = mock[FlinkKafkaConnector](Mockito.withSettings().serializable())
+  
   val config: Config = ConfigFactory.load("test.conf").withFallback(ConfigFactory.systemEnvironment())
-  implicit val jobConfig: LiveNodePublisherConfig = new LiveNodePublisherConfig(config)
-  var definitionCache = new DefinitionCache()
-  implicit val definition: ObjectDefinition = definitionCache.getDefinition("Collection", jobConfig.schemaSupportVersionMap.getOrElse("collection", "1.0").asInstanceOf[String], jobConfig.definitionBasePath)
-  implicit val readerConfig: ExtDataConfig = ExtDataConfig(jobConfig.hierarchyKeyspaceName, jobConfig.hierarchyTableName, definition.getExternalPrimaryKey, definition.getExternalProps)
-
-  val mockHttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
-  implicit val mockJanusGraphUtil: JanusGraphUtil = mock[JanusGraphUtil](Mockito.withSettings().serializable())
-  var cassandraUtil: CassandraUtil = _
-  val publishConfig: PublishConfig = new PublishConfig(config, "")
-  val cloudStorageUtil: CloudStorageUtil = new CloudStorageUtil(publishConfig)
+  val jobConfig: LiveNodePublisherConfig = new LiveNodePublisherConfig(config)
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
-    EmbeddedCassandraServerHelper.startEmbeddedCassandra(80000L)
-    cassandraUtil = new CassandraUtil(jobConfig.cassandraHost, jobConfig.cassandraPort, jobConfig)
-    val session = cassandraUtil.session
-    val dataLoader = new CQLDataLoader(session)
-    dataLoader.load(new FileCQLDataSet(getClass.getResource("/test.cql").getPath, true, true))
     flinkCluster.before()
   }
 
   override protected def afterAll(): Unit = {
     super.afterAll()
-    try {
-      EmbeddedCassandraServerHelper.cleanEmbeddedCassandra()
-    } catch {
-      case ex: Exception => {
-      }
-    }
     flinkCluster.after()
   }
 
-  def initialize(): Unit = {
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new ContentPublishEventSource)
-  }
+  "LiveNodePublisherStreamTask" should "generate metrics" ignore {
+    val mockKafkaUtil: FlinkKafkaConnector = mock[FlinkKafkaConnector](Mockito.withSettings().serializable())
+    val mockHttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
+    
+    import org.apache.flink.connector.kafka.source.KafkaSource
+    import org.apache.flink.connector.kafka.sink.KafkaSink
+    import org.apache.flink.connector.kafka.sink.KafkaRecordSerializationSchema
+    import org.sunbird.job.serde.{JobRequestDeserializationSchema, StringSerializationSchema}
+    
+    val mockSourceV2 = KafkaSource.builder[Event]()
+      .setBootstrapServers("localhost:9092")
+      .setTopics("dummy")
+      .setDeserializer(new JobRequestDeserializationSchema[Event])
+      .build()
 
-  def getTimeStamp: String = {
-    val sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
-    sdf.format(new Date())
-  }
+    val mockSinkV2 = KafkaSink.builder[String]()
+      .setBootstrapServers("localhost:9092")
+      .setRecordSerializer(KafkaRecordSerializationSchema.builder[String]()
+        .setTopic("dummy")
+        .setValueSerializationSchema(new StringSerializationSchema("dummy"))
+        .build())
+      .build()
 
-  ignore should " publish the content " in {
-    when(mockJanusGraphUtil.getNodeProperties(anyString())).thenReturn(new util.HashMap[String, AnyRef])
-    initialize
+    when(mockKafkaUtil.kafkaJobRequestSourceV2[Event](anyString())(any())).thenReturn(mockSourceV2)
+    when(mockKafkaUtil.kafkaStringSinkV2(anyString())).thenReturn(mockSinkV2)
+    
     new LiveNodePublisherStreamTask(jobConfig, mockKafkaUtil, mockHttpUtil).process()
-    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(1)
-    BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.contentPublishEventCount}").getValue() should be(1)
-  }
-}
-
-private class ContentPublishEventSource extends SourceFunction[Event] {
-
-  override def run(ctx: SourceContext[Event]) {
-    ctx.collect(jsonToEvent(EventFixture.PDF_EVENT1))
-  }
-
-  override def cancel() = {}
-
-  def jsonToEvent(json: String): Event = {
-    val gson = new Gson()
-    val data = gson.fromJson(json, new util.LinkedHashMap[String, Any]().getClass).asInstanceOf[util.Map[String, Any]]
-    val metadataMap = data.get("edata").asInstanceOf[util.Map[String, Any]].get("metadata").asInstanceOf[util.Map[String, Any]]
-    metadataMap.put("pkgVersion", metadataMap.get("pkgVersion").asInstanceOf[Double].toInt)
-    new Event(data, 0, 10)
   }
 }

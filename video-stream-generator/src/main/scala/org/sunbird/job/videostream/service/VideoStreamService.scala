@@ -67,11 +67,13 @@ class VideoStreamService(implicit config: VideoStreamGeneratorConfig, httpUtil: 
               StreamingStage(jobRequest.request_id, jobRequest.client_key, jobRequest.job_id.get, stageName, jobStatus, "FINISHED", iteration + 1);
             } else {
               // Set job status to FAILED
-              val errMessage = job.getOrElse("error", Map()).asInstanceOf[Map[String, AnyRef]].getOrElse("errorMessage", "Error updating streamingUrl").asInstanceOf[String]
+              val error = job.getOrElse("error", Map())
+              val errMessage = if (null == error) "Error updating streamingUrl" else error.asInstanceOf[Map[String, AnyRef]].getOrElse("errorMessage", "Error updating streamingUrl").asInstanceOf[String]
               StreamingStage(jobRequest.request_id, jobRequest.client_key, jobRequest.job_id.get, stageName, jobStatus, "FAILED", iteration + 1, errMessage)
             }
           } else if(jobStatus.equalsIgnoreCase("ERROR") || jobStatus.equalsIgnoreCase("FAILED")){
-            val errMessage = job.getOrElse("error", Map()).asInstanceOf[Map[String, AnyRef]].getOrElse("errorMessage", "No error message").asInstanceOf[String]
+            val error = job.getOrElse("error", Map())
+            val errMessage = if (null == error) "No error message" else error.asInstanceOf[Map[String, AnyRef]].getOrElse("errorMessage", "No error message").asInstanceOf[String]
             StreamingStage(jobRequest.request_id, jobRequest.client_key, jobRequest.job_id.get, stageName, jobStatus, "FAILED", iteration + 1, errMessage)
           } else {
             null

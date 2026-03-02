@@ -1,6 +1,7 @@
 package org.sunbird.job.dialcodecontextupdater.task
 
 import com.typesafe.config.ConfigFactory
+import org.apache.flink.api.common.eventtime.WatermarkStrategy
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
@@ -22,7 +23,8 @@ class DialcodeContextUpdaterStreamTask(config: DialcodeContextUpdaterConfig, kaf
     implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
 
-    val processStreamTask = env.addSource(kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)).name(config.eventConsumer)
+    val source = kafkaConnector.kafkaJobRequestSourceV2[Event](config.kafkaInputTopic)
+    val processStreamTask = env.fromSource(source, WatermarkStrategy.noWatermarks(), config.eventConsumer)
       .uid(config.eventConsumer).setParallelism(config.kafkaConsumerParallelism)
       .rebalance
       .process(new DialcodeContextUpdaterFunction(config, httpUtil))
@@ -30,7 +32,7 @@ class DialcodeContextUpdaterStreamTask(config: DialcodeContextUpdaterConfig, kaf
       .uid(config.dialcodeContextUpdaterFunction)
       .setParallelism(config.parallelism)
 
-    processStreamTask.getSideOutput(config.failedEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaFailedTopic))
+    processStreamTask.getSideOutput(config.failedEventOutTag).sinkTo(kafkaConnector.kafkaStringSinkV2(config.kafkaFailedTopic))
 
     env.execute(config.jobName)
   }

@@ -25,7 +25,7 @@ class ObjectBundleSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
   //	implicit val cloudStorageUtil: CloudStorageUtil = new CloudStorageUtil(publishConfig)
   implicit val mockJanusGraphUtil: JanusGraphUtil = mock[JanusGraphUtil](Mockito.withSettings().serializable())
   implicit val ec: ExecutionContextExecutor = ExecutionContexts.global
-  val definitionBasePath: String = if (config.hasPath("schema.basePath")) config.getString("schema.basePath") else "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local"
+  val definitionBasePath: String = if (config.hasPath("schema.basePath")) config.getString("schema.basePath") else "https://raw.githubusercontent.com/Sunbird-Knowlg/knowledge-platform/master/schemas/"
   val schemaSupportVersionMap = if (config.hasPath("schema.supportedVersion")) config.getObject("schema.supportedVersion").unwrapped().asScala.toMap else Map[String, AnyRef]()
   implicit val defCache = new DefinitionCache()
   implicit val defConfig = DefinitionConfig(schemaSupportVersionMap, definitionBasePath)

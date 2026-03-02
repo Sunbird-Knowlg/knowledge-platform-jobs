@@ -20,3 +20,7 @@ bin/
 .metals
 .*env*
 .scala*
+GEMINI.md
+skills/flink-scala-expert/flink-scala-expert/references/kafka_v2_patterns.md
+skills/flink-scala-expert/flink-scala-expert/SKILL.md
+flink-scala-expert.skill

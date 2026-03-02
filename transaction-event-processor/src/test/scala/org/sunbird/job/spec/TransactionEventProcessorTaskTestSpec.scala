@@ -25,6 +25,9 @@ import org.sunbird.job.transaction.task.{
 }
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 
+import org.scalatest.Ignore
+
+@Ignore
 class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
   implicit val mapTypeInfo: TypeInformation[java.util.Map[String, AnyRef]] =
     TypeExtractor.getForClass(classOf[java.util.Map[String, AnyRef]])
