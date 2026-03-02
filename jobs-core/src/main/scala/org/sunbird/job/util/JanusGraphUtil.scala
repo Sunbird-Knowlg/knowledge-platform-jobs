@@ -161,7 +161,7 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
             g.V().has("IL_UNIQUE_ID", identifier).properties(k).drop().iterate()
             if (v.isInstanceOf[util.List[_]]) {
               val list = v.asInstanceOf[util.List[_]]
-              list.forEach(item => if(item != null) g.V().has("IL_UNIQUE_ID", identifier).property(k, item).iterate())
+              list.forEach(item => if(item != null) g.V().has("IL_UNIQUE_ID", identifier).property(org.apache.tinkerpop.gremlin.structure.VertexProperty.Cardinality.list, k, item).iterate())
             } else {
               g.V().has("IL_UNIQUE_ID", identifier).property(k, v).iterate()
             }
