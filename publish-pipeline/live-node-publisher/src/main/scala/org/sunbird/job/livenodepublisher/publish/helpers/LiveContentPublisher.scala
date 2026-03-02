@@ -33,6 +33,7 @@ trait LiveContentPublisher extends LiveObjectReader with ObjectValidator with Ob
   private val YOUTUBE_REGEX = "^(http(s)?:\\/\\/)?((w){3}.)?youtu(be|.be)?(\\.com)?\\/.+"
 
   def getExtData(identifier: String, mimeType: String, readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil, config: PublishConfig): Option[ObjectExtData] = {
+    if (null == readerConfig) return None
     mimeType match {
       case MimeType.ECML_Archive =>
         val ecmlBody = getContentBody(identifier, readerConfig)

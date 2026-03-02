@@ -20,24 +20,24 @@ class ThubnailUtilSpec extends BaseTestSpec {
     file should be(None)
   }
 
-  "ThumbnailUtil.generateOutFile" should " return None for the file" in {
+  "ThumbnailUtil.generateOutFile" should " return Some for the file" in {
     val imageUrl = s"$imagePath"
     try {
       val file = FileUtils.copyURLToFile("do_113233717480390656195", imageUrl, imageUrl.substring(imageUrl.lastIndexOf("/") + 1))
-      val newFile = new ThumbnailUtilTest().generateOutFile(file.get, 15000)
-      newFile should be(None)
+      val newFile = new ThumbnailUtilTest().generateOutFile(file.get, 150)
+      newFile shouldNot be(None)
     } finally {
       FileUtils.deleteDirectory(new File(s"/tmp/do_113233717480390656195"))
     }
   }
 
-  "ThumbnailUtil.generateOutFile" should " return None for file" in {
+  "ThumbnailUtil.generateOutFile" should " return Some for video file thumbnail" in {
     val contentId = "do_1127129845261680641588"
     val originalURL = s"$videoPath"
     try {
       val originalFile = FileUtils.copyURLToFile(contentId, originalURL, originalURL.substring(originalURL.lastIndexOf("/") + 1, originalURL.length))
       val result = new ThumbnailUtilTest().generateOutFile(originalFile.get, 150)
-      result should be(None)
+      result shouldNot be(None)
     } finally {
       FileUtils.deleteDirectory(new File(s"/tmp/$contentId"))
     }

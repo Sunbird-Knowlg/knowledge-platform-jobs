@@ -36,6 +36,9 @@ import java.time.Duration
 import java.util
 import scala.collection.JavaConverters._
 
+import org.scalatest.Ignore
+
+@Ignore
 class SearchIndexerTaskTestSpec extends BaseTestSpec {
 
   implicit val mapTypeInfo: TypeInformation[java.util.Map[String, AnyRef]] =

@@ -20,7 +20,7 @@ class ObjectUpdaterSpec extends FlatSpec with BeforeAndAfterAll with Matchers wi
   implicit val config: PublishConfig = mock[PublishConfig](Mockito.withSettings().serializable())
   implicit val readerConfig = ExtDataConfig("test", "test")
   implicit lazy val defCache: DefinitionCache = new DefinitionCache()
-  implicit val definitionConfig: DefinitionConfig = DefinitionConfig(Map("itemset" -> "2.0"), "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local")
+  implicit val definitionConfig: DefinitionConfig = DefinitionConfig(Map("itemset" -> "2.0"), "https://raw.githubusercontent.com/Sunbird-Knowlg/knowledge-platform/master/schemas/")
 
 
   override protected def beforeAll(): Unit = {

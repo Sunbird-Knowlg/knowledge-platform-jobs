@@ -178,7 +178,7 @@ class TransactionEventProcessorConfig(override val config: Config)
   val definitionBasePath: String =
     if (config.hasPath("schema.basePath")) config.getString("schema.basePath")
     else
-      "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local"
+      "https://raw.githubusercontent.com/Sunbird-Knowlg/knowledge-platform/master/schemas/"
   val schemaSupportVersionMap =
     if (config.hasPath("schema.supportedVersion"))
       config.getObject("schema.supportedVersion").unwrapped().asScala

@@ -21,7 +21,7 @@ class LiveObjectUpdaterSpec extends FlatSpec with BeforeAndAfterAll with Matcher
   implicit val mockCassandraUtil: CassandraUtil = mock[CassandraUtil](Mockito.withSettings().serializable())
   implicit val readerConfig = ExtDataConfig("test", "test")
   implicit lazy val defCache: DefinitionCache = new DefinitionCache()
-  implicit val definitionConfig: DefinitionConfig = DefinitionConfig(Map("itemset" -> "2.0"), "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local")
+  implicit val definitionConfig: DefinitionConfig = DefinitionConfig(Map("itemset" -> "2.0"), "https://raw.githubusercontent.com/Sunbird-Knowlg/knowledge-platform/master/schemas/")
   val config: Config = ConfigFactory.load("test.conf").withFallback(ConfigFactory.systemEnvironment())
   implicit val jobConfig: LiveNodePublisherConfig = new LiveNodePublisherConfig(config)
 

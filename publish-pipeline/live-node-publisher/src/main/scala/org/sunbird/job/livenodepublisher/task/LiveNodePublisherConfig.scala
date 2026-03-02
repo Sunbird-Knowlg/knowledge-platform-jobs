@@ -69,7 +69,7 @@ class LiveNodePublisherConfig(override val config: Config) extends PublishConfig
   // Service Urls
   val printServiceBaseUrl: String = config.getString("service.print.basePath")
 
-  val definitionBasePath: String = if (config.hasPath("schema.basePath")) config.getString("schema.basePath") else "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local"
+  val definitionBasePath: String = if (config.hasPath("schema.basePath")) config.getString("schema.basePath") else "https://raw.githubusercontent.com/Sunbird-Knowlg/knowledge-platform/master/schemas/"
   val schemaSupportVersionMap: Map[String, AnyRef] = if (config.hasPath("schema.supportedVersion")) config.getObject("schema.supportedVersion").unwrapped().asScala.toMap else Map[String, AnyRef]()
 
   val supportedObjectType: util.List[String] = if (config.hasPath("content.objectType")) config.getStringList("content.objectType") else util.Arrays.asList[String]("Content", "ContentImage")

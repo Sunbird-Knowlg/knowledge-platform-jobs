@@ -4,7 +4,7 @@ import com.twitter.storehaus.cache.Cache
 import com.twitter.util.Duration
 import org.slf4j.LoggerFactory
 import org.sunbird.job.util.ScalaJsonUtil
-
+import org.apache.commons.lang3.StringUtils
 import scala.io.Source
 
 class DefinitionCache extends Serializable {
@@ -28,8 +28,12 @@ class DefinitionCache extends Serializable {
   }
 
   private def prepareDefinition(basePath: String, objectType: String, version: String): ObjectDefinition = {
-    val objectName = objectType.toLowerCase.replace("image", "")
-    val path = s"${basePath}/${objectName}/${version}/"
+    val objectName = if (StringUtils.isNotBlank(objectType)) objectType.toLowerCase.replace("image", "").trim else ""
+    if (StringUtils.isBlank(objectName)) throw new Exception("Object type is blank.")
+    val effectiveBasePath = if (objectName.startsWith("question") && basePath.contains("githubusercontent.com")) {
+      "https://raw.githubusercontent.com/Sunbird-inQuiry/inquiry-api-service/master/schemas/"
+    } else basePath
+    val path = if (effectiveBasePath.endsWith("/")) s"${effectiveBasePath}${objectName}/${version}/" else s"${effectiveBasePath}/${objectName}/${version}/"
     val definition = try {
       val schemaMap: Map[String, AnyRef] = toScala(ScalaJsonUtil.deserialize[java.util.Map[String, AnyRef]](fileToString(path, "schema.json"))).asInstanceOf[Map[String, AnyRef]]
       val configMap: Map[String, AnyRef] = toScala(ScalaJsonUtil.deserialize[java.util.Map[String, AnyRef]](fileToString(path, "config.json"))).asInstanceOf[Map[String, AnyRef]]

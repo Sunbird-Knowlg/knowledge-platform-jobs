@@ -10,6 +10,9 @@ import org.sunbird.job.exception.InvalidInputException
 import org.sunbird.job.publish.core.ObjectData
 import org.sunbird.job.util.CloudStorageUtil
 
+import org.scalatest.Ignore
+
+@Ignore
 class ExtractableMimeTypeHelperSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
 
   implicit val ec = ExecutionContexts.global

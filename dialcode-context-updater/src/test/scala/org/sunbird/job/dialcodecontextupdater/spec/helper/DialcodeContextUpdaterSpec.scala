@@ -19,6 +19,11 @@ import org.sunbird.job.util._
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 
 
+import org.mockito.ArgumentMatchers.{any, anyString}
+import org.mockito.Mockito
+import org.mockito.Mockito.when
+import com.datastax.driver.core.Row
+
 class DialcodeContextUpdaterSpec extends BaseTestSpec {
 
   val flinkCluster = new MiniClusterWithClientResource(new MiniClusterResourceConfiguration.Builder()
@@ -32,15 +37,12 @@ class DialcodeContextUpdaterSpec extends BaseTestSpec {
   val defCache = new DefinitionCache()
   var mockHttpUtil: HttpUtil = mock[HttpUtil]
   var mockMetrics: Metrics = mock[Metrics](Mockito.withSettings().serializable())
-  var cassandraUtil: CassandraUtil = _
+  implicit val cassandraUtil: CassandraUtil = mock[CassandraUtil](Mockito.withSettings().serializable())
 
   override protected def beforeAll(): Unit = {
     BaseMetricsReporter.gaugeMetrics.clear()
-    EmbeddedCassandraServerHelper.startEmbeddedCassandra(80000L)
-    cassandraUtil = new CassandraUtil(jobConfig.cassandraHost, jobConfig.cassandraPort, jobConfig)
-    val session = cassandraUtil.session
-    val dataLoader = new CQLDataLoader(session)
-    dataLoader.load(new FileCQLDataSet(getClass.getResource("/test.cql").getPath, true, true))
+    val mockRow = mock[Row]
+    when(cassandraUtil.findOne(anyString())).thenReturn(mockRow)
     flinkCluster.before()
     super.beforeAll()
   }

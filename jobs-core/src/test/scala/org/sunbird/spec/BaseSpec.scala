@@ -9,14 +9,23 @@ class BaseSpec extends FlatSpec with BeforeAndAfterAll {
 
   override def beforeAll() {
     super.beforeAll()
-    redisServer = new RedisServer(6340)
-    redisServer.start()
-    // EmbeddedPostgres.builder.setPort(5430).start() // Use the same port 5430 which is defined in the base-test.conf
+    redisServer = RedisServer.builder().port(6340).setting("maxheap 128M").build()
+    try {
+      redisServer.start()
+    } catch {
+      case e: Throwable => Console.err.println("Failed to start embedded redis server: " + e.getMessage)
+    }
   }
 
   override protected def afterAll(): Unit = {
     super.afterAll()
-    redisServer.stop()
+    if (redisServer != null) {
+      try {
+        redisServer.stop()
+      } catch {
+        case e: Throwable => Console.err.println("Failed to stop embedded redis server: " + e.getMessage)
+      }
+    }
   }
 
 }

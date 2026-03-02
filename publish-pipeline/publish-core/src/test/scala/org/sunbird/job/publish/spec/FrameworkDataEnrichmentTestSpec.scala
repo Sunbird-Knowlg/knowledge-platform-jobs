@@ -4,6 +4,7 @@ import java.util
 
 import org.mockito.Mockito.when
 import org.mockito.{ArgumentMatchers, Mockito}
+import org.mockito.ArgumentMatchers.{any, anyInt, anyString}
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
 import org.sunbird.job.cache.local.FrameworkMasterCategoryMap
@@ -32,7 +33,7 @@ class FrameworkDataEnrichmentTestSpec extends FlatSpec with BeforeAndAfterAll wi
 		enrichFrameworkMasterCategoryMap()
 
 		val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "IL_UNIQUE_ID" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "framework" -> "NCF", "targetFWIds" -> List("TPD", "NCFCOPY","NCF").asJava, "mediumIds" -> List("ncf_medium_telugu").asJava, "targetMediumIds" -> List("ncf_medium_english").asJava, "boardIds" -> List("ncf_board_cbse").asJava, "targetBoardIds" -> List("ncfcopy_board_ncert").asJava))
-		when(mockJanusGraphUtil.getNodesName(ArgumentMatchers.anyObject())).thenReturn(Map[String, String]("ncf_medium_telugu" -> "Telugu", "ncf_medium_english" -> "English",  "ncf_board_cbse" -> "CBSE", "ncfcopy_board_ncert" -> "NCERT"))
+		when(mockJanusGraphUtil.getNodesName(any())).thenReturn(Map[String, String]("ncf_medium_telugu" -> "Telugu", "ncf_medium_english" -> "English",  "ncf_board_cbse" -> "CBSE", "ncfcopy_board_ncert" -> "NCERT"))
 		when(mockConfig.getString("master.category.validation.enabled", "Yes")).thenReturn("Yes")
 		val obj = new TestFrameworkDataEnrichment()
 		val result = obj.enrichFrameworkData(data)
@@ -51,7 +52,7 @@ class FrameworkDataEnrichmentTestSpec extends FlatSpec with BeforeAndAfterAll wi
 
 	"enrichFrameworkData with only targetFramework" should "enrich only se_FWIds" in {
 		val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "IL_UNIQUE_ID" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "framework" -> "NCF", "targetFWIds" -> List("TPD", "NCFCOPY").asJava))
-		when(mockJanusGraphUtil.getNodesName(ArgumentMatchers.anyObject())).thenReturn(Map[String, String]("ncf_medium_telugu" -> "Telugu", "ncf_medium_english" -> "English",  "ncf_board_cbse" -> "CBSE", "ncfcopy_board_ncert" -> "NCERT"))
+		when(mockJanusGraphUtil.getNodesName(any())).thenReturn(Map[String, String]("ncf_medium_telugu" -> "Telugu", "ncf_medium_english" -> "English",  "ncf_board_cbse" -> "CBSE", "ncfcopy_board_ncert" -> "NCERT"))
 		val obj = new TestFrameworkDataEnrichment()
 		val result = obj.enrichFrameworkData(data)
 		result.metadata.contains("se_mediumIds") should be (false)
@@ -66,7 +67,7 @@ class FrameworkDataEnrichmentTestSpec extends FlatSpec with BeforeAndAfterAll wi
 	"enrichFrameworkData with board, medium, gradeLevel and subject " should "enrich se_boards, se_mediums, se_gradeLevels and se_subjects" in {
 		enrichFrameworkMasterCategoryMap()
 		val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "IL_UNIQUE_ID" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "framework" -> "NCF", "board" -> "some board", "medium" -> List("some medium 1", "some_medium_2").asJava))
-		when(mockJanusGraphUtil.getNodesName(ArgumentMatchers.anyObject())).thenReturn(Map[String, String]("ncf_medium_telugu" -> "Telugu", "ncf_medium_english" -> "English",  "ncf_board_cbse" -> "CBSE", "ncfcopy_board_ncert" -> "NCERT"))
+		when(mockJanusGraphUtil.getNodesName(any())).thenReturn(Map[String, String]("ncf_medium_telugu" -> "Telugu", "ncf_medium_english" -> "English",  "ncf_board_cbse" -> "CBSE", "ncfcopy_board_ncert" -> "NCERT"))
 		val obj = new TestFrameworkDataEnrichment()
 		val result = obj.enrichFrameworkData(data)
 		result.metadata.contains("se_mediumIds") should be (false)
@@ -86,7 +87,7 @@ class FrameworkDataEnrichmentTestSpec extends FlatSpec with BeforeAndAfterAll wi
 	}
 
 	"getFrameworkCategoryMetadata from database" should "return touple values" in {
-		when(mockJanusGraphUtil.getNodePropertiesWithObjectType(ArgumentMatchers.anyString())).thenReturn(getGraphData())
+		when(mockJanusGraphUtil.getNodePropertiesWithObjectType(anyString(), anyInt())).thenReturn(getGraphData())
 		//enrichFrameworkMasterCategoryMap()
 		val node : (List[String], Map[(String, String), List[String]]) = new TestFrameworkDataEnrichment().getFrameworkCategoryMetadata("domain", "Category")
 		node._1.asInstanceOf[List[String]] should have length(6)
@@ -110,15 +111,15 @@ class FrameworkDataEnrichmentTestSpec extends FlatSpec with BeforeAndAfterAll wi
 		)
 	}
 	def getCategoryNodeMap(identifier: String, objectType: String, orgIdFieldName: String, targetIdFieldName: String, searchIdFieldName: String, searchLabelFieldName: String): util.Map[String, AnyRef] = {
-		new util.HashMap[String, AnyRef]{{
-			put("IL_UNIQUE_ID", identifier)
-			put("IL_FUNC_OBJECT_TYPE", objectType)
-			put("code", identifier)
-			put("orgIdFieldName", orgIdFieldName)
-			put("targetIdFieldName", targetIdFieldName)
-			put("searchIdFieldName", searchIdFieldName)
-			put("searchLabelFieldName", searchLabelFieldName)
-		}}
+		val map = new util.HashMap[String, AnyRef]()
+		map.put("IL_UNIQUE_ID", identifier)
+		map.put("IL_FUNC_OBJECT_TYPE", objectType)
+		map.put("code", identifier)
+		map.put("orgIdFieldName", orgIdFieldName)
+		map.put("targetIdFieldName", targetIdFieldName)
+		map.put("searchIdFieldName", searchIdFieldName)
+		map.put("searchLabelFieldName", searchLabelFieldName)
+		map
 	}
 
 	def enrichFrameworkMasterCategoryMap() = {

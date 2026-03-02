@@ -23,10 +23,10 @@ class OptimizerHelperSpec extends BaseTestSpec {
     doNothing().when(mockCloudUtil).copyObjectsByPrefix(anyString(), anyString(), anyBoolean())
     val asset = getAsset(EventFixture.IMAGE_ASSET, getMetadata)
     new ImageEnrichmentFunction(jobConfig).replaceArtifactUrl(asset)(mockCloudUtil)
-    asset.get("artifactUrl", "") should be("https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg")
-    asset.get("downloadUrl", "") should be("https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg")
-    asset.get("cloudStorageKey", "") should be("https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg")
-    asset.get("s3Key", "") should be("https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg")
+    asset.get("artifactUrl", "") should be("https:sunbirddev.blob.core.windows.netsunbird-content-devcontentdo_1132316405761064961124artifact0_jmrpnxe-djmth37l_.jpg")
+    asset.get("downloadUrl", "") should be("https:sunbirddev.blob.core.windows.netsunbird-content-devcontentdo_1132316405761064961124artifact0_jmrpnxe-djmth37l_.jpg")
+    asset.get("cloudStorageKey", "") should be("https:sunbirddev.blob.core.windows.netsunbird-content-devcontentdo_1132316405761064961124artifact0_jmrpnxe-djmth37l_.jpg")
+    asset.get("s3Key", "") should be("https:sunbirddev.blob.core.windows.netsunbird-content-devcontentdo_1132316405761064961124artifact0_jmrpnxe-djmth37l_.jpg")
   }
 
   "replaceArtifactUrl" should " throw exception for invalid asset " in {
@@ -45,10 +45,10 @@ class OptimizerHelperSpec extends BaseTestSpec {
   }
 
   def getMetadata: Map[String, AnyRef] = {
-    val metadata = Map[String, AnyRef]("cloudStorageKey" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/tmp/content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg",
-      "s3Key" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/tmp/content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg",
-      "artifactBasePath" -> "tmp",
-      "artifactUrl" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/tmp/content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg")
+    val metadata = Map[String, AnyRef]("cloudStorageKey" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg",
+      "s3Key" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg",
+      "artifactBasePath" -> "",
+      "artifactUrl" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_1132316405761064961124/artifact/0_jmrpnxe-djmth37l_.jpg")
     metadata
   }
 }

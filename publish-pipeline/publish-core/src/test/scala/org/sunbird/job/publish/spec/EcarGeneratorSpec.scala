@@ -10,13 +10,18 @@ import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ObjectData}
 import org.sunbird.job.publish.helpers.EcarGenerator
 
+import org.mockito.ArgumentMatchers.{any, anyBoolean, anyString}
+import org.mockito.Mockito.{doNothing, when}
+import org.scalatestplus.mockito.MockitoSugar
+import java.io.File
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits.global
 
-class EcarGeneratorSpec extends FlatSpec with BeforeAndAfterAll with Matchers {
+class EcarGeneratorSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
+    when(cloudStorageUtil.uploadFile(any(), any(), any(), any())).thenReturn(Array("test-key", "test-url"))
   }
 
   override protected def afterAll(): Unit = {
@@ -25,9 +30,9 @@ class EcarGeneratorSpec extends FlatSpec with BeforeAndAfterAll with Matchers {
 
   val config: Config = ConfigFactory.load("test.conf").withFallback(ConfigFactory.systemEnvironment())
   implicit val publishConfig: PublishConfig = new PublishConfig(config, "")
-  implicit val cloudStorageUtil: CloudStorageUtil = new CloudStorageUtil(publishConfig)
+  implicit val cloudStorageUtil: CloudStorageUtil = mock[CloudStorageUtil]
   implicit val mockJanusGraphUtil: JanusGraphUtil = mock[JanusGraphUtil](Mockito.withSettings().serializable())
-  val definitionBasePath: String = if (config.hasPath("schema.basePath")) config.getString("schema.basePath") else "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local"
+  val definitionBasePath: String = if (config.hasPath("schema.basePath")) config.getString("schema.basePath") else "https://raw.githubusercontent.com/Sunbird-Knowlg/knowledge-platform/master/schemas/"
   val schemaSupportVersionMap = if (config.hasPath("schema.supportedVersion")) config.getObject("schema.supportedVersion").unwrapped().asScala.toMap else Map[String, AnyRef]()
   implicit val defCache = new DefinitionCache()
   implicit val defConfig = DefinitionConfig(schemaSupportVersionMap, definitionBasePath)
@@ -35,7 +40,7 @@ class EcarGeneratorSpec extends FlatSpec with BeforeAndAfterAll with Matchers {
   "Object Ecar Generator generateEcar" should "return a Map containing Packaging Type and its url after uploading it to cloud" in {
 
     val hierarchy = Map("identifier" -> "do_123", "children" -> List(Map("identifier" -> "do_234", "name" -> "Children-1", "objectType" -> "Question"), Map("identifier" -> "do_345", "name" -> "Children-2", "objectType" -> "Question")))
-    val metadata = Map("identifier" -> "do_123", "appIcon" -> "https://dev.sunbirded.org/content/preview/assets/icons/avatar_anonymous.png", "identifier" -> "do_123", "objectType" -> "QuestionSet", "name" -> "Test QuestionSet", "status" -> "Live")
+    val metadata = Map("identifier" -> "do_123", "appIcon" -> "https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png", "identifier" -> "do_123", "objectType" -> "QuestionSet", "name" -> "Test QuestionSet", "status" -> "Live")
     val objData = new ObjectData("do_123", metadata, None, Some(hierarchy))
     val obj = new TestEcarGenerator()
     val result = obj.generateEcar(objData,List("SPINE"))
@@ -50,6 +55,6 @@ class TestEcarGenerator extends EcarGenerator {
     "src" -> "somepath/sunbird_1551961194254.jpeg",
     "baseUrl" -> "some_base_url"
   )
-  val testObj = List(Map("children" -> List(Map("identifier" -> "do_234", "name" -> "Children-1", "objectType" -> "Question"), Map("identifier" -> "do_345", "name" -> "Children-2", "objectType" -> "Question")), "name" -> "Test QuestionSet", "appIcon" -> "https://dev.sunbirded.org/content/preview/assets/icons/avatar_anonymous.png", "objectType" -> "QuestionSet", "identifier" -> "do_123", "status" -> "Live", "identifier" -> "do_123"), Map("identifier" -> "do_234", "name" -> "Children-1", "objectType" -> "Question", "media" -> ScalaJsonUtil.serialize(List(media))), Map("identifier" -> "do_345", "name" -> "Children-2", "objectType" -> "Question"))
+  val testObj = List(Map("children" -> List(Map("identifier" -> "do_234", "name" -> "Children-1", "objectType" -> "Question"), Map("identifier" -> "do_345", "name" -> "Children-2", "objectType" -> "Question")), "name" -> "Test QuestionSet", "appIcon" -> "https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png", "objectType" -> "QuestionSet", "identifier" -> "do_123", "status" -> "Live", "identifier" -> "do_123"), Map("identifier" -> "do_234", "name" -> "Children-1", "objectType" -> "Question", "media" -> ScalaJsonUtil.serialize(List(media))), Map("identifier" -> "do_345", "name" -> "Children-2", "objectType" -> "Question"))
   override def getDataForEcar(obj: ObjectData): Option[List[Map[String, AnyRef]]] = Some(testObj)
 }

@@ -6,146 +6,171 @@ import org.slf4j.LoggerFactory
 
 import java.io.{File, FileInputStream, FileOutputStream, IOException}
 import java.net.{HttpURLConnection, URL}
-import java.nio.file.{Files, Path, Paths}
-import java.util.zip.{ZipEntry, ZipFile, ZipOutputStream}
-import scala.collection.JavaConverters._
+import java.util.zip.{ZipEntry, ZipOutputStream}
 
 object FileUtils {
 
-  private[this] val logger = LoggerFactory.getLogger(classOf[FileUtils])
-
-  def copyURLToFile(objectId: String, fileUrl: String, suffix: String): Option[File] = try {
-    val fileName = getBasePath(objectId) + "/" + suffix
-    val file = new File(fileName)
-    org.apache.commons.io.FileUtils.copyURLToFile(new URL(fileUrl), file)
-    Some(file)
-  } catch {
-    case e: IOException => logger.error(s"Please Provide Valid File Url. Url: $fileUrl and objectId: $objectId!", e)
-      None
-  }
-
-  def getBasePath(objectId: String): String = {
-    if (!StringUtils.isBlank(objectId))
-      s"/tmp/$objectId/${System.currentTimeMillis}_temp"
-    else s"/tmp/${System.currentTimeMillis}_temp"
-  }
-
-  def uploadFile(fileOption: Option[File], identifier: String, objType: String)(implicit cloudStorageUtil: CloudStorageUtil): Option[String] = {
-    fileOption match {
-      case Some(file: File) =>
-        logger.info("FileUtils :: uploadFile :: file path :: " + file.getAbsolutePath)
-        val folder = objType.toLowerCase + File.separator + identifier
-        val urlArray: Array[String] = cloudStorageUtil.uploadFile(folder, file, Some(false))
-        logger.info(s"FileUtils ::: uploadFile ::: url for $identifier is : ${urlArray(1)}")
-        Some(urlArray(1))
-      case _ => None
-    }
-  }
+  private val logger = LoggerFactory.getLogger("org.sunbird.job.util.FileUtils")
 
   @throws[Exception]
   def downloadFile(fileUrl: String, basePath: String): File = {
-    val url = new URL(fileUrl)
-    val httpConn = url.openConnection().asInstanceOf[HttpURLConnection]
-    val disposition = httpConn.getHeaderField("Content-Disposition")
-    httpConn.getContentType
-    httpConn.getContentLength
-    val fileName = if (StringUtils.isNotBlank(disposition)) {
-      val index = disposition.indexOf("filename=")
-      if (index > 0)
-        disposition.substring(index + 10, disposition.indexOf("\"", index + 10))
-      else
-        fileUrl.substring(fileUrl.lastIndexOf("/") + 1, fileUrl.length)
-    } else fileUrl.substring(fileUrl.lastIndexOf("/") + 1, fileUrl.length)
-    val saveFile = new File(basePath)
-    if (!saveFile.exists) saveFile.mkdirs
-    val saveFilePath = basePath + File.separator + fileName
-    val inputStream = httpConn.getInputStream
-    val outputStream = new FileOutputStream(saveFilePath)
-    IOUtils.copy(inputStream, outputStream)
-    val file = new File(saveFilePath)
-    logger.info("FileUtils :: downloadFile :: " + System.currentTimeMillis() + " ::: Downloaded file: " + file.getAbsolutePath)
-    file
-  }
-
-  def extractPackage(file: File, basePath: String): Unit = {
-    val zipFile = new ZipFile(file)
-    for (entry <- zipFile.entries().asScala) {
-      val path = Paths.get(basePath + File.separator + entry.getName)
-      if (entry.isDirectory) Files.createDirectories(path)
-      else {
-        Files.createDirectories(path.getParent)
-        Files.copy(zipFile.getInputStream(entry), path)
+    logger.info("FileUtils :: downloadFile :: URL: " + fileUrl + " | basePath: " + basePath)
+    try {
+      val url = new URL(fileUrl)
+      val conn = url.openConnection()
+      val (inputStream, fileName) = conn match {
+        case httpConn: HttpURLConnection =>
+          val disposition = httpConn.getHeaderField("Content-Disposition")
+          val name = if (StringUtils.isNotBlank(disposition)) {
+            val index = disposition.indexOf("filename=")
+            if (index > 0)
+              disposition.substring(index + 10, disposition.indexOf("\"", index + 10))
+            else
+              fileUrl.substring(fileUrl.lastIndexOf("/") + 1, fileUrl.length)
+          } else fileUrl.substring(fileUrl.lastIndexOf("/") + 1, fileUrl.length)
+          (httpConn.getInputStream, name)
+        case _ =>
+          val name = fileUrl.substring(fileUrl.lastIndexOf("/") + 1)
+          (conn.getInputStream, name)
       }
+      
+      val saveFile = new File(basePath)
+      if (!saveFile.exists) saveFile.mkdirs
+      val saveFilePath = basePath + File.separator + fileName
+      val outputStream = new FileOutputStream(saveFilePath)
+      try {
+        IOUtils.copy(inputStream, outputStream)
+      } finally {
+        IOUtils.closeQuietly(inputStream)
+        IOUtils.closeQuietly(outputStream)
+      }
+      val file = new File(saveFilePath)
+      logger.info("FileUtils :: downloadFile :: " + System.currentTimeMillis() + " ::: Downloaded file: " + file.getAbsolutePath)
+      file
+    } catch {
+      case e: Exception =>
+        logger.error("FileUtils :: downloadFile :: Error for URL " + fileUrl + " : " + e.getMessage, e)
+        throw e
     }
   }
 
-  def createFile(fileName: String): File = {
-    val file = new File(fileName)
-    org.apache.commons.io.FileUtils.touch(file)
-    file
-  }
-
-  def writeStringToFile(file: File, data: String, encoding: String = "UTF-8"): Unit = {
-    org.apache.commons.io.FileUtils.writeStringToFile(file, data, encoding)
-  }
-
-  def copyFile(file: File, newFile: File): Unit = {
-    org.apache.commons.io.FileUtils.copyFile(file, newFile)
-  }
-
-  def readJsonFile(filePath: String, fileName: String): Map[String, AnyRef] = {
-    val source = scala.io.Source.fromFile(filePath + File.separator + fileName)
-    val lines = try source.mkString finally source.close()
-    JSONUtil.deserialize[Map[String, AnyRef]](lines)
+  def deleteFile(file: File): Unit = {
+    if (file.exists) {
+      if (file.isDirectory) {
+        val files = file.listFiles
+        if (files != null && files.nonEmpty) {
+          for (f <- files) {
+            deleteFile(f)
+          }
+        }
+      }
+      file.delete
+    }
   }
 
   def deleteDirectory(file: File): Unit = {
     org.apache.commons.io.FileUtils.deleteDirectory(file)
   }
 
-  def deleteQuietly(fileName: String): Unit = {
-    org.apache.commons.io.FileUtils.deleteQuietly(org.apache.commons.io.FileUtils.getFile(fileName).getParentFile)
+  def deleteQuietly(file: File): Unit = {
+    org.apache.commons.io.FileUtils.deleteQuietly(file)
   }
 
-  def createZipPackage(basePath: String, zipFileName: String): Unit =
-    if (!StringUtils.isBlank(zipFileName)) {
-      logger.info("Creating Zip File: " + zipFileName)
-      val fileList: List[String] = generateFileList(basePath)
-      zipIt(zipFileName, fileList, basePath)
+  def deleteQuietly(path: String): Unit = {
+    org.apache.commons.io.FileUtils.deleteQuietly(new File(path))
+  }
+
+  def copyFile(srcFile: File, destFile: File): Unit = {
+    org.apache.commons.io.FileUtils.copyFile(srcFile, destFile)
+  }
+
+  def copyURLToFile(source: URL, destination: File): Unit = {
+    org.apache.commons.io.FileUtils.copyURLToFile(source, destination)
+  }
+
+  def copyURLToFile(identifier: String, fileUrl: String, suffix: String): Option[File] = {
+    try {
+      val url = new URL(fileUrl)
+      val path = s"/tmp/${identifier}"
+      val file = new File(path, suffix)
+      org.apache.commons.io.FileUtils.copyURLToFile(url, file)
+      Some(file)
+    } catch {
+      case e: Exception =>
+        logger.error(s"FileUtils :: copyURLToFile :: Error for URL $fileUrl : ${e.getMessage}", e)
+        None
     }
+  }
 
-  private def generateFileList(sourceFolder: String): List[String] =
-    Files.walk(Paths.get(new File(sourceFolder).getPath)).toArray()
-      .map(path => path.asInstanceOf[Path])
-      .filter(path => Files.isRegularFile(path))
-      .map(path => generateZipEntry(path.toString, sourceFolder)).toList
+  def getBasePath(identifier: String): String = {
+    if (StringUtils.isNotBlank(identifier))
+      s"/tmp${File.separator}${identifier}${File.separator}${System.currentTimeMillis}"
+    else ""
+  }
 
-  private def generateZipEntry(file: String, sourceFolder: String): String = file.substring(sourceFolder.length, file.length)
+  def createFile(filePath: String): File = {
+    val file = new File(filePath)
+    if (!file.exists()) {
+      file.getParentFile.mkdirs()
+      file.createNewFile()
+    }
+    file
+  }
 
-  def zipIt(zipFile: String, fileList: List[String], sourceFolder: String): Unit = {
-    val buffer = new Array[Byte](1024)
+  def createZipPackage(sourceDirectory: String, zipFileName: String): Unit = {
+    zip(sourceDirectory, zipFileName)
+  }
+
+  def writeStringToFile(file: File, data: String, encoding: String = "UTF-8"): Unit = {
+    org.apache.commons.io.FileUtils.writeStringToFile(file, data, encoding)
+  }
+
+  def zipIt(zipFileName: String, fileList: List[String], tempFilePath: String): Unit = {
+    val zipOut = new ZipOutputStream(new FileOutputStream(zipFileName))
+    fileList.foreach(file => {
+      val fileToZip = new File(tempFilePath + File.separator + file)
+      val fis = new FileInputStream(fileToZip)
+      val zipEntry = new ZipEntry(fileToZip.getName)
+      zipOut.putNextEntry(zipEntry)
+      IOUtils.copy(fis, zipOut)
+      zipOut.closeEntry()
+      fis.close()
+    })
+    zipOut.close()
+  }
+
+  def zip(sourceDirectory: String, zipFileName: String): Unit = {
     var zos: ZipOutputStream = null
     try {
-      zos = new ZipOutputStream(new FileOutputStream(zipFile))
-      logger.info("Creating Zip File: " + zipFile)
-      fileList.foreach(file => {
-        val ze = new ZipEntry(file)
-        zos.putNextEntry(ze)
-        val in = new FileInputStream(sourceFolder + File.separator + file)
-        try {
-          var len = in.read(buffer)
-          while (len > 0) {
-            zos.write(buffer, 0, len)
-            len = in.read(buffer)
-          }
-        } finally if (in != null) in.close()
-        zos.closeEntry()
-      })
+      zos = new ZipOutputStream(new FileOutputStream(zipFileName))
+      val folder = new File(sourceDirectory)
+      zipFile(folder, folder, zos)
     } catch {
       case e: IOException =>
         logger.error("Error! Something Went Wrong While Creating the ZIP File: " + e.getMessage, e)
         throw new Exception("Something Went Wrong While Creating the ZIP File", e)
     } finally if (zos != null) zos.close()
+  }
+
+  private def zipFile(fileToZip: File, baseFolder: File, zos: ZipOutputStream): Unit = {
+    if (fileToZip.isDirectory) {
+      val files = fileToZip.listFiles
+      if (files != null) {
+        for (file <- files) {
+          zipFile(file, baseFolder, zos)
+        }
+      }
+    } else {
+      val fis = new FileInputStream(fileToZip)
+      val entryPath = if (fileToZip.getPath.length > baseFolder.getPath.length) {
+        fileToZip.getPath.substring(baseFolder.getPath.length + 1)
+      } else fileToZip.getName
+      val zipEntry = new ZipEntry(entryPath)
+      zos.putNextEntry(zipEntry)
+      IOUtils.copy(fis, zos)
+      zos.closeEntry()
+      fis.close()
+    }
   }
 }
 
