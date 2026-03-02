@@ -135,14 +135,21 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
     val tx = graph.buildTransaction().logIdentifier(LOG_IDENTIFIER).start()
     val g = tx.traversal()
     try {
-       g.V().has("IL_UNIQUE_ID", identifier).property(key, value).id().next()
-       tx.commit()
-       logger.info(s"Successfully Updated node with identifier: $identifier")
+      val vertexTraversal = g.V().has("IL_UNIQUE_ID", identifier)
+      if (vertexTraversal.hasNext) {
+        vertexTraversal.next().property(key, value)
+        tx.commit()
+        logger.info(s"Successfully Updated node with identifier: $identifier")
+      } else {
+        tx.rollback()
+        logger.error(s"Unable to update the node with identifier: $identifier. Node not found.")
+        throw new Exception(s"Unable to update the node with identifier: $identifier. Node not found.")
+      }
     } catch {
       case e: Exception =>
-        tx.rollback()
-        logger.error(s"Unable to update the node with identifier: $identifier", e)
-        throw new Exception(s"Unable to update the node with identifier: $identifier")
+        if (tx.isOpen) tx.rollback()
+        logger.error(s"Unable to update the node with identifier: $identifier. Error: ${e.getMessage}", e)
+        throw new Exception(s"Unable to update the node with identifier: $identifier. Error: ${e.getMessage}", e)
     }
   }
   
@@ -156,24 +163,33 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
     val tx = graph.buildTransaction().logIdentifier(LOG_IDENTIFIER).start()
     val g = tx.traversal()
     try {
-      updatedMetadata.forEach((k, v) => {
+      val vertexTraversal = g.V().has("IL_UNIQUE_ID", identifier)
+      if (vertexTraversal.hasNext) {
+        val vertex = vertexTraversal.next()
+        updatedMetadata.forEach((k, v) => {
           if (v != null) {
-            g.V().has("IL_UNIQUE_ID", identifier).properties(k).drop().iterate()
+            logger.info(s"Updating property $k for identifier $identifier")
+            vertex.properties(k).asScala.toList.foreach(p => p.remove())
             if (v.isInstanceOf[util.List[_]]) {
               val list = v.asInstanceOf[util.List[_]]
-              list.forEach(item => if(item != null) g.V().has("IL_UNIQUE_ID", identifier).property(org.apache.tinkerpop.gremlin.structure.VertexProperty.Cardinality.list, k, item).iterate())
+              list.forEach(item => if (item != null) vertex.property(org.apache.tinkerpop.gremlin.structure.VertexProperty.Cardinality.list, k, item))
             } else {
-              g.V().has("IL_UNIQUE_ID", identifier).property(k, v).iterate()
+              vertex.property(k, v)
             }
           }
-      })
-      tx.commit()
-      logger.info(s"Successfully Updated node with identifier: $identifier")
-    } catch {
-       case e: Exception =>
+        })
+        tx.commit()
+        logger.info(s"Successfully Updated node with identifier: $identifier")
+      } else {
         tx.rollback()
-        logger.error(s"Unable to update the node with identifier: $identifier", e)
-        throw new Exception(s"Unable to update the node with identifier: $identifier")
+        logger.error(s"Unable to update the node with identifier: $identifier. Node not found.")
+        throw new Exception(s"Unable to update the node with identifier: $identifier. Node not found.")
+      }
+    } catch {
+      case e: Exception =>
+        if (tx.isOpen) tx.rollback()
+        logger.error(s"Unable to update the node with identifier: $identifier. Error: ${e.getMessage}", e)
+        throw new Exception(s"Unable to update the node with identifier: $identifier. Error: ${e.getMessage}", e)
     }
   }
 
@@ -181,14 +197,20 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
     val tx = graph.buildTransaction().logIdentifier(LOG_IDENTIFIER).start()
     val g = tx.traversal()
     try {
-      g.V().has("IL_UNIQUE_ID", identifier).drop().iterate()
-      tx.commit()
-      logger.info(s"Successfully Deleted node with identifier: $identifier")
+      val vertexTraversal = g.V().has("IL_UNIQUE_ID", identifier)
+      if (vertexTraversal.hasNext) {
+        vertexTraversal.next().remove()
+        tx.commit()
+        logger.info(s"Successfully Deleted node with identifier: $identifier")
+      } else {
+        tx.rollback()
+        logger.warn(s"Unable to delete the node with identifier: $identifier. Node not found.")
+      }
     } catch {
       case e: Exception =>
-        tx.rollback()
-        logger.error(s"Unable to delete the node with identifier: $identifier", e)
-        throw new Exception(s"Unable to delete the node with identifier: $identifier")
+        if (tx.isOpen) tx.rollback()
+        logger.error(s"Unable to delete the node with identifier: $identifier. Error: ${e.getMessage}", e)
+        throw new Exception(s"Unable to delete the node with identifier: $identifier. Error: ${e.getMessage}", e)
     }
   }
 
