@@ -574,7 +574,7 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
           "index" -> record.getOrElse("index", 0).asInstanceOf[AnyRef])
       })
 
-    new ObjectData(obj.identifier, obj.metadata ++ Map("children" -> childrenMap, "objectType" -> "content"), obj.extData, Option(obj.hierarchy.get + ("children" -> nextLevelNodes)))
+    new ObjectData(obj.identifier, obj.metadata ++ Map("children" -> childrenMap), obj.extData, Option(obj.hierarchy.get + ("children" -> nextLevelNodes)))
   }
 
   def syncNodes(successObj: ObjectData, children: List[Map[String, AnyRef]], unitNodes: List[String])(implicit esUtil: ElasticSearchUtil, janusGraphUtil: JanusGraphUtil, cassandraUtil: CassandraUtil, readerConfig: ExtDataConfig, definition: ObjectDefinition, config: PublishConfig): Map[String, Map[String, AnyRef]] = {
