@@ -9,6 +9,7 @@ import org.sunbird.job.BaseJobConfig
 
 import java.util
 import scala.collection.JavaConverters._
+import org.sunbird.job.util.ScalaJsonUtil
 
 class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
 
@@ -169,11 +170,12 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
         val vertex = vertexTraversal.next()
         updatedMetadata.asScala.foreach { case (k, v) =>
           if (v != null) {
+            val value = v match {
+              case _: Map[_, _] | _: util.Map[_, _] | _: Iterable[_] | _: util.Collection[_] => ScalaJsonUtil.serialize(v)
+              case _ => v
+            }
             g.V(vertex.id()).properties(k).drop().iterate()
-            if (v.isInstanceOf[util.List[_]]) {
-              for (item <- v.asInstanceOf[util.List[_]].asScala if item != null)
-                vertex.property(org.apache.tinkerpop.gremlin.structure.VertexProperty.Cardinality.list, k, item)
-            } else vertex.property(k, v)
+            vertex.property(org.apache.tinkerpop.gremlin.structure.VertexProperty.Cardinality.single, k, value)
           }
         }
         tx.commit()
