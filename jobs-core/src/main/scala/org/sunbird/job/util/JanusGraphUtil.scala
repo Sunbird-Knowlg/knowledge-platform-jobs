@@ -160,24 +160,22 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
 
   def updateNode(identifier: String, metadata: Map[String, AnyRef]): Unit = {
     val updatedMetadata = if (isrRelativePathEnabled) CSPMetaUtil.updateRelativePath(metadata.asJava)(config) else metadata.asJava
+    logger.info(s"Metadata for updating identifier : ${identifier} is : ${updatedMetadata}")
     val tx = graph.buildTransaction().logIdentifier(LOG_IDENTIFIER).start()
     val g = tx.traversal()
     try {
       val vertexTraversal = g.V().has("IL_UNIQUE_ID", identifier)
       if (vertexTraversal.hasNext) {
         val vertex = vertexTraversal.next()
-        updatedMetadata.forEach((k, v) => {
+        updatedMetadata.asScala.foreach { case (k, v) =>
           if (v != null) {
-            logger.info(s"Updating property $k for identifier $identifier")
-            vertex.properties(k).asScala.toList.foreach(p => p.remove())
+            g.V(vertex.id()).properties(k).drop().iterate()
             if (v.isInstanceOf[util.List[_]]) {
-              val list = v.asInstanceOf[util.List[_]]
-              list.forEach(item => if (item != null) vertex.property(org.apache.tinkerpop.gremlin.structure.VertexProperty.Cardinality.list, k, item))
-            } else {
-              vertex.property(k, v)
-            }
+              for (item <- v.asInstanceOf[util.List[_]].asScala if item != null)
+                vertex.property(org.apache.tinkerpop.gremlin.structure.VertexProperty.Cardinality.list, k, item)
+            } else vertex.property(k, v)
           }
-        })
+        }
         tx.commit()
         logger.info(s"Successfully Updated node with identifier: $identifier")
       } else {
