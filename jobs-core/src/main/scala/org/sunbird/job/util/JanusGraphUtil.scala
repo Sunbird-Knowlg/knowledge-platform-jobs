@@ -181,7 +181,6 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
               case _: util.Collection[_] | _: Iterable[_] | _: util.Map[_, _] | _: Map[_, _] => ScalaJsonUtil.serialize(v)
               case _ => v
             }
-            g.V(vertex.id()).properties(k).drop().iterate()
             vertex.property(org.apache.tinkerpop.gremlin.structure.VertexProperty.Cardinality.single, k, value)
           }
         }
