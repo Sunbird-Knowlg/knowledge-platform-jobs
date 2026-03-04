@@ -67,7 +67,14 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
       if (result != null) {
         val map = new util.HashMap[String, AnyRef]()
         result.asScala.foreach {
-          case (k: String, v: AnyRef) if v != null => map.put(k, v)
+          case (k: String, v: AnyRef) if v != null =>
+            val deserialized: AnyRef = v match {
+              case s: String if s.startsWith("[") && s.endsWith("]") =>
+                try ScalaJsonUtil.deserialize[java.util.List[AnyRef]](s).asInstanceOf[AnyRef]
+                catch { case _: Exception => s }
+              case other => other
+            }
+            map.put(k, deserialized)
           case _ =>
         }
         if (isrRelativePathEnabled) CSPMetaUtil.updateAbsolutePath(map)(config) else map
