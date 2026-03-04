@@ -170,17 +170,12 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
         val vertex = vertexTraversal.next()
         updatedMetadata.asScala.foreach { case (k, v) =>
           if (v != null) {
-            g.V(vertex.id()).properties(k).drop().iterate()
-            v match {
-              case list: util.Collection[_] =>
-                list.asScala.foreach(item => if (item != null) vertex.property(org.apache.tinkerpop.gremlin.structure.VertexProperty.Cardinality.list, k, item))
-              case list: Iterable[_] =>
-                list.foreach(item => if (item != null) vertex.property(org.apache.tinkerpop.gremlin.structure.VertexProperty.Cardinality.list, k, item))
-              case _: util.Map[_, _] | _: Map[_, _] =>
-                vertex.property(org.apache.tinkerpop.gremlin.structure.VertexProperty.Cardinality.single, k, ScalaJsonUtil.serialize(v))
-              case _ =>
-                vertex.property(org.apache.tinkerpop.gremlin.structure.VertexProperty.Cardinality.single, k, v)
+            val value = v match {
+              case _: util.Collection[_] | _: Iterable[_] | _: util.Map[_, _] | _: Map[_, _] => ScalaJsonUtil.serialize(v)
+              case _ => v
             }
+            g.V(vertex.id()).properties(k).drop().iterate()
+            vertex.property(org.apache.tinkerpop.gremlin.structure.VertexProperty.Cardinality.single, k, value)
           }
         }
         tx.commit()
