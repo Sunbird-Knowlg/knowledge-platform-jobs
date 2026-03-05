@@ -189,14 +189,11 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
           if (v != null) {
             v match {
               case list: util.List[_] =>
-                for (item <- list.asScala if item != null)
-                  vertex.property(org.apache.tinkerpop.gremlin.structure.VertexProperty.Cardinality.list, k, item)
+                vertex.property(org.apache.tinkerpop.gremlin.structure.VertexProperty.Cardinality.single, k, ScalaJsonUtil.serialize(list))
               case it: Iterable[_] =>
-                for (item <- it if item != null)
-                  vertex.property(org.apache.tinkerpop.gremlin.structure.VertexProperty.Cardinality.list, k, item)
+                vertex.property(org.apache.tinkerpop.gremlin.structure.VertexProperty.Cardinality.single, k, ScalaJsonUtil.serialize(it.toList))
               case arr: Array[_] =>
-                for (item <- arr if item != null)
-                  vertex.property(org.apache.tinkerpop.gremlin.structure.VertexProperty.Cardinality.list, k, item)
+                vertex.property(org.apache.tinkerpop.gremlin.structure.VertexProperty.Cardinality.single, k, ScalaJsonUtil.serialize(arr.toList))
               case _ =>
                 val value = v match {
                   case _: util.Map[_, _] | _: Map[_, _] => ScalaJsonUtil.serialize(v)
