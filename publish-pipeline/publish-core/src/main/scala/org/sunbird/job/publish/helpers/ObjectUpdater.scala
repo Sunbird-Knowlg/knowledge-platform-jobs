@@ -82,8 +82,15 @@ trait ObjectUpdater {
         prop._2 match {
           case _: Map[String, AnyRef] | _: util.Map[String, AnyRef] =>
              (prop._1 -> ScalaJsonUtil.serialize(prop._2))
-          case _: List[_] | _: util.List[_] | _: Array[_] =>
-             (prop._1 -> ScalaJsonUtil.serialize(prop._2))
+          case l: List[_] =>
+            if (l.nonEmpty && l.head.isInstanceOf[Map[_,_]]) (prop._1 -> ScalaJsonUtil.serialize(l))
+            else (prop._1 -> l.asJava)
+          case l: util.List[_] =>
+            if (!l.isEmpty && l.get(0).isInstanceOf[java.util.Map[_,_]]) (prop._1 -> ScalaJsonUtil.serialize(l))
+            else (prop._1 -> l)
+          case arr: Array[_] =>
+            if (arr.nonEmpty && arr.head.isInstanceOf[Map[_,_]]) (prop._1 -> ScalaJsonUtil.serialize(arr))
+            else (prop._1 -> arr.toList.asJava)
           case _ =>
              (prop._1 -> prop._2)
         }
@@ -91,8 +98,15 @@ trait ObjectUpdater {
         prop._2 match {
           case _: Map[String, AnyRef] | _: util.Map[String, AnyRef] =>
             (prop._1 -> ScalaJsonUtil.serialize(prop._2))
-          case _: List[_] | _: util.List[_] | _: Array[_] =>
-            (prop._1 -> ScalaJsonUtil.serialize(prop._2))
+          case l: List[_] =>
+            if (l.nonEmpty && l.head.isInstanceOf[Map[_,_]]) (prop._1 -> ScalaJsonUtil.serialize(l))
+            else (prop._1 -> l.asJava)
+          case l: util.List[_] =>
+            if (!l.isEmpty && l.get(0).isInstanceOf[java.util.Map[_,_]]) (prop._1 -> ScalaJsonUtil.serialize(l))
+            else (prop._1 -> l)
+          case arr: Array[_] =>
+            if (arr.nonEmpty && arr.head.isInstanceOf[Map[_,_]]) (prop._1 -> ScalaJsonUtil.serialize(arr))
+            else (prop._1 -> arr.toList.asJava)
           case _ =>
             (prop._1 -> prop._2)
         }
