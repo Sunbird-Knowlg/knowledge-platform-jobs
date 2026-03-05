@@ -149,8 +149,6 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
         tx.commit()
         logger.info(s"Successfully Updated node with identifier: $identifier")
       } else {
-        tx.rollback()
-        logger.error(s"Unable to update the node with identifier: $identifier. Node not found.")
         throw new Exception(s"Unable to update the node with identifier: $identifier. Node not found.")
       }
     } catch {
@@ -181,7 +179,6 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
       if (vertexTraversal.hasNext) {
         val vertex = vertexTraversal.next()
         updatedMetadata.asScala.foreach { case (k, v) =>
-          logger.info(s"Updating property $k for identifier $identifier")
           val props = vertex.properties[Any](k)
           while (props.hasNext) {
             props.next().remove()
@@ -206,8 +203,6 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
         tx.commit()
         logger.info(s"Successfully Updated node with identifier: $identifier")
       } else {
-        tx.rollback()
-        logger.error(s"Unable to update the node with identifier: $identifier. Node not found.")
         throw new Exception(s"Unable to update the node with identifier: $identifier. Node not found.")
       }
     } catch {
