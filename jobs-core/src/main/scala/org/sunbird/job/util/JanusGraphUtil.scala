@@ -155,9 +155,14 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
       }
     } catch {
       case e: Exception =>
-        if (tx.isOpen) tx.rollback()
         logger.error(s"Unable to update the node with identifier: $identifier. Error: ${e.getMessage}", e)
         throw new Exception(s"Unable to update the node with identifier: $identifier. Error: ${e.getMessage}", e)
+    } finally {
+      if (null != tx && tx.isOpen) {
+        try {
+          tx.rollback()
+        } catch { case _: Exception => }
+      }
     }
   }
   
@@ -176,12 +181,20 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
       if (vertexTraversal.hasNext) {
         val vertex = vertexTraversal.next()
         updatedMetadata.asScala.foreach { case (k, v) =>
+          logger.info(s"Updating property $k for identifier $identifier")
+          vertex.properties(k).asScala.toList.foreach(_.remove())
           if (v != null) {
-            val value = v match {
-              case _: util.Collection[_] | _: Iterable[_] | _: util.Map[_, _] | _: Map[_, _] => ScalaJsonUtil.serialize(v)
-              case _ => v
+            v match {
+              case list: util.List[_] =>
+                for (item <- list.asScala if item != null)
+                  vertex.property(org.apache.tinkerpop.gremlin.structure.VertexProperty.Cardinality.list, k, item)
+              case _ =>
+                val value = v match {
+                  case _: util.Map[_, _] | _: Map[_, _] => ScalaJsonUtil.serialize(v)
+                  case _ => v
+                }
+                vertex.property(org.apache.tinkerpop.gremlin.structure.VertexProperty.Cardinality.single, k, value)
             }
-            vertex.property(org.apache.tinkerpop.gremlin.structure.VertexProperty.Cardinality.single, k, value)
           }
         }
         tx.commit()
@@ -193,9 +206,14 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
       }
     } catch {
       case e: Exception =>
-        if (tx.isOpen) tx.rollback()
         logger.error(s"Unable to update the node with identifier: $identifier. Error: ${e.getMessage}", e)
         throw new Exception(s"Unable to update the node with identifier: $identifier. Error: ${e.getMessage}", e)
+    } finally {
+      if (null != tx && tx.isOpen) {
+        try {
+          tx.rollback()
+        } catch { case _: Exception => }
+      }
     }
   }
 
@@ -214,9 +232,14 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
       }
     } catch {
       case e: Exception =>
-        if (tx.isOpen) tx.rollback()
         logger.error(s"Unable to delete the node with identifier: $identifier. Error: ${e.getMessage}", e)
         throw new Exception(s"Unable to delete the node with identifier: $identifier. Error: ${e.getMessage}", e)
+    } finally {
+      if (null != tx && tx.isOpen) {
+        try {
+          tx.rollback()
+        } catch { case _: Exception => }
+      }
     }
   }
 
