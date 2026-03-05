@@ -182,7 +182,10 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
         val vertex = vertexTraversal.next()
         updatedMetadata.asScala.foreach { case (k, v) =>
           logger.info(s"Updating property $k for identifier $identifier")
-          vertex.properties(k).asScala.toList.foreach(_.remove())
+          val props = vertex.properties[Any](k)
+          while (props.hasNext) {
+            props.next().remove()
+          }
           if (v != null) {
             v match {
               case list: util.List[_] =>
