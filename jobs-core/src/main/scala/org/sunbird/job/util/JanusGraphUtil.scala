@@ -9,6 +9,7 @@ import org.sunbird.job.BaseJobConfig
 
 import java.util
 import scala.collection.JavaConverters._
+import org.sunbird.job.util.ScalaJsonUtil
 
 class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
 
@@ -66,7 +67,14 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
       if (result != null) {
         val map = new util.HashMap[String, AnyRef]()
         result.asScala.foreach {
-          case (k: String, v: AnyRef) if v != null => map.put(k, v)
+          case (k: String, v: AnyRef) if v != null =>
+            val deserialized: AnyRef = v match {
+              case s: String if s.startsWith("[") && s.endsWith("]") =>
+                try ScalaJsonUtil.deserialize[java.util.List[AnyRef]](s).asInstanceOf[AnyRef]
+                catch { case _: Exception => s }
+              case other => other
+            }
+            map.put(k, deserialized)
           case _ =>
         }
         if (isrRelativePathEnabled) CSPMetaUtil.updateAbsolutePath(map)(config) else map
@@ -135,14 +143,24 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
     val tx = graph.buildTransaction().logIdentifier(LOG_IDENTIFIER).start()
     val g = tx.traversal()
     try {
-       g.V().has("IL_UNIQUE_ID", identifier).property(key, value).id().next()
-       tx.commit()
-       logger.info(s"Successfully Updated node with identifier: $identifier")
+      val vertexTraversal = g.V().has("IL_UNIQUE_ID", identifier)
+      if (vertexTraversal.hasNext) {
+        vertexTraversal.next().property(key, value)
+        tx.commit()
+        logger.info(s"Successfully Updated node with identifier: $identifier")
+      } else {
+        throw new Exception(s"Unable to update the node with identifier: $identifier. Node not found.")
+      }
     } catch {
       case e: Exception =>
-        tx.rollback()
-        logger.error(s"Unable to update the node with identifier: $identifier", e)
-        throw new Exception(s"Unable to update the node with identifier: $identifier")
+        logger.error(s"Unable to update the node with identifier: $identifier. Error: ${e.getMessage}", e)
+        throw new Exception(s"Unable to update the node with identifier: $identifier. Error: ${e.getMessage}", e)
+    } finally {
+      if (null != tx && tx.isOpen) {
+        try {
+          tx.rollback()
+        } catch { case _: Exception => }
+      }
     }
   }
   
@@ -153,27 +171,50 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
 
   def updateNode(identifier: String, metadata: Map[String, AnyRef]): Unit = {
     val updatedMetadata = if (isrRelativePathEnabled) CSPMetaUtil.updateRelativePath(metadata.asJava)(config) else metadata.asJava
+    logger.debug(s"Updating identifier: $identifier with keys: ${updatedMetadata.keySet}")
     val tx = graph.buildTransaction().logIdentifier(LOG_IDENTIFIER).start()
     val g = tx.traversal()
     try {
-      updatedMetadata.forEach((k, v) => {
+      val vertexTraversal = g.V().has("IL_UNIQUE_ID", identifier)
+      if (vertexTraversal.hasNext) {
+        val vertex = vertexTraversal.next()
+        updatedMetadata.asScala.foreach { case (k, v) =>
+          val props = vertex.properties[Any](k)
+          while (props.hasNext) {
+            props.next().remove()
+          }
           if (v != null) {
-            g.V().has("IL_UNIQUE_ID", identifier).properties(k).drop().iterate()
-            if (v.isInstanceOf[util.List[_]]) {
-              val list = v.asInstanceOf[util.List[_]]
-              list.forEach(item => if(item != null) g.V().has("IL_UNIQUE_ID", identifier).property(k, item).iterate())
-            } else {
-              g.V().has("IL_UNIQUE_ID", identifier).property(k, v).iterate()
+            v match {
+              case list: util.List[_] =>
+                vertex.property(org.apache.tinkerpop.gremlin.structure.VertexProperty.Cardinality.single, k, ScalaJsonUtil.serialize(list))
+              case it: Iterable[_] =>
+                vertex.property(org.apache.tinkerpop.gremlin.structure.VertexProperty.Cardinality.single, k, ScalaJsonUtil.serialize(it.toList))
+              case arr: Array[_] =>
+                vertex.property(org.apache.tinkerpop.gremlin.structure.VertexProperty.Cardinality.single, k, ScalaJsonUtil.serialize(arr.toList))
+              case _ =>
+                val value = v match {
+                  case _: util.Map[_, _] | _: Map[_, _] => ScalaJsonUtil.serialize(v)
+                  case _ => v
+                }
+                vertex.property(org.apache.tinkerpop.gremlin.structure.VertexProperty.Cardinality.single, k, value)
             }
           }
-      })
-      tx.commit()
-      logger.info(s"Successfully Updated node with identifier: $identifier")
+        }
+        tx.commit()
+        logger.info(s"Successfully Updated node with identifier: $identifier")
+      } else {
+        throw new Exception(s"Unable to update the node with identifier: $identifier. Node not found.")
+      }
     } catch {
-       case e: Exception =>
-        tx.rollback()
-        logger.error(s"Unable to update the node with identifier: $identifier", e)
-        throw new Exception(s"Unable to update the node with identifier: $identifier")
+      case e: Exception =>
+        logger.error(s"Unable to update the node with identifier: $identifier. Error: ${e.getMessage}", e)
+        throw new Exception(s"Unable to update the node with identifier: $identifier. Error: ${e.getMessage}", e)
+    } finally {
+      if (null != tx && tx.isOpen) {
+        try {
+          tx.rollback()
+        } catch { case _: Exception => }
+      }
     }
   }
 
@@ -181,14 +222,25 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
     val tx = graph.buildTransaction().logIdentifier(LOG_IDENTIFIER).start()
     val g = tx.traversal()
     try {
-      g.V().has("IL_UNIQUE_ID", identifier).drop().iterate()
-      tx.commit()
-      logger.info(s"Successfully Deleted node with identifier: $identifier")
+      val vertexTraversal = g.V().has("IL_UNIQUE_ID", identifier)
+      if (vertexTraversal.hasNext) {
+        vertexTraversal.next().remove()
+        tx.commit()
+        logger.info(s"Successfully Deleted node with identifier: $identifier")
+      } else {
+        // the finally block will rollback the open tx.
+        logger.warn(s"Unable to delete the node with identifier: $identifier. Node not found.")
+      }
     } catch {
       case e: Exception =>
-        tx.rollback()
-        logger.error(s"Unable to delete the node with identifier: $identifier", e)
-        throw new Exception(s"Unable to delete the node with identifier: $identifier")
+        logger.error(s"Unable to delete the node with identifier: $identifier. Error: ${e.getMessage}", e)
+        throw new Exception(s"Unable to delete the node with identifier: $identifier. Error: ${e.getMessage}", e)
+    } finally {
+      if (null != tx && tx.isOpen) {
+        try {
+          tx.rollback()
+        } catch { case _: Exception => }
+      }
     }
   }
 
