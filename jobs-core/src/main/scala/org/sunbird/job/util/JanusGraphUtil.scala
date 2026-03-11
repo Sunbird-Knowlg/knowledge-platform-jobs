@@ -171,7 +171,7 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
 
   def updateNode(identifier: String, metadata: Map[String, AnyRef]): Unit = {
     val updatedMetadata = if (isrRelativePathEnabled) CSPMetaUtil.updateRelativePath(metadata.asJava)(config) else metadata.asJava
-    logger.info(s"Metadata for updating identifier : ${identifier} is : ${updatedMetadata}")
+    logger.debug(s"Updating identifier: $identifier with keys: ${updatedMetadata.keySet}")
     val tx = graph.buildTransaction().logIdentifier(LOG_IDENTIFIER).start()
     val g = tx.traversal()
     try {
@@ -228,7 +228,7 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
         tx.commit()
         logger.info(s"Successfully Deleted node with identifier: $identifier")
       } else {
-        tx.rollback()
+        // the finally block will rollback the open tx.
         logger.warn(s"Unable to delete the node with identifier: $identifier. Node not found.")
       }
     } catch {
