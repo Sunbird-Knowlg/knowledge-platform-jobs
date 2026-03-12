@@ -3,6 +3,7 @@ package org.sunbird.job.knowlg.publish.helpers
 import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.Metrics
+import org.sunbird.job.knowlg.publish.domain.Event
 import org.sunbird.job.knowlg.task.KnowlgPublishConfig
 import org.sunbird.job.publish.core.ObjectData
 import org.sunbird.job.util.ScalaJsonUtil
@@ -25,7 +26,7 @@ trait DialcodeHelper {
    * Pushes a dialcode context update event to the dialcode-context-updater topic.
    * Pushes a QR image generation event to the qrimage topic.
    */
-  def pushDIALcodeContextUpdaterEvent(obj: ObjectData, config: KnowlgPublishConfig, context: ProcessFunction[_, String]#Context)(implicit metrics: Metrics): Unit = {
+  def pushDIALcodeContextUpdaterEvent(obj: ObjectData, config: KnowlgPublishConfig, context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
     val nodeId: String = obj.identifier.replaceAll(".img", "")
     val draftDialcodes: List[String] = obj.metadata.getOrElse("dialcodes", List.empty[String]).asInstanceOf[List[String]]
 
@@ -50,7 +51,7 @@ trait DialcodeHelper {
    * Pushes dialcode context update events for all added/removed DIAL codes.
    * Pushes QR image generation events.
    */
-  def pushCollectionDIALcodeEvents(obj: ObjectData, dialContextMap: Map[String, AnyRef], config: KnowlgPublishConfig, context: ProcessFunction[_, String]#Context)(implicit metrics: Metrics): Unit = {
+  def pushCollectionDIALcodeEvents(obj: ObjectData, dialContextMap: Map[String, AnyRef], config: KnowlgPublishConfig, context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
     val addContextDialCodes = dialContextMap.getOrElse("addContextDialCodes", mutable.Map.empty)
       .asInstanceOf[mutable.Map[List[String], String]]
 
