@@ -33,7 +33,7 @@ class CollectionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
                                 @transient var definitionCache: DefinitionCache = null,
                                 @transient var definitionConfig: DefinitionConfig = null)
                                (implicit val stringTypeInfo: TypeInformation[String])
-  extends BaseProcessFunction[Event, String](config) with CollectionPublisher with FailedEventHelper {
+  extends BaseProcessFunction[Event, String](config) with CollectionPublisher with DialcodeHelper with FailedEventHelper {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[CollectionPublishFunction])
   val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
@@ -140,6 +140,9 @@ class CollectionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
           }
 
           if (!isCollectionShallowCopy) syncNodes(successObj, updatedChildren, unitNodes)(esUtil, janusGraphUtil, cassandraUtil, readerConfig, definition, config)
+          if(config.enableDIALContextUpdate.equalsIgnoreCase("Yes") && dialContextMap.nonEmpty) {
+            pushCollectionDIALcodeEvents(successObj, dialContextMap, config, context)(metrics)
+          }
           pushPostProcessEvent(successObj, dialContextMap, context)(metrics)
           if(config.isAISearchEnabled) {
             pushContentMetadataEvent(successObj, context)(metrics)
