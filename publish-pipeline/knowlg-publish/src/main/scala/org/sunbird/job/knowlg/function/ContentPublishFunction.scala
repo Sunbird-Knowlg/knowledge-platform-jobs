@@ -9,7 +9,7 @@ import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cache.{DataCache, RedisConnect}
 import org.sunbird.job.knowlg.publish.domain.Event
-import org.sunbird.job.knowlg.publish.helpers.{ContentPublisher, ExtractableMimeTypeHelper}
+import org.sunbird.job.knowlg.publish.helpers.{ContentPublisher, DialcodeHelper, ExtractableMimeTypeHelper}
 import org.sunbird.job.knowlg.task.KnowlgPublishConfig
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.exception.InvalidInputException
