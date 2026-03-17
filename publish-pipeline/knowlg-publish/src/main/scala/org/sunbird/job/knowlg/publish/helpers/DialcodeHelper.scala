@@ -6,7 +6,6 @@ import org.sunbird.job.Metrics
 import org.sunbird.job.knowlg.publish.domain.Event
 import org.sunbird.job.knowlg.task.KnowlgPublishConfig
 import org.sunbird.job.publish.core.ObjectData
-import org.sunbird.job.util.ScalaJsonUtil
 
 import java.util.UUID
 import scala.collection.mutable
