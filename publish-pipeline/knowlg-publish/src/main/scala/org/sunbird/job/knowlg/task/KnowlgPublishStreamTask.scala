@@ -35,16 +35,19 @@ class KnowlgPublishStreamTask(config: KnowlgPublishConfig, kafkaConnector: Flink
     contentPublish.getSideOutput(config.generateVideoStreamingOutTag).addSink(kafkaConnector.kafkaStringSink(config.postPublishTopic))
     contentPublish.getSideOutput(config.mvcProcessorTag).addSink(kafkaConnector.kafkaStringSink(config.mvcTopic))
     contentPublish.getSideOutput(config.contentMetadataEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.contentMetadataTopic))
-    contentPublish.getSideOutput(config.dialcodeContextUpdaterOutTag).addSink(kafkaConnector.kafkaStringSink(config.dialcodeContextUpdaterTopic))
-    contentPublish.getSideOutput(config.qrimageOutTag).addSink(kafkaConnector.kafkaStringSink(config.qrimageTopic))
     contentPublish.getSideOutput(config.failedEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
 
    val collectionPublish = processStreamTask.getSideOutput(config.collectionPublishOutTag).process(new CollectionPublishFunction(config, httpUtil))
     		  .name("collection-publish-process").uid("collection-publish-process").setParallelism(1)
     collectionPublish.getSideOutput(config.generatePostPublishProcessTag).addSink(kafkaConnector.kafkaStringSink(config.postPublishTopic))
-    collectionPublish.getSideOutput(config.dialcodeContextUpdaterOutTag).addSink(kafkaConnector.kafkaStringSink(config.dialcodeContextUpdaterTopic))
-    collectionPublish.getSideOutput(config.qrimageOutTag).addSink(kafkaConnector.kafkaStringSink(config.qrimageTopic))
     collectionPublish.getSideOutput(config.failedEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
+
+    if (config.enableDIALContextUpdate.equalsIgnoreCase("Yes")) {
+      contentPublish.getSideOutput(config.dialcodeContextUpdaterOutTag).addSink(kafkaConnector.kafkaStringSink(config.dialcodeContextUpdaterTopic))
+      contentPublish.getSideOutput(config.qrimageOutTag).addSink(kafkaConnector.kafkaStringSink(config.qrimageTopic))
+      collectionPublish.getSideOutput(config.dialcodeContextUpdaterOutTag).addSink(kafkaConnector.kafkaStringSink(config.dialcodeContextUpdaterTopic))
+      collectionPublish.getSideOutput(config.qrimageOutTag).addSink(kafkaConnector.kafkaStringSink(config.qrimageTopic))
+    }
 
     val questionPublish = processStreamTask.getSideOutput(config.questionPublishOutTag).process(new QuestionPublishFunction(config, httpUtil))
       .name("question-publish-process").uid("question-publish-process").setParallelism(1)
