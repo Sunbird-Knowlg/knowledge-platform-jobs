@@ -14,6 +14,12 @@ class RedisConnect(jobConfig: BaseJobConfig, host: Option[String] = None, port: 
   val redisPort: Int = port.getOrElse(Option(config.getInt("redis.port")).getOrElse(6379))
   private val logger = LoggerFactory.getLogger(classOf[RedisConnect])
 
+  if (jobConfig.redisEnabled) {
+    logger.info("Redis connection initialized at " + redisHost + ":" + redisPort)
+  } else {
+    logger.info("Redis is disabled. Skipping connection initialization.")
+  }
+
   private def getConnection(backoffTimeInMillis: Long): Jedis = {
     val defaultTimeOut = 30000
     if (backoffTimeInMillis > 0) try Thread.sleep(backoffTimeInMillis)

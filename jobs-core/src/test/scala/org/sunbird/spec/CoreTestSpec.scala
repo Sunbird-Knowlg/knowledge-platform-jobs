@@ -110,6 +110,19 @@ class CoreTestSpec extends BaseSpec with Matchers with MockitoSugar {
   }
 
 
+  "DataCache" should "be a no-op when Redis is disabled" in {
+    val noRedisConfig: Config = ConfigFactory.load("base-test-no-redis.conf")
+    val noRedisBaseConfig: BaseJobConfig = new BaseJobConfig(noRedisConfig, "base-job")
+    val redisConnect = new RedisConnect(noRedisBaseConfig)
+    val dataCache = new DataCache(noRedisBaseConfig, redisConnect, 0, List("key"))
+    dataCache.init()
+    dataCache.del("some-key")
+    dataCache.hgetAllWithRetry("some-key") should be(scala.collection.mutable.Map.empty)
+    dataCache.getWithRetry("some-key") should be(scala.collection.mutable.Map.empty)
+    dataCache.isExists("some-key") should be(false)
+    dataCache.close()
+  }
+
   "FilnkUtil" should "get the flink util context" in {
     val config = ConfigFactory.empty()
     config.entrySet()

@@ -18,14 +18,17 @@ class DataCache(val config: BaseJobConfig, val redisConnect: RedisConnect, val d
   val gson = new Gson()
 
   def init() {
+    if (!config.redisEnabled) return
     this.redisConnection = redisConnect.getConnection(dbIndex)
   }
 
   def close() {
+    if (!config.redisEnabled) return
     this.redisConnection.close()
   }
 
   def hgetAllWithRetry(key: String): Map[String, String] = {
+    if (!config.redisEnabled) return Map[String, String]()
     try {
       hgetAll(key)
     } catch {
@@ -50,6 +53,7 @@ class DataCache(val config: BaseJobConfig, val redisConnect: RedisConnect, val d
   }
 
   def getWithRetry(key: String): Map[String, AnyRef] = {
+    if (!config.redisEnabled) return Map[String, AnyRef]()
     try {
       get(key)
     } catch {
@@ -85,10 +89,12 @@ class DataCache(val config: BaseJobConfig, val redisConnect: RedisConnect, val d
   }
 
   def isExists(key: String): Boolean = {
+    if (!config.redisEnabled) return false
     redisConnection.exists(key)
   }
 
   def hmSet(key: String, value: util.Map[String, String]): Unit = {
+    if (!config.redisEnabled) return
     try {
       redisConnection.hmset(key, value)
     } catch {
@@ -110,6 +116,7 @@ class DataCache(val config: BaseJobConfig, val redisConnect: RedisConnect, val d
    * @param value
    */
   def createListWithRetry(key: String, value: List[String]): Unit = {
+    if (!config.redisEnabled) return
     try {
       redisConnection.del(key)
       redisConnection.sadd(key, value.map(_.asInstanceOf[String]): _*)
@@ -132,6 +139,7 @@ class DataCache(val config: BaseJobConfig, val redisConnect: RedisConnect, val d
    * @param value
    */
   def addListWithRetry(key: String, value: List[String]): Unit = {
+    if (!config.redisEnabled) return
     try {
       redisConnection.sadd(key, value.map(_.asInstanceOf[String]): _*)
     } catch {
@@ -147,6 +155,7 @@ class DataCache(val config: BaseJobConfig, val redisConnect: RedisConnect, val d
   }
 
   def setWithRetry(key: String, value: String): Unit = {
+    if (!config.redisEnabled) return
     try {
       set(key, value);
     } catch {
@@ -159,10 +168,12 @@ class DataCache(val config: BaseJobConfig, val redisConnect: RedisConnect, val d
   }
 
   def set(key: String, value: String): Unit = {
+    if (!config.redisEnabled) return
     redisConnection.set(key, value)
   }
 
   def sMembers(key: String): util.Set[String] = {
+    if (!config.redisEnabled) return new util.HashSet[String]()
     redisConnection.smembers(key)
   }
 
@@ -179,6 +190,7 @@ class DataCache(val config: BaseJobConfig, val redisConnect: RedisConnect, val d
   }
 
   def del(key: String): Unit = {
+    if (!config.redisEnabled) return
     this.redisConnection.del(key)
   }
 
