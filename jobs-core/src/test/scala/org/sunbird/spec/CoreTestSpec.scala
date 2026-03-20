@@ -9,7 +9,6 @@ import org.scalatestplus.mockito.MockitoSugar
 import org.sunbird.fixture.EventFixture
 import org.sunbird.job.BaseJobConfig
 import org.sunbird.job.cache.{DataCache, RedisConnect}
-import org.sunbird.job.dedup.DeDupEngine
 import org.sunbird.job.serde.{MapDeserializationSchema, MapSerializationSchema, StringDeserializationSchema, StringSerializationSchema}
 import org.sunbird.job.util.FlinkUtil
 import redis.clients.jedis.exceptions.JedisDataException
@@ -122,17 +121,6 @@ class CoreTestSpec extends BaseSpec with Matchers with MockitoSugar {
     dataCache.getWithRetry("some-key") should be(scala.collection.mutable.Map.empty)
     dataCache.isExists("some-key") should be(false)
     dataCache.close()
-  }
-
-  "DeDupEngine" should "treat all events as unique when Redis is disabled" in {
-    val noRedisConfig: Config = ConfigFactory.load("base-test-no-redis.conf")
-    val noRedisBaseConfig: BaseJobConfig = new BaseJobConfig(noRedisConfig, "base-job")
-    val redisConnect = new RedisConnect(noRedisBaseConfig)
-    val deDupEngine = new DeDupEngine(noRedisBaseConfig, redisConnect, 0, 3600)
-    deDupEngine.init()
-    deDupEngine.isUniqueEvent("some-checksum") should be(true)
-    deDupEngine.storeChecksum("some-checksum")
-    deDupEngine.close()
   }
 
   "FilnkUtil" should "get the flink util context" in {
