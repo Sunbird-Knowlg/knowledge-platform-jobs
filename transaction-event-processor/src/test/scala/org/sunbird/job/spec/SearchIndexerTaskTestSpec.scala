@@ -104,7 +104,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
   "getCompositeIndexerObject" should " return Composite Object for the event" in {
     val event = getEvent(EventFixture.DATA_NODE_CREATE, 509674)
     val compositeObject = new CompositeSearchIndexerFunction(jobConfig)
-      .getCompositeIndexerObject(event)
+      .getCompositeIndexerObject(event)(jobConfig)
     compositeObject.objectType should be("Collection")
     compositeObject.getVersionAsString() should be("1.0")
     compositeObject.identifier should be("do_1132247274257203201191")
