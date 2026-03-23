@@ -166,6 +166,18 @@
                                         <exclude>META-INF/*.RSA</exclude>
                                     </excludes>
                                 </filter>
+                                <filter>
+                                    <artifact>org.janusgraph:janusgraph-cql</artifact>
+                                    <excludes>
+                                        <exclude>org/janusgraph/hadoop/**</exclude>
+                                    </excludes>
+                                </filter>
+                                <filter>
+                                    <artifact>org.janusgraph:janusgraph-core</artifact>
+                                    <excludes>
+                                        <exclude>org/janusgraph/graphdb/management/**</exclude>
+                                    </excludes>
+                                </filter>
                             </filters>
                             <transformers>
                                 <transformer
