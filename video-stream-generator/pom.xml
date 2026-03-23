@@ -32,7 +32,7 @@
         <dependency>
             <groupId>com.fasterxml.jackson.module</groupId>
             <artifactId>jackson-module-scala_${scala.version}</artifactId>
-            <version>2.15.4</version>
+            <version>${jackson.version}</version>
         </dependency>
         <dependency>
             <groupId>org.sunbird</groupId>
@@ -167,6 +167,18 @@
                                         <exclude>META-INF/*.SF</exclude>
                                         <exclude>META-INF/*.DSA</exclude>
                                         <exclude>META-INF/*.RSA</exclude>
+                                    </excludes>
+                                </filter>
+                                <filter>
+                                    <artifact>org.janusgraph:janusgraph-cql</artifact>
+                                    <excludes>
+                                        <exclude>org/janusgraph/hadoop/**</exclude>
+                                    </excludes>
+                                </filter>
+                                <filter>
+                                    <artifact>org.janusgraph:janusgraph-core</artifact>
+                                    <excludes>
+                                        <exclude>org/janusgraph/graphdb/management/**</exclude>
                                     </excludes>
                                 </filter>
                             </filters>
