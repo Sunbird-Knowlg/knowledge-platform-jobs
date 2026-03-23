@@ -89,6 +89,7 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
   val mvcProcessorTag: OutputTag[String] = OutputTag[String]("mvc-processor-request")
   val dialcodeContextUpdaterOutTag: OutputTag[String] = OutputTag[String]("dialcode-context-updater-request")
   val contentMetadataEventOutTag: OutputTag[String] = OutputTag[String]("content-metadata-event-request")
+  val qrimageOutTag: OutputTag[String] = OutputTag[String]("qrimage-generator-request")
 
 
   val definitionBasePath: String = if (config.hasPath("schema.basePath")) config.getString("schema.basePath") else "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local"
@@ -122,4 +123,11 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
   val isrRelativePathEnabled: Boolean = if (config.hasPath("cloudstorage.metadata.replace_absolute_path")) config.getBoolean("cloudstorage.metadata.replace_absolute_path") else false
 
   val isAISearchEnabled: Boolean = if (config.hasPath("ai_search_enabled")) config.getBoolean("ai_search_enabled") else false
+  
+  // DIAL Code Configuration
+  val dialBaseUrl: String = if (config.hasPath("service.dial.basePath")) config.getString("service.dial.basePath") else "https://dev.sunbirded.org/dial/"
+  val dialStorageContainer: String = if (config.hasPath("dialcode.storage.container")) config.getString("dialcode.storage.container") else "dial"
+  val qrimageTopic: String = if (config.hasPath("kafka.qrimage.topic")) config.getString("kafka.qrimage.topic") else "sunbirddev.qrimage.request"
+  val dialcodeContextUpdaterTopic: String = if (config.hasPath("kafka.dialcode.context.topic")) config.getString("kafka.dialcode.context.topic") else "sunbirddev.dialcode.context.job.request"
+
 }

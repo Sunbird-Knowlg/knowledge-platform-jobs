@@ -9,7 +9,7 @@ import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cache.{DataCache, RedisConnect}
 import org.sunbird.job.knowlg.publish.domain.Event
-import org.sunbird.job.knowlg.publish.helpers.{ContentPublisher, ExtractableMimeTypeHelper}
+import org.sunbird.job.knowlg.publish.helpers.{ContentPublisher, DialcodeHelper, ExtractableMimeTypeHelper}
 import org.sunbird.job.knowlg.task.KnowlgPublishConfig
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.exception.InvalidInputException
@@ -31,7 +31,7 @@ class ContentPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
                              @transient var definitionCache: DefinitionCache = null,
                              @transient var definitionConfig: DefinitionConfig = null)
                             (implicit val stringTypeInfo: TypeInformation[String])
-  extends BaseProcessFunction[Event, String](config) with ContentPublisher with FailedEventHelper {
+  extends BaseProcessFunction[Event, String](config) with ContentPublisher with DialcodeHelper with FailedEventHelper {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[ContentPublishFunction])
   val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
@@ -96,8 +96,7 @@ class ContentPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
           }
 
           if(obj.metadata.contains("dialcodes") && config.enableDIALContextUpdate.equalsIgnoreCase("Yes")) {
-            //pushDIALcodeContextUpdaterEvent for linked and delinked DIAL codes
-            pushDIALcodeContextUpdaterEvent(obj, context)(janusGraphUtil, metrics)
+            pushDIALcodeContextUpdaterEvent(obj, config, context)(metrics)
           }
 
           metrics.incCounter(config.contentPublishSuccessEventCount)
@@ -173,34 +172,6 @@ class ContentPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
   }
 
 
-
-  private def pushDIALcodeContextUpdaterEvent(obj: ObjectData, context: ProcessFunction[Event, String]#Context)(implicit janusGraphUtil: JanusGraphUtil, metrics: Metrics): Unit = {
-    val nodeId: String = obj.identifier.replaceAll(".img","")
-    val draftDialcode = obj.metadata.getOrElse("dialcodes", List.empty[String]).asInstanceOf[List[String]]
-    val publishedDialCode = if(obj.pkgVersion>0) janusGraphUtil.getNodeProperties(nodeId).asScala.getOrElse("dialcodes",new java.util.ArrayList[String]()).asInstanceOf[java.util.List[String]].asScala.toList else List.empty[String]
-
-    val addContextDialCodes: Map[List[String], String] = if(draftDialcode!=null && draftDialcode.nonEmpty) Map(draftDialcode -> nodeId) else Map.empty[List[String], String]
-    val removeContextDialCodes: Map[List[String], String] = if(publishedDialCode!=null && publishedDialCode.nonEmpty && publishedDialCode.exists(dialcode => !draftDialcode.contains(dialcode))) Map(publishedDialCode.filter(dialcode => !draftDialcode.contains(dialcode)) -> nodeId) else Map.empty[List[String], String]
-
-    if(addContextDialCodes.nonEmpty || removeContextDialCodes.nonEmpty) {
-      val event = getDIALcodeContextUpdaterEvent(obj, addContextDialCodes, removeContextDialCodes)(janusGraphUtil)
-      context.output(config.dialcodeContextUpdaterOutTag, event)
-      metrics.incCounter(config.dialcodeContextUpdaterEventCount)
-    }
-  }
-
-  def getDIALcodeContextUpdaterEvent(obj: ObjectData, addContextDialCodes: Map[List[String], String], removeContextDialCodes: Map[List[String], String])(implicit janusGraphUtil: JanusGraphUtil): String = {
-    val ets = System.currentTimeMillis
-    val mid = s"""LP.$ets.${UUID.randomUUID}"""
-    val channelId = obj.getString("channel", "")
-    val ver = obj.getString("versionKey", "")
-    val contentType = obj.getString("contentType", "")
-    val status = obj.getString("status", "")
-    //TODO: deprecate using contentType in the event.
-    val event = s"""{"eid":"BE_JOB_REQUEST", "ets": $ets, "mid": "$mid", "actor": {"id": "Post Publish Processor", "type": "System"}, "context":{"pdata":{"ver":"1.0","id":"org.ekstep.platform"}, "channel":"$channelId","env":"${config.jobEnv}"},"object":{"ver":"$ver","id":"${obj.identifier}"},"edata": {"action":"post-publish-process","iteration":1,"identifier":"${obj.identifier}","channel":"$channelId","contentType":"$contentType","status":"$status", "addContextDialCodes": ${addContextDialCodes}, "removeContextDialCodes": ${removeContextDialCodes} }}""".stripMargin
-    logger.info(s"Video Streaming Event for identifier ${obj.identifier}  is  : $event")
-    event
-  }
 
   private def pushContentMetadataEvent(obj: ObjectData, context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
     val event = getContentMetadataEvent(obj)

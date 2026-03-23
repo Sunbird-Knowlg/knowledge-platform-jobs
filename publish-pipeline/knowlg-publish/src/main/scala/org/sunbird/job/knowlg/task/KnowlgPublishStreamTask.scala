@@ -42,6 +42,13 @@ class KnowlgPublishStreamTask(config: KnowlgPublishConfig, kafkaConnector: Flink
     collectionPublish.getSideOutput(config.generatePostPublishProcessTag).addSink(kafkaConnector.kafkaStringSink(config.postPublishTopic))
     collectionPublish.getSideOutput(config.failedEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
 
+    if (config.enableDIALContextUpdate.equalsIgnoreCase("Yes")) {
+      contentPublish.getSideOutput(config.dialcodeContextUpdaterOutTag).addSink(kafkaConnector.kafkaStringSink(config.dialcodeContextUpdaterTopic))
+      contentPublish.getSideOutput(config.qrimageOutTag).addSink(kafkaConnector.kafkaStringSink(config.qrimageTopic))
+      collectionPublish.getSideOutput(config.dialcodeContextUpdaterOutTag).addSink(kafkaConnector.kafkaStringSink(config.dialcodeContextUpdaterTopic))
+      collectionPublish.getSideOutput(config.qrimageOutTag).addSink(kafkaConnector.kafkaStringSink(config.qrimageTopic))
+    }
+
     val questionPublish = processStreamTask.getSideOutput(config.questionPublishOutTag).process(new QuestionPublishFunction(config, httpUtil))
       .name("question-publish-process").uid("question-publish-process").setParallelism(1)
     questionPublish.getSideOutput(config.failedEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))

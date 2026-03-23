@@ -9,7 +9,7 @@ import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cache.{DataCache, RedisConnect}
 import org.sunbird.job.knowlg.publish.domain.Event
-import org.sunbird.job.knowlg.publish.helpers.CollectionPublisher
+import org.sunbird.job.knowlg.publish.helpers.{CollectionPublisher, DialcodeHelper}
 import org.sunbird.job.knowlg.task.KnowlgPublishConfig
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.exception.InvalidInputException
@@ -33,7 +33,7 @@ class CollectionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
                                 @transient var definitionCache: DefinitionCache = null,
                                 @transient var definitionConfig: DefinitionConfig = null)
                                (implicit val stringTypeInfo: TypeInformation[String])
-  extends BaseProcessFunction[Event, String](config) with CollectionPublisher with FailedEventHelper {
+  extends BaseProcessFunction[Event, String](config) with CollectionPublisher with DialcodeHelper with FailedEventHelper {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[CollectionPublishFunction])
   val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
@@ -140,6 +140,9 @@ class CollectionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
           }
 
           if (!isCollectionShallowCopy) syncNodes(successObj, updatedChildren, unitNodes)(esUtil, janusGraphUtil, cassandraUtil, readerConfig, definition, config)
+          if(config.enableDIALContextUpdate.equalsIgnoreCase("Yes") && dialContextMap.nonEmpty) {
+            pushCollectionDIALcodeEvents(successObj, dialContextMap, config, context)(metrics)
+          }
           pushPostProcessEvent(successObj, dialContextMap, context)(metrics)
           if(config.isAISearchEnabled) {
             pushContentMetadataEvent(successObj, context)(metrics)
