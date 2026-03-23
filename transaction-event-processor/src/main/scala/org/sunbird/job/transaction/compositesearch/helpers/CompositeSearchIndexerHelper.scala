@@ -3,9 +3,12 @@ package org.sunbird.job.transaction.compositesearch.helpers
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
+import org.sunbird.job.transaction.domain.Event
 import org.sunbird.job.transaction.models.CompositeIndexer
-import org.sunbird.job.util.{ElasticSearchUtil, ScalaJsonUtil}
+import org.sunbird.job.transaction.task.TransactionEventProcessorConfig
+import org.sunbird.job.util.{CSPMetaUtil, ElasticSearchUtil, ScalaJsonUtil}
 
+import java.text.SimpleDateFormat
 import scala.collection.JavaConverters._
 
 trait CompositeSearchIndexerHelper {
@@ -224,6 +227,73 @@ trait CompositeSearchIndexerHelper {
         ScalaJsonUtil.deserialize[AnyRef](propertyValue.asInstanceOf[String])
       else propertyValue
     propertyNewValue
+  }
+
+  def getCompositeIndexerObject(event: Event)(config: TransactionEventProcessorConfig): CompositeIndexer = {
+    val objectType = event.readOrDefault("objectType", "")
+    val graphId    = event.readOrDefault("graphId", "")
+    val uniqueId   = event.readOrDefault("nodeUniqueId", "")
+    val messageId  = event.readOrDefault("mid", "")
+
+    val updateEvent: java.util.Map[String, Any] =
+      if (config.isrRelativePathEnabled) {
+        val json = CSPMetaUtil.updateAbsolutePath(event.getJson())(config)
+        ScalaJsonUtil.deserialize[java.util.Map[String, Any]](json)
+      } else event.getMap()
+
+    CompositeIndexer(graphId, objectType, uniqueId, messageId, updateEvent, config)
+  }
+
+  def buildCompositeIndexerFromGraph(
+      identifier: String,
+      graphProperties: java.util.Map[String, AnyRef],
+      event: Event
+  )(config: TransactionEventProcessorConfig): CompositeIndexer = {
+    val graphMap   = graphProperties.asScala
+    val objectType = graphMap.get("IL_FUNC_OBJECT_TYPE").map(_.asInstanceOf[String]).getOrElse(event.objectType)
+    val graphId    = event.readOrDefault("graphId", "")
+    val nodeType   = graphMap.get("IL_SYS_NODE_TYPE").map(_.asInstanceOf[String]).getOrElse("DATA_NODE")
+
+    // Wrap each JanusGraph property as {nv: value} — the format getIndexDocument expects.
+    val properties: Map[String, Map[String, AnyRef]] = graphMap.map {
+      case (k, v) => k -> Map[String, AnyRef]("nv" -> v)
+    }.toMap
+
+    val messageMap = new java.util.HashMap[String, Any]()
+    messageMap.put("operationType", "UPDATE")
+    messageMap.put("nodeUniqueId", identifier)
+    messageMap.put("objectType", objectType)
+    messageMap.put("graphId", graphId)
+    messageMap.put("nodeType", nodeType)
+    messageMap.put("nodeGraphId", Integer.valueOf(0))
+    messageMap.put("transactionData", Map("properties" -> properties))
+
+    CompositeIndexer(graphId, objectType, identifier, event.readOrDefault("mid", ""), messageMap, config)
+  }
+
+  def extractLastUpdatedOn(event: Event): Option[Long] = {
+    try {
+      val props = event.transactionData
+        .getOrElse("properties", Map.empty[String, AnyRef])
+        .asInstanceOf[Map[String, AnyRef]]
+      val entry = props
+        .getOrElse("lastUpdatedOn", Map.empty[String, AnyRef])
+        .asInstanceOf[Map[String, AnyRef]]
+      entry.getOrElse("nv", null) match {
+        case s: String if s.nonEmpty => parseTimestamp(s)
+        case _                       => None
+      }
+    } catch {
+      case _: Exception => None
+    }
+  }
+
+  private def parseTimestamp(s: String): Option[Long] = {
+    val formats = List("yyyy-MM-dd'T'HH:mm:ss.SSSZ", "yyyy-MM-dd'T'HH:mm:ss")
+    formats.flatMap { fmt =>
+      try Some(new SimpleDateFormat(fmt).parse(s).getTime)
+      catch { case _: Exception => None }
+    }.headOption
   }
 
 }
