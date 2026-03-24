@@ -123,6 +123,19 @@ class CoreTestSpec extends BaseSpec with Matchers with MockitoSugar {
     dataCache.close()
   }
 
+  "RedisConnect" should "not throw when redis.enabled = false and redis.host/port are absent" in {
+    val minimalConfig: Config = ConfigFactory.parseString(
+      """kafka { broker-servers = "localhost:9092", zookeeper = "localhost:2181", groupId = "test" }
+        |task { restart-strategy.attempts = 3, restart-strategy.delay = 10000, parallelism = 1,
+        |  consumer.parallelism = 1, checkpointing.compressed = false, checkpointing.interval = 60000,
+        |  checkpointing.pause.between.seconds = 30000 }
+        |lms-cassandra { host = "localhost", port = 9042 }
+        |redis.enabled = false
+        |""".stripMargin)
+    val minimalBaseConfig: BaseJobConfig = new BaseJobConfig(minimalConfig, "base-job")
+    noException should be thrownBy new RedisConnect(minimalBaseConfig)
+  }
+
   "FilnkUtil" should "get the flink util context" in {
     val config = ConfigFactory.empty()
     config.entrySet()
