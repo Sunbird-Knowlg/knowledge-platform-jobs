@@ -255,8 +255,18 @@ trait CompositeSearchIndexerHelper {
     val nodeType   = graphMap.get("IL_SYS_NODE_TYPE").map(_.asInstanceOf[String]).getOrElse("DATA_NODE")
 
     // Wrap each JanusGraph property as {nv: value} — the format getIndexDocument expects.
+    // JanusGraph stores object/array fields (e.g. discussionForum, trackable) as raw JSON
+    // strings. Parse them back into objects so the nv value matches what the normal Kafka
+    // event path produces, allowing ElasticSearch to index them correctly.
     val properties: Map[String, Map[String, AnyRef]] = graphMap.map {
-      case (k, v) => k -> Map[String, AnyRef]("nv" -> v)
+      case (k, v) =>
+        val parsed: AnyRef = v match {
+          case s: String if s.startsWith("{") || s.startsWith("[") =>
+            try ScalaJsonUtil.deserialize[AnyRef](s)
+            catch { case _: Exception => s }
+          case other => other
+        }
+        k -> Map[String, AnyRef]("nv" -> parsed)
     }.toMap
 
     val messageMap = new java.util.HashMap[String, Any]()
