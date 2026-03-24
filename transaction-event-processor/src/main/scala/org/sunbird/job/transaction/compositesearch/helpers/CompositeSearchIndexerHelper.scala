@@ -258,10 +258,13 @@ trait CompositeSearchIndexerHelper {
     // JanusGraph stores object/array fields (e.g. discussionForum, trackable) as raw JSON
     // strings. Parse them back into objects so the nv value matches what the normal Kafka
     // event path produces, allowing ElasticSearch to index them correctly.
+    // Fields in stringOnlyFields are kept as strings even if they look like JSON objects,
+    // because their ES mapping is text type (e.g. interceptionPoints, variants).
+    val stringOnlyFields = config.stringOnlyFields
     val properties: Map[String, Map[String, AnyRef]] = graphMap.map {
       case (k, v) =>
         val parsed: AnyRef = v match {
-          case s: String if s.startsWith("{") || s.startsWith("[") =>
+          case s: String if !stringOnlyFields.contains(k) && (s.startsWith("{") || s.startsWith("[")) =>
             try ScalaJsonUtil.deserialize[AnyRef](s)
             catch { case _: Exception => s }
           case other => other

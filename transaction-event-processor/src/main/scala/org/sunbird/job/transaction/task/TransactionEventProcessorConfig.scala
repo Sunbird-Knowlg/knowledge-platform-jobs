@@ -175,6 +175,12 @@ class TransactionEventProcessorConfig(override val config: Config)
   val nestedFields: util.List[String] =
     if (config.hasPath("nested.fields")) config.getStringList("nested.fields")
     else new util.ArrayList[String]
+  val stringOnlyFields: List[String] =
+    if (config.hasPath("string.only.fields"))
+      config.getStringList("string.only.fields").asScala.toList
+    else List("interceptionPoints", "editorState", "variants", "timeLimits",
+      "contentTypesCount", "mimeTypesCount", "lhs_options", "rhs_options",
+      "options", "answer", "reservedDialcodes", "issuer", "signatoryList", "data")
   val definitionBasePath: String =
     if (config.hasPath("schema.basePath")) config.getString("schema.basePath")
     else
