@@ -56,7 +56,7 @@ class LiveNodePublisherConfig(override val config: Config) extends PublishConfig
 
 
   // Redis Configurations
-  val nodeStore: Int = config.getInt("redis.database.contentCache.id")
+  val nodeStore: Int = if (redisEnabled) config.getInt("redis.database.contentCache.id") else 0
 
   // Out Tags
   val contentPublishOutTag: OutputTag[Event] = OutputTag[Event]("live-content-publish")
