@@ -61,7 +61,7 @@ trait CompositeSearchIndexerHelper {
           val propertyNewValue: AnyRef = property._2
             .asInstanceOf[Map[String, AnyRef]]
             .getOrElse("nv", null) match {
-            case propVal: List[AnyRef] => if (propVal.isEmpty) null else propVal
+            case propVal: List[_] => if (propVal.isEmpty) null else propVal
             case _                     =>
               property._2
                 .asInstanceOf[Map[String, AnyRef]]

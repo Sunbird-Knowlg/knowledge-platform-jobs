@@ -45,9 +45,7 @@ class CompositeSearchIndexerFunction(
     if (elasticUtil != null) {
       elasticUtil.close()
     }
-    if (janusGraphUtil != null) {
-      janusGraphUtil.close()
-    }
+
     if (lastUpdatedCache != null) {
       lastUpdatedCache.clear()
     }
