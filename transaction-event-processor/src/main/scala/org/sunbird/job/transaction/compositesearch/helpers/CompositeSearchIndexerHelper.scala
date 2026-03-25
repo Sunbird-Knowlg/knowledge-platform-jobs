@@ -278,7 +278,7 @@ trait CompositeSearchIndexerHelper {
     messageMap.put("objectType", objectType)
     messageMap.put("graphId", graphId)
     messageMap.put("nodeType", nodeType)
-    messageMap.put("nodeGraphId", Integer.valueOf(0))
+    messageMap.put("nodeGraphId", Integer.valueOf(event.readOrDefault("nodeGraphId", 0)))
     messageMap.put("transactionData", Map("properties" -> properties))
 
     CompositeIndexer(graphId, objectType, identifier, event.readOrDefault("mid", ""), messageMap, config)
@@ -292,10 +292,15 @@ trait CompositeSearchIndexerHelper {
       val entry = props
         .getOrElse("lastUpdatedOn", Map.empty[String, AnyRef])
         .asInstanceOf[Map[String, AnyRef]]
-      entry.getOrElse("nv", null) match {
+      def fromField(key: String): Option[Long] = entry.getOrElse(key, null) match {
         case s: String if s.nonEmpty => parseTimestamp(s)
         case _                       => None
       }
+      // nv is the post-write timestamp; fall back to ov (e.g. DELETE events set nv=null),
+      // then to event.ets as a last resort so stale detection always has a timestamp to work with.
+      fromField("nv")
+        .orElse(fromField("ov"))
+        .orElse(if (event.ets > 0) Some(event.ets) else None)
     } catch {
       case _: Exception => None
     }
