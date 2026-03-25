@@ -301,6 +301,14 @@ trait CompositeSearchIndexerHelper {
     }
   }
 
+  def extractLastUpdatedOnFromGraph(graphProperties: java.util.Map[String, AnyRef]): Option[Long] = {
+    Option(graphProperties.get("lastUpdatedOn")).flatMap {
+      case s: String if s.nonEmpty => parseTimestamp(s)
+      case l: java.lang.Long       => Some(l.longValue)
+      case _                       => None
+    }
+  }
+
   private def parseTimestamp(s: String): Option[Long] = {
     val formats = List("yyyy-MM-dd'T'HH:mm:ss.SSSZ", "yyyy-MM-dd'T'HH:mm:ss")
     formats.flatMap { fmt =>

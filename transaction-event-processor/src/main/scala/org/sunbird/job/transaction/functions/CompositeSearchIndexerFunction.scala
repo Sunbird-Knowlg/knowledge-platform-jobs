@@ -62,9 +62,12 @@ class CompositeSearchIndexerFunction(
       val compositeObject = if (stale) {
         logger.debug(s"Stale/out-of-order event for identifier: $identifier. Fetching latest data from JanusGraph.")
         val graphProperties = janusGraphUtil.getNodeProperties(identifier)
-        if (graphProperties != null)
+        if (graphProperties != null) {
+          val fetchedTs = extractLastUpdatedOnFromGraph(graphProperties)
+          val currentCached = Option(lastUpdatedCache.get(identifier)).map(_.longValue).getOrElse(0L)
+          fetchedTs.foreach { ts => if (ts > currentCached) lastUpdatedCache.put(identifier, ts) }
           buildCompositeIndexerFromGraph(identifier, graphProperties, event)(config)
-        else {
+        } else {
           logger.warn(s"Node not found in JanusGraph for identifier: $identifier. Processing original event.")
           getCompositeIndexerObject(event)(config)
         }
@@ -74,8 +77,7 @@ class CompositeSearchIndexerFunction(
 
       processESMessage(compositeObject)(elasticUtil, defCache)
 
-      // Update cache only on non-stale events; stale events fetched from JanusGraph
-      // so the cache already holds a timestamp >= the event's timestamp.
+      // Update cache for non-stale events; the stale path updates the cache above.
       if (!stale) {
         eventLastUpdatedOn.foreach(ts => lastUpdatedCache.put(identifier, ts))
       }
