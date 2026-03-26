@@ -40,9 +40,13 @@ class TransactionEventProcessorConfig(override val config: Config)
   val compositeSearchIndexerParallelism: Int =
     config.getInt("task.compositeSearch.parallelism")
   val dialCodeExternalIndexerParallelism: Int =
-    config.getInt("task.dialcodeIndexer.parallelism")
+    if (config.hasPath("task.dialcodeIndexer.parallelism"))
+      config.getInt("task.dialcodeIndexer.parallelism")
+    else 0
   val dialCodeMetricIndexerParallelism: Int =
-    config.getInt("task.dialcodemetricsIndexer.parallelism")
+    if (config.hasPath("task.dialcodemetricsIndexer.parallelism"))
+      config.getInt("task.dialcodemetricsIndexer.parallelism")
+    else 0
 
   // Flink Jobs Configuration
   val kafkaProducerParallelism: Int = config.getInt("task.producer.parallelism")
