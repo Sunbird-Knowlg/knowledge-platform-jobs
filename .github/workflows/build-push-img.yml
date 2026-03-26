@@ -4,17 +4,12 @@ name: Build and Push Flink Image
 permissions:
   contents: read
   packages: write
-  
+
 on:
   push:
     tags:
       - '*'
-      
-env:
-  CLOUD_STORE_GROUP_ID: ${{ vars.CLOUD_STORE_GROUP_ID || 'org.sunbird' }}
-  CLOUD_STORE_ARTIFACT_ID: ${{ vars.CLOUD_STORE_ARTIFACT_ID || 'cloud-store-sdk_2.12' }}
-  CLOUD_STORE_VERSION: ${{ vars.CLOUD_STORE_VERSION || '1.4.6' }}
-  
+
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
@@ -44,13 +39,13 @@ jobs:
           maven-version: 3.8.7
 
       - name: Login Docker Registry
-        run: |        
+        run: |
           case "${{ vars.REGISTRY_PROVIDER }}" in
           "gcp")
             echo "${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}" | base64 --decode > $HOME/gcloud-key.json
             gcloud auth activate-service-account --key-file=$HOME/gcloud-key.json
             gcloud auth configure-docker ${{ secrets.REGISTRY_NAME }}
-            REGISTRY_URL=$(echo "${{ secrets.REGISTRY_URL }}" | tr '[:upper:]' '[:lower:]') 
+            REGISTRY_URL=$(echo "${{ secrets.REGISTRY_URL }}" | tr '[:upper:]' '[:lower:]')
             ;;
           "azure" | "dockerhub")
             echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login "${{ secrets.REGISTRY_NAME }}" \
@@ -67,10 +62,8 @@ jobs:
 
       - name: Build flink
         run: |
-          mvn clean install -DskipTests \
-          -DCLOUD_STORE_GROUP_ID=${CLOUD_STORE_GROUP_ID}  \
-          -DCLOUD_STORE_ARTIFACT_ID=${CLOUD_STORE_ARTIFACT_ID} \
-          -DCLOUD_STORE_VERSION=${CLOUD_STORE_VERSION}
+          CSP="${{ vars.CSP || 'azure' }}"
+          mvn clean install -DskipTests -P${CSP}
 
       - name: Package flink
         working-directory: jobs-distribution
@@ -80,11 +73,12 @@ jobs:
       - name: Build Docker Image
         working-directory: jobs-distribution
         run: |
+          CSP="${{ vars.CSP || 'azure' }}"
           IMAGE_TAG=$(echo "${{ github.ref_name }}_$(echo $GITHUB_SHA | cut -c1-7)" | tr '[:upper:]' '[:lower:]')
-          docker build -t ${REGISTRY_URL}:${IMAGE_TAG} .
+          docker build --build-arg CSP=${CSP} -t ${REGISTRY_URL}:${IMAGE_TAG} .
 
           echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_ENV
-     
+
       - name: Push Docker Image
         run: |
           docker push ${REGISTRY_URL}:${IMAGE_TAG}

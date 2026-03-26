@@ -307,11 +307,5 @@ To ensure the GitHub Actions workflows in this repository function correctly, th
     - `REGISTRY_PROVIDER`: Set to any value other than above (default is GHCR)
     - No additional secrets are required. The workflow uses the built-in `GITHUB_TOKEN` provided by GitHub Actions for authentication.
 
-2. **Environment Variables**:
-   - The following environment variables have be set in the repository or workflow if not set the default values will taken:
-     - `CLOUD_STORE_GROUP_ID`: The group ID for cloud storage dependencies.
-     - `CLOUD_STORE_ARTIFACT_ID`: The artifact ID for cloud storage dependencies.
-     - `CLOUD_STORE_VERSION`: The version of the cloud storage dependencies.
-
 Ensure these secrets and variables are added to the repository settings under **Settings > Secrets and variables > Actions**.
 By ensuring these prerequisites are met, the workflows in this repository will execute successfully.
