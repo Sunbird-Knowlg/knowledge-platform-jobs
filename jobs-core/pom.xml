@@ -121,64 +121,21 @@
             <artifactId>junidecode</artifactId>
             <version>0.1.1</version>
         </dependency>
+        <!-- Cloud Storage SDK v2: API module (compile-time interface) -->
         <dependency>
-            <groupId>${CLOUD_STORE_GROUP_ID}</groupId>
-            <artifactId>${CLOUD_STORE_ARTIFACT_ID}</artifactId>
-            <version>${CLOUD_STORE_VERSION}</version>
+            <groupId>org.sunbird</groupId>
+            <artifactId>cloud-storage-sdk-api</artifactId>
+            <version>${cloud.storage.sdk.version}</version>
             <exclusions>
+                <!-- SLF4J 2.x excluded; project uses SLF4J 1.7.x pinned in root dependencyManagement -->
                 <exclusion>
-                    <artifactId>log4j</artifactId>
-                    <groupId>log4j</groupId>
-                </exclusion>
-                <exclusion>
-                    <artifactId>slf4j-log4j12</artifactId>
                     <groupId>org.slf4j</groupId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.jamesmurty.utils</groupId>
-                    <artifactId>java-xmlbuilder</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.apache.hadoop</groupId>
-                    <artifactId>hadoop-common</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.apache.zookeeper</groupId>
-                    <artifactId>zookeeper</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>at.yawk.lz4</groupId>
-                    <artifactId>lz4-java</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>org.lz4</groupId>
-                    <artifactId>lz4-java</artifactId>
+                    <artifactId>slf4j-api</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
-        <!-- Override jclouds to 2.5.0+ to fix JAVA_LETTER_OR_DIGIT compatibility issue with Guava 32.x and Java 11+ -->
-        <dependency>
-            <groupId>org.apache.jclouds</groupId>
-            <artifactId>jclouds-core</artifactId>
-            <version>2.5.0</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>com.google.code.gson</groupId>
-                    <artifactId>gson</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.jclouds.provider</groupId>
-            <artifactId>azureblob</artifactId>
-            <version>2.5.0</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>com.google.code.gson</groupId>
-                    <artifactId>gson</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
+        <!-- CSP runtime jar is supplied by a Maven profile (-Pazure / -Paws / -Pgcp / -Poci).
+             Default profile is 'azure'. See <profiles> section at the bottom of this file. -->
         <dependency>
             <groupId>org.apache.hadoop</groupId>
             <artifactId>hadoop-common</artifactId>
@@ -411,5 +368,93 @@
 
         </plugins>
     </build>
+
+    <profiles>
+        <!-- CSP profiles: activated at build time via -P<id>.
+             Each profile bundles exactly one CSP runtime jar so the resulting fat JAR
+             contains only the SDK for the chosen cloud provider.
+             Build examples:
+               mvn clean install -DskipTests -Pazure   (default — Azure Blob Storage)
+               mvn clean install -DskipTests -Paws     (AWS S3)
+               mvn clean install -DskipTests -Pgcp     (Google Cloud Storage)
+               mvn clean install -DskipTests -Poci     (Oracle Cloud Infrastructure)
+             Note: these profiles are independent of the module-selection profiles in the
+             root pom.xml (knowlg-jobs / knowlg-core). Specify both when needed, e.g.:
+               mvn clean install -DskipTests -Paws -pl asset-enrichment -am -->
+        <profile>
+            <id>azure</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <dependencies>
+                <dependency>
+                    <groupId>org.sunbird</groupId>
+                    <artifactId>cloud-storage-sdk-azure</artifactId>
+                    <version>${cloud.storage.sdk.version}</version>
+                    <scope>runtime</scope>
+                    <exclusions>
+                        <exclusion>
+                            <groupId>org.slf4j</groupId>
+                            <artifactId>slf4j-api</artifactId>
+                        </exclusion>
+                    </exclusions>
+                </dependency>
+            </dependencies>
+        </profile>
+
+        <profile>
+            <id>aws</id>
+            <dependencies>
+                <dependency>
+                    <groupId>org.sunbird</groupId>
+                    <artifactId>cloud-storage-sdk-aws</artifactId>
+                    <version>${cloud.storage.sdk.version}</version>
+                    <scope>runtime</scope>
+                    <exclusions>
+                        <exclusion>
+                            <groupId>org.slf4j</groupId>
+                            <artifactId>slf4j-api</artifactId>
+                        </exclusion>
+                    </exclusions>
+                </dependency>
+            </dependencies>
+        </profile>
+
+        <profile>
+            <id>gcp</id>
+            <dependencies>
+                <dependency>
+                    <groupId>org.sunbird</groupId>
+                    <artifactId>cloud-storage-sdk-gcp</artifactId>
+                    <version>${cloud.storage.sdk.version}</version>
+                    <scope>runtime</scope>
+                    <exclusions>
+                        <exclusion>
+                            <groupId>org.slf4j</groupId>
+                            <artifactId>slf4j-api</artifactId>
+                        </exclusion>
+                    </exclusions>
+                </dependency>
+            </dependencies>
+        </profile>
+
+        <profile>
+            <id>oci</id>
+            <dependencies>
+                <dependency>
+                    <groupId>org.sunbird</groupId>
+                    <artifactId>cloud-storage-sdk-oci</artifactId>
+                    <version>${cloud.storage.sdk.version}</version>
+                    <scope>runtime</scope>
+                    <exclusions>
+                        <exclusion>
+                            <groupId>org.slf4j</groupId>
+                            <artifactId>slf4j-api</artifactId>
+                        </exclusion>
+                    </exclusions>
+                </dependency>
+            </dependencies>
+        </profile>
+    </profiles>
 
 </project>
