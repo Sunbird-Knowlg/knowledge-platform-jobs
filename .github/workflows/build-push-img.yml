@@ -63,7 +63,7 @@ jobs:
       - name: Build flink
         run: |
           CSP="${{ vars.CSP || 'azure' }}"
-          mvn clean install -DskipTests -P${CSP}
+          mvn clean install -DskipTests -Pknowlg-jobs,${CSP}
 
       - name: Package flink
         working-directory: jobs-distribution

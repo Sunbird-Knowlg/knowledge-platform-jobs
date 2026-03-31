@@ -134,7 +134,7 @@
                 </exclusion>
             </exclusions>
         </dependency>
-        <!-- CSP runtime jar is supplied by a Maven profile (-Pazure / -Paws / -Pgcp / -Poci).
+        <!-- CSP runtime jar is supplied by a Maven profile (-Pazure / -Paws / -Pgcloud / -Poci).
              Default profile is 'azure'. See <profiles> section at the bottom of this file. -->
         <dependency>
             <groupId>org.apache.hadoop</groupId>
@@ -376,7 +376,7 @@
              Build examples:
                mvn clean install -DskipTests -Pazure   (default — Azure Blob Storage)
                mvn clean install -DskipTests -Paws     (AWS S3)
-               mvn clean install -DskipTests -Pgcp     (Google Cloud Storage)
+               mvn clean install -DskipTests -Pgcloud   (Google Cloud Storage)
                mvn clean install -DskipTests -Poci     (Oracle Cloud Infrastructure)
              Note: these profiles are independent of the module-selection profiles in the
              root pom.xml (knowlg-jobs / knowlg-core). Specify both when needed, e.g.:
@@ -421,7 +421,7 @@
         </profile>
 
         <profile>
-            <id>gcp</id>
+            <id>gcloud</id>
             <dependencies>
                 <dependency>
                     <groupId>org.sunbird</groupId>
