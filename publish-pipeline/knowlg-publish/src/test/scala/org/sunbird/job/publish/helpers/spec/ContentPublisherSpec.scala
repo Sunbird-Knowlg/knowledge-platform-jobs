@@ -1,6 +1,5 @@
 package org.sunbird.job.publish.helpers.spec
 
-import akka.dispatch.ExecutionContexts
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.commons.lang3.StringUtils
 import org.cassandraunit.CQLDataLoader
@@ -28,7 +27,7 @@ class ContentPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers
   val jobConfig: KnowlgPublishConfig = new KnowlgPublishConfig(config)
   implicit val readerConfig: ExtDataConfig = ExtDataConfig(jobConfig.contentKeyspaceName, jobConfig.contentTableName)
   implicit val cloudStorageUtil: CloudStorageUtil = new CloudStorageUtil(jobConfig)
-  implicit val ec: ExecutionContextExecutor = ExecutionContexts.global
+  implicit val ec: ExecutionContextExecutor = scala.concurrent.ExecutionContext.global
   implicit val defCache: DefinitionCache = new DefinitionCache()
   implicit val defConfig: DefinitionConfig = DefinitionConfig(jobConfig.schemaSupportVersionMap, jobConfig.definitionBasePath)
   implicit val publishConfig: PublishConfig = jobConfig.asInstanceOf[PublishConfig]

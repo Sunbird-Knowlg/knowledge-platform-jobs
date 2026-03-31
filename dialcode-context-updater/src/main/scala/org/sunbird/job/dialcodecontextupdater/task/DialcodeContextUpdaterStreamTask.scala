@@ -4,7 +4,8 @@ import com.typesafe.config.ConfigFactory
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
-import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
+import org.apache.flink.api.common.eventtime.WatermarkStrategy
+import org.apache.flink.streaming.api.scala.{DataStream, StreamExecutionEnvironment}
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.dialcodecontextupdater.domain.Event
 import org.sunbird.job.dialcodecontextupdater.functions.DialcodeContextUpdaterFunction
@@ -16,23 +17,37 @@ import java.util
 
 class DialcodeContextUpdaterStreamTask(config: DialcodeContextUpdaterConfig, kafkaConnector: FlinkKafkaConnector, httpUtil: HttpUtil) {
 
+  private implicit val eventTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
+  private implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
+  private implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
+
   def process(): Unit = {
     implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
-    implicit val eventTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
-    implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
-    implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
 
-    val processStreamTask = env.addSource(kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)).name(config.eventConsumer)
+    val inputStream = env.fromSource(kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic),
+        WatermarkStrategy.noWatermarks(), config.eventConsumer)
       .uid(config.eventConsumer).setParallelism(config.kafkaConsumerParallelism)
       .rebalance
+
+    buildGraph(env, inputStream)
+    env.execute(config.jobName)
+  }
+
+  /** Test-facing entry point: supply a pre-built input stream. */
+  def processForTest(env: StreamExecutionEnvironment, inputStream: DataStream[Event]): Unit = {
+    buildGraph(env, inputStream)
+    env.execute(config.jobName)
+  }
+
+  private def buildGraph(env: StreamExecutionEnvironment, inputStream: DataStream[Event]): Unit = {
+    val processStreamTask = inputStream
       .process(new DialcodeContextUpdaterFunction(config, httpUtil))
       .name(config.dialcodeContextUpdaterFunction)
       .uid(config.dialcodeContextUpdaterFunction)
       .setParallelism(config.parallelism)
 
-    processStreamTask.getSideOutput(config.failedEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaFailedTopic))
-
-    env.execute(config.jobName)
+    processStreamTask.getSideOutput(config.failedEventOutTag)
+      .sinkTo(kafkaConnector.kafkaStringSink(config.kafkaFailedTopic))
   }
 }
 
