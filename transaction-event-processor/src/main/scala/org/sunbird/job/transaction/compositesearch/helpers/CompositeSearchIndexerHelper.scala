@@ -255,21 +255,28 @@ trait CompositeSearchIndexerHelper {
     val nodeType   = graphMap.get("IL_SYS_NODE_TYPE").map(_.asInstanceOf[String]).getOrElse("DATA_NODE")
 
     // Wrap each JanusGraph property as {nv: value} — the format getIndexDocument expects.
-    // JanusGraph stores object/array fields (e.g. discussionForum, trackable) as raw JSON
-    // strings. Parse them back into objects so the nv value matches what the normal Kafka
-    // event path produces, allowing ElasticSearch to index them correctly.
-    // Fields in stringOnlyFields are kept as strings even if they look like JSON objects,
-    // because their ES mapping is text type (e.g. interceptionPoints, variants).
+    //
+    // JanusGraphUtil.getNodeProperties pre-parses "[...]" strings to java.util.List, so some
+    // values arrive here already deserialized. The rules below mirror what the normal CDC path
+    // produces so that addMetadataToDocument and ElasticSearch receive the right types:
+    //
+    //  • stringOnlyFields (e.g. options, answer): ES mapping is text — must be a JSON string.
+    //    Re-serialize any List/Map that getNodeProperties pre-parsed back to a string.
+    //  • other fields whose stored value is a JSON object string (starts with "{"):
+    //    parse to Map so nested ES fields receive an object, not a raw string.
+    //  • everything else: pass through as-is.
     val stringOnlyFields = config.stringOnlyFields
     val properties: Map[String, Map[String, AnyRef]] = graphMap.map {
       case (k, v) =>
-        val parsed: AnyRef = v match {
+        val nv: AnyRef = v match {
+          case _: java.util.List[_] if stringOnlyFields.contains(k)  => ScalaJsonUtil.serialize(v)
+          case _: java.util.Map[_, _] if stringOnlyFields.contains(k) => ScalaJsonUtil.serialize(v)
           case s: String if !stringOnlyFields.contains(k) && (s.startsWith("{") || s.startsWith("[")) =>
             try ScalaJsonUtil.deserialize[AnyRef](s)
             catch { case _: Exception => s }
           case other => other
         }
-        k -> Map[String, AnyRef]("nv" -> parsed)
+        k -> Map[String, AnyRef]("nv" -> nv)
     }.toMap
 
     val messageMap = new java.util.HashMap[String, Any]()
