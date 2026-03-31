@@ -88,14 +88,7 @@ object CloudStorageUtil {
     region: String
   ): StorageConfig = {
 
-    val storageType = cloudStorageType.toLowerCase match {
-      case "aws"    => StorageType.AWS
-      case "azure"  => StorageType.AZURE
-      case "gcloud" => StorageType.GCLOUD
-      case "oci"    => StorageType.OCI
-      case "cephs3" => StorageType.CEPHS3
-      case other    => throw new IllegalArgumentException(s"Unsupported cloud storage type: $other")
-    }
+    val storageType = StorageType.valueOf(cloudStorageType.toUpperCase)
 
     // valueOf throws IllegalArgumentException for unrecognised names — intentionally propagated.
     val authType = StorageConfig.AuthType.valueOf(authTypeStr)
