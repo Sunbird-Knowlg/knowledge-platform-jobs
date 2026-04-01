@@ -1,0 +1,7 @@
+# Exclude everything in target/ except the distribution tarball
+target/*
+!target/jobs-distribution-1.0.tar.gz
+
+# Not needed by the Dockerfile
+src/
+pom.xml
