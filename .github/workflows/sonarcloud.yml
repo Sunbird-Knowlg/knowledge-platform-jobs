@@ -11,13 +11,18 @@ on:
     - cron: '0 0 * * 1'
   workflow_dispatch: # Allow manual trigger
 
+env:
+  CLOUD_STORE_GROUP_ID: ${{ vars.CLOUD_STORE_GROUP_ID || 'org.sunbird' }}
+  CLOUD_STORE_ARTIFACT_ID: ${{ vars.CLOUD_STORE_ARTIFACT_ID || 'cloud-store-sdk_2.12' }}
+  CLOUD_STORE_VERSION: ${{ vars.CLOUD_STORE_VERSION || '1.4.6' }}
+
 jobs:
   sonarcloud-scan:
     name: SonarCloud Code Analysis
     runs-on: ubuntu-latest
     permissions:
       contents: read
-
+    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -49,6 +54,9 @@ jobs:
           mvn clean \
             org.jacoco:jacoco-maven-plugin:0.8.8:prepare-agent \
             verify \
+            -DCLOUD_STORE_GROUP_ID=${CLOUD_STORE_GROUP_ID} \
+            -DCLOUD_STORE_ARTIFACT_ID=${CLOUD_STORE_ARTIFACT_ID} \
+            -DCLOUD_STORE_VERSION=${CLOUD_STORE_VERSION} \
             org.jacoco:jacoco-maven-plugin:0.8.8:report
 
       # Set up Java 17 for SonarCloud analysis (required by SonarQube scanner)
@@ -66,6 +74,9 @@ jobs:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: |
           mvn sonar:sonar \
+            -DCLOUD_STORE_GROUP_ID=${CLOUD_STORE_GROUP_ID} \
+            -DCLOUD_STORE_ARTIFACT_ID=${CLOUD_STORE_ARTIFACT_ID} \
+            -DCLOUD_STORE_VERSION=${CLOUD_STORE_VERSION} \
             -Dsonar.projectKey=Sunbird-Knowlg_knowledge-platform-jobs \
             -Dsonar.organization=sunbird-knowlg-1 \
             -Dsonar.host.url=https://sonarcloud.io \

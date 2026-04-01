@@ -1,14 +1,5 @@
 FROM sunbird/flink:1.13.5-scala_2.12-java11
 
-# CSP selection: pass --build-arg CSP=<azure|aws|gcloud|oci> at image build time (default: azure).
-# The Maven build must have been run with the matching profile (-Pazure / -Paws / -Pgcloud / -Poci)
-# so that exactly one CSP runtime jar is present in the distribution; Java ServiceLoader picks it up automatically.
-# cloud_storage_auth_type defaults to OIDC (Kubernetes Workload Identity).
-# Override via K8s ConfigMap or `docker run -e` for local ACCESS_KEY-based development.
-ARG CSP=azure
-ENV cloud_storage_type=${CSP}
-ENV cloud_storage_auth_type=OIDC
-
 USER root
 RUN apt-get update
 RUN apt-get update && apt-get dist-upgrade -y && \
