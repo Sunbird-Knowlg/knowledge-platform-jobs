@@ -20,7 +20,7 @@ class CloudStorageUtil(config: BaseJobConfig) extends Serializable {
         cloudStorageType,
         config.getString("cloud_storage_key", ""),
         config.getString("cloud_storage_secret", ""),
-        config.getString("cloud_storage_auth_type", "ACCESS_KEY").toUpperCase,
+        config.getString("cloud_storage_auth_type", "OIDC").toUpperCase,
         config.getString("cloud_storage_endpoint", ""),
         config.getString("cloud_storage_region", "")
       )
