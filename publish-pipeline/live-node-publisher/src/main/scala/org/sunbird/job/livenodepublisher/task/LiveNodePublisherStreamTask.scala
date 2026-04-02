@@ -4,7 +4,8 @@ import com.typesafe.config.ConfigFactory
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
-import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
+import org.apache.flink.api.common.eventtime.WatermarkStrategy
+import org.apache.flink.streaming.api.scala.{DataStream, StreamExecutionEnvironment}
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.livenodepublisher.function.{LiveCollectionPublishFunction, LiveContentPublishFunction, LivePublishEventRouter}
 import org.sunbird.job.livenodepublisher.publish.domain.Event
@@ -15,17 +16,30 @@ import java.util
 
 class LiveNodePublisherStreamTask(config: LiveNodePublisherConfig, kafkaConnector: FlinkKafkaConnector, httpUtil: HttpUtil) {
 
+  private implicit val eventTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
+  private implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
+  private implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
+
   def process(): Unit = {
     implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
-//    implicit val env: StreamExecutionEnvironment = StreamExecutionEnvironment.createLocalEnvironment()
-    implicit val eventTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
-    implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
-    implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
 
-    val source = kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)
-    val processStreamTask = env.addSource(source).name(config.inputConsumerName)
+    val inputStream = env.fromSource(kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic),
+        WatermarkStrategy.noWatermarks(), config.inputConsumerName)
       .uid(config.inputConsumerName).setParallelism(config.kafkaConsumerParallelism)
       .rebalance
+
+    buildGraph(env, inputStream)
+    env.execute(config.jobName)
+  }
+
+  /** Test-facing entry point: supply a pre-built input stream. */
+  def processForTest(env: StreamExecutionEnvironment, inputStream: DataStream[Event]): Unit = {
+    buildGraph(env, inputStream)
+    env.execute(config.jobName)
+  }
+
+  private def buildGraph(env: StreamExecutionEnvironment, inputStream: DataStream[Event]): Unit = {
+    val processStreamTask = inputStream
       .process(new LivePublishEventRouter(config))
       .name("publish-event-router").uid("publish-event-router")
       .setParallelism(config.eventRouterParallelism)
@@ -33,15 +47,13 @@ class LiveNodePublisherStreamTask(config: LiveNodePublisherConfig, kafkaConnecto
     val contentPublish = processStreamTask.getSideOutput(config.contentPublishOutTag).process(new LiveContentPublishFunction(config, httpUtil))
       .name("live-content-publish-process").uid("live-content-publish-process").setParallelism(config.kafkaConsumerParallelism)
 
-    contentPublish.getSideOutput(config.generateVideoStreamingOutTag).addSink(kafkaConnector.kafkaStringSink(config.liveVideoStreamTopic))
-    contentPublish.getSideOutput(config.failedEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
+    contentPublish.getSideOutput(config.generateVideoStreamingOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.liveVideoStreamTopic))
+    contentPublish.getSideOutput(config.failedEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
 
-   val collectionPublish = processStreamTask.getSideOutput(config.collectionPublishOutTag).process(new LiveCollectionPublishFunction(config, httpUtil))
-    		  .name("live-collection-publish-process").uid("live-collection-publish-process").setParallelism(config.kafkaConsumerParallelism)
-    collectionPublish.getSideOutput(config.skippedEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaSkippedTopic))
-    collectionPublish.getSideOutput(config.failedEventOutTag).addSink(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
-
-    env.execute(config.jobName)
+    val collectionPublish = processStreamTask.getSideOutput(config.collectionPublishOutTag).process(new LiveCollectionPublishFunction(config, httpUtil))
+      .name("live-collection-publish-process").uid("live-collection-publish-process").setParallelism(config.kafkaConsumerParallelism)
+    collectionPublish.getSideOutput(config.skippedEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.kafkaSkippedTopic))
+    collectionPublish.getSideOutput(config.failedEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
   }
 }
 

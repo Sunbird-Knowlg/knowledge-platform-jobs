@@ -11,12 +11,11 @@ import org.cassandraunit.CQLDataLoader
 import org.cassandraunit.dataset.cql.FileCQLDataSet
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
 import org.mockito.Mockito
-import org.mockito.Mockito.when
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.migration.domain.Event
 import org.sunbird.job.migration.fixture.EventFixture
 import org.sunbird.job.task.{CassandraDataMigrationConfig, CassandraDataMigrationStreamTask}
-import org.sunbird.job.util.{CassandraUtil, JSONUtil}
+import org.sunbird.job.util.{CassandraUtil, FlinkUtil, JSONUtil}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 
 import java.util
@@ -24,6 +23,7 @@ import java.util
 class CassandraDataMigrationTaskTestSpec extends BaseTestSpec {
 
   implicit val mapTypeInfo: TypeInformation[java.util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[java.util.Map[String, AnyRef]])
+  implicit val eventTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
 
   val flinkCluster = new MiniClusterWithClientResource(new MiniClusterResourceConfiguration.Builder()
     .setConfiguration(testConfiguration())
@@ -54,8 +54,9 @@ class CassandraDataMigrationTaskTestSpec extends BaseTestSpec {
   }
 
   "CassandraDataMigrationTask" should "generate event" in {
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new CassandraDataMigrationMapSource)
-    new CassandraDataMigrationStreamTask(jobConfig, mockKafkaUtil).process()
+    val env = FlinkUtil.getExecutionContext(jobConfig)
+    val inputStream = env.addSource(new CassandraDataMigrationMapSource)
+    new CassandraDataMigrationStreamTask(jobConfig, mockKafkaUtil).processForTest(env, inputStream)
   }
 }
 
@@ -64,7 +65,7 @@ class CassandraDataMigrationMapSource extends SourceFunction[Event] {
   override def run(ctx: SourceContext[Event]): Unit = {
     // Valid event
     ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_1), 0, 10))
-    
+
     // Invalid event
     ctx.collect(new Event(JSONUtil.deserialize[util.Map[String, Any]](EventFixture.EVENT_2), 0, 10))
   }

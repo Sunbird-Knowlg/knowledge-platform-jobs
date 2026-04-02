@@ -10,11 +10,11 @@ import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
 import org.apache.flink.streaming.api.functions.sink.SinkFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext
+import org.apache.flink.streaming.api.scala.DataStream
 import org.apache.flink.test.util.MiniClusterWithClientResource
 import org.mockito.ArgumentMatchers.any
 import org.sunbird.job.util.{ElasticSearchUtil, JSONUtil}
 import org.mockito.Mockito
-import org.mockito.Mockito.when
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.exception.InvalidEventException
 import org.sunbird.job.transaction.domain.Event
@@ -23,11 +23,14 @@ import org.sunbird.job.transaction.task.{
   TransactionEventProcessorConfig,
   TransactionEventProcessorStreamTask
 }
+import org.sunbird.job.util.FlinkUtil
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 
 class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
   implicit val mapTypeInfo: TypeInformation[java.util.Map[String, AnyRef]] =
     TypeExtractor.getForClass(classOf[java.util.Map[String, AnyRef]])
+  implicit val eventTypeInfo: TypeInformation[Event] =
+    TypeExtractor.getForClass(classOf[Event])
 
   val flinkCluster = new MiniClusterWithClientResource(
     new MiniClusterResourceConfiguration.Builder()
@@ -57,12 +60,24 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
     super.afterAll()
   }
 
+  private def runTask(
+      cfg: TransactionEventProcessorConfig,
+      src: SourceFunction[Event],
+      testSinks: Map[String, SinkFunction[String]] = Map.empty
+  ): Unit = {
+    val env = FlinkUtil.getExecutionContext(cfg)
+    val inputStream = env.addSource(src)
+    val task = if (testSinks.isEmpty) {
+      new TransactionEventProcessorStreamTask(cfg, mockKafkaUtil, esUtil)
+    } else {
+      new TestableTransactionEventProcessorStreamTask(cfg, mockKafkaUtil, esUtil, testSinks)
+    }
+    task.processForTest(env, inputStream)
+  }
+
   "TransactionEventProcessorStreamTask" should "handle invalid events and increase metric count" in {
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic))
-      .thenReturn(new failedEventMapSource)
     try {
-      new TransactionEventProcessorStreamTask(jobConfig, mockKafkaUtil, esUtil)
-        .process()
+      runTask(jobConfig, new failedEventMapSource)
     } catch {
       case ex: JobExecutionException =>
         BaseMetricsReporter
@@ -82,11 +97,8 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
   }
 
   "TransactionEventProcessorStreamTask" should "skip events and increase metric count" in {
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic))
-      .thenReturn(new skippedEventMapSource)
     try {
-      new TransactionEventProcessorStreamTask(jobConfig, mockKafkaUtil, esUtil)
-        .process()
+      runTask(jobConfig, new skippedEventMapSource)
     } catch {
       case ex: JobExecutionException =>
         BaseMetricsReporter
@@ -106,10 +118,6 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
   }
 
   "TransactionEventProcessorStreamTask" should "generate audit event" in {
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic))
-      .thenReturn(new AuditEventMapSource)
-    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaAuditOutputTopic))
-      .thenReturn(new AuditEventSink)
     val setBoolean = config.withValue(
       "job.audit-event-generator",
       ConfigValueFactory.fromAnyRef(true)
@@ -117,8 +125,8 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
     val newConfig: TransactionEventProcessorConfig =
       new TransactionEventProcessorConfig(setBoolean)
     if (newConfig.auditEventGenerator) {
-      new TransactionEventProcessorStreamTask(newConfig, mockKafkaUtil, esUtil)
-        .process()
+      runTask(newConfig, new AuditEventMapSource,
+        Map(newConfig.kafkaAuditOutputTopic -> new AuditEventSink))
 
       BaseMetricsReporter
         .gaugeMetrics(
@@ -147,15 +155,9 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
   }
 
   "TransactionEventProcessorStreamTask" should "not generate audit event" in {
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic))
-      .thenReturn(new AuditEventMapSource)
-    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaAuditOutputTopic))
-      .thenReturn(new AuditEventSink)
-
     if (jobConfig.auditEventGenerator) {
-
-      new TransactionEventProcessorStreamTask(jobConfig, mockKafkaUtil, esUtil)
-        .process()
+      runTask(jobConfig, new AuditEventMapSource,
+        Map(jobConfig.kafkaAuditOutputTopic -> new AuditEventSink))
 
       BaseMetricsReporter
         .gaugeMetrics(
@@ -167,19 +169,13 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
           s"${jobConfig.jobName}.${jobConfig.auditEventSuccessCount}"
         )
         .getValue() should be(0)
-
     }
   }
 
   "TransactionEventProcessorStreamTask" should "increase metric for unknown schema" in {
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic))
-      .thenReturn(new RandomObjectTypeAuditEventGeneratorMapSource)
-    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaAuditOutputTopic))
-      .thenReturn(new AuditEventSink)
     if (jobConfig.auditEventGenerator) {
-
-      new TransactionEventProcessorStreamTask(jobConfig, mockKafkaUtil, esUtil)
-        .process()
+      runTask(jobConfig, new RandomObjectTypeAuditEventGeneratorMapSource,
+        Map(jobConfig.kafkaAuditOutputTopic -> new AuditEventSink))
 
       BaseMetricsReporter
         .gaugeMetrics(
@@ -217,11 +213,8 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
         )
     )
 
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic))
-      .thenReturn(new AuditHistoryMapSource)
     if (jobConfig.auditHistoryIndexer) {
-      new TransactionEventProcessorStreamTask(jobConfig, mockKafkaUtil, esUtil)
-        .process()
+      runTask(jobConfig, new AuditHistoryMapSource)
 
       BaseMetricsReporter
         .gaugeMetrics(
@@ -258,8 +251,6 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
         )
     )
 
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic))
-      .thenReturn(new AuditHistoryMapSource)
     val setBoolean = config.withValue(
       "job.audit-history-indexer",
       ConfigValueFactory.fromAnyRef(true)
@@ -267,8 +258,7 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
     val newConfig: TransactionEventProcessorConfig =
       new TransactionEventProcessorConfig(setBoolean)
     if (newConfig.auditHistoryIndexer) {
-      new TransactionEventProcessorStreamTask(newConfig, mockKafkaUtil, esUtil)
-        .process()
+      runTask(newConfig, new AuditHistoryMapSource)
       BaseMetricsReporter
         .gaugeMetrics(
           s"${newConfig.jobName}.${newConfig.totalAuditHistoryEventsCount}"
@@ -292,12 +282,8 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
   }
 
   "TransactionEventProcessorStreamTask" should "throw exception and increase es error count" in {
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic))
-      .thenReturn(new AuditHistoryMapSource)
-
     try {
-      new TransactionEventProcessorStreamTask(jobConfig, mockKafkaUtil, esUtil)
-        .process()
+      runTask(jobConfig, new AuditHistoryMapSource)
     } catch {
       case ex: JobExecutionException =>
         BaseMetricsReporter
@@ -322,13 +308,9 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
   }
 
   "TransactionEventProcessorStreamTask" should "not generate obsrv event" in {
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic))
-      .thenReturn(new AuditEventMapSource)
-    when(mockKafkaUtil.kafkaStringSink(jobConfig.kafkaObsrvOutputTopic))
-      .thenReturn(new AuditEventSink)
     if (jobConfig.obsrvMetadataGenerator) {
-      new TransactionEventProcessorStreamTask(jobConfig, mockKafkaUtil, esUtil)
-        .process()
+      runTask(jobConfig, new AuditEventMapSource,
+        Map(jobConfig.kafkaObsrvOutputTopic -> new AuditEventSink))
 
       BaseMetricsReporter
         .gaugeMetrics(
@@ -351,14 +333,9 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
     val newConfig: TransactionEventProcessorConfig =
       new TransactionEventProcessorConfig(setBoolean)
 
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](newConfig.kafkaInputTopic))
-      .thenReturn(new EventMapSource)
-    when(mockKafkaUtil.kafkaStringSink(newConfig.kafkaObsrvOutputTopic))
-      .thenReturn(new AuditEventSink)
-
     if (newConfig.obsrvMetadataGenerator) {
-      new TransactionEventProcessorStreamTask(newConfig, mockKafkaUtil, esUtil)
-        .process()
+      runTask(newConfig, new EventMapSource,
+        Map(newConfig.kafkaObsrvOutputTopic -> new AuditEventSink))
 
       BaseMetricsReporter
         .gaugeMetrics(
@@ -386,14 +363,9 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
     val newConfig: TransactionEventProcessorConfig =
       new TransactionEventProcessorConfig(setBoolean)
 
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](newConfig.kafkaInputTopic))
-      .thenReturn(new EventMapSource)
-    when(mockKafkaUtil.kafkaStringSink(newConfig.kafkaObsrvOutputTopic))
-      .thenReturn(new AuditEventSink)
-
     try {
-      new TransactionEventProcessorStreamTask(newConfig, mockKafkaUtil, esUtil)
-        .process()
+      runTask(newConfig, new EventMapSource,
+        Map(newConfig.kafkaObsrvOutputTopic -> new AuditEventSink))
     } catch {
       case ex: JobExecutionException =>
         BaseMetricsReporter
@@ -415,12 +387,8 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
   }
 
   "TransactionEventProcessorStreamTask" should "throw exception in TransactionEventRouter" in {
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic))
-      .thenReturn(new failedEventMapSource)
-
     try {
-      new TransactionEventProcessorStreamTask(jobConfig, mockKafkaUtil, esUtil)
-        .process()
+      runTask(jobConfig, new failedEventMapSource)
     } catch {
       case ex: JobExecutionException =>
         BaseMetricsReporter
@@ -432,6 +400,30 @@ class TransactionEventProcessorTaskTestSpec extends BaseTestSpec {
         BaseMetricsReporter
           .gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.failedEventCount}")
           .getValue() should be(1)
+    }
+  }
+}
+
+/** Test subclass that overrides stringSink to redirect selected topics to in-memory SinkFunctions. */
+class TestableTransactionEventProcessorStreamTask(
+    config: TransactionEventProcessorConfig,
+    kafkaConnector: FlinkKafkaConnector,
+    esUtil: ElasticSearchUtil,
+    testSinks: Map[String, SinkFunction[String]]
+) extends TransactionEventProcessorStreamTask(config, kafkaConnector, esUtil) {
+
+  import org.apache.flink.streaming.api.scala.DataStream
+
+  override protected def stringSink(
+      stream: DataStream[String],
+      topic: String,
+      name: String,
+      uid: String,
+      parallelism: Int
+  ): Unit = {
+    testSinks.get(topic) match {
+      case Some(fn) => stream.addSink(fn).name(name).uid(uid).setParallelism(parallelism)
+      case None     => super.stringSink(stream, topic, name, uid, parallelism)
     }
   }
 }

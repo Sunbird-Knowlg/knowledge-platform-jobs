@@ -16,6 +16,7 @@ import org.mockito.Mockito
 import org.mockito.Mockito._
 import org.sunbird.job.Metrics
 import org.sunbird.job.connector.FlinkKafkaConnector
+import org.sunbird.job.util.FlinkUtil
 import org.sunbird.job.dialcodecontextupdater.domain.Event
 import org.sunbird.job.dialcodecontextupdater.fixture.EventFixture
 import org.sunbird.job.dialcodecontextupdater.functions.DialcodeContextUpdaterFunction
@@ -29,6 +30,7 @@ class DialcodeContextUpdaterStreamTaskSpec extends BaseTestSpec {
 
   implicit val mapTypeInfo: TypeInformation[java.util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[java.util.Map[String, AnyRef]])
   implicit val strTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
+  implicit val eventTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
 
   val flinkCluster = new MiniClusterWithClientResource(new MiniClusterResourceConfiguration.Builder()
     .setConfiguration(testConfiguration())
@@ -61,14 +63,11 @@ class DialcodeContextUpdaterStreamTaskSpec extends BaseTestSpec {
   }
 
 
-  def initialize(): Unit = {
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new DialcodeContextUpdaterEventSource)
-  }
-
   ignore should " update the dial context " in {
     when(mockJanusGraphUtil.getNodeProperties(anyString())).thenReturn(new util.HashMap[String, AnyRef])
-    initialize()
-    new DialcodeContextUpdaterStreamTask(jobConfig, mockKafkaUtil, mockHttpUtil).process()
+    val env = FlinkUtil.getExecutionContext(jobConfig)
+    val inputStream = env.addSource(new DialcodeContextUpdaterEventSource)
+    new DialcodeContextUpdaterStreamTask(jobConfig, mockKafkaUtil, mockHttpUtil).processForTest(env, inputStream)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(1)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.dbHitEventCount}").getValue() should be(1)
   }

@@ -1,7 +1,7 @@
 package org.sunbird.job
 
-import org.apache.flink.api.scala.metrics.ScalaGauge
 import org.apache.flink.configuration.Configuration
+import org.apache.flink.metrics.Gauge
 import org.apache.flink.streaming.api.functions.{KeyedProcessFunction, ProcessFunction}
 import org.apache.flink.streaming.api.scala.function.ProcessWindowFunction
 import org.apache.flink.streaming.api.windowing.windows.{GlobalWindow, TimeWindow}
@@ -37,7 +37,9 @@ abstract class BaseProcessFunction[T, R](config: BaseJobConfig) extends ProcessF
   override def open(parameters: Configuration): Unit = {
     metricsList().map { metric =>
       getRuntimeContext.getMetricGroup.addGroup(config.jobName)
-        .gauge[Long, ScalaGauge[Long]](metric, ScalaGauge[Long](() => metrics.getAndReset(metric)))
+        .gauge[Long, Gauge[Long]](metric, new Gauge[Long] {
+          override def getValue: Long = metrics.getAndReset(metric)
+        })
     }
   }
 
@@ -57,7 +59,9 @@ abstract class WindowBaseProcessFunction[I, O, K](config: BaseJobConfig) extends
   override def open(parameters: Configuration): Unit = {
     metricsList().map { metric =>
       getRuntimeContext.getMetricGroup.addGroup(config.jobName)
-        .gauge[Long, ScalaGauge[Long]](metric, ScalaGauge[Long](() => metrics.getAndReset(metric)))
+        .gauge[Long, Gauge[Long]](metric, new Gauge[Long] {
+          override def getValue: Long = metrics.getAndReset(metric)
+        })
     }
   }
 
@@ -79,7 +83,9 @@ abstract class TimeWindowBaseProcessFunction[I, O, K](config: BaseJobConfig) ext
   override def open(parameters: Configuration): Unit = {
     metricsList().map { metric =>
       getRuntimeContext.getMetricGroup.addGroup(config.jobName)
-        .gauge[Long, ScalaGauge[Long]](metric, ScalaGauge[Long](() => metrics.getAndReset(metric)))
+        .gauge[Long, Gauge[Long]](metric, new Gauge[Long] {
+          override def getValue: Long = metrics.getAndReset(metric)
+        })
     }
   }
 
@@ -102,7 +108,9 @@ abstract class BaseProcessKeyedFunction[K, T, R](config: BaseJobConfig) extends 
   override def open(parameters: Configuration): Unit = {
     metricsList().map { metric =>
       getRuntimeContext.getMetricGroup.addGroup(config.jobName)
-        .gauge[Long, ScalaGauge[Long]](metric, ScalaGauge[Long](() => metrics.getAndReset(metric)))
+        .gauge[Long, Gauge[Long]](metric, new Gauge[Long] {
+          override def getValue: Long = metrics.getAndReset(metric)
+        })
     }
     open(parameters, metrics)
   }

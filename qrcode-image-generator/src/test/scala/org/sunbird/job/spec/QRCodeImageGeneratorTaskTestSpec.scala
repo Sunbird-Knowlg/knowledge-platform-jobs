@@ -14,6 +14,7 @@ import org.cassandraunit.utils.EmbeddedCassandraServerHelper
 import org.mockito.Mockito
 import org.mockito.Mockito.when
 import org.sunbird.job.connector.FlinkKafkaConnector
+import org.sunbird.job.util.FlinkUtil
 import org.sunbird.job.fixture.EventFixture
 import org.sunbird.job.qrimagegenerator.domain.Event
 import org.sunbird.job.qrimagegenerator.task.{QRCodeImageGeneratorConfig, QRCodeImageGeneratorTask}
@@ -23,6 +24,7 @@ import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 class QRCodeImageGeneratorTaskTestSpec extends BaseTestSpec {
 
   implicit val mapTypeInfo: TypeInformation[java.util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[java.util.Map[String, AnyRef]])
+  implicit val eventTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
 
   val flinkCluster = new MiniClusterWithClientResource(new MiniClusterResourceConfiguration.Builder()
     .setConfiguration(testConfiguration())
@@ -67,12 +69,9 @@ class QRCodeImageGeneratorTaskTestSpec extends BaseTestSpec {
     when(mockElasticUtil.getDocumentAsString("V2B5A2")).thenReturn(V2B5A2Json)
     when(mockElasticUtil.getDocumentAsString("F6J3E7")).thenReturn(F6J3E7Json)
 
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new QRCodeImageGeneratorMapSource)
-    new QRCodeImageGeneratorTask(jobConfig, mockKafkaUtil).process()
-//    assertThrows[JobExecutionException] {
-//      new QRCodeImageGeneratorTask(jobConfig, mockKafkaUtil).process()
-//    }
-    
+    val env = FlinkUtil.getExecutionContext(jobConfig)
+    val inputStream = env.addSource(new QRCodeImageGeneratorMapSource)
+    new QRCodeImageGeneratorTask(jobConfig, mockKafkaUtil).processForTest(env, inputStream)
   }
 }
 
