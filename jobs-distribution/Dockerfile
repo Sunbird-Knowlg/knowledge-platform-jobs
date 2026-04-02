@@ -10,9 +10,8 @@ ENV cloud_storage_type=${CSP}
 ENV cloud_storage_auth_type=OIDC
 
 USER root
-RUN apt-get update
 RUN apt-get update && apt-get dist-upgrade -y && \
-    apt-get install -y --no-install-recommends bash curl libcurl4 libdb5.3 libexpat1 libgcrypt20 libldap-2.4-2 libzstd1 zlib1g imagemagick && \
+    apt-get install -y --no-install-recommends bash curl libcurl4 libdb5.3 libexpat1 libgcrypt20 libldap-2.5-0 libzstd1 zlib1g imagemagick && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 COPY target/jobs-distribution-1.0.tar.gz /tmp
 USER flink
