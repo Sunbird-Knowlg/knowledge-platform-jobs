@@ -16,12 +16,25 @@ import org.sunbird.job.serde.{
 
 class FlinkKafkaConnector(config: BaseJobConfig) extends Serializable {
 
+  /**
+   * Derive the no-committed-offset fallback strategy from `kafka.auto.offset.reset` config.
+   * The old FlinkKafkaConsumer (Flink 1.13) passed the Properties object directly to the Kafka
+   * client, so the broker-side `auto.offset.reset` property controlled the fallback.  When the
+   * property was absent the Kafka default of LATEST applied.  The new KafkaSource API requires
+   * an explicit OffsetsInitializer; we reproduce the original behaviour here.
+   */
+  private val noCommittedOffsetStrategy: OffsetResetStrategy =
+    config.kafkaAutoOffsetReset
+      .map(_.toUpperCase)
+      .flatMap(s => scala.util.Try(OffsetResetStrategy.valueOf(s)).toOption)
+      .getOrElse(OffsetResetStrategy.LATEST)
+
   def kafkaMapSource(kafkaTopic: String): KafkaSource[util.Map[String, AnyRef]] =
     KafkaSource.builder[util.Map[String, AnyRef]]()
       .setBootstrapServers(config.kafkaBrokerServers)
       .setTopics(kafkaTopic)
       .setGroupId(config.groupId)
-      .setStartingOffsets(OffsetsInitializer.committedOffsets(OffsetResetStrategy.EARLIEST))
+      .setStartingOffsets(OffsetsInitializer.committedOffsets(noCommittedOffsetStrategy))
       .setDeserializer(new MapDeserializationSchema())
       .setProperties(config.kafkaConsumerProperties)
       .build()
@@ -39,7 +52,7 @@ class FlinkKafkaConnector(config: BaseJobConfig) extends Serializable {
       .setBootstrapServers(config.kafkaBrokerServers)
       .setTopics(kafkaTopic)
       .setGroupId(config.groupId)
-      .setStartingOffsets(OffsetsInitializer.committedOffsets(OffsetResetStrategy.EARLIEST))
+      .setStartingOffsets(OffsetsInitializer.committedOffsets(noCommittedOffsetStrategy))
       .setDeserializer(new StringDeserializationSchema())
       .setProperties(config.kafkaConsumerProperties)
       .build()
@@ -57,7 +70,7 @@ class FlinkKafkaConnector(config: BaseJobConfig) extends Serializable {
       .setBootstrapServers(config.kafkaBrokerServers)
       .setTopics(kafkaTopic)
       .setGroupId(config.groupId)
-      .setStartingOffsets(OffsetsInitializer.committedOffsets(OffsetResetStrategy.EARLIEST))
+      .setStartingOffsets(OffsetsInitializer.committedOffsets(noCommittedOffsetStrategy))
       .setDeserializer(new JobRequestDeserializationSchema[T])
       .setProperties(config.kafkaConsumerProperties)
       .build()
