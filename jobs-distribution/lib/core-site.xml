@@ -13,17 +13,30 @@
     <value>ADC</value>
   </property>
 
-  <!-- Azure Configuration -->
+  <!-- Azure ABFS Configuration (supports Managed Identity / Workload Identity) -->
+  <!-- Use abfs:// or abfss:// scheme in checkpoint URLs, NOT wasbs://            -->
   <property>
-    <name>fs.azure</name>
-    <value>org.apache.hadoop.fs.azure.NativeAzureFileSystem</value>
+    <name>fs.abfs.impl</name>
+    <value>org.apache.hadoop.fs.azurebfs.AzureBlobFileSystem</value>
   </property>
   <property>
-        <name>fs.azure.account.auth.type</name>
-        <value>OAuth</value>
-    </property>
-    <property>
-        <name>fs.azure.account.oauth.provider.type</name>
-        <value>org.apache.hadoop.fs.azurebfs.oauth2.ManagedIdentityTokenProvider</value>
-    </property>
+    <name>fs.abfss.impl</name>
+    <value>org.apache.hadoop.fs.azurebfs.SecureAzureBlobFileSystem</value>
+  </property>
+  <property>
+    <name>fs.AbstractFileSystem.abfs.impl</name>
+    <value>org.apache.hadoop.fs.azurebfs.Abfs</value>
+  </property>
+  <property>
+    <name>fs.AbstractFileSystem.abfss.impl</name>
+    <value>org.apache.hadoop.fs.azurebfs.Abfss</value>
+  </property>
+  <property>
+    <name>fs.azure.account.auth.type</name>
+    <value>OAuth</value>
+  </property>
+  <property>
+    <name>fs.azure.account.oauth.provider.type</name>
+    <value>org.apache.hadoop.fs.azurebfs.oauth2.MsiTokenProvider</value>
+  </property>
 </configuration>
