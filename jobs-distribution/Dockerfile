@@ -30,6 +30,11 @@ RUN mkdir -p $FLINK_HOME/plugins/azure-fs-hadoop
 
 RUN cp $FLINK_HOME/opt/flink-gs-fs-hadoop-1.18.1.jar $FLINK_HOME/plugins/gs-fs-hadoop/
 RUN cp $FLINK_HOME/opt/flink-azure-fs-hadoop-1.18.1.jar $FLINK_HOME/plugins/azure-fs-hadoop/
+# hadoop-azure-3.4.2 must also be in the plugin directory so the plugin's child-first
+# classloader finds WorkloadIdentityTokenProvider in its own search path.
+# The bundled hadoop-azure inside flink-azure-fs-hadoop is 3.3.x (no WorkloadIdentityTokenProvider),
+# and child-first delegation means the parent lib/ jar is not reliably searched.
+COPY lib/hadoop-azure-3.4.2.jar $FLINK_HOME/plugins/azure-fs-hadoop/
 
 COPY lib/core-site.xml $FLINK_HOME/conf/
 USER flink
