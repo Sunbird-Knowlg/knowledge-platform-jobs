@@ -26,6 +26,13 @@ COPY lib/gcs-connector-hadoop2-2.2.0.jar $FLINK_HOME/lib/
 COPY lib/a-hadoop-azure-3.4.2.jar $FLINK_HOME/lib/
 COPY lib/a-hadoop-common-3.4.2.jar $FLINK_HOME/lib/
 COPY lib/a-hadoop-auth-3.4.2.jar $FLINK_HOME/lib/
+COPY lib/a-woodstox-core-5.4.0.jar $FLINK_HOME/lib/
+COPY lib/a-stax2-api-4.2.1.jar $FLINK_HOME/lib/
+COPY lib/a-commons-configuration2-2.10.1.jar $FLINK_HOME/lib/
+COPY lib/a-commons-text-1.10.0.jar $FLINK_HOME/lib/
+COPY lib/a-commons-collections4-4.4.jar $FLINK_HOME/lib/
+COPY lib/a-commons-net-3.9.0.jar $FLINK_HOME/lib/
+COPY lib/a-re2j-1.1.jar $FLINK_HOME/lib/
 
 RUN mkdir -p $FLINK_HOME/plugins/gs-fs-hadoop
 RUN mkdir -p $FLINK_HOME/plugins/azure-fs-hadoop
@@ -38,9 +45,17 @@ RUN cp $FLINK_HOME/opt/flink-azure-fs-hadoop-1.18.1.jar $FLINK_HOME/plugins/azur
 # and child-first delegation means the parent lib/ jar is not reliably searched.
 # We also include hadoop-common and hadoop-auth 3.4.2 to provide new classes
 # like org.apache.hadoop.fs.impl.BackReference required by hadoop-azure 3.4.x.
+# Adding transitives as well to ensure they are available in the plugin classloader scope.
 COPY lib/a-hadoop-azure-3.4.2.jar $FLINK_HOME/plugins/azure-fs-hadoop/
 COPY lib/a-hadoop-common-3.4.2.jar $FLINK_HOME/plugins/azure-fs-hadoop/
 COPY lib/a-hadoop-auth-3.4.2.jar $FLINK_HOME/plugins/azure-fs-hadoop/
+COPY lib/a-woodstox-core-5.4.0.jar $FLINK_HOME/plugins/azure-fs-hadoop/
+COPY lib/a-stax2-api-4.2.1.jar $FLINK_HOME/plugins/azure-fs-hadoop/
+COPY lib/a-commons-configuration2-2.10.1.jar $FLINK_HOME/plugins/azure-fs-hadoop/
+COPY lib/a-commons-text-1.10.0.jar $FLINK_HOME/plugins/azure-fs-hadoop/
+COPY lib/a-commons-collections4-4.4.jar $FLINK_HOME/plugins/azure-fs-hadoop/
+COPY lib/a-commons-net-3.9.0.jar $FLINK_HOME/plugins/azure-fs-hadoop/
+COPY lib/a-re2j-1.1.jar $FLINK_HOME/plugins/azure-fs-hadoop/
 
 COPY lib/core-site.xml $FLINK_HOME/conf/
 USER flink
