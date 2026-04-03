@@ -69,6 +69,8 @@ class CoreTestSpec extends BaseSpec with Matchers with MockitoSugar {
       override def collect(t: String): Unit = stringOut.add(t)
       override def close(): Unit = ()
     })
+    stringOut.size() should be(1)
+    stringOut.get(0) should be(new String(value, java.nio.charset.StandardCharsets.UTF_8))
     stringSerialization.serialize("test", null, System.currentTimeMillis())
     val map = new util.HashMap[String, AnyRef]()
     map.put("country_code", "IN")

@@ -29,7 +29,6 @@ class JobRequestDeserializationSchema[T <: JobRequest](implicit ct: ClassTag[T])
       out.collect(event)
     } catch {
       case ex: Exception =>
-        ex.printStackTrace()
         logger.error("Exception when parsing event from kafka: " + record, ex)
         val args = Array(new java.util.HashMap[String, AnyRef](), record.partition(), record.offset()).asInstanceOf[Array[AnyRef]]
         val event = ct.runtimeClass.getConstructor(classOf[java.util.Map[String, AnyRef]], Integer.TYPE, java.lang.Long.TYPE)
