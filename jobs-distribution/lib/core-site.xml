@@ -13,8 +13,9 @@
     <value>ADC</value>
   </property>
 
-  <!-- Azure ABFS Configuration (supports Managed Identity / Workload Identity) -->
-  <!-- Use abfs:// or abfss:// scheme in checkpoint URLs, NOT wasbs://            -->
+  <!-- Azure ABFS Configuration (Azure Workload Identity / OIDC federation) -->
+  <!-- Use abfs:// or abfss:// scheme in checkpoint URLs, NOT wasbs://          -->
+  <!-- Requires hadoop-azure >= 3.4.1 for WorkloadIdentityTokenProvider         -->
   <property>
     <name>fs.abfs.impl</name>
     <value>org.apache.hadoop.fs.azurebfs.AzureBlobFileSystem</value>
@@ -37,6 +38,21 @@
   </property>
   <property>
     <name>fs.azure.account.oauth.provider.type</name>
-    <value>org.apache.hadoop.fs.azurebfs.oauth2.MsiTokenProvider</value>
+    <value>org.apache.hadoop.fs.azurebfs.oauth2.WorkloadIdentityTokenProvider</value>
+  </property>
+  <!-- AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_FEDERATED_TOKEN_FILE are injected
+       by the Azure Workload Identity mutating webhook into every pod that has
+       the azure.workload.identity/use: "true" label. -->
+  <property>
+    <name>fs.azure.account.oauth2.msi.tenant</name>
+    <value>${env.AZURE_TENANT_ID}</value>
+  </property>
+  <property>
+    <name>fs.azure.account.oauth2.client.id</name>
+    <value>${env.AZURE_CLIENT_ID}</value>
+  </property>
+  <property>
+    <name>fs.azure.account.oauth2.token.file</name>
+    <value>${env.AZURE_FEDERATED_TOKEN_FILE}</value>
   </property>
 </configuration>
