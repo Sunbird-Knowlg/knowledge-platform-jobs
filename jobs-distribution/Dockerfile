@@ -33,6 +33,11 @@ COPY lib/a-commons-text-1.10.0.jar $FLINK_HOME/lib/
 COPY lib/a-commons-collections4-4.4.jar $FLINK_HOME/lib/
 COPY lib/a-commons-net-3.9.0.jar $FLINK_HOME/lib/
 COPY lib/a-re2j-1.1.jar $FLINK_HOME/lib/
+COPY lib/a-jackson-databind-2.18.6.jar $FLINK_HOME/lib/
+COPY lib/a-jackson-core-2.18.6.jar $FLINK_HOME/lib/
+COPY lib/a-jackson-annotations-2.18.6.jar $FLINK_HOME/lib/
+COPY lib/a-jackson-dataformat-cbor-2.18.6.jar $FLINK_HOME/lib/
+COPY lib/a-commons-cli-1.9.0.jar $FLINK_HOME/lib/
 
 RUN mkdir -p $FLINK_HOME/plugins/gs-fs-hadoop
 RUN mkdir -p $FLINK_HOME/plugins/azure-fs-hadoop
@@ -56,6 +61,11 @@ COPY lib/a-commons-text-1.10.0.jar $FLINK_HOME/plugins/azure-fs-hadoop/
 COPY lib/a-commons-collections4-4.4.jar $FLINK_HOME/plugins/azure-fs-hadoop/
 COPY lib/a-commons-net-3.9.0.jar $FLINK_HOME/plugins/azure-fs-hadoop/
 COPY lib/a-re2j-1.1.jar $FLINK_HOME/plugins/azure-fs-hadoop/
+COPY lib/a-jackson-databind-2.18.6.jar $FLINK_HOME/plugins/azure-fs-hadoop/
+COPY lib/a-jackson-core-2.18.6.jar $FLINK_HOME/plugins/azure-fs-hadoop/
+COPY lib/a-jackson-annotations-2.18.6.jar $FLINK_HOME/plugins/azure-fs-hadoop/
+COPY lib/a-jackson-dataformat-cbor-2.18.6.jar $FLINK_HOME/plugins/azure-fs-hadoop/
+COPY lib/a-commons-cli-1.9.0.jar $FLINK_HOME/plugins/azure-fs-hadoop/
 
 COPY lib/core-site.xml $FLINK_HOME/conf/
 USER flink
