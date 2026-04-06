@@ -7,7 +7,8 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.functions.KeySelector
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
-import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
+import org.apache.flink.api.common.eventtime.WatermarkStrategy
+import org.apache.flink.streaming.api.scala.{DataStream, StreamExecutionEnvironment}
 import org.slf4j.LoggerFactory
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.transaction.domain.Event
@@ -29,27 +30,61 @@ class TransactionEventProcessorStreamTask(
     esUtil: ElasticSearchUtil
 ) {
 
+  private implicit val eventTypeInfo: TypeInformation[Event] =
+    TypeExtractor.getForClass(classOf[Event])
+  private implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] =
+    TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
+  private implicit val stringTypeInfo: TypeInformation[String] =
+    TypeExtractor.getForClass(classOf[String])
+  private implicit val mapEsTypeInfo: TypeInformation[util.Map[String, Any]] =
+    TypeExtractor.getForClass(classOf[util.Map[String, Any]])
+
   def process(): Unit = {
     implicit val env: StreamExecutionEnvironment =
       FlinkUtil.getExecutionContext(config)
-    //    implicit val env: StreamExecutionEnvironment = StreamExecutionEnvironment.createLocalEnvironment()
-    implicit val eventTypeInfo: TypeInformation[Event] =
-      TypeExtractor.getForClass(classOf[Event])
-    implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] =
-      TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
-    implicit val stringTypeInfo: TypeInformation[String] =
-      TypeExtractor.getForClass(classOf[String])
-    implicit val mapEsTypeInfo: TypeInformation[util.Map[String, Any]] =
-      TypeExtractor.getForClass(classOf[util.Map[String, Any]])
 
     val source =
       kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)
     val inputStream = env
-      .addSource(source)
-      .name(config.transactionEventConsumer)
+      .fromSource(source, WatermarkStrategy.noWatermarks(), config.transactionEventConsumer)
       .uid(config.transactionEventConsumer)
       .setParallelism(config.kafkaConsumerParallelism)
       .rebalance
+
+    buildGraph(env, inputStream)
+    env.execute(config.jobName)
+  }
+
+  /** Test-facing entry point: supply a pre-built input stream. */
+  def processForTest(
+      env: StreamExecutionEnvironment,
+      inputStream: DataStream[Event]
+  ): Unit = {
+    buildGraph(env, inputStream)
+    env.execute(config.jobName)
+  }
+
+  /** Routes a string stream to the Kafka sink for the given topic.
+    * Overridable in tests to redirect output to an in-memory sink.
+    */
+  protected def stringSink(
+      stream: DataStream[String],
+      topic: String,
+      name: String,
+      uid: String,
+      parallelism: Int
+  ): Unit = {
+    stream
+      .sinkTo(kafkaConnector.kafkaStringSink(topic))
+      .name(name)
+      .uid(uid)
+      .setParallelism(parallelism)
+  }
+
+  private def buildGraph(
+      env: StreamExecutionEnvironment,
+      inputStream: DataStream[Event]
+  ): Unit = {
 
     val transactionSideOutput = inputStream
       .process(new TransactionEventRouter(config))
@@ -65,12 +100,13 @@ class TransactionEventProcessorStreamTask(
         .uid(config.auditEventGeneratorFunction)
         .setParallelism(config.parallelism)
 
-      auditStream
-        .getSideOutput(config.auditOutputTag)
-        .addSink(kafkaConnector.kafkaStringSink(config.kafkaAuditOutputTopic))
-        .name(config.auditEventProducer)
-        .uid(config.auditEventProducer)
-        .setParallelism(config.kafkaProducerParallelism)
+      stringSink(
+        auditStream.getSideOutput(config.auditOutputTag),
+        config.kafkaAuditOutputTopic,
+        config.auditEventProducer,
+        config.auditEventProducer,
+        config.kafkaProducerParallelism
+      )
     }
 
     if (config.obsrvMetadataGenerator) {
@@ -80,12 +116,13 @@ class TransactionEventProcessorStreamTask(
         .uid(config.obsrvMetaDataGeneratorFunction)
         .setParallelism(config.parallelism)
 
-      obsrvStream
-        .getSideOutput(config.obsrvAuditOutputTag)
-        .addSink(kafkaConnector.kafkaStringSink(config.kafkaObsrvOutputTopic))
-        .name(config.obsrvEventProducer)
-        .uid(config.obsrvEventProducer)
-        .setParallelism(config.kafkaProducerParallelism)
+      stringSink(
+        obsrvStream.getSideOutput(config.obsrvAuditOutputTag),
+        config.kafkaObsrvOutputTopic,
+        config.obsrvEventProducer,
+        config.obsrvEventProducer,
+        config.kafkaProducerParallelism
+      )
     }
 
     if (config.auditHistoryIndexer) {
@@ -112,9 +149,13 @@ class TransactionEventProcessorStreamTask(
         .uid("composite-search-indexer")
         .setParallelism(config.compositeSearchIndexerParallelism)
 
-      compositeSearchStream
-        .getSideOutput(config.failedEventOutTag)
-        .addSink(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
+      stringSink(
+        compositeSearchStream.getSideOutput(config.failedEventOutTag),
+        config.kafkaErrorTopic,
+        "composite-search-failed-producer",
+        "composite-search-failed-producer",
+        config.kafkaProducerParallelism
+      )
     }
 
     if (config.dialCodeIndexer) {
@@ -125,9 +166,13 @@ class TransactionEventProcessorStreamTask(
         .uid("dialcode-external-indexer")
         .setParallelism(config.dialCodeExternalIndexerParallelism)
 
-      dialcodeExternalStream
-        .getSideOutput(config.failedEventOutTag)
-        .addSink(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
+      stringSink(
+        dialcodeExternalStream.getSideOutput(config.failedEventOutTag),
+        config.kafkaErrorTopic,
+        "dialcode-external-failed-producer",
+        "dialcode-external-failed-producer",
+        config.kafkaProducerParallelism
+      )
     }
 
     if (config.dialCodeMetricsIndexer) {
@@ -138,12 +183,14 @@ class TransactionEventProcessorStreamTask(
         .uid("dialcode-metric-indexer")
         .setParallelism(config.dialCodeMetricIndexerParallelism)
 
-      dialcodeMetricStream
-        .getSideOutput(config.failedEventOutTag)
-        .addSink(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
+      stringSink(
+        dialcodeMetricStream.getSideOutput(config.failedEventOutTag),
+        config.kafkaErrorTopic,
+        "dialcode-metric-failed-producer",
+        "dialcode-metric-failed-producer",
+        config.kafkaProducerParallelism
+      )
     }
-
-    env.execute(config.jobName)
   }
 }
 

@@ -4,6 +4,7 @@ import java.util
 
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
+import org.apache.flink.util.Collector
 import org.scalatest.Matchers
 import org.scalatestplus.mockito.MockitoSugar
 import org.sunbird.fixture.EventFixture
@@ -63,13 +64,18 @@ class CoreTestSpec extends BaseSpec with Matchers with MockitoSugar {
     val mapDeSerialization = new MapDeserializationSchema()
     import org.apache.kafka.clients.consumer.ConsumerRecord
     val cRecord: ConsumerRecord[Array[Byte], Array[Byte]] = new ConsumerRecord[Array[Byte], Array[Byte]](topic, partition, offset, key, value)
-    stringDeSerialization.deserialize(cRecord)
-    stringSerialization.serialize("test", System.currentTimeMillis())
-    stringDeSerialization.isEndOfStream("") should be(false)
+    val stringOut = new java.util.ArrayList[String]()
+    stringDeSerialization.deserialize(cRecord, new Collector[String] {
+      override def collect(t: String): Unit = stringOut.add(t)
+      override def close(): Unit = ()
+    })
+    stringOut.size() should be(1)
+    stringOut.get(0) should be(new String(value, java.nio.charset.StandardCharsets.UTF_8))
+    stringSerialization.serialize("test", null, System.currentTimeMillis())
     val map = new util.HashMap[String, AnyRef]()
     map.put("country_code", "IN")
     map.put("country", "INDIA")
-    mapSerialization.serialize(map, System.currentTimeMillis())
+    mapSerialization.serialize(map, null, System.currentTimeMillis())
   }
 
   "DataCache" should "be able to add the data into redis" in intercept[JedisDataException]{

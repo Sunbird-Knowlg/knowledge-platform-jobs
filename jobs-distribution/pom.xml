@@ -20,6 +20,97 @@
             <version>${flink.version}</version>
             <type>jar</type>
         </dependency>
+        <!-- Azure/Hadoop 3.4.2 Dependencies for Workload Identity (Staged for Plugins) -->
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-azure</artifactId>
+            <version>3.4.2</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-common</artifactId>
+            <version>3.4.2</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.hadoop</groupId>
+            <artifactId>hadoop-auth</artifactId>
+            <version>3.4.2</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.woodstox</groupId>
+            <artifactId>woodstox-core</artifactId>
+            <version>5.4.0</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.codehaus.woodstox</groupId>
+            <artifactId>stax2-api</artifactId>
+            <version>4.2.1</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-configuration2</artifactId>
+            <version>2.10.1</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-text</artifactId>
+            <version>1.10.0</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-collections4</artifactId>
+            <version>4.4</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>commons-net</groupId>
+            <artifactId>commons-net</artifactId>
+            <version>3.9.0</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.re2j</groupId>
+            <artifactId>re2j</artifactId>
+            <version>1.1</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+            <version>${jackson.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-core</artifactId>
+            <version>${jackson.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-annotations</artifactId>
+            <version>${jackson.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.jackson.dataformat</groupId>
+            <artifactId>jackson-dataformat-cbor</artifactId>
+            <version>${jackson.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>commons-cli</groupId>
+            <artifactId>commons-cli</artifactId>
+            <version>1.9.0</version>
+            <scope>provided</scope>
+        </dependency>
         <dependency>
             <groupId>org.sunbird</groupId>
             <artifactId>video-stream-generator</artifactId>
@@ -79,6 +170,44 @@
                 <configuration>
                     <release>11</release>
                 </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.1.2</version>
+                <executions>
+                    <execution>
+                        <id>stage-azure-plugin-deps</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>copy</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/azure-plugin</outputDirectory>
+                            <overWriteReleases>false</overWriteReleases>
+                            <overWriteSnapshots>false</overWriteSnapshots>
+                            <overWriteIfNewer>true</overWriteIfNewer>
+                            <artifactItems>
+                                <artifactItem><groupId>org.apache.hadoop</groupId><artifactId>hadoop-azure</artifactId><version>3.4.2</version><destFileName>a-hadoop-azure-3.4.2.jar</destFileName></artifactItem>
+                                <artifactItem><groupId>org.apache.hadoop</groupId><artifactId>hadoop-common</artifactId><version>3.4.2</version><destFileName>a-hadoop-common-3.4.2.jar</destFileName></artifactItem>
+                                <artifactItem><groupId>org.apache.hadoop</groupId><artifactId>hadoop-auth</artifactId><version>3.4.2</version><destFileName>a-hadoop-auth-3.4.2.jar</destFileName></artifactItem>
+                                <artifactItem><groupId>com.fasterxml.woodstox</groupId><artifactId>woodstox-core</artifactId><version>5.4.0</version><destFileName>a-woodstox-core-5.4.0.jar</destFileName></artifactItem>
+                                <artifactItem><groupId>org.codehaus.woodstox</groupId><artifactId>stax2-api</artifactId><version>4.2.1</version><destFileName>a-stax2-api-4.2.1.jar</destFileName></artifactItem>
+                                <artifactItem><groupId>org.apache.commons</groupId><artifactId>commons-configuration2</artifactId><version>2.10.1</version><destFileName>a-commons-configuration2-2.10.1.jar</destFileName></artifactItem>
+                                <artifactItem><groupId>org.apache.commons</groupId><artifactId>commons-text</artifactId><version>1.10.0</version><destFileName>a-commons-text-1.10.0.jar</destFileName></artifactItem>
+                                <artifactItem><groupId>org.apache.commons</groupId><artifactId>commons-collections4</artifactId><version>4.4</version><destFileName>a-commons-collections4-4.4.jar</destFileName></artifactItem>
+                                <artifactItem><groupId>commons-net</groupId><artifactId>commons-net</artifactId><version>3.9.0</version><destFileName>a-commons-net-3.9.0.jar</destFileName></artifactItem>
+                                <artifactItem><groupId>com.google.re2j</groupId><artifactId>re2j</artifactId><version>1.1</version><destFileName>a-re2j-1.1.jar</destFileName></artifactItem>
+                                <artifactItem><groupId>com.fasterxml.jackson.core</groupId><artifactId>jackson-databind</artifactId><version>${jackson.version}</version><destFileName>a-jackson-databind-${jackson.version}.jar</destFileName></artifactItem>
+                                <artifactItem><groupId>com.fasterxml.jackson.core</groupId><artifactId>jackson-core</artifactId><version>${jackson.version}</version><destFileName>a-jackson-core-${jackson.version}.jar</destFileName></artifactItem>
+                                <artifactItem><groupId>com.fasterxml.jackson.core</groupId><artifactId>jackson-annotations</artifactId><version>${jackson.version}</version><destFileName>a-jackson-annotations-${jackson.version}.jar</destFileName></artifactItem>
+                                <artifactItem><groupId>com.fasterxml.jackson.dataformat</groupId><artifactId>jackson-dataformat-cbor</artifactId><version>${jackson.version}</version><destFileName>a-jackson-dataformat-cbor-${jackson.version}.jar</destFileName></artifactItem>
+                                <artifactItem><groupId>commons-cli</groupId><artifactId>commons-cli</artifactId><version>1.9.0</version><destFileName>a-commons-cli-1.9.0.jar</destFileName></artifactItem>
+                            </artifactItems>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
 
             <plugin>

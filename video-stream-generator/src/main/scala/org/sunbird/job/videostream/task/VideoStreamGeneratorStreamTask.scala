@@ -6,7 +6,8 @@ import com.typesafe.config.ConfigFactory
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
-import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
+import org.apache.flink.api.common.eventtime.WatermarkStrategy
+import org.apache.flink.streaming.api.scala.{DataStream, StreamExecutionEnvironment}
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.videostream.domain.Event
 import org.sunbird.job.videostream.functions.VideoStreamGenerator
@@ -14,23 +15,36 @@ import org.sunbird.job.util.{FlinkUtil, HttpUtil}
 
 
 class VideoStreamGeneratorStreamTask(config: VideoStreamGeneratorConfig, kafkaConnector: FlinkKafkaConnector, httpUtil: HttpUtil) {
+
+  private implicit val eventTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
+  private implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
+  private implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
+
   def process(): Unit = {
     implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
-    implicit val eventTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
-    implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
-    implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
 
-    val source = kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)
-    env.addSource(source).name(config.videoStreamConsumer)
+    val inputStream = env.fromSource(kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic),
+        WatermarkStrategy.noWatermarks(), config.videoStreamConsumer)
       .uid(config.videoStreamConsumer).setParallelism(config.kafkaConsumerParallelism)
       .rebalance
+
+    buildGraph(env, inputStream)
+    env.execute(config.jobName)
+  }
+
+  /** Test-facing entry point: supply a pre-built input stream. */
+  def processForTest(env: StreamExecutionEnvironment, inputStream: DataStream[Event]): Unit = {
+    buildGraph(env, inputStream)
+    env.execute(config.jobName)
+  }
+
+  private def buildGraph(env: StreamExecutionEnvironment, inputStream: DataStream[Event]): Unit = {
+    inputStream
       .keyBy(_.identifier)
       .process(new VideoStreamGenerator(config, httpUtil))
       .name(config.videoStreamGeneratorFunction)
       .uid(config.videoStreamGeneratorFunction)
       .setParallelism(config.parallelism)
-
-    env.execute(config.jobName)
   }
 }
 
