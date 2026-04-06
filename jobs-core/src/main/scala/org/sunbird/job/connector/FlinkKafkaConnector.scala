@@ -14,8 +14,7 @@ import org.sunbird.job.serde.{
   StringDeserializationSchema, StringSerializationSchema
 }
 
-class FlinkKafkaConnector(config: BaseJobConfig) extends Serializable {
-
+object FlinkKafkaConnector {
   /**
    * Derive the no-committed-offset fallback strategy from `kafka.auto.offset.reset` config.
    * The old FlinkKafkaConsumer (Flink 1.13) passed the Properties object directly to the Kafka
@@ -23,11 +22,17 @@ class FlinkKafkaConnector(config: BaseJobConfig) extends Serializable {
    * property was absent the Kafka default of LATEST applied.  The new KafkaSource API requires
    * an explicit OffsetsInitializer; we reproduce the original behaviour here.
    */
-  private val noCommittedOffsetStrategy: OffsetResetStrategy =
-    config.kafkaAutoOffsetReset
+  def resolveOffsetResetStrategy(autoOffsetReset: Option[String]): OffsetResetStrategy =
+    autoOffsetReset
       .map(_.toUpperCase)
       .flatMap(s => scala.util.Try(OffsetResetStrategy.valueOf(s)).toOption)
       .getOrElse(OffsetResetStrategy.LATEST)
+}
+
+class FlinkKafkaConnector(config: BaseJobConfig) extends Serializable {
+
+  private val noCommittedOffsetStrategy: OffsetResetStrategy =
+    FlinkKafkaConnector.resolveOffsetResetStrategy(config.kafkaAutoOffsetReset)
 
   def kafkaMapSource(kafkaTopic: String): KafkaSource[util.Map[String, AnyRef]] =
     KafkaSource.builder[util.Map[String, AnyRef]]()
