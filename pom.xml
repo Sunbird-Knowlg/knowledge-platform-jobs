@@ -61,7 +61,7 @@
 		<netty.version>4.1.129.Final</netty.version>
 		<jetty.version>9.4.57.v20241219</jetty.version>
 		<jackson.version>2.18.6</jackson.version>
-		<!-- Pin SLF4J to 1.7.x: Flink 1.13.6 uses SLF4J 1.7.x; logback 1.2.x requires SLF4J 1.7.x.
+		<!-- Pin SLF4J to 1.7.x: Flink 1.18.1 uses SLF4J 1.7.x; logback 1.2.x requires SLF4J 1.7.x.
 		     The new cloud-storage-sdk-api 2.x declares slf4j-api 2.x transitively — override it here. -->
 		<slf4j.version>1.7.36</slf4j.version>
 		<cloud.storage.sdk.version>2.0.1</cloud.storage.sdk.version>
@@ -92,7 +92,7 @@
 	</dependencies>
 	<dependencyManagement>
 		<dependencies>
-			<!-- SLF4J 1.7.x: Flink 1.13.6 uses SLF4J 1.7.x; logback 1.2.x requires it.
+			<!-- SLF4J 1.7.x: Flink 1.18.1 uses SLF4J 1.7.x; logback 1.2.x requires it.
 			     Prevents cloud-storage-sdk 2.x transitive SLF4J 2.x from winning. -->
 			<dependency>
 				<groupId>org.slf4j</groupId>
