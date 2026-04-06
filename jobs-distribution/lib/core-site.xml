@@ -40,9 +40,6 @@
     <name>fs.azure.account.oauth.provider.type</name>
     <value>org.apache.hadoop.fs.azurebfs.oauth2.WorkloadIdentityTokenProvider</value>
   </property>
-  <!-- AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_FEDERATED_TOKEN_FILE are injected
-       by the Azure Workload Identity mutating webhook into every pod that has
-       the azure.workload.identity/use: "true" label. -->
   <property>
     <name>fs.azure.account.oauth2.msi.tenant</name>
     <value>${env.AZURE_TENANT_ID}</value>
