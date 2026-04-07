@@ -1,311 +1,307 @@
-# sunbird-knowledge-platform-jobs
-Background and pipeline jobs of Knowledge Platform
+# Knowledge Platform Jobs
 
-## Knowledge-platform-jobs local setup
-This readme file contains the instruction to set up and run the knowledge-platform-jobs in local machine.
+Apache Flink stream processing jobs for the Sunbird Knowledge Platform. Each job consumes events from Kafka, processes content lifecycle operations, and writes results to Yugabyte, JanusGraph, Elasticsearch, or cloud storage.
 
-### System Requirements:
+---
 
-### Prerequisites:
-* Java 11
+## Table of Contents
 
-### Prepare folders for database data and logs
+1. [Modules](#modules)
+2. [Prerequisites](#prerequisites)
+3. [Local Development Setup](#local-development-setup)
+   - [Start all services](#start-all-services)
+   - [Redis (optional)](#redis-optional)
+   - [Create Kafka topics](#create-kafka-topics)
+4. [Building the Project](#building-the-project)
+5. [Running a Job Locally](#running-a-job-locally)
+   - [Option A — Standalone Flink cluster](#option-a--standalone-flink-cluster)
+   - [Option B — IntelliJ (recommended for debugging)](#option-b--intellij-recommended-for-debugging)
+6. [Cloud Storage Configuration](#cloud-storage-configuration)
+7. [Building the Docker Image](#building-the-docker-image)
+8. [CI/CD — GitHub Actions](#cicd--github-actions)
+
+---
+
+## Modules
+
+| Module | Description |
+|--------|-------------|
+| `jobs-core` | Shared Flink utilities, Kafka connectors, Redis cache, serde, base config |
+| `publish-pipeline/publish-core` | Shared publishing logic (base classes, cloud storage helpers) |
+| `publish-pipeline/knowlg-publish` | Publishes content, collections, and assets |
+| `publish-pipeline/live-node-publisher` | Re-publishes live nodes on metadata update |
+| `asset-enrichment` | Enriches image and video assets (dimensions, duration, thumbnails) |
+| `video-stream-generator` | Generates streaming URLs for uploaded mp4/webm files |
+| `transaction-event-processor` | Generates audit events and syncs data in elasticsearch for every JanusGraph transaction |
+| `qrcode-image-generator` | Generates QR code images for dial codes |
+| `dialcode-context-updater` | Updates dial code context in the graph |
+| `jobs-distribution` | Packages all jobs into a single deployable Docker image |
+
+---
+
+## Prerequisites
+
+Make sure these are installed before you begin:
+
+- **Java 11** — verify with `java -version`
+- **Maven 3.8+** — verify with `mvn -version`
+- **Docker** — verify with `docker --version`
+
+---
+
+## Local Development Setup
+
+All services are defined in `docker/docker-compose.yml`. Before starting, set the JanusGraph image:
 
 ```shell
-mkdir -p ~/sunbird-dbs/neo4j ~/sunbird-dbs/cassandra ~/sunbird-dbs/redis ~/sunbird-dbs/es ~/sunbird-dbs/kafka
-export sunbird_dbs_path=~/sunbird-dbs
+# Open docker/docker-compose.yml and replace <janusgraph-image> with the actual image name
 ```
 
+### Start all services
 
-### Elasticsearch database setup in docker:
 ```shell
-docker run --name sunbird_es -d -p 9200:9200 -p 9300:9300 \
--v $sunbird_dbs_path/es/data:/usr/share/elasticsearch/data \
--v $sunbird_dbs_path/es/logs://usr/share/elasticsearch/logs \
--v $sunbird_dbs_path/es/backups:/opt/elasticsearch/backup \
- -e "discovery.type=single-node" docker.elastic.co/elasticsearch/elasticsearch:6.8.22
-
-```
-> --name -  Name your container (avoids generic id)
->
-> -p - Specify container ports to expose
->
-> Using the -p option with ports 7474 and 7687 allows us to expose and listen for traffic on both the HTTP and Bolt ports. Having the HTTP port means we can connect to our database with Neo4j Browser, and the Bolt port means efficient and type-safe communication requests between other layers and the database.
->
-> -d - This detaches the container to run in the background, meaning we can access the container separately and see into all of its processes.
->
-> -v - The next several lines start with the -v option. These lines define volumes we want to bind in our local directory structure so we can access certain files locally.
->
-> --env - Set config as environment variables for Neo4j database
->
-
-
-### Neo4j database setup in docker:
-1. First, we need to get the neo4j image from docker hub using the following command.
-```shell
-docker pull neo4j:3.3.0 
-```
-2. We need to create the neo4j instance, By using the below command we can create the same and run in a container.
-```shell
-docker run --name sunbird_neo4j -p7474:7474 -p7687:7687 -d \
-    -v $sunbird_dbs_path/neo4j/data:/var/lib/neo4j/data \
--v $sunbird_dbs_path/neo4j/logs:/var/lib/neo4j/logs \
--v $sunbird_dbs_path/neo4j/plugins:/var/lib/neo4j/plugins \
---env NEO4J_dbms_connector_https_advertised__address="localhost:7473" \
---env NEO4J_dbms_connector_http_advertised__address="localhost:7474" \
---env NEO4J_dbms_connector_bolt_advertised__address="localhost:7687" \
---env NEO4J_AUTH=none \
-neo4j:3.3.0
-```
-> --name -  Name your container (avoids generic id)
->
-> -p - Specify container ports to expose
->
-> Using the -p option with ports 7474 and 7687 allows us to expose and listen for traffic on both the HTTP and Bolt ports. Having the HTTP port means we can connect to our database with Neo4j Browser, and the Bolt port means efficient and type-safe communication requests between other layers and the database.
->
-> -d - This detaches the container to run in the background, meaning we can access the container separately and see into all of its processes.
->
-> -v - The next several lines start with the -v option. These lines define volumes we want to bind in our local directory structure so we can access certain files locally.
->
-> --env - Set config as environment variables for Neo4j database
->
-> Using Docker on Windows will also need a couple of additional configurations because the default 0.0.0.0 address that is resolved with the above command does not translate to localhost in Windows. We need to add environment variables to our command above to set the advertised addresses.
->
-> By default, Neo4j requires authentication and requires us to first login with neo4j/neo4j and set a new password. We will skip this password reset by initializing the authentication none when we create the Docker container using the --env NEO4J_AUTH=none.
-
-3. Load seed data to neo4j using the instructions provided in the [link](master-data/loading-seed-data.md#loading-seed-data-to-neo4j-database)
-
-4. Verify whether neo4j is running or not by accessing neo4j browser(http://localhost:7474/browser).
-
-5. To SSH to neo4j docker container, run the below command.
-```shell
-docker exec -it sunbird_neo4j bash
+docker-compose -f docker/docker-compose.yml up -d
 ```
 
-### Redis database setup in docker:
-1. we need to get the redis image from docker hub using the below command.
-```shell
-docker pull redis:6.0.8 
-```
-2. We need to create the redis instance, By using the below command we can create the same and run in a container.
-```shell
-docker run --name sunbird_redis -d -p 6379:6379 redis:6.0.8
-```
-3. To SSH to redis docker container, run the below command
-```shell
-docker exec -it sunbird_redis bash
-```
-### cassandra database setup in docker:
-1. we need to get the cassandra image and can be done using the below command.
-```shell
-docker pull cassandra:3.11.8 
-```
-2. We need to create the cassandra instance, By using the below command we can create the same and run in a container.
-```shell
-docker run --name sunbird_cassandra -d -p 9042:9042 \
--v $sunbird_dbs_path/cassandra/data:/var/lib/cassandra \
--v $sunbird_dbs_path/cassandra/logs:/opt/cassandra/logs \
--v $sunbird_dbs_path/cassandra/backups:/mnt/backups \
---network bridge cassandra:3.11.8 
-```
-For network, we can use the existing network or create a new network using the following command and use it.
-```shell
-docker network create sunbird_db_network
-```
-3. To start cassandra cypher shell run the below command.
-```shell
-docker exec -it sunbird_cassandra cqlsh
-```
-4. To ssh to cassandra docker container, run the below command.
-```shell
-docker exec -it sunbird_cassandra /bin/bash
-```
-5. Load seed data to cassandra using the instructions provided in the [link](master-data/loading-seed-data.md#loading-seed-data-to-cassandra-database)
+This starts Elasticsearch, Yugabyte, JanusGraph, and Kafka. JanusGraph automatically initializes the schema on startup via `docker/janusgraph/scripts/schema_init.groovy`.
 
-### Running kafka using docker:
-1. Kafka stores information about the cluster and consumers into Zookeeper. ZooKeeper acts as a coordinator between them. we need to run two services(zookeeper & kafka), Prepare your docker-compose.yml file using the following reference.
+Verify JanusGraph schema was initialized:
 ```shell
-version: '3'
+docker logs janusgraph | grep "SCHEMA INITIALIZATION"
+# Expected: --- SCHEMA INITIALIZATION COMPLETE ---
+```
 
-services:
-  zookeeper:
-    image: 'wurstmeister/zookeeper:latest'
-    container_name: zookeeper
-    ports:
-      - "2181:2181"    
-    environment:
-      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://127.0.0.1:2181     
-    
-  kafka:
-    image: 'wurstmeister/kafka:2.11-1.0.1'
-    container_name: kafka
-    ports:
-      - "9092:9092"
-    environment:
-      - KAFKA_BROKER_ID=1
-      - KAFKA_LISTENERS=PLAINTEXT://:9092
-      - KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://127.0.0.1:9092
-      - KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181      
-      - ALLOW_PLAINTEXT_LISTENER=yes
-    depends_on:
-      - zookeeper  
-```
-2. Go to the path where docker-compose.yml placed and run the below command to create and run the containers (zookeeper & kafka).
+### Redis (optional)
+
+Redis is disabled by default (`redis.enabled = false` in `jobs-core/src/main/resources/base-config.conf`). Only start it if the job you are running explicitly enables it.
+
 ```shell
-docker-compose -f docker-compose.yml up -d
+docker-compose -f docker/docker-compose.yml --profile redis up -d
 ```
-3. To start kafka docker container shell, run the below command.
+
+### Create Kafka topics
+
 ```shell
 docker exec -it kafka sh
-```
-Go to path /opt/kafka/bin, where we will have executable files to perform operations(creating topics, running producers and consumers, etc).
-Example:
-```shell
-kafka-topics.sh --create --zookeeper zookeeper:2181 --replication-factor 1 --partitions 1 --topic test_topic 
+# Inside the container:
+kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1 --topic sunbirddev.publish.job.request
+kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1 --topic sunbirddev.knowlg.republish.request
+# Add more topics as needed for the job you are running
+exit
 ```
 
-### Steps to start a job in debug or development mode using IntelliJ:
-1. Navigate to downloaded repository folder and run below command.
+### Service URLs
+
+| Service | URL |
+|---------|-----|
+| Elasticsearch | http://localhost:9200 |
+| YugabyteDB UI | http://localhost:9000 |
+| JanusGraph (Gremlin) | ws://localhost:8182/gremlin |
+| Kafka | localhost:9092 |
+
+---
+
+## Building the Project
+
+From the repository root:
+
 ```shell
 mvn clean install -DskipTests
-``` 
-2. Open the project in IntelliJ.
-3. Navigate to the target job folder (Example: ../knowledge-platform-jobs/publish-pipeline/content-publish) and edit the 'pom.xml' to add below dependency.
-```shell
-<dependency>
-  <groupId>org.apache.flink</groupId>
-  <artifactId>flink-clients_${scala.version}</artifactId>
-  <version>${flink.version}</version>
-</dependency>
-```
-4. Comment "provided" scope from flink-streaming-scala_${scala.version} artifact dependency in the job's 'pom.xml'.
-```shell
-<dependency>
-    <groupId>org.apache.flink</groupId>
-    <artifactId>flink-streaming-scala_${scala.version}</artifactId>
-    <version>${flink.version}</version>
-<!--            <scope>provided</scope>-->
-</dependency>
-```
-5. Comment the default flink StreamExecutionEnvironment in the job's StreamTask file (Example: KnowlgPublishStreamTask.scala) and add code to create local StreamExecutionEnvironment.
-```shell
-//    implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
-      implicit val env: StreamExecutionEnvironment = StreamExecutionEnvironment.createLocalEnvironment()
-```
-6. Save cloud storage related environment variables in StreamTask environment variables.
-7. Start all databases, zookeper and kafka containers in docker
-8. Run the StreamTask (Normal or Debug)
-9. Open a terminal, connect to kafka docker container and produce the target job topic.
-```shell
-docker exec -it kafka_container_id sh
-kafka-console-producer.sh --broker-list kafka:9092 --topic sunbirddev.publish.job.request
 ```
 
+A successful build ends with `BUILD SUCCESS`. All job jars will be in their respective `target/` directories.
 
-## Steps for running jobs in Flink locally:-
-### Running flink :
-1. Download the Apache flink
-```shell
-wget https://dlcdn.apache.org/flink/flink-1.12.7/flink-1.12.7-bin-scala_2.12.tgz
-```
-2. Extract the downloaded folder
-```shell
-tar xzf flink-1.12.7-bin-scala_2.12.tgz
-```
-3. Change the directory & Start the flink cluster.
-```shell
-cd flink-1.12.7
-./bin/start-cluster.sh
-```
-4. Open web view to check jobmanager and taskmanager
-```shell
-localhost:8081
-```
+---
 
-### Setting up Cloud storage connection:
-Setup cloud storage specific variables as environment variables.
+## Running a Job Locally
+
+### Option A — Standalone Flink cluster
+
+> Use this option to run the job the same way it runs in production.
+
+1. Download and extract Flink 1.18.1:
+   ```shell
+   wget https://dlcdn.apache.org/flink/flink-1.18.1/flink-1.18.1-bin-scala_2.12.tgz
+   tar xzf flink-1.18.1-bin-scala_2.12.tgz
+   ```
+
+2. Start the Flink cluster:
+   ```shell
+   cd flink-1.18.1
+   ./bin/start-cluster.sh
+   ```
+   Verify: open http://localhost:8081 — you should see the Flink dashboard with 1 TaskManager.
+
+3. Set the [cloud storage environment variables](#cloud-storage-configuration).
+
+4. Make sure all containers from [Local Development Setup](#local-development-setup) are running.
+
+5. Submit the job. Example for `knowlg-publish`:
+   ```shell
+   ./bin/flink run -m localhost:8081 \
+     ../publish-pipeline/knowlg-publish/target/knowlg-publish-1.0.0.jar
+   ```
+   Verify: the job should appear in the Flink dashboard at http://localhost:8081 with status `RUNNING`.
+
+6. Produce a test event:
+   ```shell
+   docker exec -it kafka sh
+   # Inside the container:
+   kafka-console-producer.sh --bootstrap-server localhost:9092 --topic sunbirddev.publish.job.request
+   # Type a JSON event and press Enter
+   ```
+
+   Watch the Flink task logs in the dashboard (`Job → Task Managers → Logs`).
+
+---
+
+### Option B — IntelliJ (recommended for debugging)
+
+> Use this option when you want to step through code with a debugger.
+
+1. Open the project in IntelliJ (`File → Open` → select the root `pom.xml`).
+
+2. In the job's `pom.xml` (e.g. `publish-pipeline/knowlg-publish/pom.xml`), make these **temporary** changes:
+
+   > ⚠️ Do not commit these changes. Revert them before raising a PR.
+
+   Add `flink-clients` as a dependency:
+   ```xml
+   <dependency>
+     <groupId>org.apache.flink</groupId>
+     <artifactId>flink-clients_${scala.version}</artifactId>
+     <version>${flink.version}</version>
+   </dependency>
+   ```
+
+   Comment out the `provided` scope on `flink-streaming-scala`:
+   ```xml
+   <dependency>
+     <groupId>org.apache.flink</groupId>
+     <artifactId>flink-streaming-scala_${scala.version}</artifactId>
+     <version>${flink.version}</version>
+     <!-- <scope>provided</scope> -->
+   </dependency>
+   ```
+
+3. In the job's StreamTask file (e.g. `KnowlgPublishStreamTask.scala`), switch to a local execution environment:
+
+   > ⚠️ Do not commit this change either.
+
+   ```scala
+   // implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
+   implicit val env: StreamExecutionEnvironment = StreamExecutionEnvironment.createLocalEnvironment()
+   ```
+
+4. Set the [cloud storage environment variables](#cloud-storage-configuration) in IntelliJ's run configuration (`Run → Edit Configurations → Environment variables`).
+
+5. Make sure all containers from [Local Development Setup](#local-development-setup) are running.
+
+6. Right-click the StreamTask file → `Run` or `Debug`.
+
+7. Produce a test event to trigger the job:
+   ```shell
+   docker exec -it kafka sh
+   # Inside the container:
+   kafka-console-producer.sh --bootstrap-server localhost:9092 --topic sunbirddev.publish.job.request
+   # Type a JSON event and press Enter
+   ```
+
+   Watch the IntelliJ console for output.
+
+---
+
+## Cloud Storage Configuration
+
+Set these environment variables before running any job locally. In Kubernetes, authentication is handled automatically via Workload Identity and these are not needed.
+
 ```shell
-export cloud_storage_type=  #values can be 'aws' or 'azure'
+export cloud_storage_type=        # azure | gcloud | aws
+export cloud_storage_auth_type=ACCESS_KEY
 
-For AWS Cloud Storage connectivity: 
-export aws_storage_key=
-export aws_storage_secret=
-export aws_storage_container=
-
-For Azure Cloud Storage connectivity:
+# Azure
 export azure_storage_key=
 export azure_storage_secret=
 export azure_storage_container=
 
-export content_youtube_apikey= #key to fetch metadata of youtube videos
+# AWS
+export aws_storage_key=
+export aws_storage_secret=
+export aws_storage_container=
 
-```
-### Running job in Flink:
-1. Navigate to the required job folder (Example: ../knowledge-platform-jobs/publish-pipeline/content-publish) and run the below maven command to build the application.
-```shell
-mvn clean install -DskipTests
-``` 
-2. Start all databases, zookeper and kafka containers in docker
-3. Start flink (if not started) and submit the job to flink. Example:
-```shell
-cd flink-1.12.7
-./bin/start-cluster.sh
-./bin/flink run -m localhost:8081 /user/test/workspace/knowledge-platform-jobs/publish-pipeline/content-publish/target/content-publish-1.0.0.jar
-```
-4. Open a terminal, connect to kafka docker container and produce the target job topic.
-```shell
-docker exec -it kafka_container_id sh
-kafka-console-producer.sh --broker-list kafka:9092 --topic sunbirddev.publish.job.request
-```
+# GCP
+export gcloud_storage_key=
+export gcloud_storage_secret=
+export gcloud_storage_container=
 
-# GitHub Actions: Build and Push Flink Image
-
-This GitHub Actions workflow automates building and packaging Flink-based jobs and pushing a Docker image to a container registry whenever a Git tag is pushed.
+export content_youtube_apikey=    # required for video-stream-generator and asset-enrichment
+```
 
 ---
 
-## Workflow Features
+## Building the Docker Image
 
-- Builds `jobs-core` and other modules using Maven
-- Packages Flink distribution from `jobs-distribution`
-- Builds Docker image from `Dockerfile`
-- Pushes image to DockerHub, GitHub Container Registry (GHCR), Google Cloud Artifact Registry, or Azure
-- Uses Maven caching for faster builds
-- Fully configurable via workflow variables and secrets
-- Using Maven version - 3.8.7
+The `jobs-distribution` module packages all jobs into a single Docker image. The build is split by cloud provider — only the jars and plugins required for that cloud are included.
 
-### GitHub Actions Workflow Prerequisites
+The Maven command does everything in one shot: `-am` builds all upstream job modules first, then `install` compiles and packages `jobs-distribution` (producing the tar.gz and staging any cloud-specific jars). The Docker `--target` must match the Maven profile used.
 
-To ensure the GitHub Actions workflows in this repository function correctly, the following prerequisites must be met:
+**Azure (default)**
+```shell
+mvn clean install -DskipTests -pl jobs-distribution -am
+docker build --target azure -t knowledge-platform-jobs:azure jobs-distribution/
+```
 
-1. **Secrets Configuration**:
-   - Ensure the secrets are configured in your GitHub repository, depending on the value of `REGISTRY_PROVIDER`. The workflow will push the image to the respective container registry if the required credentials are provided.
+**GCP**
+```shell
+mvn clean install -DskipTests -pl jobs-distribution -am -Pgcloud
+docker build --target gcloud -t knowledge-platform-jobs:gcloud jobs-distribution/
+```
 
-   - Note: If No REGISTRY_PROVIDER is provided the image will be pushed to GHCR.
+**AWS**
+```shell
+mvn clean install -DskipTests -pl jobs-distribution -am -Paws
+docker build --target aws -t knowledge-platform-jobs:aws jobs-distribution/
+```
 
-    #### GCP (Google Cloud Platform)
-    - `REGISTRY_PROVIDER`: Set to `gcp`
-    - `GCP_SERVICE_ACCOUNT_KEY`: Base64-encoded service account key for GCP.
-    - `REGISTRY_NAME`: GCP registry name (e.g., `asia-south1-docker.pkg.dev`).
-    - `REGISTRY_URL`: URL of the GCP container registry (e.g., `asia-south1-docker.pkg.dev/<project_id>/<repository_name>`).
+---
 
-    #### DockerHub
-    - `REGISTRY_PROVIDER`: Set to `dockerhub`
-    - `REGISTRY_USERNAME`: DockerHub username.
-    - `REGISTRY_PASSWORD`: DockerHub password.
-    - `REGISTRY_NAME`: DockerHub registry name (e.g., `docker.io`).
-    - `REGISTRY_URL`: URL of the DockerHub registry (e.g., `docker.io/<username>`).
+## CI/CD — GitHub Actions
 
-    #### Azure Container Registry (ACR)
-    - `REGISTRY_PROVIDER`: Set to `azure`
-    - `REGISTRY_USERNAME`: ACR username (service principal or admin username).
-    - `REGISTRY_PASSWORD`: ACR password (service principal secret or admin password).
-    - `REGISTRY_NAME`: ACR registry name (e.g., `myregistry.azurecr.io`).
-    - `REGISTRY_URL`: URL of the ACR registry (e.g., `myregistry.azurecr.io`).
+The `build-push-img` workflow runs on every Git tag push. It builds all modules, packages the distribution, and pushes the Docker image to a container registry.
 
-    #### GitHub Container Registry (GHCR)
-    - `REGISTRY_PROVIDER`: Set to any value other than above (default is GHCR)
-    - No additional secrets are required. The workflow uses the built-in `GITHUB_TOKEN` provided by GitHub Actions for authentication.
+### Required variables (Settings → Secrets and variables → Actions)
 
-Ensure these secrets and variables are added to the repository settings under **Settings > Secrets and variables > Actions**.
-By ensuring these prerequisites are met, the workflows in this repository will execute successfully.
+| Variable | Description |
+|----------|-------------|
+| `CSP` | Cloud provider: `azure` (default), `gcloud`, or `aws` |
+| `REGISTRY_PROVIDER` | Registry type: `azure`, `gcp`, `dockerhub`, or leave unset for GHCR |
+
+### Registry credentials
+
+**GitHub Container Registry (GHCR)** — default, no setup needed. Uses the built-in `GITHUB_TOKEN`.
+
+**DockerHub**
+
+| Secret | Example |
+|--------|---------|
+| `REGISTRY_USERNAME` | `myusername` |
+| `REGISTRY_PASSWORD` | DockerHub password or access token |
+| `REGISTRY_NAME` | `docker.io` |
+| `REGISTRY_URL` | `docker.io/myusername` |
+
+**Azure Container Registry**
+
+| Secret | Example |
+|--------|---------|
+| `REGISTRY_USERNAME` | ACR username |
+| `REGISTRY_PASSWORD` | ACR password |
+| `REGISTRY_NAME` | `myregistry.azurecr.io` |
+| `REGISTRY_URL` | `myregistry.azurecr.io` |
+
+**GCP Artifact Registry**
+
+| Secret | Example |
+|--------|---------|
+| `GCP_SERVICE_ACCOUNT_KEY` | Base64-encoded service account JSON key |
+| `REGISTRY_NAME` | `asia-south1-docker.pkg.dev` |
+| `REGISTRY_URL` | `asia-south1-docker.pkg.dev/<project>/<repo>` |
