@@ -10,6 +10,7 @@ Apache Flink stream processing jobs for the Sunbird Knowledge Platform. Each job
 2. [Prerequisites](#prerequisites)
 3. [Local Development Setup](#local-development-setup)
    - [Start all services](#start-all-services)
+   - [Initialize YugabyteDB keyspaces](#initialize-yugabytedb-keyspaces)
    - [Redis (optional)](#redis-optional)
    - [Create Kafka topics](#create-kafka-topics)
 4. [Building the Project](#building-the-project)
@@ -70,6 +71,19 @@ Verify JanusGraph schema was initialized:
 docker logs janusgraph | grep "SCHEMA INITIALIZATION"
 # Expected: --- SCHEMA INITIALIZATION COMPLETE ---
 ```
+
+### Initialize YugabyteDB keyspaces
+
+Once YugabyteDB is up, run the CQL migration script to create the required keyspaces and tables. This downloads the migration files from [sunbird-spark-installer](https://github.com/Sunbird-Spark/sunbird-spark-installer/tree/develop/scripts/sunbird-yugabyte-migrations/sunbird-knowlg) and executes them against the local YugabyteDB container.
+
+```shell
+cd docker
+./init-yugabyte.sh              # env=dev, branch=develop
+./init-yugabyte.sh sb           # env=sb, branch=develop
+./init-yugabyte.sh dev main     # env=dev, branch=main
+```
+
+This only needs to be run once (or after `docker compose down -v` which deletes volumes).
 
 ### Redis (optional)
 
