@@ -9,17 +9,16 @@ Apache Flink stream processing jobs for the Sunbird Knowledge Platform. Each job
 1. [Modules](#modules)
 2. [Prerequisites](#prerequisites)
 3. [Local Development Setup](#local-development-setup)
-   - [Start all services](#start-all-services)
-   - [Initialize YugabyteDB keyspaces](#initialize-yugabytedb-keyspaces)
-   - [Redis (optional)](#redis-optional)
-   - [Create Kafka topics](#create-kafka-topics)
-4. [Building the Project](#building-the-project)
-5. [Running a Job Locally](#running-a-job-locally)
-   - [Option A — Standalone Flink cluster](#option-a--standalone-flink-cluster)
-   - [Option B — IntelliJ (recommended for debugging)](#option-b--intellij-recommended-for-debugging)
-6. [Cloud Storage Configuration](#cloud-storage-configuration)
-7. [Building the Docker Image](#building-the-docker-image)
-8. [CI/CD — GitHub Actions](#cicd--github-actions)
+   - [Step 1 — Clone the repository](#step-1--clone-the-repository)
+   - [Step 2 — Start infrastructure](#step-2--start-infrastructure)
+   - [Step 3 — Initialize YugabyteDB keyspaces](#step-3--initialize-yugabytedb-keyspaces)
+   - [Step 4 — Create Kafka topics](#step-4--create-kafka-topics)
+   - [Step 5 — Build the project](#step-5--build-the-project)
+   - [Step 6 — Run a job](#step-6--run-a-job)
+4. [Redis (optional)](#redis-optional)
+5. [Cloud Storage Configuration](#cloud-storage-configuration)
+6. [Building the Docker Image](#building-the-docker-image)
+7. [CI/CD — GitHub Actions](#cicd--github-actions)
 
 ---
 
@@ -46,54 +45,58 @@ Make sure these are installed before you begin:
 
 - **Java 11** — verify with `java -version`
 - **Maven 3.8+** — verify with `mvn -version`
-- **Docker** — verify with `docker --version`
+- **Docker Desktop** — verify with `docker --version`
+  - Allocate at least **6 GB RAM** to Docker Desktop (Settings > Resources > Memory). The default 3.8 GB is not enough — JanusGraph will get OOM-killed.
+- **Git** — verify with `git --version`
 
 ---
 
 ## Local Development Setup
 
-All services are defined in `docker/docker-compose.yml`. Before starting, set the JanusGraph image:
+Follow these steps in order. The full setup takes about 5 minutes.
+
+### Step 1 — Clone the repository
 
 ```shell
-# Open docker/docker-compose.yml and replace <janusgraph-image> with the actual image name
+git clone https://github.com/Sunbird-Knowlg/knowledge-platform-jobs.git
+cd knowledge-platform-jobs
 ```
 
-### Start all services
+### Step 2 — Start infrastructure
 
 ```shell
-docker-compose -f docker/docker-compose.yml up -d
+cd docker
+docker compose up -d
 ```
 
-This starts Elasticsearch, Yugabyte, JanusGraph, and Kafka. JanusGraph automatically initializes the schema on startup via `docker/janusgraph/scripts/schema_init.groovy`.
+This starts **Elasticsearch**, **YugabyteDB**, **JanusGraph**, and **Kafka**.
 
-Verify JanusGraph schema was initialized:
+Wait about **90 seconds** for everything to initialize (YugabyteDB starts first, then JanusGraph connects to it and creates the graph schema). You can check progress with:
+
 ```shell
+docker compose ps                  # all containers should show "Up"
 docker logs janusgraph | grep "SCHEMA INITIALIZATION"
 # Expected: --- SCHEMA INITIALIZATION COMPLETE ---
 ```
 
-### Initialize YugabyteDB keyspaces
+### Step 3 — Initialize YugabyteDB keyspaces
 
-Once YugabyteDB is up, run the CQL migration script to create the required keyspaces and tables. This downloads the migration files from [sunbird-spark-installer](https://github.com/Sunbird-Spark/sunbird-spark-installer/tree/develop/scripts/sunbird-yugabyte-migrations/sunbird-knowlg) and executes them against the local YugabyteDB container.
-
-```shell
-cd docker
-./init-yugabyte.sh              # env=dev, branch=develop
-./init-yugabyte.sh sb           # env=sb, branch=develop
-./init-yugabyte.sh dev main     # env=dev, branch=main
-```
-
-This only needs to be run once (or after `docker compose down -v` which deletes volumes).
-
-### Redis (optional)
-
-Redis is disabled by default (`redis.enabled = false` in `jobs-core/src/main/resources/base-config.conf`). Only start it if the job you are running explicitly enables it.
+Still inside the `docker/` directory, run the migration script to create the required keyspaces and tables:
 
 ```shell
-docker-compose -f docker/docker-compose.yml --profile redis up -d
+./init-yugabyte.sh
 ```
 
-### Create Kafka topics
+This downloads CQL migration files from [sunbird-spark-installer](https://github.com/Sunbird-Spark/sunbird-spark-installer/tree/develop/scripts/sunbird-yugabyte-migrations/sunbird-knowlg) and executes them. By default it uses `dev` as the keyspace prefix (e.g. `dev_content_store`) and the `develop` branch.
+
+```shell
+./init-yugabyte.sh sb           # use 'sb' as keyspace prefix instead
+./init-yugabyte.sh dev main     # use a different branch
+```
+
+You only need to run this once. Run it again after `docker compose down -v` (which deletes volumes).
+
+### Step 4 — Create Kafka topics
 
 ```shell
 docker exec -it kafka sh
@@ -104,32 +107,20 @@ kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 
 exit
 ```
 
-### Service URLs
+### Step 5 — Build the project
 
-| Service | URL |
-|---------|-----|
-| Elasticsearch | http://localhost:9200 |
-| YugabyteDB UI | http://localhost:9000 |
-| JanusGraph (Gremlin) | ws://localhost:8182/gremlin |
-| Kafka | localhost:9092 |
-
----
-
-## Building the Project
-
-From the repository root:
+Go back to the repository root and build:
 
 ```shell
+cd ..
 mvn clean install -DskipTests
 ```
 
-A successful build ends with `BUILD SUCCESS`. All job jars will be in their respective `target/` directories.
+This takes a few minutes the first time (Maven downloads dependencies). A successful build ends with `BUILD SUCCESS`. All job jars will be in their respective `target/` directories.
 
----
+### Step 6 — Run a job
 
-## Running a Job Locally
-
-### Option A — Standalone Flink cluster
+#### Option A — Standalone Flink cluster
 
 > Use this option to run the job the same way it runs in production.
 
@@ -148,16 +139,14 @@ A successful build ends with `BUILD SUCCESS`. All job jars will be in their resp
 
 3. Set the [cloud storage environment variables](#cloud-storage-configuration).
 
-4. Make sure all containers from [Local Development Setup](#local-development-setup) are running.
-
-5. Submit the job. Example for `knowlg-publish`:
+4. Submit the job. Example for `knowlg-publish`:
    ```shell
    ./bin/flink run -m localhost:8081 \
      ../publish-pipeline/knowlg-publish/target/knowlg-publish-1.0.0.jar
    ```
    Verify: the job should appear in the Flink dashboard at http://localhost:8081 with status `RUNNING`.
 
-6. Produce a test event:
+5. Produce a test event:
    ```shell
    docker exec -it kafka sh
    # Inside the container:
@@ -165,19 +154,17 @@ A successful build ends with `BUILD SUCCESS`. All job jars will be in their resp
    # Type a JSON event and press Enter
    ```
 
-   Watch the Flink task logs in the dashboard (`Job → Task Managers → Logs`).
+   Watch the Flink task logs in the dashboard (`Job > Task Managers > Logs`).
 
----
-
-### Option B — IntelliJ (recommended for debugging)
+#### Option B — IntelliJ (recommended for debugging)
 
 > Use this option when you want to step through code with a debugger.
 
-1. Open the project in IntelliJ (`File → Open` → select the root `pom.xml`).
+1. Open the project in IntelliJ (`File > Open` > select the root `pom.xml`).
 
 2. In the job's `pom.xml` (e.g. `publish-pipeline/knowlg-publish/pom.xml`), make these **temporary** changes:
 
-   > ⚠️ Do not commit these changes. Revert them before raising a PR.
+   > Do not commit these changes. Revert them before raising a PR.
 
    Add `flink-clients` as a dependency:
    ```xml
@@ -200,20 +187,18 @@ A successful build ends with `BUILD SUCCESS`. All job jars will be in their resp
 
 3. In the job's StreamTask file (e.g. `KnowlgPublishStreamTask.scala`), switch to a local execution environment:
 
-   > ⚠️ Do not commit this change either.
+   > Do not commit this change either.
 
    ```scala
    // implicit val env: StreamExecutionEnvironment = FlinkUtil.getExecutionContext(config)
    implicit val env: StreamExecutionEnvironment = StreamExecutionEnvironment.createLocalEnvironment()
    ```
 
-4. Set the [cloud storage environment variables](#cloud-storage-configuration) in IntelliJ's run configuration (`Run → Edit Configurations → Environment variables`).
+4. Set the [cloud storage environment variables](#cloud-storage-configuration) in IntelliJ's run configuration (`Run > Edit Configurations > Environment variables`).
 
-5. Make sure all containers from [Local Development Setup](#local-development-setup) are running.
+5. Right-click the StreamTask file > `Run` or `Debug`.
 
-6. Right-click the StreamTask file → `Run` or `Debug`.
-
-7. Produce a test event to trigger the job:
+6. Produce a test event to trigger the job:
    ```shell
    docker exec -it kafka sh
    # Inside the container:
@@ -225,30 +210,72 @@ A successful build ends with `BUILD SUCCESS`. All job jars will be in their resp
 
 ---
 
-## Cloud Storage Configuration
+### Service URLs
 
-Set these environment variables before running any job locally. In Kubernetes, authentication is handled automatically via Workload Identity and these are not needed.
+| Service | URL |
+|---------|-----|
+| Elasticsearch | http://localhost:9200 |
+| YugabyteDB UI | http://localhost:9000 |
+| JanusGraph (Gremlin) | ws://localhost:8182/gremlin |
+| Kafka | localhost:9092 |
+
+### Stopping and resetting
 
 ```shell
-export cloud_storage_type=        # azure | gcloud | aws
+cd docker
+docker compose down            # stop containers, keep data
+docker compose down -v         # stop containers and delete all data
+```
+
+---
+
+## Redis (optional)
+
+Redis is disabled by default (`redis.enabled = false` in `jobs-core/src/main/resources/base-config.conf`). Only start it if the job you are running explicitly enables it.
+
+```shell
+cd docker
+docker compose --profile redis up -d
+```
+
+---
+
+## Cloud Storage Configuration
+
+Cloud storage is needed for jobs that upload/download content artifacts. If you are only testing event processing that doesn't involve file uploads, you can skip this.
+
+Set these environment variables before running a job:
+
+#### Azure (default)
+```shell
+export cloud_storage_type=azure
 export cloud_storage_auth_type=ACCESS_KEY
+export azure_storage_key=your-account-name
+export azure_storage_secret=your-account-key
+export azure_storage_container=your-container-name
+```
 
-# Azure
-export azure_storage_key=
-export azure_storage_secret=
-export azure_storage_container=
+#### AWS S3
+```shell
+export cloud_storage_type=aws
+export cloud_storage_auth_type=ACCESS_KEY
+export aws_storage_key=your-access-key-id
+export aws_storage_secret=your-secret-access-key
+export aws_storage_container=your-s3-bucket-name
+```
 
-# AWS
-export aws_storage_key=
-export aws_storage_secret=
-export aws_storage_container=
+#### Google Cloud Storage
+```shell
+export cloud_storage_type=gcloud
+export cloud_storage_auth_type=ACCESS_KEY
+export gcloud_storage_key=your-client-email
+export gcloud_storage_secret=/path/to/key.json
+export gcloud_storage_container=your-gcs-bucket-name
+```
 
-# GCP
-export gcloud_storage_key=
-export gcloud_storage_secret=
-export gcloud_storage_container=
-
-export content_youtube_apikey=    # required for video-stream-generator and asset-enrichment
+#### Additional
+```shell
+export content_youtube_apikey=your-api-key    # required for video-stream-generator and asset-enrichment
 ```
 
 ---
@@ -256,8 +283,6 @@ export content_youtube_apikey=    # required for video-stream-generator and asse
 ## Building the Docker Image
 
 The `jobs-distribution` module packages all jobs into a single Docker image. The build is split by cloud provider — only the jars and plugins required for that cloud are included.
-
-The Maven command does everything in one shot: `-am` builds all upstream job modules first, then `install` compiles and packages `jobs-distribution` (producing the tar.gz and staging any cloud-specific jars). The Docker `--target` must match the Maven profile used.
 
 **Azure (default)**
 ```shell
@@ -283,7 +308,7 @@ docker build --target aws -t knowledge-platform-jobs:aws jobs-distribution/
 
 The `build-push-img` workflow runs on every Git tag push. It builds all modules, packages the distribution, and pushes the Docker image to a container registry.
 
-### Required variables (Settings → Secrets and variables → Actions)
+### Required variables (Settings > Secrets and variables > Actions)
 
 | Variable | Description |
 |----------|-------------|
