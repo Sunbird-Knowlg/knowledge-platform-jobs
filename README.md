@@ -1,6 +1,6 @@
 # Knowledge Platform Jobs
 
-Apache Flink stream processing jobs for the Sunbird Knowledge Platform. Each job consumes events from Kafka, processes content lifecycle operations, and writes results to Yugabyte, JanusGraph, Elasticsearch, or cloud storage.
+Apache Flink stream processing jobs for the Sunbird Knowledge Platform. Each job consumes events from Kafka, processes content lifecycle operations, and writes results to Yugabyte, JanusGraph, Elasticsearch.
 
 ---
 
@@ -46,7 +46,7 @@ Make sure these are installed before you begin:
 - **Java 11** — verify with `java -version`
 - **Maven 3.8+** — verify with `mvn -version`
 - **Docker Desktop** — verify with `docker --version`
-  - Allocate at least **6 GB RAM** to Docker Desktop (Settings > Resources > Memory). The default 3.8 GB is not enough — JanusGraph will get OOM-killed.
+  - Allocate at least **6 GB RAM** to Docker Desktop (Settings > Resources > Memory). The default 3.8 GB is not enough.
 - **Git** — verify with `git --version`
 
 ---
@@ -117,6 +117,13 @@ mvn clean install -DskipTests
 ```
 
 This takes a few minutes the first time (Maven downloads dependencies). A successful build ends with `BUILD SUCCESS`. All job jars will be in their respective `target/` directories.
+
+To build for a specific cloud provider:
+```shell
+mvn clean install -DskipTests -Paws      # AWS S3
+mvn clean install -DskipTests -Pgcloud   # Google Cloud Storage
+```
+If no profile is specified, the default build targets Azure.
 
 ### Step 6 — Run a job
 
