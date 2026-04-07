@@ -17,12 +17,6 @@ MIGRATIONS_DIR="${SCRIPT_DIR}/.migrations"
 REPO_URL="https://github.com/Sunbird-Spark/sunbird-spark-installer.git"
 REPO_PATH="scripts/sunbird-yugabyte-migrations/sunbird-knowlg"
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
-
-# Ordered list of CQL files to execute
 CQL_FILES=(
     "sunbird.cql"
     "lock_db.cql"
@@ -36,48 +30,44 @@ CQL_FILES=(
     "script_store.cql"
 )
 
-echo -e "${YELLOW}Downloading CQL migration scripts...${NC}"
+echo "Downloading CQL migration scripts (branch: ${BRANCH})..."
 rm -rf "${MIGRATIONS_DIR}"
 git clone --depth 1 --branch "${BRANCH}" --filter=blob:none --sparse "${REPO_URL}" "${MIGRATIONS_DIR}" 2>/dev/null
 cd "${MIGRATIONS_DIR}"
 git sparse-checkout set "${REPO_PATH}" 2>/dev/null
 cd "${SCRIPT_DIR}"
 
-echo -e "${YELLOW}Running migrations with ENV=${ENV}...${NC}"
-echo ""
+echo "Running migrations with ENV=${ENV}..."
 
 FAILED=0
 for cql_file in "${CQL_FILES[@]}"; do
     src="${MIGRATIONS_DIR}/${REPO_PATH}/${cql_file}"
     if [ ! -f "${src}" ]; then
-        echo -e "${YELLOW}SKIP: ${cql_file} not found${NC}"
+        echo "SKIP: ${cql_file} not found"
         continue
     fi
 
-    # Replace ${ENV} placeholder with actual environment prefix
     tmp="/tmp/knowlg_${cql_file}"
     sed "s/\${ENV}/${ENV}/g" "${src}" > "${tmp}"
 
-    # Copy into container and execute
     docker cp "${tmp}" yugabyte:/tmp/"${cql_file}"
     if docker exec yugabyte /home/yugabyte/bin/ycqlsh 127.0.0.1 9042 \
         -u cassandra -p cassandra \
         -f /tmp/"${cql_file}" 2>&1; then
-        echo -e "${GREEN}OK: ${cql_file}${NC}"
+        echo "OK: ${cql_file}"
     else
-        echo -e "${RED}FAIL: ${cql_file}${NC}"
+        echo "FAIL: ${cql_file}"
         FAILED=$((FAILED + 1))
     fi
     rm -f "${tmp}"
 done
 
-# Cleanup
 rm -rf "${MIGRATIONS_DIR}"
 
 echo ""
 if [ ${FAILED} -gt 0 ]; then
-    echo -e "${RED}${FAILED} migration(s) failed.${NC}"
+    echo "${FAILED} migration(s) failed."
     exit 1
 else
-    echo -e "${GREEN}All migrations completed successfully.${NC}"
+    echo "All migrations completed successfully."
 fi
