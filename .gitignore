@@ -20,3 +20,5 @@ bin/
 .metals
 .*env*
 .scala*
+docker/.migrations
+docker/.es-migrations

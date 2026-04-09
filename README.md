@@ -12,9 +12,10 @@ Apache Flink stream processing jobs for the Sunbird Knowledge Platform. Each job
    - [Step 1 — Clone the repository](#step-1--clone-the-repository)
    - [Step 2 — Start infrastructure](#step-2--start-infrastructure)
    - [Step 3 — Initialize YugabyteDB keyspaces](#step-3--initialize-yugabytedb-keyspaces)
-   - [Step 4 — Create Kafka topics](#step-4--create-kafka-topics)
-   - [Step 5 — Build the project](#step-5--build-the-project)
-   - [Step 6 — Run a job](#step-6--run-a-job)
+   - [Step 4 — Initialize Elasticsearch indices](#step-4--initialize-elasticsearch-indices)
+   - [Step 5 — Create Kafka topics](#step-5--create-kafka-topics)
+   - [Step 6 — Build the project](#step-6--build-the-project)
+   - [Step 7 — Run a job](#step-7--run-a-job)
 4. [Redis (optional)](#redis-optional)
 5. [Cloud Storage Configuration](#cloud-storage-configuration)
 6. [Building the Docker Image](#building-the-docker-image)
@@ -96,7 +97,23 @@ This downloads CQL migration files from [sunbird-spark-installer](https://github
 
 You only need to run this once. Run it again after `docker compose down -v` (which deletes volumes).
 
-### Step 4 — Create Kafka topics
+### Step 4 — Initialize Elasticsearch indices
+
+Still inside the `docker/` directory, run the Elasticsearch init script to create the required indices and mappings:
+
+```shell
+./init-elasticsearch.sh
+```
+
+This downloads index and mapping definitions from [sunbird-devops](https://github.com/project-sunbird/sunbird-devops/tree/release-8.0.0/ansible/roles/es7-mapping/files) and applies them via the Elasticsearch REST API. By default it uses the `release-8.0.0` branch.
+
+```shell
+./init-elasticsearch.sh release-9.0.0    # use a different branch
+```
+
+You only need to run this once. Run it again after `docker compose down -v` (which deletes volumes).
+
+### Step 5 — Create Kafka topics
 
 ```shell
 docker exec -it kafka sh
@@ -107,7 +124,7 @@ kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 
 exit
 ```
 
-### Step 5 — Build the project
+### Step 6 — Build the project
 
 Go back to the repository root and build:
 
@@ -125,7 +142,7 @@ mvn clean install -DskipTests -Pgcloud   # Google Cloud Storage
 ```
 If no profile is specified, the default build targets Azure.
 
-### Step 6 — Run a job
+### Step 7 — Run a job
 
 #### Option A — Standalone Flink cluster
 
