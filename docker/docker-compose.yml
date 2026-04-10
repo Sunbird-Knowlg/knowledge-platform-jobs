@@ -16,7 +16,7 @@ services:
     container_name: yugabyte
     ports:
       - "7001:7000"
-      - "9000:9000"
+      - "9001:9000"
       - "9042:9042"
       - "5433:5433"
     command: >
