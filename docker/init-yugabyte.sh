@@ -15,52 +15,66 @@ BRANCH="${2:-develop}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MIGRATIONS_DIR="${SCRIPT_DIR}/.migrations"
 REPO_URL="https://github.com/Sunbird-Spark/sunbird-spark-installer.git"
-REPO_PATH="scripts/sunbird-yugabyte-migrations/sunbird-knowlg"
-
-CQL_FILES=(
-    "sunbird.cql"
-    "lock_db.cql"
-    "dialcodes.cql"
-    "content_store.cql"
-    "contentstore.cql"
-    "category_store.cql"
-    "dialcode_store.cql"
-    "hierarchy_store.cql"
-    "platform_db.cql"
-    "script_store.cql"
-)
+REPO_BASE="scripts/sunbird-yugabyte-migrations"
 
 echo "Downloading CQL migration scripts (branch: ${BRANCH})..."
 rm -rf "${MIGRATIONS_DIR}"
 git clone --depth 1 --branch "${BRANCH}" --filter=blob:none --sparse "${REPO_URL}" "${MIGRATIONS_DIR}" 2>/dev/null
 cd "${MIGRATIONS_DIR}"
-git sparse-checkout set "${REPO_PATH}" 2>/dev/null
+git sparse-checkout set "${REPO_BASE}/sunbird-knowlg" "${REPO_BASE}/sunbird-inquiry" 2>/dev/null
 cd "${SCRIPT_DIR}"
 
-echo "Running migrations with ENV=${ENV}..."
-
 FAILED=0
-for cql_file in "${CQL_FILES[@]}"; do
-    src="${MIGRATIONS_DIR}/${REPO_PATH}/${cql_file}"
-    if [ ! -f "${src}" ]; then
-        echo "SKIP: ${cql_file} not found"
-        continue
-    fi
 
-    tmp="/tmp/knowlg_${cql_file}"
-    sed "s/\${ENV}/${ENV}/g" "${src}" > "${tmp}"
+run_migrations() {
+    local module="$1"
+    shift
+    local cql_files=("$@")
+    local repo_path="${REPO_BASE}/${module}"
 
-    docker cp "${tmp}" yugabyte:/tmp/"${cql_file}"
-    if docker exec yugabyte /home/yugabyte/bin/ycqlsh 127.0.0.1 9042 \
-        -u cassandra -p cassandra \
-        -f /tmp/"${cql_file}" 2>&1; then
-        echo "OK: ${cql_file}"
-    else
-        echo "FAIL: ${cql_file}"
-        FAILED=$((FAILED + 1))
-    fi
-    rm -f "${tmp}"
-done
+    echo ""
+    echo "Running ${module} migrations with ENV=${ENV}..."
+
+    for cql_file in "${cql_files[@]}"; do
+        src="${MIGRATIONS_DIR}/${repo_path}/${cql_file}"
+        if [ ! -f "${src}" ]; then
+            echo "SKIP: ${module}/${cql_file} not found"
+            continue
+        fi
+
+        tmp="/tmp/${module}_${cql_file}"
+        sed "s/\${ENV}/${ENV}/g" "${src}" > "${tmp}"
+
+        docker cp "${tmp}" yugabyte:/tmp/"${cql_file}"
+        if docker exec yugabyte /home/yugabyte/bin/ycqlsh 127.0.0.1 9042 \
+            -u cassandra -p cassandra \
+            -f /tmp/"${cql_file}" 2>&1; then
+            echo "OK: ${module}/${cql_file}"
+        else
+            echo "FAIL: ${module}/${cql_file}"
+            FAILED=$((FAILED + 1))
+        fi
+        rm -f "${tmp}"
+    done
+}
+
+# sunbird-knowlg migrations
+run_migrations "sunbird-knowlg" \
+    "sunbird.cql" \
+    "lock_db.cql" \
+    "dialcodes.cql" \
+    "content_store.cql" \
+    "contentstore.cql" \
+    "category_store.cql" \
+    "dialcode_store.cql" \
+    "hierarchy_store.cql" \
+    "platform_db.cql" \
+    "script_store.cql"
+
+# sunbird-inquiry migrations
+run_migrations "sunbird-inquiry" \
+    "hierarchy_store.cql" \
+    "question_store.cql"
 
 rm -rf "${MIGRATIONS_DIR}"
 
