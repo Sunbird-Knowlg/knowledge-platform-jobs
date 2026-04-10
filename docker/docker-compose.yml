@@ -23,6 +23,11 @@ services:
       bin/yugabyted start --daemon=false
       --listen=0.0.0.0
       --tserver_flags=cql_proxy_bind_address=0.0.0.0:9042,pgsql_proxy_bind_address=0.0.0.0:5433
+    healthcheck:
+      test: ["CMD", "/home/yugabyte/bin/ycqlsh", "127.0.0.1", "9042", "-u", "cassandra", "-p", "cassandra", "-e", "DESCRIBE KEYSPACES"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
     volumes:
       - yugabyte-data:/home/yugabyte/var
 
@@ -39,7 +44,8 @@ services:
       - ./janusgraph/conf/gremlin-server.yaml:/opt/bitnami/janusgraph/conf/gremlin-server.yaml
       - ./janusgraph/scripts/schema_init.groovy:/opt/bitnami/janusgraph/scripts/schema_init.groovy
     depends_on:
-      - yugabyte
+      yugabyte:
+        condition: service_healthy
 
   kafka:
     image: docker.io/sanketikahub/kafka:4.0.0

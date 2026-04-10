@@ -19,9 +19,15 @@ REPO_BASE="scripts/sunbird-yugabyte-migrations"
 
 echo "Downloading CQL migration scripts (branch: ${BRANCH})..."
 rm -rf "${MIGRATIONS_DIR}"
-git clone --depth 1 --branch "${BRANCH}" --filter=blob:none --sparse "${REPO_URL}" "${MIGRATIONS_DIR}" 2>/dev/null
+if ! git clone --depth 1 --branch "${BRANCH}" --filter=blob:none --sparse "${REPO_URL}" "${MIGRATIONS_DIR}"; then
+    echo "ERROR: Failed to clone ${REPO_URL} (branch: ${BRANCH})"
+    exit 1
+fi
 cd "${MIGRATIONS_DIR}"
-git sparse-checkout set "${REPO_BASE}/sunbird-knowlg" "${REPO_BASE}/sunbird-inquiry" 2>/dev/null
+if ! git sparse-checkout set "${REPO_BASE}/sunbird-knowlg" "${REPO_BASE}/sunbird-inquiry"; then
+    echo "ERROR: Failed to sparse-checkout migration directories"
+    exit 1
+fi
 cd "${SCRIPT_DIR}"
 
 FAILED=0

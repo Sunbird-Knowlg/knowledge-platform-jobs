@@ -22,14 +22,27 @@ INDICES=(
 
 echo "Downloading ES index/mapping definitions (branch: ${BRANCH})..."
 rm -rf "${DOWNLOADS_DIR}"
-git clone --depth 1 --branch "${BRANCH}" --filter=blob:none --sparse "${REPO_URL}" "${DOWNLOADS_DIR}" 2>/dev/null
+if ! git clone --depth 1 --branch "${BRANCH}" --filter=blob:none --sparse "${REPO_URL}" "${DOWNLOADS_DIR}"; then
+    echo "ERROR: Failed to clone ${REPO_URL} (branch: ${BRANCH})"
+    exit 1
+fi
 cd "${DOWNLOADS_DIR}"
-git sparse-checkout set "${REPO_PATH}" 2>/dev/null
+if ! git sparse-checkout set "${REPO_PATH}"; then
+    echo "ERROR: Failed to sparse-checkout ${REPO_PATH}"
+    exit 1
+fi
 cd "${SCRIPT_DIR}"
 
-# Wait for Elasticsearch to be ready
+# Wait for Elasticsearch to be ready (max 60 seconds)
 echo "Waiting for Elasticsearch at ${ES_HOST}..."
+RETRIES=0
+MAX_RETRIES=30
 until curl -s "${ES_HOST}/_cluster/health" > /dev/null 2>&1; do
+    RETRIES=$((RETRIES + 1))
+    if [ ${RETRIES} -ge ${MAX_RETRIES} ]; then
+        echo "ERROR: Elasticsearch not reachable after ${MAX_RETRIES} attempts."
+        exit 1
+    fi
     sleep 2
 done
 echo "Elasticsearch is ready."
