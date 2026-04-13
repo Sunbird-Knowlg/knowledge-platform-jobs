@@ -12,7 +12,7 @@ import org.apache.flink.test.util.MiniClusterWithClientResource
 import org.cassandraunit.CQLDataLoader
 import org.cassandraunit.dataset.cql.FileCQLDataSet
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
-import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, JSONUtil}
+import org.sunbird.job.util.{CassandraUtil, FlinkUtil, HTTPResponse, HttpUtil, JSONUtil}
 import org.mockito.Mockito
 import org.mockito.Mockito._
 import org.mockito.ArgumentMatchers.{any, anyString, contains}
@@ -28,6 +28,7 @@ import scala.collection.JavaConverters._
 class VideoStreamGeneratorTaskTestSpec extends BaseTestSpec {
 
   implicit val mapTypeInfo: TypeInformation[java.util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[java.util.Map[String, AnyRef]])
+  implicit val eventTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
 
   val flinkCluster = new MiniClusterWithClientResource(new MiniClusterResourceConfiguration.Builder()
     .setConfiguration(testConfiguration())
@@ -78,8 +79,6 @@ class VideoStreamGeneratorTaskTestSpec extends BaseTestSpec {
   }
 
   ignore should "submit a job" in {
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new VideoStreamGeneratorMapSource)
-
     // when(mockHttpUtil.post_map(contains("/oauth2/token"), any[Map[String, AnyRef]](), any[Map[String, String]]())).thenReturn(HTTPResponse(200, accessTokenResp))
     when(mockHttpUtil.put(contains(jobConfig.getConfig("azure_mediakind.project_name")+"/assets/asset-"), anyString(), any())).thenReturn(HTTPResponse(200, assetJson))
     when(mockHttpUtil.put(contains("transforms/media_transform_default/jobs"), anyString(), any())).thenReturn(HTTPResponse(200, submitJobJson))
@@ -90,7 +89,9 @@ class VideoStreamGeneratorTaskTestSpec extends BaseTestSpec {
     when(mockHttpUtil.get(contains("/streamingLocators/sl-do_3126597193576939521910_1605816926271?api-version="), any())).thenReturn(HTTPResponse(200, getStreamLocatorJson))
     when(mockHttpUtil.patch(contains(jobConfig.contentV4Update), any(), any())).thenReturn(HTTPResponse(200, getJobJson))
 
-    new VideoStreamGeneratorStreamTask(jobConfig, mockKafkaUtil, mockHttpUtil).process()
+    val env = FlinkUtil.getExecutionContext(jobConfig)
+    val inputStream = env.addSource(new VideoStreamGeneratorMapSource)
+    new VideoStreamGeneratorStreamTask(jobConfig, mockKafkaUtil, mockHttpUtil).processForTest(env, inputStream)
     val event1Progress = readFromCassandra(EventFixture.EVENT_1)
 
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(2)

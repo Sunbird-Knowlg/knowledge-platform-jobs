@@ -1,6 +1,5 @@
 package org.sunbird.job.publish.helpers.spec
 
-import akka.dispatch.ExecutionContexts
 import com.typesafe.config.{Config, ConfigFactory}
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
@@ -12,7 +11,7 @@ import org.sunbird.job.util.CloudStorageUtil
 
 class ExtractableMimeTypeHelperSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
 
-  implicit val ec = ExecutionContexts.global
+  implicit val ec = scala.concurrent.ExecutionContext.global
   val config: Config = ConfigFactory.load("test.conf").withFallback(ConfigFactory.systemEnvironment())
   val jobConfig: KnowlgPublishConfig = new KnowlgPublishConfig(config)
   implicit val cloudStorageUtil = new CloudStorageUtil(jobConfig)

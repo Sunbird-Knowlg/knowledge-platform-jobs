@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Cache Maven packages
         uses: actions/cache@v3
@@ -68,14 +68,15 @@ jobs:
       - name: Package flink
         working-directory: jobs-distribution
         run: |
-          mvn package -DskipTests
+          CSP="${{ vars.CSP || 'azure' }}"
+          mvn package -DskipTests -P${CSP}
 
       - name: Build Docker Image
         working-directory: jobs-distribution
         run: |
           CSP="${{ vars.CSP || 'azure' }}"
           IMAGE_TAG=$(echo "${{ github.ref_name }}_$(echo $GITHUB_SHA | cut -c1-7)" | tr '[:upper:]' '[:lower:]')
-          docker build --build-arg CSP=${CSP} -t ${REGISTRY_URL}:${IMAGE_TAG} .
+          docker build --target ${CSP} -t ${REGISTRY_URL}:${IMAGE_TAG} .
 
           echo "IMAGE_TAG=${IMAGE_TAG}" >> $GITHUB_ENV
 
