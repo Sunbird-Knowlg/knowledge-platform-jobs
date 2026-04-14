@@ -14,7 +14,6 @@ import org.sunbird.job.{BaseProcessFunction, Metrics}
 import java.util
 
 class CassandraDataMigrationFunction(config: CassandraDataMigrationConfig,
-                                     @transient var neo4JUtil: Neo4JUtil = null,
                                      @transient var cassandraUtil: CassandraUtil = null)
                                     (implicit mapTypeInfo: TypeInformation[util.Map[String, AnyRef]], stringTypeInfo: TypeInformation[String])
   extends BaseProcessFunction[Event, String](config) with CassandraDataMigrator {

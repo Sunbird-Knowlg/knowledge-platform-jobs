@@ -43,9 +43,7 @@ class AssetEnrichmentConfig(override val config: Config) extends BaseJobConfig(c
   val videoEnrichmentEventCount = "video-enrichment-event-count"
   val videoStreamingGeneratorEventCount = "video-streaming-event-count"
 
-  // Neo4J Configurations
-  val graphRoutePath: String = config.getString("neo4j.routePath")
-  val graphName: String = config.getString("neo4j.graph")
+
 
   // Tags
   val imageEnrichmentDataOutTag: OutputTag[Event] = OutputTag[Event]("image-enrichment-data")

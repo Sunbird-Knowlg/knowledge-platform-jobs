@@ -26,7 +26,7 @@ class DialcodeContextUpdaterSpec extends BaseTestSpec {
     .setNumberSlotsPerTaskManager(1)
     .setNumberTaskManagers(1)
     .build)
-  implicit val mockNeo4JUtil: Neo4JUtil = mock[Neo4JUtil](Mockito.withSettings().serializable())
+  implicit val mockJanusGraphUtil: JanusGraphUtil = mock[JanusGraphUtil](Mockito.withSettings().serializable())
   val config: Config = ConfigFactory.load("test.conf").withFallback(ConfigFactory.systemEnvironment())
   val jobConfig: DialcodeContextUpdaterConfig = new DialcodeContextUpdaterConfig(config)
   val defCache = new DefinitionCache()

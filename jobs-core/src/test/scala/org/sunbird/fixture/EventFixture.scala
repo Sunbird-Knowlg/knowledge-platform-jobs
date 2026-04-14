@@ -33,7 +33,6 @@ object EventFixture {
       |  string.input.topic = "local.telemetry.string.input"
       |  string.output.topic = "local.telemetry.string.output"
       |  broker-servers = "localhost:9093"
-      |  zookeeper = "localhost:2183"
       |  groupId = "pipeline-preprocessor-group"
       |  auto.offset.reset = "earliest"
       |  producer {

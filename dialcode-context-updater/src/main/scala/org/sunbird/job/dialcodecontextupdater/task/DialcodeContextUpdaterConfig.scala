@@ -46,8 +46,7 @@ class DialcodeContextUpdaterConfig(override val config: Config) extends BaseJobC
   val cassandraHost: String = config.getString("lms-cassandra.host")
   val cassandraPort: Int = config.getInt("lms-cassandra.port")
 
-  val graphRoutePath: String = config.getString("neo4j.routePath")
-  val graphName: String = config.getString("neo4j.graph")
+
   val dbHitEventCount = "db-hit-events-count"
 
   val searchServiceBaseUrl : String = config.getString("service.search.basePath")

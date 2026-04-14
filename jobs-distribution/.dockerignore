@@ -1,0 +1,8 @@
+# Exclude everything in target/ except the distribution tarball and plugin dependencies
+target/*
+!target/jobs-distribution-1.0.tar.gz
+!target/azure-plugin/
+
+# Not needed by the Dockerfile
+src/
+pom.xml

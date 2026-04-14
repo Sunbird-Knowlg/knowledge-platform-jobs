@@ -14,7 +14,6 @@ class BaseJobConfig(val config: Config, val jobName: String) extends Serializabl
   implicit val metricTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
 
   val kafkaBrokerServers: String = config.getString("kafka.broker-servers")
-  val zookeeper: String = config.getString("kafka.zookeeper")
   val groupId: String = config.getString("kafka.groupId")
   val restartAttempts: Int = config.getInt("task.restart-strategy.attempts")
   val delayBetweenAttempts: Long = config.getLong("task.restart-strategy.delay")
@@ -32,6 +31,9 @@ class BaseJobConfig(val config: Config, val jobName: String) extends Serializabl
   val checkpointingBaseUrl: Option[String] = if (config.hasPath("job.statebackend.base.url")) Option(config.getString("job.statebackend.base.url")) else None
   // By default checkpointing timeout is 10 mins
   val checkpointingTimeout: Long = if (config.hasPath("task.checkpointing.timeout")) config.getLong("task.checkpointing.timeout") else 600000L
+
+  // Redis config
+  val redisEnabled: Boolean = if (config.hasPath("redis.enabled")) config.getBoolean("redis.enabled") else false
 
   // LMS Cassandra DB Config
   val lmsDbHost: String = config.getString("lms-cassandra.host")

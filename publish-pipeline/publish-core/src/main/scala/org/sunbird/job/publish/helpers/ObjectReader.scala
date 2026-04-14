@@ -3,7 +3,7 @@ package org.sunbird.job.publish.helpers
 import org.slf4j.LoggerFactory
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{ExtDataConfig, ObjectData, ObjectExtData}
-import org.sunbird.job.util.{CassandraUtil, Neo4JUtil}
+import org.sunbird.job.util.{CassandraUtil, JanusGraphUtil}
 
 import scala.collection.JavaConverters._
 
@@ -11,7 +11,7 @@ trait ObjectReader {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[ObjectReader])
 
-  def getObject(identifier: String, pkgVersion: Double, mimeType: String, publishType: String, readerConfig: ExtDataConfig)(implicit neo4JUtil: Neo4JUtil, cassandraUtil: CassandraUtil, config: PublishConfig): ObjectData = {
+  def getObject(identifier: String, pkgVersion: Double, mimeType: String, publishType: String, readerConfig: ExtDataConfig)(implicit janusGraphUtil: JanusGraphUtil, cassandraUtil: CassandraUtil, config: PublishConfig): ObjectData = {
     logger.info("Reading editable object data for: " + identifier + " with pkgVersion: " + pkgVersion)
     val metadata = getMetadata(identifier, mimeType, publishType, pkgVersion)
     logger.info("Reading metadata for: " + identifier + " with metadata: " + metadata)
@@ -20,9 +20,9 @@ trait ObjectReader {
     new ObjectData(identifier, metadata, extData.getOrElse(ObjectExtData()).data, extData.getOrElse(ObjectExtData()).hierarchy)
   }
 
-  private def getMetadata(identifier: String, mimeType: String, publishType: String, pkgVersion: Double)(implicit neo4JUtil: Neo4JUtil): Map[String, AnyRef] = {
+  private def getMetadata(identifier: String, mimeType: String, publishType: String, pkgVersion: Double)(implicit janusGraphUtil: JanusGraphUtil): Map[String, AnyRef] = {
     val nodeId = getEditableObjId(identifier, pkgVersion)
-    val metaData = Option(neo4JUtil.getNodeProperties(nodeId)).getOrElse(neo4JUtil.getNodeProperties(identifier)).asScala.toMap
+    val metaData = Option(janusGraphUtil.getNodeProperties(nodeId)).getOrElse(janusGraphUtil.getNodeProperties(identifier)).asScala.toMap
     val id = metaData.getOrElse("IL_UNIQUE_ID", identifier).asInstanceOf[String]
     val objType = metaData.getOrElse("IL_FUNC_OBJECT_TYPE", "").asInstanceOf[String]
     logger.info("ObjectReader:: getMetadata:: identifier: " + identifier + " with objType: " + objType)

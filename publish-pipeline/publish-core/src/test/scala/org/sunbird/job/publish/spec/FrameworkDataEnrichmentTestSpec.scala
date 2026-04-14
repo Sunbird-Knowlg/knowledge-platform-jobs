@@ -10,13 +10,13 @@ import org.sunbird.job.cache.local.FrameworkMasterCategoryMap
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.ObjectData
 import org.sunbird.job.publish.helpers.FrameworkDataEnrichment
-import org.sunbird.job.util.{CassandraUtil, Neo4JUtil}
+import org.sunbird.job.util.{CassandraUtil, JanusGraphUtil}
 
 import scala.collection.JavaConverters._
 
 class FrameworkDataEnrichmentTestSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
 
-	implicit val mockNeo4JUtil: Neo4JUtil = mock[Neo4JUtil](Mockito.withSettings().serializable())
+	implicit val mockJanusGraphUtil: JanusGraphUtil = mock[JanusGraphUtil](Mockito.withSettings().serializable())
 	implicit val mockCassandraUtil: CassandraUtil = mock[CassandraUtil](Mockito.withSettings().serializable())
 	implicit val mockConfig: PublishConfig = mock[PublishConfig](Mockito.withSettings().serializable())
 
@@ -32,7 +32,7 @@ class FrameworkDataEnrichmentTestSpec extends FlatSpec with BeforeAndAfterAll wi
 		enrichFrameworkMasterCategoryMap()
 
 		val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "IL_UNIQUE_ID" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "framework" -> "NCF", "targetFWIds" -> List("TPD", "NCFCOPY","NCF").asJava, "mediumIds" -> List("ncf_medium_telugu").asJava, "targetMediumIds" -> List("ncf_medium_english").asJava, "boardIds" -> List("ncf_board_cbse").asJava, "targetBoardIds" -> List("ncfcopy_board_ncert").asJava))
-		when(mockNeo4JUtil.getNodesName(ArgumentMatchers.anyObject())).thenReturn(Map[String, String]("ncf_medium_telugu" -> "Telugu", "ncf_medium_english" -> "English",  "ncf_board_cbse" -> "CBSE", "ncfcopy_board_ncert" -> "NCERT"))
+		when(mockJanusGraphUtil.getNodesName(ArgumentMatchers.anyObject())).thenReturn(Map[String, String]("ncf_medium_telugu" -> "Telugu", "ncf_medium_english" -> "English",  "ncf_board_cbse" -> "CBSE", "ncfcopy_board_ncert" -> "NCERT"))
 		when(mockConfig.getString("master.category.validation.enabled", "Yes")).thenReturn("Yes")
 		val obj = new TestFrameworkDataEnrichment()
 		val result = obj.enrichFrameworkData(data)
@@ -51,7 +51,7 @@ class FrameworkDataEnrichmentTestSpec extends FlatSpec with BeforeAndAfterAll wi
 
 	"enrichFrameworkData with only targetFramework" should "enrich only se_FWIds" in {
 		val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "IL_UNIQUE_ID" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "framework" -> "NCF", "targetFWIds" -> List("TPD", "NCFCOPY").asJava))
-		when(mockNeo4JUtil.getNodesName(ArgumentMatchers.anyObject())).thenReturn(Map[String, String]("ncf_medium_telugu" -> "Telugu", "ncf_medium_english" -> "English",  "ncf_board_cbse" -> "CBSE", "ncfcopy_board_ncert" -> "NCERT"))
+		when(mockJanusGraphUtil.getNodesName(ArgumentMatchers.anyObject())).thenReturn(Map[String, String]("ncf_medium_telugu" -> "Telugu", "ncf_medium_english" -> "English",  "ncf_board_cbse" -> "CBSE", "ncfcopy_board_ncert" -> "NCERT"))
 		val obj = new TestFrameworkDataEnrichment()
 		val result = obj.enrichFrameworkData(data)
 		result.metadata.contains("se_mediumIds") should be (false)
@@ -66,7 +66,7 @@ class FrameworkDataEnrichmentTestSpec extends FlatSpec with BeforeAndAfterAll wi
 	"enrichFrameworkData with board, medium, gradeLevel and subject " should "enrich se_boards, se_mediums, se_gradeLevels and se_subjects" in {
 		enrichFrameworkMasterCategoryMap()
 		val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "IL_UNIQUE_ID" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "framework" -> "NCF", "board" -> "some board", "medium" -> List("some medium 1", "some_medium_2").asJava))
-		when(mockNeo4JUtil.getNodesName(ArgumentMatchers.anyObject())).thenReturn(Map[String, String]("ncf_medium_telugu" -> "Telugu", "ncf_medium_english" -> "English",  "ncf_board_cbse" -> "CBSE", "ncfcopy_board_ncert" -> "NCERT"))
+		when(mockJanusGraphUtil.getNodesName(ArgumentMatchers.anyObject())).thenReturn(Map[String, String]("ncf_medium_telugu" -> "Telugu", "ncf_medium_english" -> "English",  "ncf_board_cbse" -> "CBSE", "ncfcopy_board_ncert" -> "NCERT"))
 		val obj = new TestFrameworkDataEnrichment()
 		val result = obj.enrichFrameworkData(data)
 		result.metadata.contains("se_mediumIds") should be (false)
@@ -86,7 +86,7 @@ class FrameworkDataEnrichmentTestSpec extends FlatSpec with BeforeAndAfterAll wi
 	}
 
 	"getFrameworkCategoryMetadata from database" should "return touple values" in {
-		when(mockNeo4JUtil.getNodePropertiesWithObjectType(ArgumentMatchers.anyString())).thenReturn(getNeo4jData())
+		when(mockJanusGraphUtil.getNodePropertiesWithObjectType(ArgumentMatchers.anyString())).thenReturn(getGraphData())
 		//enrichFrameworkMasterCategoryMap()
 		val node : (List[String], Map[(String, String), List[String]]) = new TestFrameworkDataEnrichment().getFrameworkCategoryMetadata("domain", "Category")
 		node._1.asInstanceOf[List[String]] should have length(6)
@@ -94,7 +94,7 @@ class FrameworkDataEnrichmentTestSpec extends FlatSpec with BeforeAndAfterAll wi
 	}
 
 	"getFrameworkCategoryMetadata from local cache" should "return touple values" in {
-		//when(mockNeo4JUtil.getNodePropertiesWithObjectType(ArgumentMatchers.anyString())).thenReturn(getNeo4jData())
+		//when(mockJanusGraphUtil.getNodePropertiesWithObjectType(ArgumentMatchers.anyString())).thenReturn(getNeo4jData())
 		enrichFrameworkMasterCategoryMap()
 		val node : (List[String], Map[(String, String), List[String]]) = new TestFrameworkDataEnrichment().getFrameworkCategoryMetadata("domain", "Category")
 		node._1.asInstanceOf[List[String]] should have length(6)
@@ -102,7 +102,7 @@ class FrameworkDataEnrichmentTestSpec extends FlatSpec with BeforeAndAfterAll wi
 		FrameworkMasterCategoryMap.put("masterCategories", null)
 	}
 
-	def getNeo4jData(): util.List[util.Map[String, AnyRef]] = {
+	def getGraphData(): util.List[util.Map[String, AnyRef]] = {
 		util.Arrays.asList(
 			getCategoryNodeMap("board", "Category", "boardIds", "targetBoardIds", "se_boardIds", "se_boards"),
 			getCategoryNodeMap("subject", "Category", "subjectIds", "targetSubjectIds", "se_subjectIds", "se_subjects"),
@@ -122,7 +122,7 @@ class FrameworkDataEnrichmentTestSpec extends FlatSpec with BeforeAndAfterAll wi
 	}
 
 	def enrichFrameworkMasterCategoryMap() = {
-		val masterCategoriesNode: util.List[util.Map[String, AnyRef]] = getNeo4jData()
+		val masterCategoriesNode: util.List[util.Map[String, AnyRef]] = getGraphData()
 
 		val masterCategoryMap: List[Map[String, AnyRef]] = masterCategoriesNode.asScala.map(node =>
 			Map("code" -> node.getOrDefault("code", "").asInstanceOf[String],

@@ -7,7 +7,7 @@ import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.exception.InvalidInputException
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ObjectData}
-import org.sunbird.job.util.{FileUtils, JSONUtil, Neo4JUtil, ScalaJsonUtil, Slug}
+import org.sunbird.job.util.{FileUtils, JSONUtil, JanusGraphUtil, ScalaJsonUtil, Slug}
 
 import java.io._
 import java.net.URL
@@ -36,14 +36,15 @@ trait ObjectBundle {
     Slug.makeSlug(contentName, isTransliterate = true) + "_" + System.currentTimeMillis() + "_" + identifier + "_" + metadata.getOrElse("pkgVersion", "") + (if (StringUtils.equals(EcarPackageType.FULL, pkgType)) ".ecar" else "_" + pkgType + ".ecar")
   }
 
-  def getManifestData(objIdentifier: String, rootObjectType: String, pkgType: String, objList: List[Map[String, AnyRef]])(implicit defCache: DefinitionCache, neo4JUtil: Neo4JUtil, defConfig: DefinitionConfig, config: PublishConfig): (List[Map[String, AnyRef]], List[Map[AnyRef, String]]) = {
+  def getManifestData(objIdentifier: String, rootObjectType: String, pkgType: String, objList: List[Map[String, AnyRef]])(implicit defCache: DefinitionCache, janusGraphUtil: JanusGraphUtil, defConfig: DefinitionConfig, config: PublishConfig): (List[Map[String, AnyRef]], List[Map[AnyRef, String]]) = {
     objList.map(data => {
       val identifier = data.getOrElse("identifier", "").asInstanceOf[String].replaceAll(".img", "")
       val mimeType = data.getOrElse("mimeType", "").asInstanceOf[String]
       val objectType: String = if(!data.contains("objectType") || data.getOrElse("objectType", "").asInstanceOf[String].isBlank || data.getOrElse("objectType", "").asInstanceOf[String].isEmpty) {
-        val metaData = Option(neo4JUtil.getNodeProperties(identifier)).getOrElse(neo4JUtil.getNodeProperties(identifier)).asScala.toMap
+        val nodeProps = Option(janusGraphUtil.getNodeProperties(identifier)).getOrElse(janusGraphUtil.getNodeProperties(identifier))
+        val metaData = if (nodeProps != null) nodeProps.asScala.toMap else Map.empty[String, AnyRef]
         logger.info("ObjectBundle:: getManifestData:: if objectType does not exist identifier:: " + identifier)
-        if (metaData == null || metaData.isEmpty) rootObjectType else metaData.getOrElse("IL_FUNC_OBJECT_TYPE", "").asInstanceOf[String]
+        if (metaData.isEmpty) rootObjectType else metaData.getOrElse("IL_FUNC_OBJECT_TYPE", "").asInstanceOf[String]
       } else data.getOrElse("objectType", "").asInstanceOf[String] .replaceAll("Image", "")
       val contentDisposition = data.getOrElse("contentDisposition", "").asInstanceOf[String]
       logger.info("ObjectBundle:: getManifestData:: identifier:: " + identifier + " || objectType:: " + objectType)
@@ -89,7 +90,7 @@ trait ObjectBundle {
     }).unzip
   }
 
-  def getObjectBundle(obj: ObjectData, objList: List[Map[String, AnyRef]], pkgType: String)(implicit ec: ExecutionContext, neo4JUtil: Neo4JUtil, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig): File = {
+  def getObjectBundle(obj: ObjectData, objList: List[Map[String, AnyRef]], pkgType: String)(implicit ec: ExecutionContext, janusGraphUtil: JanusGraphUtil, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig): File = {
     val bundleFileName = bundleLocation + File.separator + getBundleFileName(obj.identifier, obj.metadata, pkgType)
     val bundlePath = bundleLocation + File.separator + System.currentTimeMillis + "_temp"
     val objType = if(obj.getString("objectType", "").replaceAll("Image", "").equalsIgnoreCase("collection")) "content" else obj.getString("objectType", "").replaceAll("Image", "")

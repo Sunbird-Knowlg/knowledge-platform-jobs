@@ -12,14 +12,24 @@ import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import java.util
 
-class AuditEventGenerator(config: TransactionEventProcessorConfig)
-                         (implicit mapTypeInfo: TypeInformation[util.Map[String, AnyRef]],
-                          stringTypeInfo: TypeInformation[String])
-  extends BaseProcessFunction[Event, String](config) with TransactionEventProcessorService {
+class AuditEventGenerator(config: TransactionEventProcessorConfig)(implicit
+    mapTypeInfo: TypeInformation[util.Map[String, AnyRef]],
+    stringTypeInfo: TypeInformation[String]
+) extends BaseProcessFunction[Event, String](config)
+    with TransactionEventProcessorService {
 
   override def metricsList(): List[String] = {
-    List(config.totalEventsCount, config.successEventCount, config.failedEventCount, config.skippedEventCount, config.emptySchemaEventCount, config.emptyPropsEventCount
-      , config.totalAuditEventsCount, config.failedAuditEventsCount, config.auditEventSuccessCount)
+    List(
+      config.totalEventsCount,
+      config.successEventCount,
+      config.failedEventCount,
+      config.skippedEventCount,
+      config.emptySchemaEventCount,
+      config.emptyPropsEventCount,
+      config.totalAuditEventsCount,
+      config.failedAuditEventsCount,
+      config.auditEventSuccessCount
+    )
   }
 
   override def open(parameters: Configuration): Unit = {
@@ -31,16 +41,22 @@ class AuditEventGenerator(config: TransactionEventProcessorConfig)
   }
 
   @throws(classOf[InvalidEventException])
-  override def processElement(event: Event,
-                              context: ProcessFunction[Event, String]#Context,
-                              metrics: Metrics): Unit = {
+  override def processElement(
+      event: Event,
+      context: ProcessFunction[Event, String]#Context,
+      metrics: Metrics
+  ): Unit = {
     try {
       metrics.incCounter(config.totalAuditEventsCount)
       processAuditEvent(event, context, metrics)(config)
     } catch {
       case ex: Exception =>
         metrics.incCounter(config.failedAuditEventsCount)
-        throw new InvalidEventException(ex.getMessage, Map("partition" -> event.partition, "offset" -> event.offset), ex)
+        throw new InvalidEventException(
+          ex.getMessage,
+          Map("partition" -> event.partition, "offset" -> event.offset),
+          ex
+        )
     }
   }
 }

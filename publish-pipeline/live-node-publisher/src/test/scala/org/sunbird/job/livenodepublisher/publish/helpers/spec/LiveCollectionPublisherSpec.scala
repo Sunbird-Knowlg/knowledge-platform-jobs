@@ -1,6 +1,5 @@
 package org.sunbird.job.livenodepublisher.publish.helpers.spec
 
-import akka.dispatch.ExecutionContexts
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.commons.lang3.StringUtils
 import org.cassandraunit.CQLDataLoader
@@ -26,12 +25,12 @@ import scala.concurrent.ExecutionContextExecutor
 
 class LiveCollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
 
-  implicit val mockNeo4JUtil: Neo4JUtil = mock[Neo4JUtil](Mockito.withSettings().serializable())
+  implicit val mockJanusGraphUtil: JanusGraphUtil = mock[JanusGraphUtil](Mockito.withSettings().serializable())
   implicit var cassandraUtil: CassandraUtil = _
   val config: Config = ConfigFactory.load("test.conf").withFallback(ConfigFactory.systemEnvironment())
   val jobConfig: LiveNodePublisherConfig = new LiveNodePublisherConfig(config)
   implicit val cloudStorageUtil: CloudStorageUtil = new CloudStorageUtil(jobConfig)
-  implicit val ec: ExecutionContextExecutor = ExecutionContexts.global
+  implicit val ec: ExecutionContextExecutor = scala.concurrent.ExecutionContext.global
   implicit val defCache: DefinitionCache = new DefinitionCache()
   implicit val defConfig: DefinitionConfig = DefinitionConfig(jobConfig.schemaSupportVersionMap, jobConfig.definitionBasePath)
   implicit val publishConfig: PublishConfig = jobConfig.asInstanceOf[PublishConfig]
@@ -114,7 +113,7 @@ class LiveCollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with M
   "getObjectWithEcar" should "return object with ecar url" in {
     val unpublishedChildrenObj: List[Map[String, AnyRef]] = ScalaJsonUtil.deserialize[List[Map[String, AnyRef]]](unpublishedChildrenData)
     val data = new ObjectData("do_123", Map("objectType" -> "Collection", "identifier" -> "do_123", "name" -> "Test Collection", "lastPublishedOn" -> getTimeStamp, "lastUpdatedOn" -> getTimeStamp, "status" -> "Draft", "downloadUrl" -> "downloadUrl", "variants" -> Map.empty[String,AnyRef]), Some(Map()), Some(Map("children" -> unpublishedChildrenObj)))
-    val result = new TestCollectionPublisher().getObjectWithEcar(data, List(EcarPackageType.SPINE, EcarPackageType.ONLINE))(ec, mockNeo4JUtil, cassandraUtil, readerConfig, cloudStorageUtil, jobConfig, defCache, defConfig, httpUtil)
+    val result = new TestCollectionPublisher().getObjectWithEcar(data, List(EcarPackageType.SPINE, EcarPackageType.ONLINE))(ec, mockJanusGraphUtil, cassandraUtil, readerConfig, cloudStorageUtil, jobConfig, defCache, defConfig, httpUtil)
     StringUtils.isNotBlank(result.metadata.getOrElse("downloadUrl", "").asInstanceOf[String])
   }
 
@@ -147,7 +146,7 @@ class LiveCollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with M
     val publishedCollectionNodeMetadataObj: Map[String,AnyRef] = ScalaJsonUtil.deserialize[Map[String,AnyRef]](publishedCollectionNodeMetadata)
     val data = new ObjectData("do_123", publishedCollectionNodeMetadataObj, Some(Map.empty[String, AnyRef]))
     val syncChildrenData = ScalaJsonUtil.deserialize[List[Map[String, AnyRef]]](publishedChildrenData)
-    val messages: Map[String, Map[String, AnyRef]] = new TestCollectionPublisher().syncNodes(data, syncChildrenData, List.empty)(mockElasticUtil, mockNeo4JUtil, cassandraUtil, readerConfig, definition, jobConfig)
+    val messages: Map[String, Map[String, AnyRef]] = new TestCollectionPublisher().syncNodes(data, syncChildrenData, List.empty)(mockElasticUtil, mockJanusGraphUtil, cassandraUtil, readerConfig, definition, jobConfig)
 
     assert(messages != null && messages.size > 0)
   }
@@ -211,7 +210,7 @@ class LiveCollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with M
       }
     }
     val collectionObj = new ObjectData("do_123", Map("objectType" -> "Collection", "identifier" -> "do_123", "name" -> "Test Collection","origin" -> "do_456", "originData" -> Map("name" -> "Contemporary India  I", "copyType" -> "deep", "license" -> "CC BY 4.0", "organisation" -> Array("NCERT"))), Some(Map()), Some(Map()))
-    when(mockNeo4JUtil.getNodeProperties(anyString())).thenReturn(metaData)
+    when(mockJanusGraphUtil.getNodeProperties(anyString())).thenReturn(metaData)
     val originObj = new TestCollectionPublisher().updateOriginPkgVersion(collectionObj)
     assert(originObj.metadata("originData").asInstanceOf[Map[String,AnyRef]]("pkgVersion") == 3)
   }

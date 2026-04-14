@@ -16,11 +16,12 @@ import org.mockito.Mockito
 import org.mockito.Mockito._
 import org.sunbird.job.Metrics
 import org.sunbird.job.connector.FlinkKafkaConnector
+import org.sunbird.job.util.FlinkUtil
 import org.sunbird.job.dialcodecontextupdater.domain.Event
 import org.sunbird.job.dialcodecontextupdater.fixture.EventFixture
 import org.sunbird.job.dialcodecontextupdater.functions.DialcodeContextUpdaterFunction
 import org.sunbird.job.dialcodecontextupdater.task.{DialcodeContextUpdaterConfig, DialcodeContextUpdaterStreamTask}
-import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, JSONUtil, Neo4JUtil}
+import org.sunbird.job.util.{CassandraUtil, HTTPResponse, HttpUtil, JSONUtil, JanusGraphUtil}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 
 import java.util
@@ -29,6 +30,7 @@ class DialcodeContextUpdaterStreamTaskSpec extends BaseTestSpec {
 
   implicit val mapTypeInfo: TypeInformation[java.util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[java.util.Map[String, AnyRef]])
   implicit val strTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
+  implicit val eventTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
 
   val flinkCluster = new MiniClusterWithClientResource(new MiniClusterResourceConfiguration.Builder()
     .setConfiguration(testConfiguration())
@@ -40,7 +42,7 @@ class DialcodeContextUpdaterStreamTaskSpec extends BaseTestSpec {
   implicit val jobConfig: DialcodeContextUpdaterConfig = new DialcodeContextUpdaterConfig(config)
 
   implicit val mockHttpUtil: HttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
-  val mockNeo4JUtil: Neo4JUtil = mock[Neo4JUtil](Mockito.withSettings().serializable())
+  val mockJanusGraphUtil: JanusGraphUtil = mock[JanusGraphUtil](Mockito.withSettings().serializable())
   var cassandraUtil: CassandraUtil = _
   var mockMetrics: Metrics = mock[Metrics](Mockito.withSettings().serializable())
 
@@ -61,14 +63,11 @@ class DialcodeContextUpdaterStreamTaskSpec extends BaseTestSpec {
   }
 
 
-  def initialize(): Unit = {
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new DialcodeContextUpdaterEventSource)
-  }
-
   ignore should " update the dial context " in {
-    when(mockNeo4JUtil.getNodeProperties(anyString())).thenReturn(new util.HashMap[String, AnyRef])
-    initialize()
-    new DialcodeContextUpdaterStreamTask(jobConfig, mockKafkaUtil, mockHttpUtil).process()
+    when(mockJanusGraphUtil.getNodeProperties(anyString())).thenReturn(new util.HashMap[String, AnyRef])
+    val env = FlinkUtil.getExecutionContext(jobConfig)
+    val inputStream = env.addSource(new DialcodeContextUpdaterEventSource)
+    new DialcodeContextUpdaterStreamTask(jobConfig, mockKafkaUtil, mockHttpUtil).processForTest(env, inputStream)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(1)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.dbHitEventCount}").getValue() should be(1)
   }

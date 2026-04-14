@@ -21,7 +21,7 @@ import org.sunbird.job.livenodepublisher.publish.domain.Event
 import org.sunbird.job.livenodepublisher.task.{LiveNodePublisherConfig, LiveNodePublisherStreamTask}
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.ExtDataConfig
-import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, Neo4JUtil}
+import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, FlinkUtil, HttpUtil, JanusGraphUtil}
 import org.sunbird.spec.{BaseMetricsReporter, BaseTestSpec}
 
 import java.text.SimpleDateFormat
@@ -32,6 +32,7 @@ class LiveNodePublisherStreamTaskSpec extends BaseTestSpec {
 
   implicit val mapTypeInfo: TypeInformation[java.util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[java.util.Map[String, AnyRef]])
   implicit val strTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
+  implicit val eventTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
 
   val flinkCluster = new MiniClusterWithClientResource(new MiniClusterResourceConfiguration.Builder()
     .setConfiguration(testConfiguration())
@@ -46,7 +47,7 @@ class LiveNodePublisherStreamTaskSpec extends BaseTestSpec {
   implicit val readerConfig: ExtDataConfig = ExtDataConfig(jobConfig.hierarchyKeyspaceName, jobConfig.hierarchyTableName, definition.getExternalPrimaryKey, definition.getExternalProps)
 
   val mockHttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
-  implicit val mockNeo4JUtil: Neo4JUtil = mock[Neo4JUtil](Mockito.withSettings().serializable())
+  implicit val mockJanusGraphUtil: JanusGraphUtil = mock[JanusGraphUtil](Mockito.withSettings().serializable())
   var cassandraUtil: CassandraUtil = _
   val publishConfig: PublishConfig = new PublishConfig(config, "")
   val cloudStorageUtil: CloudStorageUtil = new CloudStorageUtil(publishConfig)
@@ -72,19 +73,16 @@ class LiveNodePublisherStreamTaskSpec extends BaseTestSpec {
     flinkCluster.after()
   }
 
-  def initialize(): Unit = {
-    when(mockKafkaUtil.kafkaJobRequestSource[Event](jobConfig.kafkaInputTopic)).thenReturn(new ContentPublishEventSource)
-  }
-
   def getTimeStamp: String = {
     val sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ");
     sdf.format(new Date())
   }
 
   ignore should " publish the content " in {
-    when(mockNeo4JUtil.getNodeProperties(anyString())).thenReturn(new util.HashMap[String, AnyRef])
-    initialize
-    new LiveNodePublisherStreamTask(jobConfig, mockKafkaUtil, mockHttpUtil).process()
+    when(mockJanusGraphUtil.getNodeProperties(anyString())).thenReturn(new util.HashMap[String, AnyRef])
+    val env = FlinkUtil.getExecutionContext(jobConfig)
+    val inputStream = env.addSource(new ContentPublishEventSource)
+    new LiveNodePublisherStreamTask(jobConfig, mockKafkaUtil, mockHttpUtil).processForTest(env, inputStream)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.totalEventsCount}").getValue() should be(1)
     BaseMetricsReporter.gaugeMetrics(s"${jobConfig.jobName}.${jobConfig.contentPublishEventCount}").getValue() should be(1)
   }

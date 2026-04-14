@@ -4,7 +4,8 @@ import com.typesafe.config.ConfigFactory
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
-import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
+import org.apache.flink.api.common.eventtime.WatermarkStrategy
+import org.apache.flink.streaming.api.scala.{DataStream, StreamExecutionEnvironment}
 import org.sunbird.job.assetenricment.domain.Event
 import org.sunbird.job.assetenricment.functions.{AssetEnrichmentEventRouter, ImageEnrichmentFunction, VideoEnrichmentFunction}
 import org.sunbird.job.connector.FlinkKafkaConnector
@@ -20,8 +21,23 @@ class AssetEnrichmentStreamTask(config: AssetEnrichmentConfig, kafkaConnector: F
     implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
 
     val source = kafkaConnector.kafkaJobRequestSource[Event](config.kafkaInputTopic)
-    val processStreamTask = env.addSource(source).name(config.assetEnrichmentConsumer)
+    val inputStream = env.fromSource(source, WatermarkStrategy.noWatermarks(), config.assetEnrichmentConsumer)
       .uid(config.assetEnrichmentConsumer).setParallelism(config.kafkaConsumerParallelism)
+    buildGraph(env, inputStream)
+    env.execute(config.jobName)
+  }
+
+  /** Test-facing entry point: supply a pre-built input stream. */
+  def processForTest(env: StreamExecutionEnvironment, inputStream: DataStream[Event]): Unit = {
+    buildGraph(env, inputStream)
+    env.execute(config.jobName)
+  }
+
+  private def buildGraph(env: StreamExecutionEnvironment, inputStream: DataStream[Event]): Unit = {
+    implicit val eventTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
+    implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
+
+    val processStreamTask = inputStream
       .rebalance
       .process(new AssetEnrichmentEventRouter(config))
       .name("asset-enrichment-router").uid("asset-enrichment-router")
@@ -33,8 +49,7 @@ class AssetEnrichmentStreamTask(config: AssetEnrichmentConfig, kafkaConnector: F
     val videoStream = processStreamTask.getSideOutput(config.videoEnrichmentDataOutTag).process(new VideoEnrichmentFunction(config))
       .name("video-enrichment-process").uid("video-enrichment-process").setParallelism(config.videoEnrichmentIndexerParallelism)
 
-    videoStream.getSideOutput(config.generateVideoStreamingOutTag).addSink(kafkaConnector.kafkaStringSink(config.videoStreamingTopic))
-    env.execute(config.jobName)
+    videoStream.getSideOutput(config.generateVideoStreamingOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.videoStreamingTopic))
   }
 }
 

@@ -4,6 +4,7 @@ import java.util
 
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
+import org.apache.flink.util.Collector
 import org.scalatest.Matchers
 import org.scalatestplus.mockito.MockitoSugar
 import org.sunbird.fixture.EventFixture
@@ -63,13 +64,18 @@ class CoreTestSpec extends BaseSpec with Matchers with MockitoSugar {
     val mapDeSerialization = new MapDeserializationSchema()
     import org.apache.kafka.clients.consumer.ConsumerRecord
     val cRecord: ConsumerRecord[Array[Byte], Array[Byte]] = new ConsumerRecord[Array[Byte], Array[Byte]](topic, partition, offset, key, value)
-    stringDeSerialization.deserialize(cRecord)
-    stringSerialization.serialize("test", System.currentTimeMillis())
-    stringDeSerialization.isEndOfStream("") should be(false)
+    val stringOut = new java.util.ArrayList[String]()
+    stringDeSerialization.deserialize(cRecord, new Collector[String] {
+      override def collect(t: String): Unit = stringOut.add(t)
+      override def close(): Unit = ()
+    })
+    stringOut.size() should be(1)
+    stringOut.get(0) should be(new String(value, java.nio.charset.StandardCharsets.UTF_8))
+    stringSerialization.serialize("test", null, System.currentTimeMillis())
     val map = new util.HashMap[String, AnyRef]()
     map.put("country_code", "IN")
     map.put("country", "INDIA")
-    mapSerialization.serialize(map, System.currentTimeMillis())
+    mapSerialization.serialize(map, null, System.currentTimeMillis())
   }
 
   "DataCache" should "be able to add the data into redis" in intercept[JedisDataException]{
@@ -109,6 +115,32 @@ class CoreTestSpec extends BaseSpec with Matchers with MockitoSugar {
     redisConnection.getConnection(4).get("key") should equal("{\"test\": \"value\"}")
   }
 
+
+  "DataCache" should "be a no-op when Redis is disabled" in {
+    val noRedisConfig: Config = ConfigFactory.load("base-test-no-redis.conf")
+    val noRedisBaseConfig: BaseJobConfig = new BaseJobConfig(noRedisConfig, "base-job")
+    val redisConnect = new RedisConnect(noRedisBaseConfig)
+    val dataCache = new DataCache(noRedisBaseConfig, redisConnect, 0, List("key"))
+    dataCache.init()
+    dataCache.del("some-key")
+    dataCache.hgetAllWithRetry("some-key") should be(scala.collection.mutable.Map.empty)
+    dataCache.getWithRetry("some-key") should be(scala.collection.mutable.Map.empty)
+    dataCache.isExists("some-key") should be(false)
+    dataCache.close()
+  }
+
+  "RedisConnect" should "not throw when redis.enabled = false and redis.host/port are absent" in {
+    val minimalConfig: Config = ConfigFactory.parseString(
+      """kafka { broker-servers = "localhost:9092", zookeeper = "localhost:2181", groupId = "test" }
+        |task { restart-strategy.attempts = 3, restart-strategy.delay = 10000, parallelism = 1,
+        |  consumer.parallelism = 1, checkpointing.compressed = false, checkpointing.interval = 60000,
+        |  checkpointing.pause.between.seconds = 30000 }
+        |lms-cassandra { host = "localhost", port = 9042 }
+        |redis.enabled = false
+        |""".stripMargin)
+    val minimalBaseConfig: BaseJobConfig = new BaseJobConfig(minimalConfig, "base-job")
+    noException should be thrownBy new RedisConnect(minimalBaseConfig)
+  }
 
   "FilnkUtil" should "get the flink util context" in {
     val config = ConfigFactory.empty()

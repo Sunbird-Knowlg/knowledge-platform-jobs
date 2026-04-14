@@ -17,3 +17,8 @@ kubernets/config
 bin/
 .settings/
 .vscode
+.metals
+.*env*
+.scala*
+docker/.migrations
+docker/.es-migrations

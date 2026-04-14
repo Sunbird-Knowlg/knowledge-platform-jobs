@@ -23,25 +23,25 @@ trait VideoEnrichmentHelper extends ThumbnailUtil {
   private val CONTENT_FOLDER = "content"
   private val ARTIFACT_FOLDER = "artifact"
 
-  def enrichVideo(asset: Asset)(config: AssetEnrichmentConfig, youTubeUtil: YouTubeUtil, cloudStorageUtil: CloudStorageUtil, neo4JUtil: Neo4JUtil): Asset = {
+  def enrichVideo(asset: Asset)(config: AssetEnrichmentConfig, youTubeUtil: YouTubeUtil, cloudStorageUtil: CloudStorageUtil, janusGraphUtil: JanusGraphUtil): Asset = {
     try {
       val videoUrl = asset.artifactUrl
-      enrichVideo(asset, videoUrl)(youTubeUtil, cloudStorageUtil, neo4JUtil, config)
+      enrichVideo(asset, videoUrl)(youTubeUtil, cloudStorageUtil, janusGraphUtil, config)
     } catch {
       case e: Exception =>
         logger.error(s"Something Went Wrong While Performing Asset Enrichment operation. Content Id: ${asset.identifier}. ", e)
         asset.put("processingError", e.getMessage)
         asset.put("status", "Failed")
-        neo4JUtil.updateNode(asset.identifier, asset.getMetadata)
+        janusGraphUtil.updateNode(asset.identifier, asset.getMetadata)
         throw e
     }
   }
 
-  private def enrichVideo(asset: Asset, videoUrl: String)(youTubeUtil: YouTubeUtil, cloudStorageUtil: CloudStorageUtil, neo4JUtil: Neo4JUtil, config: AssetEnrichmentConfig): Asset = {
+  private def enrichVideo(asset: Asset, videoUrl: String)(youTubeUtil: YouTubeUtil, cloudStorageUtil: CloudStorageUtil, janusGraphUtil: JanusGraphUtil, config: AssetEnrichmentConfig): Asset = {
     if (StringUtils.equalsIgnoreCase("video/x-youtube", asset.mimeType)) processYoutubeVideo(asset, videoUrl)(youTubeUtil)
     else processOtherVideo(asset, videoUrl)(cloudStorageUtil, config)
     asset.put("status", "Live")
-    neo4JUtil.updateNode(asset.identifier, asset.getMetadata)
+    janusGraphUtil.updateNode(asset.identifier, asset.getMetadata)
     asset
   }
 

@@ -16,7 +16,7 @@ import org.sunbird.job.assetenricment.util.{AssetFileUtils, ImageResizerUtil, Yo
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.fixture.EventFixture
-import org.sunbird.job.util.{CloudStorageUtil, FileUtils, JSONUtil, Neo4JUtil, ScalaJsonUtil}
+import org.sunbird.job.util.{CloudStorageUtil, FileUtils, JSONUtil, JanusGraphUtil, ScalaJsonUtil}
 import org.sunbird.spec.BaseTestSpec
 
 import java.io.File
@@ -36,7 +36,7 @@ class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
   val config: Config = ConfigFactory.load("test.conf").withFallback(ConfigFactory.systemEnvironment())
   val jobConfig = new AssetEnrichmentConfig(config)
   val definitionUtil = new DefinitionCache
-  implicit val mockNeo4JUtil: Neo4JUtil = mock[Neo4JUtil](Mockito.withSettings().serializable())
+  implicit val mockJanusGraphUtil: JanusGraphUtil = mock[JanusGraphUtil](Mockito.withSettings().serializable())
   implicit val cloudUtil: CloudStorageUtil = new CloudStorageUtil(jobConfig)
   implicit val youTubeUtil: YouTubeUtil = new YouTubeUtil(jobConfig)
   val imagePath = config.getString("blob.input.contentImagePath")
@@ -53,14 +53,14 @@ class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
   }
 
   "enrichImage()" should " enrich the image for the asset " in {
-    doNothing().when(mockNeo4JUtil).updateNode(anyString(), any[Map[String, AnyRef]]())
+    doNothing().when(mockJanusGraphUtil).updateNode(anyString(), any[Map[String, AnyRef]]())
 
     val contentId = imagePath.split("/").dropWhile(_ != "content").drop(1).headOption.getOrElse("")
     val metadata = getMetadataForImageAsset
     val updatedMetadata = metadata.updated("cloudStorageKey", s"content/$contentId/artifact/${imagePath.split("/").last}")
     
     val asset = getAsset(EventFixture.IMAGE_ASSET, updatedMetadata)
-    new ImageEnrichmentFunction(jobConfig).enrichImage(asset)(jobConfig, definitionUtil, cloudUtil, mockNeo4JUtil)
+    new ImageEnrichmentFunction(jobConfig).enrichImage(asset)(jobConfig, definitionUtil, cloudUtil, mockJanusGraphUtil)
     val variants = ScalaJsonUtil.deserialize[Map[String, String]](asset.get("variants", "").asInstanceOf[String])
     variants.size should be(3)
     variants.keys should contain allOf("high", "medium", "low")
@@ -71,20 +71,20 @@ class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
   }
 
   "videoEnrichment" should " enrich the video for the mp4 asset " in {
-    doNothing().when(mockNeo4JUtil).updateNode(anyString(), any[Map[String, AnyRef]]())
+    doNothing().when(mockJanusGraphUtil).updateNode(anyString(), any[Map[String, AnyRef]]())
 
     val metadata = getMetadataForMp4VideoAsset
     val asset = getAsset(EventFixture.VIDEO_MP4_ASSET, metadata)
-    new VideoEnrichmentFunction(jobConfig).enrichVideo(asset)(jobConfig, youTubeUtil, cloudUtil, mockNeo4JUtil)
+    new VideoEnrichmentFunction(jobConfig).enrichVideo(asset)(jobConfig, youTubeUtil, cloudUtil, mockJanusGraphUtil)
     asset.get("status", "").asInstanceOf[String] should be("Live")
   }
 
   "videoEnrichment" should " enrich the video for the youtube asset " in {
-    doNothing().when(mockNeo4JUtil).updateNode(anyString(), any[Map[String, AnyRef]]())
+    doNothing().when(mockJanusGraphUtil).updateNode(anyString(), any[Map[String, AnyRef]]())
 
     val metadata = getMetadataForYouTubeVideoAsset
     val asset = getAsset(EventFixture.VIDEO_YOUTUBE_ASSET, metadata)
-    new VideoEnrichmentFunction(jobConfig).enrichVideo(asset)(jobConfig, youTubeUtil, cloudUtil, mockNeo4JUtil)
+    new VideoEnrichmentFunction(jobConfig).enrichVideo(asset)(jobConfig, youTubeUtil, cloudUtil, mockJanusGraphUtil)
     asset.get("thumbnail", "").asInstanceOf[String] should be("https://i.ytimg.com/vi/-SgZ3Enpau8/mqdefault.jpg")
     asset.get("status", "").asInstanceOf[String] should be("Live")
     asset.get("duration", "0").asInstanceOf[String] should be("274")
@@ -105,7 +105,7 @@ class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
     val asset = getAsset(EventFixture.IMAGE_ASSET, metadata)
     asset.put("artifactUrl", "https://unknownurl123.com")
     assertThrows[Exception] {
-      new ImageEnrichmentFunction(jobConfig).enrichImage(asset)(jobConfig, definitionUtil, cloudUtil, mockNeo4JUtil)
+      new ImageEnrichmentFunction(jobConfig).enrichImage(asset)(jobConfig, definitionUtil, cloudUtil, mockJanusGraphUtil)
     }
   }
 
@@ -114,7 +114,7 @@ class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
     val asset = getAsset(EventFixture.VIDEO_MP4_ASSET, metadata)
     asset.put("artifactUrl", "https://unknownurl1234.com")
     assertThrows[Exception] {
-      new VideoEnrichmentFunction(jobConfig).enrichVideo(asset)(jobConfig, youTubeUtil, cloudUtil, mockNeo4JUtil)
+      new VideoEnrichmentFunction(jobConfig).enrichVideo(asset)(jobConfig, youTubeUtil, cloudUtil, mockJanusGraphUtil)
     }
   }
 
@@ -123,7 +123,7 @@ class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
     val asset = getAsset(EventFixture.VIDEO_MP4_ASSET, metadata)
     asset.put("artifactUrl", "")
     assertThrows[Exception] {
-      new VideoEnrichmentFunction(jobConfig).enrichVideo(asset)(jobConfig, youTubeUtil, cloudUtil, mockNeo4JUtil)
+      new VideoEnrichmentFunction(jobConfig).enrichVideo(asset)(jobConfig, youTubeUtil, cloudUtil, mockJanusGraphUtil)
     }
   }
 
@@ -132,7 +132,7 @@ class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
     val asset = getAsset(EventFixture.VIDEO_MP4_ASSET, metadata)
     asset.put("artifactUrl", "")
     assertThrows[Exception] {
-      new VideoEnrichmentFunction(jobConfig).getMetadata(asset.identifier)(mockNeo4JUtil)
+      new VideoEnrichmentFunction(jobConfig).getMetadata(asset.identifier)(mockJanusGraphUtil)
     }
   }
 
@@ -141,7 +141,7 @@ class AssetEnrichmentTaskTestSpec extends BaseTestSpec {
     val asset = getAsset(EventFixture.IMAGE_ASSET, metadata)
     asset.put("artifactUrl", "")
     assertThrows[Exception] {
-      new ImageEnrichmentFunction(jobConfig).getMetadata(asset.identifier)(mockNeo4JUtil)
+      new ImageEnrichmentFunction(jobConfig).getMetadata(asset.identifier)(mockJanusGraphUtil)
     }
   }
 
