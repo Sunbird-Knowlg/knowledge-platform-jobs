@@ -8,8 +8,8 @@ class BaseTestSpec extends FlatSpec with Matchers with BeforeAndAfterAll with Mo
 
   def testConfiguration(): Configuration = {
     val config = new Configuration()
-    config.setString("metrics.reporter", "job_metrics_reporter")
-    config.setString("metrics.reporter.job_metrics_reporter.class", classOf[BaseMetricsReporter].getName)
+    config.setString("metrics.reporters", "job_metrics_reporter")
+    config.setString("metrics.reporter.job_metrics_reporter.factory.class", classOf[BaseMetricsReporterFactory].getName)
     config
   }
 
