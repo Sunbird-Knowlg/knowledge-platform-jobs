@@ -55,10 +55,10 @@
 		<scala.version>2.12</scala.version>
 		<scala.maj.version>2.12.11</scala.maj.version>
 		<flink.version>1.18.1</flink.version>
-		<kafka.version>3.9.1</kafka.version>
+		<kafka.version>3.9.2</kafka.version>
 		<jackson-jaxrs.version>1.9.13</jackson-jaxrs.version>
 		<scoverage.plugin.version>1.4.0</scoverage.plugin.version>
-		<netty.version>4.1.129.Final</netty.version>
+		<netty.version>4.1.132.Final</netty.version>
 		<jetty.version>9.4.57.v20241219</jetty.version>
 		<jackson.version>2.18.6</jackson.version>
 		<!-- Pin SLF4J to 1.7.x: Flink 1.18.1 uses SLF4J 1.7.x; logback 1.2.x requires SLF4J 1.7.x.
