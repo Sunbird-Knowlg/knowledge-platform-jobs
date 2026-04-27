@@ -1,0 +1,42 @@
+version: 2
+updates:
+  # Root pom.xml is the parent for all Maven submodules (Flink jobs, Scala/Java)
+  - package-ecosystem: "maven"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:30"        # 30 min after dependency-submission workflow (03:00 UTC)
+      timezone: "UTC"
+    open-pull-requests-limit: 10
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore(deps)"
+    groups:
+      jackson:
+        patterns:
+          - "com.fasterxml.jackson.*:*"
+      netty:
+        patterns:
+          - "io.netty:*"
+      jetty:
+        patterns:
+          - "org.eclipse.jetty:*"
+      apache-commons:
+        patterns:
+          - "org.apache.commons:*"
+          - "commons-*:*"
+
+  # Keep GitHub Actions workflow action versions updated
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "03:30"
+      timezone: "UTC"
+    labels:
+      - "dependencies"
+    commit-message:
+      prefix: "chore(ci)"
