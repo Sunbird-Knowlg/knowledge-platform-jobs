@@ -171,7 +171,7 @@ class ConfigurableEnrichedMetadataEventBuilder(
 
     logger.debug(s"Extracting ${fieldsToExtract.length} fields for $objectType")
 
-    obj.metadata
+    val extracted = obj.metadata
       .filter { case (fieldName, _) =>
         fieldsToExtract.contains(fieldName) && !excludedFields.contains(fieldName)
       }
@@ -179,6 +179,10 @@ class ConfigurableEnrichedMetadataEventBuilder(
         fieldName -> sanitizeFieldValue(fieldName, value)
       }
       .filter { case (_, value) => value != null }
+
+    // Add identifier (top-level property, not in metadata)
+    val withIdentifier = if (fieldsToExtract.contains("identifier")) extracted + ("identifier" -> obj.identifier) else extracted
+    withIdentifier
   }
 
   private def sanitizeFieldValue(fieldName: String, value: Any): AnyRef = {
