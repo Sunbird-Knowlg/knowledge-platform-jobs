@@ -125,7 +125,7 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
   val artifactSizeForOnline: Double = if (config.hasPath("content.artifact.size.for_online")) config.getDouble("content.artifact.size.for_online") else 209715200
   val bundleLocation: String = if (config.hasPath("content.bundleLocation")) config.getString("content.bundleLocation") else "/data/contentBundle/"
 
-  val extractableMimeTypes = List("application/vnd.ekstep.ecml-archive", "application/vnd.ekstep.html-archive", "application/vnd.ekstep.plugin-archive", "application/vnd.ekstep.h5p-archive")
+  val extractableMimeTypes = List("application/vnd.ekstep.ecml-archive", "application/vnd.ekstep.html-archive", "application/vnd.ekstep.plugin-archive", "application/vnd.ekstep.h5p-archive", "application/vnd.ekstep.scorm-archive")
 
   val categoryMap: java.util.Map[String, AnyRef] = if (config.hasPath("contentTypeToPrimaryCategory")) config.getAnyRef("contentTypeToPrimaryCategory").asInstanceOf[java.util.Map[String, AnyRef]] else new util.HashMap[String, AnyRef]()
 
