@@ -91,6 +91,7 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
   val mvcProcessorTag: OutputTag[String] = OutputTag[String]("mvc-processor-request")
   val dialcodeContextUpdaterOutTag: OutputTag[String] = OutputTag[String]("dialcode-context-updater-request")
   val contentMetadataEventOutTag: OutputTag[String] = OutputTag[String]("content-metadata-event-request")
+  val enrichedMetadataEventOutTag: OutputTag[String] = OutputTag[String]("enriched-metadata-event-request")
   val qrimageOutTag: OutputTag[String] = OutputTag[String]("qrimage-generator-request")
 
 
