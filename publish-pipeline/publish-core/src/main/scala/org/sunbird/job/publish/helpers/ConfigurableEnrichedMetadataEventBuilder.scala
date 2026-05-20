@@ -41,9 +41,10 @@ class ConfigurableEnrichedMetadataEventBuilder(
     */
   def buildEnrichedMetadataEvent(obj: ObjectData): EnrichedMetadataEvent = {
     val objectType = getObjectType(obj)
-    logger.debug(s"Building enriched metadata event for $objectType: ${obj.identifier}")
+    logger.info(s"Building enriched metadata event for $objectType: ${obj.identifier}")
 
     var enrichedData = extractConfiguredFields(obj, objectType)
+    logger.debug(s"Extracted ${enrichedData.size} fields for $objectType: ${obj.identifier}")
 
     if (includeHierarchy && isHierarchyIncludeableType(objectType) && obj.hierarchy.isDefined) {
       val filteredHierarchy = filterHierarchyFields(obj.hierarchy.get)
@@ -52,6 +53,7 @@ class ConfigurableEnrichedMetadataEventBuilder(
     }
 
     validateEnrichedData(objectType, enrichedData)
+    logger.info(s"Enriched metadata validation passed for $objectType: ${obj.identifier}")
 
     EnrichedMetadataEvent(
       id = obj.identifier,
@@ -105,6 +107,7 @@ class ConfigurableEnrichedMetadataEventBuilder(
 
     val configuredFieldNames = fieldConfig.getFieldNamesFor(objectType, includeOptional = true)
     val excludedFields = fieldConfig.getExcludedFieldsFor(objectType)
+    logger.debug(s"Filtering hierarchy node of type $objectType with ${configuredFieldNames.length} configured fields")
 
     // Filter this node's fields
     val filteredNode = hierarchy
@@ -115,6 +118,8 @@ class ConfigurableEnrichedMetadataEventBuilder(
         fieldName -> sanitizeFieldValue(fieldName, value)
       }
       .filter { case (_, value) => value != null }
+
+    logger.debug(s"Filtered hierarchy node: ${filteredNode.size} fields retained for type $objectType")
 
     // Recursively filter children if present
     val result = if (hierarchy.contains("children")) {
@@ -169,7 +174,8 @@ class ConfigurableEnrichedMetadataEventBuilder(
     val fieldsToExtract = fieldConfig.getFieldNamesFor(objectType, includeOptional = true)
     val excludedFields = fieldConfig.getExcludedFieldsFor(objectType)
 
-    logger.debug(s"Extracting ${fieldsToExtract.length} fields for $objectType")
+    logger.debug(s"Extracting ${fieldsToExtract.length} fields for $objectType: ${fieldsToExtract.mkString(", ")}")
+    logger.debug(s"Excluded fields for $objectType: ${excludedFields.mkString(", ")}")
 
     val extracted = obj.metadata
       .filter { case (fieldName, _) =>
@@ -180,8 +186,16 @@ class ConfigurableEnrichedMetadataEventBuilder(
       }
       .filter { case (_, value) => value != null }
 
+    logger.debug(s"Extracted ${extracted.size} metadata fields from object metadata for $objectType: ${obj.identifier}")
+
     // Add identifier (top-level property, not in metadata)
-    val withIdentifier = if (fieldsToExtract.contains("identifier")) extracted + ("identifier" -> obj.identifier) else extracted
+    val withIdentifier = if (fieldsToExtract.contains("identifier")) {
+      val result = extracted + ("identifier" -> obj.identifier)
+      logger.debug(s"Added identifier field for $objectType: ${obj.identifier}")
+      result
+    } else extracted
+
+    logger.debug(s"Final extracted fields for $objectType: ${withIdentifier.keySet.mkString(", ")}")
     withIdentifier
   }
 
@@ -202,6 +216,7 @@ class ConfigurableEnrichedMetadataEventBuilder(
 
   private def validateEnrichedData(objectType: String, data: Map[String, Any]): Unit = {
     val requiredFields = fieldConfig.getRequiredFieldsFor(objectType).map(_.name)
+    logger.debug(s"Required fields for $objectType: ${requiredFields.mkString(", ")}")
 
     val missingRequired = requiredFields.filter(!data.contains(_))
     if (missingRequired.nonEmpty) {
@@ -209,13 +224,16 @@ class ConfigurableEnrichedMetadataEventBuilder(
     }
 
     val excludedFields = fieldConfig.getExcludedFieldsFor(objectType)
+    logger.debug(s"Total excluded fields configured for $objectType: ${excludedFields.length}")
+
     val unwantedFields = data.keys.filter(excludedFields.contains)
     if (unwantedFields.nonEmpty) {
       logger.error(s"ERROR: Excluded fields present in enriched data for $objectType: ${unwantedFields.mkString(", ")}")
+      logger.error(s"Data keys present: ${data.keys.mkString(", ")}")
       throw new IllegalStateException(s"Excluded fields leaked into enriched event: ${unwantedFields.mkString(", ")}")
     }
 
-    logger.debug(s"Enriched data validation passed for $objectType. Fields: ${data.size}")
+    logger.info(s"Enriched data validation passed for $objectType. Total fields: ${data.size}, Present fields: ${data.keys.mkString(", ")}")
   }
 
   /** Serialize enriched metadata event to JSON string.
