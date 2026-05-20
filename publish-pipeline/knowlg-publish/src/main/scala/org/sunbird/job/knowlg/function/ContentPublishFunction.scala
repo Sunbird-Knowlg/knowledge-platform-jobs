@@ -184,7 +184,7 @@ class ContentPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
         val enrichedEvent = enrichedMetadataEventBuilder.buildEnrichedKafkaEvent(obj)
         logger.debug(s"Built enriched event with data fields: ${enrichedEvent.get("data").asInstanceOf[Option[Map[String, Any]]].map(_.keys.mkString(", ")).getOrElse("none")}")
         val eventJson = ScalaJsonUtil.serialize(enrichedEvent)
-        context.output(config.contentMetadataEventOutTag, eventJson)
+        context.output(config.enrichedMetadataEventOutTag, eventJson)
         metrics.incCounter(config.enrichedMetadataEventCount)
         logger.info(s"Enriched metadata event successfully emitted for ${obj.identifier} to topic: ${config.enrichedMetadataTopic}")
       } else {
