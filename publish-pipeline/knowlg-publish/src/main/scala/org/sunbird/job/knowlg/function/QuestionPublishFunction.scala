@@ -13,8 +13,8 @@ import org.sunbird.job.knowlg.task.KnowlgPublishConfig
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
-import org.sunbird.job.publish.helpers.EcarPackageType
-import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, JanusGraphUtil, LoggerUtil}
+import org.sunbird.job.publish.helpers.{ConfigurableEnrichedMetadataEventBuilder, EcarPackageType, FieldConfiguration}
+import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, JanusGraphUtil, LoggerUtil, ScalaJsonUtil}
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import java.lang.reflect.Type
@@ -35,6 +35,8 @@ class QuestionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
   @transient var ec: ExecutionContext = _
   @transient var cache: DataCache = _
   private val pkgTypes = List(EcarPackageType.FULL.toString, EcarPackageType.ONLINE.toString)
+  private var fieldConfig: FieldConfiguration = _
+  private var enrichedMetadataEventBuilder: ConfigurableEnrichedMetadataEventBuilder = _
 
   // Implement missing abstract methods from QuestionPublisher trait
   override def getExtDatas(identifiers: List[String], readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil): Option[Map[String, AnyRef]] = {
@@ -55,6 +57,8 @@ class QuestionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
     definitionConfig = DefinitionConfig(config.schemaSupportVersionMap, config.definitionBasePath)
     cache = new DataCache(config, new RedisConnect(config), config.cacheDbId, List())
     cache.init()
+    fieldConfig = new FieldConfiguration(config.enrichedMetadataFieldConfigPath)
+    enrichedMetadataEventBuilder = new ConfigurableEnrichedMetadataEventBuilder(fieldConfig, config.enrichedMetadataTopic, config.includeHierarchyInEnrichedMetadata)
   }
 
   override def close(): Unit = {
@@ -64,7 +68,7 @@ class QuestionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
   }
 
   override def metricsList(): List[String] = {
-    List(config.questionPublishEventCount, config.questionPublishSuccessEventCount, config.questionPublishFailedEventCount)
+    List(config.questionPublishEventCount, config.questionPublishSuccessEventCount, config.questionPublishFailedEventCount, config.enrichedMetadataEventCount)
   }
 
   override def processElement(event: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
@@ -82,6 +86,21 @@ class QuestionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
     processPublishMetadata(publishMetadata, context, metrics)
   }
   
+  private def pushEnrichedMetadataEvent(obj: ObjectData, context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
+    try {
+      if (config.enrichedMetadataEnabled) {
+        val enrichedEvent = enrichedMetadataEventBuilder.buildEnrichedKafkaEvent(obj)
+        val eventJson = ScalaJsonUtil.serialize(enrichedEvent)
+        context.output(config.contentMetadataEventOutTag, eventJson)
+        metrics.incCounter(config.enrichedMetadataEventCount)
+        logger.debug(s"Enriched metadata event pushed for ${obj.identifier}")
+      }
+    } catch {
+      case e: Exception =>
+        logger.error(s"Error pushing enriched metadata event for ${obj.identifier}: ${e.getMessage}", e)
+    }
+  }
+
   private def processPublishMetadata(data: PublishMetadata, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
     val requestId = data.eventContext.getOrElse("requestId", "").asInstanceOf[String]
     val featureName = data.eventContext.getOrElse("featureName", "").asInstanceOf[String]
@@ -105,6 +124,7 @@ class QuestionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
         val objWithEcar = getObjectWithEcar(enrichedObj, pkgTypes)(ec, janusGraphUtil, cloudStorageUtil, config, definitionCache, definitionConfig, httpUtil)
         logger.info(s"Feature: ${featureName} | Ecar generation done for Question: ${objWithEcar.identifier} | requestId: ${requestId}")
         saveOnSuccess(objWithEcar)(janusGraphUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig, config)
+        pushEnrichedMetadataEvent(enrichedObj, context)(metrics)
         metrics.incCounter(config.questionPublishSuccessEventCount)
         logger.info(LoggerUtil.getExitLogs(config.jobName, requestId, s"Feature: ${featureName} | Question publishing completed successfully for : ${data.identifier}"))
       } else {

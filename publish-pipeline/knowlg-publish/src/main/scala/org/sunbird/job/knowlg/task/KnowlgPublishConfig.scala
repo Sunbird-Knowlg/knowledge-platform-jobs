@@ -24,6 +24,7 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
   val postPublishTopic: String = config.getString("kafka.post_publish.topic")
   val mvcTopic: String = config.getString("kafka.mvc.topic")
   val contentMetadataTopic: String = config.getString("kafka.content_metadata.topic")
+  val enrichedMetadataTopic: String = config.getString("kafka.enriched_metadata.topic")
   val kafkaErrorTopic: String = config.getString("kafka.error.topic")
   val inputConsumerName = "content-publish-consumer"
 
@@ -44,6 +45,7 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
   val collectionPostPublishProcessEventCount = "collection-post-publish-process-count"
   val mvProcessorEventCount = "mvc-processor-event-count"
   val dialcodeContextUpdaterEventCount = "dialcode-context-updater-event-count"
+  val enrichedMetadataEventCount = "enriched-metadata-event-count"
 
   // Cassandra Configurations
   val cassandraHost: String = config.getString("lms-cassandra.host")
@@ -94,6 +96,11 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
 
   val definitionBasePath: String = if (config.hasPath("schema.basePath")) config.getString("schema.basePath") else "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local"
   val schemaSupportVersionMap: Map[String, AnyRef] = if (config.hasPath("schema.supportedVersion")) config.getObject("schema.supportedVersion").unwrapped().asScala.toMap else Map[String, AnyRef]()
+
+  // Enrichment Configuration
+  val enrichedMetadataFieldConfigPath: String = if (config.hasPath("enriched.field_config_path")) config.getString("enriched.field_config_path") else "enriched-metadata-fields.json"
+  val enrichedMetadataEnabled: Boolean = if (config.hasPath("enriched.metadata.enabled")) config.getBoolean("enriched.metadata.enabled") else false
+  val includeHierarchyInEnrichedMetadata: Boolean = if (config.hasPath("enriched.metadata.include_hierarchy")) config.getBoolean("enriched.metadata.include_hierarchy") else false
 
   val supportedObjectType: util.List[String] = if (config.hasPath("content.objectType")) config.getStringList("content.objectType") else util.Arrays.asList[String]("Content", "ContentImage", "Collection", "CollectionImage", "Question", "QuestionImage", "QuestionSet", "QuestionSetImage")
   val supportedMimeType: util.List[String] = if (config.hasPath("content.mimeType")) config.getStringList("content.mimeType") else util.Arrays.asList[String]("application/pdf", "application/vnd.sunbird.question", "application/vnd.sunbird.questionset")

@@ -14,7 +14,7 @@ import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.exception.InvalidInputException
 import org.sunbird.job.helper.FailedEventHelper
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
-import org.sunbird.job.publish.helpers.EcarPackageType
+import org.sunbird.job.publish.helpers.{ConfigurableEnrichedMetadataEventBuilder, EcarPackageType, FieldConfiguration}
 import org.sunbird.job.util._
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
@@ -39,6 +39,8 @@ class CollectionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
   private var cache: DataCache = _
   private val COLLECTION_CACHE_KEY_PREFIX = "hierarchy_"
   private val COLLECTION_CACHE_KEY_SUFFIX = ":leafnodes"
+  private var fieldConfig: FieldConfiguration = _
+  private var enrichedMetadataEventBuilder: ConfigurableEnrichedMetadataEventBuilder = _
 
   @transient var ec: ExecutionContext = _
   private val pkgTypes = List(EcarPackageType.SPINE, EcarPackageType.ONLINE)
@@ -54,6 +56,8 @@ class CollectionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
     definitionConfig = DefinitionConfig(config.schemaSupportVersionMap, config.definitionBasePath)
     cache = new DataCache(config, new RedisConnect(config), config.nodeStore, List())
     cache.init()
+    fieldConfig = new FieldConfiguration(config.enrichedMetadataFieldConfigPath)
+    enrichedMetadataEventBuilder = new ConfigurableEnrichedMetadataEventBuilder(fieldConfig, config.enrichedMetadataTopic, config.includeHierarchyInEnrichedMetadata)
   }
 
   override def close(): Unit = {
@@ -63,7 +67,7 @@ class CollectionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
   }
 
   override def metricsList(): List[String] = {
-    List(config.collectionPublishEventCount, config.collectionPublishSuccessEventCount, config.collectionPublishFailedEventCount, config.skippedEventCount, config.collectionPostPublishProcessEventCount)
+    List(config.collectionPublishEventCount, config.collectionPublishSuccessEventCount, config.collectionPublishFailedEventCount, config.skippedEventCount, config.collectionPostPublishProcessEventCount, config.enrichedMetadataEventCount)
   }
 
   override def processElement(data: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
@@ -131,7 +135,7 @@ class CollectionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
           // Update collection hierarchy relationships - use enrichedObj which has complete hierarchy
           updateHierarchyRelationships(enrichedObj)(cassandraUtil, config)
           logger.info(s"After updateHierarchyRelationships Collection:  ${enrichedObj.identifier}");
-          
+
           //TODO: Save IMAGE Object with enrichedObj children and collRelationalMetadata when pkgVersion is 1 - verify with MaheshG
           if(data.pkgVersion == 1) {
             saveImageHierarchy(enrichedObj, readerConfig, collRelationalMetadata)(cassandraUtil)
@@ -143,6 +147,10 @@ class CollectionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
             pushCollectionDIALcodeEvents(successObj, dialContextMap, config, context)(metrics)
           }
           pushPostProcessEvent(successObj, dialContextMap, context)(metrics)
+          
+          //Push Enriched metadata event
+          pushEnrichedMetadataEvent(enrichedObj, context)(metrics)
+          
           if(config.isAISearchEnabled) {
             pushContentMetadataEvent(successObj, context)(metrics)
           }
@@ -167,6 +175,21 @@ class CollectionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
         saveOnFailure(obj, List(ex.getMessage), data.pkgVersion)(janusGraphUtil)
         logger.error(s"CollectionPublishFunction::Error while processing message for Partition: ${data.partition} and Offset: ${data.offset}. Error : ${ex.getMessage}", ex)
         throw ex
+    }
+  }
+
+  private def pushEnrichedMetadataEvent(obj: ObjectData, context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
+    try {
+      if (config.enrichedMetadataEnabled) {
+        val enrichedEvent = enrichedMetadataEventBuilder.buildEnrichedKafkaEvent(obj)
+        val eventJson = ScalaJsonUtil.serialize(enrichedEvent)
+        context.output(config.contentMetadataEventOutTag, eventJson)
+        metrics.incCounter(config.enrichedMetadataEventCount)
+        logger.debug(s"Enriched metadata event pushed for ${obj.identifier}")
+      }
+    } catch {
+      case e: Exception =>
+        logger.error(s"Error pushing enriched metadata event for ${obj.identifier}: ${e.getMessage}", e)
     }
   }
 
