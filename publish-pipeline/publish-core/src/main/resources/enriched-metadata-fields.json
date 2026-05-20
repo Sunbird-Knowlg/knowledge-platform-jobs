@@ -1,0 +1,200 @@
+{
+  "_schema_version": "1.0",
+  "_description": "Configurable field definitions for enriched-content-metadata event emission. Versioned separately from object schema versions for independent evolution.",
+
+  "object_types": {
+    "Content": {
+      "description": "Learning resources: videos, ebooks, courses, units, assessments",
+      "fields": {
+        "essential": {
+          "identifier": { "type": "string", "required": true, "description": "Unique content ID" },
+          "name": { "type": "string", "required": true, "description": "Content title" },
+          "contentType": { "type": "string", "required": true, "description": "Type: Resource, Course, CourseUnit, SelfAssess, etc" },
+          "primaryCategory": { "type": "string", "required": true, "description": "Display category" },
+          "mimeType": { "type": "string", "required": true, "description": "Content media type" }
+        },
+        "educational": {
+          "description": { "type": "string", "required": false, "description": "Detailed content description" },
+          "subject": { "type": "array", "required": false, "description": "Educational subject areas" },
+          "audience": { "type": "array", "required": false, "description": "Target learners: Student, Teacher, etc" },
+          "language": { "type": "array", "required": false, "description": "Content languages" },
+          "framework": { "type": "string", "required": false, "description": "Educational framework (NCF, etc)" },
+          "resourceType": { "type": "string", "required": false, "description": "Learn, Teach, Read, Play, Test, Practice" }
+        },
+        "semantic": {
+          "keywords": { "type": "array", "required": false, "description": "Search keywords for semantic matching" },
+          "se_subjects": { "type": "array", "required": false, "description": "Semantic subject names" },
+          "se_boards": { "type": "array", "required": false, "description": "Semantic board names" },
+          "se_mediums": { "type": "array", "required": false, "description": "Semantic medium names" },
+          "se_gradeLevels": { "type": "array", "required": false, "description": "Semantic grade level names" }
+        },
+        "authorship": {
+          "author": { "type": "string", "required": false, "description": "Content author" },
+          "creator": { "type": "string", "required": false, "description": "Content creator" },
+          "license": { "type": "string", "required": false, "description": "Content license (CC BY 4.0, etc)" }
+        },
+        "assessment_specific": {
+          "totalQuestions": { "type": "integer", "required": false, "description": "Question count for SelfAssess/assessment content" },
+          "totalScore": { "type": "number", "required": false, "description": "Max score for assessment" },
+          "maxAttempts": { "type": "integer", "required": false, "description": "Max allowed attempts" }
+        }
+      },
+      "excluded_fields": [
+        "identifier", "versionKey", "lockKey", "pkgVersion",
+        "downloadUrl", "previewUrl", "artifactUrl", "ecarUrl",
+        "variants", "editorState", "appIcon", "posterImage",
+        "contentEncoding", "osId", "idealScreenSize", "idealScreenDensity",
+        "createdBy", "lastUpdatedBy", "lastPublishedBy",
+        "credentials", "discussionForum", "interceptionPoints",
+        "body", "plugins", "editorState"
+      ]
+    },
+
+    "Collection": {
+      "description": "Collections and container types: Course, TextBook, LessonPlan, Collection",
+      "fields": {
+        "essential": {
+          "identifier": { "type": "string", "required": true },
+          "name": { "type": "string", "required": true },
+          "contentType": { "type": "string", "required": true, "description": "Course, Collection, TextBook, LessonPlan" },
+          "primaryCategory": { "type": "string", "required": true },
+          "mimeType": { "type": "string", "required": true }
+        },
+        "educational": {
+          "description": { "type": "string", "required": false },
+          "subject": { "type": "array", "required": false },
+          "audience": { "type": "array", "required": false },
+          "language": { "type": "array", "required": false },
+          "framework": { "type": "string", "required": false }
+        },
+        "semantic": {
+          "keywords": { "type": "array", "required": false, "description": "Search keywords for semantic matching" },
+          "se_subjects": { "type": "array", "required": false },
+          "se_boards": { "type": "array", "required": false },
+          "se_mediums": { "type": "array", "required": false },
+          "se_gradeLevels": { "type": "array", "required": false }
+        },
+        "authorship": {
+          "author": { "type": "string", "required": false },
+          "creator": { "type": "string", "required": false },
+          "license": { "type": "string", "required": false }
+        },
+        "hierarchy": {
+          "childNodes": { "type": "array", "required": false, "description": "IDs of immediate children (flat list)" },
+          "leafNodesCount": { "type": "integer", "required": false, "description": "Total leaf content items" },
+          "depth": { "type": "integer", "required": false, "description": "Nesting depth in hierarchy" }
+        }
+      },
+      "excluded_fields": [
+        "identifier", "versionKey", "lockKey", "pkgVersion",
+        "downloadUrl", "previewUrl", "artifactUrl", "ecarUrl",
+        "variants", "appIcon", "posterImage",
+        "contentEncoding", "osId", "idealScreenSize", "idealScreenDensity",
+        "createdBy", "lastUpdatedBy", "lastPublishedBy",
+        "credentials", "discussionForum", "interceptionPoints",
+        "children", "batches"
+      ]
+    },
+
+    "Question": {
+      "description": "Individual assessment questions",
+      "fields": {
+        "essential": {
+          "identifier": { "type": "string", "required": true },
+          "name": { "type": "string", "required": true },
+          "primaryCategory": { "type": "string", "required": true },
+          "mimeType": { "type": "string", "required": true, "description": "application/vnd.sunbird.question" }
+        },
+        "educational": {
+          "description": { "type": "string", "required": false },
+          "subject": { "type": "array", "required": false },
+          "board": { "type": "string", "required": false },
+          "gradeLevel": { "type": "array", "required": false },
+          "topic": { "type": "array", "required": false },
+          "language": { "type": "array", "required": false },
+          "audience": { "type": "array", "required": false },
+          "framework": { "type": "string", "required": false }
+        },
+        "semantic": {
+          "keywords": { "type": "array", "required": false, "description": "Search keywords for semantic matching" },
+          "se_subjects": { "type": "array", "required": false },
+          "se_boards": { "type": "array", "required": false },
+          "se_gradeLevels": { "type": "array", "required": false }
+        },
+        "authorship": {
+          "author": { "type": "string", "required": false },
+          "license": { "type": "string", "required": false }
+        },
+        "assessment": {
+          "qType": { "type": "string", "required": false, "description": "MCQ, FTB, SA, etc" },
+          "maxScore": { "type": "number", "required": false, "description": "Max points for question" },
+          "bloomsLevel": { "type": "string", "required": false, "description": "Cognitive level" }
+        }
+      },
+      "excluded_fields": [
+        "identifier", "versionKey", "lockKey", "pkgVersion",
+        "body", "answer", "editorState", "solutions", "hints", "media",
+        "responseDeclaration", "interactions", "instructions",
+        "artifactUrl", "appIcon",
+        "createdBy", "lastUpdatedBy", "lastPublishedBy",
+        "assets", "credentials"
+      ]
+    },
+
+    "QuestionSet": {
+      "description": "Question collections: Practice sets, Assessments, Quizzes",
+      "fields": {
+        "essential": {
+          "identifier": { "type": "string", "required": true },
+          "name": { "type": "string", "required": true },
+          "primaryCategory": { "type": "string", "required": true },
+          "mimeType": { "type": "string", "required": true, "description": "application/vnd.sunbird.questionset" }
+        },
+        "educational": {
+          "description": { "type": "string", "required": false },
+          "subject": { "type": "array", "required": false },
+          "board": { "type": "string", "required": false },
+          "gradeLevel": { "type": "array", "required": false },
+          "topic": { "type": "array", "required": false },
+          "language": { "type": "array", "required": false },
+          "audience": { "type": "array", "required": false },
+          "framework": { "type": "string", "required": false }
+        },
+        "semantic": {
+          "keywords": { "type": "array", "required": false, "description": "Search keywords for semantic matching" },
+          "se_subjects": { "type": "array", "required": false },
+          "se_boards": { "type": "array", "required": false },
+          "se_gradeLevels": { "type": "array", "required": false }
+        },
+        "authorship": {
+          "author": { "type": "string", "required": false },
+          "license": { "type": "string", "required": false }
+        },
+        "assessment": {
+          "setType": { "type": "string", "required": false, "description": "materialised or dynamic" },
+          "maxScore": { "type": "number", "required": false },
+          "expectedDuration": { "type": "number", "required": false }
+        },
+        "hierarchy": {
+          "childNodes": { "type": "array", "required": false, "description": "Child question/questionset IDs" }
+        }
+      },
+      "excluded_fields": [
+        "identifier", "versionKey", "lockKey", "pkgVersion",
+        "downloadUrl", "previewUrl", "pdfUrl",
+        "variants", "appIcon", "posterImage",
+        "contentEncoding", "osId",
+        "createdBy", "lastUpdatedBy", "lastPublishedBy",
+        "assets", "credentials",
+        "completionCriteria", "feedback", "setCriteria", "timeLimits"
+      ]
+    }
+  },
+
+  "_versioning_notes": {
+    "schema_version": "This field (_schema_version: 1.0) defines field extraction rules. Evolves independently from object schema versions.",
+    "object_schema": "Object schemas (content/1.0, question/1.0, etc) define object structure. Versions in object events may differ.",
+    "backward_compatibility": "v1.0 → v1.1: Add new optional fields under existing categories. Embedding job checks _schema_version and adapts extraction.",
+    "breaking_changes": "v1.1 → v2.0: Major restructuring. Embedding job must handle both versions based on event field."
+  }
+}

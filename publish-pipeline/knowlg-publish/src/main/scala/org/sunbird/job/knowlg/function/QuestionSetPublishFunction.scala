@@ -14,7 +14,7 @@ import org.sunbird.job.knowlg.task.KnowlgPublishConfig
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
-import org.sunbird.job.publish.helpers.EcarPackageType
+import org.sunbird.job.publish.helpers.{ConfigurableEnrichedMetadataEventBuilder, EcarPackageType, FieldConfiguration}
 import org.sunbird.job.util._
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 import com.datastax.driver.core.querybuilder.{QueryBuilder, Select}
@@ -40,6 +40,8 @@ class QuestionSetPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil
   @transient var ec: ExecutionContext = _
   @transient var cache: DataCache = _
   private val pkgTypes = List(EcarPackageType.SPINE.toString, EcarPackageType.ONLINE.toString, EcarPackageType.FULL.toString)
+  private var fieldConfig: FieldConfiguration = _
+  private var enrichedMetadataEventBuilder: ConfigurableEnrichedMetadataEventBuilder = _
 
   override def getQuestionsExtData(identifiers: List[String], readerConfig: ExtDataConfig)(implicit cassandraUtil: CassandraUtil) = {
     logger.info("QuestionSetPublishFunction ::: getQuestionsExtData ::: reader config ::: keyspace: " + readerConfig.keyspace + " ,  table : " + readerConfig.table)
@@ -69,6 +71,8 @@ class QuestionSetPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil
     definitionConfig = DefinitionConfig(config.schemaSupportVersionMap, config.definitionBasePath)
     cache = new DataCache(config, new RedisConnect(config), config.cacheDbId, List())
     cache.init()
+    fieldConfig = new FieldConfiguration(config.enrichedMetadataFieldConfigPath)
+    enrichedMetadataEventBuilder = new ConfigurableEnrichedMetadataEventBuilder(fieldConfig, config.enrichedMetadataTopic, config.includeHierarchyInEnrichedMetadata)
   }
 
   override def close(): Unit = {
@@ -78,7 +82,7 @@ class QuestionSetPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil
   }
 
   override def metricsList(): List[String] = {
-    List(config.questionSetPublishEventCount, config.questionSetPublishSuccessEventCount, config.questionSetPublishFailedEventCount)
+    List(config.questionSetPublishEventCount, config.questionSetPublishSuccessEventCount, config.questionSetPublishFailedEventCount, config.enrichedMetadataEventCount)
   }
 
   override def processElement(event: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
@@ -139,6 +143,7 @@ class QuestionSetPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil
           logger.info(s"Feature: ${featureName} | skipping PDF and preview URL generation")
           val updatedObj = new ObjectData(objWithEcar.identifier, objWithEcar.metadata ++ Map("previewUrl" -> "", "pdfUrl" -> ""), objWithEcar.extData, objWithEcar.hierarchy)
           saveOnSuccess(updatedObj)(janusGraphUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig, config)
+          pushEnrichedMetadataEvent(enrichedObj, context)(metrics)
           logger.info(LoggerUtil.getExitLogs(config.jobName, requestId, s"Feature: ${featureName} | QuestionSet publishing completed successfully for : ${data.identifier}"))
           metrics.incCounter(config.questionSetPublishSuccessEventCount)
         } else {
@@ -159,6 +164,21 @@ class QuestionSetPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil
         logger.error(LoggerUtil.getErrorLogs(errCode, errorDesc, requestId, stackTrace))
         throw e
       }
+    }
+  }
+
+  private def pushEnrichedMetadataEvent(obj: ObjectData, context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
+    try {
+      if (config.enrichedMetadataEnabled) {
+        val enrichedEvent = enrichedMetadataEventBuilder.buildEnrichedKafkaEvent(obj)
+        val eventJson = ScalaJsonUtil.serialize(enrichedEvent)
+        context.output(config.contentMetadataEventOutTag, eventJson)
+        metrics.incCounter(config.enrichedMetadataEventCount)
+        logger.debug(s"Enriched metadata event pushed for ${obj.identifier}")
+      }
+    } catch {
+      case e: Exception =>
+        logger.error(s"Error pushing enriched metadata event for ${obj.identifier}: ${e.getMessage}", e)
     }
   }
 

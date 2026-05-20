@@ -14,7 +14,7 @@ import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.exception.InvalidInputException
 import org.sunbird.job.helper.FailedEventHelper
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
-import org.sunbird.job.publish.helpers.EcarPackageType
+import org.sunbird.job.publish.helpers.{ConfigurableEnrichedMetadataEventBuilder, EcarPackageType, FieldConfiguration}
 import org.sunbird.job.util.{CassandraUtil, CloudStorageUtil, HttpUtil, JanusGraphUtil, ScalaJsonUtil}
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
@@ -36,6 +36,8 @@ class ContentPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
   val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
   private var cache: DataCache = _
   private val readerConfig = ExtDataConfig(config.contentKeyspaceName, config.contentTableName)
+  private var fieldConfig: FieldConfiguration = _
+  private var enrichedMetadataEventBuilder: ConfigurableEnrichedMetadataEventBuilder = _
 
   @transient var ec: ExecutionContext = _
   private val pkgTypes = List(EcarPackageType.FULL, EcarPackageType.SPINE)
@@ -50,6 +52,8 @@ class ContentPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
     definitionConfig = DefinitionConfig(config.schemaSupportVersionMap, config.definitionBasePath)
     cache = new DataCache(config, new RedisConnect(config), config.nodeStore, List())
     cache.init()
+    fieldConfig = new FieldConfiguration(config.enrichedMetadataFieldConfigPath)
+    enrichedMetadataEventBuilder = new ConfigurableEnrichedMetadataEventBuilder(fieldConfig, config.enrichedMetadataTopic, config.includeHierarchyInEnrichedMetadata)
   }
 
   override def close(): Unit = {
@@ -60,7 +64,7 @@ class ContentPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
 
   override def metricsList(): List[String] = {
     List(config.contentPublishEventCount, config.contentPublishSuccessEventCount, config.contentPublishFailedEventCount,
-      config.videoStreamingGeneratorEventCount, config.skippedEventCount, config.mvProcessorEventCount)
+      config.videoStreamingGeneratorEventCount, config.skippedEventCount, config.mvProcessorEventCount, config.enrichedMetadataEventCount)
   }
 
   override def processElement(data: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
@@ -90,6 +94,7 @@ class ContentPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
           saveOnSuccess(objWithEcar)(janusGraphUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig, config)
           pushStreamingUrlEvent(enrichedObj, context)(metrics)
           pushMVCProcessorEvent(enrichedObj, context)(metrics)
+          pushEnrichedMetadataEvent(enrichedObj, context)(metrics)
           if(config.isAISearchEnabled) {
             pushContentMetadataEvent(enrichedObj, context)(metrics)
           }
@@ -171,6 +176,21 @@ class ContentPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
   }
 
 
+
+  private def pushEnrichedMetadataEvent(obj: ObjectData, context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
+    try {
+      if (config.enrichedMetadataEnabled) {
+        val enrichedEvent = enrichedMetadataEventBuilder.buildEnrichedKafkaEvent(obj)
+        val eventJson = ScalaJsonUtil.serialize(enrichedEvent)
+        context.output(config.contentMetadataEventOutTag, eventJson)
+        metrics.incCounter(config.enrichedMetadataEventCount)
+        logger.debug(s"Enriched metadata event pushed for ${obj.identifier}")
+      }
+    } catch {
+      case e: Exception =>
+        logger.error(s"Error pushing enriched metadata event for ${obj.identifier}: ${e.getMessage}", e)
+    }
+  }
 
   private def pushContentMetadataEvent(obj: ObjectData, context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
     val event = getContentMetadataEvent(obj)
