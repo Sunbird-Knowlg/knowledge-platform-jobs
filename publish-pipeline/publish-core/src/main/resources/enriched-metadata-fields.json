@@ -40,7 +40,7 @@
         }
       },
       "excluded_fields": [
-        "identifier", "versionKey", "lockKey", "pkgVersion",
+        "versionKey", "lockKey", "pkgVersion",
         "downloadUrl", "previewUrl", "artifactUrl", "ecarUrl",
         "variants", "editorState", "appIcon", "posterImage",
         "contentEncoding", "osId", "idealScreenSize", "idealScreenDensity",
@@ -86,7 +86,7 @@
         }
       },
       "excluded_fields": [
-        "identifier", "versionKey", "lockKey", "pkgVersion",
+        "versionKey", "lockKey", "pkgVersion",
         "downloadUrl", "previewUrl", "artifactUrl", "ecarUrl",
         "variants", "appIcon", "posterImage",
         "contentEncoding", "osId", "idealScreenSize", "idealScreenDensity",
@@ -132,7 +132,7 @@
         }
       },
       "excluded_fields": [
-        "identifier", "versionKey", "lockKey", "pkgVersion",
+        "versionKey", "lockKey", "pkgVersion",
         "body", "answer", "editorState", "solutions", "hints", "media",
         "responseDeclaration", "interactions", "instructions",
         "artifactUrl", "appIcon",
@@ -180,7 +180,7 @@
         }
       },
       "excluded_fields": [
-        "identifier", "versionKey", "lockKey", "pkgVersion",
+        "versionKey", "lockKey", "pkgVersion",
         "downloadUrl", "previewUrl", "pdfUrl",
         "variants", "appIcon", "posterImage",
         "contentEncoding", "osId",
