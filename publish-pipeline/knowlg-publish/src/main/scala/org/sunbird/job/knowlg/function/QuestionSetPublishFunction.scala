@@ -170,11 +170,15 @@ class QuestionSetPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil
   private def pushEnrichedMetadataEvent(obj: ObjectData, context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
     try {
       if (config.enrichedMetadataEnabled) {
+        logger.info(s"Pushing enriched metadata event for QuestionSet: ${obj.identifier}, mimeType: ${obj.mimeType}")
         val enrichedEvent = enrichedMetadataEventBuilder.buildEnrichedKafkaEvent(obj)
+        logger.debug(s"Built enriched event with data fields: ${enrichedEvent.get("data").asInstanceOf[Option[Map[String, Any]]].map(_.keys.mkString(", ")).getOrElse("none")}")
         val eventJson = ScalaJsonUtil.serialize(enrichedEvent)
         context.output(config.contentMetadataEventOutTag, eventJson)
         metrics.incCounter(config.enrichedMetadataEventCount)
-        logger.debug(s"Enriched metadata event pushed for ${obj.identifier}")
+        logger.info(s"Enriched metadata event successfully emitted for ${obj.identifier} to topic: ${config.enrichedMetadataTopic}")
+      } else {
+        logger.debug(s"Enriched metadata disabled, skipping event for ${obj.identifier}")
       }
     } catch {
       case e: Exception =>
