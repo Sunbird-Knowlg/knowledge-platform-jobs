@@ -25,7 +25,8 @@ trait ObjectUpdater {
     val editId = obj.dbId
     val identifier = obj.identifier
     val metadataUpdate = getMetadata(obj)(definitionCache, definitionConfig)
-    val finalMetadata = metadataUpdate ++ Map("status" -> status, "pkgVersion" -> obj.pkgVersion, "prevStatus" -> "Processing", "IL_FUNC_OBJECT_TYPE" -> obj.dbObjType, "IL_SYS_NODE_TYPE" -> "DATA_NODE", "objectType" -> obj.dbObjType) ++ getAuditProps()
+    val liveObjType = obj.dbObjType.replaceAll("Image$", "")
+    val finalMetadata = metadataUpdate ++ Map("status" -> status, "pkgVersion" -> obj.pkgVersion, "prevStatus" -> "Processing", "IL_FUNC_OBJECT_TYPE" -> liveObjType, "IL_SYS_NODE_TYPE" -> "DATA_NODE", "objectType" -> liveObjType) ++ getAuditProps()
     
     logger.info(s"ObjectUpdater:: saveOnSuccess:: Updating node ${obj.identifier} with DB ID ${obj.dbId} | pkgVersion : ${obj.pkgVersion}" )
 
@@ -34,14 +35,14 @@ trait ObjectUpdater {
       updateContentBody(identifier,ecmlBody,readerConfig)
     }
 
+    janusGraphUtil.updateNode(identifier, finalMetadata.asInstanceOf[Map[String, AnyRef]])
+    saveExternalData(obj, readerConfig)
+
     if (!StringUtils.equalsIgnoreCase(editId, identifier)) {
       janusGraphUtil.deleteNode(editId)
       deleteExternalData(obj, readerConfig)
       logger.info(s"Image Node Data Is Deleted Successfully For ${editId}")
     }
-    
-    janusGraphUtil.updateNode(identifier, finalMetadata.asInstanceOf[Map[String, AnyRef]])
-    saveExternalData(obj, readerConfig)
   }
 
   @throws[Exception]
