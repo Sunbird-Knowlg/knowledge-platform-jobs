@@ -28,6 +28,7 @@
 			<modules>
 				<module>jobs-core</module>
 				<module>publish-pipeline</module>
+				<module>content-embedding-job</module>
 				<module>transaction-event-processor</module>
 				<module>qrcode-image-generator</module>
 				<module>dialcode-context-updater</module>
