@@ -1,0 +1,69 @@
+package org.sunbird.job.contentembedding.function
+
+import org.apache.flink.api.common.typeinfo.TypeInformation
+import org.apache.flink.configuration.Configuration
+import org.apache.flink.streaming.api.functions.ProcessFunction
+import org.slf4j.LoggerFactory
+import org.sunbird.job.contentembedding.domain.{ChunkEmbedding, EmbeddedEvent, EmbeddingOutput, VectorEmbedding}
+import org.sunbird.job.contentembedding.factory.QuantizationStrategyFactory
+import org.sunbird.job.contentembedding.task.ContentEmbeddingConfig
+import org.sunbird.job.{BaseProcessFunction, Metrics}
+
+class QuantizationFunction(config: ContentEmbeddingConfig)(implicit stringTypeInfo: TypeInformation[String])
+  extends BaseProcessFunction[EmbeddedEvent, String](config) {
+
+  private[this] val logger = LoggerFactory.getLogger(classOf[QuantizationFunction])
+  private var quantizationStrategy: org.sunbird.job.contentembedding.service.QuantizationStrategy = _
+
+  override def open(parameters: Configuration): Unit = {
+    super.open(parameters)
+    quantizationStrategy = QuantizationStrategyFactory.getStrategy(config.quantizationStrategyConfig)
+    logger.info(s"Initialized QuantizationStrategy: ${quantizationStrategy.getName} v${quantizationStrategy.getVersion}")
+  }
+
+  override def metricsList(): List[String] = List(config.quantizedEventsCount, config.failedEventCount)
+
+  override def processElement(
+      event: EmbeddedEvent,
+      context: ProcessFunction[EmbeddedEvent, String]#Context,
+      metrics: Metrics
+  ): Unit = {
+    try {
+      val chunkEmbeddings = event.chunks.map { embeddedChunk =>
+        val vectorEmbedding = VectorEmbedding(
+          chunkIndex = embeddedChunk.chunkIndex,
+          vector = embeddedChunk.vector,
+          modelId = embeddedChunk.modelId,
+          dimensions = embeddedChunk.vector.length,
+          tokenCount = embeddedChunk.tokenCount
+        )
+        val quantized = quantizationStrategy.quantize(vectorEmbedding)
+
+        ChunkEmbedding(
+          text = embeddedChunk.text,
+          sourceField = embeddedChunk.sourceField,
+          embedding = quantized.vector,
+          index = embeddedChunk.chunkIndex,
+          tokenCount = embeddedChunk.tokenCount
+        )
+      }
+
+      logger.info(s"Quantized ${chunkEmbeddings.size} chunks for ${event.objectId}")
+      metrics.incCounter(config.quantizedEventsCount)
+
+      context.output(config.quantizedOutTag, EmbeddingOutput(
+        objectId = event.objectId,
+        contentType = event.contentType,
+        chunks = chunkEmbeddings,
+        embeddingModel = event.chunks.headOption.map(_.modelId).getOrElse(config.embeddingService),
+        quantizationType = quantizationStrategy.getName,
+        timestamp = System.currentTimeMillis()
+      ))
+    } catch {
+      case e: Exception =>
+        logger.error(s"Error quantizing ${event.objectId}: ${e.getMessage}", e)
+        context.output(config.errorOutTag, s"""{"objectId":"${event.objectId}","stage":"quantization","error":"${e.getMessage}"}""")
+        metrics.incCounter(config.failedEventCount)
+    }
+  }
+}
