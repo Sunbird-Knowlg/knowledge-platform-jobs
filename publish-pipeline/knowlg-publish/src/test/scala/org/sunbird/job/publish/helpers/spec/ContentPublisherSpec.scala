@@ -78,11 +78,26 @@ class ContentPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers
     result.metadata.getOrElse("pkgVersion", 0.0.asInstanceOf[Number]).asInstanceOf[Number] should be(1.0.asInstanceOf[Number])
   }
 
+  "enrichObjectMetadata" should "enrich the Content metadata for application/vnd.ekstep.scorm-archive" in {
+    val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/vnd.ekstep.scorm-archive", "artifactUrl" -> "artifactUrl.zip"))
+    val result: ObjectData = new TestContentPublisher().enrichObjectMetadata(data).getOrElse(data)
+    result.metadata.contains("previewUrl") shouldBe true
+    result.metadata.getOrElse("previewUrl", "").asInstanceOf[String] should include ("scorm")
+  }
+
   "validateMetadata with invalid external data" should "return exception messages" in {
     val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef]), Some(Map[String, AnyRef]("artifactUrl" -> "artifactUrl")))
     val result: List[String] = new TestContentPublisher().validateMetadata(data, data.identifier, jobConfig)
     result.size should be(1)
   }
+
+  "validateMetadata with mimeType application/vnd.ekstep.scorm-archive " should " return exception messages if content is having invalid artifactUrl" in {
+    val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/vnd.ekstep.scorm-archive", "artifactUrl" -> "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/content/do_1130958930694553601102/artifact/index.epub"), None)
+    val result: List[String] = new TestContentPublisher().validateMetadata(data, data.identifier, jobConfig)
+    result.size should be(1)
+    result.contains("Error! Invalid File Extension. SCORM content artifactUrl must be a .zip file for : do_123") shouldBe true
+  }
+
 
   "validateMetadata with mimeType application/vnd.ekstep.ecml-archive " should " return exception messages if extData is set as None" in {
     val data = new ObjectData("do_123", Map[String, AnyRef]("name" -> "Content Name", "identifier" -> "do_123", "pkgVersion" -> 0.0.asInstanceOf[AnyRef], "mimeType" -> "application/vnd.ekstep.ecml-archive"), None)
