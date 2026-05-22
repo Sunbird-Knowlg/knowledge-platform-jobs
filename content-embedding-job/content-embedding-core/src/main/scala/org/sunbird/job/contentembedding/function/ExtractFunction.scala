@@ -8,6 +8,15 @@ import org.sunbird.job.contentembedding.task.ContentEmbeddingConfig
 import org.sunbird.job.util.ScalaJsonUtil
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
+/**
+ * Stage 1 of the content embedding pipeline.
+ *
+ * Deserializes raw JSON strings from the `enriched.content.metadata` Kafka topic
+ * into typed [[EnrichedMetadataEvent]] objects and routes them to the next stage
+ * via the `enrichedOutTag` side output.
+ *
+ * Errors are emitted to the `errorOutTag` side output and counted in metrics.
+ */
 class ExtractFunction(config: ContentEmbeddingConfig)(implicit stringTypeInfo: TypeInformation[String])
   extends BaseProcessFunction[String, String](config) {
 

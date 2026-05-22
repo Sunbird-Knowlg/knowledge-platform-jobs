@@ -9,6 +9,19 @@ import org.sunbird.job.contentembedding.task.ContentEmbeddingConfig
 import org.sunbird.job.util.{ElasticSearchUtil, ScalaJsonUtil}
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
+/**
+ * Stage 5 (terminal) of the content embedding pipeline.
+ *
+ * Writes all quantized chunks for a content object to the `compositesearch` OpenSearch index
+ * as a partial document update keyed by `objectId`. All chunks are stored under the nested
+ * `chunks` field on the existing document — existing metadata fields are untouched.
+ *
+ * The `chunks` field uses `type: nested` with a `knn_vector` sub-field (`data_type: byte`)
+ * enabling kNN semantic search via nested queries with `score_mode: max`.
+ *
+ * On success, the `objectId` is emitted to the `successOutTag` side output and forwarded
+ * to the Kafka output topic. Failures are sent to the `errorOutTag` DLQ.
+ */
 class OpenSearchSinkFunction(config: ContentEmbeddingConfig)(implicit stringTypeInfo: TypeInformation[String])
   extends BaseProcessFunction[EmbeddingOutput, String](config) {
 

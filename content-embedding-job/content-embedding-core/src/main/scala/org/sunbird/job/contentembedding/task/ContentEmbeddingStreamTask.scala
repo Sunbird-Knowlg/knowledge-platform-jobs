@@ -14,6 +14,26 @@ import org.sunbird.job.util.{FlinkUtil, HttpUtil}
 
 import java.io.File
 
+/**
+ * Wires the five-stage content embedding Flink pipeline.
+ *
+ * Pipeline stages (all connected via side outputs — main stream unused):
+ * {{{
+ *   Kafka input (enriched.content.metadata)
+ *     └─► ExtractFunction      → enrichedOutTag
+ *           └─► ChunkingFunction   → chunkedOutTag
+ *                 └─► EmbeddingFunction  → embeddedOutTag
+ *                       └─► QuantizationFunction → quantizedOutTag
+ *                             └─► OpenSearchSinkFunction → successOutTag / errorOutTag
+ * }}}
+ *
+ * Errors from every stage fan-in to a shared DLQ (Kafka error topic).
+ * Successful object IDs are forwarded to the Kafka output topic.
+ *
+ * @param config         Job configuration.
+ * @param kafkaConnector Kafka source/sink factory.
+ * @param httpUtil       Shared HTTP utility (unused directly here; passed for test hooks).
+ */
 class ContentEmbeddingStreamTask(config: ContentEmbeddingConfig, kafkaConnector: FlinkKafkaConnector, httpUtil: HttpUtil) {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[ContentEmbeddingStreamTask])

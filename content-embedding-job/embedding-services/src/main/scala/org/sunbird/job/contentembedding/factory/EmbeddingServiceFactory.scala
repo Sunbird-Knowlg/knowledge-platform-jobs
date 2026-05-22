@@ -4,6 +4,7 @@ import org.slf4j.LoggerFactory
 import org.sunbird.job.contentembedding.domain.EmbeddingServiceConfig
 import org.sunbird.job.contentembedding.service.{E5EmbeddingService, EmbeddingService, OpenAIEmbeddingService}
 
+/** Creates [[org.sunbird.job.contentembedding.service.EmbeddingService]] instances by name. */
 object EmbeddingServiceFactory {
 
   private[this] val logger = LoggerFactory.getLogger(getClass)

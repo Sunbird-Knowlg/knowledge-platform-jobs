@@ -8,6 +8,25 @@ import java.net.URI
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import java.time.Duration
 
+/**
+ * Embedding service backed by OpenAI or Azure OpenAI REST API.
+ *
+ * Supports both standard OpenAI and Azure OpenAI. Mode is selected automatically:
+ *  - `azureEndpoint` non-empty → Azure mode: uses `api-key` header and Azure deployment URL.
+ *  - `azureEndpoint` empty     → Standard OpenAI: uses `Authorization: Bearer` header.
+ *
+ * Standard OpenAI API:
+ *  - Endpoint: `POST https://api.openai.com/v1/embeddings`
+ *  - Request:  `{"model": "text-embedding-3-small", "input": ["text1", "text2"]}`
+ *  - Response: `{"data": [{"index": 0, "embedding": [...]}, ...]}`
+ *
+ * Azure OpenAI API:
+ *  - Endpoint: `POST <azureEndpoint>/openai/deployments/<deployment>/embeddings?api-version=<version>`
+ *  - Same request/response format as standard OpenAI.
+ *
+ * @param config Requires `apiKey`. For standard OpenAI: `model`. For Azure: additionally
+ *               `azureEndpoint`, `azureDeployment`, `azureApiVersion`.
+ */
 class OpenAIEmbeddingService(config: EmbeddingServiceConfig) extends EmbeddingService {
 
   private val logger     = LoggerFactory.getLogger(classOf[OpenAIEmbeddingService])

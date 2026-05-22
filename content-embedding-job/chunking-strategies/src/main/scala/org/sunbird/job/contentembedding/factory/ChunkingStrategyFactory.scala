@@ -5,6 +5,7 @@ import org.sunbird.job.contentembedding.domain.ChunkingConfig
 import org.sunbird.job.contentembedding.service.ChunkingStrategy
 import org.sunbird.job.contentembedding.strategy.{SemanticChunkingStrategy, SlidingWindowChunkingStrategy}
 
+/** Creates [[org.sunbird.job.contentembedding.service.ChunkingStrategy]] instances by name. */
 object ChunkingStrategyFactory {
 
   private[this] val logger = LoggerFactory.getLogger(getClass)
