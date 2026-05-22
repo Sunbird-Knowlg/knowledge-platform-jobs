@@ -11,7 +11,6 @@ import java.time.Duration
 class OpenAIEmbeddingService(config: EmbeddingServiceConfig) extends EmbeddingService {
 
   private val logger     = LoggerFactory.getLogger(classOf[OpenAIEmbeddingService])
-  private val API_URL    = "https://api.openai.com/v1/embeddings"
   private val httpClient = HttpClient.newBuilder()
     .connectTimeout(Duration.ofSeconds(config.timeoutSeconds))
     .build()
@@ -19,11 +18,22 @@ class OpenAIEmbeddingService(config: EmbeddingServiceConfig) extends EmbeddingSe
   private val apiKey = config.apiKey.getOrElse(
     throw new IllegalArgumentException("OpenAI api_key must be set in config: embedding.openai.api_key")
   )
-  private val modelName = config.model.getOrElse("text-embedding-3-small")
-
   require(apiKey.nonEmpty, "OpenAI api_key is empty")
 
-  logger.info(s"OpenAIEmbeddingService ready: model=${config.model}, dims=${config.dimensions}")
+  // Azure mode when azureEndpoint is configured; falls back to standard OpenAI
+  private val isAzure   = config.azureEndpoint.exists(_.nonEmpty)
+  private val modelName = config.model.getOrElse("text-embedding-3-small")
+
+  private val API_URL: String = if (isAzure) {
+    val endpoint   = config.azureEndpoint.get.stripSuffix("/")
+    val deployment = config.azureDeployment.getOrElse(modelName)
+    val apiVersion = config.azureApiVersion.getOrElse("2024-12-01-preview")
+    s"$endpoint/openai/deployments/$deployment/embeddings?api-version=$apiVersion"
+  } else {
+    "https://api.openai.com/v1/embeddings"
+  }
+
+  logger.info(s"OpenAIEmbeddingService ready: azure=$isAzure, url=$API_URL, dims=${config.dimensions}")
 
   override def getName: String = "openai"
 
@@ -40,10 +50,12 @@ class OpenAIEmbeddingService(config: EmbeddingServiceConfig) extends EmbeddingSe
   override def embedBatch(texts: List[String]): List[Array[Double]] = {
     val requestBody = ScalaJsonUtil.serialize(Map("model" -> modelName, "input" -> texts))
 
+    val authHeader = if (isAzure) ("api-key", apiKey) else ("Authorization", s"Bearer $apiKey")
+
     val request = HttpRequest.newBuilder()
       .uri(URI.create(API_URL))
       .header("Content-Type", "application/json")
-      .header("Authorization", s"Bearer $apiKey")
+      .header(authHeader._1, authHeader._2)
       .timeout(Duration.ofSeconds(config.timeoutSeconds))
       .POST(HttpRequest.BodyPublishers.ofString(requestBody))
       .build()
