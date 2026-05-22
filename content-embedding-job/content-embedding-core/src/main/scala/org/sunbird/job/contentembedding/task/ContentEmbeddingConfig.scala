@@ -81,11 +81,14 @@ class ContentEmbeddingConfig(override val config: Config) extends BaseJobConfig(
       port           = Some(getInt("embedding.e5.port", 8000))
     )
     case "openai" => EmbeddingServiceConfig(
-      serviceName    = "openai",
-      dimensions     = getInt("embedding.openai.dimensions", 1536),
-      timeoutSeconds = getInt("embedding.timeout", 30),
-      apiKey         = Some(getString("embedding.openai.api_key", "")),
-      model          = Some(getString("embedding.openai.model", "text-embedding-3-small"))
+      serviceName     = "openai",
+      dimensions      = getInt("embedding.openai.dimensions", 1536),
+      timeoutSeconds  = getInt("embedding.openai.timeout", 30),
+      apiKey          = Some(getString("embedding.openai.api_key", "")),
+      model           = Some(getString("embedding.openai.model", "text-embedding-3-small")),
+      azureEndpoint   = Some(getString("embedding.openai.azure_endpoint", "")),
+      azureApiVersion = Some(getString("embedding.openai.azure_api_version", "2024-12-01-preview")),
+      azureDeployment = Some(getString("embedding.openai.azure_deployment", "text-embedding-3-small"))
     )
     case name => EmbeddingServiceConfig(serviceName = name)
   }
