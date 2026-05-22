@@ -4,6 +4,24 @@ import org.slf4j.LoggerFactory
 import org.sunbird.job.contentembedding.domain.{ChunkingConfig, TextChunk}
 import org.sunbird.job.contentembedding.service.ChunkingStrategy
 
+/**
+ * Field-based chunking strategy — one semantically cohesive chunk per content section.
+ *
+ * Unlike sliding-window, this strategy does NOT split on token count. Instead it maps
+ * Sunbird content types to a fixed set of meaningful fields and produces one chunk
+ * per logical section, truncating at `config.maxChunkSize` characters.
+ *
+ * Chunking rules by content type:
+ *  - '''Content'''    → 1 chunk: name + description + keywords + subject
+ *  - '''Question'''   → 1 chunk: name + description + body + subject
+ *  - '''Collection''' → 1 metadata chunk + 1 chunk per hierarchy child (recursive)
+ *  - '''QuestionSet'''→ 1 metadata chunk + 1 chunk per hierarchy child (recursive)
+ *
+ * Best suited for short-to-medium metadata. Use `SlidingWindowChunkingStrategy` for
+ * long documents (e.g. full article body > 512 tokens).
+ *
+ * @param config Chunking config; only `maxChunkSize` (character limit) is used.
+ */
 class SemanticChunkingStrategy(config: ChunkingConfig = ChunkingConfig("semantic")) extends ChunkingStrategy {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[SemanticChunkingStrategy])

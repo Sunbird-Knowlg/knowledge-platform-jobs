@@ -9,6 +9,18 @@ import org.sunbird.job.contentembedding.factory.QuantizationStrategyFactory
 import org.sunbird.job.contentembedding.task.ContentEmbeddingConfig
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
+/**
+ * Stage 4 of the content embedding pipeline.
+ *
+ * Compresses float32 embedding vectors to int8 using the configured
+ * [[org.sunbird.job.contentembedding.service.QuantizationStrategy]].
+ *
+ * For L2-normalised vectors (all OpenAI / E5 outputs) the global-scale path is used:
+ * `byte = round(v × 127)`, achieving 4× storage reduction with &lt;2% recall loss.
+ *
+ * Quantized events are emitted via the `quantizedOutTag` side output as [[EmbeddingOutput]],
+ * ready for the OpenSearch sink.
+ */
 class QuantizationFunction(config: ContentEmbeddingConfig)(implicit stringTypeInfo: TypeInformation[String])
   extends BaseProcessFunction[EmbeddedEvent, String](config) {
 

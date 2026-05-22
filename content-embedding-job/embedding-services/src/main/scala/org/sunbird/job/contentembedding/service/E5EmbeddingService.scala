@@ -8,6 +8,20 @@ import java.net.URI
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import java.time.Duration
 
+/**
+ * Embedding service backed by a HuggingFace Text Embeddings Inference (TEI) server
+ * running `intfloat/multilingual-e5-large`.
+ *
+ * TEI API: `POST /embed`
+ *  - Request:  `{"inputs": ["passage: text1", "passage: text2", ...]}`
+ *  - Response: `[[v1, v2, ...], [...]]`  (raw array of arrays, no wrapper object)
+ *
+ * The `"passage: "` prefix is required by E5 instruction-tuned models for content
+ * being indexed. Use `"query: "` prefix at search time (not applied here).
+ *
+ * @param config Expects `host` and `port` fields pointing to the TEI server.
+ *               Defaults: host=localhost, port=80.
+ */
 class E5EmbeddingService(config: EmbeddingServiceConfig) extends EmbeddingService {
 
   private[this] val logger  = LoggerFactory.getLogger(classOf[E5EmbeddingService])
