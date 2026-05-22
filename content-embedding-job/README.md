@@ -188,10 +188,14 @@ Concatenates all relevant fields into one text blob, then slides a window:
 ```
 Text:    [word1 word2 ... word512 | word411 word412 ... word922 | ...]
           └─── chunk 0 ──────────┘ └────── chunk 1 ────────────┘
-                                    ↑ 101-word overlap
+                                    ↑ 102-token overlap
 ```
 
-Default: 512-word window, 102-word overlap (≈20%). Both values are configurable.
+Default: 512-token window, 102-token overlap (≈20%). Both values are configurable.
+
+> **Note:** Whitespace-separated words are used as a token proxy — no external tokenizer dependency.
+> This approximation is intentional: true BPE token counts vary per model but word counts
+> are close enough to stay within the 512-token hard limit of E5 and OpenAI models.
 
 ---
 
