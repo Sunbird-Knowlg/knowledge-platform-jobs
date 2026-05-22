@@ -9,6 +9,16 @@ import org.sunbird.job.contentembedding.factory.ChunkingStrategyFactory
 import org.sunbird.job.contentembedding.task.ContentEmbeddingConfig
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
+/**
+ * Stage 2 of the content embedding pipeline.
+ *
+ * Splits an [[EnrichedMetadataEvent]] into a list of [[org.sunbird.job.contentembedding.domain.TextChunk]]s
+ * using the configured [[org.sunbird.job.contentembedding.service.ChunkingStrategy]]
+ * (`"semantic"` or `"sliding-window"`).
+ *
+ * Events with no usable text (empty chunk list) are filtered and counted as `filteredEventsCount`.
+ * Chunked events are emitted via the `chunkedOutTag` side output.
+ */
 class ChunkingFunction(config: ContentEmbeddingConfig)(implicit stringTypeInfo: TypeInformation[String])
   extends BaseProcessFunction[EnrichedMetadataEvent, String](config) {
 

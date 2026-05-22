@@ -5,6 +5,7 @@ import org.sunbird.job.contentembedding.domain.QuantizationConfig
 import org.sunbird.job.contentembedding.service.QuantizationStrategy
 import org.sunbird.job.contentembedding.strategy.Int8QuantizationStrategy
 
+/** Creates [[org.sunbird.job.contentembedding.service.QuantizationStrategy]] instances by name. */
 object QuantizationStrategyFactory {
 
   private[this] val logger = LoggerFactory.getLogger(getClass)

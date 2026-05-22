@@ -9,6 +9,18 @@ import org.sunbird.job.contentembedding.factory.EmbeddingServiceFactory
 import org.sunbird.job.contentembedding.task.ContentEmbeddingConfig
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
+/**
+ * Stage 3 of the content embedding pipeline.
+ *
+ * Calls the configured [[org.sunbird.job.contentembedding.service.EmbeddingService]]
+ * (OpenAI / Azure OpenAI / E5) to generate float32 vectors for all text chunks
+ * of a [[org.sunbird.job.contentembedding.domain.ChunkedEvent]] in a single batched API call.
+ *
+ * The service is initialised once per task-manager slot in `open()` and closed in `close()`.
+ * Marked `@transient` because HTTP clients are not Java-serializable.
+ *
+ * Embedded events are emitted via the `embeddedOutTag` side output.
+ */
 class EmbeddingFunction(config: ContentEmbeddingConfig)(implicit stringTypeInfo: TypeInformation[String])
   extends BaseProcessFunction[ChunkedEvent, String](config) {
 

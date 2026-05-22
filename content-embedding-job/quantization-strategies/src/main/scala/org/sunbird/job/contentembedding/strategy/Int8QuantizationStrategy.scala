@@ -4,6 +4,22 @@ import org.slf4j.LoggerFactory
 import org.sunbird.job.contentembedding.domain.{QuantizedVector, VectorEmbedding}
 import org.sunbird.job.contentembedding.service.QuantizationStrategy
 
+/**
+ * Int8 (byte) quantization strategy for float32 embedding vectors.
+ *
+ * Two paths based on the vector's L2 norm:
+ *
+ * '''L2-normalised path''' (norm ≈ 1.0, tolerance 0.01) — used for all OpenAI and E5 outputs:
+ *  - `byte = round(clamp(v × 127, -127, 127))`
+ *  - `scale = 127.0`, `offset = 0.0`
+ *  - Dequantize: `v ≈ byte / 127.0`
+ *  - 4× compression, &lt;2% cosine similarity loss on MTEB benchmarks.
+ *
+ * '''Unnormalised fallback''' (per-vector min-max scaling):
+ *  - Maps `[min, max]` → `[-128, 127]`
+ *  - `scale = (max - min)`, `offset = min`
+ *  - Slightly lower precision but lossless range coverage.
+ */
 class Int8QuantizationStrategy extends QuantizationStrategy {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[Int8QuantizationStrategy])
