@@ -51,6 +51,13 @@ class OpenSearchSinkFunction(config: ContentEmbeddingConfig)(implicit stringType
       val docJson = buildChunksDocument(output)
       esUtil.updateDocument(output.objectId, docJson)
 
+      // ElasticSearchUtil.updateDocument swallows IOException and only logs. Verify the write
+      // landed by reading the doc back; otherwise we'd ack failed writes to Kafka.
+      val verifyDoc = esUtil.getDocumentAsString(output.objectId)
+      if (verifyDoc == null || verifyDoc.isEmpty) {
+        throw new RuntimeException(s"OpenSearch write verify failed: doc ${output.objectId} not found after update")
+      }
+
       logger.info(s"Updated OpenSearch chunks for ${output.objectId} (${output.contentType}, ${output.chunks.size} chunks)")
       metrics.incCounter(config.successEventCount)
       context.output(config.successOutTag, output.objectId)
@@ -67,10 +74,17 @@ class OpenSearchSinkFunction(config: ContentEmbeddingConfig)(implicit stringType
       Map(
         "text"        -> chunk.text,
         "embedding"   -> chunk.embedding.map(_.toInt).toList,
-        "token_count" -> chunk.tokenCount,
+        "word_count"  -> chunk.wordCount,
         "chunk_index" -> chunk.index
       )
     }
-    ScalaJsonUtil.serialize(Map("chunks" -> chunksData))
+    // chunks_updated_at and embedding_version make replays auditable. Partial update REPLACES
+    // the top-level `chunks` array (ES update semantics), so replays are idempotent.
+    ScalaJsonUtil.serialize(Map(
+      "chunks"             -> chunksData,
+      "chunks_updated_at"  -> System.currentTimeMillis(),
+      "embedding_model"    -> output.embeddingModel,
+      "quantization_type"  -> output.quantizationType
+    ))
   }
 }
