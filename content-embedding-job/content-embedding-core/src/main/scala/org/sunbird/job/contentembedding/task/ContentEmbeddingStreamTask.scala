@@ -10,7 +10,7 @@ import org.slf4j.LoggerFactory
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.contentembedding.domain.{ChunkedEvent, EmbeddedEvent, EmbeddingOutput, EnrichedMetadataEvent}
 import org.sunbird.job.contentembedding.function.{ChunkingFunction, EmbeddingFunction, ExtractFunction, OpenSearchSinkFunction, QuantizationFunction}
-import org.sunbird.job.util.{FlinkUtil, HttpUtil}
+import org.sunbird.job.util.FlinkUtil
 
 import java.io.File
 
@@ -32,9 +32,8 @@ import java.io.File
  *
  * @param config         Job configuration.
  * @param kafkaConnector Kafka source/sink factory.
- * @param httpUtil       Shared HTTP utility (unused directly here; passed for test hooks).
  */
-class ContentEmbeddingStreamTask(config: ContentEmbeddingConfig, kafkaConnector: FlinkKafkaConnector, httpUtil: HttpUtil) {
+class ContentEmbeddingStreamTask(config: ContentEmbeddingConfig, kafkaConnector: FlinkKafkaConnector) {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[ContentEmbeddingStreamTask])
 
@@ -130,8 +129,7 @@ object ContentEmbeddingStreamTask {
 
     val embeddingConfig = new ContentEmbeddingConfig(config)
     val kafkaUtil = new FlinkKafkaConnector(embeddingConfig)
-    val httpUtil = new HttpUtil
-    val task = new ContentEmbeddingStreamTask(embeddingConfig, kafkaUtil, httpUtil)
+    val task = new ContentEmbeddingStreamTask(embeddingConfig, kafkaUtil)
     task.process()
   }
 }
