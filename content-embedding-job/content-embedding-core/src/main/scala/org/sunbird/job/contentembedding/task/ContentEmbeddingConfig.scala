@@ -43,6 +43,13 @@ class ContentEmbeddingConfig(override val config: Config) extends BaseJobConfig(
   val maxWords: Int               = getInt("chunking.sliding-window.max_words", 512)
   val overlapWords: Int           = getInt("chunking.sliding-window.overlap_words", 102)
 
+  // Supported schema versions for incoming enriched events. Events outside
+  // this list are routed to the DLQ rather than silently processed.
+  val supportedSchemaVersions: Set[String] =
+    if (config.hasPath("schema.supported_versions"))
+      config.getStringList("schema.supported_versions").asScala.toSet
+    else Set("1.0")
+
   // OpenSearch Configuration
   val openSearchHost: String = config.getString("opensearch.host")
   val openSearchPort: Int = config.getInt("opensearch.port")
