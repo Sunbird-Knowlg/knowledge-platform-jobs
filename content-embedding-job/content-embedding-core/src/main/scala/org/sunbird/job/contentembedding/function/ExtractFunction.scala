@@ -52,7 +52,7 @@ class ExtractFunction(config: ContentEmbeddingConfig)(implicit stringTypeInfo: T
       }.getOrElse(System.currentTimeMillis())
       logger.debug(s"Timestamp: $timestamp")
 
-      val data = eventMap.get("data") match {
+      val data: Map[String, Any] = eventMap.get("data") match {
         case Some(m: Map[_, _]) =>
           val dataMap = m.asInstanceOf[Map[String, Any]]
           logger.debug(s"Data map extracted with ${dataMap.size} keys")
@@ -60,7 +60,7 @@ class ExtractFunction(config: ContentEmbeddingConfig)(implicit stringTypeInfo: T
         case Some(other) => throw new IllegalArgumentException(s"data field is not a map: ${other.getClass.getSimpleName}")
         case None =>
           logger.debug("No data field found, using empty map")
-          Map()
+          Map.empty[String, Any]
       }
 
       val enrichedEvent = EnrichedMetadataEvent(
