@@ -40,8 +40,8 @@ class ContentEmbeddingConfig(override val config: Config) extends BaseJobConfig(
     config.getStringList("chunking.semantic.excluded_fields").asScala.toSet
   } else Set.empty
   // sliding-window strategy config
-  val maxTokens: Int              = getInt("chunking.sliding-window.max_tokens", 512)
-  val overlapTokens: Int          = getInt("chunking.sliding-window.overlap_tokens", 102)
+  val maxWords: Int               = getInt("chunking.sliding-window.max_words", 512)
+  val overlapWords: Int           = getInt("chunking.sliding-window.overlap_words", 102)
 
   // OpenSearch Configuration
   val openSearchHost: String = config.getString("opensearch.host")
@@ -97,13 +97,20 @@ class ContentEmbeddingConfig(override val config: Config) extends BaseJobConfig(
     case name => EmbeddingServiceConfig(serviceName = name)
   }
 
+  // Fail fast on misconfiguration rather than at first embed call.
+  if (embeddingService == "openai") {
+    val apiKey = getString("embedding.openai.api_key", "")
+    require(apiKey.nonEmpty,
+      "embedding.openai.api_key must be set (env OPENAI_API_KEY) when embedding.service=openai")
+  }
+
   def quantizationStrategyConfig: QuantizationConfig = QuantizationConfig(strategyName = quantizationStrategy)
 
   def chunkingStrategyConfig: ChunkingConfig = ChunkingConfig(
     strategyName   = chunkingStrategy,
     maxChunkSize   = maxChunkSize,
-    maxTokens      = maxTokens,
-    overlapTokens  = overlapTokens,
+    maxWords       = maxWords,
+    overlapWords   = overlapWords,
     excludedFields = excludedFields
   )
 }
