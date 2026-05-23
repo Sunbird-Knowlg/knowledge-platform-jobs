@@ -26,7 +26,7 @@ class Int8QuantizationStrategy extends QuantizationStrategy {
 
   override def getName: String = "int8"
 
-  override def getVersion: String = "2.0"
+  override def getVersion: String = "1.0"
 
   override def quantize(embedding: VectorEmbedding): QuantizedVector = {
     val vector  = embedding.vector
