@@ -47,7 +47,7 @@ class QuantizationFunction(config: ContentEmbeddingConfig)(implicit stringTypeIn
           vector = embeddedChunk.vector,
           modelId = embeddedChunk.modelId,
           dimensions = embeddedChunk.vector.length,
-          tokenCount = embeddedChunk.tokenCount
+          wordCount = embeddedChunk.wordCount
         )
         val quantized = quantizationStrategy.quantize(vectorEmbedding)
 
@@ -56,7 +56,7 @@ class QuantizationFunction(config: ContentEmbeddingConfig)(implicit stringTypeIn
           sourceField = embeddedChunk.sourceField,
           embedding = quantized.vector,
           index = embeddedChunk.chunkIndex,
-          tokenCount = embeddedChunk.tokenCount
+          wordCount = embeddedChunk.wordCount
         )
       }
 
@@ -69,7 +69,8 @@ class QuantizationFunction(config: ContentEmbeddingConfig)(implicit stringTypeIn
         chunks = chunkEmbeddings,
         embeddingModel = event.chunks.headOption.map(_.modelId).getOrElse(config.embeddingService),
         quantizationType = quantizationStrategy.getName,
-        timestamp = System.currentTimeMillis()
+        timestamp = System.currentTimeMillis(),
+        schemaVersion = event.schemaVersion
       ))
     } catch {
       case e: Exception =>

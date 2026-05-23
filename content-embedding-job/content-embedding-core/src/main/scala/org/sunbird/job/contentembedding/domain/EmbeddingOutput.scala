@@ -9,14 +9,14 @@ import java.io.Serializable
  * @param sourceField Field/section origin (e.g. "metadata", "window_0").
  * @param embedding   Int8-quantized vector as a byte array; stored as `chunks.embedding` (knn_vector).
  * @param index       Zero-based chunk position within the content object.
- * @param tokenCount  Word-count proxy for token length.
+ * @param wordCount   Word count of the source text.
  */
 case class ChunkEmbedding(
     text: String,
     sourceField: String,
     embedding: Array[Byte],
     index: Int,
-    tokenCount: Int
+    wordCount: Int
 ) extends Serializable
 
 /**
@@ -39,5 +39,6 @@ case class EmbeddingOutput(
     chunks: List[ChunkEmbedding],
     embeddingModel: String,
     quantizationType: String,
-    timestamp: Long
+    timestamp: Long,
+    schemaVersion: String = "1.0"
 ) extends Serializable
