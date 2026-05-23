@@ -11,13 +11,24 @@ object ChunkingStrategyFactory {
   private[this] val logger = LoggerFactory.getLogger(getClass)
 
   def getStrategy(config: ChunkingConfig): ChunkingStrategy = {
-    val strategy = config.strategyName match {
+    if (config == null) {
+      throw new IllegalArgumentException("ChunkingConfig is null")
+    }
+
+    val strategyName = Option(config.strategyName)
+      .filter(_.nonEmpty)
+      .getOrElse(throw new IllegalArgumentException("strategyName is null or empty"))
+
+    logger.debug(s"Creating chunking strategy: $strategyName")
+
+    val strategy = strategyName.toLowerCase match {
       case "semantic"       => new SemanticChunkingStrategy(config)
       case "sliding-window" => new SlidingWindowChunkingStrategy(config)
       case name             => throw new IllegalArgumentException(
         s"Unknown chunking strategy: '$name'. Available: semantic, sliding-window"
       )
     }
+
     logger.info(s"Created ChunkingStrategy: ${strategy.getName} v${strategy.getVersion}")
     strategy
   }
