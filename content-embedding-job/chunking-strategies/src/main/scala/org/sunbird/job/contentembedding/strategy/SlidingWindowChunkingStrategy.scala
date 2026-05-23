@@ -5,13 +5,13 @@ import org.sunbird.job.contentembedding.domain.{ChunkingConfig, TextChunk}
 import org.sunbird.job.contentembedding.service.ChunkingStrategy
 
 /**
- * Sliding-window token chunking with overlap.
+ * Sliding-window word chunking with overlap.
  *
- * Treats whitespace-separated words as token approximations (no tokenizer dependency).
+ * Splits text into chunks of whitespace-separated words (no tokenizer dependency).
  * For each content type, extracts all relevant text fields into one string,
- * then slides a window of `maxChunkSize` words with `overlapSize` words of overlap.
+ * then slides a window of `maxWords` words with `overlapWords` words of overlap.
  *
- * Default: 512 tokens, 102 token overlap (~20%).
+ * Default: 512 words, 102 word overlap (~20%).
  *
  * Why overlap?  Without it, a sentence split across two chunk boundaries loses
  * its context in both chunks.  With 20% overlap, each boundary region is
@@ -22,8 +22,8 @@ class SlidingWindowChunkingStrategy(config: ChunkingConfig) extends ChunkingStra
 
   private[this] val logger = LoggerFactory.getLogger(classOf[SlidingWindowChunkingStrategy])
 
-  private val windowSize = config.maxTokens     // words per chunk (proxy for tokens)
-  private val overlap    = config.overlapTokens  // words shared between consecutive chunks
+  private val windowSize = config.maxWords     // words per chunk
+  private val overlap    = config.overlapWords  // words shared between consecutive chunks
   private val step       = math.max(1, windowSize - overlap)
 
   override def getName: String = "sliding-window"
@@ -56,12 +56,12 @@ class SlidingWindowChunkingStrategy(config: ChunkingConfig) extends ChunkingStra
 
     if (words.length <= windowSize) {
       // Short enough to fit in one chunk — no sliding needed
-      logger.debug(s"$contentType:$objectId fits in single chunk (${words.length} tokens)")
+      logger.debug(s"$contentType:$objectId fits in single chunk (${words.length} words)")
       List(TextChunk(
         text        = words.mkString(" "),
         sourceField = "full_text",
         index       = 0,
-        metadata    = Map("strategy" -> "sliding-window", "total_tokens" -> words.length)
+        metadata    = Map("strategy" -> "sliding-window", "total_words" -> words.length)
       ))
     } else {
       val chunks = (0 until words.length by step)
@@ -81,13 +81,13 @@ class SlidingWindowChunkingStrategy(config: ChunkingConfig) extends ChunkingStra
               "strategy"      -> "sliding-window",
               "window_start"  -> startPos,
               "window_end"    -> (startPos + chunkWords.length),
-              "token_count"   -> chunkWords.length
+              "word_count"    -> chunkWords.length
             )
           )
         }
         .toList
 
-      logger.info(s"$contentType:$objectId → ${chunks.size} chunks from ${words.length} tokens (window=$windowSize, overlap=$overlap)")
+      logger.info(s"$contentType:$objectId → ${chunks.size} chunks from ${words.length} words (window=$windowSize, overlap=$overlap)")
       chunks
     }
   }
@@ -146,7 +146,7 @@ class SlidingWindowChunkingStrategy(config: ChunkingConfig) extends ChunkingStra
     hierarchyOpt match {
       case Some(map: Map[String, Any] @unchecked) =>
         map.get("children") match {
-          case Some(children: List[_]) =>
+          case Some(children: Seq[_]) if children != null =>
             children.collect { case c: Map[String, Any] @unchecked =>
               val childName = str(c, "name")
               val childDesc = str(c, "description")
@@ -163,8 +163,9 @@ class SlidingWindowChunkingStrategy(config: ChunkingConfig) extends ChunkingStra
     m.get(key).map(_.toString.trim).getOrElse("")
 
   private def listOrStr(m: Map[String, Any], key: String): String =
-    m.get(key).map {
-      case list: List[_] => list.map(_.toString).mkString(" ")
-      case v             => v.toString
-    }.getOrElse("")
+    m.get(key) match {
+      case Some(seq: Seq[_]) if seq != null => seq.filter(_ != null).map(_.toString).mkString(" ")
+      case Some(v) if v != null             => v.toString
+      case _                                => ""
+    }
 }
