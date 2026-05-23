@@ -25,10 +25,35 @@ import java.time.Duration
 class E5EmbeddingService(config: EmbeddingServiceConfig) extends EmbeddingService {
 
   private[this] val logger  = LoggerFactory.getLogger(classOf[E5EmbeddingService])
-  private val endpointUrl   = s"http://${config.host.getOrElse("localhost")}:${config.port.getOrElse(80)}/embed"
+  private val rawHost       = config.host.getOrElse("localhost")
+  // Restrict TEI host to internal/private targets so a misconfigured env var can't
+  // redirect embedding traffic (which contains user content) to an external host.
+  require(isInternalHost(rawHost),
+    s"E5 host '$rawHost' is not an internal/private hostname; refusing to send content to public targets")
+  private val endpointUrl   = s"http://$rawHost:${config.port.getOrElse(80)}/embed"
   private val httpClient    = HttpClient.newBuilder()
     .connectTimeout(Duration.ofSeconds(config.timeoutSeconds))
     .build()
+
+  private def isInternalHost(host: String): Boolean = {
+    if (host == null || host.isEmpty) return false
+    val lower = host.toLowerCase
+    lower == "localhost" ||
+      lower.startsWith("127.") ||
+      lower.startsWith("10.") ||
+      lower.startsWith("192.168.") ||
+      (lower.startsWith("172.") && {
+        val parts = lower.split('.')
+        parts.length >= 2 && {
+          val second = try parts(1).toInt catch { case _: Throwable => -1 }
+          second >= 16 && second <= 31
+        }
+      }) ||
+      lower.endsWith(".svc.cluster.local") ||
+      lower.endsWith(".cluster.local") ||
+      lower.endsWith(".internal") ||
+      !lower.contains('.') // bare k8s service name
+  }
 
   logger.info(s"E5EmbeddingService ready: $endpointUrl (${config.dimensions}d)")
 
