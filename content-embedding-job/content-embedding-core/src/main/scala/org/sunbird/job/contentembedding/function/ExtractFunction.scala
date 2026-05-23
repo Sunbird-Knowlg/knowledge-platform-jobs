@@ -32,8 +32,18 @@ class ExtractFunction(config: ContentEmbeddingConfig)(implicit stringTypeInfo: T
     try {
       val eventMap = ScalaJsonUtil.deserialize[Map[String, Any]](event)
 
+      val id = eventMap.get("id").map(_.toString)
+        .filter(_.nonEmpty)
+        .getOrElse(throw new IllegalArgumentException("Missing or empty id field"))
+
+      val data = eventMap.get("data") match {
+        case Some(m: Map[_, _]) => m.asInstanceOf[Map[String, Any]]
+        case Some(other) => throw new IllegalArgumentException(s"data field is not a map: ${other.getClass.getSimpleName}")
+        case None => Map()
+      }
+
       val enrichedEvent = EnrichedMetadataEvent(
-        id = eventMap.get("id").map(_.toString).getOrElse(""),
+        id = id,
         contentType = eventMap.get("contentType").map(_.toString).getOrElse("Content"),
         _schema_version = eventMap.get("_schema_version").map(_.toString).getOrElse("1.0"),
         timestamp = eventMap.get("timestamp").map {
@@ -41,7 +51,7 @@ class ExtractFunction(config: ContentEmbeddingConfig)(implicit stringTypeInfo: T
           case i: Int  => i.toLong
           case n       => n.toString.toLong
         }.getOrElse(System.currentTimeMillis()),
-        data = eventMap.get("data").map(_.asInstanceOf[Map[String, Any]]).getOrElse(Map())
+        data = data
       )
 
       logger.info(s"Extracted enriched metadata event: ${enrichedEvent.id} (${enrichedEvent.contentType})")
