@@ -72,20 +72,13 @@ class OpenSearchSinkFunction(config: ContentEmbeddingConfig)(implicit stringType
   private def buildChunksDocument(output: EmbeddingOutput): String = {
     val chunksData = output.chunks.map { chunk =>
       Map(
-        "text"        -> chunk.text,
-        "embedding"   -> chunk.embedding.map(_.toInt).toList,
-        "word_count"  -> chunk.wordCount,
-        "chunk_index" -> chunk.index
+        "text"           -> chunk.text,
+        "embedding"      -> chunk.embedding.map(_.toInt).toList,
+        "word_count"     -> chunk.wordCount,
+        "chunk_index"    -> chunk.index,
+        "schema_version" -> output.schemaVersion
       )
     }
-    // chunks_updated_at and embedding_version make replays auditable. Partial update REPLACES
-    // the top-level `chunks` array (ES update semantics), so replays are idempotent.
-    ScalaJsonUtil.serialize(Map(
-      "chunks"             -> chunksData,
-      "chunks_updated_at"  -> System.currentTimeMillis(),
-      "embedding_model"    -> output.embeddingModel,
-      "quantization_type"  -> output.quantizationType,
-      "schema_version"     -> output.schemaVersion
-    ))
+    ScalaJsonUtil.serialize(Map("chunks" -> chunksData))
   }
 }
