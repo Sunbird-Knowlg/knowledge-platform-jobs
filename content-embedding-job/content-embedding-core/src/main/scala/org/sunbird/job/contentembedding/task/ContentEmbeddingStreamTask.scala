@@ -122,15 +122,29 @@ class ContentEmbeddingStreamTask(config: ContentEmbeddingConfig, kafkaConnector:
 object ContentEmbeddingStreamTask {
 
   def main(args: Array[String]): Unit = {
-    val configFilePath = Option(ParameterTool.fromArgs(args).get("config.file.path"))
-    val config = configFilePath.map { path =>
-      ConfigFactory.parseFile(new File(path)).resolve()
-    }.getOrElse(ConfigFactory.load("content-embedding.conf").withFallback(ConfigFactory.systemEnvironment()))
+    try {
+      val configFilePath = Option(ParameterTool.fromArgs(args).get("config.file.path"))
+      val config = configFilePath.map { path =>
+        ConfigFactory.parseFile(new File(path)).resolve()
+      }.getOrElse(ConfigFactory.load("content-embedding.conf").withFallback(ConfigFactory.systemEnvironment()))
 
-    val embeddingConfig = new ContentEmbeddingConfig(config)
-    val kafkaUtil = new FlinkKafkaConnector(embeddingConfig)
-    val task = new ContentEmbeddingStreamTask(embeddingConfig, kafkaUtil)
-    task.process()
+      val embeddingConfig = new ContentEmbeddingConfig(config)
+      val kafkaUtil = new FlinkKafkaConnector(embeddingConfig)
+      val task = new ContentEmbeddingStreamTask(embeddingConfig, kafkaUtil)
+
+      // Register graceful shutdown hook
+      Runtime.getRuntime().addShutdownHook(new Thread(() => {
+        System.err.println("Shutdown signal received, finalizing pending writes...")
+        Thread.sleep(5000)
+      }))
+
+      task.process()
+    } catch {
+      case e: Exception =>
+        System.err.println(s"Job startup failed: ${e.getMessage}")
+        e.printStackTrace(System.err)
+        System.exit(1)
+    }
   }
 }
 // $COVERAGE-ON$
