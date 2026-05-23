@@ -6,6 +6,7 @@ import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.streaming.api.scala.OutputTag
 import org.sunbird.job.BaseJobConfig
 import org.sunbird.job.contentembedding.domain.{ChunkedEvent, ChunkingConfig, EmbeddedEvent, EmbeddingOutput, EmbeddingServiceConfig, EnrichedMetadataEvent, QuantizationConfig}
+import scala.collection.JavaConverters._
 
 class ContentEmbeddingConfig(override val config: Config) extends BaseJobConfig(config, "content-embedding") {
 
@@ -35,6 +36,11 @@ class ContentEmbeddingConfig(override val config: Config) extends BaseJobConfig(
   val embeddingBatchSize: Int     = getInt("embedding.batch_size", 32)
   // semantic strategy config
   val maxChunkSize: Int           = getInt("chunking.semantic.max_chunk_size", 1000)
+  val excludedFields: Set[String] = if (config.hasPath("chunking.semantic.excluded_fields")) {
+    config.getStringList("chunking.semantic.excluded_fields").stream.collect(java.util.stream.Collectors.toSet()).asScala.toSet
+  } else {
+    Set("hierarchy", "children", "id", "identifier", "contentType", "_schema_version", "timestamp")
+  }
   // sliding-window strategy config
   val maxTokens: Int              = getInt("chunking.sliding-window.max_tokens", 512)
   val overlapTokens: Int          = getInt("chunking.sliding-window.overlap_tokens", 102)
@@ -96,9 +102,10 @@ class ContentEmbeddingConfig(override val config: Config) extends BaseJobConfig(
   def quantizationStrategyConfig: QuantizationConfig = QuantizationConfig(strategyName = quantizationStrategy)
 
   def chunkingStrategyConfig: ChunkingConfig = ChunkingConfig(
-    strategyName  = chunkingStrategy,
-    maxChunkSize  = maxChunkSize,
-    maxTokens     = maxTokens,
-    overlapTokens = overlapTokens
+    strategyName   = chunkingStrategy,
+    maxChunkSize   = maxChunkSize,
+    maxTokens      = maxTokens,
+    overlapTokens  = overlapTokens,
+    excludedFields = excludedFields
   )
 }
