@@ -103,6 +103,12 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
   val enrichedMetadataEnabled: Boolean = if (config.hasPath("enriched.metadata.enabled")) config.getBoolean("enriched.metadata.enabled") else false
   val includeHierarchyInEnrichedMetadata: Boolean = if (config.hasPath("enriched.metadata.include_hierarchy")) config.getBoolean("enriched.metadata.include_hierarchy") else false
 
+  // Per-type enriched metadata configuration
+  val contentEnrichedMetadataEnabled: Boolean = if (config.hasPath("enriched.metadata.content.enabled")) config.getBoolean("enriched.metadata.content.enabled") else enrichedMetadataEnabled
+  val collectionEnrichedMetadataEnabled: Boolean = if (config.hasPath("enriched.metadata.collection.enabled")) config.getBoolean("enriched.metadata.collection.enabled") else enrichedMetadataEnabled
+  val questionEnrichedMetadataEnabled: Boolean = if (config.hasPath("enriched.metadata.question.enabled")) config.getBoolean("enriched.metadata.question.enabled") else enrichedMetadataEnabled
+  val questionSetEnrichedMetadataEnabled: Boolean = if (config.hasPath("enriched.metadata.questionset.enabled")) config.getBoolean("enriched.metadata.questionset.enabled") else enrichedMetadataEnabled
+
   val supportedObjectType: util.List[String] = if (config.hasPath("content.objectType")) config.getStringList("content.objectType") else util.Arrays.asList[String]("Content", "ContentImage", "Collection", "CollectionImage", "Question", "QuestionImage", "QuestionSet", "QuestionSetImage")
   val supportedMimeType: util.List[String] = if (config.hasPath("content.mimeType")) config.getStringList("content.mimeType") else util.Arrays.asList[String]("application/pdf", "application/vnd.sunbird.question", "application/vnd.sunbird.questionset")
   val streamableMimeType: util.List[String] = if (config.hasPath("content.stream.mimeType")) config.getStringList("content.stream.mimeType") else util.Arrays.asList[String]("video/mp4")
