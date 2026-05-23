@@ -30,27 +30,44 @@ class ExtractFunction(config: ContentEmbeddingConfig)(implicit stringTypeInfo: T
       metrics: Metrics
   ): Unit = {
     try {
+      logger.debug(s"Processing raw event: ${event.take(200)}...")
       val eventMap = ScalaJsonUtil.deserialize[Map[String, Any]](event)
+      logger.debug(s"Successfully deserialized event JSON. Keys: ${eventMap.keys.mkString(",")}")
 
       val id = eventMap.get("id").map(_.toString)
         .filter(_.nonEmpty)
         .getOrElse(throw new IllegalArgumentException("Missing or empty id field"))
+      logger.debug(s"Extracted id: $id")
+
+      val contentType = eventMap.get("contentType").map(_.toString).getOrElse("Content")
+      logger.debug(s"Content type: $contentType")
+
+      val schemaVersion = eventMap.get("_schema_version").map(_.toString).getOrElse("1.0")
+      logger.debug(s"Schema version: $schemaVersion")
+
+      val timestamp = eventMap.get("timestamp").map {
+        case l: Long => l
+        case i: Int  => i.toLong
+        case n       => n.toString.toLong
+      }.getOrElse(System.currentTimeMillis())
+      logger.debug(s"Timestamp: $timestamp")
 
       val data = eventMap.get("data") match {
-        case Some(m: Map[_, _]) => m.asInstanceOf[Map[String, Any]]
+        case Some(m: Map[_, _]) =>
+          val dataMap = m.asInstanceOf[Map[String, Any]]
+          logger.debug(s"Data map extracted with ${dataMap.size} keys")
+          dataMap
         case Some(other) => throw new IllegalArgumentException(s"data field is not a map: ${other.getClass.getSimpleName}")
-        case None => Map()
+        case None =>
+          logger.debug("No data field found, using empty map")
+          Map()
       }
 
       val enrichedEvent = EnrichedMetadataEvent(
         id = id,
-        contentType = eventMap.get("contentType").map(_.toString).getOrElse("Content"),
-        _schema_version = eventMap.get("_schema_version").map(_.toString).getOrElse("1.0"),
-        timestamp = eventMap.get("timestamp").map {
-          case l: Long => l
-          case i: Int  => i.toLong
-          case n       => n.toString.toLong
-        }.getOrElse(System.currentTimeMillis()),
+        contentType = contentType,
+        _schema_version = schemaVersion,
+        timestamp = timestamp,
         data = data
       )
 
