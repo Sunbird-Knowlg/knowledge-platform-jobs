@@ -39,10 +39,17 @@ class ChunkingFunction(config: ContentEmbeddingConfig)(implicit stringTypeInfo: 
       metrics: Metrics
   ): Unit = {
     try {
+      logger.debug(s"Chunking event ${event.id} with ${event.data.size} data properties")
       val chunks = chunkingStrategy.chunk(event.id, event.contentType, event.data)
-      logger.info(s"Generated ${chunks.size} chunks for ${event.id} (${event.contentType})")
 
+      if (chunks == null) {
+        throw new IllegalStateException(s"ChunkingStrategy returned null for event ${event.id}")
+      }
+
+      logger.info(s"Generated ${chunks.size} chunks for ${event.id} (${event.contentType})")
       if (chunks.nonEmpty) {
+        val totalTokens = chunks.map(_.tokenCount).sum
+        logger.debug(s"Chunk details: ${chunks.size} chunks, $totalTokens total tokens")
         metrics.incCounter(config.chunkedEventsCount)
         context.output(config.chunkedOutTag, ChunkedEvent(event.id, event.contentType, event._schema_version, chunks))
       } else {
