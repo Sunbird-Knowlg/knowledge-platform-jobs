@@ -48,6 +48,20 @@ class SemanticChunkingStrategy(config: ChunkingConfig = ChunkingConfig("semantic
     }
   }
 
+  private def extractMetadata(data: Map[String, Any]): String = {
+    val metadataValues = data
+      .filterKeys(!config.excludedFields.contains(_))
+      .values
+      .map {
+        case seq: Seq[_] => seq.map(v => if (v != null) v.toString else "").filter(_.nonEmpty).mkString(", ")
+        case value if value != null => value.toString
+        case _ => ""
+      }
+      .filter(_.nonEmpty)
+
+    truncate(metadataValues.mkString(" | "))
+  }
+
   override def chunk(
       objectId: String,
       contentType: String,
@@ -67,62 +81,30 @@ class SemanticChunkingStrategy(config: ChunkingConfig = ChunkingConfig("semantic
   }
 
   private def chunkContent(objectId: String, data: Map[String, Any]): List[TextChunk] = {
-    val excludedKeys = Set("hierarchy", "children", "id", "identifier", "contentType", "_schema_version", "timestamp")
-    val metadataValues = data
-      .filterKeys(!excludedKeys.contains(_))
-      .values
-      .map {
-        case seq: Seq[_] => seq.map(v => if (v != null) v.toString else "").filter(_.nonEmpty).mkString(", ")
-        case value if value != null => value.toString
-        case _ => ""
-      }
-      .filter(_.nonEmpty)
-
-    val metadataText = truncate(metadataValues.mkString(" | "))
+    val metadataText = extractMetadata(data)
 
     if (metadataText.nonEmpty) {
-      logger.debug(s"Created metadata chunk for Content:$objectId with ${metadataValues.size} fields")
+      logger.debug(s"Created metadata chunk for Content:$objectId")
       List(TextChunk(text = metadataText, sourceField = "metadata", index = 0, metadata = Map("type" -> "content_metadata")))
     } else List.empty
   }
 
   private def chunkQuestion(objectId: String, data: Map[String, Any]): List[TextChunk] = {
-    val excludedKeys = Set("hierarchy", "children", "id", "identifier", "contentType", "_schema_version", "timestamp")
-    val metadataValues = data
-      .filterKeys(!excludedKeys.contains(_))
-      .values
-      .map {
-        case seq: Seq[_] => seq.map(v => if (v != null) v.toString else "").filter(_.nonEmpty).mkString(", ")
-        case value if value != null => value.toString
-        case _ => ""
-      }
-      .filter(_.nonEmpty)
-
-    val questionText = truncate(metadataValues.mkString(" | "))
+    val questionText = extractMetadata(data)
 
     if (questionText.nonEmpty) {
-      logger.debug(s"Created full question chunk for Question:$objectId with ${metadataValues.size} fields")
+      logger.debug(s"Created full question chunk for Question:$objectId")
       List(TextChunk(text = questionText, sourceField = "question_full", index = 0, metadata = Map("type" -> "question")))
     } else List.empty
   }
 
   private def chunkCollection(objectId: String, data: Map[String, Any]): List[TextChunk] = {
-    val chunks      = scala.collection.mutable.ListBuffer[TextChunk]()
-    val excludedKeys = Set("hierarchy", "children", "id", "identifier", "contentType", "_schema_version", "timestamp")
-    val metadataValues = data
-      .filterKeys(!excludedKeys.contains(_))
-      .values
-      .map {
-        case seq: Seq[_] => seq.map(v => if (v != null) v.toString else "").filter(_.nonEmpty).mkString(", ")
-        case value if value != null => value.toString
-        case _ => ""
-      }
-      .filter(_.nonEmpty)
+    val chunks        = scala.collection.mutable.ListBuffer[TextChunk]()
+    val metadataText  = extractMetadata(data)
 
-    val metadataText = truncate(metadataValues.mkString(" | "))
     if (metadataText.nonEmpty) {
       chunks += TextChunk(text = metadataText, sourceField = "collection_metadata", index = 0, metadata = Map("type" -> "collection_metadata"))
-      logger.debug(s"Created metadata chunk for Collection:$objectId with ${metadataValues.size} fields")
+      logger.debug(s"Created metadata chunk for Collection:$objectId")
     }
 
     data.get("hierarchy") match {
@@ -134,22 +116,12 @@ class SemanticChunkingStrategy(config: ChunkingConfig = ChunkingConfig("semantic
   }
 
   private def chunkQuestionSet(objectId: String, data: Map[String, Any]): List[TextChunk] = {
-    val chunks      = scala.collection.mutable.ListBuffer[TextChunk]()
-    val excludedKeys = Set("hierarchy", "children", "id", "identifier", "contentType", "_schema_version", "timestamp")
-    val metadataValues = data
-      .filterKeys(!excludedKeys.contains(_))
-      .values
-      .map {
-        case seq: Seq[_] => seq.map(v => if (v != null) v.toString else "").filter(_.nonEmpty).mkString(", ")
-        case value if value != null => value.toString
-        case _ => ""
-      }
-      .filter(_.nonEmpty)
+    val chunks        = scala.collection.mutable.ListBuffer[TextChunk]()
+    val metadataText  = extractMetadata(data)
 
-    val metadataText = truncate(metadataValues.mkString(" | "))
     if (metadataText.nonEmpty) {
       chunks += TextChunk(text = metadataText, sourceField = "questionset_metadata", index = 0, metadata = Map("type" -> "questionset_metadata"))
-      logger.debug(s"Created metadata chunk for QuestionSet:$objectId with ${metadataValues.size} fields")
+      logger.debug(s"Created metadata chunk for QuestionSet:$objectId")
     }
 
     data.get("hierarchy") match {
