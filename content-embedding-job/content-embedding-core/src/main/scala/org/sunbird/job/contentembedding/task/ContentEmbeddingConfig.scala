@@ -37,10 +37,8 @@ class ContentEmbeddingConfig(override val config: Config) extends BaseJobConfig(
   // semantic strategy config
   val maxChunkSize: Int           = getInt("chunking.semantic.max_chunk_size", 1000)
   val excludedFields: Set[String] = if (config.hasPath("chunking.semantic.excluded_fields")) {
-    config.getStringList("chunking.semantic.excluded_fields").stream.collect(java.util.stream.Collectors.toSet()).asScala.toSet
-  } else {
-    Set("hierarchy", "children", "id", "identifier", "contentType", "_schema_version", "timestamp")
-  }
+    config.getStringList("chunking.semantic.excluded_fields").asScala.toSet
+  } else Set.empty
   // sliding-window strategy config
   val maxTokens: Int              = getInt("chunking.sliding-window.max_tokens", 512)
   val overlapTokens: Int          = getInt("chunking.sliding-window.overlap_tokens", 102)
