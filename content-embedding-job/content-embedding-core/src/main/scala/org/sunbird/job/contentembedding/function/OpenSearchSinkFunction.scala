@@ -84,7 +84,8 @@ class OpenSearchSinkFunction(config: ContentEmbeddingConfig)(implicit stringType
       "chunks"             -> chunksData,
       "chunks_updated_at"  -> System.currentTimeMillis(),
       "embedding_model"    -> output.embeddingModel,
-      "quantization_type"  -> output.quantizationType
+      "quantization_type"  -> output.quantizationType,
+      "schema_version"     -> output.schemaVersion
     ))
   }
 }

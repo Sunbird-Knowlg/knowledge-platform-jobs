@@ -42,7 +42,16 @@ class ExtractFunction(config: ContentEmbeddingConfig)(implicit stringTypeInfo: T
       val contentType = eventMap.get("contentType").map(_.toString).getOrElse("Content")
       logger.debug(s"Content type: $contentType")
 
-      val schemaVersion = eventMap.get("_schema_version").map(_.toString).getOrElse("1.0")
+      val schemaVersionOpt = eventMap.get("_schema_version").map(_.toString).filter(_.nonEmpty)
+      val schemaVersion = schemaVersionOpt.getOrElse {
+        logger.warn(s"Event $id missing _schema_version; assuming 1.0")
+        "1.0"
+      }
+      if (!config.supportedSchemaVersions.contains(schemaVersion)) {
+        throw new IllegalArgumentException(
+          s"Unsupported _schema_version '$schemaVersion' (supported: ${config.supportedSchemaVersions.mkString(",")})"
+        )
+      }
       logger.debug(s"Schema version: $schemaVersion")
 
       val timestamp = eventMap.get("timestamp").map {
