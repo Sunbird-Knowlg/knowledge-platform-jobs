@@ -7,7 +7,7 @@ import org.sunbird.job.contentembedding.service.ChunkingStrategy
 /**
  * Field-based chunking strategy — one semantically cohesive chunk per content section.
  *
- * Unlike sliding-window, this strategy does NOT split on token count. Instead it maps
+ * Unlike sliding-window, this strategy does NOT split on word count. Instead it maps
  * Sunbird content types to a fixed set of meaningful fields and produces one chunk
  * per logical section, truncating at `config.maxChunkSize` characters.
  *
@@ -18,7 +18,7 @@ import org.sunbird.job.contentembedding.service.ChunkingStrategy
  *  - '''QuestionSet'''→ 1 metadata chunk + 1 chunk per hierarchy child (recursive)
  *
  * Best suited for short-to-medium metadata. Use `SlidingWindowChunkingStrategy` for
- * long documents (e.g. full article body > 512 tokens).
+ * long documents (e.g. full article body > 512 words).
  *
  * @param config Chunking config; only `maxChunkSize` (character limit) is used.
  */
@@ -42,7 +42,7 @@ class SemanticChunkingStrategy(config: ChunkingConfig = ChunkingConfig("semantic
 
   private def extractListValues(data: Map[String, Any], key: String): String = {
     data.get(key) match {
-      case Some(seq: Seq[_]) => seq.map(v => if (v != null) v.toString else "").filter(_.nonEmpty).mkString(", ")
+      case Some(seq: Seq[_]) if seq != null => seq.map(v => if (v != null) v.toString else "").filter(_.nonEmpty).mkString(", ")
       case Some(value) if value != null => value.toString
       case _ => ""
     }
@@ -53,7 +53,7 @@ class SemanticChunkingStrategy(config: ChunkingConfig = ChunkingConfig("semantic
       .filterKeys(!config.excludedFields.contains(_))
       .values
       .map {
-        case seq: Seq[_] => seq.map(v => if (v != null) v.toString else "").filter(_.nonEmpty).mkString(", ")
+        case seq: Seq[_] if seq != null => seq.map(v => if (v != null) v.toString else "").filter(_.nonEmpty).mkString(", ")
         case value if value != null => value.toString
         case _ => ""
       }
