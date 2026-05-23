@@ -52,7 +52,9 @@ class OpenAIEmbeddingService(config: EmbeddingServiceConfig) extends EmbeddingSe
     "https://api.openai.com/v1/embeddings"
   }
 
-  logger.info(s"OpenAIEmbeddingService ready: azure=$isAzure, url=$API_URL, dims=${config.dimensions}")
+  // Log only host, not full URL — Azure deployment name in query string can be sensitive.
+  private val logSafeHost: String = try URI.create(API_URL).getHost catch { case _: Throwable => "unknown" }
+  logger.info(s"OpenAIEmbeddingService ready: azure=$isAzure, host=$logSafeHost, dims=${config.dimensions}")
 
   override def getName: String = "openai"
 
@@ -81,8 +83,10 @@ class OpenAIEmbeddingService(config: EmbeddingServiceConfig) extends EmbeddingSe
 
     val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
 
-    if (response.statusCode() != 200)
-      throw new RuntimeException(s"OpenAI API error ${response.statusCode()}: ${response.body().take(300)}")
+    if (response.statusCode() != 200) {
+      // Surface status only; do not echo response body — it may quote our input or auth header.
+      throw new RuntimeException(s"OpenAI API error ${response.statusCode()} (body suppressed)")
+    }
 
     val responseMap = ScalaJsonUtil.deserialize[Map[String, Any]](response.body())
     val dataList    = responseMap("data").asInstanceOf[List[Map[String, Any]]]
