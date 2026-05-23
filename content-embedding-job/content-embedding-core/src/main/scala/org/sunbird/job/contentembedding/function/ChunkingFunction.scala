@@ -48,8 +48,8 @@ class ChunkingFunction(config: ContentEmbeddingConfig)(implicit stringTypeInfo: 
 
       logger.info(s"Generated ${chunks.size} chunks for ${event.id} (${event.contentType})")
       if (chunks.nonEmpty) {
-        val totalTokens = chunks.map(_.tokenCount).sum
-        logger.debug(s"Chunk details: ${chunks.size} chunks, $totalTokens total tokens")
+        val totalChars = chunks.map(_.text.length).sum
+        logger.debug(s"Chunk details: ${chunks.size} chunks, $totalChars total characters")
         metrics.incCounter(config.chunkedEventsCount)
         context.output(config.chunkedOutTag, ChunkedEvent(event.id, event.contentType, event._schema_version, chunks))
       } else {
