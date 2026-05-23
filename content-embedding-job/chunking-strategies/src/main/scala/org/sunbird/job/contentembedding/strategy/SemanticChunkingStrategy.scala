@@ -108,7 +108,7 @@ class SemanticChunkingStrategy(config: ChunkingConfig = ChunkingConfig("semantic
     }
 
     data.get("hierarchy") match {
-      case Some(hierarchyData) => chunks ++= chunkHierarchyChildren(hierarchyData, objectId, chunks.size, Set())
+      case Some(hierarchyData) => chunks ++= chunkHierarchyChildren(hierarchyData, objectId, chunks.size, Set(), 0)
       case None                => logger.debug(s"No hierarchy data for Collection:$objectId")
     }
 
@@ -125,17 +125,22 @@ class SemanticChunkingStrategy(config: ChunkingConfig = ChunkingConfig("semantic
     }
 
     data.get("hierarchy") match {
-      case Some(hierarchyData) => chunks ++= chunkHierarchyChildren(hierarchyData, objectId, chunks.size, Set())
+      case Some(hierarchyData) => chunks ++= chunkHierarchyChildren(hierarchyData, objectId, chunks.size, Set(), 0)
       case None                => logger.debug(s"No hierarchy data for QuestionSet:$objectId")
     }
 
     chunks.toList
   }
 
-  private def chunkHierarchyChildren(hierarchyData: Any, parentId: String, startIndex: Int, visitedIds: Set[String]): List[TextChunk] = {
+  private def chunkHierarchyChildren(hierarchyData: Any, parentId: String, startIndex: Int, visitedIds: Set[String], depth: Int): List[TextChunk] = {
     val chunks = scala.collection.mutable.ListBuffer[TextChunk]()
     var index  = startIndex
     val maxDepth = 50
+
+    if (depth >= maxDepth) {
+      logger.warn(s"Max hierarchy depth ($maxDepth) exceeded from parent $parentId, skipping nested children")
+      return chunks.toList
+    }
 
     hierarchyData match {
       case map: Map[String, Any] @unchecked =>
@@ -149,8 +154,6 @@ class SemanticChunkingStrategy(config: ChunkingConfig = ChunkingConfig("semantic
                   logger.warn(s"Child node missing identifier under parent $parentId")
                 } else if (visitedIds.contains(childId)) {
                   logger.warn(s"Circular hierarchy detected: child $childId already visited (parent: $parentId)")
-                } else if (visitedIds.size >= maxDepth) {
-                  logger.warn(s"Max hierarchy depth ($maxDepth) exceeded from parent $parentId, skipping nested children")
                 } else {
                   val childName        = getSafeString(childMap, "name")
                   val childDescription = getSafeString(childMap, "description")
@@ -169,7 +172,7 @@ class SemanticChunkingStrategy(config: ChunkingConfig = ChunkingConfig("semantic
                   childMap.get("children") match {
                     case Some(_) =>
                       val newVisited = visitedIds + childId
-                      val nested = chunkHierarchyChildren(childMap, childId, index, newVisited)
+                      val nested = chunkHierarchyChildren(childMap, childId, index, newVisited, depth + 1)
                       chunks ++= nested
                       index  += nested.length
                     case None =>
