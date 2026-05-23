@@ -57,6 +57,14 @@ class ContentEmbeddingConfig(override val config: Config) extends BaseJobConfig(
   val quantizedEventsCount = "quantized-events-count"
   val successEventCount = "success-event-count"
   val failedEventCount = "failed-event-count"
+  val embeddingSlowCallCount = "embedding-slow-call-count"
+  val embeddingApiCallCount  = "embedding-api-call-count"
+
+  // Log a warning when embedBatch exceeds this many millis. Default 5s.
+  val embeddingSlowCallThresholdMs: Long =
+    if (config.hasPath("embedding.slow_call_threshold_ms"))
+      config.getLong("embedding.slow_call_threshold_ms")
+    else 5000L
 
   // TypeInformation needed by OutputTag constructors
   implicit val enrichedMetadataEventTypeInfo: TypeInformation[EnrichedMetadataEvent] =
