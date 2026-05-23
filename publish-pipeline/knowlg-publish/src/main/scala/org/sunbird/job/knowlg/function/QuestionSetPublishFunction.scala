@@ -169,7 +169,7 @@ class QuestionSetPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil
 
   private def pushEnrichedMetadataEvent(obj: ObjectData, context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
     try {
-      if (config.enrichedMetadataEnabled) {
+      if (config.questionSetEnrichedMetadataEnabled) {
         logger.info(s"Pushing enriched metadata event for QuestionSet: ${obj.identifier}, mimeType: ${obj.mimeType}")
         val enrichedEvent = enrichedMetadataEventBuilder.buildEnrichedKafkaEvent(obj)
         logger.debug(s"Built enriched event with data fields: ${enrichedEvent.get("data").asInstanceOf[Option[Map[String, Any]]].map(_.keys.mkString(", ")).getOrElse("none")}")

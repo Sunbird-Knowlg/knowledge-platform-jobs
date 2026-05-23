@@ -180,7 +180,7 @@ class CollectionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
 
   private def pushEnrichedMetadataEvent(obj: ObjectData, context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
     try {
-      if (config.enrichedMetadataEnabled) {
+      if (config.collectionEnrichedMetadataEnabled) {
         logger.info(s"Pushing enriched metadata event for Collection: ${obj.identifier}, mimeType: ${obj.mimeType}")
         val enrichedEvent = enrichedMetadataEventBuilder.buildEnrichedKafkaEvent(obj)
         logger.debug(s"Built enriched event with data fields: ${enrichedEvent.get("data").asInstanceOf[Option[Map[String, Any]]].map(_.keys.mkString(", ")).getOrElse("none")}")
