@@ -10,12 +10,12 @@ import java.io.Serializable
  * @param vector      Float32 embedding values; length == `dimensions`.
  * @param modelId     Identifier of the embedding model (e.g. "openai", "e5").
  * @param dimensions  Vector length (1536 for text-embedding-3-small, 768 for multilingual-e5-large).
- * @param tokenCount  Approximate token count of the source text (word-count proxy).
+ * @param wordCount   Word count of the source text.
  */
 case class VectorEmbedding(
     chunkIndex: Int,
     vector: Array[Double],
     modelId: String,
     dimensions: Int,
-    tokenCount: Int
+    wordCount: Int
 ) extends Serializable

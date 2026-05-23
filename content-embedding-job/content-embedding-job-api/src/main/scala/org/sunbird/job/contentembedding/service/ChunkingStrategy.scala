@@ -7,7 +7,7 @@ import org.sunbird.job.contentembedding.domain.TextChunk
  *
  * Implementations split enriched content metadata into a list of [[TextChunk]]s
  * suitable for embedding. Each chunk should be semantically cohesive and within
- * the token limit of the target embedding model.
+ * the word limit of the target embedding model.
  *
  * Available implementations:
  *  - `SemanticChunkingStrategy`  — field-based, one chunk per content section.

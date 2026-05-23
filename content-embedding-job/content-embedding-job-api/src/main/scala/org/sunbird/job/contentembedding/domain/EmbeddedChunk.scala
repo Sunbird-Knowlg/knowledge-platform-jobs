@@ -10,7 +10,7 @@ import java.io.Serializable
  * @param sourceField Field/section origin (e.g. "metadata", "window_0").
  * @param chunkIndex  Zero-based position within the content object.
  * @param vector      Float32 embedding; not yet quantized.
- * @param tokenCount  Word-count proxy for token length.
+ * @param wordCount   Word count of the source text.
  * @param modelId     Embedding model identifier (e.g. "openai", "e5").
  */
 case class EmbeddedChunk(
@@ -18,6 +18,6 @@ case class EmbeddedChunk(
     sourceField: String,
     chunkIndex: Int,
     vector: Array[Double],
-    tokenCount: Int,
+    wordCount: Int,
     modelId: String
 ) extends Serializable
