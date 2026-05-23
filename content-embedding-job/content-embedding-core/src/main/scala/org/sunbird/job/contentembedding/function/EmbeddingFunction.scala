@@ -38,7 +38,12 @@ class EmbeddingFunction(config: ContentEmbeddingConfig)(implicit stringTypeInfo:
     embeddingService.close()
   }
 
-  override def metricsList(): List[String] = List(config.embeddedEventsCount, config.failedEventCount)
+  override def metricsList(): List[String] = List(
+    config.embeddedEventsCount,
+    config.failedEventCount,
+    config.embeddingApiCallCount,
+    config.embeddingSlowCallCount
+  )
 
   override def processElement(
       event: ChunkedEvent,
@@ -47,7 +52,14 @@ class EmbeddingFunction(config: ContentEmbeddingConfig)(implicit stringTypeInfo:
   ): Unit = {
     try {
       val texts = event.chunks.map(_.text)
+      val startNanos = System.nanoTime()
       val vectors = embeddingService.embedBatch(texts)
+      val elapsedMs = (System.nanoTime() - startNanos) / 1000000L
+      metrics.incCounter(config.embeddingApiCallCount)
+      if (elapsedMs > config.embeddingSlowCallThresholdMs) {
+        metrics.incCounter(config.embeddingSlowCallCount)
+        logger.warn(s"Slow embedding API call: ${elapsedMs}ms for ${event.objectId} (${texts.size} texts, threshold=${config.embeddingSlowCallThresholdMs}ms)")
+      }
 
       val embeddedChunks = event.chunks.zip(vectors).map { case (chunk, vector) =>
         EmbeddedChunk(
@@ -55,7 +67,7 @@ class EmbeddingFunction(config: ContentEmbeddingConfig)(implicit stringTypeInfo:
           sourceField = chunk.sourceField,
           chunkIndex = chunk.index,
           vector = vector,
-          tokenCount = chunk.text.split("\\s+").length,
+          wordCount = chunk.text.split("\\s+").length,
           modelId = embeddingService.getName
         )
       }
