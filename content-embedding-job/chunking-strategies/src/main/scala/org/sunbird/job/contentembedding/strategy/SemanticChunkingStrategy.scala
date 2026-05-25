@@ -7,20 +7,21 @@ import org.sunbird.job.contentembedding.service.ChunkingStrategy
 /**
  * Field-based chunking strategy — one semantically cohesive chunk per content section.
  *
- * Unlike sliding-window, this strategy does NOT split on word count. Instead it maps
- * Sunbird content types to a fixed set of meaningful fields and produces one chunk
- * per logical section, truncating at `config.maxChunkSize` characters.
+ * Unlike sliding-window, this strategy does NOT split on word count. All fields from the
+ * enriched metadata event are concatenated dynamically (excluding `config.excludedFields`),
+ * with `mimeType` translated to a human-readable label and `creator`/`author` emitted
+ * with their key names for richer semantic context.
  *
  * Chunking rules by content type:
- *  - '''Content'''    → 1 chunk: name + description + keywords + subject
- *  - '''Question'''   → 1 chunk: name + description + body + subject
- *  - '''Collection''' → 1 metadata chunk + 1 chunk per hierarchy child (recursive)
- *  - '''QuestionSet'''→ 1 metadata chunk + 1 chunk per hierarchy child (recursive)
+ *  - '''Content'''     → 1 chunk: all non-excluded fields concatenated
+ *  - '''Question'''    → 1 chunk: all non-excluded fields concatenated
+ *  - '''Collection'''  → 1 metadata chunk (all non-excluded fields) + 1 chunk per hierarchy child (recursive)
+ *  - '''QuestionSet''' → 1 metadata chunk (all non-excluded fields) + 1 chunk per hierarchy child (recursive)
  *
  * Best suited for short-to-medium metadata. Use `SlidingWindowChunkingStrategy` for
  * long documents (e.g. full article body > 512 words).
  *
- * @param config Chunking config; only `maxChunkSize` (character limit) is used.
+ * @param config Chunking config; `maxChunkSize` (character limit) and `excludedFields` are used.
  */
 class SemanticChunkingStrategy(config: ChunkingConfig = ChunkingConfig("semantic")) extends ChunkingStrategy {
 
@@ -40,22 +41,68 @@ class SemanticChunkingStrategy(config: ChunkingConfig = ChunkingConfig("semantic
     }
   }
 
-  private def extractListValues(data: Map[String, Any], key: String): String = {
-    data.get(key) match {
-      case Some(seq: Seq[_]) if seq != null => seq.map(v => if (v != null) v.toString else "").filter(_.nonEmpty).mkString(", ")
-      case Some(value) if value != null => value.toString
-      case _ => ""
-    }
+  private val mimeTypeLabels: Map[String, String] = Map(
+    "application/pdf"                              -> "PDF document",
+    "application/epub"                             -> "ePub document",
+    "application/msword"                           -> "Word document",
+    "application/json"                             -> "JSON content",
+    "application/quiz"                             -> "Quiz",
+    "application/octet-stream"                     -> "binary content",
+    "application/vnd.android.package-archive"      -> "Android app",
+    "application/vnd.ekstep.ecml-archive"          -> "ECML interactive content",
+    "application/vnd.ekstep.html-archive"          -> "HTML content",
+    "application/vnd.ekstep.h5p-archive"           -> "H5P interactive content",
+    "application/vnd.ekstep.content-archive"       -> "content archive",
+    "application/vnd.ekstep.content-collection"    -> "content collection",
+    "application/vnd.ekstep.plugin-archive"        -> "plugin archive",
+    "application/vnd.sunbird.question"             -> "question",
+    "application/vnd.sunbird.questionset"          -> "question set",
+    "application/vnd.sunbird.assessmentitem"       -> "assessment item",
+    "text/x-url"                                   -> "web URL",
+    "video/mp4"                                    -> "MP4 video",
+    "video/webm"                                   -> "WebM video",
+    "video/ogg"                                    -> "OGG video",
+    "video/avi"                                    -> "AVI video",
+    "video/mpeg"                                   -> "MPEG video",
+    "video/quicktime"                              -> "QuickTime video",
+    "video/3gpp"                                   -> "3GPP video",
+    "video/x-youtube"                              -> "YouTube video",
+    "audio/mp3"                                    -> "MP3 audio",
+    "audio/mp4"                                    -> "MP4 audio",
+    "audio/mpeg"                                   -> "MP3 audio",
+    "audio/ogg"                                    -> "OGG audio",
+    "audio/webm"                                   -> "WebM audio",
+    "audio/wav"                                    -> "WAV audio",
+    "audio/x-wav"                                  -> "WAV audio",
+    "image/jpeg"                                   -> "JPEG image",
+    "image/jpg"                                    -> "JPEG image",
+    "image/png"                                    -> "PNG image",
+    "image/gif"                                    -> "GIF image",
+    "image/bmp"                                    -> "BMP image",
+    "image/tiff"                                   -> "TIFF image",
+    "image/svg+xml"                                -> "SVG image"
+  )
+
+  // Fields emitted as "key: value" for richer semantic context
+  private val keyedFields: Set[String] = Set("mimeType", "creator", "author")
+
+  private def renderValue(key: String, raw: Any): String = raw match {
+    case seq: Seq[_] if seq != null =>
+      seq.map(v => if (v != null) v.toString else "").filter(_.nonEmpty).mkString(", ")
+    case value if value != null =>
+      val str = value.toString
+      if (key == "mimeType") mimeTypeLabels.getOrElse(str, str) else str
+    case _ => ""
   }
 
   private def extractMetadata(data: Map[String, Any]): String = {
     val metadataValues = data
       .filterKeys(!config.excludedFields.contains(_))
-      .values
-      .map {
-        case seq: Seq[_] if seq != null => seq.map(v => if (v != null) v.toString else "").filter(_.nonEmpty).mkString(", ")
-        case value if value != null => value.toString
-        case _ => ""
+      .map { case (key, value) =>
+        val rendered = renderValue(key, value)
+        if (rendered.isEmpty) ""
+        else if (keyedFields.contains(key)) s"$key: $rendered"
+        else rendered
       }
       .filter(_.nonEmpty)
 

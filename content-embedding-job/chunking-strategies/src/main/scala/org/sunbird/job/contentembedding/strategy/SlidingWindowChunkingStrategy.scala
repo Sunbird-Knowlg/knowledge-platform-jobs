@@ -7,16 +7,18 @@ import org.sunbird.job.contentembedding.service.ChunkingStrategy
 /**
  * Sliding-window word chunking with overlap.
  *
- * Splits text into chunks of whitespace-separated words (no tokenizer dependency).
- * For each content type, extracts all relevant text fields into one string,
- * then slides a window of `maxWords` words with `overlapWords` words of overlap.
+ * Concatenates all non-excluded fields from the enriched metadata event (same field
+ * policy as [[SemanticChunkingStrategy]]) into one text blob, then slides a window of
+ * `maxWords` words with `overlapWords` words of overlap.
  *
- * Default: 512 words, 102 word overlap (~20%).
+ * `mimeType` is translated to a human-readable label; `creator` and `author` are emitted
+ * with their key names. Hierarchy children are flattened and appended.
  *
- * Why overlap?  Without it, a sentence split across two chunk boundaries loses
- * its context in both chunks.  With 20% overlap, each boundary region is
- * represented in two consecutive chunks, so the embedding model always sees
- * the surrounding context.
+ * Default: 512 words per window, 102 word overlap (~20%).
+ *
+ * Why overlap? Without it a sentence split across two chunk boundaries loses
+ * context in both. With 20% overlap each boundary region is represented in two
+ * consecutive chunks so the embedding model sees the surrounding context.
  */
 class SlidingWindowChunkingStrategy(config: ChunkingConfig) extends ChunkingStrategy {
 
@@ -37,15 +39,7 @@ class SlidingWindowChunkingStrategy(config: ChunkingConfig) extends ChunkingStra
   ): List[TextChunk] = {
     logger.debug(s"Chunking $contentType:$objectId using sliding-window (window=$windowSize, overlap=$overlap)")
 
-    val fullText = contentType match {
-      case "Content"     => extractContentText(data)
-      case "Question"    => extractQuestionText(data)
-      case "Collection"  => extractCollectionText(data)
-      case "QuestionSet" => extractQuestionSetText(data)
-      case _ =>
-        logger.warn(s"Unknown content type: $contentType for $objectId")
-        ""
-    }
+    val fullText = extractAllFields(data)
 
     if (fullText.isBlank) {
       logger.warn(s"No text extracted from $contentType:$objectId — skipping")
@@ -92,54 +86,75 @@ class SlidingWindowChunkingStrategy(config: ChunkingConfig) extends ChunkingStra
     }
   }
 
-  // Concatenate all relevant fields into one text blob per content type.
-  // Order matters: put most important fields first so early chunks carry more signal.
+  private val mimeTypeLabels: Map[String, String] = Map(
+    "application/pdf"                              -> "PDF document",
+    "application/epub"                             -> "ePub document",
+    "application/msword"                           -> "Word document",
+    "application/json"                             -> "JSON content",
+    "application/quiz"                             -> "Quiz",
+    "application/octet-stream"                     -> "binary content",
+    "application/vnd.android.package-archive"      -> "Android app",
+    "application/vnd.ekstep.ecml-archive"          -> "ECML interactive content",
+    "application/vnd.ekstep.html-archive"          -> "HTML content",
+    "application/vnd.ekstep.h5p-archive"           -> "H5P interactive content",
+    "application/vnd.ekstep.content-archive"       -> "content archive",
+    "application/vnd.ekstep.content-collection"    -> "content collection",
+    "application/vnd.ekstep.plugin-archive"        -> "plugin archive",
+    "application/vnd.sunbird.question"             -> "question",
+    "application/vnd.sunbird.questionset"          -> "question set",
+    "application/vnd.sunbird.assessmentitem"       -> "assessment item",
+    "text/x-url"                                   -> "web URL",
+    "video/mp4"                                    -> "MP4 video",
+    "video/webm"                                   -> "WebM video",
+    "video/ogg"                                    -> "OGG video",
+    "video/avi"                                    -> "AVI video",
+    "video/mpeg"                                   -> "MPEG video",
+    "video/quicktime"                              -> "QuickTime video",
+    "video/3gpp"                                   -> "3GPP video",
+    "video/x-youtube"                              -> "YouTube video",
+    "audio/mp3"                                    -> "MP3 audio",
+    "audio/mp4"                                    -> "MP4 audio",
+    "audio/mpeg"                                   -> "MP3 audio",
+    "audio/ogg"                                    -> "OGG audio",
+    "audio/webm"                                   -> "WebM audio",
+    "audio/wav"                                    -> "WAV audio",
+    "audio/x-wav"                                  -> "WAV audio",
+    "image/jpeg"                                   -> "JPEG image",
+    "image/jpg"                                    -> "JPEG image",
+    "image/png"                                    -> "PNG image",
+    "image/gif"                                    -> "GIF image",
+    "image/bmp"                                    -> "BMP image",
+    "image/tiff"                                   -> "TIFF image",
+    "image/svg+xml"                                -> "SVG image"
+  )
 
-  private def extractContentText(data: Map[String, Any]): String = {
-    val name        = str(data, "name")
-    val description = str(data, "description")
-    val keywords    = listOrStr(data, "keywords")
-    val subject     = listOrStr(data, "subject")
-    val body        = str(data, "body")
-    Seq(name, description, keywords, subject, body).filter(_.nonEmpty).mkString(" ")
+  private val keyedFields: Set[String] = Set("mimeType", "creator", "author")
+
+  private def renderValue(key: String, raw: Any): String = raw match {
+    case seq: Seq[_] if seq != null =>
+      seq.map(v => if (v != null) v.toString else "").filter(_.nonEmpty).mkString(", ")
+    case value if value != null =>
+      val s = value.toString
+      if (key == "mimeType") mimeTypeLabels.getOrElse(s, s) else s
+    case _ => ""
   }
 
-  private def extractQuestionText(data: Map[String, Any]): String = {
-    val name        = str(data, "name")
-    val description = str(data, "description")
-    val body        = str(data, "body")
-    val subject     = listOrStr(data, "subject")
-    // MCQ answer options — include them for better semantic coverage
-    val options     = data.get("responseDeclaration") match {
-      case Some(rd: Map[String, Any] @unchecked) =>
-        rd.get("response1") match {
-          case Some(r1: Map[String, Any] @unchecked) =>
-            r1.get("mapping") match {
-              case Some(mapping: List[_]) =>
-                mapping.collect { case m: Map[String, Any] @unchecked => str(m, "value") }
-                  .filter(_.nonEmpty).mkString(" ")
-              case _ => ""
-            }
-          case _ => ""
-        }
-      case _ => ""
-    }
-    Seq(name, description, body, subject, options).filter(_.nonEmpty).mkString(" ")
-  }
+  // All fields from data minus excluded — same policy as SemanticChunkingStrategy.
+  // hierarchy children are flattened separately and appended.
+  private def extractAllFields(data: Map[String, Any]): String = {
+    val metaParts = data
+      .filterKeys(!config.excludedFields.contains(_))
+      .map { case (key, value) =>
+        val rendered = renderValue(key, value)
+        if (rendered.isEmpty) ""
+        else if (keyedFields.contains(key)) s"$key: $rendered"
+        else rendered
+      }
+      .filter(_.nonEmpty)
+      .mkString(" ")
 
-  private def extractCollectionText(data: Map[String, Any]): String = {
-    val name        = str(data, "name")
-    val description = str(data, "description")
-    val subject     = listOrStr(data, "subject")
-    val childText   = flattenHierarchyText(data.get("hierarchy"))
-    Seq(name, description, subject, childText).filter(_.nonEmpty).mkString(" ")
-  }
-
-  private def extractQuestionSetText(data: Map[String, Any]): String = {
-    val name        = str(data, "name")
-    val description = str(data, "description")
-    val childText   = flattenHierarchyText(data.get("hierarchy"))
-    Seq(name, description, childText).filter(_.nonEmpty).mkString(" ")
+    val hierarchyText = flattenHierarchyText(data.get("hierarchy"))
+    Seq(metaParts, hierarchyText).filter(_.nonEmpty).mkString(" ")
   }
 
   private def flattenHierarchyText(hierarchyOpt: Option[Any]): String = {
@@ -148,24 +163,16 @@ class SlidingWindowChunkingStrategy(config: ChunkingConfig) extends ChunkingStra
         map.get("children") match {
           case Some(children: Seq[_]) if children != null =>
             children.collect { case c: Map[String, Any] @unchecked =>
-              val childName = str(c, "name")
-              val childDesc = str(c, "description")
-              val nested    = flattenHierarchyText(Some(c))
-              Seq(childName, childDesc, nested).filter(_.nonEmpty).mkString(" ")
+              val parts = Seq(
+                c.get("name").map(_.toString).getOrElse(""),
+                c.get("description").map(_.toString).getOrElse(""),
+                flattenHierarchyText(Some(c))
+              ).filter(_.nonEmpty)
+              parts.mkString(" ")
             }.mkString(" ")
           case _ => ""
         }
       case _ => ""
     }
   }
-
-  private def str(m: Map[String, Any], key: String): String =
-    m.get(key).map(_.toString.trim).getOrElse("")
-
-  private def listOrStr(m: Map[String, Any], key: String): String =
-    m.get(key) match {
-      case Some(seq: Seq[_]) if seq != null => seq.filter(_ != null).map(_.toString).mkString(" ")
-      case Some(v) if v != null             => v.toString
-      case _                                => ""
-    }
 }

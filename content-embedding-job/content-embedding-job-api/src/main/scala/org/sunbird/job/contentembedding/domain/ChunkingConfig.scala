@@ -11,7 +11,7 @@ import java.io.Serializable
  *                      matching the E5/OpenAI word limit).
  * @param overlapWords  `sliding-window` only — words shared between consecutive windows (default 102 ≈ 20%).
  *                      Overlap preserves sentence context at chunk boundaries.
- * @param excludedFields `semantic` only — field names to exclude from dynamic metadata extraction
+ * @param excludedFields Field names to exclude from metadata extraction across all strategies
  *                       (default: hierarchy, children, id, identifier, contentType, _schema_version, timestamp).
  */
 case class ChunkingConfig(
