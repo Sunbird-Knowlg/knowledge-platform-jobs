@@ -46,6 +46,9 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
   val mvProcessorEventCount = "mvc-processor-event-count"
   val dialcodeContextUpdaterEventCount = "dialcode-context-updater-event-count"
   val enrichedMetadataEventCount = "enriched-metadata-event-count"
+  val enrichOnlyEventCount = "enrich-only-event-count"
+  val enrichOnlySuccessCount = "enrich-only-success-count"
+  val enrichOnlyFailedCount = "enrich-only-failed-count"
 
   // Cassandra Configurations
   val cassandraHost: String = config.getString("lms-cassandra.host")
@@ -92,6 +95,7 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
   val dialcodeContextUpdaterOutTag: OutputTag[String] = OutputTag[String]("dialcode-context-updater-request")
   val contentMetadataEventOutTag: OutputTag[String] = OutputTag[String]("content-metadata-event-request")
   val enrichedMetadataEventOutTag: OutputTag[String] = OutputTag[String]("enriched-metadata-event-request")
+  val enrichOnlyOutTag: OutputTag[Event] = OutputTag[Event]("enrich-only-request")
   val qrimageOutTag: OutputTag[String] = OutputTag[String]("qrimage-generator-request")
 
 
