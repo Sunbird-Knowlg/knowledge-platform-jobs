@@ -36,9 +36,11 @@ class ContentEmbeddingConfig(override val config: Config) extends BaseJobConfig(
   val embeddingBatchSize: Int     = getInt("embedding.batch_size", 32)
   // semantic strategy config
   val maxChunkSize: Int           = getInt("chunking.semantic.max_chunk_size", 1000)
+  // Fields excluded from metadata extraction — applies to both chunking strategies.
+  // Falls back to ChunkingConfig defaults when not set in config file.
   val excludedFields: Set[String] = if (config.hasPath("chunking.semantic.excluded_fields")) {
     config.getStringList("chunking.semantic.excluded_fields").asScala.toSet
-  } else Set.empty
+  } else ChunkingConfig("semantic").excludedFields
   // sliding-window strategy config
   val maxWords: Int               = getInt("chunking.sliding-window.max_words", 512)
   val overlapWords: Int           = getInt("chunking.sliding-window.overlap_words", 102)
