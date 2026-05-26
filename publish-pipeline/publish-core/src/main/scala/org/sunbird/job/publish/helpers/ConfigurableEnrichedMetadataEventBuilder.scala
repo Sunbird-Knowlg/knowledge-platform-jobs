@@ -105,7 +105,8 @@ class ConfigurableEnrichedMetadataEventBuilder(
 
     val filteredNode = hierarchy
       .filter { case (fieldName, _) =>
-        configuredFieldNames.contains(fieldName)
+        configuredFieldNames.contains(fieldName) ||
+          (fieldConfig.shouldAutoIncludeSearchEnrichmentFields && fieldConfig.isSearchEnrichmentField(fieldName))
       }
       .map { case (fieldName, value) =>
         fieldName -> sanitizeFieldValue(fieldName, value)
@@ -179,11 +180,30 @@ class ConfigurableEnrichedMetadataEventBuilder(
 
     logger.debug(s"Extracted ${extracted.size} metadata fields from object metadata for $objectType: ${obj.identifier}")
 
+    // Auto-include search enrichment fields (se_*) if enabled
+    val withSearchEnrichment = if (fieldConfig.shouldAutoIncludeSearchEnrichmentFields) {
+      val seFields = obj.metadata
+        .filter { case (fieldName, _) =>
+          fieldConfig.isSearchEnrichmentField(fieldName)
+        }
+        .map { case (fieldName, value) =>
+          fieldName -> sanitizeFieldValue(fieldName, value)
+        }
+        .filter { case (_, value) => value != null }
+
+      if (seFields.nonEmpty) {
+        logger.debug(s"Auto-included ${seFields.size} search enrichment fields for $objectType: ${seFields.keys.mkString(", ")}")
+      }
+      extracted ++ seFields
+    } else {
+      extracted
+    }
+
     val withIdentifier = if (fieldsToExtract.contains("identifier")) {
-      val result = extracted + ("identifier" -> obj.identifier)
+      val result = withSearchEnrichment + ("identifier" -> obj.identifier)
       logger.debug(s"Added identifier field for $objectType: ${obj.identifier}")
       result
-    } else extracted
+    } else withSearchEnrichment
 
     logger.debug(s"Final extracted fields for $objectType: ${withIdentifier.keySet.mkString(", ")}")
     withIdentifier

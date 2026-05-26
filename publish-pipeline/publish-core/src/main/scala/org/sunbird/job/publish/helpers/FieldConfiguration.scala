@@ -24,7 +24,12 @@ class FieldConfiguration(typesafeConfig: Config) {
   // Load type-specific fields
   private val typeFields: Map[String, Seq[String]] = loadTypeFields()
 
-  logger.info(s"FieldConfiguration loaded. Global fields: ${globalFields.size}. Configured types: ${typeFields.keys.mkString(", ")}")
+  // Check if auto-include search enrichment fields (se_*) is enabled
+  private val autoIncludeSearchEnrichmentFields: Boolean = Try {
+    typesafeConfig.getBoolean("enriched.metadata.global.autoIncludeSearchEnrichmentFields")
+  }.getOrElse(false)
+
+  logger.info(s"FieldConfiguration loaded. Global fields: ${globalFields.size}. Auto-include SE fields: $autoIncludeSearchEnrichmentFields. Configured types: ${typeFields.keys.mkString(", ")}")
 
   private def loadTypeFields(): Map[String, Seq[String]] = {
     Try {
@@ -67,5 +72,15 @@ class FieldConfiguration(typesafeConfig: Config) {
   /** Get all configured object types. */
   def getAllConfiguredObjectTypes: Seq[String] = {
     typeFields.keys.toSeq.sorted
+  }
+
+  /** Check if auto-include of search enrichment fields (se_*) is enabled. */
+  def shouldAutoIncludeSearchEnrichmentFields: Boolean = {
+    autoIncludeSearchEnrichmentFields
+  }
+
+  /** Check if a field is a search enrichment field (starts with se_). */
+  def isSearchEnrichmentField(fieldName: String): Boolean = {
+    fieldName.startsWith("se_")
   }
 }
