@@ -103,7 +103,6 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
   val schemaSupportVersionMap: Map[String, AnyRef] = if (config.hasPath("schema.supportedVersion")) config.getObject("schema.supportedVersion").unwrapped().asScala.toMap else Map[String, AnyRef]()
 
   // Enrichment Configuration
-  val enrichedMetadataFieldConfigPath: String = if (config.hasPath("enriched.field_config_path")) config.getString("enriched.field_config_path") else "enriched-metadata-fields.json"
   val enrichedMetadataEnabled: Boolean = if (config.hasPath("enriched.metadata.enabled")) config.getBoolean("enriched.metadata.enabled") else false
   val includeHierarchyInEnrichedMetadata: Boolean = if (config.hasPath("enriched.metadata.include_hierarchy")) config.getBoolean("enriched.metadata.include_hierarchy") else false
 

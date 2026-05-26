@@ -71,7 +71,7 @@ class QuestionSetPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil
     definitionConfig = DefinitionConfig(config.schemaSupportVersionMap, config.definitionBasePath)
     cache = new DataCache(config, new RedisConnect(config), config.cacheDbId, List())
     cache.init()
-    fieldConfig = new FieldConfiguration(config.enrichedMetadataFieldConfigPath)
+    fieldConfig = new FieldConfiguration(config.getConfig())
     enrichedMetadataEventBuilder = new ConfigurableEnrichedMetadataEventBuilder(fieldConfig, config.enrichedMetadataTopic, config.includeHierarchyInEnrichedMetadata)
   }
 

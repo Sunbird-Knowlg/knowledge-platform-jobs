@@ -40,7 +40,7 @@ class EnrichOnlyFunction(config: KnowlgPublishConfig,
     super.open(parameters)
     janusGraphUtil  = new JanusGraphUtil(config)
     cassandraUtil   = new CassandraUtil(config.cassandraHost, config.cassandraPort, config)
-    fieldConfig     = new FieldConfiguration(config.enrichedMetadataFieldConfigPath)
+    fieldConfig     = new FieldConfiguration(config.getConfig())
     enrichedMetadataEventBuilder = new ConfigurableEnrichedMetadataEventBuilder(
       fieldConfig, config.enrichedMetadataTopic, config.includeHierarchyInEnrichedMetadata)
     logger.info("EnrichOnlyFunction opened")

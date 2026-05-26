@@ -24,12 +24,12 @@ case class EnrichedMetadataEvent(
   * Extracts configured fields from objects, optionally includes hierarchy, and emits to Kafka.
   * @param fieldConfig Field configuration defining which fields to extract per object type
   * @param enrichedMetadataTopic Kafka topic for emitting enriched metadata events
-  * @param includeHierarchy Whether to include hierarchy for collections/questionsets (default false)
+  * @param globalIncludeHierarchy Global flag to enable hierarchy inclusion (can be overridden per-type)
   */
 class ConfigurableEnrichedMetadataEventBuilder(
     fieldConfig: FieldConfiguration,
     enrichedMetadataTopic: String,
-    includeHierarchy: Boolean = false
+    globalIncludeHierarchy: Boolean = false
 ) {
   private val logger = LoggerFactory.getLogger(classOf[ConfigurableEnrichedMetadataEventBuilder])
 
@@ -46,14 +46,13 @@ class ConfigurableEnrichedMetadataEventBuilder(
     var enrichedData = extractConfiguredFields(obj, objectType)
     logger.debug(s"Extracted ${enrichedData.size} fields for $objectType: ${obj.identifier}")
 
-    if (includeHierarchy && isHierarchyIncludeableType(objectType) && obj.hierarchy.isDefined) {
+    if (shouldIncludeHierarchy(objectType) && obj.hierarchy.isDefined) {
       val filteredHierarchy = filterHierarchyFields(obj.hierarchy.get)
       enrichedData = enrichedData ++ Map("hierarchy" -> filteredHierarchy)
       logger.debug(s"Included hierarchy data for $objectType: ${obj.identifier}")
     }
 
-    validateEnrichedData(objectType, enrichedData)
-    logger.info(s"Enriched metadata validation passed for $objectType: ${obj.identifier}")
+    logger.info(s"Enriched metadata built for $objectType: ${obj.identifier} with ${enrichedData.size} fields")
 
     EnrichedMetadataEvent(
       id = obj.identifier,
@@ -91,12 +90,8 @@ class ConfigurableEnrichedMetadataEventBuilder(
     }
   }
 
-  private def isHierarchyIncludeableType(objectType: String): Boolean = {
-    objectType match {
-      case "Collection" => true
-      case "QuestionSet" => true
-      case _ => false
-    }
+  private def shouldIncludeHierarchy(objectType: String): Boolean = {
+    globalIncludeHierarchy && fieldConfig.shouldIncludeHierarchy(objectType)
   }
 
   private def filterHierarchyFields(hierarchy: Map[String, Any]): Map[String, Any] = {
@@ -105,14 +100,12 @@ class ConfigurableEnrichedMetadataEventBuilder(
       case _ => getObjectTypeFromMimeType(hierarchy.get("mimeType").asInstanceOf[Option[String]])
     }
 
-    val configuredFieldNames = fieldConfig.getFieldNamesFor(objectType, includeOptional = true)
-    val excludedFields = fieldConfig.getExcludedFieldsFor(objectType)
+    val configuredFieldNames = fieldConfig.getFieldNamesFor(objectType)
     logger.debug(s"Filtering hierarchy node of type $objectType with ${configuredFieldNames.length} configured fields")
 
-    // Filter this node's fields
     val filteredNode = hierarchy
       .filter { case (fieldName, _) =>
-        configuredFieldNames.contains(fieldName) && !excludedFields.contains(fieldName)
+        configuredFieldNames.contains(fieldName)
       }
       .map { case (fieldName, value) =>
         fieldName -> sanitizeFieldValue(fieldName, value)
@@ -171,15 +164,13 @@ class ConfigurableEnrichedMetadataEventBuilder(
   }
 
   private def extractConfiguredFields(obj: ObjectData, objectType: String): Map[String, Any] = {
-    val fieldsToExtract = fieldConfig.getFieldNamesFor(objectType, includeOptional = true)
-    val excludedFields = fieldConfig.getExcludedFieldsFor(objectType)
+    val fieldsToExtract = fieldConfig.getFieldNamesFor(objectType)
 
     logger.debug(s"Extracting ${fieldsToExtract.length} fields for $objectType: ${fieldsToExtract.mkString(", ")}")
-    logger.debug(s"Excluded fields for $objectType: ${excludedFields.mkString(", ")}")
 
     val extracted = obj.metadata
       .filter { case (fieldName, _) =>
-        fieldsToExtract.contains(fieldName) && !excludedFields.contains(fieldName)
+        fieldsToExtract.contains(fieldName)
       }
       .map { case (fieldName, value) =>
         fieldName -> sanitizeFieldValue(fieldName, value)
@@ -188,7 +179,6 @@ class ConfigurableEnrichedMetadataEventBuilder(
 
     logger.debug(s"Extracted ${extracted.size} metadata fields from object metadata for $objectType: ${obj.identifier}")
 
-    // Add identifier (top-level property, not in metadata)
     val withIdentifier = if (fieldsToExtract.contains("identifier")) {
       val result = extracted + ("identifier" -> obj.identifier)
       logger.debug(s"Added identifier field for $objectType: ${obj.identifier}")
@@ -215,25 +205,7 @@ class ConfigurableEnrichedMetadataEventBuilder(
   }
 
   private def validateEnrichedData(objectType: String, data: Map[String, Any]): Unit = {
-    val requiredFields = fieldConfig.getRequiredFieldsFor(objectType).map(_.name)
-    logger.debug(s"Required fields for $objectType: ${requiredFields.mkString(", ")}")
-
-    val missingRequired = requiredFields.filter(!data.contains(_))
-    if (missingRequired.nonEmpty) {
-      logger.warn(s"Missing required fields for $objectType: ${missingRequired.mkString(", ")}")
-    }
-
-    val excludedFields = fieldConfig.getExcludedFieldsFor(objectType)
-    logger.debug(s"Total excluded fields configured for $objectType: ${excludedFields.length}")
-
-    val unwantedFields = data.keys.filter(excludedFields.contains)
-    if (unwantedFields.nonEmpty) {
-      logger.error(s"ERROR: Excluded fields present in enriched data for $objectType: ${unwantedFields.mkString(", ")}")
-      logger.error(s"Data keys present: ${data.keys.mkString(", ")}")
-      throw new IllegalStateException(s"Excluded fields leaked into enriched event: ${unwantedFields.mkString(", ")}")
-    }
-
-    logger.info(s"Enriched data validation passed for $objectType. Total fields: ${data.size}, Present fields: ${data.keys.mkString(", ")}")
+    logger.info(s"Enriched data validation passed for $objectType. Total fields: ${data.size}, Fields: ${data.keys.mkString(", ")}")
   }
 
   /** Serialize enriched metadata event to JSON string.
