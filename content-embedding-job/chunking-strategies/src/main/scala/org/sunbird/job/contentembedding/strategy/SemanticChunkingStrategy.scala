@@ -83,9 +83,6 @@ class SemanticChunkingStrategy(config: ChunkingConfig = ChunkingConfig("semantic
     "image/svg+xml"                                -> "SVG image"
   )
 
-  // Fields emitted as "key: value" for richer semantic context
-  private val keyedFields: Set[String] = Set("mimeType", "creator", "author")
-
   private def renderValue(key: String, raw: Any): String = raw match {
     case seq: Seq[_] if seq != null =>
       seq.map(v => if (v != null) v.toString else "").filter(_.nonEmpty).mkString(", ")
@@ -101,8 +98,7 @@ class SemanticChunkingStrategy(config: ChunkingConfig = ChunkingConfig("semantic
       .map { case (key, value) =>
         val rendered = renderValue(key, value)
         if (rendered.isEmpty) ""
-        else if (keyedFields.contains(key)) s"$key: $rendered"
-        else rendered
+        else s"$key: $rendered"
       }
       .filter(_.nonEmpty)
 

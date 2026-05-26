@@ -128,8 +128,6 @@ class SlidingWindowChunkingStrategy(config: ChunkingConfig) extends ChunkingStra
     "image/svg+xml"                                -> "SVG image"
   )
 
-  private val keyedFields: Set[String] = Set("mimeType", "creator", "author")
-
   private def renderValue(key: String, raw: Any): String = raw match {
     case seq: Seq[_] if seq != null =>
       seq.map(v => if (v != null) v.toString else "").filter(_.nonEmpty).mkString(", ")
@@ -147,8 +145,7 @@ class SlidingWindowChunkingStrategy(config: ChunkingConfig) extends ChunkingStra
       .map { case (key, value) =>
         val rendered = renderValue(key, value)
         if (rendered.isEmpty) ""
-        else if (keyedFields.contains(key)) s"$key: $rendered"
-        else rendered
+        else s"$key: $rendered"
       }
       .filter(_.nonEmpty)
       .mkString(" ")
