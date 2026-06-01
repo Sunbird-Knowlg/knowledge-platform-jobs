@@ -24,6 +24,7 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
   val postPublishTopic: String = config.getString("kafka.post_publish.topic")
   val mvcTopic: String = config.getString("kafka.mvc.topic")
   val contentMetadataTopic: String = config.getString("kafka.content_metadata.topic")
+  val enrichedMetadataTopic: String = config.getString("kafka.enriched_metadata.topic")
   val kafkaErrorTopic: String = config.getString("kafka.error.topic")
   val inputConsumerName = "content-publish-consumer"
 
@@ -44,6 +45,10 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
   val collectionPostPublishProcessEventCount = "collection-post-publish-process-count"
   val mvProcessorEventCount = "mvc-processor-event-count"
   val dialcodeContextUpdaterEventCount = "dialcode-context-updater-event-count"
+  val enrichedMetadataEventCount = "enriched-metadata-event-count"
+  val enrichOnlyEventCount = "enrich-only-event-count"
+  val enrichOnlySuccessCount = "enrich-only-success-count"
+  val enrichOnlyFailedCount = "enrich-only-failed-count"
 
   // Cassandra Configurations
   val cassandraHost: String = config.getString("lms-cassandra.host")
@@ -89,11 +94,23 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
   val mvcProcessorTag: OutputTag[String] = OutputTag[String]("mvc-processor-request")
   val dialcodeContextUpdaterOutTag: OutputTag[String] = OutputTag[String]("dialcode-context-updater-request")
   val contentMetadataEventOutTag: OutputTag[String] = OutputTag[String]("content-metadata-event-request")
+  val enrichedMetadataEventOutTag: OutputTag[String] = OutputTag[String]("enriched-metadata-event-request")
+  val enrichOnlyOutTag: OutputTag[Event] = OutputTag[Event]("enrich-only-request")
   val qrimageOutTag: OutputTag[String] = OutputTag[String]("qrimage-generator-request")
 
 
   val definitionBasePath: String = if (config.hasPath("schema.basePath")) config.getString("schema.basePath") else "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local"
   val schemaSupportVersionMap: Map[String, AnyRef] = if (config.hasPath("schema.supportedVersion")) config.getObject("schema.supportedVersion").unwrapped().asScala.toMap else Map[String, AnyRef]()
+
+  // Enrichment Configuration
+  val enrichedMetadataEnabled: Boolean = if (config.hasPath("enriched.metadata.enabled")) config.getBoolean("enriched.metadata.enabled") else false
+  val includeHierarchyInEnrichedMetadata: Boolean = if (config.hasPath("enriched.metadata.include_hierarchy")) config.getBoolean("enriched.metadata.include_hierarchy") else false
+
+  // Per-type enriched metadata configuration
+  val contentEnrichedMetadataEnabled: Boolean = if (config.hasPath("enriched.metadata.content.enabled")) config.getBoolean("enriched.metadata.content.enabled") else enrichedMetadataEnabled
+  val collectionEnrichedMetadataEnabled: Boolean = if (config.hasPath("enriched.metadata.collection.enabled")) config.getBoolean("enriched.metadata.collection.enabled") else enrichedMetadataEnabled
+  val questionEnrichedMetadataEnabled: Boolean = if (config.hasPath("enriched.metadata.question.enabled")) config.getBoolean("enriched.metadata.question.enabled") else enrichedMetadataEnabled
+  val questionSetEnrichedMetadataEnabled: Boolean = if (config.hasPath("enriched.metadata.questionset.enabled")) config.getBoolean("enriched.metadata.questionset.enabled") else enrichedMetadataEnabled
 
   val supportedObjectType: util.List[String] = if (config.hasPath("content.objectType")) config.getStringList("content.objectType") else util.Arrays.asList[String]("Content", "ContentImage", "Collection", "CollectionImage", "Question", "QuestionImage", "QuestionSet", "QuestionSetImage")
   val supportedMimeType: util.List[String] = if (config.hasPath("content.mimeType")) config.getStringList("content.mimeType") else util.Arrays.asList[String]("application/pdf", "application/vnd.sunbird.question", "application/vnd.sunbird.questionset")
