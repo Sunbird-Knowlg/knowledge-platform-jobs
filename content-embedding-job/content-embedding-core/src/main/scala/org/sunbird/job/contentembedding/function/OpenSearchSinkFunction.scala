@@ -59,7 +59,7 @@ class OpenSearchSinkFunction(config: ContentEmbeddingConfig)(implicit stringType
     } catch {
       case e: Exception =>
         logger.error(s"OpenSearch update failed for ${output.objectId}: ${e.getMessage}", e)
-        context.output(config.errorOutTag, s"""{"objectId":"${output.objectId}","stage":"opensearch","error":"${e.getMessage}"}""")
+        context.output(config.errorOutTag, ScalaJsonUtil.serialize(Map("objectId" -> output.objectId, "stage" -> "opensearch", "error" -> e.getMessage)))
         metrics.incCounter(config.failedEventCount)
     }
   }
