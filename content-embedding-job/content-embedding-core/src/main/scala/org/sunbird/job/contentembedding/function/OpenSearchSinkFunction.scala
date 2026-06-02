@@ -49,14 +49,9 @@ class OpenSearchSinkFunction(config: ContentEmbeddingConfig)(implicit stringType
   ): Unit = {
     try {
       val docJson = buildChunksDocument(output)
-      esUtil.updateDocument(output.objectId, docJson)
-
-      // ElasticSearchUtil.updateDocument swallows IOException and only logs. Verify the write
-      // landed by reading the doc back; otherwise we'd ack failed writes to Kafka.
-      val verifyDoc = esUtil.getDocumentAsString(output.objectId)
-      if (verifyDoc == null || verifyDoc.isEmpty) {
-        throw new RuntimeException(s"OpenSearch write verify failed: doc ${output.objectId} not found after update")
-      }
+      // wait_for refresh policy blocks until the shard refreshes, so IOException on failure
+      // propagates here instead of being swallowed — failed writes go to DLQ correctly.
+      esUtil.updateDocumentWithRefresh(output.objectId, docJson)
 
       logger.info(s"Updated OpenSearch chunks for ${output.objectId} (${output.contentType}, ${output.chunks.size} chunks)")
       metrics.incCounter(config.successEventCount)
