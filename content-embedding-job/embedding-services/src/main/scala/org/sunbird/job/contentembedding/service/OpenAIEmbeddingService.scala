@@ -7,6 +7,7 @@ import org.sunbird.job.util.ScalaJsonUtil
 import java.net.URI
 import java.net.http.{HttpClient, HttpRequest, HttpResponse}
 import java.time.Duration
+import scala.util.Random
 
 /**
  * Embedding service backed by OpenAI or Azure OpenAI REST API.
@@ -68,37 +69,48 @@ class OpenAIEmbeddingService(config: EmbeddingServiceConfig) extends EmbeddingSe
   // Request:  {"model": "...", "input": ["text1", "text2"]}
   // Response: {"data": [{"index": 0, "embedding": [...]}, ...]}
   // Max 2048 inputs per call — caller controls batch size via config.
+  // Transient errors (429, 5xx) are retried with exponential backoff + jitter.
+  // Non-transient 4xx (401, 403, 400) fail immediately without retry.
   override def embedBatch(texts: List[String]): List[Array[Double]] = {
     val requestBody = ScalaJsonUtil.serialize(Map("model" -> modelName, "input" -> texts))
+    val authHeader  = if (isAzure) ("api-key", apiKey) else ("Authorization", s"Bearer $apiKey")
 
-    val authHeader = if (isAzure) ("api-key", apiKey) else ("Authorization", s"Bearer $apiKey")
+    def attempt(retriesLeft: Int): List[Array[Double]] = {
+      val request = HttpRequest.newBuilder()
+        .uri(URI.create(API_URL))
+        .header("Content-Type", "application/json")
+        .header(authHeader._1, authHeader._2)
+        .timeout(Duration.ofSeconds(config.timeoutSeconds))
+        .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+        .build()
 
-    val request = HttpRequest.newBuilder()
-      .uri(URI.create(API_URL))
-      .header("Content-Type", "application/json")
-      .header(authHeader._1, authHeader._2)
-      .timeout(Duration.ofSeconds(config.timeoutSeconds))
-      .POST(HttpRequest.BodyPublishers.ofString(requestBody))
-      .build()
+      val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
+      val status   = response.statusCode()
 
-    val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
-
-    if (response.statusCode() != 200) {
-      // Surface status only; do not echo response body — it may quote our input or auth header.
-      throw new RuntimeException(s"OpenAI API error ${response.statusCode()} (body suppressed)")
+      if (status == 200) {
+        val responseMap = ScalaJsonUtil.deserialize[Map[String, Any]](response.body())
+        val dataList    = responseMap("data").asInstanceOf[List[Map[String, Any]]]
+        dataList.sortBy(_("index").asInstanceOf[Int])
+          .map(_("embedding").asInstanceOf[List[Any]].map {
+            case d: Double => d
+            case f: Float  => f.toDouble
+            case i: Int    => i.toDouble
+            case n         => n.toString.toDouble
+          }.toArray)
+      } else if ((status == 429 || status >= 500) && retriesLeft > 0) {
+        val attempt   = config.maxRetries - retriesLeft + 1
+        val jitter    = (Random.nextDouble() * config.retryBaseDelayMs).toLong
+        val delayMs   = (config.retryBaseDelayMs * Math.pow(2, attempt - 1).toLong) + jitter
+        logger.warn(s"OpenAI API transient error $status, retry $attempt/${config.maxRetries} in ${delayMs}ms")
+        Thread.sleep(delayMs)
+        this.attempt(retriesLeft - 1)
+      } else {
+        // Surface status only; do not echo response body — it may quote our input or auth header.
+        throw new RuntimeException(s"OpenAI API error $status (body suppressed)")
+      }
     }
 
-    val responseMap = ScalaJsonUtil.deserialize[Map[String, Any]](response.body())
-    val dataList    = responseMap("data").asInstanceOf[List[Map[String, Any]]]
-
-    // Sort by index — OpenAI guarantees order but being explicit
-    dataList.sortBy(_(  "index").asInstanceOf[Int])
-      .map(_("embedding").asInstanceOf[List[Any]].map {
-        case d: Double => d
-        case f: Float  => f.toDouble
-        case i: Int    => i.toDouble
-        case n         => n.toString.toDouble
-      }.toArray)
+    attempt(config.maxRetries)
   }
 
   override def close(): Unit = logger.info("OpenAIEmbeddingService closed")

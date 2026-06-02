@@ -19,9 +19,11 @@ import java.io.Serializable
  * @param port             TEI server port (E5 only).
  * @param apiKey           API key (OpenAI) or Azure API key.
  * @param model            Model name / deployment name for OpenAI.
- * @param azureEndpoint    Azure OpenAI resource endpoint, e.g. `https://<resource>.openai.azure.com/`.
- * @param azureApiVersion  Azure OpenAI API version (default `2024-12-01-preview`).
- * @param azureDeployment  Azure deployment name (defaults to `model` value).
+ * @param azureEndpoint      Azure OpenAI resource endpoint, e.g. `https://<resource>.openai.azure.com/`.
+ * @param azureApiVersion    Azure OpenAI API version (default `2024-12-01-preview`).
+ * @param azureDeployment    Azure deployment name (defaults to `model` value).
+ * @param maxRetries         Max retry attempts for transient errors (429, 5xx). Default 3.
+ * @param retryBaseDelayMs   Base delay in ms for exponential backoff. Default 500.
  */
 case class EmbeddingServiceConfig(
     serviceName: String,
@@ -33,5 +35,7 @@ case class EmbeddingServiceConfig(
     model: Option[String]           = None,
     azureEndpoint: Option[String]   = None,
     azureApiVersion: Option[String] = None,
-    azureDeployment: Option[String] = None
+    azureDeployment: Option[String] = None,
+    maxRetries: Int                 = 3,
+    retryBaseDelayMs: Long          = 500L
 ) extends Serializable
