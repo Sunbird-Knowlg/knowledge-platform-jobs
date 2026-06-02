@@ -224,10 +224,6 @@ class ConfigurableEnrichedMetadataEventBuilder(
     str.trim.toLowerCase().startsWith("enter description")
   }
 
-  private def validateEnrichedData(objectType: String, data: Map[String, Any]): Unit = {
-    logger.info(s"Enriched data validation passed for $objectType. Total fields: ${data.size}, Fields: ${data.keys.mkString(", ")}")
-  }
-
   /** Serialize enriched metadata event to JSON string.
     * @param event Event to serialize
     * @return JSON string representation

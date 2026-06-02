@@ -86,7 +86,7 @@ class E5EmbeddingService(config: EmbeddingServiceConfig) extends EmbeddingServic
     val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
 
     if (response.statusCode() != 200)
-      throw new RuntimeException(s"TEI server error ${response.statusCode()}: ${response.body().take(200)}")
+      throw new RuntimeException(s"TEI server error ${response.statusCode()} (body suppressed)")
 
     // TEI returns a raw array of arrays: [[v1, v2, ...], [v1, v2, ...]]
     val embeddingsList = ScalaJsonUtil.deserialize[List[List[Any]]](response.body())

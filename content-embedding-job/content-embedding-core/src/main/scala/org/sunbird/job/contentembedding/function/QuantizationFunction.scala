@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory
 import org.sunbird.job.contentembedding.domain.{ChunkEmbedding, EmbeddedEvent, EmbeddingOutput, VectorEmbedding}
 import org.sunbird.job.contentembedding.factory.QuantizationStrategyFactory
 import org.sunbird.job.contentembedding.task.ContentEmbeddingConfig
+import org.sunbird.job.util.ScalaJsonUtil
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 /**
@@ -75,7 +76,7 @@ class QuantizationFunction(config: ContentEmbeddingConfig)(implicit stringTypeIn
     } catch {
       case e: Exception =>
         logger.error(s"Error quantizing ${event.objectId}: ${e.getMessage}", e)
-        context.output(config.errorOutTag, s"""{"objectId":"${event.objectId}","stage":"quantization","error":"${e.getMessage}"}""")
+        context.output(config.errorOutTag, ScalaJsonUtil.serialize(Map("objectId" -> event.objectId, "stage" -> "quantization", "error" -> e.getMessage)))
         metrics.incCounter(config.failedEventCount)
     }
   }

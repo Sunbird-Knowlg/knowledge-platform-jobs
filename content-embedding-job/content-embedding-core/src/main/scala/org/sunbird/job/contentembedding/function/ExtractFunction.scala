@@ -87,7 +87,7 @@ class ExtractFunction(config: ContentEmbeddingConfig)(implicit stringTypeInfo: T
     } catch {
       case e: Exception =>
         logger.error(s"Error extracting enriched metadata event: ${e.getMessage}", e)
-        context.output(config.errorOutTag, s"Error extracting event: ${e.getMessage}")
+        context.output(config.errorOutTag, ScalaJsonUtil.serialize(Map("stage" -> "extract", "error" -> e.getMessage)))
         metrics.incCounter(config.failedEventCount)
     }
   }

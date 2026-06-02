@@ -132,12 +132,6 @@ object ContentEmbeddingStreamTask {
       val kafkaUtil = new FlinkKafkaConnector(embeddingConfig)
       val task = new ContentEmbeddingStreamTask(embeddingConfig, kafkaUtil)
 
-      // Register graceful shutdown hook
-      Runtime.getRuntime().addShutdownHook(new Thread(() => {
-        System.err.println("Shutdown signal received, finalizing pending writes...")
-        Thread.sleep(5000)
-      }))
-
       task.process()
     } catch {
       case e: Exception =>

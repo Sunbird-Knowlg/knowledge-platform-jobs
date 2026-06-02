@@ -7,6 +7,7 @@ import org.slf4j.LoggerFactory
 import org.sunbird.job.contentembedding.domain.{ChunkedEvent, EnrichedMetadataEvent}
 import org.sunbird.job.contentembedding.factory.ChunkingStrategyFactory
 import org.sunbird.job.contentembedding.task.ContentEmbeddingConfig
+import org.sunbird.job.util.ScalaJsonUtil
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 /**
@@ -59,7 +60,7 @@ class ChunkingFunction(config: ContentEmbeddingConfig)(implicit stringTypeInfo: 
     } catch {
       case e: Exception =>
         logger.error(s"Error chunking ${event.id}: ${e.getMessage}", e)
-        context.output(config.errorOutTag, s"""{"objectId":"${event.id}","stage":"chunking","error":"${e.getMessage}"}""")
+        context.output(config.errorOutTag, ScalaJsonUtil.serialize(Map("objectId" -> event.id, "stage" -> "chunking", "error" -> e.getMessage)))
         metrics.incCounter(config.failedEventCount)
     }
   }
