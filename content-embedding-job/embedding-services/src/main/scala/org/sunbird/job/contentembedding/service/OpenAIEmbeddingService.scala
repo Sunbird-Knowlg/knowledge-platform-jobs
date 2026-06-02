@@ -98,12 +98,12 @@ class OpenAIEmbeddingService(config: EmbeddingServiceConfig) extends EmbeddingSe
             case n         => n.toString.toDouble
           }.toArray)
       } else if ((status == 429 || status >= 500) && retriesLeft > 0) {
-        val attempt   = config.maxRetries - retriesLeft + 1
-        val jitter    = (Random.nextDouble() * config.retryBaseDelayMs).toLong
-        val delayMs   = (config.retryBaseDelayMs * Math.pow(2, attempt - 1).toLong) + jitter
-        logger.warn(s"OpenAI API transient error $status, retry $attempt/${config.maxRetries} in ${delayMs}ms")
+        val attemptNum = config.maxRetries - retriesLeft + 1
+        val jitter     = (Random.nextDouble() * config.retryBaseDelayMs).toLong
+        val delayMs    = (config.retryBaseDelayMs * (1L << (attemptNum - 1))) + jitter
+        logger.warn(s"OpenAI API transient error $status, retry $attemptNum/${config.maxRetries} in ${delayMs}ms")
         Thread.sleep(delayMs)
-        this.attempt(retriesLeft - 1)
+        attempt(retriesLeft - 1)
       } else {
         // Surface status only; do not echo response body — it may quote our input or auth header.
         throw new RuntimeException(s"OpenAI API error $status (body suppressed)")
