@@ -32,7 +32,7 @@ class PublishEventRouter(config: KnowlgPublishConfig) extends BaseProcessFunctio
     metrics.incCounter(config.totalEventsCount)
     logger.info(s"PublishEventRouter :: Received Event For Publish Having Identifier: ${event.identifier}")
 
-    if (event.action == "enrich" && event.identifier.nonEmpty) {
+    if (event.action == "enrich" && event.identifier.nonEmpty && config.supportedObjectType.contains(event.objectType)) {
       logger.info(s"PublishEventRouter :: Routing enrich-only request for: ${event.identifier}")
       context.output(config.enrichOnlyOutTag, event)
     } else if (event.validEvent(config)) {
