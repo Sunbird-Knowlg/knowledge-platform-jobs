@@ -65,7 +65,7 @@
 		<!-- Pin SLF4J to 1.7.x: Flink 1.18.1 uses SLF4J 1.7.x; logback 1.2.x requires SLF4J 1.7.x.
 		     The new cloud-storage-sdk-api 2.x declares slf4j-api 2.x transitively — override it here. -->
 		<slf4j.version>1.7.36</slf4j.version>
-		<cloud.storage.sdk.version>2.0.2-beta</cloud.storage.sdk.version>
+		<cloud.storage.sdk.version>2.0.2</cloud.storage.sdk.version>
 	</properties>
 
 	<repositories>
