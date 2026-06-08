@@ -52,7 +52,7 @@ class EnrichOnlyFunction(config: KnowlgPublishConfig,
   }
 
   override def metricsList(): List[String] =
-    List(config.enrichOnlyEventCount, config.enrichOnlySuccessCount, config.enrichOnlyFailedCount)
+    List(config.enrichOnlyEventCount, config.enrichOnlySuccessCount, config.enrichOnlyFailedCount, config.enrichOnlySkippedCount)
 
   override def processElement(
       event: Event,
@@ -65,7 +65,7 @@ class EnrichOnlyFunction(config: KnowlgPublishConfig,
 
     if (!config.enrichedMetadataEnabled) {
       logger.info(s"EnrichOnlyFunction: enriched metadata disabled globally, skipping $objectId")
-      metrics.incCounter(config.enrichOnlyFailedCount)
+      metrics.incCounter(config.enrichOnlySkippedCount)
       return
     }
 
@@ -79,7 +79,7 @@ class EnrichOnlyFunction(config: KnowlgPublishConfig,
 
     if (!isTypeEnabled) {
       logger.info(s"EnrichOnlyFunction: enriched metadata disabled for type ${event.objectType}, skipping $objectId")
-      metrics.incCounter(config.enrichOnlyFailedCount)
+      metrics.incCounter(config.enrichOnlySkippedCount)
       return
     }
 
@@ -113,7 +113,7 @@ class EnrichOnlyFunction(config: KnowlgPublishConfig,
         logger.error(s"EnrichOnlyFunction: failed for $objectId — ${e.getMessage}", e)
         metrics.incCounter(config.enrichOnlyFailedCount)
         context.output(config.failedEventOutTag,
-          s"""{"objectId":"$objectId","stage":"enrich-only","error":"${e.getMessage.replace("\"", "'")}"}""")
+          ScalaJsonUtil.serialize(Map("objectId" -> objectId, "stage" -> "enrich-only", "error" -> e.getMessage)))
     }
   }
 
