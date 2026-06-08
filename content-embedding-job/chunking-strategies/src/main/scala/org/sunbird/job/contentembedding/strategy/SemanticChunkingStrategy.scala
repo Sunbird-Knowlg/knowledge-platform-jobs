@@ -52,6 +52,7 @@ class SemanticChunkingStrategy(config: ChunkingConfig = ChunkingConfig("semantic
     "application/vnd.ekstep.ecml-archive"          -> "ECML interactive content",
     "application/vnd.ekstep.html-archive"          -> "HTML content",
     "application/vnd.ekstep.h5p-archive"           -> "H5P interactive content",
+    "application/vnd.ekstep.scorm-archive"          -> "Scorm content",
     "application/vnd.ekstep.content-archive"       -> "content archive",
     "application/vnd.ekstep.content-collection"    -> "content collection",
     "application/vnd.ekstep.plugin-archive"        -> "plugin archive",
