@@ -49,6 +49,7 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
   val enrichOnlyEventCount = "enrich-only-event-count"
   val enrichOnlySuccessCount = "enrich-only-success-count"
   val enrichOnlyFailedCount = "enrich-only-failed-count"
+  val enrichOnlySkippedCount = "enrich-only-skipped-count"
 
   // Cassandra Configurations
   val cassandraHost: String = config.getString("lms-cassandra.host")
