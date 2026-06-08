@@ -31,9 +31,11 @@ class PublishEventRouter(config: KnowlgPublishConfig) extends BaseProcessFunctio
   override def processElement(event: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
     metrics.incCounter(config.totalEventsCount)
     logger.info(s"PublishEventRouter :: Received Event For Publish Having Identifier: ${event.identifier}")
-    
-    // Event validation
-    if (event.validEvent(config)) {
+
+    if (event.action == "enrich" && event.identifier.nonEmpty && config.supportedObjectType.contains(event.objectType)) {
+      logger.info(s"PublishEventRouter :: Routing enrich-only request for: ${event.identifier}")
+      context.output(config.enrichOnlyOutTag, event)
+    } else if (event.validEvent(config)) {
       event.objectType match {
         case "Content" | "ContentImage" => {
           logger.info(s"PublishEventRouter :: Sending Content For Publish Having Identifier: ${event.identifier}")
@@ -57,7 +59,7 @@ class PublishEventRouter(config: KnowlgPublishConfig) extends BaseProcessFunctio
         }
       }
     } else {
-      logger.info(s"PublishEventRouter :: Event skipped for identifier: ${event.identifier}, objectType: ${event.objectType}")
+      logger.info(s"PublishEventRouter :: Event skipped for identifier: ${event.identifier}, action: ${event.action}, objectType: ${event.objectType}")
       metrics.incCounter(config.skippedEventCount)
     }
   }
