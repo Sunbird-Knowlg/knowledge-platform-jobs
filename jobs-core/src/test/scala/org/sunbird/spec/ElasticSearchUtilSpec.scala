@@ -1,7 +1,7 @@
 package org.sunbird.spec
 
 import com.typesafe.config.{Config, ConfigFactory}
-import org.elasticsearch.action.index.IndexResponse
+import org.opensearch.action.index.IndexResponse
 import org.scalatest.{FlatSpec, Matchers}
 import org.sunbird.job.util.ElasticSearchUtil
 

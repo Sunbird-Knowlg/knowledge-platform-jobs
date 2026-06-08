@@ -212,10 +212,10 @@ class TransactionEventProcessorConfig(override val config: Config)
     else false
   val esImage: String =
     if (config.hasPath("es.image")) config.getString("es.image")
-    else "docker.elastic.co/elasticsearch/elasticsearch"
+    else "opensearchproject/opensearch"
   val esImageTag: String =
     if (config.hasPath("es.imageTag")) config.getString("es.imageTag")
-    else "7.10.2"
+    else "2.19.5"
   val esPorts: util.List[String] =
     if (config.hasPath("es.ports")) config.getStringList("es.ports")
     else List("9200:9200").asJava
@@ -224,13 +224,15 @@ class TransactionEventProcessorConfig(override val config: Config)
     else "-Xms128m -Xmx512m"
   val esJavaOptsKey: String =
     if (config.hasPath("es.javaOptsKey")) config.getString("es.javaOptsKey")
-    else "ES_JAVA_OPTS"
+    else "OPENSEARCH_JAVA_OPTS"
+  // OpenSearch: plugins.security.disabled={true|false}. "true" disables security (default for local dev).
+  // Despite legacy field names, value "true" maps to plugins.security.disabled=true (security OFF).
   val xpackSecurityEnabled: String =
     if (config.hasPath("es.xpackSecurityEnabled"))
       config.getString("es.xpackSecurityEnabled")
-    else "false"
+    else "true"
   val xpackSecurityKey: String =
     if (config.hasPath("es.xpackSecurityKey"))
       config.getString("es.xpackSecurityKey")
-    else "xpack.security.enabled"
+    else "plugins.security.disabled"
 }

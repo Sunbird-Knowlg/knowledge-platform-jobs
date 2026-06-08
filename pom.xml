@@ -28,6 +28,7 @@
 			<modules>
 				<module>jobs-core</module>
 				<module>publish-pipeline</module>
+				<module>content-embedding-job</module>
 				<module>transaction-event-processor</module>
 				<module>qrcode-image-generator</module>
 				<module>dialcode-context-updater</module>
@@ -53,7 +54,7 @@
 		<!-- maven specific properties -->
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<scala.version>2.12</scala.version>
-		<scala.maj.version>2.12.11</scala.maj.version>
+		<scala.maj.version>2.12.19</scala.maj.version>
 		<flink.version>1.18.1</flink.version>
 		<kafka.version>3.9.2</kafka.version>
 		<jackson-jaxrs.version>1.9.13</jackson-jaxrs.version>
@@ -332,6 +333,27 @@
 						<highlighting>true</highlighting>
 						<excludedPackages>org.sunbird.incredible</excludedPackages>
 					</configuration>
+				</plugin>
+				<plugin>
+					<groupId>org.apache.maven.plugins</groupId>
+					<artifactId>maven-enforcer-plugin</artifactId>
+					<version>3.2.1</version>
+					<executions>
+						<execution>
+							<id>enforce-java</id>
+							<goals>
+								<goal>enforce</goal>
+							</goals>
+							<configuration>
+								<rules>
+									<requireJavaVersion>
+										<version>[11,)</version>
+										<message>Build requires Java 11 or higher (OpenSearch 2.19.5 client requires Java 11+ bytecode)</message>
+									</requireJavaVersion>
+								</rules>
+							</configuration>
+						</execution>
+					</executions>
 				</plugin>
 			</plugins>
 		</pluginManagement>

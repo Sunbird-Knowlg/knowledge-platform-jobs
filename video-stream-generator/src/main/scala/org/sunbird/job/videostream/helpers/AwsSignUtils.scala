@@ -60,9 +60,8 @@ object AwsSignUtils {
 
 	def uriEncode(input: Array[Char], encodeSlash: Boolean): String = {
 		val result: StringBuilder = new StringBuilder()
-		var i: Int = 0
-		for (i <- 0 to input.length()) {
-			val ch = input.charAt(i)
+		for (i <- 0 until input.length) {
+			val ch = input(i)
 			if ((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') || ch == '_' || ch == '-' || ch == '~' || ch == '.') {
 				result.append(ch)
 			} else if (ch == '/') {

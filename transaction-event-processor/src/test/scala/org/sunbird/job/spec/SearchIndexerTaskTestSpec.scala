@@ -9,7 +9,7 @@ import org.apache.flink.streaming.api.functions.source.SourceFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext
 import org.apache.flink.test.util.MiniClusterWithClientResource
 import org.apache.http.HttpHost
-import org.elasticsearch.client.{Request, RestClient, RestClientBuilder}
+import org.opensearch.client.{Request, RestClient, RestClientBuilder}
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.Mockito
 import org.mockito.Mockito.{doNothing, times, verify, when}
@@ -60,6 +60,7 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
     mock[ElasticSearchUtil](Mockito.withSettings().serializable())
   var elasticContainer = new ElasticsearchContainer(
     DockerImageName.parse(jobConfig.esImage).withTag(jobConfig.esImageTag)
+      .asCompatibleSubstituteFor("docker.elastic.co/elasticsearch/elasticsearch")
   )
   var restClient: RestClient = _
   val defCache = new DefinitionCache()

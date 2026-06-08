@@ -7,7 +7,7 @@ import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.api.common.eventtime.WatermarkStrategy
 import org.apache.flink.streaming.api.scala.{DataStream, StreamExecutionEnvironment}
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.knowlg.function.{CollectionPublishFunction, ContentPublishFunction, PublishEventRouter, QuestionPublishFunction, QuestionSetPublishFunction}
+import org.sunbird.job.knowlg.function.{CollectionPublishFunction, ContentPublishFunction, EnrichOnlyFunction, PublishEventRouter, QuestionPublishFunction, QuestionSetPublishFunction}
 import org.sunbird.job.knowlg.publish.domain.Event
 import org.sunbird.job.util.{FlinkUtil, HttpUtil}
 
@@ -50,11 +50,13 @@ class KnowlgPublishStreamTask(config: KnowlgPublishConfig, kafkaConnector: Flink
     contentPublish.getSideOutput(config.generateVideoStreamingOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.postPublishTopic))
     contentPublish.getSideOutput(config.mvcProcessorTag).sinkTo(kafkaConnector.kafkaStringSink(config.mvcTopic))
     contentPublish.getSideOutput(config.contentMetadataEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.contentMetadataTopic))
+    contentPublish.getSideOutput(config.enrichedMetadataEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.enrichedMetadataTopic))
     contentPublish.getSideOutput(config.failedEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
 
     val collectionPublish = processStreamTask.getSideOutput(config.collectionPublishOutTag).process(new CollectionPublishFunction(config, httpUtil))
       .name("collection-publish-process").uid("collection-publish-process").setParallelism(1)
     collectionPublish.getSideOutput(config.generatePostPublishProcessTag).sinkTo(kafkaConnector.kafkaStringSink(config.postPublishTopic))
+    collectionPublish.getSideOutput(config.enrichedMetadataEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.enrichedMetadataTopic))
     collectionPublish.getSideOutput(config.failedEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
 
     if (config.enableDIALContextUpdate.equalsIgnoreCase("Yes")) {
@@ -66,11 +68,18 @@ class KnowlgPublishStreamTask(config: KnowlgPublishConfig, kafkaConnector: Flink
 
     val questionPublish = processStreamTask.getSideOutput(config.questionPublishOutTag).process(new QuestionPublishFunction(config, httpUtil))
       .name("question-publish-process").uid("question-publish-process").setParallelism(1)
+    questionPublish.getSideOutput(config.enrichedMetadataEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.enrichedMetadataTopic))
     questionPublish.getSideOutput(config.failedEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
 
     val questionSetPublish = processStreamTask.getSideOutput(config.questionSetPublishOutTag).process(new QuestionSetPublishFunction(config, httpUtil))
       .name("questionset-publish-process").uid("questionset-publish-process").setParallelism(1)
+    questionSetPublish.getSideOutput(config.enrichedMetadataEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.enrichedMetadataTopic))
     questionSetPublish.getSideOutput(config.failedEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
+
+    val enrichOnly = processStreamTask.getSideOutput(config.enrichOnlyOutTag).process(new EnrichOnlyFunction(config))
+      .name("enrich-only-process").uid("enrich-only-process").setParallelism(1)
+    enrichOnly.getSideOutput(config.enrichedMetadataEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.enrichedMetadataTopic))
+    enrichOnly.getSideOutput(config.failedEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
   }
 }
 
