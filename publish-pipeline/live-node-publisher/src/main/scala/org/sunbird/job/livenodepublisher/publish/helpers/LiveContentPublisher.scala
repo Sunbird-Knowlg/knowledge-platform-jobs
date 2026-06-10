@@ -104,6 +104,8 @@ trait LiveContentPublisher extends LiveObjectReader with ObjectValidator with Ob
         messages += s"""There is no artifactUrl available for : $identifier"""
       else if (youtubeMimetypes.contains(obj.mimeType) && !isValidYouTubeUrl(artifactUrl))
         messages += s"""Invalid youtube Url = $artifactUrl for : $identifier"""
+      else if (obj.mimeType == MimeType.SCORM_Archive && !artifactUrl.toLowerCase.endsWith(".zip"))
+        messages += s"""Error! Invalid File Extension. SCORM content artifactUrl must be a .zip file for : $identifier"""
       else if (validateArtifactUrlMimetypes.contains(obj.mimeType) && !isValidUrl(artifactUrl, obj.mimeType, allowedExtensionsWord)) { // valid url check by downloading the file and then delete it
         // artifactUrl + valid url check by downloading the file
         obj.mimeType match {
@@ -208,7 +210,7 @@ trait LiveContentPublisher extends LiveObjectReader with ObjectValidator with Ob
         obj.mimeType match {
           case MimeType.Collection | MimeType.Plugin_Archive | MimeType.Android_Package | MimeType.ASSETS =>
             None
-          case MimeType.ECML_Archive | MimeType.HTML_Archive | MimeType.H5P_Archive =>
+          case MimeType.ECML_Archive | MimeType.HTML_Archive | MimeType.H5P_Archive | MimeType.SCORM_Archive =>
             val latestFolderS3Url = ExtractableMimeTypeHelper.getCloudStoreURL(obj, cloudStorageUtil, config)
             val relativeLatestFolder = if(config.isrRelativePathEnabled) StringUtils.replaceEach(latestFolderS3Url, config.config.getStringList("cloudstorage.write_base_path").asScala.toArray, Array(config.getString("cloudstorage.read_base_path", ""))) else latestFolderS3Url
             val updatedPreviewUrl = updatedMeta ++ Map("previewUrl" -> relativeLatestFolder, "streamingUrl" -> latestFolderS3Url)
