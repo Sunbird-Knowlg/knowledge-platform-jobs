@@ -130,6 +130,26 @@ class ElasticSearchUtil(connectionInfo: String, indexName: String, batchSize: In
     logger.info(s"Updated ${response.getId} to index ${response.getIndex}")
   }
 
+  @throws[IOException]
+  def bulkUpdateWithRefresh(updates: Map[String, String]): Map[String, Exception] = {
+    if (updates.isEmpty) return Map.empty
+    val bulkRequest = new BulkRequest
+    for ((id, document) <- updates) {
+      val doc = mapper.readValue(document, new TypeReference[util.Map[String, AnyRef]]() {})
+      val updatedDoc = checkDocStringLength(doc)
+      val indexRequest = new IndexRequest(indexName).id(id).source(updatedDoc)
+      val updateRequest = new UpdateRequest().index(indexName).id(id).doc(updatedDoc).upsert(indexRequest)
+        .setRefreshPolicy(WriteRequest.RefreshPolicy.WAIT_UNTIL)
+      bulkRequest.add(updateRequest)
+    }
+    val bulkResponse = esClient.bulk(bulkRequest, RequestOptions.DEFAULT)
+    if (!bulkResponse.hasFailures) return Map.empty
+    bulkResponse.getItems
+      .filter(_.isFailed)
+      .map(item => item.getId -> new IOException(s"OpenSearch bulk update failed for ${item.getId}: ${item.getFailureMessage}"))
+      .toMap
+  }
+
   def deleteDocument(identifier: String): Unit = {
     val response = esClient.delete(new DeleteRequest(indexName).id(identifier), RequestOptions.DEFAULT)
     logger.info(s"Deleted ${response.getId} to index ${response.getIndex}")
