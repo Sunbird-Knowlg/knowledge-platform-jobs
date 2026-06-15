@@ -34,6 +34,12 @@ class ContentEmbeddingConfig(override val config: Config) extends BaseJobConfig(
   val embeddingService: String    = getString("embedding.service", "e5")
   val quantizationStrategy: String = getString("quantization.strategy", "int8")
   val embeddingBatchSize: Int     = getInt("embedding.batch_size", 32)
+  val embeddingBatchEvents: Int   = getInt("embedding.batch_events", 10)
+  val embeddingWindowSizeMs: Long =
+    if (config.hasPath("embedding.window_size_ms")) config.getLong("embedding.window_size_ms") else 5000L
+  val osBulkSize: Int             = getInt("opensearch.bulk.size", 50)
+  val osBulkFlushIntervalMs: Long =
+    if (config.hasPath("opensearch.bulk.flush_interval_ms")) config.getLong("opensearch.bulk.flush_interval_ms") else 5000L
   // semantic strategy config
   val maxChunkSize: Int           = getInt("chunking.semantic.max_chunk_size", 1000)
   // Fields excluded from metadata extraction — applies to both chunking strategies.
