@@ -16,20 +16,20 @@ vectors to int8, and stores them as a nested `chunks` field on the existing Open
 Kafka (enriched.content.metadata)
   │
   ▼
-ExtractFunction          — deserialize JSON → EnrichedMetadataEvent
+ExtractFunction              — deserialize JSON → EnrichedMetadataEvent
   │ enrichedOutTag
   ▼
-ChunkingFunction         — split metadata into TextChunks
+ChunkingFunction             — split metadata into TextChunks
   │ chunkedOutTag
+  ▼  keyBy(objectId % parallelism)
+BatchEmbeddingFunction       — buffer events, flush as single embedBatch API call
+  │ embeddedOutTag             (up to batch_events per call, or window_size_ms timeout)
   ▼
-EmbeddingFunction        — batch embed via OpenAI / Azure OpenAI / E5
-  │ embeddedOutTag
-  ▼
-QuantizationFunction     — float32 → int8 (4× compression)
+QuantizationFunction         — float32 → int8 (4× compression)
   │ quantizedOutTag
-  ▼
-OpenSearchSinkFunction   — partial update on compositesearch (chunks field)
-  │
+  ▼  keyBy(constant 0)
+BatchedOpenSearchSinkFunction — buffer docs, flush via BulkRequest
+  │                             (up to bulk.size per request, or bulk.flush_interval_ms timeout)
   ├─ successOutTag → Kafka output topic (object IDs)
   └─ errorOutTag   → Kafka error topic (DLQ, all stages)
 ```
@@ -93,7 +93,11 @@ Best for long documents. Overlap preserves sentence context at boundaries.
 ```hocon
 embedding {
   service    = "openai"     # or "e5"
-  batch_size = 32
+  batch_size = 32           # max texts per embedBatch call (within one flush)
+
+  # Batching — how many events to accumulate before a single API call
+  batch_events   = 10       # flush after N events regardless of window
+  window_size_ms = 5000     # flush after N ms even if batch is not full
 
   openai {
     api_key          = ${?OPENAI_API_KEY}
@@ -139,6 +143,12 @@ opensearch {
   index.name  = "compositesearch"
   user        = ""
   password    = ""
+
+  # Bulk write batching
+  bulk {
+    size              = 50     # flush after N docs
+    flush_interval_ms = 5000   # flush after N ms even if buffer not full
+  }
 }
 ```
 
@@ -196,6 +206,32 @@ Default: 512-token window, 102-token overlap (≈20%). Both values are configura
 > **Note:** Whitespace-separated words are used as a token proxy — no external tokenizer dependency.
 > This approximation is intentional: true BPE token counts vary per model but word counts
 > are close enough to stay within the 512-token hard limit of E5 and OpenAI models.
+
+---
+
+## Batching Behaviour
+
+### Embedding (`BatchEmbeddingFunction`)
+
+Events are keyed by `Math.abs(objectId.hashCode) % embedding.parallelism` so each Flink task slot manages its own independent buffer. Two flush triggers:
+
+1. **Size trigger:** buffer reaches `embedding.batch_events` → immediate flush, stale timer cancelled.
+2. **Time trigger:** `embedding.window_size_ms` elapses since first event entered the buffer → flush whatever is in the buffer.
+
+Without the time trigger, events that don't fill a complete batch (e.g. the last N events in a burst) would sit in Flink state indefinitely — never flushed, never embedded. `window_size_ms` guarantees that any event is processed within that many milliseconds even if more events never arrive.
+
+**Observed throughput (450-event production run):** 46 API calls in ~53s vs ~450 calls in ~7.5 min without batching (~10× improvement).
+
+### OpenSearch (`BatchedOpenSearchSinkFunction`)
+
+All docs funnel into a single key (constant `0`, `sink.parallelism=1`). Same two-trigger pattern:
+
+1. Buffer reaches `opensearch.bulk.size` → `BulkRequest` sent immediately.
+2. `opensearch.bulk.flush_interval_ms` elapses → partial buffer flushed.
+
+Each `BulkRequest` uses `WAIT_UNTIL` refresh policy set **on the `BulkRequest` itself** (not on individual items — OpenSearch rejects per-item refresh policy inside a bulk request).
+
+Partial failures: `bulkUpdateWithRefresh` returns a `Map[objectId → Exception]` for failed items. Each failed item is routed individually to the DLQ; successful items in the same batch are not discarded.
 
 ---
 
@@ -263,4 +299,9 @@ task {
 ```
 
 The `embedding.parallelism` is typically the bottleneck. Scale it up alongside
-the OpenAI API tier rate limit.
+the OpenAI API tier rate limit. Each slot maintains its own event buffer and timer,
+so higher parallelism = more concurrent batch API calls.
+
+`sink.parallelism` must stay at `1` — `BatchedOpenSearchSinkFunction` keys all docs
+to a constant key (`0`) so a single slot holds the buffer and timer. Running more than
+one slot would split docs across multiple isolated buffers each writing separately.
