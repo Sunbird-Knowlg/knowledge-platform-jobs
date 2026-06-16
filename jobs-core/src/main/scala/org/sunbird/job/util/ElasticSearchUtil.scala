@@ -134,12 +134,12 @@ class ElasticSearchUtil(connectionInfo: String, indexName: String, batchSize: In
   def bulkUpdateWithRefresh(updates: Map[String, String]): Map[String, Exception] = {
     if (updates.isEmpty) return Map.empty
     val bulkRequest = new BulkRequest
+    bulkRequest.setRefreshPolicy(WriteRequest.RefreshPolicy.WAIT_UNTIL)
     for ((id, document) <- updates) {
       val doc = mapper.readValue(document, new TypeReference[util.Map[String, AnyRef]]() {})
       val updatedDoc = checkDocStringLength(doc)
       val indexRequest = new IndexRequest(indexName).id(id).source(updatedDoc)
       val updateRequest = new UpdateRequest().index(indexName).id(id).doc(updatedDoc).upsert(indexRequest)
-        .setRefreshPolicy(WriteRequest.RefreshPolicy.WAIT_UNTIL)
       bulkRequest.add(updateRequest)
     }
     val bulkResponse = esClient.bulk(bulkRequest, RequestOptions.DEFAULT)
