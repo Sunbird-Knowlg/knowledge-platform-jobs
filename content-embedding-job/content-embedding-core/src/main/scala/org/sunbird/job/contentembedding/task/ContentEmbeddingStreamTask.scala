@@ -85,9 +85,11 @@ class ContentEmbeddingStreamTask(config: ContentEmbeddingConfig, kafkaConnector:
 
     // Stage 3: Embed — keyed by bucket so each slot batches independently,
     // then flushed as a single API call per window/size threshold.
+    // Local val avoids lambda capturing `this` (ContentEmbeddingStreamTask is not Serializable).
+    val embeddingParallelism = config.embeddingParallelism
     val embeddingStream = chunkingStream
       .getSideOutput(config.chunkedOutTag)
-      .keyBy(e => Math.abs(e.objectId.hashCode) % config.embeddingParallelism)
+      .keyBy(e => Math.abs(e.objectId.hashCode) % embeddingParallelism)
       .process(new BatchEmbeddingFunction(config))
       .name("batch-generate-embeddings").uid("batch-generate-embeddings")
       .setParallelism(config.embeddingParallelism)
