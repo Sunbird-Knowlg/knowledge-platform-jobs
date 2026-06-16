@@ -302,6 +302,6 @@ The `embedding.parallelism` is typically the bottleneck. Scale it up alongside
 the OpenAI API tier rate limit. Each slot maintains its own event buffer and timer,
 so higher parallelism = more concurrent batch API calls.
 
-`sink.parallelism` must stay at `1` — `BatchedOpenSearchSinkFunction` keys all docs
-to a constant key (`0`) so a single slot holds the buffer and timer. Running more than
-one slot would split docs across multiple isolated buffers each writing separately.
+`sink.parallelism` should be `1`. `BatchedOpenSearchSinkFunction` keys all docs to a
+constant key (`0`), so all events always route to slot 0 regardless of parallelism —
+higher values are safe but waste slots.
