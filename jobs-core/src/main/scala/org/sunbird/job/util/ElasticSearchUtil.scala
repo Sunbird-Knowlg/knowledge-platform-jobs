@@ -138,8 +138,7 @@ class ElasticSearchUtil(connectionInfo: String, indexName: String, batchSize: In
     for ((id, document) <- updates) {
       val doc = mapper.readValue(document, new TypeReference[util.Map[String, AnyRef]]() {})
       val updatedDoc = checkDocStringLength(doc)
-      val indexRequest = new IndexRequest(indexName).id(id).source(updatedDoc)
-      val updateRequest = new UpdateRequest().index(indexName).id(id).doc(updatedDoc).upsert(indexRequest)
+      val updateRequest = new UpdateRequest().index(indexName).id(id).doc(updatedDoc)
       bulkRequest.add(updateRequest)
     }
     val bulkResponse = esClient.bulk(bulkRequest, RequestOptions.DEFAULT)
