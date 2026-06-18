@@ -23,7 +23,7 @@ import scala.collection.JavaConverters._
 abstract class BaseBatchingKeyedFunction[K, I, O](config: ContentEmbeddingConfig)
     extends BaseProcessKeyedFunction[K, I, O](config) {
 
-  private[this] val logger = LoggerFactory.getLogger(classOf[BaseBatchingKeyedFunction[_, _, _]])
+  private[this] val logger = LoggerFactory.getLogger(getClass)
 
   protected def batchSize: Int
   protected def windowMs: Long
