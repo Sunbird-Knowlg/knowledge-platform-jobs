@@ -24,9 +24,10 @@ import scala.collection.JavaConverters._
  *  - Processing-time timer fires after `embedding.window_size_ms` from the first
  *    event in the current buffer.
  *
- * All chunks from all buffered events are concatenated into one `embedBatch` call,
- * then redistributed back to per-event [[EmbeddedEvent]] side outputs. This reduces
- * API round-trips from N (one per event) to ceil(N / batch_events).
+ * All chunks from all buffered events are concatenated, then split into sub-batches
+ * of `embedding.batch_size` texts each — one `embedBatch` call per sub-batch.
+ * Results are concatenated in order and redistributed back to per-event [[EmbeddedEvent]]
+ * side outputs. API calls reduced from N (one per event) to ceil(totalChunks / batch_size).
  *
  * Keyed by `Math.abs(objectId.hashCode) % embeddingParallelism` so parallelism
  * is preserved — unlike `windowAll` which forces parallelism = 1.
@@ -125,21 +126,27 @@ class BatchEmbeddingFunction(config: ContentEmbeddingConfig)(implicit stringType
     if (events.isEmpty) return
 
     try {
-      // Flatten all chunks across all events into a single list for one API call.
-      // Track (eventIndex, chunkCount) so we can re-split the flat vector list.
+      // Flatten all chunks across all buffered events; track per-event chunk counts
+      // so we can re-split the flat vector list after embedding.
       val flatTexts: List[String] = events.flatMap(_.chunks.map(_.text))
       val chunkCounts: List[Int]  = events.map(_.chunks.size)
 
+      // Sub-batch by embeddingBatchSize to respect the API's input limit (OpenAI: 2048).
+      // Each sub-batch is one HTTP call; results are concatenated in order.
       val startNanos = System.nanoTime()
-      val allVectors = embeddingService.embedBatch(flatTexts)
+      val allVectors = flatTexts
+        .grouped(config.embeddingBatchSize)
+        .flatMap(embeddingService.embedBatch)
+        .toList
       val elapsedMs  = (System.nanoTime() - startNanos) / 1000000L
 
-      metrics.incCounter(config.embeddingApiCallCount)
+      val apiCalls = math.ceil(flatTexts.size.toDouble / config.embeddingBatchSize).toInt
+      (1 to apiCalls).foreach(_ => metrics.incCounter(config.embeddingApiCallCount))
       if (elapsedMs > config.embeddingSlowCallThresholdMs) {
         metrics.incCounter(config.embeddingSlowCallCount)
-        logger.warn(s"Slow embedding batch: ${elapsedMs}ms for ${events.size} events / ${flatTexts.size} texts")
+        logger.warn(s"Slow embedding batch: ${elapsedMs}ms for ${events.size} events / ${flatTexts.size} texts / $apiCalls API calls")
       }
-      logger.info(s"Embedded batch: ${events.size} events, ${flatTexts.size} chunks in ${elapsedMs}ms")
+      logger.info(s"Embedded batch: ${events.size} events, ${flatTexts.size} chunks, $apiCalls API calls in ${elapsedMs}ms")
 
       // Re-split flat vector list back to per-event slices using chunkCounts.
       var offset = 0
