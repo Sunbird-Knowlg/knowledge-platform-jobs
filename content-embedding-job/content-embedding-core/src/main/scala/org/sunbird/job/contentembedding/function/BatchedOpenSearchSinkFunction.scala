@@ -37,6 +37,7 @@ class BatchedOpenSearchSinkFunction(config: ContentEmbeddingConfig)(implicit str
   private var esUtil: ElasticSearchUtil = _
 
   @transient private var bufferState: ListState[EmbeddingOutput] = _
+  @transient private var bufferCount: ValueState[java.lang.Integer] = _
   @transient private var pendingTimer: ValueState[java.lang.Long] = _
 
   override def open(parameters: Configuration, metrics: Metrics): Unit = {
@@ -47,6 +48,9 @@ class BatchedOpenSearchSinkFunction(config: ContentEmbeddingConfig)(implicit str
 
     bufferState = getRuntimeContext.getListState(
       new ListStateDescriptor[EmbeddingOutput]("opensearch-sink-buffer", TypeInformation.of(new TypeHint[EmbeddingOutput]() {}))
+    )
+    bufferCount = getRuntimeContext.getState(
+      new ValueStateDescriptor[java.lang.Integer]("opensearch-buffer-count", Types.INT)
     )
     pendingTimer = getRuntimeContext.getState(
       new ValueStateDescriptor[java.lang.Long]("opensearch-pending-timer", Types.LONG)
@@ -65,10 +69,11 @@ class BatchedOpenSearchSinkFunction(config: ContentEmbeddingConfig)(implicit str
       context: KeyedProcessFunction[Int, EmbeddingOutput, String]#Context,
       metrics: Metrics
   ): Unit = {
-    val buffer = bufferState.get().asScala.toList
-    val isFirstInBuffer = buffer.isEmpty
+    val count = Option(bufferCount.value()).map(_.intValue()).getOrElse(0)
+    val isFirstInBuffer = count == 0
 
     bufferState.add(output)
+    bufferCount.update(count + 1)
 
     if (isFirstInBuffer && config.osBulkFlushIntervalMs > 0) {
       val flushAt = context.timerService().currentProcessingTime() + config.osBulkFlushIntervalMs
@@ -76,8 +81,7 @@ class BatchedOpenSearchSinkFunction(config: ContentEmbeddingConfig)(implicit str
       pendingTimer.update(flushAt)
     }
 
-    val updatedSize = buffer.size + 1
-    if (updatedSize >= config.osBulkSize) {
+    if (count + 1 >= config.osBulkSize) {
       logger.debug(s"OpenSearch bulk size threshold reached ($updatedSize docs), flushing")
       cancelPendingTimer(context.timerService())
       flush(context, metrics)
@@ -114,6 +118,7 @@ class BatchedOpenSearchSinkFunction(config: ContentEmbeddingConfig)(implicit str
   ): Unit = {
     val outputs = bufferState.get().asScala.toList
     bufferState.clear()
+    bufferCount.clear()
 
     if (outputs.isEmpty) return
 

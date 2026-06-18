@@ -46,6 +46,7 @@ class BatchEmbeddingFunction(config: ContentEmbeddingConfig)(implicit stringType
 
   @transient private var embeddingService: org.sunbird.job.contentembedding.service.EmbeddingService = _
   @transient private var bufferState: ListState[ChunkedEvent] = _
+  @transient private var bufferCount: ValueState[java.lang.Integer] = _
   @transient private var pendingTimer: ValueState[java.lang.Long] = _
 
   override def open(parameters: Configuration, metrics: Metrics): Unit = {
@@ -55,6 +56,9 @@ class BatchEmbeddingFunction(config: ContentEmbeddingConfig)(implicit stringType
 
     bufferState = getRuntimeContext.getListState(
       new ListStateDescriptor[ChunkedEvent]("embedding-buffer", TypeInformation.of(new TypeHint[ChunkedEvent]() {}))
+    )
+    bufferCount = getRuntimeContext.getState(
+      new ValueStateDescriptor[java.lang.Integer]("embedding-buffer-count", Types.INT)
     )
     pendingTimer = getRuntimeContext.getState(
       new ValueStateDescriptor[java.lang.Long]("embedding-pending-timer", Types.LONG)
@@ -78,10 +82,11 @@ class BatchEmbeddingFunction(config: ContentEmbeddingConfig)(implicit stringType
       context: KeyedProcessFunction[Int, ChunkedEvent, String]#Context,
       metrics: Metrics
   ): Unit = {
-    val buffer = bufferState.get().asScala.toList
-    val isFirstInBuffer = buffer.isEmpty
+    val count = Option(bufferCount.value()).map(_.intValue()).getOrElse(0)
+    val isFirstInBuffer = count == 0
 
     bufferState.add(event)
+    bufferCount.update(count + 1)
 
     if (isFirstInBuffer && config.embeddingWindowSizeMs > 0) {
       val flushAt = context.timerService().currentProcessingTime() + config.embeddingWindowSizeMs
@@ -89,8 +94,7 @@ class BatchEmbeddingFunction(config: ContentEmbeddingConfig)(implicit stringType
       pendingTimer.update(flushAt)
     }
 
-    val updatedSize = buffer.size + 1
-    if (updatedSize >= config.embeddingBatchEvents) {
+    if (count + 1 >= config.embeddingBatchEvents) {
       logger.debug(s"Embedding batch size threshold reached ($updatedSize events), flushing")
       cancelPendingTimer(context.timerService())
       flush(context, metrics)
@@ -127,6 +131,7 @@ class BatchEmbeddingFunction(config: ContentEmbeddingConfig)(implicit stringType
   ): Unit = {
     val events = bufferState.get().asScala.toList
     bufferState.clear()
+    bufferCount.clear()
 
     if (events.isEmpty) return
 
