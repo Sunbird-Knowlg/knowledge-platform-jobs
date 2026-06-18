@@ -29,10 +29,15 @@ import scala.collection.JavaConverters._
  * Results are concatenated in order and redistributed back to per-event [[EmbeddedEvent]]
  * side outputs. API calls reduced from N (one per event) to ceil(totalChunks / batch_size).
  *
- * Keyed by `Math.abs(objectId.hashCode) % embeddingParallelism` so parallelism
- * is preserved — unlike `windowAll` which forces parallelism = 1.
+ * Keyed by `Math.abs(objectId.hashCode) % embeddingParallelism` to produce exactly
+ * `embeddingParallelism` distinct integer keys. This forces events from different
+ * objectIds into shared key buckets so their chunks accumulate in the same buffer —
+ * keying by objectId directly would give each objectId its own independent buffer,
+ * defeating cross-event batching entirely. Flink maps these key buckets to subtasks
+ * via murmur hash (not 1:1 with parallelism), so slot load is approximately but not
+ * perfectly uniform.
  *
- * On batch failure every buffered event is individually routed to the DLQ.
+ * On batch failure each event is retried individually; only the broken event hits DLQ.
  */
 class BatchEmbeddingFunction(config: ContentEmbeddingConfig)(implicit stringTypeInfo: TypeInformation[String])
   extends BaseProcessKeyedFunction[Int, ChunkedEvent, String](config) {
