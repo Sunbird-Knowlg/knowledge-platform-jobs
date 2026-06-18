@@ -9,7 +9,7 @@ import org.apache.flink.streaming.api.scala.{DataStream, StreamExecutionEnvironm
 import org.slf4j.LoggerFactory
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.contentembedding.domain.{ChunkedEvent, EmbeddedEvent, EmbeddingOutput, EnrichedMetadataEvent}
-import org.sunbird.job.contentembedding.function.{ChunkingFunction, EmbeddingFunction, ExtractFunction, OpenSearchSinkFunction, QuantizationFunction}
+import org.sunbird.job.contentembedding.function.{BatchEmbeddingFunction, BatchedOpenSearchSinkFunction, ChunkingFunction, ExtractFunction, QuantizationFunction}
 import org.sunbird.job.util.FlinkUtil
 
 import java.io.File
@@ -20,11 +20,11 @@ import java.io.File
  * Pipeline stages (all connected via side outputs — main stream unused):
  * {{{
  *   Kafka input (enriched.content.metadata)
- *     └─► ExtractFunction      → enrichedOutTag
- *           └─► ChunkingFunction   → chunkedOutTag
- *                 └─► EmbeddingFunction  → embeddedOutTag
- *                       └─► QuantizationFunction → quantizedOutTag
- *                             └─► OpenSearchSinkFunction → successOutTag / errorOutTag
+ *     └─► ExtractFunction           → enrichedOutTag
+ *           └─► ChunkingFunction        → chunkedOutTag
+ *                 └─► BatchEmbeddingFunction  → embeddedOutTag  (buffered, single API call per batch)
+ *                       └─► QuantizationFunction    → quantizedOutTag
+ *                             └─► BatchedOpenSearchSinkFunction → successOutTag / errorOutTag  (bulk update)
  * }}}
  *
  * Errors from every stage fan-in to a shared DLQ (Kafka error topic).
@@ -39,6 +39,8 @@ class ContentEmbeddingStreamTask(config: ContentEmbeddingConfig, kafkaConnector:
 
   private implicit val stringTypeInfo: TypeInformation[String] =
     TypeExtractor.getForClass(classOf[String])
+  private implicit val intTypeInfo: TypeInformation[Int] =
+    TypeExtractor.getForClass(classOf[Int])
   private implicit val enrichedEventTypeInfo: TypeInformation[EnrichedMetadataEvent] =
     TypeExtractor.getForClass(classOf[EnrichedMetadataEvent])
   private implicit val chunkedEventTypeInfo: TypeInformation[ChunkedEvent] =
@@ -81,11 +83,15 @@ class ContentEmbeddingStreamTask(config: ContentEmbeddingConfig, kafkaConnector:
       .name("chunk-content").uid("chunk-content")
       .setParallelism(config.chunkingParallelism)
 
-    // Stage 3: Embed — fed from side output of chunking
+    // Stage 3: Embed — keyed by bucket so each slot batches independently,
+    // then flushed as a single API call per window/size threshold.
+    // Local val avoids lambda capturing `this` (ContentEmbeddingStreamTask is not Serializable).
+    val embeddingParallelism = config.embeddingParallelism
     val embeddingStream = chunkingStream
       .getSideOutput(config.chunkedOutTag)
-      .process(new EmbeddingFunction(config))
-      .name("generate-embeddings").uid("generate-embeddings")
+      .keyBy(e => Math.abs(e.objectId.hashCode) % embeddingParallelism)
+      .process(new BatchEmbeddingFunction(config))
+      .name("batch-generate-embeddings").uid("batch-generate-embeddings")
       .setParallelism(config.embeddingParallelism)
 
     // Stage 4: Quantize — fed from side output of embedding
@@ -95,11 +101,13 @@ class ContentEmbeddingStreamTask(config: ContentEmbeddingConfig, kafkaConnector:
       .name("quantize-vectors").uid("quantize-vectors")
       .setParallelism(config.quantizationParallelism)
 
-    // Stage 5: OpenSearch sink — fed from side output of quantization
+    // Stage 5: OpenSearch sink — keyed by constant 0 to access managed state + timers,
+    // then bulk-flushed per size/interval threshold.
     val sinkStream = quantizationStream
       .getSideOutput(config.quantizedOutTag)
-      .process(new OpenSearchSinkFunction(config))
-      .name("opensearch-sink").uid("opensearch-sink")
+      .keyBy(_ => 0)
+      .process(new BatchedOpenSearchSinkFunction(config))
+      .name("batched-opensearch-sink").uid("batched-opensearch-sink")
       .setParallelism(config.sinkParallelism)
 
     // Success IDs → output topic
