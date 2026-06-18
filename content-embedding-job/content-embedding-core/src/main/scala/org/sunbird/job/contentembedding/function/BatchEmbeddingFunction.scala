@@ -148,6 +148,9 @@ class BatchEmbeddingFunction(config: ContentEmbeddingConfig)(implicit stringType
       }
       logger.info(s"Embedded batch: ${events.size} events, ${flatTexts.size} chunks, $apiCalls API calls in ${elapsedMs}ms")
 
+      require(allVectors.size == flatTexts.size,
+        s"embedBatch returned ${allVectors.size} vectors for ${flatTexts.size} texts — cannot split safely")
+
       // Re-split flat vector list back to per-event slices using chunkCounts.
       var offset = 0
       events.zip(chunkCounts).foreach { case (event, count) =>
