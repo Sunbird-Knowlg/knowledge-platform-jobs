@@ -1,59 +1,46 @@
 package org.sunbird.job.contentembedding.function
 
-import org.apache.flink.api.common.state.{ListState, ListStateDescriptor, ValueState, ValueStateDescriptor}
-import org.apache.flink.api.common.typeinfo.{TypeHint, TypeInformation, Types}
+import org.apache.flink.api.common.state.ListStateDescriptor
+import org.apache.flink.api.common.typeinfo.{TypeHint, TypeInformation}
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.streaming.api.functions.KeyedProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.contentembedding.domain.EmbeddingOutput
 import org.sunbird.job.contentembedding.task.ContentEmbeddingConfig
 import org.sunbird.job.util.{ElasticSearchUtil, ScalaJsonUtil}
-import org.sunbird.job.{BaseProcessKeyedFunction, Metrics}
-
-import scala.collection.JavaConverters._
+import org.sunbird.job.Metrics
 
 /**
  * Stage 5 (terminal) of the content embedding pipeline — batched variant.
  *
  * Buffers [[EmbeddingOutput]] documents and flushes them to OpenSearch as a
  * single bulk update request, replacing the per-document `updateDocumentWithRefresh`
- * call in [[OpenSearchSinkFunction]].
+ * call in the old `OpenSearchSinkFunction`.
  *
- * Flush is triggered by whichever comes first:
- *  - Buffer reaches `opensearch.bulk.size` documents.
- *  - Processing-time timer fires after `opensearch.bulk.flush_interval_ms`.
- *
+ * Windowing protocol (size + time triggers) is handled by [[BaseBatchingKeyedFunction]].
  * Partial bulk failures are handled per-item: succeeded documents emit to
  * `successOutTag`; failed documents are individually routed to the DLQ (`errorOutTag`).
  *
- * Keyed by constant `0` — sink parallelism is 1, keying is used only to
- * gain access to Flink managed state and processing-time timers via
- * [[BaseProcessKeyedFunction]].
+ * Keyed by constant `0` — sink parallelism must be 1 (enforced in [[ContentEmbeddingConfig]]).
+ * Keying is used only to access Flink managed state and processing-time timers.
  */
 class BatchedOpenSearchSinkFunction(config: ContentEmbeddingConfig)(implicit stringTypeInfo: TypeInformation[String])
-  extends BaseProcessKeyedFunction[Int, EmbeddingOutput, String](config) {
+  extends BaseBatchingKeyedFunction[Int, EmbeddingOutput, String](config) {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[BatchedOpenSearchSinkFunction])
   private var esUtil: ElasticSearchUtil = _
 
-  @transient private var bufferState: ListState[EmbeddingOutput] = _
-  @transient private var bufferCount: ValueState[java.lang.Integer] = _
-  @transient private var pendingTimer: ValueState[java.lang.Long] = _
+  override protected def batchSize: Int = config.osBulkSize
+  override protected def windowMs: Long = config.osBulkFlushIntervalMs
 
   override def open(parameters: Configuration, metrics: Metrics): Unit = {
     val connectionInfo = s"${config.openSearchHost}:${config.openSearchPort}"
     esUtil = new ElasticSearchUtil(connectionInfo, config.openSearchIndexName)
     logger.info(s"BatchedOpenSearchSinkFunction ready: $connectionInfo index=${config.openSearchIndexName} " +
       s"bulkSize=${config.osBulkSize} flushIntervalMs=${config.osBulkFlushIntervalMs}")
-
-    bufferState = getRuntimeContext.getListState(
-      new ListStateDescriptor[EmbeddingOutput]("opensearch-sink-buffer", TypeInformation.of(new TypeHint[EmbeddingOutput]() {}))
-    )
-    bufferCount = getRuntimeContext.getState(
-      new ValueStateDescriptor[java.lang.Integer]("opensearch-buffer-count", Types.INT)
-    )
-    pendingTimer = getRuntimeContext.getState(
-      new ValueStateDescriptor[java.lang.Long]("opensearch-pending-timer", Types.LONG)
+    initWindowState(
+      new ListStateDescriptor[EmbeddingOutput]("opensearch-sink-buffer", TypeInformation.of(new TypeHint[EmbeddingOutput]() {})),
+      "opensearch"
     )
   }
 
@@ -64,64 +51,11 @@ class BatchedOpenSearchSinkFunction(config: ContentEmbeddingConfig)(implicit str
 
   override def metricsList(): List[String] = List(config.successEventCount, config.failedEventCount)
 
-  override def processElement(
-      output: EmbeddingOutput,
+  override protected def doFlush(
+      outputs: List[EmbeddingOutput],
       context: KeyedProcessFunction[Int, EmbeddingOutput, String]#Context,
       metrics: Metrics
   ): Unit = {
-    val count = Option(bufferCount.value()).map(_.intValue()).getOrElse(0)
-    val isFirstInBuffer = count == 0
-
-    bufferState.add(output)
-    bufferCount.update(count + 1)
-
-    if (isFirstInBuffer && config.osBulkFlushIntervalMs > 0) {
-      val flushAt = context.timerService().currentProcessingTime() + config.osBulkFlushIntervalMs
-      context.timerService().registerProcessingTimeTimer(flushAt)
-      pendingTimer.update(flushAt)
-    }
-
-    if (count + 1 >= config.osBulkSize) {
-      logger.debug(s"OpenSearch bulk size threshold reached ($updatedSize docs), flushing")
-      cancelPendingTimer(context.timerService())
-      flush(context, metrics)
-    }
-  }
-
-  override def onTimer(
-      timestamp: Long,
-      ctx: KeyedProcessFunction[Int, EmbeddingOutput, String]#OnTimerContext,
-      metrics: Metrics
-  ): Unit = {
-    val registered = pendingTimer.value()
-    if (registered != null && registered == timestamp) {
-      val buffer = bufferState.get().asScala.toList
-      if (buffer.nonEmpty) {
-        logger.debug(s"OpenSearch flush timer fired, flushing ${buffer.size} buffered docs")
-        pendingTimer.clear()
-        flush(ctx, metrics)
-      }
-    }
-  }
-
-  private def cancelPendingTimer(timerService: org.apache.flink.streaming.api.TimerService): Unit = {
-    val ts = pendingTimer.value()
-    if (ts != null) {
-      timerService.deleteProcessingTimeTimer(ts)
-      pendingTimer.clear()
-    }
-  }
-
-  private def flush(
-      context: KeyedProcessFunction[Int, EmbeddingOutput, String]#Context,
-      metrics: Metrics
-  ): Unit = {
-    val outputs = bufferState.get().asScala.toList
-    bufferState.clear()
-    bufferCount.clear()
-
-    if (outputs.isEmpty) return
-
     // Deduplicate by objectId (last-wins) before building the bulk request.
     // Without this, .toMap silently drops earlier versions while the loop below
     // would still emit successOutTag for every duplicate — 1 write, N successes.
@@ -133,7 +67,6 @@ class BatchedOpenSearchSinkFunction(config: ContentEmbeddingConfig)(implicit str
 
     try {
       val failures: Map[String, Exception] = esUtil.bulkUpdateWithRefresh(docs)
-
       deduped.foreach { output =>
         failures.get(output.objectId) match {
           case Some(ex) =>
