@@ -117,12 +117,19 @@ class BatchedOpenSearchSinkFunction(config: ContentEmbeddingConfig)(implicit str
 
     if (outputs.isEmpty) return
 
-    val docs: Map[String, String] = outputs.map(o => o.objectId -> buildChunksDocument(o)).toMap
+    // Deduplicate by objectId (last-wins) before building the bulk request.
+    // Without this, .toMap silently drops earlier versions while the loop below
+    // would still emit successOutTag for every duplicate — 1 write, N successes.
+    val deduped = outputs.groupBy(_.objectId).values.map(_.last).toList
+    if (deduped.size < outputs.size)
+      logger.warn(s"Deduplicated ${outputs.size - deduped.size} duplicate objectId(s) before bulk flush")
+
+    val docs: Map[String, String] = deduped.map(o => o.objectId -> buildChunksDocument(o)).toMap
 
     try {
       val failures: Map[String, Exception] = esUtil.bulkUpdateWithRefresh(docs)
 
-      outputs.foreach { output =>
+      deduped.foreach { output =>
         failures.get(output.objectId) match {
           case Some(ex) =>
             logger.error(s"OpenSearch bulk update failed for ${output.objectId}: ${ex.getMessage}")
@@ -136,11 +143,11 @@ class BatchedOpenSearchSinkFunction(config: ContentEmbeddingConfig)(implicit str
             metrics.incCounter(config.successEventCount)
         }
       }
-      logger.info(s"OpenSearch bulk flush: ${outputs.size} docs, ${failures.size} failures")
+      logger.info(s"OpenSearch bulk flush: ${deduped.size} docs, ${failures.size} failures")
     } catch {
       case e: Exception =>
-        logger.error(s"OpenSearch bulk flush failed entirely for ${outputs.size} docs: ${e.getMessage}", e)
-        outputs.foreach { output =>
+        logger.error(s"OpenSearch bulk flush failed entirely for ${deduped.size} docs: ${e.getMessage}", e)
+        deduped.foreach { output =>
           context.output(config.errorOutTag, ScalaJsonUtil.serialize(
             Map("objectId" -> output.objectId, "stage" -> "opensearch", "error" -> e.getMessage)
           ))
