@@ -173,12 +173,36 @@ class BatchEmbeddingFunction(config: ContentEmbeddingConfig)(implicit stringType
       }
     } catch {
       case e: Exception =>
-        logger.error(s"Batch embedding failed for ${events.size} events: ${e.getMessage}", e)
+        logger.warn(s"Batch embedding failed for ${events.size} events, retrying individually: ${e.getMessage}")
         events.foreach { event =>
-          context.output(config.errorOutTag, ScalaJsonUtil.serialize(
-            Map("objectId" -> event.objectId, "stage" -> "embedding", "error" -> e.getMessage)
-          ))
-          metrics.incCounter(config.failedEventCount)
+          try {
+            val vectors = event.chunks.map(_.text)
+              .grouped(config.embeddingBatchSize)
+              .flatMap(embeddingService.embedBatch)
+              .toList
+            val embeddedChunks = event.chunks.zip(vectors).map { case (chunk, vector) =>
+              EmbeddedChunk(
+                text        = chunk.text,
+                sourceField = chunk.sourceField,
+                chunkIndex  = chunk.index,
+                vector      = vector,
+                wordCount   = chunk.text.split("\\s+").length,
+                modelId     = embeddingService.getName
+              )
+            }
+            metrics.incCounter(config.embeddedEventsCount)
+            context.output(
+              config.embeddedOutTag,
+              EmbeddedEvent(event.objectId, event.contentType, event.schemaVersion, embeddedChunks)
+            )
+          } catch {
+            case ex: Exception =>
+              logger.error(s"Embedding failed for ${event.objectId}: ${ex.getMessage}", ex)
+              context.output(config.errorOutTag, ScalaJsonUtil.serialize(
+                Map("objectId" -> event.objectId, "stage" -> "embedding", "error" -> ex.getMessage)
+              ))
+              metrics.incCounter(config.failedEventCount)
+          }
         }
     }
   }
