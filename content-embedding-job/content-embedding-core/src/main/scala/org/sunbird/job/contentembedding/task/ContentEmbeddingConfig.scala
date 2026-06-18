@@ -132,6 +132,7 @@ class ContentEmbeddingConfig(override val config: Config) extends BaseJobConfig(
   require(embeddingWindowSizeMs > 0, s"embedding.window_size_ms must be > 0, got $embeddingWindowSizeMs — set a positive value; there is no supported way to disable the flush timer")
   require(osBulkSize > 0, s"opensearch.bulk.size must be > 0, got $osBulkSize")
   require(osBulkFlushIntervalMs > 0, s"opensearch.bulk.flush_interval_ms must be > 0, got $osBulkFlushIntervalMs — set a positive value; there is no supported way to disable the flush timer")
+  require(sinkParallelism == 1, s"task.sink.parallelism must be 1 — BatchedOpenSearchSinkFunction keys all docs to constant 0; extra subtasks sit permanently idle while one slot bottlenecks. Got $sinkParallelism")
 
   def quantizationStrategyConfig: QuantizationConfig = QuantizationConfig(strategyName = quantizationStrategy)
 
