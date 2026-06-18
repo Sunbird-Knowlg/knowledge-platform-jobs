@@ -128,6 +128,10 @@ class ContentEmbeddingConfig(override val config: Config) extends BaseJobConfig(
     require(apiKey.nonEmpty,
       "embedding.openai.api_key must be set (env OPENAI_API_KEY) when embedding.service=openai")
   }
+  require(embeddingBatchEvents > 0, s"embedding.batch_events must be > 0, got $embeddingBatchEvents")
+  require(embeddingWindowSizeMs > 0, s"embedding.window_size_ms must be > 0, got $embeddingWindowSizeMs — set a positive value; there is no supported way to disable the flush timer")
+  require(osBulkSize > 0, s"opensearch.bulk.size must be > 0, got $osBulkSize")
+  require(osBulkFlushIntervalMs > 0, s"opensearch.bulk.flush_interval_ms must be > 0, got $osBulkFlushIntervalMs — set a positive value; there is no supported way to disable the flush timer")
 
   def quantizationStrategyConfig: QuantizationConfig = QuantizationConfig(strategyName = quantizationStrategy)
 
