@@ -229,7 +229,9 @@ trait ObjectBundle {
 
   def getMediaUrl(media: List[Map[String, AnyRef]], identifier: String, pkgType: String): Map[AnyRef, String] = {
     media.map(entry => {
-      val url = entry.getOrElse("baseUrl", "").asInstanceOf[String] + entry.getOrElse("src", "").asInstanceOf[String]
+      val src = entry.getOrElse("src", "").asInstanceOf[String]
+      // src may already be an absolute URL (e.g. asset-enrichment stores absolute blob URLs); only prepend baseUrl for relative paths
+      val url = if (src.startsWith("http")) src else entry.getOrElse("baseUrl", "").asInstanceOf[String] + src
       if (url.isInstanceOf[String] && validUrl(url.asInstanceOf[String])) {
         Map[AnyRef, String](url -> (identifier.trim + entry.getOrElse("src", "").asInstanceOf[String]))
       } else Map[AnyRef, String]()
