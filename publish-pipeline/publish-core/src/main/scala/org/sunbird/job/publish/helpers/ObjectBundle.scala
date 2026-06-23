@@ -7,7 +7,7 @@ import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.exception.InvalidInputException
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ObjectData}
-import org.sunbird.job.util.{FileUtils, JSONUtil, JanusGraphUtil, ScalaJsonUtil, Slug}
+import org.sunbird.job.util.{CSPMetaUtil, FileUtils, JSONUtil, JanusGraphUtil, ScalaJsonUtil, Slug}
 
 import java.io._
 import java.net.URL
@@ -227,9 +227,15 @@ trait ObjectBundle {
     })
   }
 
-  def getMediaUrl(media: List[Map[String, AnyRef]], identifier: String, pkgType: String): Map[AnyRef, String] = {
+  def getMediaUrl(media: List[Map[String, AnyRef]], identifier: String, pkgType: String)(implicit config: PublishConfig): Map[AnyRef, String] = {
     media.map(entry => {
-      val url = entry.getOrElse("baseUrl", "").asInstanceOf[String] + entry.getOrElse("src", "").asInstanceOf[String]
+      val rawSrc = entry.getOrElse("src", "").asInstanceOf[String]
+      // src may be: an absolute URL (asset-enrichment stores absolute blob URLs), a storage placeholder
+      // (e.g. CONTENT_STORAGE_BASE_PATH/...), or a legacy relative path. Resolve a placeholder to the
+      // configured read_base_path via CSPMetaUtil (the stored baseUrl can be stale/unresolvable);
+      // fall back to baseUrl + src only for legacy relative paths.
+      val resolved = if (rawSrc.startsWith("http")) rawSrc else CSPMetaUtil.updateAbsolutePath(rawSrc)
+      val url = if (resolved.startsWith("http")) resolved else entry.getOrElse("baseUrl", "").asInstanceOf[String] + resolved
       if (url.isInstanceOf[String] && validUrl(url.asInstanceOf[String])) {
         Map[AnyRef, String](url -> (identifier.trim + entry.getOrElse("src", "").asInstanceOf[String]))
       } else Map[AnyRef, String]()
