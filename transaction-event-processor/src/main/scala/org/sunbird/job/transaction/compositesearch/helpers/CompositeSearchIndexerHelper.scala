@@ -128,7 +128,7 @@ trait CompositeSearchIndexerHelper {
     )
     indexDocument.put(
       "node_id",
-      message.getOrElse("nodeGraphId", 0).asInstanceOf[Integer]
+      Long.box(message.getOrElse("nodeGraphId", 0).asInstanceOf[Number].longValue())
     )
     indexDocument.put(
       "identifier",

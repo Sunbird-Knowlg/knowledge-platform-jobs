@@ -153,6 +153,23 @@ class SearchIndexerTaskTestSpec extends BaseTestSpec {
     )
   }
 
+  it should "index a nodeGraphId larger than Int.MaxValue without losing precision" in {
+    val definition =
+      defCache.getDefinition("Collection", "1.0", jobConfig.definitionBasePath)
+    val compositeFunc = new CompositeSearchIndexerFunction(jobConfig)
+    val bigId: Long = 2170888320L // > Int.MaxValue (2147483647)
+    val message = getEvent(EventFixture.DATA_NODE_CREATE, 509674).getMap().asScala.toMap +
+      ("nodeGraphId" -> Long.box(bigId))
+    val indexDocument: Map[String, AnyRef] = compositeFunc.getIndexDocument(
+      message,
+      false,
+      definition,
+      jobConfig.nestedFields.asScala.toList,
+      jobConfig.ignoredFields
+    )(mockElasticUtil)
+    indexDocument.getOrElse("node_id", 0).asInstanceOf[Long] should be(bigId)
+  }
+
   it should "return the indexable document with the added relation for the provided object" in {
     val definition =
       defCache.getDefinition("Collection", "1.0", jobConfig.definitionBasePath)
