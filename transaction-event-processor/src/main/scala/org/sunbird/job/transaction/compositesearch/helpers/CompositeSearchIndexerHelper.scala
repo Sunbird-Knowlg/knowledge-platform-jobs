@@ -128,7 +128,7 @@ trait CompositeSearchIndexerHelper {
     )
     indexDocument.put(
       "node_id",
-      message.getOrElse("nodeGraphId", 0).asInstanceOf[Integer]
+      Long.box(message.getOrElse("nodeGraphId", 0).asInstanceOf[Number].longValue())
     )
     indexDocument.put(
       "identifier",
@@ -285,7 +285,7 @@ trait CompositeSearchIndexerHelper {
     messageMap.put("objectType", objectType)
     messageMap.put("graphId", graphId)
     messageMap.put("nodeType", nodeType)
-    messageMap.put("nodeGraphId", Integer.valueOf(event.readOrDefault("nodeGraphId", 0)))
+    messageMap.put("nodeGraphId", Long.box(event.readOrDefault[AnyRef]("nodeGraphId", Int.box(0)).asInstanceOf[Number].longValue()))
     messageMap.put("transactionData", Map("properties" -> properties))
 
     CompositeIndexer(graphId, objectType, identifier, event.readOrDefault("mid", ""), messageMap, config)

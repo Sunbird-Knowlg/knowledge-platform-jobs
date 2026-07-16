@@ -34,6 +34,12 @@ class ContentEmbeddingConfig(override val config: Config) extends BaseJobConfig(
   val embeddingService: String    = getString("embedding.service", "e5")
   val quantizationStrategy: String = getString("quantization.strategy", "int8")
   val embeddingBatchSize: Int     = getInt("embedding.batch_size", 32)
+  val embeddingBatchEvents: Int   = getInt("embedding.batch_events", 10)
+  val embeddingWindowSizeMs: Long =
+    if (config.hasPath("embedding.window_size_ms")) config.getLong("embedding.window_size_ms") else 5000L
+  val osBulkSize: Int             = getInt("opensearch.bulk.size", 50)
+  val osBulkFlushIntervalMs: Long =
+    if (config.hasPath("opensearch.bulk.flush_interval_ms")) config.getLong("opensearch.bulk.flush_interval_ms") else 5000L
   // semantic strategy config
   val maxChunkSize: Int           = getInt("chunking.semantic.max_chunk_size", 1000)
   // Fields excluded from metadata extraction — applies to both chunking strategies.
@@ -122,6 +128,11 @@ class ContentEmbeddingConfig(override val config: Config) extends BaseJobConfig(
     require(apiKey.nonEmpty,
       "embedding.openai.api_key must be set (env OPENAI_API_KEY) when embedding.service=openai")
   }
+  require(embeddingBatchEvents > 0, s"embedding.batch_events must be > 0, got $embeddingBatchEvents")
+  require(embeddingWindowSizeMs > 0, s"embedding.window_size_ms must be > 0, got $embeddingWindowSizeMs — set a positive value; there is no supported way to disable the flush timer")
+  require(osBulkSize > 0, s"opensearch.bulk.size must be > 0, got $osBulkSize")
+  require(osBulkFlushIntervalMs > 0, s"opensearch.bulk.flush_interval_ms must be > 0, got $osBulkFlushIntervalMs — set a positive value; there is no supported way to disable the flush timer")
+  require(sinkParallelism == 1, s"task.sink.parallelism must be 1 — BatchedOpenSearchSinkFunction keys all docs to constant 0; extra subtasks sit permanently idle while one slot bottlenecks. Got $sinkParallelism")
 
   def quantizationStrategyConfig: QuantizationConfig = QuantizationConfig(strategyName = quantizationStrategy)
 
