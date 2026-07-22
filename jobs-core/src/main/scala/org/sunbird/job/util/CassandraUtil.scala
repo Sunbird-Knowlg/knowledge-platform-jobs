@@ -13,6 +13,11 @@ class CassandraUtil(host: String, port: Int, config: BaseJobConfig) extends Seri
 
   val isrRelativePathEnabled = config.getBoolean("cloudstorage.metadata.replace_absolute_path", false)
 
+  // Bounded reconnect-and-retry for read queries. Previously findOne/find recursed on every
+  // DriverException with no cap, so a persistently failing query (bad CQL, node down, timeout)
+  // recursed until StackOverflowError and took the whole task down.
+  private val maxQueryRetries: Int = 3
+
   val cluster = {
     Cluster.builder()
       .addContactPoints(host)
@@ -22,27 +27,24 @@ class CassandraUtil(host: String, port: Int, config: BaseJobConfig) extends Seri
   }
   var session = cluster.connect()
 
-  def findOne(query: String): Row = {
-    try {
-      val rs: ResultSet = session.execute(query)
-      val result = rs.one
-      result
-    } catch {
-      case ex: DriverException =>
-        logger.error(s"findOne - Error while executing query $query :: ", ex)
-        this.reconnect()
-        this.findOne(query)
-    }
-  }
+  def findOne(query: String): Row = executeWithRetry(query, 1)(q => session.execute(q).one)
 
-  def find(query: String): util.List[Row] = {
+  def find(query: String): util.List[Row] = executeWithRetry(query, 1)(q => session.execute(q).all)
+
+  // Reconnect-and-retry up to maxQueryRetries, then rethrow so the caller (Flink) can
+  // dead-letter/restart instead of the previous unbounded recursion -> StackOverflowError.
+  private def executeWithRetry[T](query: String, attempt: Int)(op: String => T): T = {
     try {
-      val rs: ResultSet = session.execute(query)
-      rs.all
+      op(query)
     } catch {
       case ex: DriverException =>
+        if (attempt >= maxQueryRetries) {
+          logger.error(s"Cassandra query failed after $maxQueryRetries attempts, giving up: $query", ex)
+          throw ex
+        }
+        logger.error(s"Cassandra query error (attempt $attempt of $maxQueryRetries), reconnecting: $query", ex)
         this.reconnect()
-        this.find(query)
+        executeWithRetry(query, attempt + 1)(op)
     }
   }
 
