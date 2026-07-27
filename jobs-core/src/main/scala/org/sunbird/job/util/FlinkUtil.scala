@@ -1,17 +1,24 @@
 package org.sunbird.job.util
 
-import org.apache.flink.api.common.restartstrategy.RestartStrategies
+import org.apache.flink.configuration.Configuration
+import org.apache.flink.configuration.RestartStrategyOptions
 import org.apache.flink.runtime.state.hashmap.HashMapStateBackend
 import org.apache.flink.runtime.state.storage.FileSystemCheckpointStorage
 import org.apache.flink.streaming.api.environment.CheckpointConfig
-import org.apache.flink.streaming.api.environment.CheckpointConfig.ExternalizedCheckpointCleanup
-import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 import org.sunbird.job.BaseJobConfig
+
+import java.time.Duration
 
 object FlinkUtil {
 
   def getExecutionContext(config: BaseJobConfig): StreamExecutionEnvironment = {
-    val env: StreamExecutionEnvironment = StreamExecutionEnvironment.getExecutionEnvironment
+    val flinkConfig = new Configuration()
+    flinkConfig.set(RestartStrategyOptions.RESTART_STRATEGY, "fixed-delay")
+    flinkConfig.set(RestartStrategyOptions.RESTART_STRATEGY_FIXED_DELAY_ATTEMPTS, Integer.valueOf(config.restartAttempts))
+    flinkConfig.set(RestartStrategyOptions.RESTART_STRATEGY_FIXED_DELAY_DELAY, Duration.ofMillis(config.delayBetweenAttempts))
+
+    val env: StreamExecutionEnvironment = StreamExecutionEnvironment.getExecutionEnvironment(flinkConfig)
     env.getConfig.setUseSnapshotCompression(config.enableCompressedCheckpointing)
     env.enableCheckpointing(config.checkpointingInterval)
     env.getCheckpointConfig.setCheckpointTimeout(config.checkpointingTimeout)
@@ -28,12 +35,11 @@ object FlinkUtil {
         checkpointConfig.setCheckpointStorage(
           new FileSystemCheckpointStorage(s"${config.checkpointingBaseUrl.getOrElse("")}/${config.jobName}")
         )
-        checkpointConfig.enableExternalizedCheckpoints(ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION)
+        checkpointConfig.enableExternalizedCheckpoints(CheckpointConfig.ExternalizedCheckpointCleanup.RETAIN_ON_CANCELLATION)
         checkpointConfig.setMinPauseBetweenCheckpoints(config.checkpointingPauseSeconds)
       case _ => // Do nothing
     }
 
-    env.setRestartStrategy(RestartStrategies.fixedDelayRestart(config.restartAttempts, config.delayBetweenAttempts))
     env
   }
 }

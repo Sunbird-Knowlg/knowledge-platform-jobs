@@ -3,7 +3,7 @@ package org.sunbird.job.contentembedding.task
 import com.typesafe.config.Config
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
-import org.apache.flink.streaming.api.scala.OutputTag
+import org.apache.flink.util.OutputTag
 import org.sunbird.job.BaseJobConfig
 import org.sunbird.job.contentembedding.domain.{ChunkedEvent, ChunkingConfig, EmbeddedEvent, EmbeddingOutput, EmbeddingServiceConfig, EnrichedMetadataEvent, QuantizationConfig}
 import scala.collection.JavaConverters._
@@ -92,12 +92,12 @@ class ContentEmbeddingConfig(override val config: Config) extends BaseJobConfig(
     TypeExtractor.getForClass(classOf[EmbeddingOutput])
 
   // Output Tags — pipeline routing via side outputs (Flink codebase pattern)
-  val errorOutTag: OutputTag[String]                     = OutputTag[String]("embedding-error")
-  val successOutTag: OutputTag[String]                   = OutputTag[String]("embedding-success")
-  val enrichedOutTag: OutputTag[EnrichedMetadataEvent]   = OutputTag[EnrichedMetadataEvent]("enriched-metadata")
-  val chunkedOutTag: OutputTag[ChunkedEvent]             = OutputTag[ChunkedEvent]("chunked-event")
-  val embeddedOutTag: OutputTag[EmbeddedEvent]           = OutputTag[EmbeddedEvent]("embedded-event")
-  val quantizedOutTag: OutputTag[EmbeddingOutput]        = OutputTag[EmbeddingOutput]("quantized-event")
+  val errorOutTag: OutputTag[String]                     = new OutputTag[String]("embedding-error", stringTypeInfo)
+  val successOutTag: OutputTag[String]                   = new OutputTag[String]("embedding-success", stringTypeInfo)
+  val enrichedOutTag: OutputTag[EnrichedMetadataEvent]   = new OutputTag[EnrichedMetadataEvent]("enriched-metadata", enrichedMetadataEventTypeInfo)
+  val chunkedOutTag: OutputTag[ChunkedEvent]             = new OutputTag[ChunkedEvent]("chunked-event", chunkedEventTypeInfo)
+  val embeddedOutTag: OutputTag[EmbeddedEvent]           = new OutputTag[EmbeddedEvent]("embedded-event", embeddedEventTypeInfo)
+  val quantizedOutTag: OutputTag[EmbeddingOutput]        = new OutputTag[EmbeddingOutput]("quantized-event", embeddingOutputTypeInfo)
 
   def embeddingServiceConfig: EmbeddingServiceConfig = embeddingService match {
     case "e5" => EmbeddingServiceConfig(

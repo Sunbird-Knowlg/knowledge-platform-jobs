@@ -5,7 +5,8 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.api.common.eventtime.WatermarkStrategy
-import org.apache.flink.streaming.api.scala.{DataStream, StreamExecutionEnvironment}
+import org.apache.flink.streaming.api.datastream.DataStream
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.knowlg.function.{CollectionPublishFunction, ContentPublishFunction, EnrichOnlyFunction, PublishEventRouter, QuestionPublishFunction, QuestionSetPublishFunction}
 import org.sunbird.job.knowlg.publish.domain.Event
