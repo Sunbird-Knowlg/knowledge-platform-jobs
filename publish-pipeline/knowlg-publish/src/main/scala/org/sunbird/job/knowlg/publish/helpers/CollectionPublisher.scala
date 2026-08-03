@@ -7,6 +7,7 @@ import org.apache.commons.collections.{CollectionUtils, MapUtils}
 import org.apache.commons.io.FileUtils
 import org.apache.commons.lang3.StringUtils
 import org.slf4j.LoggerFactory
+import org.sunbird.job.cache.DataCache
 import org.sunbird.job.knowlg.task.KnowlgPublishConfig
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.exception.InvalidInputException
@@ -722,24 +723,24 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
    * @param cassandraUtil Cassandra utility instance
    * @param config Configuration object
    */
-  def updateHierarchyRelationships(obj: ObjectData)(implicit cassandraUtil: CassandraUtil, config: KnowlgPublishConfig): Unit = {
+  def updateHierarchyRelationships(obj: ObjectData, dataCache: DataCache)(implicit cassandraUtil: CassandraUtil, config: KnowlgPublishConfig): Unit = {
     try {
       val rootId = obj.identifier.replace(".img", "")
       val hierarchy = getHierarchyFromDb(rootId)
-      
+
       if (MapUtils.isNotEmpty(hierarchy)) {
         val leafNodesMap = getLeafNodes(rootId, hierarchy)
         logger.info("Leaf-nodes cache updating for: " + leafNodesMap.size)
-        storeRelationshipData(rootId, "leafnodes", leafNodesMap)
-        
+        storeRelationshipData(rootId, "leafnodes", leafNodesMap, dataCache)
+
         val optionalNodesMap = getOptionalNodes(rootId, hierarchy)
         logger.info("Optional-nodes cache updating for: " + optionalNodesMap.size)
-        storeRelationshipData(rootId, "optionalnodes", optionalNodesMap)
-        
+        storeRelationshipData(rootId, "optionalnodes", optionalNodesMap, dataCache)
+
         val ancestorsMap = getAncestors(rootId, hierarchy)
         logger.info("Ancestors cache updating for: "+ ancestorsMap.size)
-        storeRelationshipData(rootId, "ancestors", ancestorsMap)
-        
+        storeRelationshipData(rootId, "ancestors", ancestorsMap, dataCache)
+
         logger.info(s"Hierarchy relationships updated for collection: $rootId")
       } else {
         logger.warn("Hierarchy Empty: " + obj.identifier)
@@ -859,18 +860,22 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     if (CollectionUtils.isEmpty(children)) List().asJava else children
   }
 
-  private def storeRelationshipData(rootId: String, relationshipType: String, dataMap: Map[String, List[String]])
+  private def storeRelationshipData(rootId: String, relationshipType: String, dataMap: Map[String, List[String]], dataCache: DataCache)
                                    (implicit cassandraUtil: CassandraUtil, config: KnowlgPublishConfig): Unit = {
     try {
       dataMap.foreach { case (identifier, nodeIds) =>
         val relationshipKey = if (StringUtils.isNotBlank(rootId)) s"${rootId}:${identifier}:${relationshipType}" else s"${identifier}:${relationshipType}"
-        val insertQuery = QueryBuilder.insertInto(config.collectionHierarchyKeyspaceName, config.collectionHierarchyTableName)
-        insertQuery.value("relationship_key", relationshipKey)
-        insertQuery.value("node_ids", nodeIds.asJava)
-        
-        val result = cassandraUtil.upsert(insertQuery.toString)
-        if (!result) {
-          logger.error(s"Failed to store relationship data for key: $relationshipKey")
+        if (config.redisEnabled) {
+          dataCache.setWithRetry(relationshipKey, ScalaJsonUtil.serialize(nodeIds))
+        } else {
+          val insertQuery = QueryBuilder.insertInto(config.collectionHierarchyKeyspaceName, config.collectionHierarchyTableName)
+          insertQuery.value("relationship_key", relationshipKey)
+          insertQuery.value("node_ids", nodeIds.asJava)
+
+          val result = cassandraUtil.upsert(insertQuery.toString)
+          if (!result) {
+            logger.error(s"Failed to store relationship data for key: $relationshipKey")
+          }
         }
       }
     } catch {
