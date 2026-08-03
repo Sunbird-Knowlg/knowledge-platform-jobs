@@ -860,13 +860,13 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     if (CollectionUtils.isEmpty(children)) List().asJava else children
   }
 
-  private def storeRelationshipData(rootId: String, relationshipType: String, dataMap: Map[String, List[String]], dataCache: DataCache)
+  protected def storeRelationshipData(rootId: String, relationshipType: String, dataMap: Map[String, List[String]], dataCache: DataCache)
                                    (implicit cassandraUtil: CassandraUtil, config: KnowlgPublishConfig): Unit = {
     try {
       dataMap.foreach { case (identifier, nodeIds) =>
         val relationshipKey = if (StringUtils.isNotBlank(rootId)) s"${rootId}:${identifier}:${relationshipType}" else s"${identifier}:${relationshipType}"
         if (config.redisEnabled) {
-          dataCache.setWithRetry(relationshipKey, ScalaJsonUtil.serialize(nodeIds))
+          dataCache.createListWithRetry(relationshipKey, nodeIds)
         } else {
           val insertQuery = QueryBuilder.insertInto(config.collectionHierarchyKeyspaceName, config.collectionHierarchyTableName)
           insertQuery.value("relationship_key", relationshipKey)
