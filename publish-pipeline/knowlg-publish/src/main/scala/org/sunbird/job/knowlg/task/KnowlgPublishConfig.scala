@@ -68,7 +68,6 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
 
   // Redis Configurations
   val nodeStore: Int = if (redisEnabled) config.getInt("redis.database.contentCache.id") else 0
-  val hierarchyRelationsDbId: Int = if (config.hasPath("redis.database.hierarchyRelations.id")) config.getInt("redis.database.hierarchyRelations.id") else 10
   // Question/QuestionSet Configurations (merged from questionset-publish)
   val questionKeyspaceName: String = if (config.hasPath("question.keyspace")) config.getString("question.keyspace") else contentKeyspaceName
   val questionTableName: String = if (config.hasPath("question.table")) config.getString("question.table") else contentTableName

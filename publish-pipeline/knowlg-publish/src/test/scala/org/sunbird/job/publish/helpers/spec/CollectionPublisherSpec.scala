@@ -263,9 +263,9 @@ class CollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Match
     cassandraUtil.upsert(s"INSERT INTO ${jobConfig.hierarchyKeyspaceName}.${jobConfig.hierarchyTableName}(identifier, hierarchy) VALUES ('$rootId', '$hierarchyJson');")
 
     val redisConnect = new RedisConnect(jobConfig)
-    val dataCache = new DataCache(jobConfig, redisConnect, jobConfig.hierarchyRelationsDbId, List())
+    val dataCache = new DataCache(jobConfig, redisConnect, jobConfig.nodeStore, List())
     dataCache.init()
-    val jedis = redisConnect.getConnection(jobConfig.hierarchyRelationsDbId)
+    val jedis = redisConnect.getConnection(jobConfig.nodeStore)
     try {
       val obj = new ObjectData(rootId, Map("identifier" -> rootId), Some(Map.empty[String, AnyRef]))
       new TestCollectionPublisher().updateHierarchyRelationships(obj, dataCache)(cassandraUtil, jobConfig)
