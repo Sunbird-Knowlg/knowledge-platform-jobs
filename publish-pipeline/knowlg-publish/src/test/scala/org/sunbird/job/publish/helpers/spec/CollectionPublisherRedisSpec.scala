@@ -27,9 +27,9 @@ class CollectionPublisherRedisSpec extends FlatSpec with Matchers {
 
   "storeRelationshipData" should "write leaf/optional/ancestor node ids to Redis when redis is enabled" in {
     val redisConnect = new RedisConnect(jobConfig)
-    val dataCache = new DataCache(jobConfig, redisConnect, jobConfig.nodeStore, List())
+    val dataCache = new DataCache(jobConfig, redisConnect, jobConfig.hierarchyRelationsDbId, List())
     dataCache.init()
-    val jedis = redisConnect.getConnection(jobConfig.nodeStore)
+    val jedis = redisConnect.getConnection(jobConfig.hierarchyRelationsDbId)
     try {
       val publisher = new TestCollectionPublisher()
       publisher.testStoreRelationshipData(rootId, "leafnodes", Map(unitId -> List(leaf1Id, leaf2Id)), dataCache)(cassandraUtil, jobConfig)

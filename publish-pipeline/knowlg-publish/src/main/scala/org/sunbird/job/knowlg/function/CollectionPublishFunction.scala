@@ -37,6 +37,7 @@ class CollectionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
   private[this] val logger = LoggerFactory.getLogger(classOf[CollectionPublishFunction])
   val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
   private var cache: DataCache = _
+  private var hierarchyRelationsCache: DataCache = _
   private val COLLECTION_CACHE_KEY_PREFIX = "hierarchy_"
   private val COLLECTION_CACHE_KEY_SUFFIX = ":leafnodes"
   private var fieldConfig: FieldConfiguration = _
@@ -56,6 +57,8 @@ class CollectionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
     definitionConfig = DefinitionConfig(config.schemaSupportVersionMap, config.definitionBasePath)
     cache = new DataCache(config, new RedisConnect(config), config.nodeStore, List())
     cache.init()
+    hierarchyRelationsCache = new DataCache(config, new RedisConnect(config), config.hierarchyRelationsDbId, List())
+    hierarchyRelationsCache.init()
     fieldConfig = new FieldConfiguration(config.getConfig())
     enrichedMetadataEventBuilder = new ConfigurableEnrichedMetadataEventBuilder(fieldConfig, config.enrichedMetadataTopic, config.includeHierarchyInEnrichedMetadata)
   }
@@ -64,6 +67,7 @@ class CollectionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
     super.close()
     cassandraUtil.close()
     cache.close()
+    hierarchyRelationsCache.close()
   }
 
   override def metricsList(): List[String] = {
@@ -133,7 +137,7 @@ class CollectionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
           logger.info(s"KN-856: Step:8 - After publishHierarchy Collection:  ${successObj.identifier} | Hierarchy: $updatedChildren");
           
           // Update collection hierarchy relationships - use enrichedObj which has complete hierarchy
-          updateHierarchyRelationships(enrichedObj, cache)(cassandraUtil, config)
+          updateHierarchyRelationships(enrichedObj, hierarchyRelationsCache)(cassandraUtil, config)
           logger.info(s"After updateHierarchyRelationships Collection:  ${enrichedObj.identifier}");
 
           //TODO: Save IMAGE Object with enrichedObj children and collRelationalMetadata when pkgVersion is 1 - verify with MaheshG
