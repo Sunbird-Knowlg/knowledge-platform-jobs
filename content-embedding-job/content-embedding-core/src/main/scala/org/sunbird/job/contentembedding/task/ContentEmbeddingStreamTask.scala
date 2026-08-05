@@ -114,14 +114,19 @@ class ContentEmbeddingStreamTask(config: ContentEmbeddingConfig, kafkaConnector:
     // Success IDs → output topic
     sinkStream.getSideOutput(config.successOutTag)
       .sinkTo(kafkaConnector.kafkaStringSink(config.kafkaOutputTopic))
+      .name("opensearch-sink-output-sink").uid("opensearch-sink-output-sink")
 
     // Error DLQ — collect from all stages
-    val errorSink = kafkaConnector.kafkaStringSink(config.kafkaErrorTopic)
-    extractStream.getSideOutput(config.errorOutTag).sinkTo(errorSink)
-    chunkingStream.getSideOutput(config.errorOutTag).sinkTo(errorSink)
-    embeddingStream.getSideOutput(config.errorOutTag).sinkTo(errorSink)
-    quantizationStream.getSideOutput(config.errorOutTag).sinkTo(errorSink)
-    sinkStream.getSideOutput(config.errorOutTag).sinkTo(errorSink)
+    extractStream.getSideOutput(config.errorOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
+      .name("extract-error-sink").uid("extract-error-sink")
+    chunkingStream.getSideOutput(config.errorOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
+      .name("chunking-error-sink").uid("chunking-error-sink")
+    embeddingStream.getSideOutput(config.errorOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
+      .name("embedding-error-sink").uid("embedding-error-sink")
+    quantizationStream.getSideOutput(config.errorOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
+      .name("quantization-error-sink").uid("quantization-error-sink")
+    sinkStream.getSideOutput(config.errorOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
+      .name("opensearch-sink-error-sink").uid("opensearch-sink-error-sink")
 
     logger.info("Content embedding pipeline built")
   }
