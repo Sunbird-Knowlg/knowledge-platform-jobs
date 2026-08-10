@@ -739,7 +739,12 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
         val ancestorsMap = getAncestors(rootId, hierarchy)
         logger.info("Ancestors cache updating for: "+ ancestorsMap.size)
         storeRelationshipData(rootId, "ancestors", ancestorsMap)
-        
+
+        // trackablenodes: ordered trackable descendant courses (read by lern-service for LP detect/order)
+        val trackableNodesMap = getTrackableNodes(rootId, hierarchy)
+        logger.info("Trackable-nodes cache updating for: " + trackableNodesMap.size)
+        storeRelationshipData(rootId, "trackablenodes", trackableNodesMap)
+
         logger.info(s"Hierarchy relationships updated for collection: $rootId")
       } else {
         logger.warn("Hierarchy Empty: " + obj.identifier)
@@ -852,6 +857,34 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
       Map(identifier -> parents)
     }
     ancestorsMap.filter(m => m._2.nonEmpty)
+  }
+
+  /** Ordered trackable descendant courses of the root (document order, any depth), excluding the root. */
+  private def getTrackableNodes(rootId: String, hierarchy: java.util.Map[String, AnyRef]): Map[String, List[String]] = {
+    val ordered = mutable.ListBuffer.empty[String]
+    def walk(node: java.util.Map[String, AnyRef]): Unit = {
+      getChildren(node).asScala.foreach { child =>
+        if (isCollection(child)) {
+          val id = child.getOrDefault("identifier", "").asInstanceOf[String]
+          if (isTrackable(child) && StringUtils.isNotBlank(id)) ordered += id
+          walk(child)
+        }
+      }
+    }
+    walk(hierarchy)
+    if (ordered.nonEmpty) Map(rootId -> ordered.toList.distinct) else Map()
+  }
+
+  // trackable.enabled == "Yes"; trackable may be a Map (published) or a JSON string on some nodes.
+  private def isTrackable(content: java.util.Map[String, AnyRef]): Boolean = {
+    val enabled = content.get("trackable") match {
+      case m: java.util.Map[_, _] => m.asInstanceOf[java.util.Map[String, AnyRef]].getOrDefault("enabled", "").toString
+      case s: String if StringUtils.isNotBlank(s) =>
+        try new com.fasterxml.jackson.databind.ObjectMapper().readValue(s, classOf[java.util.Map[String, AnyRef]]).getOrDefault("enabled", "").toString
+        catch { case _: Throwable => "" }
+      case _ => ""
+    }
+    StringUtils.equalsIgnoreCase(enabled, "Yes")
   }
 
   private def getChildren(hierarchy: java.util.Map[String, AnyRef]) = {
