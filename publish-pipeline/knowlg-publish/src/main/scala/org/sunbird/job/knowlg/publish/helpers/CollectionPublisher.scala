@@ -859,11 +859,11 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     ancestorsMap.filter(m => m._2.nonEmpty)
   }
 
-  /** Ordered trackable descendant courses of the root (document order, any depth), excluding the root. */
+  /** Ordered trackable descendant courses of the root (authored `index` order, any depth), excluding the root. */
   private def getTrackableNodes(rootId: String, hierarchy: java.util.Map[String, AnyRef]): Map[String, List[String]] = {
     val ordered = mutable.ListBuffer.empty[String]
     def walk(node: java.util.Map[String, AnyRef]): Unit = {
-      getChildren(node).asScala.foreach { child =>
+      getChildren(node).asScala.sortBy(indexOf).foreach { child =>   // siblings in authored index order = unlock order
         if (isCollection(child)) {
           val id = child.getOrDefault("identifier", "").asInstanceOf[String]
           if (isTrackable(child) && StringUtils.isNotBlank(id)) ordered += id
@@ -873,6 +873,13 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     }
     walk(hierarchy)
     if (ordered.nonEmpty) Map(rootId -> ordered.toList.distinct) else Map()
+  }
+
+  // A node's sibling position (`index`); missing/unparseable sorts last so it never jumps ahead of ordered peers.
+  private def indexOf(node: java.util.Map[String, AnyRef]): Double = node.get("index") match {
+    case n: Number => n.doubleValue()
+    case s: String if StringUtils.isNotBlank(s) => try s.toDouble catch { case _: Throwable => Double.MaxValue }
+    case _ => Double.MaxValue
   }
 
   // trackable.enabled == "Yes"; trackable may be a Map (published) or a JSON string on some nodes.
