@@ -3,7 +3,7 @@ package org.sunbird.job
 import org.apache.flink.configuration.Configuration
 import org.apache.flink.metrics.Gauge
 import org.apache.flink.streaming.api.functions.{KeyedProcessFunction, ProcessFunction}
-import org.apache.flink.streaming.api.scala.function.ProcessWindowFunction
+import org.apache.flink.streaming.api.functions.windowing.ProcessWindowFunction
 import org.apache.flink.streaming.api.windowing.windows.{GlobalWindow, TimeWindow}
 import org.apache.flink.util.Collector
 
@@ -69,10 +69,10 @@ abstract class WindowBaseProcessFunction[I, O, K](config: BaseJobConfig) extends
 
   def process(key: K,
               context: ProcessWindowFunction[I, O, K, GlobalWindow]#Context,
-              elements: Iterable[I],
+              elements: java.lang.Iterable[I],
               metrics: Metrics): Unit
 
-  override def process(key: K, context: Context, elements: Iterable[I], out: Collector[O]): Unit = {
+  override def process(key: K, context: ProcessWindowFunction[I, O, K, GlobalWindow]#Context, elements: java.lang.Iterable[I], out: Collector[O]): Unit = {
     process(key, context, elements, metrics)
   }
 }
@@ -93,10 +93,10 @@ abstract class TimeWindowBaseProcessFunction[I, O, K](config: BaseJobConfig) ext
 
   def process(key: K,
               context: ProcessWindowFunction[I, O, K, TimeWindow]#Context,
-              elements: Iterable[I],
+              elements: java.lang.Iterable[I],
               metrics: Metrics): Unit
 
-  override def process(key: K, context: Context, elements: Iterable[I], out: Collector[O]): Unit = {
+  override def process(key: K, context: ProcessWindowFunction[I, O, K, TimeWindow]#Context, elements: java.lang.Iterable[I], out: Collector[O]): Unit = {
     process(key, context, elements, metrics)
   }
 }

@@ -10,7 +10,7 @@ import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
 import org.apache.flink.streaming.api.functions.sink.SinkFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction
 import org.apache.flink.streaming.api.functions.source.SourceFunction.SourceContext
-import org.apache.flink.streaming.api.scala.DataStream
+import org.apache.flink.streaming.api.datastream.DataStream
 import org.apache.flink.test.util.MiniClusterWithClientResource
 import org.mockito.ArgumentMatchers.any
 import org.sunbird.job.util.{ElasticSearchUtil, JSONUtil}
@@ -412,7 +412,7 @@ class TestableTransactionEventProcessorStreamTask(
     testSinks: Map[String, SinkFunction[String]]
 ) extends TransactionEventProcessorStreamTask(config, kafkaConnector, esUtil) {
 
-  import org.apache.flink.streaming.api.scala.DataStream
+  import org.apache.flink.streaming.api.datastream.DataStream
 
   override protected def stringSink(
       stream: DataStream[String],

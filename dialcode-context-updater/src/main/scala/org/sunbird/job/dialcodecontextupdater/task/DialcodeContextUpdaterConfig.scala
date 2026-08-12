@@ -3,7 +3,7 @@ package org.sunbird.job.dialcodecontextupdater.task
 import com.typesafe.config.Config
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
-import org.apache.flink.streaming.api.scala.OutputTag
+import org.apache.flink.util.OutputTag
 import org.sunbird.job.BaseJobConfig
 import org.sunbird.job.dialcodecontextupdater.domain.Event
 
@@ -37,8 +37,8 @@ class DialcodeContextUpdaterConfig(override val config: Config) extends BaseJobC
   val dialcodeContextUpdaterEventProducer = "dialcode-context-updater-producer"
 
   // Tags
-  val dialcodeContextUpdaterOutputTag: OutputTag[Event] = OutputTag[Event]("dialcode-context-updater")
-  val failedEventOutTag: OutputTag[String] = OutputTag[String]("dialcode-context-updater-failed-event")
+  val dialcodeContextUpdaterOutputTag: OutputTag[Event] = new OutputTag[Event]("dialcode-context-updater", dialcodeContextUpdaterTypeInfo)
+  val failedEventOutTag: OutputTag[String] = new OutputTag[String]("dialcode-context-updater-failed-event", stringTypeInfo)
 
   val configVersion = "1.0"
 

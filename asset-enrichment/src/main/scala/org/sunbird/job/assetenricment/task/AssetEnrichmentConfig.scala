@@ -3,7 +3,7 @@ package org.sunbird.job.assetenricment.task
 import com.typesafe.config.Config
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
-import org.apache.flink.streaming.api.scala.OutputTag
+import org.apache.flink.util.OutputTag
 import org.sunbird.job.BaseJobConfig
 import org.sunbird.job.assetenricment.domain.Event
 
@@ -46,9 +46,9 @@ class AssetEnrichmentConfig(override val config: Config) extends BaseJobConfig(c
 
 
   // Tags
-  val imageEnrichmentDataOutTag: OutputTag[Event] = OutputTag[Event]("image-enrichment-data")
-  val videoEnrichmentDataOutTag: OutputTag[Event] = OutputTag[Event]("video-enrichment-data")
-  val generateVideoStreamingOutTag: OutputTag[String] = OutputTag[String]("video-streaming-generator-request")
+  val imageEnrichmentDataOutTag: OutputTag[Event] = new OutputTag[Event]("image-enrichment-data", eventTypeInfo)
+  val videoEnrichmentDataOutTag: OutputTag[Event] = new OutputTag[Event]("video-enrichment-data", eventTypeInfo)
+  val generateVideoStreamingOutTag: OutputTag[String] = new OutputTag[String]("video-streaming-generator-request", TypeInformation.of(classOf[String]))
 
   // Asset Variables
   val contentUploadContextDriven: Boolean = if (config.hasPath("content.upload.context.driven")) config.getBoolean("content.upload.context.driven") else true

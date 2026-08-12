@@ -11,7 +11,7 @@ object XMLLoaderWithCData extends XMLLoader[Elem] {
 	def lexicalHandler(adapter: FactoryAdapter): LexicalHandler =
 		new DefaultHandler2 {
 			def captureCData(): Unit = {
-				adapter.hStack push PCData(adapter.buffer.toString)
+				adapter.hStack = PCData(adapter.buffer.toString) :: adapter.hStack
 				adapter.buffer.clear()
 			}
 
@@ -27,9 +27,9 @@ object XMLLoaderWithCData extends XMLLoader[Elem] {
 			"http://xml.org/sax/properties/lexical-handler",
 			lexicalHandler(newAdapter))
 
-		newAdapter.scopeStack push TopScope
+		newAdapter.scopeStack = TopScope :: newAdapter.scopeStack
 		parser.parse(source, newAdapter)
-		newAdapter.scopeStack.pop()
+		newAdapter.scopeStack = newAdapter.scopeStack.tail
 
 		newAdapter.rootElem.asInstanceOf[Elem]
 	}
