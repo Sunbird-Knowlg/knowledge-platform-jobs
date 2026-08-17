@@ -3,7 +3,7 @@ package org.sunbird.job.knowlg.task
 import com.typesafe.config.Config
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
-import org.apache.flink.streaming.api.scala.OutputTag
+import org.apache.flink.util.OutputTag
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.knowlg.publish.domain.Event
 
@@ -68,7 +68,7 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
 
   // Redis Configurations
   val nodeStore: Int = if (redisEnabled) config.getInt("redis.database.contentCache.id") else 0
-
+  val hierarchyRelationsDbId: Int = if (config.hasPath("redis.database.hierarchyRelations.id")) config.getInt("redis.database.hierarchyRelations.id") else 10
   // Question/QuestionSet Configurations (merged from questionset-publish)
   val questionKeyspaceName: String = if (config.hasPath("question.keyspace")) config.getString("question.keyspace") else contentKeyspaceName
   val questionTableName: String = if (config.hasPath("question.table")) config.getString("question.table") else contentTableName
@@ -85,19 +85,19 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
   val questionSetPublishFailedEventCount = "questionset-publish-failed-count"
 
   // Out Tags
-  val contentPublishOutTag: OutputTag[Event] = OutputTag[Event]("content-publish")
-  val collectionPublishOutTag: OutputTag[Event] = OutputTag[Event]("collection-publish")
-  val questionPublishOutTag: OutputTag[Event] = OutputTag[Event]("question-publish")
-  val questionSetPublishOutTag: OutputTag[Event] = OutputTag[Event]("questionset-publish")
-  val generateVideoStreamingOutTag: OutputTag[String] = OutputTag[String]("video-streaming-generator-request")
-  val failedEventOutTag: OutputTag[String] = OutputTag[String]("failed-event")
-  val generatePostPublishProcessTag: OutputTag[String] = OutputTag[String]("post-publish-process-request")
-  val mvcProcessorTag: OutputTag[String] = OutputTag[String]("mvc-processor-request")
-  val dialcodeContextUpdaterOutTag: OutputTag[String] = OutputTag[String]("dialcode-context-updater-request")
-  val contentMetadataEventOutTag: OutputTag[String] = OutputTag[String]("content-metadata-event-request")
-  val enrichedMetadataEventOutTag: OutputTag[String] = OutputTag[String]("enriched-metadata-event-request")
-  val enrichOnlyOutTag: OutputTag[Event] = OutputTag[Event]("enrich-only-request")
-  val qrimageOutTag: OutputTag[String] = OutputTag[String]("qrimage-generator-request")
+  val contentPublishOutTag: OutputTag[Event] = new OutputTag[Event]("content-publish", publishMetaTypeInfo)
+  val collectionPublishOutTag: OutputTag[Event] = new OutputTag[Event]("collection-publish", publishMetaTypeInfo)
+  val questionPublishOutTag: OutputTag[Event] = new OutputTag[Event]("question-publish", publishMetaTypeInfo)
+  val questionSetPublishOutTag: OutputTag[Event] = new OutputTag[Event]("questionset-publish", publishMetaTypeInfo)
+  val generateVideoStreamingOutTag: OutputTag[String] = new OutputTag[String]("video-streaming-generator-request", stringTypeInfo)
+  val failedEventOutTag: OutputTag[String] = new OutputTag[String]("failed-event", stringTypeInfo)
+  val generatePostPublishProcessTag: OutputTag[String] = new OutputTag[String]("post-publish-process-request", stringTypeInfo)
+  val mvcProcessorTag: OutputTag[String] = new OutputTag[String]("mvc-processor-request", stringTypeInfo)
+  val dialcodeContextUpdaterOutTag: OutputTag[String] = new OutputTag[String]("dialcode-context-updater-request", stringTypeInfo)
+  val contentMetadataEventOutTag: OutputTag[String] = new OutputTag[String]("content-metadata-event-request", stringTypeInfo)
+  val enrichedMetadataEventOutTag: OutputTag[String] = new OutputTag[String]("enriched-metadata-event-request", stringTypeInfo)
+  val enrichOnlyOutTag: OutputTag[Event] = new OutputTag[Event]("enrich-only-request", publishMetaTypeInfo)
+  val qrimageOutTag: OutputTag[String] = new OutputTag[String]("qrimage-generator-request", stringTypeInfo)
 
 
   val definitionBasePath: String = if (config.hasPath("schema.basePath")) config.getString("schema.basePath") else "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local"

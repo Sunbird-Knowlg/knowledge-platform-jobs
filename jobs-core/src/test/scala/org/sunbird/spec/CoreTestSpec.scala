@@ -3,7 +3,7 @@ package org.sunbird.spec
 import java.util
 
 import com.typesafe.config.{Config, ConfigFactory}
-import org.apache.flink.streaming.api.scala.StreamExecutionEnvironment
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 import org.apache.flink.util.Collector
 import org.scalatest.Matchers
 import org.scalatestplus.mockito.MockitoSugar

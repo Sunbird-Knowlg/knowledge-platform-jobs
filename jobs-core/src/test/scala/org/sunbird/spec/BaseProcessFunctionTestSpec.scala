@@ -5,8 +5,9 @@ import com.typesafe.config.{Config, ConfigFactory}
 import net.manub.embeddedkafka.EmbeddedKafka._
 import net.manub.embeddedkafka.{EmbeddedKafka, EmbeddedKafkaConfig}
 import org.apache.flink.api.common.eventtime.WatermarkStrategy
+import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.runtime.testutils.MiniClusterResourceConfiguration
-import org.apache.flink.streaming.api.scala._
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 import org.apache.flink.test.util.MiniClusterWithClientResource
 import org.apache.kafka.common.serialization.StringDeserializer
 import org.scalatest.Matchers
@@ -28,6 +29,7 @@ class BaseProcessFunctionTestSpec extends BaseSpec with Matchers {
   val gson = new Gson()
 
   val kafkaConnector = new FlinkKafkaConnector(bsConfig)
+  implicit val stringTypeInfo: TypeInformation[String] = TypeInformation.of(classOf[String])
 
   val EVENT_WITH_MESSAGE_ID: String =
     """

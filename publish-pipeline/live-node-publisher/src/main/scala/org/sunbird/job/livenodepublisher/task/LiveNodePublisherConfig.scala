@@ -3,7 +3,7 @@ package org.sunbird.job.livenodepublisher.task
 import com.typesafe.config.Config
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
-import org.apache.flink.streaming.api.scala.OutputTag
+import org.apache.flink.util.OutputTag
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.livenodepublisher.publish.domain.Event
 
@@ -59,12 +59,12 @@ class LiveNodePublisherConfig(override val config: Config) extends PublishConfig
   val nodeStore: Int = if (redisEnabled) config.getInt("redis.database.contentCache.id") else 0
 
   // Out Tags
-  val contentPublishOutTag: OutputTag[Event] = OutputTag[Event]("live-content-publish")
-  val collectionPublishOutTag: OutputTag[Event] = OutputTag[Event]("live-collection-publish")
-  val generateVideoStreamingOutTag: OutputTag[String] = OutputTag[String]("live-video-streaming-generator-request")
-  val failedEventOutTag: OutputTag[String] = OutputTag[String]("failed-event")
-  val skippedEventOutTag: OutputTag[String] = OutputTag[String]("skipped-event")
-  val generatePostPublishProcessTag: OutputTag[String] = OutputTag[String]("post-publish-process-request")
+  val contentPublishOutTag: OutputTag[Event] = new OutputTag[Event]("live-content-publish", publishMetaTypeInfo)
+  val collectionPublishOutTag: OutputTag[Event] = new OutputTag[Event]("live-collection-publish", publishMetaTypeInfo)
+  val generateVideoStreamingOutTag: OutputTag[String] = new OutputTag[String]("live-video-streaming-generator-request", stringTypeInfo)
+  val failedEventOutTag: OutputTag[String] = new OutputTag[String]("failed-event", stringTypeInfo)
+  val skippedEventOutTag: OutputTag[String] = new OutputTag[String]("skipped-event", stringTypeInfo)
+  val generatePostPublishProcessTag: OutputTag[String] = new OutputTag[String]("post-publish-process-request", stringTypeInfo)
 
   // Service Urls
   val printServiceBaseUrl: String = config.getString("service.print.basePath")

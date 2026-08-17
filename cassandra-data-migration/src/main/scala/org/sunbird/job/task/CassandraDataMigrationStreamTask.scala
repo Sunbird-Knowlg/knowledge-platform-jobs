@@ -5,7 +5,8 @@ import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.api.common.eventtime.WatermarkStrategy
-import org.apache.flink.streaming.api.scala.{DataStream, StreamExecutionEnvironment}
+import org.apache.flink.streaming.api.datastream.DataStream
+import org.apache.flink.streaming.api.environment.StreamExecutionEnvironment
 import org.slf4j.LoggerFactory
 import org.sunbird.job.connector.FlinkKafkaConnector
 import org.sunbird.job.migration.domain.Event

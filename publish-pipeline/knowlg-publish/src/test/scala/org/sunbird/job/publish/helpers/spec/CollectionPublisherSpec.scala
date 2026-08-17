@@ -10,6 +10,7 @@ import org.mockito.Mockito
 import org.mockito.Mockito.{doNothing, when}
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
+import org.sunbird.job.cache.{DataCache, RedisConnect}
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.knowlg.publish.helpers.CollectionPublisher
 import org.sunbird.job.knowlg.task.KnowlgPublishConfig
@@ -21,6 +22,7 @@ import org.sunbird.job.util._
 import java.text.SimpleDateFormat
 import java.util
 import java.util.Date
+import scala.collection.JavaConverters._
 import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContextExecutor
 
@@ -249,6 +251,35 @@ class CollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Match
     val childMetadata = Map("language" -> "English", "identifier" -> "do_123", "objectType" -> "Content")
     val result = new TestCollectionPublisher().processChild(childMetadata)
     result("language").asInstanceOf[Set[String]] should contain("English")
+  }
+
+  "updateHierarchyRelationships" should "store leaf/optional/ancestor node ids in Redis when redis is enabled" in {
+    val rootId = "do_hier_test_root"
+    val unitId = "do_hier_test_unit1"
+    val leaf1Id = "do_hier_test_leaf1"
+    val leaf2Id = "do_hier_test_leaf2"
+    val hierarchyJson =
+      s"""{"identifier":"$rootId","mimeType":"application/vnd.ekstep.content-collection","children":[{"identifier":"$unitId","mimeType":"application/vnd.ekstep.content-collection","children":[{"identifier":"$leaf1Id","mimeType":"application/pdf"},{"identifier":"$leaf2Id","mimeType":"application/pdf","relationalMetadata":{"optional":"true"}}]}]}"""
+    cassandraUtil.upsert(s"INSERT INTO ${jobConfig.hierarchyKeyspaceName}.${jobConfig.hierarchyTableName}(identifier, hierarchy) VALUES ('$rootId', '$hierarchyJson');")
+
+    val redisConnect = new RedisConnect(jobConfig)
+    val dataCache = new DataCache(jobConfig, redisConnect, jobConfig.hierarchyRelationsDbId, List())
+    dataCache.init()
+    val jedis = redisConnect.getConnection(jobConfig.hierarchyRelationsDbId)
+    try {
+      val obj = new ObjectData(rootId, Map("identifier" -> rootId), Some(Map.empty[String, AnyRef]))
+      new TestCollectionPublisher().updateHierarchyRelationships(obj, dataCache)(cassandraUtil, jobConfig)
+
+      jedis.smembers(s"$rootId:$rootId:leafnodes").asScala should contain theSameElementsAs List(leaf1Id, leaf2Id)
+      jedis.smembers(s"$rootId:$unitId:leafnodes").asScala should contain theSameElementsAs List(leaf1Id, leaf2Id)
+      jedis.smembers(s"$rootId:$rootId:optionalnodes").asScala should contain theSameElementsAs List(leaf2Id)
+      jedis.smembers(s"$rootId:$unitId:optionalnodes").asScala should contain theSameElementsAs List(leaf2Id)
+      jedis.smembers(s"$rootId:$leaf1Id:ancestors").asScala should contain theSameElementsAs List(unitId, rootId)
+      jedis.smembers(s"$rootId:$leaf2Id:ancestors").asScala should contain theSameElementsAs List(unitId, rootId)
+    } finally {
+      jedis.close()
+      dataCache.close()
+    }
   }
 
 }

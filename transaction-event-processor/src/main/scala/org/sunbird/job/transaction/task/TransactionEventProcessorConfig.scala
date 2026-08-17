@@ -4,7 +4,7 @@ import java.util
 import com.typesafe.config.Config
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
-import org.apache.flink.streaming.api.scala.OutputTag
+import org.apache.flink.util.OutputTag
 import org.sunbird.job.BaseJobConfig
 import org.sunbird.job.transaction.domain.Event
 import scala.collection.JavaConverters._
@@ -75,17 +75,17 @@ class TransactionEventProcessorConfig(override val config: Config)
       config.getBoolean("job.dialcode-metrics-indexer")
     else true
 
-  val outputTag: OutputTag[Event] = OutputTag[Event]("output-tag")
-  val auditOutputTag: OutputTag[String] = OutputTag[String]("audit-event-tag")
+  val outputTag: OutputTag[Event] = new OutputTag[Event]("output-tag", eventTypeInfo)
+  val auditOutputTag: OutputTag[String] = new OutputTag[String]("audit-event-tag", stringTypeInfo)
   val obsrvAuditOutputTag: OutputTag[String] =
-    OutputTag[String]("obsrv-metadata-tag")
+    new OutputTag[String]("obsrv-metadata-tag", stringTypeInfo)
   val compositeSearchDataOutTag: OutputTag[Event] =
-    OutputTag[Event]("composite-search-data")
+    new OutputTag[Event]("composite-search-data", eventTypeInfo)
   val dialCodeExternalOutTag: OutputTag[Event] =
-    OutputTag[Event]("dialcode-external")
+    new OutputTag[Event]("dialcode-external", eventTypeInfo)
   val dialCodeMetricOutTag: OutputTag[Event] =
-    OutputTag[Event]("dialcode-metric")
-  val failedEventOutTag: OutputTag[String] = OutputTag[String]("failed-event")
+    new OutputTag[Event]("dialcode-metric", eventTypeInfo)
+  val failedEventOutTag: OutputTag[String] = new OutputTag[String]("failed-event", stringTypeInfo)
 
   val defaultChannel: String = config.getString("channel.default")
 
