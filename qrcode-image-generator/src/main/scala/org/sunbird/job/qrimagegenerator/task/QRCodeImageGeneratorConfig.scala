@@ -4,7 +4,7 @@ import com.typesafe.config.Config
 import org.apache.commons.lang3.StringUtils
 import org.apache.flink.api.common.typeinfo.TypeInformation
 import org.apache.flink.api.java.typeutils.TypeExtractor
-import org.apache.flink.streaming.api.scala.OutputTag
+import org.apache.flink.util.OutputTag
 import org.sunbird.job.BaseJobConfig
 import org.sunbird.job.qrimagegenerator.domain.Event
 
@@ -30,7 +30,7 @@ class QRCodeImageGeneratorConfig(override val config: Config) extends BaseJobCon
   val cloudDbFailCount = "cloud-db-hit-failure-count"
 
   //Tags
-  val indexImageUrlOutTag: OutputTag[Event] = OutputTag[Event]("index-imageUrl")
+  val indexImageUrlOutTag: OutputTag[Event] = new OutputTag[Event]("index-imageUrl", qrImageTypeInfo)
 
   // ES Configs
   val esConnectionInfo = config.getString("es.basePath")

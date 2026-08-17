@@ -1,4 +1,4 @@
-FROM flink:1.18.1-scala_2.12-java11 AS base
+FROM flink:1.20.5-java11 AS base
 
 USER root
 RUN apt-get update && apt-get dist-upgrade -y && \
@@ -19,7 +19,7 @@ ENV cloud_storage_auth_type=OIDC
 FROM base AS azure
 ENV cloud_storage_type=azure
 RUN mkdir -p $FLINK_HOME/plugins/azure-fs-hadoop && \
-    cp $FLINK_HOME/opt/flink-azure-fs-hadoop-1.18.1.jar $FLINK_HOME/plugins/azure-fs-hadoop/
+    cp $FLINK_HOME/opt/flink-azure-fs-hadoop-1.20.5.jar $FLINK_HOME/plugins/azure-fs-hadoop/
 COPY target/azure-plugin/ $FLINK_HOME/plugins/azure-fs-hadoop/
 USER flink
 
@@ -28,12 +28,12 @@ FROM base AS gcloud
 ENV cloud_storage_type=gcloud
 COPY lib/gcs-connector-hadoop2-2.2.0.jar $FLINK_HOME/lib/
 RUN mkdir -p $FLINK_HOME/plugins/gs-fs-hadoop && \
-    cp $FLINK_HOME/opt/flink-gs-fs-hadoop-1.18.1.jar $FLINK_HOME/plugins/gs-fs-hadoop/
+    cp $FLINK_HOME/opt/flink-gs-fs-hadoop-1.20.5.jar $FLINK_HOME/plugins/gs-fs-hadoop/
 USER flink
 
 # ── AWS ────────────────────────────────────────────────────────────────────
 FROM base AS aws
 ENV cloud_storage_type=aws
 RUN mkdir -p $FLINK_HOME/plugins/s3-fs-presto && \
-    cp $FLINK_HOME/opt/flink-s3-fs-presto-1.18.1.jar $FLINK_HOME/plugins/s3-fs-presto/
+    cp $FLINK_HOME/opt/flink-s3-fs-presto-1.20.5.jar $FLINK_HOME/plugins/s3-fs-presto/
 USER flink
