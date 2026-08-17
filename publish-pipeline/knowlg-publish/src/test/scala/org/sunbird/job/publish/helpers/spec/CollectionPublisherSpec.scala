@@ -283,4 +283,8 @@ class CollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Match
   }
 
 }
-class TestCollectionPublisher extends CollectionPublisher {}
+class TestCollectionPublisher extends CollectionPublisher {
+  def testStoreRelationshipData(rootId: String, relationshipType: String, dataMap: Map[String, List[String]], dataCache: DataCache)
+                                (implicit cassandraUtil: CassandraUtil, config: KnowlgPublishConfig): Unit =
+    storeRelationshipData(rootId, relationshipType, dataMap, dataCache)
+}
