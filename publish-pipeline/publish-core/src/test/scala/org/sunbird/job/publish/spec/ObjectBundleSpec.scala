@@ -102,6 +102,27 @@ class ObjectBundleSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
       obj.getObjectBundle(data, objList, EcarPackageType.FULL)
     }
   }
+
+  "findArtifactFile" should "return the file matching the artifactUrl key" in {
+    val obj = new TestObjectBundle
+    val artifactFile = new java.io.File("artifact.pdf")
+    val otherFile = new java.io.File("icon.png")
+    val downloadedMedias = List(("someIconUrl", otherFile), ("someArtifactUrl", artifactFile))
+    val result = obj.findArtifactFile(downloadedMedias, "someArtifactUrl")
+    result should be(Some(artifactFile))
+  }
+
+  "findArtifactFile" should "return None when artifactUrl is blank" in {
+    val obj = new TestObjectBundle
+    val downloadedMedias = List(("someIconUrl", new java.io.File("icon.png")))
+    obj.findArtifactFile(downloadedMedias, "") should be(None)
+  }
+
+  "findArtifactFile" should "return None when artifactUrl does not match any downloaded key" in {
+    val obj = new TestObjectBundle
+    val downloadedMedias = List(("someIconUrl", new java.io.File("icon.png")))
+    obj.findArtifactFile(downloadedMedias, "someArtifactUrlNotDownloaded") should be(None)
+  }
 }
 
 class TestObjectBundle extends ObjectBundle {

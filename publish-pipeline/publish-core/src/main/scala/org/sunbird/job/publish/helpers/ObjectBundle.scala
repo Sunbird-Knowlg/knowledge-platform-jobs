@@ -89,8 +89,8 @@ trait ObjectBundle {
       (enMeta, downloadUrls)
     }).unzip
   }
-
-  def getObjectBundle(obj: ObjectData, objList: List[Map[String, AnyRef]], pkgType: String)(implicit ec: ExecutionContext, janusGraphUtil: JanusGraphUtil, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig): File = {
+  
+  def getObjectBundle(obj: ObjectData, objList: List[Map[String, AnyRef]], pkgType: String)(implicit ec: ExecutionContext, janusGraphUtil: JanusGraphUtil, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig): (File, Option[File]) = {
     val bundleFileName = bundleLocation + File.separator + getBundleFileName(obj.identifier, obj.metadata, pkgType)
     val bundlePath = bundleLocation + File.separator + System.currentTimeMillis + "_temp"
     val objType = if(obj.getString("objectType", "").replaceAll("Image", "").equalsIgnoreCase("collection")) "content" else obj.getString("objectType", "").replaceAll("Image", "")
@@ -101,17 +101,22 @@ trait ObjectBundle {
     val downloadUrls: Map[AnyRef, List[String]] = dUrls.flatten.groupBy(_._1).map { case (k, v) => k -> v.map(_._2) }
     logger.info("ObjectBundle ::: getObjectBundle ::: downloadUrls :::: " + downloadUrls)
     val duration: String = config.getString("media_download_duration", "300 seconds")
-    val downloadedMedias: List[File] = Await.result(downloadFiles(obj.identifier, downloadUrls, bundlePath), Duration.apply(duration))
+    val downloadedMedias: List[(AnyRef, File)] = Await.result(downloadFiles(obj.identifier, downloadUrls, bundlePath), Duration.apply(duration))
     if (downloadUrls.nonEmpty && downloadedMedias.isEmpty)
       throw new InvalidInputException("Error Occurred While Downloading Bundle Media Files For : " + obj.identifier)
+    val artifactFile: Option[File] = findArtifactFile(downloadedMedias, obj.getString("artifactUrl", ""))
     val manifestFile: File = getManifestFile(obj.identifier, objType, bundlePath, updatedObjList)
     val hierarchyFile: File = getHierarchyFile(obj, bundlePath).getOrElse(new File(bundlePath))
     val fList = if (obj.hierarchy.getOrElse(Map()).nonEmpty) List(manifestFile, hierarchyFile) else List(manifestFile)
-    createBundle(obj.identifier, bundleFileName, bundlePath, pkgType, downloadedMedias ::: fList)
+    val bundle = createBundle(obj.identifier, bundleFileName, bundlePath, pkgType, downloadedMedias.map(_._2) ::: fList)
+    (bundle, artifactFile)
   }
 
+  def findArtifactFile(downloadedMedias: List[(AnyRef, File)], artifactUrl: String): Option[File] =
+    if (StringUtils.isNotBlank(artifactUrl)) downloadedMedias.find(_._1 == artifactUrl).map(_._2) else None
+
   //TODO: Enhance this method of .ecar & .zip extension
-  def downloadFiles(identifier: String, files: Map[AnyRef, List[String]], bundlePath: String)(implicit ec: ExecutionContext): Future[List[File]] = {
+  def downloadFiles(identifier: String, files: Map[AnyRef, List[String]], bundlePath: String)(implicit ec: ExecutionContext): Future[List[(AnyRef, File)]] = {
     val futures = files.map {
       case (k, v) =>
         v.map {
@@ -119,7 +124,7 @@ trait ObjectBundle {
             Future {
               val destPath = s"""$bundlePath${File.separator}${StringUtils.replace(id, ".img", "")}"""
               logger.info(s"ObjectBundle ::: downloadFiles ::: Processing file: $k for : " + identifier)
-              k match {
+              val downloaded = k match {
                 case _: File =>
                   val file = k.asInstanceOf[File]
                   val newFile = new File(s"""${destPath}${File.separator}${file.getName}""")
@@ -134,6 +139,7 @@ trait ObjectBundle {
                     case e: Exception => throw new InvalidInputException(s"Error while downloading file $url", e)
                   }
               }
+              (k, downloaded)
             }
           }
         }

@@ -159,11 +159,12 @@ trait CollectionPublisher extends ObjectReader with SyncMessagesGenerator with O
     nodes += obj
     nodeIds += obj.identifier
 
-    val ecarMap: Map[String, String] = generateEcar(updatedObj, pkgTypes)
+    val ecarResult: EcarResult = generateEcar(updatedObj, pkgTypes)
+    val ecarMap: Map[String, String] = ecarResult.urls
     val variants: java.util.Map[String, java.util.Map[String, String]] = ecarMap.map { case (key, value) => key.toLowerCase -> Map[String, String]("ecarUrl" -> value, "size" -> httpUtil.getSize(value).toString).asJava }.asJava
     logger.info("CollectionPulisher ::: getObjectWithEcar ::: variants ::: " + variants)
 
-    val meta: Map[String, AnyRef] = Map("downloadUrl" -> ecarMap.getOrElse(EcarPackageType.SPINE, ""), "variants" -> variants, "size" -> httpUtil.getSize(ecarMap.getOrElse(EcarPackageType.SPINE, "")).asInstanceOf[AnyRef])
+    val meta: Map[String, AnyRef] = Map("downloadUrl" -> ecarMap.getOrElse(EcarPackageType.SPINE, ""), "variants" -> variants, "size" -> httpUtil.getSize(ecarMap.getOrElse(EcarPackageType.SPINE, "")).asInstanceOf[AnyRef]) ++ ecarResult.hashMeta
     new ObjectData(updatedObj.identifier, updatedObj.metadata ++ meta, updatedObj.extData, updatedObj.hierarchy)
   }
 
