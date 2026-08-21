@@ -13,6 +13,9 @@ import org.sunbird.job.publish.core.{DefinitionConfig, ObjectData}
 import org.sunbird.job.publish.helpers.{EcarPackageType, ObjectBundle}
 import org.sunbird.job.util.{HttpUtil, JanusGraphUtil}
 
+import java.io.File
+import java.nio.file.Files
+import java.security.MessageDigest
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContextExecutor
 
@@ -122,6 +125,45 @@ class ObjectBundleSpec extends FlatSpec with BeforeAndAfterAll with Matchers wit
     val obj = new TestObjectBundle
     val downloadedMedias = List(("someIconUrl", new java.io.File("icon.png")))
     obj.findArtifactFile(downloadedMedias, "someArtifactUrlNotDownloaded") should be(None)
+  }
+
+  "computeFileHash" should "return the SHA-256 hex digest of the file's contents" in {
+    val obj = new TestObjectBundle
+    val file = createTempFile("first-publish-content")
+    obj.computeFileHash("do_123", file) should be(Some(sha256Hex("first-publish-content")))
+  }
+
+  it should "produce the same hash for identical bytes" in {
+    val obj = new TestObjectBundle
+    val fileA = createTempFile("identical-content")
+    val fileB = createTempFile("identical-content")
+    obj.computeFileHash("do_123", fileA) should be(obj.computeFileHash("do_123", fileB))
+  }
+
+  it should "produce different hashes for two same-size files with different content" in {
+    val obj = new TestObjectBundle
+    val fileA = createTempFile("aaaaaaaaaa")
+    val fileB = createTempFile("bbbbbbbbbb")
+    obj.computeFileHash("do_123", fileA) should not be obj.computeFileHash("do_123", fileB)
+  }
+
+  it should "log and swallow the error instead of throwing when the file can't be read" in {
+    val obj = new TestObjectBundle
+    val missingFile = new File("/tmp/does-not-exist-" + System.nanoTime() + ".tmp")
+    noException should be thrownBy obj.computeFileHash("do_123", missingFile)
+    obj.computeFileHash("do_123", missingFile) should be(None)
+  }
+
+  // Computed independently of ObjectBundle's own digest logic, so the assertion
+  // actually pins the expected SHA-256 value rather than re-deriving it the same way.
+  private def sha256Hex(content: String): String =
+    MessageDigest.getInstance("SHA-256").digest(content.getBytes).map("%02x".format(_)).mkString
+
+  private def createTempFile(content: String): File = {
+    val file = File.createTempFile("artifact-hash-spec", ".tmp")
+    file.deleteOnExit()
+    Files.write(file.toPath, content.getBytes)
+    file
   }
 }
 

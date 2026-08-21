@@ -90,7 +90,7 @@ trait ObjectBundle {
     }).unzip
   }
   
-  def getObjectBundle(obj: ObjectData, objList: List[Map[String, AnyRef]], pkgType: String)(implicit ec: ExecutionContext, janusGraphUtil: JanusGraphUtil, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig): (File, Option[File]) = {
+  def getObjectBundle(obj: ObjectData, objList: List[Map[String, AnyRef]], pkgType: String)(implicit ec: ExecutionContext, janusGraphUtil: JanusGraphUtil, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig): (File, Option[String]) = {
     val bundleFileName = bundleLocation + File.separator + getBundleFileName(obj.identifier, obj.metadata, pkgType)
     val bundlePath = bundleLocation + File.separator + System.currentTimeMillis + "_temp"
     val objType = if(obj.getString("objectType", "").replaceAll("Image", "").equalsIgnoreCase("collection")) "content" else obj.getString("objectType", "").replaceAll("Image", "")
@@ -104,16 +104,43 @@ trait ObjectBundle {
     val downloadedMedias: List[(AnyRef, File)] = Await.result(downloadFiles(obj.identifier, downloadUrls, bundlePath), Duration.apply(duration))
     if (downloadUrls.nonEmpty && downloadedMedias.isEmpty)
       throw new InvalidInputException("Error Occurred While Downloading Bundle Media Files For : " + obj.identifier)
-    val artifactFile: Option[File] = findArtifactFile(downloadedMedias, obj.getString("artifactUrl", ""))
+    // hashed here, before createBundle deletes bundlePath in its finally block
+    val artifactHash: Option[String] = findArtifactFile(downloadedMedias, obj.getString("artifactUrl", "")).flatMap(file => computeFileHash(obj.identifier, file))
     val manifestFile: File = getManifestFile(obj.identifier, objType, bundlePath, updatedObjList)
     val hierarchyFile: File = getHierarchyFile(obj, bundlePath).getOrElse(new File(bundlePath))
     val fList = if (obj.hierarchy.getOrElse(Map()).nonEmpty) List(manifestFile, hierarchyFile) else List(manifestFile)
     val bundle = createBundle(obj.identifier, bundleFileName, bundlePath, pkgType, downloadedMedias.map(_._2) ::: fList)
-    (bundle, artifactFile)
+    (bundle, artifactHash)
   }
 
   def findArtifactFile(downloadedMedias: List[(AnyRef, File)], artifactUrl: String): Option[File] =
     if (StringUtils.isNotBlank(artifactUrl)) downloadedMedias.find(_._1 == artifactUrl).map(_._2) else None
+
+  def computeFileHash(identifier: String, file: File): Option[String] = {
+    try {
+      Some(sha256Hex(file))
+    } catch {
+      case e: Exception =>
+        logger.error(s"ObjectBundle ::: Unable to compute artifactHash for $identifier: ${e.getMessage}", e)
+        None
+    }
+  }
+
+  private def sha256Hex(file: File): String = {
+    val digest = java.security.MessageDigest.getInstance("SHA-256")
+    val buffer = new Array[Byte](8192)
+    val input = java.nio.file.Files.newInputStream(file.toPath)
+    try {
+      var bytesRead = input.read(buffer)
+      while (bytesRead != -1) {
+        digest.update(buffer, 0, bytesRead)
+        bytesRead = input.read(buffer)
+      }
+    } finally {
+      input.close()
+    }
+    digest.digest().map("%02x".format(_)).mkString
+  }
 
   //TODO: Enhance this method of .ecar & .zip extension
   def downloadFiles(identifier: String, files: Map[AnyRef, List[String]], bundlePath: String)(implicit ec: ExecutionContext): Future[List[(AnyRef, File)]] = {

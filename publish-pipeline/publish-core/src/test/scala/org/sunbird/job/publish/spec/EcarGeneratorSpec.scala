@@ -9,11 +9,8 @@ import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.util.{CloudStorageUtil, JanusGraphUtil, ScalaJsonUtil}
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ObjectData}
-import org.sunbird.job.publish.helpers.EcarGenerator
+import org.sunbird.job.publish.helpers.{EcarGenerator, EcarResult}
 
-import java.io.File
-import java.nio.file.Files
-import java.security.MessageDigest
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits.global
 
@@ -46,63 +43,24 @@ class EcarGeneratorSpec extends FlatSpec with BeforeAndAfterAll with Matchers {
     result.urls.isEmpty should be(false)
   }
 
-  "computeArtifactHash" should "return artifactHash with no prevArtifactHash on first publish" in {
-    val mockJanusGraphUtil: JanusGraphUtil = mock[JanusGraphUtil](Mockito.withSettings().serializable())
-    Mockito.when(mockJanusGraphUtil.getNodeProperties(anyString())).thenReturn(null)
-    val obj = new TestEcarGenerator()
-    val metadata = Map("identifier" -> "do_123")
-    val objData = new ObjectData("do_123", metadata, None, None)
-    val artifactFile = createTempFile("first-publish-content")
-
-    val result = obj.computeArtifactHash(objData, artifactFile)(mockJanusGraphUtil)
-
-    result should be(Some((sha256Hex("first-publish-content"), None)))
-  }
-
-  it should "produce the same hash for identical bytes" in {
+  "readPrevArtifactHash" should "return None when the node has no prior artifactHash" in {
     val mockJanusGraphUtil: JanusGraphUtil = mock[JanusGraphUtil](Mockito.withSettings().serializable())
     Mockito.when(mockJanusGraphUtil.getNodeProperties(anyString())).thenReturn(null)
     val obj = new TestEcarGenerator()
     val objData = new ObjectData("do_123", Map("identifier" -> "do_123"), None, None)
-    val fileA = createTempFile("identical-content")
-    val fileB = createTempFile("identical-content")
 
-    val resultA = obj.computeArtifactHash(objData, fileA)(mockJanusGraphUtil)
-    val resultB = obj.computeArtifactHash(objData, fileB)(mockJanusGraphUtil)
-
-    resultA.map(_._1) should be(resultB.map(_._1))
-    resultA.map(_._1) should be(Some(sha256Hex("identical-content")))
+    obj.readPrevArtifactHash(objData)(mockJanusGraphUtil) should be(None)
   }
 
-  it should "carry forward the previous hash as prevArtifactHash on republish" in {
+  it should "return the existing artifactHash as prevArtifactHash on republish" in {
     val mockJanusGraphUtil: JanusGraphUtil = mock[JanusGraphUtil](Mockito.withSettings().serializable())
     val existingProps: java.util.Map[String, AnyRef] = new java.util.HashMap[String, AnyRef]()
     existingProps.put("artifactHash", "oldhash123")
     Mockito.when(mockJanusGraphUtil.getNodeProperties(anyString())).thenReturn(existingProps)
     val obj = new TestEcarGenerator()
-    val metadata = Map("identifier" -> "do_123")
-    val objData = new ObjectData("do_123", metadata, None, None)
-    val artifactFile = createTempFile("republish-content")
-
-    val result = obj.computeArtifactHash(objData, artifactFile)(mockJanusGraphUtil)
-
-    result.flatMap(_._2) should be(Some("oldhash123"))
-  }
-
-  it should "produce different hashes for two same-size files with different content" in {
-    val mockJanusGraphUtil: JanusGraphUtil = mock[JanusGraphUtil](Mockito.withSettings().serializable())
-    Mockito.when(mockJanusGraphUtil.getNodeProperties(anyString())).thenReturn(null)
-    val obj = new TestEcarGenerator()
     val objData = new ObjectData("do_123", Map("identifier" -> "do_123"), None, None)
-    val fileA = createTempFile("aaaaaaaaaa")
-    val fileB = createTempFile("bbbbbbbbbb")
 
-    val resultA = obj.computeArtifactHash(objData, fileA)(mockJanusGraphUtil)
-    val resultB = obj.computeArtifactHash(objData, fileB)(mockJanusGraphUtil)
-
-    resultA.map(_._1) should not be resultB.map(_._1)
-    resultA.map(_._1) should be(Some(sha256Hex("aaaaaaaaaa")))
-    resultB.map(_._1) should be(Some(sha256Hex("bbbbbbbbbb")))
+    obj.readPrevArtifactHash(objData)(mockJanusGraphUtil) should be(Some("oldhash123"))
   }
 
   it should "log and swallow the error instead of throwing when reading current node properties fails" in {
@@ -110,27 +68,26 @@ class EcarGeneratorSpec extends FlatSpec with BeforeAndAfterAll with Matchers {
     Mockito.when(mockJanusGraphUtil.getNodeProperties(anyString())).thenThrow(new RuntimeException("read failed"))
     val obj = new TestEcarGenerator()
     val objData = new ObjectData("do_123", Map("identifier" -> "do_123"), None, None)
-    val artifactFile = createTempFile("content")
 
-    noException should be thrownBy obj.computeArtifactHash(objData, artifactFile)(mockJanusGraphUtil)
+    noException should be thrownBy obj.readPrevArtifactHash(objData)(mockJanusGraphUtil)
   }
 
-  // Computed independently of EcarGenerator's own digest logic, so the assertion
-  // actually pins the expected SHA-256 value rather than re-deriving it the same way.
-  private def sha256Hex(content: String): String =
-    MessageDigest.getInstance("SHA-256").digest(content.getBytes).map("%02x".format(_)).mkString
+  "EcarResult.hashMeta" should "include both artifactHash and prevArtifactHash when both are present" in {
+    EcarResult(Map("FULL" -> "url"), Some("newhash"), Some("oldhash")).hashMeta should be(Map("artifactHash" -> "newhash", "prevArtifactHash" -> "oldhash"))
+  }
 
-  private def createTempFile(content: String): File = {
-    val file = File.createTempFile("artifact-hash-spec", ".tmp")
-    file.deleteOnExit()
-    Files.write(file.toPath, content.getBytes)
-    file
+  it should "omit prevArtifactHash entirely rather than writing it as null on first publish" in {
+    EcarResult(Map("FULL" -> "url"), Some("newhash"), None).hashMeta should be(Map("artifactHash" -> "newhash"))
+  }
+
+  it should "be empty when no artifact was hashed this round" in {
+    EcarResult(Map("FULL" -> "url"), None, None).hashMeta should be(Map.empty)
   }
 }
 
 class TestEcarGenerator extends EcarGenerator {
-  override def computeArtifactHash(obj: ObjectData, artifactFile: File)(implicit janusGraphUtil: JanusGraphUtil): Option[(String, Option[String])] =
-    super.computeArtifactHash(obj, artifactFile)
+  override def readPrevArtifactHash(obj: ObjectData)(implicit janusGraphUtil: JanusGraphUtil): Option[String] =
+    super.readPrevArtifactHash(obj)
   val media = Map(
     "id" -> "do_1127129497561497601326",
     "type" -> "image",
