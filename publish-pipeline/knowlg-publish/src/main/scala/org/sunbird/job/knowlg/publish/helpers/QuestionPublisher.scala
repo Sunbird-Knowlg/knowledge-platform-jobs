@@ -132,10 +132,11 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
 
   def getObjectWithEcar(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, janusGraphUtil: JanusGraphUtil, cloudStorageUtil: CloudStorageUtil, config: PublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil): ObjectData = {
     logger.info("QuestionPublisher:generateECAR: Ecar generation done for Question: " + data.identifier)
-    val ecarMap: Map[String, String] = generateEcar(data, pkgTypes)
+    val ecarResult: EcarResult = generateEcar(data, pkgTypes)
+    val ecarMap: Map[String, String] = ecarResult.urls
     val variants: java.util.Map[String, java.util.Map[String, String]] = ecarMap.map { case (key, value) => key.toLowerCase -> Map[String, String]("ecarUrl" -> value, "size" -> httpUtil.getSize(value).toString).asJava }.asJava
     logger.info("QuestionPublisher ::: generateECAR ::: ecar map ::: " + ecarMap)
-    val meta: Map[String, AnyRef] = Map("downloadUrl" -> ecarMap.getOrElse(EcarPackageType.FULL.toString, ""), "variants" -> variants)
+    val meta: Map[String, AnyRef] = Map("downloadUrl" -> ecarMap.getOrElse(EcarPackageType.FULL.toString, ""), "variants" -> variants) ++ ecarResult.hashMeta
     new ObjectData(data.identifier, data.metadata ++ meta, data.extData, data.hierarchy)
   }
 
@@ -148,7 +149,7 @@ trait QuestionPublisher extends ObjectReader with ObjectValidator with ObjectEnr
       val downloadUrls: Map[AnyRef, List[String]] = dUrls.asInstanceOf[List[Map[AnyRef, String]]].flatten.groupBy(_._1).map { case (k, v) => k -> v.map(_._2) }
       logger.info("QuestionPublisher ::: updateArtifactUrl ::: downloadUrls :::: " + downloadUrls)
       val duration: String = config.getString("media_download_duration", "300 seconds")
-      val downloadedMedias: List[File] = Await.result(downloadFiles(obj.identifier, downloadUrls, bundlePath), Duration.apply(duration))
+      val downloadedMedias: List[(AnyRef, File)] = Await.result(downloadFiles(obj.identifier, downloadUrls, bundlePath), Duration.apply(duration))
       if (downloadUrls.nonEmpty && downloadedMedias.isEmpty)
         throw new Exception("Error Occurred While Downloading Bundle Media Files For : " + obj.identifier)
 
