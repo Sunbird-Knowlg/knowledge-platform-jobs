@@ -141,7 +141,7 @@ trait LiveCollectionPublisher extends LiveObjectReader with SyncMessagesGenerato
     nodes += obj
     nodeIds += obj.identifier
 
-    val ecarMap: Map[String, String] = try{
+    val ecarResult: EcarResult = try{
       generateEcar(updatedObj, pkgTypes)
     } catch {
       case ex@(_: org.sunbird.cloud.storage.exception.StorageServiceException | _: java.lang.NullPointerException | _:java.io.FileNotFoundException | _:java.io.IOException) => {
@@ -150,6 +150,7 @@ trait LiveCollectionPublisher extends LiveObjectReader with SyncMessagesGenerato
       }
       case anyEx: Exception => throw anyEx
     }
+    val ecarMap: Map[String, String] = ecarResult.urls
 
     val variants: java.util.Map[String, java.util.Map[String, String]] = ecarMap.map { case (key, value) => key.toLowerCase -> Map[String, String]("ecarUrl" -> value, "size" -> httpUtil.getSize(value).toString).asJava }.asJava
     logger.info("CollectionPulisher ::: getObjectWithEcar ::: variants ::: " + variants)

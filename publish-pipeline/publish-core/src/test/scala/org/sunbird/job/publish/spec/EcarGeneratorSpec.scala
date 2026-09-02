@@ -2,13 +2,14 @@ package org.sunbird.job.publish.spec
 
 import com.typesafe.config.{Config, ConfigFactory}
 import org.mockito.Mockito
+import org.mockito.ArgumentMatchers.anyString
 import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar.mock
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.util.{CloudStorageUtil, JanusGraphUtil, ScalaJsonUtil}
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ObjectData}
-import org.sunbird.job.publish.helpers.EcarGenerator
+import org.sunbird.job.publish.helpers.{EcarGenerator, EcarResult}
 
 import scala.collection.JavaConverters._
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -39,11 +40,54 @@ class EcarGeneratorSpec extends FlatSpec with BeforeAndAfterAll with Matchers {
     val objData = new ObjectData("do_123", metadata, None, Some(hierarchy))
     val obj = new TestEcarGenerator()
     val result = obj.generateEcar(objData,List("SPINE"))
-    result.isEmpty should be(false)
+    result.urls.isEmpty should be(false)
+  }
+
+  "readPrevArtifactHash" should "return None when the node has no prior artifactHash" in {
+    val mockJanusGraphUtil: JanusGraphUtil = mock[JanusGraphUtil](Mockito.withSettings().serializable())
+    Mockito.when(mockJanusGraphUtil.getNodeProperties(anyString())).thenReturn(null)
+    val obj = new TestEcarGenerator()
+    val objData = new ObjectData("do_123", Map("identifier" -> "do_123"), None, None)
+
+    obj.readPrevArtifactHash(objData)(mockJanusGraphUtil) should be(None)
+  }
+
+  it should "return the existing artifactHash as prevArtifactHash on republish" in {
+    val mockJanusGraphUtil: JanusGraphUtil = mock[JanusGraphUtil](Mockito.withSettings().serializable())
+    val existingProps: java.util.Map[String, AnyRef] = new java.util.HashMap[String, AnyRef]()
+    existingProps.put("artifactHash", "oldhash123")
+    Mockito.when(mockJanusGraphUtil.getNodeProperties(anyString())).thenReturn(existingProps)
+    val obj = new TestEcarGenerator()
+    val objData = new ObjectData("do_123", Map("identifier" -> "do_123"), None, None)
+
+    obj.readPrevArtifactHash(objData)(mockJanusGraphUtil) should be(Some("oldhash123"))
+  }
+
+  it should "log and swallow the error instead of throwing when reading current node properties fails" in {
+    val mockJanusGraphUtil: JanusGraphUtil = mock[JanusGraphUtil](Mockito.withSettings().serializable())
+    Mockito.when(mockJanusGraphUtil.getNodeProperties(anyString())).thenThrow(new RuntimeException("read failed"))
+    val obj = new TestEcarGenerator()
+    val objData = new ObjectData("do_123", Map("identifier" -> "do_123"), None, None)
+
+    noException should be thrownBy obj.readPrevArtifactHash(objData)(mockJanusGraphUtil)
+  }
+
+  "EcarResult.hashMeta" should "include both artifactHash and prevArtifactHash when both are present" in {
+    EcarResult(Map("FULL" -> "url"), Some("newhash"), Some("oldhash")).hashMeta should be(Map("artifactHash" -> "newhash", "prevArtifactHash" -> "oldhash"))
+  }
+
+  it should "omit prevArtifactHash entirely rather than writing it as null on first publish" in {
+    EcarResult(Map("FULL" -> "url"), Some("newhash"), None).hashMeta should be(Map("artifactHash" -> "newhash"))
+  }
+
+  it should "be empty when no artifact was hashed this round" in {
+    EcarResult(Map("FULL" -> "url"), None, None).hashMeta should be(Map.empty)
   }
 }
 
 class TestEcarGenerator extends EcarGenerator {
+  override def readPrevArtifactHash(obj: ObjectData)(implicit janusGraphUtil: JanusGraphUtil): Option[String] =
+    super.readPrevArtifactHash(obj)
   val media = Map(
     "id" -> "do_1127129497561497601326",
     "type" -> "image",
