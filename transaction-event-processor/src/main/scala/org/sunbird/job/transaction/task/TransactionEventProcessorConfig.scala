@@ -75,6 +75,19 @@ class TransactionEventProcessorConfig(override val config: Config)
       config.getBoolean("job.dialcode-metrics-indexer")
     else true
 
+  /**
+   * When true, an event the indexer cannot process is written to the error topic and
+   * the job carries on, instead of the failure cancelling the job. The failed event is
+   * side-outputted either way, so nothing is lost; this only decides whether one bad
+   * document is allowed to halt indexing for every other document.
+   *
+   * Defaults to false to preserve the existing fail-fast behaviour.
+   */
+  val skipFailedEvents: Boolean =
+    if (config.hasPath("job.skip-failed-events"))
+      config.getBoolean("job.skip-failed-events")
+    else false
+
   val outputTag: OutputTag[Event] = OutputTag[Event]("output-tag")
   val auditOutputTag: OutputTag[String] = OutputTag[String]("audit-event-tag")
   val obsrvAuditOutputTag: OutputTag[String] =

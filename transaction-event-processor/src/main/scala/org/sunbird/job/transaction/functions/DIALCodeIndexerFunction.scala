@@ -58,11 +58,18 @@ class DIALCodeIndexerFunction(
         metrics.incCounter(config.failedDialcodeExternalEventCount)
         val failedEvent = getFailedEvent(event.jobName, event.getMap(), ex)
         context.output(config.failedEventOutTag, failedEvent)
-        throw new InvalidEventException(
-          ex.getMessage,
-          Map("partition" -> event.partition, "offset" -> event.offset),
-          ex
-        )
+        if (config.skipFailedEvents) {
+          // Already written to the error topic; see CompositeSearchIndexerFunction.
+          logger.warn(
+            s"Skipping event that could not be indexed. Identifier: ${event.id}. Partition: ${event.partition} and Offset: ${event.offset}. It has been written to the error topic."
+          )
+        } else {
+          throw new InvalidEventException(
+            ex.getMessage,
+            Map("partition" -> event.partition, "offset" -> event.offset),
+            ex
+          )
+        }
     }
   }
 
