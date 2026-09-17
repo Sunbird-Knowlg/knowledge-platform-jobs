@@ -268,11 +268,37 @@
                 </plugins>
             </build>
         </profile>
+        <!--
+            The assembly sets useTransitiveDependencies=false, so only direct dependencies of
+            this module are bundled. The cloud storage SDK is declared in jobs-core's profiles,
+            but jobs-distribution is built as a separate Maven invocation - jobs-core is then a
+            resolved artifact whose profiles no longer activate - so that dependency never
+            reaches the distribution. Declaring it here is what puts it on the Flink classpath;
+            without it publishing fails at runtime with:
+              "No StorageService provider found for type: AWS. Ensure the appropriate CSP
+               module JAR is on the classpath."
+        -->
         <profile>
             <id>gcloud</id>
+            <dependencies>
+                <dependency>
+                    <groupId>org.sunbird</groupId>
+                    <artifactId>cloud-storage-sdk-gcp</artifactId>
+                    <version>${cloud.storage.sdk.version}</version>
+                    <scope>runtime</scope>
+                </dependency>
+            </dependencies>
         </profile>
         <profile>
             <id>aws</id>
+            <dependencies>
+                <dependency>
+                    <groupId>org.sunbird</groupId>
+                    <artifactId>cloud-storage-sdk-aws</artifactId>
+                    <version>${cloud.storage.sdk.version}</version>
+                    <scope>runtime</scope>
+                </dependency>
+            </dependencies>
         </profile>
         <profile>
             <id>build-docker-image</id>
