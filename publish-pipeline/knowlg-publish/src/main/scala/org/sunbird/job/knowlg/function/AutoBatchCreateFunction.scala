@@ -5,14 +5,14 @@ import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.knowlg.publish.helpers.AutoBatchCreation
 import org.sunbird.job.knowlg.task.KnowlgPublishConfig
-import org.sunbird.job.util.HttpUtil
+import org.sunbird.job.util.{HttpUtil, JSONUtil}
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
 import java.time.format.DateTimeFormatter
 import java.time.{ZoneId, ZonedDateTime}
 
 class AutoBatchCreateFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil)
-  extends BaseProcessFunction[java.util.Map[String, AnyRef], String](config) with AutoBatchCreation {
+  extends BaseProcessFunction[String, String](config) with AutoBatchCreation {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[AutoBatchCreateFunction])
 
@@ -24,7 +24,8 @@ class AutoBatchCreateFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil)
     super.close()
   }
 
-  override def processElement(eData: java.util.Map[String, AnyRef], context: ProcessFunction[java.util.Map[String, AnyRef], String]#Context, metrics: Metrics): Unit = {
+  override def processElement(eDataJson: String, context: ProcessFunction[String, String]#Context, metrics: Metrics): Unit = {
+    val eData = JSONUtil.deserialize[java.util.Map[String, AnyRef]](eDataJson)
     val identifier = eData.getOrDefault("identifier", "")
     metrics.incCounter(config.autoBatchCreationCount)
     val startDate = ZonedDateTime.now(ZoneId.of("Asia/Kolkata")).format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))

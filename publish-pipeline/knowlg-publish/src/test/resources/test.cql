@@ -128,3 +128,7 @@ CREATE TABLE IF NOT EXISTS sunbird_courses.course_batch (
 INSERT INTO sunbird_courses.course_batch (courseid, batchid, createdby, enrollmenttype, name, startdate, status) VALUES (
     'do_11300581751853056018', 'batch_001', 'user1', 'Open', 'Existing Active Batch', '2024-01-01', 1
 );
+
+INSERT INTO sunbird_courses.course_batch (courseid, batchid, createdby, enrollmenttype, name, startdate) VALUES (
+    'do_11300581751853056077', 'batch_002', 'user1', 'Open', 'Batch With Null Status', '2024-01-01'
+);

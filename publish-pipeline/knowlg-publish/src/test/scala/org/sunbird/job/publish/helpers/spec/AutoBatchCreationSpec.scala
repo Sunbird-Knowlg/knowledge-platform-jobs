@@ -52,12 +52,20 @@ class AutoBatchCreationSpec extends FlatSpec with BeforeAndAfterAll with Matcher
     new TestAutoBatchCreation().isTrackable(metadata, "do_123") should be(false)
   }
 
+  it should "return false rather than throw when metadata is empty" in {
+    new TestAutoBatchCreation().isTrackable(Map.empty[String, AnyRef], "do_123") should be(false)
+  }
+
   "isBatchExists" should "return true for an identifier with a seeded active Open batch" in {
     new TestAutoBatchCreation().isBatchExists("do_11300581751853056018")(jobConfig, cassandraUtil) should be(true)
   }
 
   it should "return false for an identifier with no batch rows" in {
     new TestAutoBatchCreation().isBatchExists("do_11300581751853056099")(jobConfig, cassandraUtil) should be(false)
+  }
+
+  it should "return false for a batch row with a null status, treating it as inactive rather than active" in {
+    new TestAutoBatchCreation().isBatchExists("do_11300581751853056077")(jobConfig, cassandraUtil) should be(false)
   }
 
   "getAutoBatchDetails" should "return a populated map when trackable and no active batch exists" in {

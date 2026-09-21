@@ -217,7 +217,7 @@ class CollectionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
     try {
       val batchDetails = getAutoBatchDetails(obj)(cassandraUtil, config)
       if (!batchDetails.isEmpty) {
-        context.output(config.autoBatchCreateOutTag, batchDetails)
+        context.output(config.autoBatchCreateOutTag, JSONUtil.serialize(batchDetails))
       }
     } catch {
       case ex: Exception =>

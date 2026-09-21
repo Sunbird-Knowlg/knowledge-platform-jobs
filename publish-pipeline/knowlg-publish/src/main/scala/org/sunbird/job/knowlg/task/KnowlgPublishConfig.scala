@@ -107,7 +107,7 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
   val enrichedMetadataEventOutTag: OutputTag[String] = OutputTag[String]("enriched-metadata-event-request")
   val enrichOnlyOutTag: OutputTag[Event] = OutputTag[Event]("enrich-only-request")
   val qrimageOutTag: OutputTag[String] = OutputTag[String]("qrimage-generator-request")
-  val autoBatchCreateOutTag: OutputTag[util.Map[String, AnyRef]] = OutputTag[util.Map[String, AnyRef]]("auto-batch-create")
+  val autoBatchCreateOutTag: OutputTag[String] = OutputTag[String]("auto-batch-create")
 
 
   val definitionBasePath: String = if (config.hasPath("schema.basePath")) config.getString("schema.basePath") else "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local"
