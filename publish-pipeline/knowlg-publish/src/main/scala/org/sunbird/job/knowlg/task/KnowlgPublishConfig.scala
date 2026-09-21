@@ -51,6 +51,11 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
   val enrichOnlyFailedCount = "enrich-only-failed-count"
   val enrichOnlySkippedCount = "enrich-only-skipped-count"
 
+  // Auto Batch Creation Metrics
+  val autoBatchCreationCount = "auto-batch-creation-count"
+  val autoBatchCreationSuccessCount = "auto-batch-creation-success-count"
+  val autoBatchCreationFailedCount = "auto-batch-creation-failed-count"
+
   // Cassandra Configurations
   val cassandraHost: String = config.getString("lms-cassandra.host")
   val cassandraPort: Int = config.getInt("lms-cassandra.port")
@@ -58,7 +63,11 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
   val contentTableName: String = config.getString("content.table")
   val hierarchyKeyspaceName: String = config.getString("hierarchy.keyspace")
   val hierarchyTableName: String = config.getString("hierarchy.table")
-  
+
+  // Auto Batch Creation Cassandra Configuration
+  val lmsKeyspaceName: String = if (config.hasPath("lms-cassandra.keyspace")) config.getString("lms-cassandra.keyspace") else "sunbird_courses"
+  val batchTableName: String = if (config.hasPath("lms-cassandra.batchTable")) config.getString("lms-cassandra.batchTable") else "course_batch"
+
   // Collection hierarchy relationships table configuration
   val collectionHierarchyKeyspaceName: String = if (config.hasPath("collection_hierarchy.keyspace")) config.getString("collection_hierarchy.keyspace") else "dev_hierarchy_store"
   val collectionHierarchyTableName: String = if (config.hasPath("collection_hierarchy.table")) config.getString("collection_hierarchy.table") else "hierarchy_relations"
@@ -98,6 +107,7 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
   val enrichedMetadataEventOutTag: OutputTag[String] = new OutputTag[String]("enriched-metadata-event-request", stringTypeInfo)
   val enrichOnlyOutTag: OutputTag[Event] = new OutputTag[Event]("enrich-only-request", publishMetaTypeInfo)
   val qrimageOutTag: OutputTag[String] = new OutputTag[String]("qrimage-generator-request", stringTypeInfo)
+  val autoBatchCreateOutTag: OutputTag[util.Map[String, AnyRef]] = new OutputTag[util.Map[String, AnyRef]]("auto-batch-create", mapTypeInfo)
 
 
   val definitionBasePath: String = if (config.hasPath("schema.basePath")) config.getString("schema.basePath") else "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local"
@@ -147,5 +157,9 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
   val dialStorageContainer: String = if (config.hasPath("dialcode.storage.container")) config.getString("dialcode.storage.container") else "dial"
   val qrimageTopic: String = if (config.hasPath("kafka.qrimage.topic")) config.getString("kafka.qrimage.topic") else "sunbirddev.qrimage.request"
   val dialcodeContextUpdaterTopic: String = if (config.hasPath("kafka.dialcode.context.topic")) config.getString("kafka.dialcode.context.topic") else "sunbirddev.dialcode.context.job.request"
+
+  // Auto Batch Creation LMS Configuration
+  val autoBatchCreateAPIPath: String = (if (config.hasPath("service.lms.basePath")) config.getString("service.lms.basePath") else "http://localhost/lms") + "/private/v1/course/batch/create"
+  val autoBatchCreateParallelism: Int = if (config.hasPath("task.auto_batch_create.parallelism")) config.getInt("task.auto_batch_create.parallelism") else 1
 
 }
