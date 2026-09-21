@@ -7,7 +7,7 @@ import org.apache.flink.api.java.utils.ParameterTool
 import org.apache.flink.api.common.eventtime.WatermarkStrategy
 import org.apache.flink.streaming.api.scala.{DataStream, StreamExecutionEnvironment}
 import org.sunbird.job.connector.FlinkKafkaConnector
-import org.sunbird.job.knowlg.function.{CollectionPublishFunction, ContentPublishFunction, EnrichOnlyFunction, PublishEventRouter, QuestionPublishFunction, QuestionSetPublishFunction}
+import org.sunbird.job.knowlg.function.{AutoBatchCreateFunction, CollectionPublishFunction, ContentPublishFunction, EnrichOnlyFunction, PublishEventRouter, QuestionPublishFunction, QuestionSetPublishFunction}
 import org.sunbird.job.knowlg.publish.domain.Event
 import org.sunbird.job.util.{FlinkUtil, HttpUtil}
 
@@ -56,6 +56,8 @@ class KnowlgPublishStreamTask(config: KnowlgPublishConfig, kafkaConnector: Flink
     val collectionPublish = processStreamTask.getSideOutput(config.collectionPublishOutTag).process(new CollectionPublishFunction(config, httpUtil))
       .name("collection-publish-process").uid("collection-publish-process").setParallelism(1)
     collectionPublish.getSideOutput(config.generatePostPublishProcessTag).sinkTo(kafkaConnector.kafkaStringSink(config.postPublishTopic))
+    collectionPublish.getSideOutput(config.autoBatchCreateOutTag).process(new AutoBatchCreateFunction(config, httpUtil))
+      .name("auto-batch-create-process").uid("auto-batch-create-process").setParallelism(config.autoBatchCreateParallelism)
     collectionPublish.getSideOutput(config.enrichedMetadataEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.enrichedMetadataTopic))
     collectionPublish.getSideOutput(config.failedEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
 
