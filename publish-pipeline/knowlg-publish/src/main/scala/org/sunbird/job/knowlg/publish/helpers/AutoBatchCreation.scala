@@ -75,7 +75,8 @@ trait AutoBatchCreation {
       logger.info("Trackable for " + identifier + " : " + trackable)
       trackable
     } else {
-      throw new Exception("Metadata [isTrackable] is not found for object: " + identifier)
+      logger.info("Metadata [isTrackable] is not found for object: " + identifier)
+      false
     }
   }
 
@@ -86,7 +87,7 @@ trait AutoBatchCreation {
     if (CollectionUtils.isNotEmpty(rows)) {
       val activeBatches = rows.asScala.filter(row => {
         val enrolmentType = row.getString("enrollmenttype")
-        val status = row.getInt("status")
+        val status = if (row.isNull("status")) -1 else row.getInt("status")
         StringUtils.equalsIgnoreCase(enrolmentType, "Open") && (0 == status || 1 == status)
       }).toList
       if (activeBatches.nonEmpty)

@@ -13,12 +13,10 @@ import org.sunbird.job.knowlg.publish.domain.Event
 import org.sunbird.job.util.{FlinkUtil, HttpUtil}
 
 import java.io.File
-import java.util
 
 class KnowlgPublishStreamTask(config: KnowlgPublishConfig, kafkaConnector: FlinkKafkaConnector, httpUtil: HttpUtil) {
 
   private implicit val eventTypeInfo: TypeInformation[Event] = TypeExtractor.getForClass(classOf[Event])
-  private implicit val mapTypeInfo: TypeInformation[util.Map[String, AnyRef]] = TypeExtractor.getForClass(classOf[util.Map[String, AnyRef]])
   private implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
 
   def process(): Unit = {

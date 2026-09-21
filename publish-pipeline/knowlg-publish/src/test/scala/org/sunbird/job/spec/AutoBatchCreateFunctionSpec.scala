@@ -15,13 +15,7 @@ class AutoBatchCreateFunctionSpec extends FlatSpec with Matchers with MockitoSug
   val config: Config = ConfigFactory.load("test.conf").withFallback(ConfigFactory.systemEnvironment())
   val jobConfig: KnowlgPublishConfig = new KnowlgPublishConfig(config)
 
-  def eData(): java.util.Map[String, AnyRef] = new java.util.HashMap[String, AnyRef]() {
-    {
-      put("identifier", "do_11300581751853056099")
-      put("name", "Test Course")
-      put("createdBy", "user1")
-    }
-  }
+  def eDataJson(): String = """{"identifier":"do_11300581751853056099","name":"Test Course","createdBy":"user1"}"""
 
   "AutoBatchCreateFunction" should "increment the success and attempted counters when the LMS API returns 200" in {
     val mockHttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
@@ -29,7 +23,7 @@ class AutoBatchCreateFunctionSpec extends FlatSpec with Matchers with MockitoSug
     val fn = new AutoBatchCreateFunction(jobConfig, mockHttpUtil)
     val metrics = fn.registerMetrics(fn.metricsList())
 
-    fn.processElement(eData(), null, metrics)
+    fn.processElement(eDataJson(), null, metrics)
 
     metrics.get(jobConfig.autoBatchCreationCount) should be(1)
     metrics.get(jobConfig.autoBatchCreationSuccessCount) should be(1)
@@ -42,7 +36,7 @@ class AutoBatchCreateFunctionSpec extends FlatSpec with Matchers with MockitoSug
     val fn = new AutoBatchCreateFunction(jobConfig, mockHttpUtil)
     val metrics = fn.registerMetrics(fn.metricsList())
 
-    noException should be thrownBy fn.processElement(eData(), null, metrics)
+    noException should be thrownBy fn.processElement(eDataJson(), null, metrics)
 
     metrics.get(jobConfig.autoBatchCreationCount) should be(1)
     metrics.get(jobConfig.autoBatchCreationSuccessCount) should be(0)
