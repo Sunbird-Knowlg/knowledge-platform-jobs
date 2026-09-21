@@ -96,11 +96,21 @@ class CompositeSearchIndexerFunction(
         metrics.incCounter(config.failedCompositeSearchEventCount)
         val failedEvent = getFailedEvent(event.jobName, event.getMap(), ex)
         context.output(config.failedEventOutTag, failedEvent)
-        throw new InvalidEventException(
-          ex.getMessage,
-          Map("partition" -> event.partition, "offset" -> event.offset),
-          ex
-        )
+        if (config.skipFailedEvents) {
+          // The event is already on the error topic and can be replayed from there.
+          // Rethrowing would cancel the job, and on restart the same offset is read
+          // again -- so a single unindexable document stops indexing for every other
+          // document indefinitely.
+          logger.warn(
+            s"Skipping event that could not be indexed. Identifier: ${event.id}. Partition: ${event.partition} and Offset: ${event.offset}. It has been written to the error topic."
+          )
+        } else {
+          throw new InvalidEventException(
+            ex.getMessage,
+            Map("partition" -> event.partition, "offset" -> event.offset),
+            ex
+          )
+        }
     }
   }
 
