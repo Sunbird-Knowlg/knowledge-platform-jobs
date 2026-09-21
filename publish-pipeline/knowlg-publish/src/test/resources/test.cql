@@ -103,3 +103,28 @@ textAsBlob('1'),
 INSERT INTO dev_hierarchy_store.questionset_hierarchy(identifier, hierarchy) VALUES ('do_123', '{ "name": "QS1", "identifier": "do_123", "children": [{"identifier": "do_124", "objectType": "QuestionSet", "visibility": "Parent"}]}');
 INSERT INTO dev_hierarchy_store.questionset_hierarchy(identifier, hierarchy) VALUES ('do_321', '{ "name": "QS1", "identifier": "do_123", "children": [{"identifier": "do_124", "objectType": "QuestionSet", "visibility": "Parent"}]}');
 INSERT INTO dev_hierarchy_store.questionset_hierarchy(identifier, hierarchy) VALUES ('do_123.img', '{ "name": "QS1", "identifier": "do_123", "children": [{"identifier": "do_124", "objectType": "QuestionSet", "visibility": "Parent"}, {"identifier": "do_125", "objectType": "QuestionSet", "visibility": "Parent"}]}');
+
+CREATE KEYSPACE IF NOT EXISTS sunbird_courses WITH replication = {'class':'SimpleStrategy','replication_factor':1};
+
+CREATE TABLE IF NOT EXISTS sunbird_courses.course_batch (
+    courseid text,
+    batchid text,
+    cert_templates map<text, frozen<map<text, text>>>,
+    createdby text,
+    createddate text,
+    createdfor list<text>,
+    description text,
+    enddate text,
+    enrollmentenddate text,
+    enrollmenttype text,
+    mentors list<text>,
+    name text,
+    startdate text,
+    status int,
+    updateddate text,
+    PRIMARY KEY (courseid, batchid)
+);
+
+INSERT INTO sunbird_courses.course_batch (courseid, batchid, createdby, enrollmenttype, name, startdate, status) VALUES (
+    'do_11300581751853056018', 'batch_001', 'user1', 'Open', 'Existing Active Batch', '2024-01-01', 1
+);
