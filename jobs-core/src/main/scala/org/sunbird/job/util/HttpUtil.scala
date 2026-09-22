@@ -84,5 +84,10 @@ class HttpUtil extends Serializable {
     val response = Unirest.delete(url).header("Content-Type", "application/json").asString()
     HTTPResponse(response.getStatus, response.getBody)
   }
+
+  def delete(url: String, requestBody: String, headers: Map[String, String]): HTTPResponse = {
+    val response = Unirest.delete(url).headers(headers.asJava).body(requestBody).asString()
+    HTTPResponse(response.getStatus, response.getBody)
+  }
 }
 
