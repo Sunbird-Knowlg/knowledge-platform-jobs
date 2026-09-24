@@ -30,7 +30,6 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
   require(dynamicAssessMinCriteria >= 0, s"dynamicassess.minCriteria must be >= 0, got $dynamicAssessMinCriteria")
   require(dynamicAssessMultiplier >= 1, s"dynamicassess.multiplier must be >= 1, got $dynamicAssessMultiplier")
   val questionServiceBase: String = if (config.hasPath("service.question.basePath")) config.getString("service.question.basePath") else ""
-  val questionReadURL: String = s"$questionServiceBase/question/v5/read/"
   val assessmentItemServiceBase: String = if (config.hasPath("service.assessmentitem.basePath")) config.getString("service.assessmentitem.basePath") else questionServiceBase
   val assessmentItemReadURL: String = s"$assessmentItemServiceBase/assessment/v3/items/read/"
   val frameworkServiceBase: String = if (config.hasPath("service.framework.basePath")) config.getString("service.framework.basePath") else ""

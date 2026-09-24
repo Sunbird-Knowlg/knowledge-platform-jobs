@@ -161,13 +161,17 @@ class DynamicAssessHelper(config: KnowlgPublishConfig, httpUtil: HttpUtil) {
     }
   }
 
+  /** Question's difficulty field is the custom OCD "difficultyLevel"; AssessmentItem's is its native schema field "qlevel" (schemas/assessmentitem/1.0/schema.json). */
+  private def difficultyFieldName(poolObjectType: String): String =
+    if (poolObjectType == "AssessmentItem") "qlevel" else "difficultyLevel"
+
   private def searchQuestionPool(skill: String, difficulty: String, channel: String, categoryField: String, poolObjectType: String, limit: Int): (Int, List[String]) = {
     try {
       val filters = new util.HashMap[String, AnyRef]() {
         put("status", new util.ArrayList[String]() {{ add("Live") }})
         put("objectType", poolObjectType)
         put(categoryField, new util.ArrayList[String]() {{ add(skill) }})
-        put("difficultyLevel", difficultyLevelName.getOrElse(difficulty, difficulty))
+        put(difficultyFieldName(poolObjectType), difficultyLevelName.getOrElse(difficulty, difficulty))
         if (channel.nonEmpty) put("channel", channel)
       }
       val reqMap = new util.HashMap[String, AnyRef]() {
@@ -245,28 +249,7 @@ class DynamicAssessHelper(config: KnowlgPublishConfig, httpUtil: HttpUtil) {
     }.getOrElse(Nil)
   }
 
-  /** One read per identifier, mirroring the fmps fork's getItemsByIdentifiers. Returns full Question metadata (body, options, etc.), not just identifiers. */
-  def getQuestionsByIdentifiers(identifiers: List[String]): List[Map[String, AnyRef]] = {
-    identifiers.flatMap { identifier =>
-      try {
-        val response = httpUtil.get(config.questionReadURL + identifier)
-        if (response.isSuccess) {
-          val body = ScalaJsonUtil.deserialize[Map[String, AnyRef]](response.body)
-          val result = body.getOrElse("result", Map.empty[String, AnyRef]).asInstanceOf[Map[String, AnyRef]]
-          result.get("question").map(_.asInstanceOf[Map[String, AnyRef]])
-        } else {
-          logger.warn(s"DynamicAssessHelper :: getQuestionsByIdentifiers failed to fetch $identifier, status=${response.status}")
-          None
-        }
-      } catch {
-        case e: Exception =>
-          logger.error(s"DynamicAssessHelper :: getQuestionsByIdentifiers exception fetching $identifier", e)
-          None
-      }
-    }
-  }
-
-  /** ECML's actual pool member type — mirrors getQuestionsByIdentifiers but for AssessmentItem's own read endpoint/response shape. */
+  /** ECML's pool member type — hits AssessmentItem's own read endpoint/response shape. */
   def getAssessmentItemsByIdentifiers(identifiers: List[String]): List[Map[String, AnyRef]] = {
     identifiers.flatMap { identifier =>
       try {

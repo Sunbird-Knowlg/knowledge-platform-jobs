@@ -123,7 +123,7 @@ object ECMLBodyBuilder {
           val name = (metadataJson \ "name").extractOpt[String].getOrElse(extractTitle(item))
           val title = (metadataJson \ "title").extractOpt[String].getOrElse(extractTitle(item))
           val copyright = (metadataJson \ "copyright").extractOpt[String].getOrElse(getString(item, "copyright", "Sunbird Org"))
-          val qlevel = (metadataJson \ "qlevel").extractOpt[String].getOrElse(getString(item, "difficultyLevel", "")).toUpperCase
+          val qlevel = (metadataJson \ "qlevel").extractOpt[String].getOrElse(getString(item, "qlevel", "")).toUpperCase
           val category = (metadataJson \ "category").extractOpt[String].getOrElse(getString(item, "category", "MCQ"))
           val observableElement = (metadataJson \ "observableElement").extractOpt[List[String]].getOrElse(toStrList(item.getOrElse("skill", List.empty)))
 
@@ -179,7 +179,7 @@ object ECMLBodyBuilder {
         JField("code", JString(getString(item, "code", "NA"))),
         JField("subject", JString(getString(item, "subject", "domain"))),
         JField("evalUnordered", JBool(getBool(item, "evalUnordered"))),
-        JField("qlevel", JString(getString(item, "difficultyLevel", "").toUpperCase)),
+        JField("qlevel", JString(getString(item, "qlevel", "").toUpperCase)),
         JField("channel", JString(getString(item, "channel", ""))),
         JField("language", Extraction.decompose(toStrList(item.getOrElse("language", List.empty)))),
         JField("title", JString(title)),
