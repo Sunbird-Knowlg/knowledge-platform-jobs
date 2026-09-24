@@ -27,8 +27,12 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
   val questionSetRemoveURL: String = s"$questionSetServiceBase/questionset/v5/remove"
   val dynamicAssessMinCriteria: Int = if (config.hasPath("dynamicassess.minCriteria")) config.getInt("dynamicassess.minCriteria") else 2
   val dynamicAssessMultiplier: Int = if (config.hasPath("dynamicassess.multiplier")) config.getInt("dynamicassess.multiplier") else 3
+  require(dynamicAssessMinCriteria >= 0, s"dynamicassess.minCriteria must be >= 0, got $dynamicAssessMinCriteria")
+  require(dynamicAssessMultiplier >= 1, s"dynamicassess.multiplier must be >= 1, got $dynamicAssessMultiplier")
   val questionServiceBase: String = if (config.hasPath("service.question.basePath")) config.getString("service.question.basePath") else ""
   val questionReadURL: String = s"$questionServiceBase/question/v5/read/"
+  val assessmentItemServiceBase: String = if (config.hasPath("service.assessmentitem.basePath")) config.getString("service.assessmentitem.basePath") else questionServiceBase
+  val assessmentItemReadURL: String = s"$assessmentItemServiceBase/assessment/v3/items/read/"
   val frameworkServiceBase: String = if (config.hasPath("service.framework.basePath")) config.getString("service.framework.basePath") else ""
   val frameworkReadURL: String = s"$frameworkServiceBase/framework/v3/read/"
   val defaultIsShuffleOption: Boolean = if (config.hasPath("content.publish.defaults.isShuffleOption")) config.getBoolean("content.publish.defaults.isShuffleOption") else true

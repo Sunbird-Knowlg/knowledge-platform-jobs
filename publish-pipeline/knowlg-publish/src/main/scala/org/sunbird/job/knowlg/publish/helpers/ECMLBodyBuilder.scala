@@ -7,11 +7,7 @@ import org.sunbird.job.knowlg.task.KnowlgPublishConfig
 import java.util.UUID
 import scala.collection.JavaConverters._
 
-/**
- * Ported from the fmps fork's `content-publish/.../helpers/ECMLBodyBuilder.scala`, adapted to
- * `KnowlgPublishConfig`. Builds the `body` field for an ECML Content object (MCQ quiz stage,
- * plugin manifest, summary screen) from a list of selected Question items.
- */
+/** Ported from fmps's ECMLBodyBuilder — builds the `body` field (MCQ quiz stage, manifest, summary) from selected items. */
 object ECMLBodyBuilder {
   implicit val formats: Formats = DefaultFormats
 

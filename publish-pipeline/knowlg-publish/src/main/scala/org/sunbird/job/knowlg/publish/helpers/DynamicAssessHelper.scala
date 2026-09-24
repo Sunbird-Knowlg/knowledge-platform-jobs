@@ -10,20 +10,11 @@ import java.util.UUID
 import scala.collection.JavaConverters._
 import scala.util.Random
 
-/**
- * Core selection logic for Dynamic Assess, per docs/dynamic-assess-questionset-schema.md.
- *
- * `skill` and `difficultyTarget` are read straight off the QuestionSet's own node
- * properties (RefreshBodyHelper.parseDifficultyRate-style), `minCriteria`/`multiplier`
- * come from job config, never from the request.
- *
- * The pool query filters on the QSet's declared framework's resolved deepest-category
- * `code` (e.g. "topic" for BMGS, "skill" for USF), not a hardcoded "skill" field, per
- * "Resolving which category 'skill' actually is, at runtime" in the schema doc.
- */
+/** Core selection logic for Dynamic Assess (docs/dynamic-assess-questionset-schema.md); minCriteria/multiplier come from job config, never the request. */
 object DynamicAssessHelper {
   case class Allocation(skill: String, difficulty: String, requiredCount: Int)
   case class SkillDifficultyResult(skill: String, difficulty: String, selectedIds: List[String])
+  case class AllocationResult(allocations: List[Allocation], minCriteriaShortfalls: List[String])
 }
 
 class DynamicAssessHelper(config: KnowlgPublishConfig, httpUtil: HttpUtil) {
@@ -66,29 +57,29 @@ class DynamicAssessHelper(config: KnowlgPublishConfig, httpUtil: HttpUtil) {
     total > 0 && skills.nonEmpty && (minCriteria * skills.length) <= total
   }
 
-  /**
-   * Minimum-first, availability-aware allocation.
-   * 1. Reserve minCriteria per skill (split across difficulty buckets proportional to the shared target).
-   * 2. Distribute the remainder across skills weighted by each skill's candidate availability,
-   *    without exceeding the shared E/M/D totals.
-   */
+  /** Minimum-first, availability-aware allocation; skills that can't cover their own minCriteria are reported in minCriteriaShortfalls. */
   def allocate(skills: List[String], difficultyTarget: Map[String, Int], minCriteria: Int,
-               availability: (String, String) => Int): List[Allocation] = {
+               availability: (String, String) => Int): AllocationResult = {
 
     val remainingByDifficulty = scala.collection.mutable.Map(difficultyLevels.map(l => l -> difficultyTarget.getOrElse(l, 0)): _*)
     val allocated = scala.collection.mutable.Map[(String, String), Int]().withDefaultValue(0)
+    val shortfalls = scala.collection.mutable.ListBuffer[String]()
 
-    // Step 1: reserve minCriteria per skill, spread across difficulty buckets in proportion to the shared target.
+    // Step 1: reserve minCriteria per skill, only taking from buckets that skill actually has candidates in.
     skills.foreach { skill =>
       var toReserve = minCriteria
       difficultyLevels.foreach { level =>
         if (toReserve > 0 && remainingByDifficulty(level) > 0) {
-          val take = math.min(toReserve, remainingByDifficulty(level))
-          allocated((skill, level)) += take
-          remainingByDifficulty(level) -= take
-          toReserve -= take
+          val avail = math.max(0, availability(skill, level) - allocated((skill, level)))
+          val take = math.min(toReserve, math.min(remainingByDifficulty(level), avail))
+          if (take > 0) {
+            allocated((skill, level)) += take
+            remainingByDifficulty(level) -= take
+            toReserve -= take
+          }
         }
       }
+      if (toReserve > 0) shortfalls += skill
     }
 
     // Step 2: distribute the remainder, weighted by candidate availability per skill x difficulty.
@@ -98,10 +89,7 @@ class DynamicAssessHelper(config: KnowlgPublishConfig, httpUtil: HttpUtil) {
         val availabilityBySkill = skills.map(s => s -> math.max(0, availability(s, level) - allocated((s, level)))).toMap
         val totalAvailable = availabilityBySkill.values.sum
         if (totalAvailable > 0) {
-          // Ratios computed against the level's fixed starting remainder, not the live/shrinking
-          // one — otherwise later skills in the list get systematically under-allocated relative
-          // to earlier ones even with identical availability, since each share would be a fraction
-          // of an already-reduced number instead of a true proportional split.
+          // Fixed starting remainder, not the live/shrinking one, or later skills get under-allocated.
           val startingRemainder = remainder
           skills.foreach { skill =>
             if (remainder > 0) {
@@ -128,31 +116,24 @@ class DynamicAssessHelper(config: KnowlgPublishConfig, httpUtil: HttpUtil) {
       }
     }
 
-    allocated.collect { case ((skill, level), count) if count > 0 => Allocation(skill, level, count) }.toList
+    val allocations = allocated.collect { case ((skill, level), count) if count > 0 => Allocation(skill, level, count) }.toList
+    AllocationResult(allocations, shortfalls.toList)
   }
 
-  /** Availability count only, for the allocation step, not the final fetch. */
-  def getAvailabilityCount(skill: String, difficulty: String, channel: String, categoryField: String): Int = {
-    searchQuestionPool(skill, difficulty, channel, categoryField, limit = 0)._1
+  /** Availability count only, for the allocation step, not the final fetch. limit=1 keeps the response light; `count` reflects the total match regardless. */
+  def getAvailabilityCount(skill: String, difficulty: String, channel: String, categoryField: String, poolObjectType: String): Int = {
+    searchQuestionPool(skill, difficulty, channel, categoryField, poolObjectType, limit = 1)._1
   }
 
   /** Fetches up to requiredCount x multiplier candidates for one skill x difficulty bucket, then randomly picks requiredCount of them. */
-  def selectForAllocation(allocation: Allocation, channel: String, categoryField: String): SkillDifficultyResult = {
+  def selectForAllocation(allocation: Allocation, channel: String, categoryField: String, poolObjectType: String): SkillDifficultyResult = {
     val fetchLimit = allocation.requiredCount * config.dynamicAssessMultiplier
-    val (_, candidates) = searchQuestionPool(allocation.skill, allocation.difficulty, channel, categoryField, limit = fetchLimit)
+    val (_, candidates) = searchQuestionPool(allocation.skill, allocation.difficulty, channel, categoryField, poolObjectType, limit = fetchLimit)
     val selected = Random.shuffle(candidates).take(allocation.requiredCount)
     SkillDifficultyResult(allocation.skill, allocation.difficulty, selected)
   }
 
-  /**
-   * Resolves the QSet's declared framework's deepest (highest-indexed) category `code` — e.g.
-   * "topic" for BMGS, "skill" for USF — via GET /framework/v3/read/:identifier. This is the field
-   * name the pool query actually filters on; `skill` values themselves (term identifiers/names)
-   * are unaffected, only which underlying Question field they're matched against changes.
-   * Falls back to the literal "skill" field on any failure (blank framework, HTTP error, missing/
-   * empty categories) so a framework-lookup outage degrades to the old behavior rather than
-   * failing selection outright.
-   */
+  /** Resolves the framework's deepest category `code` (e.g. "topic"/"skill") as the pool filter field; falls back to "skill" on any failure. */
   def resolveCategoryCode(framework: String): String = {
     if (framework.isEmpty) return "skill"
     try {
@@ -180,11 +161,11 @@ class DynamicAssessHelper(config: KnowlgPublishConfig, httpUtil: HttpUtil) {
     }
   }
 
-  private def searchQuestionPool(skill: String, difficulty: String, channel: String, categoryField: String, limit: Int): (Int, List[String]) = {
+  private def searchQuestionPool(skill: String, difficulty: String, channel: String, categoryField: String, poolObjectType: String, limit: Int): (Int, List[String]) = {
     try {
       val filters = new util.HashMap[String, AnyRef]() {
         put("status", new util.ArrayList[String]() {{ add("Live") }})
-        put("objectType", "Question")
+        put("objectType", poolObjectType)
         put(categoryField, new util.ArrayList[String]() {{ add(skill) }})
         put("difficultyLevel", difficultyLevelName.getOrElse(difficulty, difficulty))
         if (channel.nonEmpty) put("channel", channel)
@@ -212,14 +193,7 @@ class DynamicAssessHelper(config: KnowlgPublishConfig, httpUtil: HttpUtil) {
     }
   }
 
-  /**
-   * PATCH /questionset/v5/add is a merge, not a replace (HierarchyManager.restructureUnit only
-   * swaps out children sharing an id with the incoming list; anything else already attached is
-   * preserved). So a refresh must remove the QSet's existing children first (removeQuestionsFromSet)
-   * or a second refresh would pile the new selection on top of the old one instead of replacing it.
-   * Request shape confirmed against HierarchyManager.validateRequest: rootId (identifier) + children
-   * (question ids) — not the identifier/questions shape this used to send.
-   */
+  /** PATCH /questionset/v5/add merges, not replaces (HierarchyManager.restructureUnit) — pair with removeQuestionsFromSet to avoid piling up. */
   def addQuestionsToSet(questionSetId: String, questionIds: List[String]): Boolean = {
     if (questionIds.isEmpty) return true
     try {
@@ -292,13 +266,28 @@ class DynamicAssessHelper(config: KnowlgPublishConfig, httpUtil: HttpUtil) {
     }
   }
 
-  /**
-   * Builds a normal publish-request event (action="publish") for the given Content identifier, in the same
-   * envelope shape this job's own input events use (see EventFixture). Emitted back onto the job's own input
-   * topic after a Dynamic Assess ECML refresh, so the refreshed body (already written to Cassandra by
-   * updateContentBody) goes through the real ContentPublishFunction path and gets ECAR regeneration +
-   * versioning, instead of only ever existing as a raw Cassandra write that offline/ECAR consumers never see.
-   */
+  /** ECML's actual pool member type — mirrors getQuestionsByIdentifiers but for AssessmentItem's own read endpoint/response shape. */
+  def getAssessmentItemsByIdentifiers(identifiers: List[String]): List[Map[String, AnyRef]] = {
+    identifiers.flatMap { identifier =>
+      try {
+        val response = httpUtil.get(config.assessmentItemReadURL + identifier)
+        if (response.isSuccess) {
+          val body = ScalaJsonUtil.deserialize[Map[String, AnyRef]](response.body)
+          val result = body.getOrElse("result", Map.empty[String, AnyRef]).asInstanceOf[Map[String, AnyRef]]
+          result.get("assessment_item").map(_.asInstanceOf[Map[String, AnyRef]])
+        } else {
+          logger.warn(s"DynamicAssessHelper :: getAssessmentItemsByIdentifiers failed to fetch $identifier, status=${response.status}")
+          None
+        }
+      } catch {
+        case e: Exception =>
+          logger.error(s"DynamicAssessHelper :: getAssessmentItemsByIdentifiers exception fetching $identifier", e)
+          None
+      }
+    }
+  }
+
+  /** Builds a publish event for the Content id, looped back onto this job's own input topic so ECAR/versioning actually update. */
   def buildRepublishEvent(identifier: String, mimeType: String, channel: String, pkgVersion: Double): String = {
     val ets = System.currentTimeMillis()
     val mid = s"LP.$ets.${UUID.randomUUID().toString}"
