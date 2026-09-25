@@ -17,6 +17,26 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
   private val graphId = "domain" // Assuming 'domain' as default
   private val LOG_IDENTIFIER = "learning_graph_events"
 
+  /**
+   * Property names whose String values must be returned exactly as stored.
+   *
+   * getNodeProperties parses any String shaped like a JSON array back into a
+   * List. That restores genuinely list-typed properties after the Neo4j to
+   * JanusGraph migration, but it keys off the value's shape rather than the
+   * field's declared type, so a field the schema declares as a String is read
+   * back as an array too -- and is then written on as an array by the jobs that
+   * consume it, which fails content/v3/update validation and fails indexing
+   * against fields the search index maps as text.
+   *
+   * Shares the string.only.fields key the indexer already uses. The default is
+   * empty, so behaviour is unchanged unless the property is configured.
+   */
+  private val stringOnlyFields: Set[String] = {
+    val key = "string.only.fields"
+    if (config.config.hasPath(key)) config.config.getStringList(key).asScala.toSet
+    else Set.empty[String]
+  }
+
   @transient private var _graph: JanusGraph = null
 
   private def graph: JanusGraph = {
@@ -69,7 +89,7 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
         result.asScala.foreach {
           case (k: String, v: AnyRef) if v != null =>
             val deserialized: AnyRef = v match {
-              case s: String if s.startsWith("[") && s.endsWith("]") =>
+              case s: String if !stringOnlyFields.contains(k) && s.startsWith("[") && s.endsWith("]") =>
                 try ScalaJsonUtil.deserialize[java.util.List[AnyRef]](s).asInstanceOf[AnyRef]
                 catch { case _: Exception => s }
               case other => other
