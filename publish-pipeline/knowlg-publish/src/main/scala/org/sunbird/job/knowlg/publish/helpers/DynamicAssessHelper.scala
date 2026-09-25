@@ -186,7 +186,8 @@ class DynamicAssessHelper(config: KnowlgPublishConfig, httpUtil: HttpUtil) {
         val body = ScalaJsonUtil.deserialize[Map[String, AnyRef]](response.body)
         val result = body.getOrElse("result", Map.empty[String, AnyRef]).asInstanceOf[Map[String, AnyRef]]
         val count = result.getOrElse("count", Int.box(0)).asInstanceOf[Int]
-        val items = result.getOrElse("items", List.empty[Map[String, AnyRef]]).asInstanceOf[List[Map[String, AnyRef]]]
+        // search-service keys the result array by the literal objectType (e.g. "Question") for known types, falling back to "items" otherwise.
+        val items = result.getOrElse(poolObjectType, result.getOrElse("items", List.empty[Map[String, AnyRef]])).asInstanceOf[List[Map[String, AnyRef]]]
         val ids = items.flatMap(_.get("identifier")).map(_.toString)
         (count, ids)
       } else (0, Nil)
