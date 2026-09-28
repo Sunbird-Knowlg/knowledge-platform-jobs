@@ -50,13 +50,15 @@ class DynamicAssessFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
     }
 
     try {
-      val nodeProps = Option(janusGraphUtil.getNodeProperties(rawObjectId))
+      val rawNodeProps = Option(janusGraphUtil.getNodeProperties(rawObjectId))
         .getOrElse(throw new RuntimeException(s"Node not found in JanusGraph: $rawObjectId"))
 
-      // Once published, writes must target the editable ".img" copy, not the live one, or they land on a row nothing ever reads again; recomputed here so a raw Kafka-triggered event can't fall out of sync with the API layer's own mode=edit resolution.
-      val pkgVersion = Option(nodeProps.get("pkgVersion")).map(_.toString.toDouble).getOrElse(0d)
+      // Once published, all reads/writes must target the editable ".img" copy, not the live one, or metadata/children come from the wrong snapshot; recomputed here so a raw Kafka-triggered event can't fall out of sync with the API layer's own mode=edit resolution.
+      val pkgVersion = Option(rawNodeProps.get("pkgVersion")).map(_.toString.toDouble).getOrElse(0d)
       val objectId = if (pkgVersion > 0 && !rawObjectId.endsWith(".img")) s"$rawObjectId.img" else rawObjectId
       val baseObjectId = objectId.stripSuffix(".img")
+      val nodeProps = if (objectId == rawObjectId) rawNodeProps
+        else Option(janusGraphUtil.getNodeProperties(objectId)).getOrElse(rawNodeProps)
 
       val skills = dynamicAssessHelper.parseSkills(nodeProps)
       val difficultyTarget = dynamicAssessHelper.parseDifficultyTarget(nodeProps)
