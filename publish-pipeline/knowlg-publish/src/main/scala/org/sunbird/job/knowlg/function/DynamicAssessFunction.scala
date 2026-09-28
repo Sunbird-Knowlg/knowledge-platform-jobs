@@ -37,19 +37,26 @@ class DynamicAssessFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
     List(config.dynamicAssessEventCount, config.dynamicAssessSuccessCount, config.dynamicAssessFailedCount, config.dynamicAssessSkippedCount)
 
   override def processElement(event: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
-    val objectId = event.identifier
+    val rawObjectId = event.identifier
+    // "ContentImage"/"QuestionSetImage" are the editable-copy objectTypes for an already-published node; treat them the same as their base type.
+    val baseObjectType = event.objectType.stripSuffix("Image")
     metrics.incCounter(config.dynamicAssessEventCount)
-    logger.info(s"DynamicAssessFunction :: processing $objectId, objectType=${event.objectType}")
+    logger.info(s"DynamicAssessFunction :: processing $rawObjectId, objectType=${event.objectType}")
 
-    if (event.objectType != "QuestionSet" && event.objectType != "Content") {
-      logger.info(s"DynamicAssessFunction :: unsupported objectType=${event.objectType}, skipping $objectId")
+    if (baseObjectType != "QuestionSet" && baseObjectType != "Content") {
+      logger.info(s"DynamicAssessFunction :: unsupported objectType=${event.objectType}, skipping $rawObjectId")
       metrics.incCounter(config.dynamicAssessSkippedCount)
       return
     }
 
     try {
-      val nodeProps = Option(janusGraphUtil.getNodeProperties(objectId))
-        .getOrElse(throw new RuntimeException(s"Node not found in JanusGraph: $objectId"))
+      val nodeProps = Option(janusGraphUtil.getNodeProperties(rawObjectId))
+        .getOrElse(throw new RuntimeException(s"Node not found in JanusGraph: $rawObjectId"))
+
+      // Once published, writes must target the editable ".img" copy, not the live one, or they land on a row nothing ever reads again; recomputed here so a raw Kafka-triggered event can't fall out of sync with the API layer's own mode=edit resolution.
+      val pkgVersion = Option(nodeProps.get("pkgVersion")).map(_.toString.toDouble).getOrElse(0d)
+      val objectId = if (pkgVersion > 0 && !rawObjectId.endsWith(".img")) s"$rawObjectId.img" else rawObjectId
+      val baseObjectId = objectId.stripSuffix(".img")
 
       val skills = dynamicAssessHelper.parseSkills(nodeProps)
       val difficultyTarget = dynamicAssessHelper.parseDifficultyTarget(nodeProps)
@@ -71,7 +78,7 @@ class DynamicAssessFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
       // (e.g. "topic" for BMGS, "skill" for USF) is the field the pool query actually filters on.
       val categoryField = dynamicAssessHelper.resolveCategoryCode(framework)
       // ECML and QuestionSet draw from separate pools: AssessmentItem vs Question.
-      val poolObjectType = if (event.objectType == "Content") "AssessmentItem" else "Question"
+      val poolObjectType = if (baseObjectType == "Content") "AssessmentItem" else "Question"
 
       // Step 1: availability counts per skill x difficulty, used for allocation only.
       val availability: (String, String) => Int = (skill, difficulty) =>
@@ -110,16 +117,16 @@ class DynamicAssessFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
         return
       }
 
-      val written = event.objectType match {
+      val written = baseObjectType match {
         case "QuestionSet" =>
-          // Add-then-remove: /add merges not replaces, and this order never leaves the QSet empty on partial failure.
+          // baseObjectId, not objectId: /add and /remove self-resolve the editable copy, so a literal ".img" id risks double-resolution. Add-then-remove: /add merges not replaces, so this order never leaves the QSet empty on partial failure.
           val existingChildren = dynamicAssessHelper.parseExistingChildren(nodeProps)
-          val added = dynamicAssessHelper.addQuestionsToSet(objectId, allSelectedIds)
+          val added = dynamicAssessHelper.addQuestionsToSet(baseObjectId, allSelectedIds)
           if (!added) {
             false
           } else {
             val staleChildren = existingChildren.diff(allSelectedIds)
-            if (staleChildren.nonEmpty && !dynamicAssessHelper.removeQuestionsFromSet(objectId, staleChildren)) {
+            if (staleChildren.nonEmpty && !dynamicAssessHelper.removeQuestionsFromSet(baseObjectId, staleChildren)) {
               logger.error(s"DynamicAssessFunction :: new selection added for $objectId but failed to remove stale children $staleChildren, QuestionSet is temporarily over-populated until next refresh")
             }
             true
@@ -137,11 +144,10 @@ class DynamicAssessFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
       if (written) {
         metrics.incCounter(config.dynamicAssessSuccessCount)
         logger.info(s"DynamicAssessFunction :: wrote ${allSelectedIds.size} questions for $objectId")
-        if (event.objectType == "Content") {
-          // Body write is Cassandra-only; loop a publish event back so ECAR/versioning/offline actually pick it up.
+        if (baseObjectType == "Content") {
+          // Body write is Cassandra-only; loop a publish event back with the base id (the pipeline resolves its own editable copy) so ECAR/versioning/offline actually pick it up.
           val mimeType = Option(nodeProps.get("mimeType")).map(_.toString).getOrElse("")
-          val pkgVersion = Option(nodeProps.get("pkgVersion")).map(_.toString.toDouble).getOrElse(0d)
-          context.output(config.dynamicAssessRepublishOutTag, dynamicAssessHelper.buildRepublishEvent(objectId, mimeType, channel, pkgVersion))
+          context.output(config.dynamicAssessRepublishOutTag, dynamicAssessHelper.buildRepublishEvent(baseObjectId, mimeType, channel, pkgVersion))
         }
       } else {
         metrics.incCounter(config.dynamicAssessFailedCount)
@@ -150,10 +156,10 @@ class DynamicAssessFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
       }
     } catch {
       case e: Exception =>
-        logger.error(s"DynamicAssessFunction :: failed for $objectId - ${e.getMessage}", e)
+        logger.error(s"DynamicAssessFunction :: failed for $rawObjectId - ${e.getMessage}", e)
         metrics.incCounter(config.dynamicAssessFailedCount)
         context.output(config.failedEventOutTag, ScalaJsonUtil.serialize(Map(
-          "objectId" -> objectId, "stage" -> "dynamic-assess-refresh", "error" -> e.getMessage)))
+          "objectId" -> rawObjectId, "stage" -> "dynamic-assess-refresh", "error" -> e.getMessage)))
     }
   }
 }
