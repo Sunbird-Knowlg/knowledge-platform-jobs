@@ -64,13 +64,16 @@ class DynamicAssessHelper(config: KnowlgPublishConfig, httpUtil: HttpUtil) {
     val remainingByDifficulty = scala.collection.mutable.Map(difficultyLevels.map(l => l -> difficultyTarget.getOrElse(l, 0)): _*)
     val allocated = scala.collection.mutable.Map[(String, String), Int]().withDefaultValue(0)
     val shortfalls = scala.collection.mutable.ListBuffer[String]()
+    val availabilityCache = scala.collection.mutable.Map[(String, String), Int]()
+    def cachedAvailability(skill: String, level: String): Int = availabilityCache.getOrElseUpdate((skill, level), availability(skill, level))
 
-    // Step 1: reserve minCriteria per skill, only taking from buckets that skill actually has candidates in.
-    skills.foreach { skill =>
+    // Step 1: reserve minCriteria per skill, most-constrained (fewest feasible buckets) first, so a flexible skill can't claim the one bucket a constrained skill depends on.
+    val orderedSkills = skills.sortBy(skill => difficultyLevels.count(level => cachedAvailability(skill, level) > 0))
+    orderedSkills.foreach { skill =>
       var toReserve = minCriteria
       difficultyLevels.foreach { level =>
         if (toReserve > 0 && remainingByDifficulty(level) > 0) {
-          val avail = math.max(0, availability(skill, level) - allocated((skill, level)))
+          val avail = math.max(0, cachedAvailability(skill, level) - allocated((skill, level)))
           val take = math.min(toReserve, math.min(remainingByDifficulty(level), avail))
           if (take > 0) {
             allocated((skill, level)) += take
@@ -86,7 +89,7 @@ class DynamicAssessHelper(config: KnowlgPublishConfig, httpUtil: HttpUtil) {
     difficultyLevels.foreach { level =>
       var remainder = remainingByDifficulty(level)
       if (remainder > 0) {
-        val availabilityBySkill = skills.map(s => s -> math.max(0, availability(s, level) - allocated((s, level)))).toMap
+        val availabilityBySkill = skills.map(s => s -> math.max(0, cachedAvailability(s, level) - allocated((s, level)))).toMap
         val totalAvailable = availabilityBySkill.values.sum
         if (totalAvailable > 0) {
           // Fixed starting remainder, not the live/shrinking one, or later skills get under-allocated.
@@ -104,7 +107,7 @@ class DynamicAssessHelper(config: KnowlgPublishConfig, httpUtil: HttpUtil) {
           // any leftover from rounding goes to whichever skill still has spare availability
           skills.foreach { skill =>
             if (remainder > 0) {
-              val spare = math.max(0, availability(skill, level) - allocated((skill, level)))
+              val spare = math.max(0, cachedAvailability(skill, level) - allocated((skill, level)))
               val take = math.min(remainder, spare)
               if (take > 0) {
                 allocated((skill, level)) += take
@@ -125,11 +128,11 @@ class DynamicAssessHelper(config: KnowlgPublishConfig, httpUtil: HttpUtil) {
     searchQuestionPool(skill, difficulty, channel, categoryField, poolObjectType, limit = 1)._1
   }
 
-  /** Fetches up to requiredCount x multiplier candidates for one skill x difficulty bucket, then randomly picks requiredCount of them. */
-  def selectForAllocation(allocation: Allocation, channel: String, categoryField: String, poolObjectType: String): SkillDifficultyResult = {
-    val fetchLimit = allocation.requiredCount * config.dynamicAssessMultiplier
+  /** Fetches up to requiredCount x multiplier candidates for one skill x difficulty bucket, excludes ids already selected for an earlier bucket (a candidate can match more than one requested skill), then randomly picks requiredCount of what's left. */
+  def selectForAllocation(allocation: Allocation, channel: String, categoryField: String, poolObjectType: String, excludeIds: Set[String] = Set.empty): SkillDifficultyResult = {
+    val fetchLimit = (allocation.requiredCount + excludeIds.size) * config.dynamicAssessMultiplier
     val (_, candidates) = searchQuestionPool(allocation.skill, allocation.difficulty, channel, categoryField, poolObjectType, limit = fetchLimit)
-    val selected = Random.shuffle(candidates).take(allocation.requiredCount)
+    val selected = Random.shuffle(candidates.filterNot(excludeIds.contains)).take(allocation.requiredCount)
     SkillDifficultyResult(allocation.skill, allocation.difficulty, selected)
   }
 

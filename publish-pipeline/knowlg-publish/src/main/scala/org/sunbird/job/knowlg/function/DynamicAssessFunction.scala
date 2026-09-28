@@ -97,8 +97,11 @@ class DynamicAssessFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
           "skill" -> skill, "error" -> "skill's own pool couldn't satisfy minCriteria across any difficulty bucket")))
       }
 
-      // Step 3: for each resulting allocation, fetch required x multiplier candidates and select.
-      val results = allocations.map(dynamicAssessHelper.selectForAllocation(_, channel, categoryField, poolObjectType))
+      // Step 3: fetch required x multiplier candidates and select per allocation, sequentially excluding ids already claimed by an earlier bucket (a candidate can match more than one requested skill).
+      val results = allocations.foldLeft(List.empty[DynamicAssessHelper.SkillDifficultyResult] -> Set.empty[String]) { case ((acc, usedIds), allocation) =>
+        val result = dynamicAssessHelper.selectForAllocation(allocation, channel, categoryField, poolObjectType, usedIds)
+        (acc :+ result, usedIds ++ result.selectedIds)
+      }._1
 
       val (fulfilled, shortfallResults): (List[(DynamicAssessHelper.SkillDifficultyResult, Allocation)], List[(DynamicAssessHelper.SkillDifficultyResult, Allocation)]) =
         results.zip(allocations).partition { case (result, allocation) => result.selectedIds.size >= allocation.requiredCount }
