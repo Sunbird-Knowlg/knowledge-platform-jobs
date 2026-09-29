@@ -2,6 +2,8 @@ package org.sunbird.job.publish.helpers.spec
 
 import com.typesafe.config.{Config, ConfigFactory}
 import org.apache.commons.lang3.StringUtils
+import org.apache.flink.api.common.typeinfo.TypeInformation
+import org.apache.flink.api.java.typeutils.TypeExtractor
 import org.cassandraunit.CQLDataLoader
 import org.cassandraunit.dataset.cql.FileCQLDataSet
 import org.cassandraunit.utils.EmbeddedCassandraServerHelper
@@ -12,6 +14,7 @@ import org.scalatest.{BeforeAndAfterAll, FlatSpec, Matchers}
 import org.scalatestplus.mockito.MockitoSugar
 import org.sunbird.job.cache.{DataCache, RedisConnect}
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
+import org.sunbird.job.knowlg.function.CollectionPublishFunction
 import org.sunbird.job.knowlg.publish.helpers.CollectionPublisher
 import org.sunbird.job.knowlg.task.KnowlgPublishConfig
 import org.sunbird.job.publish.config.PublishConfig
@@ -29,6 +32,7 @@ import scala.concurrent.ExecutionContextExecutor
 class CollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Matchers with MockitoSugar {
 
   implicit val mockJanusGraphUtil: JanusGraphUtil = mock[JanusGraphUtil](Mockito.withSettings().serializable())
+  implicit val stringTypeInfo: TypeInformation[String] = TypeExtractor.getForClass(classOf[String])
   implicit var cassandraUtil: CassandraUtil = _
   val config: Config = ConfigFactory.load("test.conf").withFallback(ConfigFactory.systemEnvironment())
   val jobConfig: KnowlgPublishConfig = new KnowlgPublishConfig(config)
@@ -38,6 +42,7 @@ class CollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Match
   implicit val defConfig: DefinitionConfig = DefinitionConfig(jobConfig.schemaSupportVersionMap, jobConfig.definitionBasePath)
   implicit val publishConfig: PublishConfig = jobConfig.asInstanceOf[PublishConfig]
   implicit val httpUtil: HttpUtil = new HttpUtil
+  val mockHttpUtil: HttpUtil = mock[HttpUtil](Mockito.withSettings().serializable())
   val mockElasticUtil: ElasticSearchUtil = mock[ElasticSearchUtil](Mockito.withSettings().serializable())
   var definitionCache = new DefinitionCache()
   implicit val definition: ObjectDefinition = definitionCache.getDefinition("Collection", jobConfig.schemaSupportVersionMap.getOrElse("collection", "1.0").asInstanceOf[String], jobConfig.definitionBasePath)
@@ -280,6 +285,21 @@ class CollectionPublisherSpec extends FlatSpec with BeforeAndAfterAll with Match
       jedis.close()
       dataCache.close()
     }
+  }
+
+  "CollectionPublishFunction" should "resolve auto batch eligibility via the mixed-in AutoBatchCreation trait" in {
+    val fn = new CollectionPublishFunction(jobConfig, mockHttpUtil)
+    val trackableObj = new ObjectData("do_11300581751853056099", Map[String, AnyRef]("name" -> "Test Course", "createdBy" -> "user1", "trackable" -> """{"enabled":"Yes","autoBatch":"Yes"}"""))
+    val result = fn.getAutoBatchDetails(trackableObj)(cassandraUtil, jobConfig)
+    result.isEmpty should be(false)
+    result.get("identifier") should be("do_11300581751853056099")
+  }
+
+  it should "not flag a non-trackable collection as eligible for an auto batch" in {
+    val fn = new CollectionPublishFunction(jobConfig, mockHttpUtil)
+    val notTrackableObj = new ObjectData("do_11300581751853056099", Map[String, AnyRef]("name" -> "Test Course", "trackable" -> """{"enabled":"No","autoBatch":"No"}"""))
+    val result = fn.getAutoBatchDetails(notTrackableObj)(cassandraUtil, jobConfig)
+    result.isEmpty should be(true)
   }
 
 }
