@@ -8,7 +8,7 @@ import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cache.{DataCache, RedisConnect}
 import org.sunbird.job.knowlg.publish.domain.Event
-import org.sunbird.job.knowlg.publish.helpers.{AutoBatchCreation, CollectionPublisher, DialcodeHelper}
+import org.sunbird.job.knowlg.publish.helpers.{AutoBatchCreation, CollectionPublisher, ContentPublishedEventHelper, DialcodeHelper}
 import org.sunbird.job.knowlg.task.KnowlgPublishConfig
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.exception.InvalidInputException
@@ -32,7 +32,7 @@ class CollectionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
                                 @transient var definitionCache: DefinitionCache = null,
                                 @transient var definitionConfig: DefinitionConfig = null)
                                (implicit val stringTypeInfo: TypeInformation[String])
-  extends BaseProcessFunction[Event, String](config) with CollectionPublisher with DialcodeHelper with FailedEventHelper with AutoBatchCreation {
+  extends BaseProcessFunction[Event, String](config) with CollectionPublisher with DialcodeHelper with FailedEventHelper with AutoBatchCreation with ContentPublishedEventHelper {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[CollectionPublishFunction])
   val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
@@ -71,7 +71,7 @@ class CollectionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
   }
 
   override def metricsList(): List[String] = {
-    List(config.collectionPublishEventCount, config.collectionPublishSuccessEventCount, config.collectionPublishFailedEventCount, config.skippedEventCount, config.collectionPostPublishProcessEventCount, config.enrichedMetadataEventCount)
+    List(config.collectionPublishEventCount, config.collectionPublishSuccessEventCount, config.collectionPublishFailedEventCount, config.skippedEventCount, config.collectionPostPublishProcessEventCount, config.enrichedMetadataEventCount, config.contentPublishedEventCount)
   }
 
   override def processElement(data: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
@@ -155,7 +155,8 @@ class CollectionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
 
           //Push Enriched metadata event
           pushEnrichedMetadataEvent(enrichedObj, context)(metrics)
-          
+          pushContentPublishedEvent(enrichedObj, "Collection", config, context)(metrics)
+
           if(config.isAISearchEnabled) {
             pushContentMetadataEvent(successObj, context)(metrics)
           }

@@ -26,6 +26,7 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
   val contentMetadataTopic: String = config.getString("kafka.content_metadata.topic")
   val enrichedMetadataTopic: String = config.getString("kafka.enriched_metadata.topic")
   val kafkaErrorTopic: String = config.getString("kafka.error.topic")
+  val contentPublishedTopic: String = if (config.hasPath("kafka.content_published.topic")) config.getString("kafka.content_published.topic") else "sunbirddev.content.published"
   val inputConsumerName = "content-publish-consumer"
 
   // Parallelism
@@ -46,6 +47,7 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
   val mvProcessorEventCount = "mvc-processor-event-count"
   val dialcodeContextUpdaterEventCount = "dialcode-context-updater-event-count"
   val enrichedMetadataEventCount = "enriched-metadata-event-count"
+  val contentPublishedEventCount = "content-published-event-count"
   val enrichOnlyEventCount = "enrich-only-event-count"
   val enrichOnlySuccessCount = "enrich-only-success-count"
   val enrichOnlyFailedCount = "enrich-only-failed-count"
@@ -105,6 +107,7 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
   val dialcodeContextUpdaterOutTag: OutputTag[String] = new OutputTag[String]("dialcode-context-updater-request", stringTypeInfo)
   val contentMetadataEventOutTag: OutputTag[String] = new OutputTag[String]("content-metadata-event-request", stringTypeInfo)
   val enrichedMetadataEventOutTag: OutputTag[String] = new OutputTag[String]("enriched-metadata-event-request", stringTypeInfo)
+  val contentPublishedEventOutTag: OutputTag[String] = new OutputTag[String]("content-published-event-request", stringTypeInfo)
   val enrichOnlyOutTag: OutputTag[Event] = new OutputTag[Event]("enrich-only-request", publishMetaTypeInfo)
   val qrimageOutTag: OutputTag[String] = new OutputTag[String]("qrimage-generator-request", stringTypeInfo)
   val autoBatchCreateOutTag: OutputTag[String] = new OutputTag[String]("auto-batch-create", stringTypeInfo)

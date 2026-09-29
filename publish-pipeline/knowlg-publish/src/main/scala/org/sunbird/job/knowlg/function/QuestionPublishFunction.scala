@@ -8,7 +8,7 @@ import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cache.{DataCache, RedisConnect}
 import org.sunbird.job.knowlg.publish.domain.{Event, PublishMetadata}
-import org.sunbird.job.knowlg.publish.helpers.QuestionPublisher
+import org.sunbird.job.knowlg.publish.helpers.{ContentPublishedEventHelper, QuestionPublisher}
 import org.sunbird.job.knowlg.task.KnowlgPublishConfig
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.publish.config.PublishConfig
@@ -27,7 +27,7 @@ class QuestionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
                               @transient var definitionCache: DefinitionCache = null,
                               @transient var definitionConfig: DefinitionConfig = null)
                              (implicit val stringTypeInfo: TypeInformation[String])
-  extends BaseProcessFunction[Event, String](config) with QuestionPublisher {
+  extends BaseProcessFunction[Event, String](config) with QuestionPublisher with ContentPublishedEventHelper {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[QuestionPublishFunction])
   val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
@@ -68,7 +68,7 @@ class QuestionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
   }
 
   override def metricsList(): List[String] = {
-    List(config.questionPublishEventCount, config.questionPublishSuccessEventCount, config.questionPublishFailedEventCount, config.enrichedMetadataEventCount)
+    List(config.questionPublishEventCount, config.questionPublishSuccessEventCount, config.questionPublishFailedEventCount, config.enrichedMetadataEventCount, config.contentPublishedEventCount)
   }
 
   override def processElement(event: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
@@ -129,6 +129,7 @@ class QuestionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
         logger.info(s"Feature: ${featureName} | Ecar generation done for Question: ${objWithEcar.identifier} | requestId: ${requestId}")
         saveOnSuccess(objWithEcar)(janusGraphUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig, config)
         pushEnrichedMetadataEvent(enrichedObj, context)(metrics)
+        pushContentPublishedEvent(enrichedObj, "Question", config, context)(metrics)
         metrics.incCounter(config.questionPublishSuccessEventCount)
         logger.info(LoggerUtil.getExitLogs(config.jobName, requestId, s"Feature: ${featureName} | Question publishing completed successfully for : ${data.identifier}"))
       } else {

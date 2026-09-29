@@ -8,7 +8,7 @@ import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cache.{DataCache, RedisConnect}
 import org.sunbird.job.knowlg.publish.domain.Event
-import org.sunbird.job.knowlg.publish.helpers.{ContentPublisher, DialcodeHelper, ExtractableMimeTypeHelper}
+import org.sunbird.job.knowlg.publish.helpers.{ContentPublishedEventHelper, ContentPublisher, DialcodeHelper, ExtractableMimeTypeHelper}
 import org.sunbird.job.knowlg.task.KnowlgPublishConfig
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.exception.InvalidInputException
@@ -30,7 +30,7 @@ class ContentPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
                              @transient var definitionCache: DefinitionCache = null,
                              @transient var definitionConfig: DefinitionConfig = null)
                             (implicit val stringTypeInfo: TypeInformation[String])
-  extends BaseProcessFunction[Event, String](config) with ContentPublisher with DialcodeHelper with FailedEventHelper {
+  extends BaseProcessFunction[Event, String](config) with ContentPublisher with DialcodeHelper with FailedEventHelper with ContentPublishedEventHelper {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[ContentPublishFunction])
   val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
@@ -64,7 +64,8 @@ class ContentPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
 
   override def metricsList(): List[String] = {
     List(config.contentPublishEventCount, config.contentPublishSuccessEventCount, config.contentPublishFailedEventCount,
-      config.videoStreamingGeneratorEventCount, config.skippedEventCount, config.mvProcessorEventCount, config.enrichedMetadataEventCount)
+      config.videoStreamingGeneratorEventCount, config.skippedEventCount, config.mvProcessorEventCount, config.enrichedMetadataEventCount,
+      config.contentPublishedEventCount)
   }
 
   override def processElement(data: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
@@ -95,6 +96,7 @@ class ContentPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
           pushStreamingUrlEvent(enrichedObj, context)(metrics)
           pushMVCProcessorEvent(enrichedObj, context)(metrics)
           pushEnrichedMetadataEvent(enrichedObj, context)(metrics)
+          pushContentPublishedEvent(enrichedObj, "Content", config, context)(metrics)
           if(config.isAISearchEnabled) {
             pushContentMetadataEvent(enrichedObj, context)(metrics)
           }
