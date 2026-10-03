@@ -217,16 +217,43 @@ trait CompositeSearchIndexerHelper {
     }
   }
 
-  private def addMetadataToDocument(
+  /**
+   * Gives a property a shape the index mapping can accept, rather than passing on
+   * whatever shape the transaction event happened to carry.
+   *
+   *   - a field named in nestedFields is an object in the mapping, so a JSON string
+   *     is parsed back into one
+   *   - any other object is serialised to a JSON string, because everything not
+   *     declared nested is mapped as text
+   *
+   * Without the second rule an object reaching a text-mapped field is rejected by
+   * OpenSearch with a mapper_parsing_exception, and that document never gets indexed
+   * -- which is how migrated content carrying `transcoding` as an object was left out
+   * of search. Strings, numbers, booleans and arrays are passed through untouched;
+   * arrays of scalars index against a text mapping as they are.
+   *
+   * nestedFields must therefore list every field the mapping declares as an object.
+   */
+  private[helpers] def addMetadataToDocument(
       propertyName: String,
       propertyValue: AnyRef,
       nestedFields: List[String]
   ): AnyRef = {
-    val propertyNewValue =
-      if (nestedFields.contains(propertyName))
-        ScalaJsonUtil.deserialize[AnyRef](propertyValue.asInstanceOf[String])
-      else propertyValue
-    propertyNewValue
+    if (nestedFields.contains(propertyName)) {
+      propertyValue match {
+        case s: String =>
+          try ScalaJsonUtil.deserialize[AnyRef](s)
+          catch { case _: Exception => s }
+        case other => other
+      }
+    } else {
+      propertyValue match {
+        case _: String                => propertyValue
+        case m: scala.collection.Map[_, _] => ScalaJsonUtil.serialize(m)
+        case jm: java.util.Map[_, _]  => ScalaJsonUtil.serialize(jm)
+        case other                    => other
+      }
+    }
   }
 
   def getCompositeIndexerObject(event: Event)(config: TransactionEventProcessorConfig): CompositeIndexer = {
