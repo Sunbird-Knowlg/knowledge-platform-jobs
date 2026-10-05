@@ -218,21 +218,14 @@ trait CompositeSearchIndexerHelper {
   }
 
   /**
-   * Gives a property a shape the index mapping can accept, rather than passing on
-   * whatever shape the transaction event happened to carry.
+   * Gives a field declared in nestedFields the object shape its nested mapping
+   * expects. The transaction event can carry such a field either as a JSON string
+   * or already as an object: a string is parsed into an object, and an object is
+   * passed on as it is. Previously only the string case was handled, so an object
+   * (as `transcoding` arrives from a video upload) failed the cast. A string that
+   * is not valid JSON is passed on unchanged rather than throwing.
    *
-   *   - a field named in nestedFields is an object in the mapping, so a JSON string
-   *     is parsed back into one
-   *   - any other object is serialised to a JSON string, because everything not
-   *     declared nested is mapped as text
-   *
-   * Without the second rule an object reaching a text-mapped field is rejected by
-   * OpenSearch with a mapper_parsing_exception, and that document never gets indexed
-   * -- which is how migrated content carrying `transcoding` as an object was left out
-   * of search. Strings, numbers, booleans and arrays are passed through untouched;
-   * arrays of scalars index against a text mapping as they are.
-   *
-   * nestedFields must therefore list every field the mapping declares as an object.
+   * Values of fields that are not declared nested are passed through untouched.
    */
   private[helpers] def addMetadataToDocument(
       propertyName: String,
@@ -246,14 +239,7 @@ trait CompositeSearchIndexerHelper {
           catch { case _: Exception => s }
         case other => other
       }
-    } else {
-      propertyValue match {
-        case _: String                => propertyValue
-        case m: scala.collection.Map[_, _] => ScalaJsonUtil.serialize(m)
-        case jm: java.util.Map[_, _]  => ScalaJsonUtil.serialize(jm)
-        case other                    => other
-      }
-    }
+    } else propertyValue
   }
 
   def getCompositeIndexerObject(event: Event)(config: TransactionEventProcessorConfig): CompositeIndexer = {

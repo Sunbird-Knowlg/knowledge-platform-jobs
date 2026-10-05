@@ -5,18 +5,23 @@ import org.sunbird.spec.BaseTestSpec
 import java.util
 
 /**
- * The composite search mapping types every field that is not declared an object as
- * text, so an object reaching one of those fields is rejected outright and the whole
- * document goes unindexed. These cover the shape each kind of value is given.
+ * Fields declared nested reach the indexer either as a JSON string or already as an
+ * object; both must end up as the object the nested mapping expects. Everything else
+ * is passed through as it arrives.
  */
 class AddMetadataToDocumentSpec extends BaseTestSpec {
 
   private val helper = new CompositeSearchIndexerHelper {}
 
-  private val nested = List("trackable", "credentials", "discussionForum", "batches", "plugins")
+  private val nested = List("trackable", "credentials", "discussionForum", "batches", "plugins", "transcoding")
 
   private def shape(name: String, value: AnyRef): AnyRef =
     helper.addMetadataToDocument(name, value, nested)
+
+  private def transcodingObject = new util.HashMap[String, AnyRef]() {
+    put("status", "STARTED")
+    put("retryCount", Integer.valueOf(0))
+  }
 
   "a field declared nested" should "be parsed from its JSON string into an object" in {
     val result = shape("trackable", """{"enabled":"Yes","autoBatch":"Yes"}""")
@@ -32,20 +37,20 @@ class AddMetadataToDocumentSpec extends BaseTestSpec {
     shape("plugins", "not-json") should be("not-json")
   }
 
-  /** The regression: transcoding arrived as an object against a text mapping. */
-  "an object on a field that is not declared nested" should "be serialised to a JSON string" in {
-    val value = new util.HashMap[String, AnyRef]() {
-      put("status", "STARTED")
-      put("retryCount", Integer.valueOf(0))
-    }
-
-    val result = shape("transcoding", value)
-
-    result.isInstanceOf[String] should be(true)
-    result.asInstanceOf[String] should include("STARTED")
+  /** The regression: a video upload sends transcoding as an object. */
+  "transcoding" should "be passed on as an object when it arrives as one" in {
+    val value = transcodingObject
+    shape("transcoding", value) should be(value)
   }
 
-  "scalar and array values" should "pass through untouched" in {
+  it should "be parsed into an object when it arrives as a JSON string" in {
+    val result = shape("transcoding", """{"status":"STARTED","retryCount":0}""")
+    result.isInstanceOf[String] should be(false)
+  }
+
+  "a field that is not declared nested" should "be passed through as it arrives, object or not" in {
+    val value = transcodingObject
+    helper.addMetadataToDocument("transcoding", value, List("trackable")) should be(value)
     shape("name", "A course") should be("A course")
     shape("pkgVersion", Integer.valueOf(3)) should be(Integer.valueOf(3))
     shape("userConsent", java.lang.Boolean.TRUE) should be(java.lang.Boolean.TRUE)
