@@ -1,4 +1,10 @@
 name: jira-description-action
+
+# Limit default GITHUB_TOKEN permissions for this workflow
+permissions:
+  contents: read
+  pull-requests: write
+
 on:
   pull_request_target:
     types: [opened, labeled]
