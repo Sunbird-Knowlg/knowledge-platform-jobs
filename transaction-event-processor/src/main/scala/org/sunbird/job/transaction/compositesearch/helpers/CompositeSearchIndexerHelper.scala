@@ -217,17 +217,47 @@ trait CompositeSearchIndexerHelper {
     }
   }
 
-  private def addMetadataToDocument(
+  /**
+   * Gives a property the shape its composite search mapping accepts, whatever shape
+   * the transaction event happened to carry it in.
+   *
+   *   - A field declared in nestedFields is an object in the mapping. A JSON string is
+   *     parsed into an object and an object is passed on as it is (as `transcoding`
+   *     arrives from a video upload). A string that is not valid JSON is passed on
+   *     unchanged rather than throwing.
+   *   - Any other field is text in the mapping, so an object -- or a list holding an
+   *     object -- is serialised to a JSON string. Without this, OpenSearch rejects the
+   *     document with a mapper_parsing_exception (for example `choices` on a question)
+   *     and the job stops on it. Strings, numbers, booleans and lists of scalars are
+   *     passed through untouched; they already index against a text mapping.
+   *
+   * nestedFields must therefore name exactly the fields the live index maps as objects.
+   */
+  private[helpers] def addMetadataToDocument(
       propertyName: String,
       propertyValue: AnyRef,
       nestedFields: List[String]
   ): AnyRef = {
-    val propertyNewValue =
-      if (nestedFields.contains(propertyName))
-        ScalaJsonUtil.deserialize[AnyRef](propertyValue.asInstanceOf[String])
-      else propertyValue
-    propertyNewValue
+    if (nestedFields.contains(propertyName)) {
+      propertyValue match {
+        case s: String =>
+          try ScalaJsonUtil.deserialize[AnyRef](s)
+          catch { case _: Exception => s }
+        case other => other
+      }
+    } else {
+      propertyValue match {
+        case m: scala.collection.Map[_, _]                      => ScalaJsonUtil.serialize(m)
+        case jm: java.util.Map[_, _]                            => ScalaJsonUtil.serialize(jm)
+        case l: scala.collection.Seq[_] if l.exists(isObject)   => ScalaJsonUtil.serialize(l)
+        case jl: java.util.List[_] if jl.asScala.exists(isObject) => ScalaJsonUtil.serialize(jl)
+        case other                                              => other
+      }
+    }
   }
+
+  private def isObject(value: Any): Boolean =
+    value.isInstanceOf[scala.collection.Map[_, _]] || value.isInstanceOf[java.util.Map[_, _]]
 
   def getCompositeIndexerObject(event: Event)(config: TransactionEventProcessorConfig): CompositeIndexer = {
     val objectType = event.readOrDefault("objectType", "")
