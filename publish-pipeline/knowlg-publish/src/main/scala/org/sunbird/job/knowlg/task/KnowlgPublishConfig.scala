@@ -19,6 +19,24 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
   // Job Configuration
   val jobEnv: String = config.getString("job.env")
 
+  // Dynamic Assess Configuration
+  val searchServiceBase: String = if (config.hasPath("service.search.basePath")) config.getString("service.search.basePath") else ""
+  val searchServiceURL: String = s"$searchServiceBase/v3/search"
+  val questionSetServiceBase: String = if (config.hasPath("service.questionset.basePath")) config.getString("service.questionset.basePath") else ""
+  val questionSetAddURL: String = s"$questionSetServiceBase/questionset/v5/add"
+  val questionSetRemoveURL: String = s"$questionSetServiceBase/questionset/v5/remove"
+  val dynamicAssessMinCriteria: Int = if (config.hasPath("dynamicassess.minCriteria")) config.getInt("dynamicassess.minCriteria") else 2
+  val dynamicAssessMultiplier: Int = if (config.hasPath("dynamicassess.multiplier")) config.getInt("dynamicassess.multiplier") else 3
+  require(dynamicAssessMinCriteria >= 0, s"dynamicassess.minCriteria must be >= 0, got $dynamicAssessMinCriteria")
+  require(dynamicAssessMultiplier >= 1, s"dynamicassess.multiplier must be >= 1, got $dynamicAssessMultiplier")
+  val questionServiceBase: String = if (config.hasPath("service.question.basePath")) config.getString("service.question.basePath") else ""
+  val assessmentItemServiceBase: String = if (config.hasPath("service.assessmentitem.basePath")) config.getString("service.assessmentitem.basePath") else questionServiceBase
+  val assessmentItemReadURL: String = s"$assessmentItemServiceBase/assessment/v3/items/read/"
+  val frameworkServiceBase: String = if (config.hasPath("service.framework.basePath")) config.getString("service.framework.basePath") else ""
+  val frameworkReadURL: String = s"$frameworkServiceBase/framework/v3/read/"
+  val defaultIsShuffleOption: Boolean = if (config.hasPath("content.publish.defaults.isShuffleOption")) config.getBoolean("content.publish.defaults.isShuffleOption") else true
+  val defaultIsPartialScore: Boolean = if (config.hasPath("content.publish.defaults.isPartialScore")) config.getBoolean("content.publish.defaults.isPartialScore") else true
+
   // Kafka Topics Configuration
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
   val postPublishTopic: String = config.getString("kafka.post_publish.topic")
@@ -50,6 +68,10 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
   val enrichOnlySuccessCount = "enrich-only-success-count"
   val enrichOnlyFailedCount = "enrich-only-failed-count"
   val enrichOnlySkippedCount = "enrich-only-skipped-count"
+  val dynamicAssessEventCount = "dynamic-assess-event-count"
+  val dynamicAssessSuccessCount = "dynamic-assess-success-count"
+  val dynamicAssessFailedCount = "dynamic-assess-failed-count"
+  val dynamicAssessSkippedCount = "dynamic-assess-skipped-count"
 
   // Auto Batch Creation Metrics
   val autoBatchCreationCount = "auto-batch-creation-count"
@@ -106,6 +128,7 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
   val contentMetadataEventOutTag: OutputTag[String] = new OutputTag[String]("content-metadata-event-request", stringTypeInfo)
   val enrichedMetadataEventOutTag: OutputTag[String] = new OutputTag[String]("enriched-metadata-event-request", stringTypeInfo)
   val enrichOnlyOutTag: OutputTag[Event] = new OutputTag[Event]("enrich-only-request", publishMetaTypeInfo)
+  val dynamicAssessOutTag: OutputTag[Event] = new OutputTag[Event]("dynamic-assess-refresh-request", publishMetaTypeInfo)
   val qrimageOutTag: OutputTag[String] = new OutputTag[String]("qrimage-generator-request", stringTypeInfo)
   val autoBatchCreateOutTag: OutputTag[String] = new OutputTag[String]("auto-batch-create", stringTypeInfo)
 
