@@ -6,7 +6,6 @@ import org.sunbird.job.knowlg.task.KnowlgPublishConfig
 import org.sunbird.job.util.{CassandraUtil, HttpUtil, JanusGraphUtil, ScalaJsonUtil}
 
 import java.util
-import java.util.UUID
 import scala.collection.JavaConverters._
 import scala.util.Random
 
@@ -274,31 +273,16 @@ class DynamicAssessHelper(config: KnowlgPublishConfig, httpUtil: HttpUtil) {
     }
   }
 
-  /** Builds a publish event for the Content id, looped back onto this job's own input topic so ECAR/versioning actually update. */
-  def buildRepublishEvent(identifier: String, mimeType: String, channel: String, pkgVersion: Double): String = {
-    val ets = System.currentTimeMillis()
-    val mid = s"LP.$ets.${UUID.randomUUID().toString}"
-    val reqMap = new util.HashMap[String, AnyRef]() {
-      put("eid", "BE_JOB_REQUEST")
-      put("ets", Long.box(ets))
-      put("mid", mid)
-      put("actor", new util.HashMap[String, AnyRef]() {{ put("id", "dynamic-assess"); put("type", "System") }})
-      put("context", new util.HashMap[String, AnyRef]() {{ put("channel", channel); put("pdata", new util.HashMap[String, AnyRef]() {{ put("id", "org.sunbird.platform"); put("ver", "1.0") }}) }})
-      put("object", new util.HashMap[String, AnyRef]() {{ put("id", identifier) }})
-      put("edata", new util.HashMap[String, AnyRef]() {
-        put("action", "publish")
-        put("iteration", Int.box(1))
-        put("publish_type", "public")
-        put("metadata", new util.HashMap[String, AnyRef]() {
-          put("identifier", identifier)
-          put("objectType", "Content")
-          put("mimeType", mimeType)
-          put("pkgVersion", Double.box(pkgVersion))
-        })
-      })
-    }
-    ScalaJsonUtil.serialize(reqMap)
-  }
+  /** The ECML body is Cassandra-only, so the editor can't see it was generated; totalQuestions marks that it was, lastUpdatedOn changes on every regenerate even when the count doesn't. */
+  def generatedContentMetadata(questionCount: Int, now: java.util.Date = new java.util.Date()): Map[String, AnyRef] =
+    Map(
+      "totalQuestions" -> Int.box(questionCount),
+      "lastUpdatedOn" -> new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").format(now)
+    )
+
+  /** Node to stamp generated metadata on; None when published content has no ".img" edit copy, so live content is never written to directly. */
+  def generatedMetadataNodeId(objectId: String, rawObjectId: String, editCopyExists: Boolean): Option[String] =
+    if (objectId == rawObjectId || editCopyExists) Some(objectId) else None
 
   /** ECML has no graph relations to maintain, so this writes the rebuilt body directly, mirroring RefreshBodyHelper.updateContentBody. */
   def updateContentBody(cassandraUtil: CassandraUtil, identifier: String, ecmlBody: String): Boolean = {

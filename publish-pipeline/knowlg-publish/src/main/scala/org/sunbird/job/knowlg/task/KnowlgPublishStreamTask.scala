@@ -85,8 +85,6 @@ class KnowlgPublishStreamTask(config: KnowlgPublishConfig, kafkaConnector: Flink
     val dynamicAssess = processStreamTask.getSideOutput(config.dynamicAssessOutTag).process(new DynamicAssessFunction(config, httpUtil))
       .name("dynamic-assess-process").uid("dynamic-assess-process").setParallelism(1)
     dynamicAssess.getSideOutput(config.failedEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
-    // ECML write-back is a raw Cassandra body update (no graph/ECAR change); re-publish so ECAR/offline packages pick up the refreshed body.
-    dynamicAssess.getSideOutput(config.dynamicAssessRepublishOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.kafkaInputTopic))
   }
 }
 

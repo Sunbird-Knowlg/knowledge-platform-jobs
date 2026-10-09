@@ -129,7 +129,6 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
   val enrichedMetadataEventOutTag: OutputTag[String] = new OutputTag[String]("enriched-metadata-event-request", stringTypeInfo)
   val enrichOnlyOutTag: OutputTag[Event] = new OutputTag[Event]("enrich-only-request", publishMetaTypeInfo)
   val dynamicAssessOutTag: OutputTag[Event] = new OutputTag[Event]("dynamic-assess-refresh-request", publishMetaTypeInfo)
-  val dynamicAssessRepublishOutTag: OutputTag[String] = new OutputTag[String]("dynamic-assess-republish-request", stringTypeInfo)
   val qrimageOutTag: OutputTag[String] = new OutputTag[String]("qrimage-generator-request", stringTypeInfo)
   val autoBatchCreateOutTag: OutputTag[String] = new OutputTag[String]("auto-batch-create", stringTypeInfo)
 

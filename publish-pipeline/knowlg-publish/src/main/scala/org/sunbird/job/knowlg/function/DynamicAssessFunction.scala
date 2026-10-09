@@ -57,8 +57,19 @@ class DynamicAssessFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
       val pkgVersion = Option(rawNodeProps.get("pkgVersion")).map(_.toString.toDouble).getOrElse(0d)
       val objectId = if (pkgVersion > 0 && !rawObjectId.endsWith(".img")) s"$rawObjectId.img" else rawObjectId
       val baseObjectId = objectId.stripSuffix(".img")
-      val nodeProps = if (objectId == rawObjectId) rawNodeProps
-        else Option(janusGraphUtil.getNodeProperties(objectId)).getOrElse(rawNodeProps)
+      val editCopyProps = if (objectId == rawObjectId) None else Option(janusGraphUtil.getNodeProperties(objectId))
+      val nodeProps = editCopyProps.getOrElse(rawNodeProps)
+      val metadataNodeId = dynamicAssessHelper.generatedMetadataNodeId(objectId, rawObjectId, editCopyProps.isDefined)
+
+      // Published ECML must be regenerated into its edit copy (the refresh-body API creates it); without one the body would be orphaned, so fail loudly instead.
+      if (baseObjectType == "Content" && metadataNodeId.isEmpty) {
+        logger.error(s"DynamicAssessFunction :: no edit copy $objectId for published content $rawObjectId, skipping")
+        metrics.incCounter(config.dynamicAssessFailedCount)
+        context.output(config.failedEventOutTag, ScalaJsonUtil.serialize(Map(
+          "objectId" -> rawObjectId, "stage" -> "dynamic-assess-edit-copy",
+          "error" -> "published content has no .img edit copy; regenerate via the refresh-body API, which creates it")))
+        return
+      }
 
       val skills = dynamicAssessHelper.parseSkills(nodeProps)
       val difficultyTarget = dynamicAssessHelper.parseDifficultyTarget(nodeProps)
@@ -143,17 +154,15 @@ class DynamicAssessFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
             logger.warn(s"DynamicAssessFunction :: only fetched ${items.size}/${allSelectedIds.size} selected questions for $objectId, body will contain fewer questions than selected")
           }
           val ecmlBody = ECMLBodyBuilder.buildEcmlBodyFromItems(items, name, config)
-          dynamicAssessHelper.updateContentBody(cassandraUtil, objectId, ecmlBody)
+          val bodyWritten = dynamicAssessHelper.updateContentBody(cassandraUtil, objectId, ecmlBody)
+          if (bodyWritten) metadataNodeId.foreach(id => janusGraphUtil.updateNode(id, dynamicAssessHelper.generatedContentMetadata(items.size)))
+          bodyWritten
       }
 
       if (written) {
         metrics.incCounter(config.dynamicAssessSuccessCount)
+        // No republish, same as QuestionSet: generated questions go live only through review → publish.
         logger.info(s"DynamicAssessFunction :: wrote ${allSelectedIds.size} questions for $objectId")
-        if (baseObjectType == "Content") {
-          // Body write is Cassandra-only; loop a publish event back with the base id (the pipeline resolves its own editable copy) so ECAR/versioning/offline actually pick it up.
-          val mimeType = Option(nodeProps.get("mimeType")).map(_.toString).getOrElse("")
-          context.output(config.dynamicAssessRepublishOutTag, dynamicAssessHelper.buildRepublishEvent(baseObjectId, mimeType, channel, pkgVersion))
-        }
       } else {
         metrics.incCounter(config.dynamicAssessFailedCount)
         context.output(config.failedEventOutTag, ScalaJsonUtil.serialize(Map(
