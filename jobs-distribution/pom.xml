@@ -140,18 +140,36 @@
                     <artifactId>hadoop-azure</artifactId>
                     <version>3.4.2</version>
                     <scope>provided</scope>
+                    <exclusions>
+                        <exclusion>
+                            <groupId>org.eclipse.jetty</groupId>
+                            <artifactId>*</artifactId>
+                        </exclusion>
+                    </exclusions>
                 </dependency>
                 <dependency>
                     <groupId>org.apache.hadoop</groupId>
                     <artifactId>hadoop-common</artifactId>
                     <version>3.4.2</version>
                     <scope>provided</scope>
+                    <exclusions>
+                        <exclusion>
+                            <groupId>org.eclipse.jetty</groupId>
+                            <artifactId>*</artifactId>
+                        </exclusion>
+                    </exclusions>
                 </dependency>
                 <dependency>
                     <groupId>org.apache.hadoop</groupId>
                     <artifactId>hadoop-auth</artifactId>
                     <version>3.4.2</version>
                     <scope>provided</scope>
+                    <exclusions>
+                        <exclusion>
+                            <groupId>org.eclipse.jetty</groupId>
+                            <artifactId>*</artifactId>
+                        </exclusion>
+                    </exclusions>
                 </dependency>
                 <dependency>
                     <groupId>com.fasterxml.woodstox</groupId>
@@ -168,7 +186,7 @@
                 <dependency>
                     <groupId>org.apache.commons</groupId>
                     <artifactId>commons-configuration2</artifactId>
-                    <version>2.10.1</version>
+                    <version>2.15.0</version>
                     <scope>provided</scope>
                 </dependency>
                 <dependency>
@@ -250,7 +268,7 @@
                                         <artifactItem><groupId>org.apache.hadoop</groupId><artifactId>hadoop-auth</artifactId><version>3.4.2</version><destFileName>a-hadoop-auth-3.4.2.jar</destFileName></artifactItem>
                                         <artifactItem><groupId>com.fasterxml.woodstox</groupId><artifactId>woodstox-core</artifactId><version>5.4.0</version><destFileName>a-woodstox-core-5.4.0.jar</destFileName></artifactItem>
                                         <artifactItem><groupId>org.codehaus.woodstox</groupId><artifactId>stax2-api</artifactId><version>4.2.1</version><destFileName>a-stax2-api-4.2.1.jar</destFileName></artifactItem>
-                                        <artifactItem><groupId>org.apache.commons</groupId><artifactId>commons-configuration2</artifactId><version>2.10.1</version><destFileName>a-commons-configuration2-2.10.1.jar</destFileName></artifactItem>
+                                        <artifactItem><groupId>org.apache.commons</groupId><artifactId>commons-configuration2</artifactId><version>2.15.0</version><destFileName>a-commons-configuration2-2.15.0.jar</destFileName></artifactItem>
                                         <artifactItem><groupId>org.apache.commons</groupId><artifactId>commons-text</artifactId><version>1.10.0</version><destFileName>a-commons-text-1.10.0.jar</destFileName></artifactItem>
                                         <artifactItem><groupId>org.apache.commons</groupId><artifactId>commons-collections4</artifactId><version>4.4</version><destFileName>a-commons-collections4-4.4.jar</destFileName></artifactItem>
                                         <artifactItem><groupId>commons-net</groupId><artifactId>commons-net</artifactId><version>3.9.0</version><destFileName>a-commons-net-3.9.0.jar</destFileName></artifactItem>
