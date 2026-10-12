@@ -89,9 +89,7 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
     }
   }
 
-  /** Like [[getNodeProperties]] but tells "node does not exist" (Success(None)) apart from
-    * a lookup failure (Failure), which getNodeProperties collapses into null.
-    */
+  /** Like getNodeProperties, but a missing node is Success(None) and a failure is Failure. */
   def lookupNodeProperties(identifier: String): Try[Option[java.util.Map[String, AnyRef]]] = Try {
     val tx = graph.buildTransaction().start()
     try {

@@ -102,8 +102,7 @@ class IndexedVersionCheckSpec extends BaseTestSpec with CompositeSearchIndexerHe
   }
 
   "captured sequences" should "skip the UPDATE that arrives after its node was deleted, even after a restart" in {
-    // cache miss after the restart; the DELETE removed the document, so the late UPDATE finds none and asks
-    // JanusGraph, which no longer has the node
+    // cache miss after a restart, no document, node gone from JanusGraph
     cacheCheck("UPDATE", Some(T3), None) should be(None)
     versionCheck("UPDATE", Some(T3), None) should be(VersionCheck.CheckGraph)
     staleEventAction("UPDATE", Success(None)) should be(StaleEventAction.Skip)

@@ -318,11 +318,7 @@ trait CompositeSearchIndexerHelper {
     CompositeIndexer(graphId, objectType, identifier, event.readOrDefault("mid", ""), messageMap, config)
   }
 
-  /** Decides what to do with an event that is not newer than the last one processed for the node.
-    * A missing node means the node was deleted after this event was produced, so a stale
-    * CREATE/UPDATE must not be indexed (it would recreate the document). A DELETE is still applied,
-    * and a failed lookup falls back to the event as received.
-    */
+  /** Decides how to handle a stale event from the JanusGraph lookup result. */
   def staleEventAction(operationType: String, graphLookup: Try[Option[java.util.Map[String, AnyRef]]]): StaleEventAction =
     graphLookup match {
       case Success(Some(_)) => StaleEventAction.RebuildFromGraph
@@ -344,15 +340,7 @@ trait CompositeSearchIndexerHelper {
       case _                             => None
     }
 
-  /** Judges an event against the document currently indexed for its node. Used when the last-processed cache has
-    * no entry for the node (first event after a restart, or after an eviction), so the indexed document is the
-    * baseline instead.
-    *  - CREATE carries a full snapshot of the node, so it is applied as is.
-    *  - DELETE is applied only when there is a document and it is not newer than the DELETE; a newer document
-    *    means the node was recreated, and no document means there is nothing to delete.
-    *  - UPDATE is applied when it is newer than the document. An older (or equal) one, or one with no document
-    *    to apply to, is checked against JanusGraph.
-    */
+  /** Judges an event against the indexed document of its node, used on a cache miss. */
   def versionCheck(
       operationType: String,
       eventLastUpdatedOn: Option[Long],
@@ -379,11 +367,7 @@ trait CompositeSearchIndexerHelper {
     case _ => VersionCheck.Apply
   }
 
-  /** Judges an event against the last-processed cache. Returns None on a cache miss for an event that needs the
-    * indexed document to be judged (see [[versionCheck]]).
-    *  - hit: older or equal to the cached timestamp means stale, anything else is applied.
-    *  - miss: a CREATE (a full snapshot) is applied as is.
-    */
+  /** Judges an event against the cache; None on a miss that needs the indexed document. */
   def cacheCheck(
       operationType: String,
       eventLastUpdatedOn: Option[Long],

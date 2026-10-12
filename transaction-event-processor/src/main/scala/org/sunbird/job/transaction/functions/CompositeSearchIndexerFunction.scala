@@ -65,14 +65,13 @@ class CompositeSearchIndexerFunction(
       val operationType = event.operationType
       val eventLastUpdatedOn = extractLastUpdatedOn(event)
 
-      // Set when the indexed document had to be read to judge this event; it is reused by the upsert below.
+      // set when the indexed document was read to judge the event; reused by the upsert
       var indexedRead: Option[scala.collection.mutable.Map[String, AnyRef]] = None
       val cachedLastUpdatedOn =
         if (lastUpdatedCache.containsKey(identifier)) Some(lastUpdatedCache.get(identifier).longValue) else None
 
       val check = cacheCheck(operationType, eventLastUpdatedOn, cachedLastUpdatedOn).getOrElse {
-        // Cache miss (first event for the node since a restart, or after an eviction): the indexed document is
-        // the baseline.
+        // cache miss: the indexed document is the baseline
         val indexed = readIndexedDocument(identifier)(elasticUtil)
         indexedRead = Some(indexed.getOrElse(scala.collection.mutable.Map[String, AnyRef]()))
         indexed.flatMap(indexedLastUpdatedOn).foreach(ts => lastUpdatedCache.put(identifier, ts))
@@ -106,7 +105,7 @@ class CompositeSearchIndexerFunction(
 
       compositeObject.foreach(processESMessage(_, indexedRead)(elasticUtil, defCache))
 
-      // Advance the cache for an applied event only once it has been written; the other paths update it above.
+      // advance the cache for an applied event only after it has been written
       if (check == VersionCheck.Apply) {
         eventLastUpdatedOn.foreach(ts => lastUpdatedCache.put(identifier, ts))
       }
