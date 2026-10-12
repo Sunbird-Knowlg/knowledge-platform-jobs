@@ -1,7 +1,7 @@
 package org.sunbird.job.transaction.functions
 
 import org.apache.flink.configuration.Configuration
-import org.apache.flink.streaming.api.functions.ProcessFunction
+import org.apache.flink.streaming.api.functions.KeyedProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.exception.InvalidEventException
@@ -11,13 +11,13 @@ import org.sunbird.job.transaction.compositesearch.helpers.{CompositeSearchIndex
 import org.sunbird.job.transaction.models.CompositeIndexer
 import org.sunbird.job.transaction.task.TransactionEventProcessorConfig
 import org.sunbird.job.util.{ElasticSearchUtil, JanusGraphUtil}
-import org.sunbird.job.{BaseProcessFunction, Metrics}
+import org.sunbird.job.{BaseProcessKeyedFunction, Metrics}
 
 class CompositeSearchIndexerFunction(
     config: TransactionEventProcessorConfig,
     @transient var elasticUtil: ElasticSearchUtil = null,
     @transient var janusGraphUtil: JanusGraphUtil = null
-) extends BaseProcessFunction[Event, String](config)
+) extends BaseProcessKeyedFunction[String, Event, String](config)
     with CompositeSearchIndexerHelper
     with FailedEventHelper {
 
@@ -56,7 +56,7 @@ class CompositeSearchIndexerFunction(
   @throws(classOf[InvalidEventException])
   override def processElement(
       event: Event,
-      context: ProcessFunction[Event, String]#Context,
+      context: KeyedProcessFunction[String, Event, String]#Context,
       metrics: Metrics
   ): Unit = {
     metrics.incCounter(config.compositeSearchEventCount)
