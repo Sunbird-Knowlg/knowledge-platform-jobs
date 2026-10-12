@@ -7,7 +7,7 @@ import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.exception.InvalidEventException
 import org.sunbird.job.helper.FailedEventHelper
 import org.sunbird.job.transaction.domain.Event
-import org.sunbird.job.transaction.compositesearch.helpers.{CompositeSearchIndexerHelper, StaleEventAction}
+import org.sunbird.job.transaction.compositesearch.helpers.{CompositeSearchIndexerHelper, StaleEventAction, VersionCheck}
 import org.sunbird.job.transaction.models.CompositeIndexer
 import org.sunbird.job.transaction.task.TransactionEventProcessorConfig
 import org.sunbird.job.util.{ElasticSearchUtil, JanusGraphUtil}
@@ -62,34 +62,52 @@ class CompositeSearchIndexerFunction(
     metrics.incCounter(config.compositeSearchEventCount)
     try {
       val identifier = event.nodeUniqueId
+      val operationType = event.operationType
       val eventLastUpdatedOn = extractLastUpdatedOn(event)
-      val stale = isStaleEvent(identifier, eventLastUpdatedOn)
 
-      val compositeObject: Option[CompositeIndexer] = if (stale) {
-        logger.debug(s"Stale/out-of-order event for identifier: $identifier. Fetching latest data from JanusGraph.")
-        val lookup = janusGraphUtil.lookupNodeProperties(identifier)
-        staleEventAction(event.operationType, lookup) match {
-          case StaleEventAction.RebuildFromGraph =>
-            val graphProperties = lookup.get.get
-            val fetchedTs = extractLastUpdatedOnFromGraph(graphProperties)
-            val currentCached = Option(lastUpdatedCache.get(identifier)).map(_.longValue).getOrElse(0L)
-            fetchedTs.foreach { ts => if (ts > currentCached) lastUpdatedCache.put(identifier, ts) }
-            Some(buildCompositeIndexerFromGraph(identifier, graphProperties, event)(config))
-          case StaleEventAction.Skip =>
-            logger.info(s"Skipping stale ${event.operationType} for identifier: $identifier. Node not found in JanusGraph, it was deleted after this event.")
-            None
-          case StaleEventAction.ProcessOriginal =>
-            logger.warn(s"Could not use JanusGraph for stale event of identifier: $identifier (${lookup.fold(_.toString, _ => "node not found")}). Processing original event.")
-            Some(getCompositeIndexerObject(event)(config))
-        }
-      } else {
-        Some(getCompositeIndexerObject(event)(config))
+      // Set when the indexed document had to be read to judge this event; it is reused by the upsert below.
+      var indexedRead: Option[scala.collection.mutable.Map[String, AnyRef]] = None
+      val cachedLastUpdatedOn =
+        if (lastUpdatedCache.containsKey(identifier)) Some(lastUpdatedCache.get(identifier).longValue) else None
+
+      val check = cacheCheck(operationType, eventLastUpdatedOn, cachedLastUpdatedOn).getOrElse {
+        // Cache miss (first event for the node since a restart, or after an eviction): the indexed document is
+        // the baseline.
+        val indexed = readIndexedDocument(identifier)(elasticUtil)
+        indexedRead = Some(indexed.getOrElse(scala.collection.mutable.Map[String, AnyRef]()))
+        indexed.flatMap(indexedLastUpdatedOn).foreach(ts => lastUpdatedCache.put(identifier, ts))
+        versionCheck(operationType, eventLastUpdatedOn, indexed)
       }
 
-      compositeObject.foreach(processESMessage(_)(elasticUtil, defCache))
+      val compositeObject: Option[CompositeIndexer] = check match {
+        case VersionCheck.Apply =>
+          Some(getCompositeIndexerObject(event)(config))
+        case VersionCheck.Skip =>
+          logger.info(s"Skipping $operationType for identifier: $identifier. Nothing to apply it to, or a newer document is already indexed.")
+          None
+        case VersionCheck.CheckGraph =>
+          logger.debug(s"Stale event or no indexed document for identifier: $identifier. Checking JanusGraph.")
+          val lookup = janusGraphUtil.lookupNodeProperties(identifier)
+          staleEventAction(operationType, lookup) match {
+            case StaleEventAction.RebuildFromGraph =>
+              val graphProperties = lookup.get.get
+              val fetchedTs = extractLastUpdatedOnFromGraph(graphProperties)
+              val currentCached = if (lastUpdatedCache.containsKey(identifier)) lastUpdatedCache.get(identifier).longValue else 0L
+              fetchedTs.foreach { ts => if (ts > currentCached) lastUpdatedCache.put(identifier, ts) }
+              Some(buildCompositeIndexerFromGraph(identifier, graphProperties, event)(config))
+            case StaleEventAction.Skip =>
+              logger.info(s"Skipping stale $operationType for identifier: $identifier. Node not found in JanusGraph, it was deleted after this event.")
+              None
+            case StaleEventAction.ProcessOriginal =>
+              logger.warn(s"Could not use JanusGraph for stale event of identifier: $identifier (${lookup.fold(_.toString, _ => "node not found")}). Processing original event.")
+              Some(getCompositeIndexerObject(event)(config))
+          }
+      }
 
-      // Update cache for non-stale events; the stale path updates the cache above.
-      if (!stale) {
+      compositeObject.foreach(processESMessage(_, indexedRead)(elasticUtil, defCache))
+
+      // Advance the cache for an applied event only once it has been written; the other paths update it above.
+      if (check == VersionCheck.Apply) {
         eventLastUpdatedOn.foreach(ts => lastUpdatedCache.put(identifier, ts))
       }
       metrics.incCounter(config.successCompositeSearchEventCount)
@@ -107,18 +125,6 @@ class CompositeSearchIndexerFunction(
           Map("partition" -> event.partition, "offset" -> event.offset),
           ex
         )
-    }
-  }
-
-  /** Returns true when the event's lastUpdatedOn is older than or equal to
-   *  the last successfully processed timestamp cached for the same node.
-   */
-  private def isStaleEvent(identifier: String, eventLastUpdatedOn: Option[Long]): Boolean = {
-    eventLastUpdatedOn match {
-      case Some(ts) =>
-        val cached = lastUpdatedCache.get(identifier)
-        cached != null && ts <= cached
-      case None => false
     }
   }
 
