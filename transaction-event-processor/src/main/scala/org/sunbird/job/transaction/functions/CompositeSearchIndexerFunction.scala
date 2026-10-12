@@ -7,7 +7,8 @@ import org.sunbird.job.domain.`object`.DefinitionCache
 import org.sunbird.job.exception.InvalidEventException
 import org.sunbird.job.helper.FailedEventHelper
 import org.sunbird.job.transaction.domain.Event
-import org.sunbird.job.transaction.compositesearch.helpers.CompositeSearchIndexerHelper
+import org.sunbird.job.transaction.compositesearch.helpers.{CompositeSearchIndexerHelper, StaleEventAction}
+import org.sunbird.job.transaction.models.CompositeIndexer
 import org.sunbird.job.transaction.task.TransactionEventProcessorConfig
 import org.sunbird.job.util.{ElasticSearchUtil, JanusGraphUtil}
 import org.sunbird.job.{BaseProcessFunction, Metrics}
@@ -64,23 +65,28 @@ class CompositeSearchIndexerFunction(
       val eventLastUpdatedOn = extractLastUpdatedOn(event)
       val stale = isStaleEvent(identifier, eventLastUpdatedOn)
 
-      val compositeObject = if (stale) {
+      val compositeObject: Option[CompositeIndexer] = if (stale) {
         logger.debug(s"Stale/out-of-order event for identifier: $identifier. Fetching latest data from JanusGraph.")
-        val graphProperties = janusGraphUtil.getNodeProperties(identifier)
-        if (graphProperties != null) {
-          val fetchedTs = extractLastUpdatedOnFromGraph(graphProperties)
-          val currentCached = Option(lastUpdatedCache.get(identifier)).map(_.longValue).getOrElse(0L)
-          fetchedTs.foreach { ts => if (ts > currentCached) lastUpdatedCache.put(identifier, ts) }
-          buildCompositeIndexerFromGraph(identifier, graphProperties, event)(config)
-        } else {
-          logger.warn(s"Node not found in JanusGraph for identifier: $identifier. Processing original event.")
-          getCompositeIndexerObject(event)(config)
+        val lookup = janusGraphUtil.lookupNodeProperties(identifier)
+        staleEventAction(event.operationType, lookup) match {
+          case StaleEventAction.RebuildFromGraph =>
+            val graphProperties = lookup.get.get
+            val fetchedTs = extractLastUpdatedOnFromGraph(graphProperties)
+            val currentCached = Option(lastUpdatedCache.get(identifier)).map(_.longValue).getOrElse(0L)
+            fetchedTs.foreach { ts => if (ts > currentCached) lastUpdatedCache.put(identifier, ts) }
+            Some(buildCompositeIndexerFromGraph(identifier, graphProperties, event)(config))
+          case StaleEventAction.Skip =>
+            logger.info(s"Skipping stale ${event.operationType} for identifier: $identifier. Node not found in JanusGraph, it was deleted after this event.")
+            None
+          case StaleEventAction.ProcessOriginal =>
+            logger.warn(s"Could not use JanusGraph for stale event of identifier: $identifier (${lookup.fold(_.toString, _ => "node not found")}). Processing original event.")
+            Some(getCompositeIndexerObject(event)(config))
         }
       } else {
-        getCompositeIndexerObject(event)(config)
+        Some(getCompositeIndexerObject(event)(config))
       }
 
-      processESMessage(compositeObject)(elasticUtil, defCache)
+      compositeObject.foreach(processESMessage(_)(elasticUtil, defCache))
 
       // Update cache for non-stale events; the stale path updates the cache above.
       if (!stale) {

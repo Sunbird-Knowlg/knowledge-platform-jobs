@@ -10,6 +10,17 @@ import org.sunbird.job.util.{CSPMetaUtil, ElasticSearchUtil, ScalaJsonUtil}
 
 import java.text.SimpleDateFormat
 import scala.collection.JavaConverters._
+import scala.util.{Failure, Success, Try}
+
+sealed trait StaleEventAction
+object StaleEventAction {
+  /** Node still exists: index the current graph state instead of the stale event. */
+  case object RebuildFromGraph extends StaleEventAction
+  /** Index the event as received. */
+  case object ProcessOriginal extends StaleEventAction
+  /** Node no longer exists: indexing this stale event would resurrect a deleted document. */
+  case object Skip extends StaleEventAction
+}
 
 trait CompositeSearchIndexerHelper {
 
@@ -290,6 +301,19 @@ trait CompositeSearchIndexerHelper {
 
     CompositeIndexer(graphId, objectType, identifier, event.readOrDefault("mid", ""), messageMap, config)
   }
+
+  /** Decides what to do with an event that is not newer than the last one processed for the node.
+    * A missing node means the node was deleted after this event was produced, so a stale
+    * CREATE/UPDATE must not be indexed (it would recreate the document). A DELETE is still applied,
+    * and a failed lookup falls back to the event as received.
+    */
+  def staleEventAction(operationType: String, graphLookup: Try[Option[java.util.Map[String, AnyRef]]]): StaleEventAction =
+    graphLookup match {
+      case Success(Some(_)) => StaleEventAction.RebuildFromGraph
+      case Success(None) if "DELETE".equals(operationType) => StaleEventAction.ProcessOriginal
+      case Success(None) => StaleEventAction.Skip
+      case Failure(_) => StaleEventAction.ProcessOriginal
+    }
 
   def extractLastUpdatedOn(event: Event): Option[Long] = {
     try {

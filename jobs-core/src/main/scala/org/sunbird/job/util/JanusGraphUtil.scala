@@ -9,6 +9,7 @@ import org.sunbird.job.BaseJobConfig
 
 import java.util
 import scala.collection.JavaConverters._
+import scala.util.Try
 import org.sunbird.job.util.ScalaJsonUtil
 
 class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
@@ -83,6 +84,36 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
       case e: Exception =>
         logger.error(s"Error fetching node properties for $identifier", e)
         null
+    } finally {
+      tx.rollback()
+    }
+  }
+
+  /** Like [[getNodeProperties]] but tells "node does not exist" (Success(None)) apart from
+    * a lookup failure (Failure), which getNodeProperties collapses into null.
+    */
+  def lookupNodeProperties(identifier: String): Try[Option[java.util.Map[String, AnyRef]]] = Try {
+    val tx = graph.buildTransaction().start()
+    try {
+      val traversal = tx.traversal().V().has("IL_UNIQUE_ID", identifier).elementMap()
+      if (traversal.hasNext) {
+        val result = traversal.next().asInstanceOf[java.util.Map[AnyRef, AnyRef]]
+        val map = new util.HashMap[String, AnyRef]()
+        result.asScala.foreach {
+          case (k: String, v: AnyRef) if v != null =>
+            val deserialized: AnyRef = v match {
+              case s: String if s.startsWith("[") && s.endsWith("]") =>
+                try ScalaJsonUtil.deserialize[java.util.List[AnyRef]](s).asInstanceOf[AnyRef]
+                catch { case _: Exception => s }
+              case other => other
+            }
+            map.put(k, deserialized)
+          case _ =>
+        }
+        val props: java.util.Map[String, AnyRef] =
+          if (isrRelativePathEnabled) CSPMetaUtil.updateAbsolutePath(map)(config) else map
+        Some(props)
+      } else None
     } finally {
       tx.rollback()
     }
