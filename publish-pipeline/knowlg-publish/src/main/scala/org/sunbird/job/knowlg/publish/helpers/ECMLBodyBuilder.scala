@@ -7,7 +7,7 @@ import org.sunbird.job.knowlg.task.KnowlgPublishConfig
 import java.util.UUID
 import scala.collection.JavaConverters._
 
-/** Ported from fmps's ECMLBodyBuilder — builds the `body` field (MCQ quiz stage, manifest, summary) from selected items. */
+/** Builds the ECML `body` (quiz stage, manifest, summary) from selected items; supports the MCQ, FTB, MTF, reorder and sequence question units. */
 object ECMLBodyBuilder {
   implicit val formats: Formats = DefaultFormats
 
@@ -25,9 +25,76 @@ object ECMLBodyBuilder {
     }
   }
 
+  // Leaves existing entities like &#39; alone so already-encoded text isn't double-escaped.
   private def asHtml(text: String): String =
     if (text.trim.startsWith("<")) text
-    else s"<p>${text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")}</p>"
+    else s"<p>${text.replaceAll("&(?!#?\\w+;)", "&amp;").replace("<", "&lt;").replace(">", "&gt;")}</p>"
+
+  /** Legacy ECML question-unit renderer plugin; assets mirror each plugin's manifest.json `renderer.dependencies` on the content-plugins repo. */
+  private case class QuestionUnit(id: String, ver: String, defaultTemplateId: String, assets: List[(String, String, String)], extraPlugins: List[QuestionUnit] = Nil) {
+    val shortType: String = id.stripPrefix("org.ekstep.questionunit.")
+  }
+
+  private val Keyboard = QuestionUnit("org.ekstep.keyboard", "1.1", "", List(("js", "renderer/keyboard.js", ""), ("css", "renderer/style/style.css", "")))
+
+  private val QuestionUnits: Map[String, QuestionUnit] = List(
+    QuestionUnit("org.ekstep.questionunit.mcq", "1.3", "horizontalMCQ", List(
+      ("css", "renderer/styles/style.css", ""), ("css", "renderer/styles/horizontal_and_vertical.css", ""),
+      ("js", "renderer/template/mcq-layouts.js", ""), ("js", "renderer/template/template_controller.js", ""),
+      ("js", "renderer/template/question-component.js", ""), ("image", "renderer/assets/tick_icon.png", ""),
+      ("image", "renderer/assets/audio-icon2.png", ""), ("image", "renderer/assets/music-blue.png", ""))),
+    QuestionUnit("org.ekstep.questionunit.ftb", "1.1", "", List(
+      ("css", "renderer/styles/style.css", ""), ("js", "renderer/ftbcontroller.js", ""),
+      ("image", "renderer/assets/audio-blue.png", "org.ekstep.questionunit.ftb.audioblue")), List(Keyboard)),
+    QuestionUnit("org.ekstep.questionunit.mtf", "1.2", "", List(
+      ("css", "renderer/styles/style.css", ""), ("js", "renderer/util/evaluator.js", ""),
+      ("js", "renderer/js/jquery-ui.min.js", ""), ("js", "renderer/js/mtftemplate.js", ""))
+      ++ (1 to 4).map(i => ("image", s"renderer/assets/shape$i.png", s"org.ekstep.questionunit.mtf.shape$i.png"))
+      ++ (1 to 3).map(i => ("image", s"renderer/assets/audio$i.png", s"org.ekstep.questionunit.mtf.audio$i.png"))),
+    QuestionUnit("org.ekstep.questionunit.reorder", "1.1", "", List(
+      ("css", "renderer/styles/style.css", ""), ("js", "renderer/reorderingcontroller.js", ""),
+      ("image", "renderer/assets/backspace.png", "org.ekstep.questionunit.reorder.backspace.png"))),
+    QuestionUnit("org.ekstep.questionunit.sequence", "1.1", "", List(
+      ("css", "renderer/styles/style.css", ""), ("js", "renderer/js/jquery-ui-drag-and-drop.min.js", ""),
+      ("js", "renderer/js/seq-template.js", "")))
+  ).map(q => q.id -> q).toMap
+
+  private val Mcq = QuestionUnits("org.ekstep.questionunit.mcq")
+
+  private def bodyPlugin(bodyStr: String): (String, String) = scala.util.Try {
+    val plugin = parse(bodyStr) \ "data" \ "plugin"
+    ((plugin \ "id").extractOpt[String].getOrElse(""), (plugin \ "templateId").extractOpt[String].getOrElse(""))
+  }.getOrElse(("", ""))
+
+  private def hasQuestionData(bodyStr: String): Boolean =
+    scala.util.Try(parse(bodyStr) \ "data" \ "data").toOption.exists { case JObject(fields) => fields.nonEmpty; case _ => false }
+
+  // Bodies without a plugin block are the MCQ shape (synthesized fallback bodies and older MCQ items); other units must carry their data object.
+  private def questionUnitOf(item: Map[String, AnyRef]): Option[QuestionUnit] = {
+    val bodyStr = effectiveBody(item)
+    if (bodyStr.isEmpty) None
+    else bodyPlugin(bodyStr)._1 match {
+      case ""  => Some(Mcq)
+      case pid => QuestionUnits.get(pid).filter(q => q == Mcq || hasQuestionData(bodyStr))
+    }
+  }
+
+  /** True when the item has content and its question-unit plugin is one this builder can package. */
+  def isRenderable(item: Map[String, AnyRef]): Boolean = questionUnitOf(item).isDefined
+
+  private def mediaEntry(id: String, plugin: String, ver: String, src: String, typ: String): JObject =
+    JObject(List(JField("id", JString(id)), JField("plugin", JString(plugin)), JField("ver", JString(ver)), JField("src", JString(src)), JField("type", JString(typ))))
+
+  private def pluginMedia(q: QuestionUnit): List[JObject] =
+    q.assets.map { case (typ, src, id) =>
+      mediaEntry(if (id.nonEmpty) id else UUID.randomUUID().toString, q.id, q.ver, s"/content-plugins/${q.id}-${q.ver}/$src", typ)
+    } ++ List(
+      mediaEntry(q.id, q.id, q.ver, s"/content-plugins/${q.id}-${q.ver}/renderer/plugin.js", "plugin"),
+      mediaEntry(s"${q.id}_manifest", q.id, q.ver, s"/content-plugins/${q.id}-${q.ver}/manifest.json", "json"))
+
+  private def pluginManifestEntry(q: QuestionUnit): JObject =
+    JObject(List(JField("id", JString(q.id)), JField("ver", JString(q.ver)), JField("type", JString("plugin")),
+      JField("depends", JString(if (q.id.startsWith("org.ekstep.questionunit.")) "org.ekstep.questionunit" else ""))))
 
   /** Legacy question-editor items carry their content in `body`; API-created items only have top-level question/title/name + options, so build the same body shape for them. Empty when there's nothing to render. */
   def effectiveBody(item: Map[String, AnyRef]): String = {
@@ -200,6 +267,26 @@ object ECMLBodyBuilder {
       effectiveBody(item)
     }
 
+    // Non-MCQ plugins read their own data shape, so their body data passes through untouched.
+    def rawQuestionData(item: Map[String, AnyRef]): String =
+      scala.util.Try(compact(render(parse(effectiveBody(item)) \ "data" \ "data"))).getOrElse("")
+    def unitOf(item: Map[String, AnyRef]): QuestionUnit = questionUnitOf(item).getOrElse(Mcq)
+    def itemType(item: Map[String, AnyRef]): String =
+      if (unitOf(item) == Mcq) getString(item, "qType", "mcq").toLowerCase else unitOf(item).shortType
+    val usedUnits = items.map(unitOf).distinct
+    val usedPlugins = (usedUnits.flatMap(_.extraPlugins) ++ usedUnits).distinct
+    // Question-level assets (images, audio, keyboard icons) live in each body's media list and must be in the content manifest to load.
+    val itemMedia: List[JObject] = items.flatMap { item =>
+      scala.util.Try {
+        val json = parse(effectiveBody(item))
+        List(json \ "data" \ "media", json \ "data" \ "data" \ "media").flatMap { case JArray(xs) => xs.collect { case o: JObject => o }; case _ => Nil }
+      }.getOrElse(Nil)
+    }.filter(m => (m \ "id").extractOpt[String].exists(_.nonEmpty) && (m \ "src").extractOpt[String].exists(_.nonEmpty))
+      .groupBy(m => (m \ "id").extract[String]).values.map(_.head).toList.sortBy(m => (m \ "id").extract[String])
+    val pluginMediaList = usedPlugins.flatMap(pluginMedia)
+    val pluginMediaKeys = pluginMediaList.flatMap(m => List((m \ "id").extract[String], (m \ "src").extract[String])).toSet
+    val extraItemMedia = itemMedia.filterNot(m => pluginMediaKeys((m \ "id").extract[String]) || pluginMediaKeys((m \ "src").extract[String]))
+
     val stageId = UUID.randomUUID().toString
     val totalMaxScore = items.map(getInt(_, "max_score", 1)).sum
     val questionSetId = UUID.randomUUID().toString
@@ -223,7 +310,7 @@ object ECMLBodyBuilder {
         JField("channel", JString(getString(item, "channel", ""))),
         JField("language", Extraction.decompose(toStrList(item.getOrElse("language", List.empty)))),
         JField("title", JString(title)),
-        JField("type", JString(getString(item, "qType", "mcq").toLowerCase)),
+        JField("type", JString(itemType(item))),
         JField("editorState", JNull),
         JField("body", JString(buildQuestionBody(item))),
         JField("createdOn", JString(getString(item, "createdOn", ""))),
@@ -252,15 +339,16 @@ object ECMLBodyBuilder {
 
     val rootQuestions = items.map { item =>
       val id = getString(item, "identifier", UUID.randomUUID().toString)
-      val qType = getString(item, "qType", "mcq").toLowerCase
-      val dataCdata = buildStyledRootQuestionData(item)
+      val unit = unitOf(item)
+      val dataCdata = if (unit == Mcq) buildStyledRootQuestionData(item) else rawQuestionData(item)
       val configCdata = buildConfigData(item)
+      val templateId = if (unit == Mcq) unit.defaultTemplateId else Option(bodyPlugin(effectiveBody(item))._2).filter(_.nonEmpty).getOrElse(unit.defaultTemplateId)
       JObject(List(
         JField("id", JString(id)),
-        JField("type", JString(qType)),
-        JField("pluginId", JString("org.ekstep.questionunit.mcq")),
-        JField("pluginVer", JString("1.3")),
-        JField("templateId", JString("horizontalMCQ")),
+        JField("type", JString(itemType(item))),
+        JField("pluginId", JString(unit.id)),
+        JField("pluginVer", JString(unit.ver)),
+        JField("templateId", JString(templateId)),
         JField("data", JObject(List(JField("__cdata", JString(dataCdata))))),
         JField("config", JObject(List(JField("__cdata", JString(configCdata))))),
         JField("w", JInt(80)),
@@ -302,17 +390,8 @@ object ECMLBodyBuilder {
       JObject(List(JField("id", JString(UUID.randomUUID().toString)), JField("plugin", JString("org.ekstep.questionunit")), JField("ver", JString("1.2")), JField("src", JString("/content-plugins/org.ekstep.questionunit-1.2/renderer/components/js/components.js")), JField("type", JString("js")))),
       JObject(List(JField("id", JString(UUID.randomUUID().toString)), JField("plugin", JString("org.ekstep.questionunit")), JField("ver", JString("1.2")), JField("src", JString("/content-plugins/org.ekstep.questionunit-1.2/renderer/components/css/components.css")), JField("type", JString("css")))),
       JObject(List(JField("id", JString("org.ekstep.questionunit")), JField("plugin", JString("org.ekstep.questionunit")), JField("ver", JString("1.2")), JField("src", JString("/content-plugins/org.ekstep.questionunit-1.2/renderer/plugin.js")), JField("type", JString("plugin")))),
-      JObject(List(JField("id", JString("org.ekstep.questionunit_manifest")), JField("plugin", JString("org.ekstep.questionunit")), JField("ver", JString("1.2")), JField("src", JString("/content-plugins/org.ekstep.questionunit-1.2/manifest.json")), JField("type", JString("json")))),
-      JObject(List(JField("id", JString(UUID.randomUUID().toString)), JField("plugin", JString("org.ekstep.questionunit.mcq")), JField("ver", JString("1.3")), JField("src", JString("/content-plugins/org.ekstep.questionunit.mcq-1.3/renderer/styles/style.css")), JField("type", JString("css")))),
-      JObject(List(JField("id", JString(UUID.randomUUID().toString)), JField("plugin", JString("org.ekstep.questionunit.mcq")), JField("ver", JString("1.3")), JField("src", JString("/content-plugins/org.ekstep.questionunit.mcq-1.3/renderer/styles/horizontal_and_vertical.css")), JField("type", JString("css")))),
-      JObject(List(JField("id", JString(UUID.randomUUID().toString)), JField("plugin", JString("org.ekstep.questionunit.mcq")), JField("ver", JString("1.3")), JField("src", JString("/content-plugins/org.ekstep.questionunit.mcq-1.3/renderer/template/mcq-layouts.js")), JField("type", JString("js")))),
-      JObject(List(JField("id", JString(UUID.randomUUID().toString)), JField("plugin", JString("org.ekstep.questionunit.mcq")), JField("ver", JString("1.3")), JField("src", JString("/content-plugins/org.ekstep.questionunit.mcq-1.3/renderer/template/template_controller.js")), JField("type", JString("js")))),
-      JObject(List(JField("id", JString(UUID.randomUUID().toString)), JField("plugin", JString("org.ekstep.questionunit.mcq")), JField("ver", JString("1.3")), JField("src", JString("/content-plugins/org.ekstep.questionunit.mcq-1.3/renderer/template/question-component.js")), JField("type", JString("js")))),
-      JObject(List(JField("id", JString(UUID.randomUUID().toString)), JField("plugin", JString("org.ekstep.questionunit.mcq")), JField("ver", JString("1.3")), JField("src", JString("/content-plugins/org.ekstep.questionunit.mcq-1.3/renderer/assets/tick_icon.png")), JField("type", JString("image")))),
-      JObject(List(JField("id", JString(UUID.randomUUID().toString)), JField("plugin", JString("org.ekstep.questionunit.mcq")), JField("ver", JString("1.3")), JField("src", JString("/content-plugins/org.ekstep.questionunit.mcq-1.3/renderer/assets/audio-icon2.png")), JField("type", JString("image")))),
-      JObject(List(JField("id", JString(UUID.randomUUID().toString)), JField("plugin", JString("org.ekstep.questionunit.mcq")), JField("ver", JString("1.3")), JField("src", JString("/content-plugins/org.ekstep.questionunit.mcq-1.3/renderer/assets/music-blue.png")), JField("type", JString("image")))),
-      JObject(List(JField("id", JString("org.ekstep.questionunit.mcq")), JField("plugin", JString("org.ekstep.questionunit.mcq")), JField("ver", JString("1.3")), JField("src", JString("/content-plugins/org.ekstep.questionunit.mcq-1.3/renderer/plugin.js")), JField("type", JString("plugin")))),
-      JObject(List(JField("id", JString("org.ekstep.questionunit.mcq_manifest")), JField("plugin", JString("org.ekstep.questionunit.mcq")), JField("ver", JString("1.3")), JField("src", JString("/content-plugins/org.ekstep.questionunit.mcq-1.3/manifest.json")), JField("type", JString("json")))),
+      JObject(List(JField("id", JString("org.ekstep.questionunit_manifest")), JField("plugin", JString("org.ekstep.questionunit")), JField("ver", JString("1.2")), JField("src", JString("/content-plugins/org.ekstep.questionunit-1.2/manifest.json")), JField("type", JString("json"))))
+    ) ++ pluginMediaList ++ extraItemMedia ++ List(
       JObject(List(JField("id", JString("org.ekstep.summary_template_js")), JField("plugin", JString("org.ekstep.summary")), JField("src", JString("/content-plugins/org.ekstep.summary-1.0/renderer/summary-template.js")), JField("type", JString("js")), JField("ver", JString("1.0")))),
       JObject(List(JField("id", JString("org.ekstep.summary_template_css")), JField("plugin", JString("org.ekstep.summary")), JField("src", JString("/content-plugins/org.ekstep.summary-1.0/renderer/style.css")), JField("type", JString("css")), JField("ver", JString("1.0")))),
       JObject(List(JField("id", JString("org.ekstep.summary")), JField("plugin", JString("org.ekstep.summary")), JField("src", JString("/content-plugins/org.ekstep.summary-1.0/renderer/plugin.js")), JField("type", JString("plugin")), JField("ver", JString("1.0")))),
@@ -326,8 +405,8 @@ object ECMLBodyBuilder {
       JObject(List(JField("id", JString("org.ekstep.questionset.quiz")), JField("ver", JString("1.0")), JField("type", JString("plugin")), JField("depends", JString("")))),
       JObject(List(JField("id", JString("org.ekstep.iterator")), JField("ver", JString("1.0")), JField("type", JString("plugin")), JField("depends", JString("")))),
       JObject(List(JField("id", JString("org.ekstep.questionset")), JField("ver", JString("1.0")), JField("type", JString("plugin")), JField("depends", JString("org.ekstep.questionset.quiz,org.ekstep.iterator")))),
-      JObject(List(JField("id", JString("org.ekstep.questionunit")), JField("ver", JString("1.2")), JField("type", JString("plugin")), JField("depends", JString("")))),
-      JObject(List(JField("id", JString("org.ekstep.questionunit.mcq")), JField("ver", JString("1.3")), JField("type", JString("plugin")), JField("depends", JString("org.ekstep.questionunit")))),
+      JObject(List(JField("id", JString("org.ekstep.questionunit")), JField("ver", JString("1.2")), JField("type", JString("plugin")), JField("depends", JString(""))))
+    ) ++ usedPlugins.map(pluginManifestEntry) ++ List(
       JObject(List(JField("depends", JString("")), JField("id", JString("org.ekstep.summary")), JField("type", JString("plugin")), JField("ver", JString("1.0"))))
     )))))
 
