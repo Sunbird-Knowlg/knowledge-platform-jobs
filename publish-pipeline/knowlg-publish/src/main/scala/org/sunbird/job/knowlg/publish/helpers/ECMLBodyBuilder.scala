@@ -11,6 +11,46 @@ import scala.collection.JavaConverters._
 object ECMLBodyBuilder {
   implicit val formats: Formats = DefaultFormats
 
+  private def str(m: Map[String, AnyRef], key: String): String = Option(m.getOrElse(key, null)).map(_.toString).getOrElse("")
+
+  private def toMapList(v: AnyRef): List[Map[String, AnyRef]] = {
+    val list: List[Any] = v match {
+      case l: java.util.List[_] => l.asScala.toList
+      case l: Seq[_]            => l.toList
+      case _                    => Nil
+    }
+    list.collect {
+      case m: java.util.Map[_, _]  => m.asScala.toMap.map { case (k, x) => k.toString -> x.asInstanceOf[AnyRef] }
+      case m: scala.collection.Map[_, _] => m.toMap.map { case (k, x) => k.toString -> x.asInstanceOf[AnyRef] }
+    }
+  }
+
+  private def asHtml(text: String): String =
+    if (text.trim.startsWith("<")) text
+    else s"<p>${text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")}</p>"
+
+  /** Legacy question-editor items carry their content in `body`; API-created items only have top-level question/title/name + options, so build the same body shape for them. Empty when there's nothing to render. */
+  def effectiveBody(item: Map[String, AnyRef]): String = {
+    val bodyStr = str(item, "body")
+    if (bodyStr.trim.nonEmpty) bodyStr
+    else {
+      val options = toMapList(item.getOrElse("options", null))
+      val questionText = Seq("question", "title", "name").map(str(item, _)).find(_.trim.nonEmpty).getOrElse("")
+      if (options.isEmpty || questionText.isEmpty) ""
+      else {
+        val blankMedia = Map("image" -> "", "audio" -> "", "audioName" -> "", "hint" -> "")
+        val opts = options.map { o =>
+          val correct = Seq("answer", "isCorrect").flatMap(k => Option(o.getOrElse(k, null))).headOption.exists(_.toString.equalsIgnoreCase("true"))
+          blankMedia ++ Map("text" -> asHtml(str(o, "text")), "isCorrect" -> correct)
+        }
+        val maxScore = scala.util.Try(str(item, "max_score").toDouble.toInt).getOrElse(1)
+        compact(render(Extraction.decompose(Map("data" -> Map(
+          "data" -> Map("question" -> (blankMedia + ("text" -> asHtml(questionText))), "options" -> opts),
+          "config" -> Map("max_score" -> maxScore))))))
+      }
+    }
+  }
+
   def buildEcmlBodyFromItems(items: List[Map[String, AnyRef]], quizTitle: String, config: KnowlgPublishConfig): String = {
     val defaultIsShuffleOption: Boolean = config.defaultIsShuffleOption
     val defaultIsPartialScore: Boolean = config.defaultIsPartialScore
@@ -34,7 +74,7 @@ object ECMLBodyBuilder {
     def extractTitle(item: Map[String, AnyRef]): String = getString(item, "title", getString(item, "name", "")).trim
 
     def parseRawItemOptions(item: Map[String, AnyRef]): List[Map[String, Any]] = {
-      val bodyStr = getString(item, "body")
+      val bodyStr = effectiveBody(item)
       if (bodyStr.nonEmpty) {
         try {
           val bodyJson = parse(bodyStr)
@@ -60,7 +100,7 @@ object ECMLBodyBuilder {
     }
 
     def parseRootQuestionOptions(item: Map[String, AnyRef]): List[Map[String, Any]] = {
-      val bodyStr = getString(item, "body")
+      val bodyStr = effectiveBody(item)
       if (bodyStr.nonEmpty) {
         try {
           val bodyJson = parse(bodyStr)
@@ -83,7 +123,7 @@ object ECMLBodyBuilder {
     }
 
     def buildStyledRootQuestionData(item: Map[String, AnyRef]): String = {
-      val bodyStr = getString(item, "body")
+      val bodyStr = effectiveBody(item)
       if (bodyStr.nonEmpty) {
         try {
           val bodyJson = parse(bodyStr)
@@ -108,7 +148,7 @@ object ECMLBodyBuilder {
     }
 
     def buildConfigData(item: Map[String, AnyRef]): String = {
-      val bodyStr = getString(item, "body")
+      val bodyStr = effectiveBody(item)
       if (bodyStr.nonEmpty) {
         try {
           val bodyJson = parse(bodyStr)
@@ -157,7 +197,7 @@ object ECMLBodyBuilder {
     }
 
     def buildQuestionBody(item: Map[String, AnyRef]): String = {
-      getString(item, "body")
+      effectiveBody(item)
     }
 
     val stageId = UUID.randomUUID().toString

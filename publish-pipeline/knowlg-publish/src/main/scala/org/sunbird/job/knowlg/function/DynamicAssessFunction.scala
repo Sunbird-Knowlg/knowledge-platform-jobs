@@ -153,9 +153,21 @@ class DynamicAssessFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
             // Fetch drops failures silently per-id; warn so a partial body isn't reported as full success.
             logger.warn(s"DynamicAssessFunction :: only fetched ${items.size}/${allSelectedIds.size} selected questions for $objectId, body will contain fewer questions than selected")
           }
-          val ecmlBody = ECMLBodyBuilder.buildEcmlBodyFromItems(items, name, config)
+          // An item with neither a body nor top-level question + options would render as a blank question.
+          val (renderable, unrenderable) = items.partition(item => ECMLBodyBuilder.effectiveBody(item).nonEmpty)
+          if (unrenderable.nonEmpty)
+            logger.warn(s"DynamicAssessFunction :: skipping ${unrenderable.size} item(s) with no question content for $objectId: ${unrenderable.flatMap(_.get("identifier")).mkString(",")}")
+          if (renderable.isEmpty) {
+            logger.error(s"DynamicAssessFunction :: no selected item has question content for $objectId, not writing an empty body")
+            metrics.incCounter(config.dynamicAssessFailedCount)
+            context.output(config.failedEventOutTag, ScalaJsonUtil.serialize(Map(
+              "objectId" -> objectId, "stage" -> "dynamic-assess-content",
+              "error" -> "none of the selected AssessmentItems has a body or question + options to render")))
+            return
+          }
+          val ecmlBody = ECMLBodyBuilder.buildEcmlBodyFromItems(renderable, name, config)
           val bodyWritten = dynamicAssessHelper.updateContentBody(cassandraUtil, objectId, ecmlBody)
-          if (bodyWritten) metadataNodeId.foreach(id => janusGraphUtil.updateNode(id, dynamicAssessHelper.generatedContentMetadata(items.size)))
+          if (bodyWritten) metadataNodeId.foreach(id => janusGraphUtil.updateNode(id, dynamicAssessHelper.generatedContentMetadata(renderable.size)))
           bodyWritten
       }
 
