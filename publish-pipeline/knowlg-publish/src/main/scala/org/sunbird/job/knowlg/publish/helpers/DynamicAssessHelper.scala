@@ -122,18 +122,38 @@ class DynamicAssessHelper(config: KnowlgPublishConfig, httpUtil: HttpUtil) {
     AllocationResult(allocations, shortfalls.toList)
   }
 
+  /** How many questions a bucket can supply when each selection must be drawn from at least multiplier x its size. */
+  def effectiveAvailability(available: Int, multiplier: Int): Int = if (multiplier <= 0) available else math.max(0, available) / multiplier
+
+  /** Difficulty levels whose target the allocation couldn't fully cover, as level -> (covered, target). */
+  def uncoveredLevels(allocations: List[Allocation], difficultyTarget: Map[String, Int]): Map[String, (Int, Int)] =
+    difficultyLevels.flatMap { level =>
+      val target = difficultyTarget.getOrElse(level, 0)
+      val covered = allocations.filter(_.difficulty == level).map(_.requiredCount).sum
+      if (covered < target) Some(level -> (covered, target)) else None
+    }.toMap
+
   /** Availability count only, for the allocation step, not the final fetch. limit=1 keeps the response light; `count` reflects the total match regardless. */
   def getAvailabilityCount(skill: String, difficulty: String, channel: String, categoryField: String, poolObjectType: String): Int = {
     searchQuestionPool(skill, difficulty, channel, categoryField, poolObjectType, limit = 1)._1
   }
 
-  /** Fetches up to requiredCount x multiplier candidates for one skill x difficulty bucket, excludes ids already selected for an earlier bucket (a candidate can match more than one requested skill), then randomly picks requiredCount of what's left. */
+  /** Randomly picks the bucket's published pool (requiredCount x multiplier) from its candidates, excluding ids already taken by an earlier bucket (a candidate can match more than one requested skill). */
   def selectForAllocation(allocation: Allocation, channel: String, categoryField: String, poolObjectType: String, excludeIds: Set[String] = Set.empty): SkillDifficultyResult = {
-    val fetchLimit = (allocation.requiredCount + excludeIds.size) * config.dynamicAssessMultiplier
-    val (_, candidates) = searchQuestionPool(allocation.skill, allocation.difficulty, channel, categoryField, poolObjectType, limit = fetchLimit)
-    val selected = Random.shuffle(candidates.filterNot(excludeIds.contains)).take(allocation.requiredCount)
+    val poolSize = learnerPoolSize(allocation.requiredCount)
+    val (_, candidates) = searchQuestionPool(allocation.skill, allocation.difficulty, channel, categoryField, poolObjectType, limit = poolSize + excludeIds.size)
+    val selected = Random.shuffle(candidates.filterNot(excludeIds.contains)).take(poolSize)
     SkillDifficultyResult(allocation.skill, allocation.difficulty, selected)
   }
+
+  /** Questions published per bucket: required x multiplier, so the player can give each learner their own required-sized draw from it. */
+  def learnerPoolSize(requiredCount: Int): Int = requiredCount * math.max(1, config.dynamicAssessMultiplier)
+
+  /** Questions one learner sees: the target per level, capped by what the pool actually holds at that level. */
+  def learnerQuestionCount(difficultyTarget: Map[String, Int], poolLevels: List[String]): Int =
+    difficultyLevels.map { level =>
+      math.min(difficultyTarget.getOrElse(level, 0), poolLevels.count(_.equalsIgnoreCase(difficultyLevelName(level))))
+    }.sum
 
   /** Resolves the framework's deepest category `code` (e.g. "topic"/"skill") as the pool filter field; falls back to "skill" on any failure. */
   def resolveCategoryCode(framework: String): String = {

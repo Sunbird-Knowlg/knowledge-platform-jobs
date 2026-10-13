@@ -93,13 +93,26 @@ class DynamicAssessFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
       // ECML and QuestionSet draw from separate pools: AssessmentItem vs Question.
       val poolObjectType = if (baseObjectType == "Content") "AssessmentItem" else "Question"
 
-      // Step 1: availability counts per skill x difficulty, used for allocation only.
+      // Step 1: availability per skill x difficulty; a bucket can only supply available / multiplier, so every selection has multiplier x its size to pick from.
+      val multiplier = config.dynamicAssessMultiplier
       val availability: (String, String) => Int = (skill, difficulty) =>
-        dynamicAssessHelper.getAvailabilityCount(skill, difficulty, channel, categoryField, poolObjectType)
+        dynamicAssessHelper.effectiveAvailability(dynamicAssessHelper.getAvailabilityCount(skill, difficulty, channel, categoryField, poolObjectType), multiplier)
 
       // Step 2: minimum-first, availability-aware allocation, determines the required count per bucket.
       val allocationResult = dynamicAssessHelper.allocate(skills, difficultyTarget, minCriteria, availability)
       val allocations = allocationResult.allocations
+
+      // A target the pool can't fully cover at the multiplier aborts the whole refresh, so a partial assessment is never written.
+      val uncovered = dynamicAssessHelper.uncoveredLevels(allocations, difficultyTarget)
+      if (uncovered.nonEmpty) {
+        logger.info(s"DynamicAssessFunction :: insufficient pool for $objectId at multiplier=$multiplier, uncovered=$uncovered")
+        metrics.incCounter(config.dynamicAssessFailedCount)
+        context.output(config.failedEventOutTag, ScalaJsonUtil.serialize(Map(
+          "objectId" -> objectId, "stage" -> "dynamic-assess-insufficient-pool", "multiplier" -> multiplier,
+          "uncovered" -> uncovered.map { case (level, (covered, target)) => level -> Map("target" -> target, "coverable" -> covered) },
+          "error" -> s"each difficulty needs at least target x $multiplier Live questions across the selected skills")))
+        return
+      }
 
       allocationResult.minCriteriaShortfalls.foreach { skill =>
         logger.info(s"DynamicAssessFunction :: $skill couldn't be reserved its own minCriteria=$minCriteria from its own pool for $objectId")
@@ -115,7 +128,7 @@ class DynamicAssessFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
       }._1
 
       val (fulfilled, shortfallResults): (List[(DynamicAssessHelper.SkillDifficultyResult, Allocation)], List[(DynamicAssessHelper.SkillDifficultyResult, Allocation)]) =
-        results.zip(allocations).partition { case (result, allocation) => result.selectedIds.size >= allocation.requiredCount }
+        results.zip(allocations).partition { case (result, allocation) => result.selectedIds.size >= dynamicAssessHelper.learnerPoolSize(allocation.requiredCount) }
 
       shortfallResults.foreach { case (result, allocation) =>
         logger.info(s"DynamicAssessFunction :: shortfall for $objectId, skill=${allocation.skill}, difficulty=${allocation.difficulty}, required=${allocation.requiredCount}, got=${result.selectedIds.size}")
@@ -123,6 +136,13 @@ class DynamicAssessFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
           "objectId" -> objectId, "stage" -> "dynamic-assess-selection",
           "skill" -> allocation.skill, "difficulty" -> allocation.difficulty,
           "required" -> allocation.requiredCount, "available" -> result.selectedIds.size)))
+      }
+
+      // Any short bucket (e.g. candidates already claimed by another skill) aborts the whole refresh, same as an uncovered target.
+      if (shortfallResults.nonEmpty) {
+        metrics.incCounter(config.dynamicAssessFailedCount)
+        logger.info(s"DynamicAssessFunction :: ${shortfallResults.size} bucket(s) short for $objectId, nothing written")
+        return
       }
 
       val allSelectedIds = fulfilled.map(_._1).flatMap(_.selectedIds).distinct
@@ -165,9 +185,11 @@ class DynamicAssessFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
               "error" -> "none of the selected AssessmentItems has renderable question content")))
             return
           }
-          val ecmlBody = ECMLBodyBuilder.buildEcmlBodyFromItems(renderable, name, config)
+          val ecmlBody = ECMLBodyBuilder.buildEcmlBodyFromItems(renderable, name, config, difficultyTarget)
           val bodyWritten = dynamicAssessHelper.updateContentBody(cassandraUtil, objectId, ecmlBody)
-          if (bodyWritten) metadataNodeId.foreach(id => janusGraphUtil.updateNode(id, dynamicAssessHelper.generatedContentMetadata(renderable.size)))
+          // totalQuestions is what one learner sees, not the published pool size.
+          val learnerCount = dynamicAssessHelper.learnerQuestionCount(difficultyTarget, renderable.map(i => Option(i.getOrElse("qlevel", null)).map(_.toString).getOrElse("")))
+          if (bodyWritten) metadataNodeId.foreach(id => janusGraphUtil.updateNode(id, dynamicAssessHelper.generatedContentMetadata(learnerCount)))
           bodyWritten
       }
 

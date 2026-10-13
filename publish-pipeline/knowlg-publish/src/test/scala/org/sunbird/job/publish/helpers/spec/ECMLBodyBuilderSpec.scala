@@ -74,6 +74,10 @@ class ECMLBodyBuilderSpec extends FlatSpec with Matchers {
     case JArray(qs) => qs
     case q          => List(q)
   }
+  def quizConfig(body: JValue): JValue = {
+    val qs = (body \\ "org.ekstep.questionset") match { case JArray(List(o)) => o; case o => o }
+    parse((qs \ "config" \ "__cdata").extract[String])
+  }
   def pluginIds(body: JValue): List[String] = (body \ "theme" \ "plugin-manifest" \ "plugin" \ "id").extract[List[String]]
   def mediaSrcs(body: JValue): List[String] = (body \ "theme" \ "manifest" \ "media" \ "src").extract[List[String]]
 
@@ -151,6 +155,21 @@ class ECMLBodyBuilderSpec extends FlatSpec with Matchers {
       "/content-plugins/org.ekstep.questionset-1.0/editor/assets/quizimage.png")
     pluginIds(body) shouldBe List("org.ekstep.navigation", "org.ekstep.questionset.quiz", "org.ekstep.iterator", "org.ekstep.questionset",
       "org.ekstep.questionunit", "org.ekstep.questionunit.mcq", "org.ekstep.summary")
+  }
+
+  it should "record the target and each question's level in the quiz config so the player can draw a per-learner subset" in {
+    val items = List(apiItem.updated("identifier", "do_e1"), apiItem.updated("identifier", "do_m1").updated("qlevel", "medium"))
+    val body = parse(ECMLBodyBuilder.buildEcmlBodyFromItems(items, "Quiz", jobConfig, Map("E" -> 1, "M" -> 1, "D" -> 0)))
+    val qsConfig = quizConfig(body)
+    (qsConfig \ "dynamic_assess" \ "target").extract[Map[String, Int]] shouldBe Map("E" -> 1, "M" -> 1, "D" -> 0)
+    (qsConfig \ "dynamic_assess" \ "levels").extract[Map[String, String]] shouldBe Map("do_e1" -> "EASY", "do_m1" -> "MEDIUM")
+    (qsConfig \ "total_items").extract[Int] shouldBe 2
+  }
+
+  it should "leave the quiz config untouched when no target is given" in {
+    val body = parse(ECMLBodyBuilder.buildEcmlBodyFromItems(List(apiItem), "Quiz", jobConfig))
+    val qsConfig = quizConfig(body)
+    (qsConfig \ "dynamic_assess") shouldBe JNothing
   }
 
   it should "render an FTB item with its own plugin, pass its data through, and bundle the keyboard plugin it needs" in {

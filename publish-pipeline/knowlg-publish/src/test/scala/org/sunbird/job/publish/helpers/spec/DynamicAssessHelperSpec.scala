@@ -33,4 +33,43 @@ class DynamicAssessHelperSpec extends FlatSpec with Matchers with MockitoSugar {
     val stamp = helper.generatedContentMetadata(5, new java.util.Date(0L))("lastUpdatedOn").toString
     stamp should fullyMatch regex """\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}[+-]\d{4}"""
   }
+
+  "learnerPoolSize" should "publish required x multiplier questions per bucket so each learner can draw their own set" in {
+    helper.learnerPoolSize(4) shouldBe 12
+    helper.learnerPoolSize(0) shouldBe 0
+  }
+
+  "learnerQuestionCount" should "count what one learner sees: the target per level, capped by the pool at that level" in {
+    helper.learnerQuestionCount(Map("E" -> 2, "M" -> 1, "D" -> 0), List.fill(6)("EASY") ++ List.fill(3)("MEDIUM")) shouldBe 3
+    helper.learnerQuestionCount(Map("E" -> 2, "M" -> 1, "D" -> 1), List("EASY", "medium")) shouldBe 2
+  }
+
+  "effectiveAvailability" should "let a bucket supply only available / multiplier questions" in {
+    helper.effectiveAvailability(10, 3) shouldBe 3
+    helper.effectiveAvailability(12, 3) shouldBe 4
+    helper.effectiveAvailability(5, 3) shouldBe 1
+    helper.effectiveAvailability(2, 3) shouldBe 0
+  }
+
+  "allocate with multiplier-scaled availability" should "cover a target only when every level has target x multiplier questions (positive)" in {
+    val pool = Map(("Physics", "E") -> 12, ("Physics", "M") -> 12, ("Physics", "D") -> 12)
+    val target = Map("E" -> 4, "M" -> 4, "D" -> 4)
+    val result = helper.allocate(List("Physics"), target, 2, (s, l) => helper.effectiveAvailability(pool.getOrElse((s, l), 0), 3))
+    helper.uncoveredLevels(result.allocations, target) shouldBe empty
+  }
+
+  it should "report the levels it can't cover when the pool is below target x multiplier (negative)" in {
+    val pool = Map(("Scrum", "E") -> 5)
+    val target = Map("E" -> 5, "M" -> 0, "D" -> 0)
+    val result = helper.allocate(List("Scrum"), target, 2, (s, l) => helper.effectiveAvailability(pool.getOrElse((s, l), 0), 3))
+    helper.uncoveredLevels(result.allocations, target) shouldBe Map("E" -> (1, 5))
+  }
+
+  it should "combine skills so their pools together cover a level" in {
+    val pool = Map(("Physics", "E") -> 6, ("Chemistry", "E") -> 6)
+    val target = Map("E" -> 4, "M" -> 0, "D" -> 0)
+    val result = helper.allocate(List("Physics", "Chemistry"), target, 1, (s, l) => helper.effectiveAvailability(pool.getOrElse((s, l), 0), 3))
+    helper.uncoveredLevels(result.allocations, target) shouldBe empty
+    result.allocations.map(_.requiredCount).sum shouldBe 4
+  }
 }
