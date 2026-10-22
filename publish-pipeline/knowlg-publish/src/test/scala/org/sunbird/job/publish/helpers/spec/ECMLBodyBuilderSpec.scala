@@ -164,6 +164,15 @@ class ECMLBodyBuilderSpec extends FlatSpec with Matchers {
     (qsConfig \ "dynamic_assess" \ "target").extract[Map[String, Int]] shouldBe Map("E" -> 1, "M" -> 1, "D" -> 0)
     (qsConfig \ "dynamic_assess" \ "levels").extract[Map[String, String]] shouldBe Map("do_e1" -> "EASY", "do_m1" -> "MEDIUM")
     (qsConfig \ "total_items").extract[Int] shouldBe 2
+    (qsConfig \ "dynamic_assess" \ "skills") shouldBe JNothing
+  }
+
+  it should "record the skills the pool was built for so editors can detect settings changed after generation" in {
+    val items = List(apiItem.updated("identifier", "do_e1"))
+    val body = parse(ECMLBodyBuilder.buildEcmlBodyFromItems(items, "Quiz", jobConfig, Map("E" -> 1, "M" -> 0, "D" -> 0), List("Physics", "Chemistry")))
+    val qsConfig = quizConfig(body)
+    (qsConfig \ "dynamic_assess" \ "skills").extract[List[String]] shouldBe List("Physics", "Chemistry")
+    (qsConfig \ "dynamic_assess" \ "target").extract[Map[String, Int]] shouldBe Map("E" -> 1, "M" -> 0, "D" -> 0)
   }
 
   it should "leave the quiz config untouched when no target is given" in {

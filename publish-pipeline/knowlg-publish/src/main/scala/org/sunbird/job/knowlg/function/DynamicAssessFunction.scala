@@ -185,7 +185,7 @@ class DynamicAssessFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
               "error" -> "none of the selected AssessmentItems has renderable question content")))
             return
           }
-          val ecmlBody = ECMLBodyBuilder.buildEcmlBodyFromItems(renderable, name, config, difficultyTarget)
+          val ecmlBody = ECMLBodyBuilder.buildEcmlBodyFromItems(renderable, name, config, difficultyTarget, skills)
           val bodyWritten = dynamicAssessHelper.updateContentBody(cassandraUtil, objectId, ecmlBody)
           // totalQuestions is what one learner sees, not the published pool size.
           val learnerCount = dynamicAssessHelper.learnerQuestionCount(difficultyTarget, renderable.map(i => Option(i.getOrElse("qlevel", null)).map(_.toString).getOrElse("")))

@@ -118,8 +118,8 @@ object ECMLBodyBuilder {
     }
   }
 
-  /** difficultyTarget, when given, is recorded with each question's level so the player can draw a per-learner subset from the published pool. */
-  def buildEcmlBodyFromItems(items: List[Map[String, AnyRef]], quizTitle: String, config: KnowlgPublishConfig, difficultyTarget: Map[String, Int] = Map.empty): String = {
+  /** difficultyTarget, when given, is recorded with each question's level so the player can draw a per-learner subset; skills record what the pool was built for so editors can detect stale settings. */
+  def buildEcmlBodyFromItems(items: List[Map[String, AnyRef]], quizTitle: String, config: KnowlgPublishConfig, difficultyTarget: Map[String, Int] = Map.empty, skills: List[String] = Nil): String = {
     val defaultIsShuffleOption: Boolean = config.defaultIsShuffleOption
     val defaultIsPartialScore: Boolean = config.defaultIsPartialScore
 
@@ -369,7 +369,7 @@ object ECMLBodyBuilder {
       JField("total_items", JInt(items.size)),
       JField("btn_edit", JString("Edit"))
     ) ++ (if (difficultyTarget.isEmpty) Nil else List(
-      JField("dynamic_assess", JObject(List(
+      JField("dynamic_assess", JObject((if (skills.isEmpty) Nil else List(JField("skills", JArray(skills.map(JString(_)))))) ++ List(
         JField("target", JObject(List("E", "M", "D").map(l => JField(l, JInt(BigInt(difficultyTarget.getOrElse(l, 0))))))),
         JField("levels", JObject(items.map(item => JField(getString(item, "identifier", ""), JString(getString(item, "qlevel", "").toUpperCase)))))
       )))
