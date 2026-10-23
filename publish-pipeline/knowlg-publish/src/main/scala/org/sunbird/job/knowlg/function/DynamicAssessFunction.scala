@@ -58,7 +58,11 @@ class DynamicAssessFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
       val objectId = if (pkgVersion > 0 && !rawObjectId.endsWith(".img")) s"$rawObjectId.img" else rawObjectId
       val baseObjectId = objectId.stripSuffix(".img")
       val editCopyProps = if (objectId == rawObjectId) None else Option(janusGraphUtil.getNodeProperties(objectId))
-      val nodeProps = editCopyProps.getOrElse(rawNodeProps)
+      val graphProps = editCopyProps.getOrElse(rawNodeProps)
+      // Settings come from knowlg-service, which saw the editor's save: this job's graph read can return the state from seconds before it.
+      val currentObject = dynamicAssessHelper.readCurrentObject(baseObjectType, baseObjectId)
+      if (currentObject.isEmpty) logger.warn(s"DynamicAssessFunction :: could not read current settings for $baseObjectId, using graph properties")
+      val nodeProps = currentObject.map(dynamicAssessHelper.withCurrentSettings(graphProps, _)).getOrElse(graphProps)
       val metadataNodeId = dynamicAssessHelper.generatedMetadataNodeId(objectId, rawObjectId, editCopyProps.isDefined)
 
       // Published ECML must be regenerated into its edit copy (the refresh-body API creates it); without one the body would be orphaned, so fail loudly instead.
@@ -156,12 +160,14 @@ class DynamicAssessFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
       val written = baseObjectType match {
         case "QuestionSet" =>
           // baseObjectId, not objectId: /add and /remove self-resolve the editable copy, so a literal ".img" id risks double-resolution. Add-then-remove: /add merges not replaces, so this order never leaves the QSet empty on partial failure.
-          val existingChildren = dynamicAssessHelper.parseExistingChildren(nodeProps)
+          val existingChildren = currentObject.map(dynamicAssessHelper.childIds).getOrElse(dynamicAssessHelper.parseExistingChildren(nodeProps))
           val added = dynamicAssessHelper.addQuestionsToSet(baseObjectId, allSelectedIds)
           if (!added) {
             false
           } else {
-            val staleChildren = existingChildren.diff(allSelectedIds)
+            // Re-read after the add: the start-of-job childNodes misses anything attached since (e.g. by an editor save), which would otherwise stay in the pool.
+            val currentChildren = dynamicAssessHelper.readCurrentChildren(baseObjectId).getOrElse(existingChildren)
+            val staleChildren = (currentChildren ++ existingChildren).distinct.diff(allSelectedIds)
             if (staleChildren.nonEmpty && !dynamicAssessHelper.removeQuestionsFromSet(baseObjectId, staleChildren)) {
               logger.error(s"DynamicAssessFunction :: new selection added for $objectId but failed to remove stale children $staleChildren, QuestionSet is temporarily over-populated until next refresh")
             }

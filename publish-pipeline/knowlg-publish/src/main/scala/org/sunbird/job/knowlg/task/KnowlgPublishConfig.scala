@@ -25,6 +25,10 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
   val questionSetServiceBase: String = if (config.hasPath("service.questionset.basePath")) config.getString("service.questionset.basePath") else ""
   val questionSetAddURL: String = s"$questionSetServiceBase/questionset/v5/add"
   val questionSetRemoveURL: String = s"$questionSetServiceBase/questionset/v5/remove"
+  val questionSetHierarchyURL: String = s"$questionSetServiceBase/questionset/v5/hierarchy/"
+  // Content API lives in knowlg-service too, so it defaults to the same base and needs no new deploy config.
+  val contentServiceBase: String = if (config.hasPath("service.content.basePath")) config.getString("service.content.basePath") else questionSetServiceBase
+  val contentReadURL: String = s"$contentServiceBase/content/v3/read/"
   val dynamicAssessMinCriteria: Int = if (config.hasPath("dynamicassess.minCriteria")) config.getInt("dynamicassess.minCriteria") else 2
   val dynamicAssessMultiplier: Int = if (config.hasPath("dynamicassess.multiplier")) config.getInt("dynamicassess.multiplier") else 3
   require(dynamicAssessMinCriteria >= 0, s"dynamicassess.minCriteria must be >= 0, got $dynamicAssessMinCriteria")

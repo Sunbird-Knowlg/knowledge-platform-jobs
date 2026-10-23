@@ -254,12 +254,60 @@ class DynamicAssessHelper(config: KnowlgPublishConfig, httpUtil: HttpUtil) {
         })
       }
       val response = httpUtil.delete(config.questionSetRemoveURL, ScalaJsonUtil.serialize(reqMap), Map("Content-Type" -> "application/json"))
+      if (!response.isSuccess) logger.error(s"DynamicAssessHelper :: removeQuestionsFromSet got ${response.status} for $questionSetId: ${response.body}")
       response.isSuccess
     } catch {
       case e: Exception =>
         logger.error(s"DynamicAssessHelper :: removeQuestionsFromSet failed for $questionSetId", e)
         false
     }
+  }
+
+  /** Settings fields the editors save, read back when the job runs. */
+  private val settingsFields = List("skill", "difficultyTarget", "framework", "channel", "name")
+
+  /** Editable metadata as knowlg-service returns it (QuestionSet: hierarchy incl. children); consistent, unlike this job's ONE-consistency graph reads that can lag a save by seconds. */
+  def readCurrentObject(baseObjectType: String, baseObjectId: String): Option[Map[String, AnyRef]] = {
+    val (url, key) =
+      if (baseObjectType == "QuestionSet") (config.questionSetHierarchyURL + baseObjectId + "?mode=edit", "questionset")
+      else (config.contentReadURL + baseObjectId + "?mode=edit&fields=" + settingsFields.mkString(","), "content")
+    try {
+      val response = httpUtil.get(url)
+      if (!response.isSuccess) {
+        logger.error(s"DynamicAssessHelper :: readCurrentObject got ${response.status} for $baseObjectId: ${response.body}")
+        None
+      } else {
+        val body = ScalaJsonUtil.deserialize[Map[String, AnyRef]](response.body)
+        body.getOrElse("result", Map.empty).asInstanceOf[Map[String, AnyRef]].get(key).collect { case m: Map[_, _] => m.asInstanceOf[Map[String, AnyRef]] }
+      }
+    } catch {
+      case e: Exception =>
+        logger.error(s"DynamicAssessHelper :: readCurrentObject failed for $baseObjectId", e)
+        None
+    }
+  }
+
+  /** The QuestionSet's children as stored right now (edit mode); None if the read fails. */
+  def readCurrentChildren(questionSetId: String): Option[List[String]] =
+    readCurrentObject("QuestionSet", questionSetId).map(childIds)
+
+  def childIds(questionSet: Map[String, AnyRef]): List[String] =
+    questionSet.getOrElse("children", Nil) match {
+      case l: List[_] => l.collect { case c: Map[_, _] => c.asInstanceOf[Map[String, AnyRef]] }.flatMap(c => Option(c.getOrElse("identifier", null)).map(_.toString))
+      case _ => Nil
+    }
+
+  /** Graph props with the settings fields replaced by the fresh copy, in the shapes parseSkills/parseDifficultyTarget already read; fields the fresh copy lacks keep the graph value. */
+  def withCurrentSettings(nodeProps: java.util.Map[String, AnyRef], current: Map[String, AnyRef]): java.util.Map[String, AnyRef] = {
+    val merged = new util.HashMap[String, AnyRef](nodeProps)
+    settingsFields.foreach { field =>
+      current.get(field).filter(_ != null).foreach {
+        case l: List[_] => merged.put(field, l.map(_.toString).asJava)
+        case m: Map[_, _] => merged.put(field, ScalaJsonUtil.serialize(m))
+        case v => merged.put(field, v)
+      }
+    }
+    merged
   }
 
   /** Prior refresh's children, read off node metadata already fetched for this event — no extra API call. */
