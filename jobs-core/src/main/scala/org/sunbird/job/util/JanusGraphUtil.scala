@@ -23,22 +23,8 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
     if (_graph == null) {
       synchronized {
         if (_graph == null) {
-          val storageHost = config.getString("janusgraph.storage.host", "localhost")
-          val storagePort = config.getString("janusgraph.storage.port", "9042")
-          val storageBackend = config.getString("janusgraph.storage.backend", "cql")
-          val keyspace = config.getString("janusgraph.storage.keyspace", "janusgraph")
-
-          val map = new java.util.HashMap[String, AnyRef]()
-          map.put("storage.backend", storageBackend)
-          map.put("storage.hostname", storageHost)
-          map.put("storage.port", storagePort)
-          map.put("storage.cql.keyspace", keyspace)
-          map.put("storage.cql.read-consistency-level", config.getString("janusgraph.storage.cql.read-consistency-level", "ONE"))
-          map.put("storage.cql.write-consistency-level", config.getString("janusgraph.storage.cql.write-consistency-level", "ONE"))
-          map.put("storage.cql.local-datacenter", config.getString("janusgraph.storage.cql.local-datacenter", "datacenter1"))
-          map.put("log.learning_graph_events.backend", config.getString("janusgraph.log.learning_graph_events.backend", "default"))
-
-          logger.info(s"Initializing Direct JanusGraph Instance. Storage: $storageHost:$storagePort, Keyspace: $keyspace")
+          val map = JanusGraphUtil.storageProperties(config)
+          logger.info(s"Initializing Direct JanusGraph Instance. Storage: ${map.get("storage.hostname")}:${map.get("storage.port")}, Keyspace: ${map.get("storage.cql.keyspace")}")
           val conf = new org.apache.commons.configuration2.MapConfiguration(map)
           _graph = JanusGraphFactory.open(conf)
         }
@@ -244,4 +230,37 @@ class JanusGraphUtil(config: BaseJobConfig) extends Serializable {
     }
   }
 
+}
+
+object JanusGraphUtil {
+
+  /**
+   * Builds the JanusGraph storage settings from the job config. Credentials and TLS are added only
+   * when configured, so existing deployments are unaffected. JanusGraph reads the truststore as a
+   * JKS file, so `janusgraph.storage.cql.ssl.truststore.location` must point to one.
+   */
+  def storageProperties(config: BaseJobConfig): java.util.Map[String, AnyRef] = {
+    val map = new java.util.HashMap[String, AnyRef]()
+    map.put("storage.backend", config.getString("janusgraph.storage.backend", "cql"))
+    map.put("storage.hostname", config.getString("janusgraph.storage.host", "localhost"))
+    map.put("storage.port", config.getString("janusgraph.storage.port", "9042"))
+    map.put("storage.cql.keyspace", config.getString("janusgraph.storage.keyspace", "janusgraph"))
+    map.put("storage.cql.read-consistency-level", config.getString("janusgraph.storage.cql.read-consistency-level", "ONE"))
+    map.put("storage.cql.write-consistency-level", config.getString("janusgraph.storage.cql.write-consistency-level", "ONE"))
+    map.put("storage.cql.local-datacenter", config.getString("janusgraph.storage.cql.local-datacenter", "datacenter1"))
+    map.put("log.learning_graph_events.backend", config.getString("janusgraph.log.learning_graph_events.backend", "default"))
+
+    val username = config.getString("janusgraph.storage.username", "")
+    val password = config.getString("janusgraph.storage.password", "")
+    if (StringUtils.isNotEmpty(username) && StringUtils.isNotEmpty(password)) {
+      map.put("storage.username", username)
+      map.put("storage.password", password)
+    }
+    if (config.getBoolean("janusgraph.storage.cql.ssl.enabled", false)) {
+      map.put("storage.cql.ssl.enabled", java.lang.Boolean.TRUE)
+      map.put("storage.cql.ssl.truststore.location", config.getString("janusgraph.storage.cql.ssl.truststore.location", ""))
+      map.put("storage.cql.ssl.truststore.password", config.getString("janusgraph.storage.cql.ssl.truststore.password", ""))
+    }
+    map
+  }
 }
