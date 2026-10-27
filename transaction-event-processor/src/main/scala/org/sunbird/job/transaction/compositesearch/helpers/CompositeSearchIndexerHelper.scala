@@ -10,6 +10,28 @@ import org.sunbird.job.util.{CSPMetaUtil, ElasticSearchUtil, ScalaJsonUtil}
 
 import java.text.SimpleDateFormat
 import scala.collection.JavaConverters._
+import scala.util.{Failure, Success, Try}
+
+/** What to do with an event after it has been compared with what is already known about its node. */
+sealed trait VersionCheck
+object VersionCheck {
+  /** The event is not older than what is known (or cannot be compared): index it as received. */
+  case object Apply extends VersionCheck
+  /** The event is older than what is indexed, or there is no indexed document to compare with: ask JanusGraph. */
+  case object CheckGraph extends VersionCheck
+  /** Nothing to do: there is no document to delete, or a newer document is indexed than the DELETE refers to. */
+  case object Skip extends VersionCheck
+}
+
+sealed trait StaleEventAction
+object StaleEventAction {
+  /** Node still exists: index the current graph state instead of the stale event. */
+  case object RebuildFromGraph extends StaleEventAction
+  /** Index the event as received. */
+  case object ProcessOriginal extends StaleEventAction
+  /** Node no longer exists: indexing this stale event would resurrect a deleted document. */
+  case object Skip extends StaleEventAction
+}
 
 trait CompositeSearchIndexerHelper {
 
@@ -42,11 +64,12 @@ trait CompositeSearchIndexerHelper {
       isUpdate: Boolean,
       definition: ObjectDefinition,
       nestedFields: List[String],
-      ignoredFields: List[String]
+      ignoredFields: List[String],
+      existingDocument: Option[scala.collection.mutable.Map[String, AnyRef]] = None
   )(esUtil: ElasticSearchUtil): Map[String, AnyRef] = {
     val identifier = message.getOrElse("nodeUniqueId", "").asInstanceOf[String]
     val indexDocument =
-      if (isUpdate) getIndexDocument(identifier)(esUtil)
+      if (isUpdate) existingDocument.getOrElse(getIndexDocument(identifier)(esUtil))
       else scala.collection.mutable.Map[String, AnyRef]()
     val transactionData = message
       .getOrElse("transactionData", Map[String, Any]())
@@ -152,7 +175,8 @@ trait CompositeSearchIndexerHelper {
   }
 
   def processESMessage(
-      compositeObject: CompositeIndexer
+      compositeObject: CompositeIndexer,
+      existingDocument: Option[scala.collection.mutable.Map[String, AnyRef]] = None
   )(esUtil: ElasticSearchUtil, defCache: DefinitionCache): Unit = {
     val definition = defCache.getDefinition(
       compositeObject.objectType,
@@ -166,7 +190,8 @@ trait CompositeSearchIndexerHelper {
       compositeMap,
       definition,
       compositeObject.getNestedFields(),
-      compositeObject.getIgnoredFields()
+      compositeObject.getIgnoredFields(),
+      existingDocument
     )(esUtil)
   }
 
@@ -175,7 +200,8 @@ trait CompositeSearchIndexerHelper {
       message: Map[String, Any],
       definition: ObjectDefinition,
       nestedFields: List[String],
-      ignoredFields: List[String]
+      ignoredFields: List[String],
+      existingDocument: Option[scala.collection.mutable.Map[String, AnyRef]]
   )(esUtil: ElasticSearchUtil): Unit = {
     val operationType =
       message.getOrElse("operationType", "").asInstanceOf[String]
@@ -196,13 +222,14 @@ trait CompositeSearchIndexerHelper {
           true,
           definition,
           nestedFields,
-          ignoredFields
+          ignoredFields,
+          existingDocument
         )(esUtil)
         val jsonIndexDocument = ScalaJsonUtil.serialize(indexDocument)
         upsertDocument(identifier, jsonIndexDocument)(esUtil)
       case "DELETE" =>
         val id = message.getOrElse("nodeUniqueId", "").asInstanceOf[String]
-        val indexDocument = getIndexDocument(id)(esUtil)
+        val indexDocument = existingDocument.getOrElse(getIndexDocument(id)(esUtil))
         val visibility =
           indexDocument.getOrElse("visibility", "").asInstanceOf[String]
         if (StringUtils.equalsIgnoreCase("Parent", visibility))
@@ -289,6 +316,67 @@ trait CompositeSearchIndexerHelper {
     messageMap.put("transactionData", Map("properties" -> properties))
 
     CompositeIndexer(graphId, objectType, identifier, event.readOrDefault("mid", ""), messageMap, config)
+  }
+
+  /** Decides how to handle a stale event from the JanusGraph lookup result. */
+  def staleEventAction(operationType: String, graphLookup: Try[Option[java.util.Map[String, AnyRef]]]): StaleEventAction =
+    graphLookup match {
+      case Success(Some(_)) => StaleEventAction.RebuildFromGraph
+      case Success(None) if "DELETE".equals(operationType) => StaleEventAction.ProcessOriginal
+      case Success(None) => StaleEventAction.Skip
+      case Failure(_) => StaleEventAction.ProcessOriginal
+    }
+
+  /** The document currently indexed for the node, or None when there is none. */
+  def readIndexedDocument(identifier: String)(esUtil: ElasticSearchUtil): Option[scala.collection.mutable.Map[String, AnyRef]] = {
+    val document = getIndexDocument(identifier)(esUtil)
+    if (document.isEmpty) None else Some(document)
+  }
+
+  /** lastUpdatedOn of an indexed document, in epoch millis. */
+  def indexedLastUpdatedOn(document: scala.collection.Map[String, AnyRef]): Option[Long] =
+    document.get("lastUpdatedOn") match {
+      case Some(s: String) if s.nonEmpty => parseTimestamp(s)
+      case _                             => None
+    }
+
+  /** Judges an event against the indexed document of its node, used on a cache miss. */
+  def versionCheck(
+      operationType: String,
+      eventLastUpdatedOn: Option[Long],
+      indexedDocument: Option[scala.collection.Map[String, AnyRef]]
+  ): VersionCheck = operationType match {
+    case "DELETE" =>
+      indexedDocument match {
+        case None => VersionCheck.Skip
+        case Some(doc) =>
+          (eventLastUpdatedOn, indexedLastUpdatedOn(doc)) match {
+            case (Some(event), Some(indexed)) if indexed > event => VersionCheck.Skip
+            case _                                               => VersionCheck.Apply
+          }
+      }
+    case "UPDATE" =>
+      indexedDocument match {
+        case None => VersionCheck.CheckGraph
+        case Some(doc) =>
+          (eventLastUpdatedOn, indexedLastUpdatedOn(doc)) match {
+            case (Some(event), Some(indexed)) if event <= indexed => VersionCheck.CheckGraph
+            case _                                                => VersionCheck.Apply
+          }
+      }
+    case _ => VersionCheck.Apply
+  }
+
+  /** Judges an event against the cache; None on a miss that needs the indexed document. */
+  def cacheCheck(
+      operationType: String,
+      eventLastUpdatedOn: Option[Long],
+      cachedLastUpdatedOn: Option[Long]
+  ): Option[VersionCheck] = cachedLastUpdatedOn match {
+    case Some(cached) =>
+      Some(if (eventLastUpdatedOn.exists(_ <= cached)) VersionCheck.CheckGraph else VersionCheck.Apply)
+    case None if "CREATE".equals(operationType) => Some(VersionCheck.Apply)
+    case None                                   => None
   }
 
   def extractLastUpdatedOn(event: Event): Option[Long] = {
