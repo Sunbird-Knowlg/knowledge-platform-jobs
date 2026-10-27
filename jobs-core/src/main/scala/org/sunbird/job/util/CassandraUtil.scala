@@ -13,13 +13,16 @@ class CassandraUtil(host: String, port: Int, config: BaseJobConfig) extends Seri
 
   val isrRelativePathEnabled = config.getBoolean("cloudstorage.metadata.replace_absolute_path", false)
 
-  val cluster = {
-    Cluster.builder()
-      .addContactPoints(host)
-      .withPort(port)
-      .withoutJMXReporting()
+  // Single place that builds a Cluster, so the constructor and reconnect() both get credentials and TLS.
+  private def newCluster(): Cluster =
+    CassandraSecurity.configure(
+      Cluster.builder()
+        .addContactPoints(host)
+        .withPort(port)
+        .withoutJMXReporting(), config)
       .build()
-  }
+
+  var cluster = newCluster()
   var session = cluster.connect()
 
   def findOne(query: String): Row = {
@@ -58,8 +61,9 @@ class CassandraUtil(host: String, port: Int, config: BaseJobConfig) extends Seri
 
   def reconnect(): Unit = {
     this.session.close()
-    val cluster: Cluster = Cluster.builder.addContactPoint(host).withPort(port).build
-    this.session = cluster.connect
+    this.cluster.close()
+    this.cluster = newCluster()
+    this.session = this.cluster.connect
   }
 
   def close(): Unit = {
