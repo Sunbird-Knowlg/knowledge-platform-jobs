@@ -50,6 +50,14 @@ class DynamicAssessHelper(config: KnowlgPublishConfig, httpUtil: HttpUtil) {
     }.getOrElse(Map.empty[String, Int])
   }
 
+  /** The content's own minCriteria/multiplier (stored at create by knowlg-service), or `default` from this job's config for content created before it was, or holding a value below `min`. */
+  def nodeSetting(nodeProps: java.util.Map[String, AnyRef], field: String, min: Int, default: Int): Int =
+    Option(nodeProps.get(field)).flatMap {
+      case n: java.lang.Number => Some(n.intValue())
+      case s: String => scala.util.Try(s.trim.toDouble.toInt).toOption
+      case _ => None
+    }.filter(_ >= min).getOrElse(default)
+
   /** minCriteria x skills.length <= E+M+D. Doesn't check per-skill availability, just the shared-total math. */
   def isFeasible(skills: List[String], difficultyTarget: Map[String, Int], minCriteria: Int): Boolean = {
     val total = difficultyLevels.map(l => difficultyTarget.getOrElse(l, 0)).sum
@@ -139,15 +147,15 @@ class DynamicAssessHelper(config: KnowlgPublishConfig, httpUtil: HttpUtil) {
   }
 
   /** Randomly picks the bucket's published pool (requiredCount x multiplier) from its candidates, excluding ids already taken by an earlier bucket (a candidate can match more than one requested skill). */
-  def selectForAllocation(allocation: Allocation, channel: String, categoryField: String, poolObjectType: String, excludeIds: Set[String] = Set.empty): SkillDifficultyResult = {
-    val poolSize = learnerPoolSize(allocation.requiredCount)
+  def selectForAllocation(allocation: Allocation, channel: String, categoryField: String, poolObjectType: String, multiplier: Int, excludeIds: Set[String] = Set.empty): SkillDifficultyResult = {
+    val poolSize = learnerPoolSize(allocation.requiredCount, multiplier)
     val (_, candidates) = searchQuestionPool(allocation.skill, allocation.difficulty, channel, categoryField, poolObjectType, limit = poolSize + excludeIds.size)
     val selected = Random.shuffle(candidates.filterNot(excludeIds.contains)).take(poolSize)
     SkillDifficultyResult(allocation.skill, allocation.difficulty, selected)
   }
 
   /** Questions published per bucket: required x multiplier, so the player can give each learner their own required-sized draw from it. */
-  def learnerPoolSize(requiredCount: Int): Int = requiredCount * math.max(1, config.dynamicAssessMultiplier)
+  def learnerPoolSize(requiredCount: Int, multiplier: Int): Int = requiredCount * math.max(1, multiplier)
 
   /** Questions one learner sees: the target per level, capped by what the pool actually holds at that level. */
   def learnerQuestionCount(difficultyTarget: Map[String, Int], poolLevels: List[String]): Int =
@@ -264,7 +272,7 @@ class DynamicAssessHelper(config: KnowlgPublishConfig, httpUtil: HttpUtil) {
   }
 
   /** Settings fields the editors save, read back when the job runs; the selected skills' field depends on the framework and is passed to withCurrentSettings separately. */
-  private val settingsFields = List("difficultyTarget", "framework", "channel", "name")
+  private val settingsFields = List("difficultyTarget", "framework", "channel", "name", "minCriteria", "multiplier")
 
   /** Editable metadata as knowlg-service returns it (QuestionSet: hierarchy incl. children); consistent, unlike this job's ONE-consistency graph reads that can lag a save by seconds. */
   def readCurrentObject(baseObjectType: String, baseObjectId: String): Option[Map[String, AnyRef]] = {

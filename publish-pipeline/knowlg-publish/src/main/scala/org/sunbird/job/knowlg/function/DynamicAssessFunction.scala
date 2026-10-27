@@ -83,7 +83,9 @@ class DynamicAssessFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
       val difficultyTarget = dynamicAssessHelper.parseDifficultyTarget(nodeProps)
       val channel = Option(nodeProps.get("channel")).map(_.toString).getOrElse("")
       val name = Option(nodeProps.get("name")).map(_.toString).getOrElse(objectId)
-      val minCriteria = config.dynamicAssessMinCriteria
+      // The content's own values, so this job enforces what the editors and knowlg-service showed the author; config only covers content created before they were stored.
+      val minCriteria = dynamicAssessHelper.nodeSetting(nodeProps, "minCriteria", 0, config.dynamicAssessMinCriteria)
+      val multiplier = dynamicAssessHelper.nodeSetting(nodeProps, "multiplier", 1, config.dynamicAssessMultiplier)
 
       if (!dynamicAssessHelper.isFeasible(skills, difficultyTarget, minCriteria)) {
         logger.info(s"DynamicAssessFunction :: feasibility check failed for $objectId, skills=$skills, difficultyTarget=$difficultyTarget, minCriteria=$minCriteria")
@@ -98,7 +100,6 @@ class DynamicAssessFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
       val poolObjectType = if (baseObjectType == "Content") "AssessmentItem" else "Question"
 
       // Step 1: availability per skill x difficulty; a bucket can only supply available / multiplier, so every selection has multiplier x its size to pick from.
-      val multiplier = config.dynamicAssessMultiplier
       val availability: (String, String) => Int = (skill, difficulty) =>
         dynamicAssessHelper.effectiveAvailability(dynamicAssessHelper.getAvailabilityCount(skill, difficulty, channel, categoryField, poolObjectType), multiplier)
 
@@ -127,12 +128,12 @@ class DynamicAssessFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
 
       // Step 3: fetch required x multiplier candidates and select per allocation, sequentially excluding ids already claimed by an earlier bucket (a candidate can match more than one requested skill).
       val results = allocations.foldLeft(List.empty[DynamicAssessHelper.SkillDifficultyResult] -> Set.empty[String]) { case ((acc, usedIds), allocation) =>
-        val result = dynamicAssessHelper.selectForAllocation(allocation, channel, categoryField, poolObjectType, usedIds)
+        val result = dynamicAssessHelper.selectForAllocation(allocation, channel, categoryField, poolObjectType, multiplier, usedIds)
         (acc :+ result, usedIds ++ result.selectedIds)
       }._1
 
       val (fulfilled, shortfallResults): (List[(DynamicAssessHelper.SkillDifficultyResult, Allocation)], List[(DynamicAssessHelper.SkillDifficultyResult, Allocation)]) =
-        results.zip(allocations).partition { case (result, allocation) => result.selectedIds.size >= dynamicAssessHelper.learnerPoolSize(allocation.requiredCount) }
+        results.zip(allocations).partition { case (result, allocation) => result.selectedIds.size >= dynamicAssessHelper.learnerPoolSize(allocation.requiredCount, multiplier) }
 
       shortfallResults.foreach { case (result, allocation) =>
         logger.info(s"DynamicAssessFunction :: shortfall for $objectId, skill=${allocation.skill}, difficulty=${allocation.difficulty}, required=${allocation.requiredCount}, got=${result.selectedIds.size}")

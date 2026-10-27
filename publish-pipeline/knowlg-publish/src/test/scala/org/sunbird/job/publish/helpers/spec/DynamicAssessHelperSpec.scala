@@ -7,7 +7,7 @@ import org.sunbird.job.knowlg.publish.helpers.DynamicAssessHelper
 import org.sunbird.job.knowlg.task.KnowlgPublishConfig
 import org.mockito.ArgumentMatchers.anyString
 import org.mockito.Mockito.when
-import org.sunbird.job.util.{HTTPResponse, HttpUtil}
+import org.sunbird.job.util.{HTTPResponse, HttpUtil, ScalaJsonUtil}
 
 class DynamicAssessHelperSpec extends FlatSpec with Matchers with MockitoSugar {
 
@@ -37,8 +37,30 @@ class DynamicAssessHelperSpec extends FlatSpec with Matchers with MockitoSugar {
   }
 
   "learnerPoolSize" should "publish required x multiplier questions per bucket so each learner can draw their own set" in {
-    helper.learnerPoolSize(4) shouldBe 12
-    helper.learnerPoolSize(0) shouldBe 0
+    helper.learnerPoolSize(4, 3) shouldBe 12
+    helper.learnerPoolSize(4, 5) shouldBe 20
+    helper.learnerPoolSize(0, 3) shouldBe 0
+  }
+
+  "nodeSetting" should "use the content's own minCriteria/multiplier in whatever shape the read returned" in {
+    val props = new java.util.HashMap[String, AnyRef]()
+    props.put("minCriteria", Integer.valueOf(4))
+    props.put("multiplier", "5")
+    helper.nodeSetting(props, "minCriteria", 0, 2) shouldBe 4
+    helper.nodeSetting(props, "multiplier", 1, 3) shouldBe 5
+    props.put("minCriteria", java.lang.Double.valueOf(0.0))
+    helper.nodeSetting(props, "minCriteria", 0, 2) shouldBe 0
+  }
+
+  it should "fall back to config when the content has no value, or one that is unusable (negative)" in {
+    val props = new java.util.HashMap[String, AnyRef]()
+    helper.nodeSetting(props, "minCriteria", 0, 2) shouldBe 2
+    props.put("multiplier", Integer.valueOf(0))
+    helper.nodeSetting(props, "multiplier", 1, 3) shouldBe 3
+    props.put("multiplier", "abc")
+    helper.nodeSetting(props, "multiplier", 1, 3) shouldBe 3
+    props.put("minCriteria", Integer.valueOf(-1))
+    helper.nodeSetting(props, "minCriteria", 0, 2) shouldBe 2
   }
 
   "learnerQuestionCount" should "count what one learner sees: the target per level, capped by the pool at that level" in {
@@ -106,6 +128,15 @@ class DynamicAssessHelperSpec extends FlatSpec with Matchers with MockitoSugar {
     helper.parseSkills(merged, "topic") shouldBe List("Algebra", "Geometry")
     helper.parseDifficultyTarget(merged) shouldBe Map("E" -> 2, "M" -> 1, "D" -> 2)
     merged.get("name") shouldBe "Old name"
+  }
+
+  it should "take minCriteria and multiplier from the fresh copy, as JSON numbers come back from the read" in {
+    val graph = new java.util.HashMap[String, AnyRef]()
+    graph.put("minCriteria", Integer.valueOf(2))
+    val fresh: Map[String, AnyRef] = ScalaJsonUtil.deserialize[Map[String, AnyRef]]("""{"minCriteria":4,"multiplier":5}""")
+    val merged = helper.withCurrentSettings(graph, fresh)
+    helper.nodeSetting(merged, "minCriteria", 0, 2) shouldBe 4
+    helper.nodeSetting(merged, "multiplier", 1, 3) shouldBe 5
   }
 
   it should "leave the skills' field at its graph value when it isn't passed as the category field" in {
