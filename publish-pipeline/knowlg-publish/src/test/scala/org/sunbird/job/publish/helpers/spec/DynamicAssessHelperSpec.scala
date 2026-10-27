@@ -88,24 +88,43 @@ class DynamicAssessHelperSpec extends FlatSpec with Matchers with MockitoSugar {
     new DynamicAssessHelper(jobConfig, http).readCurrentChildren("do_qs") shouldBe None
   }
 
-  "readCurrentObject" should "read a Dynamic Course Assessment's settings through the content read API in edit mode" in {
+  "readCurrentObject" should "read a Dynamic Course Assessment's full metadata in edit mode, so the framework's skill category field comes back whatever it is called" in {
     val http = mock[HttpUtil]
-    when(http.get(org.mockito.ArgumentMatchers.contains("/content/v3/read/do_c?mode=edit&fields=skill,difficultyTarget,framework,channel,name"), org.mockito.ArgumentMatchers.any()))
-      .thenReturn(HTTPResponse(200, """{"result":{"content":{"skill":["Physics"],"difficultyTarget":"{\"E\":2,\"M\":1,\"D\":2}"}}}"""))
+    when(http.get(org.mockito.ArgumentMatchers.endsWith("/content/v3/read/do_c?mode=edit"), org.mockito.ArgumentMatchers.any()))
+      .thenReturn(HTTPResponse(200, """{"result":{"content":{"framework":"bmgs","topic":["Algebra"],"difficultyTarget":"{\"E\":2,\"M\":1,\"D\":2}"}}}"""))
     val current = new DynamicAssessHelper(jobConfig, http).readCurrentObject("Content", "do_c")
-    current.map(_("skill")) shouldBe Some(List("Physics"))
+    current.map(_("topic")) shouldBe Some(List("Algebra"))
   }
 
-  "withCurrentSettings" should "replace stale graph settings with the fresh copy in the shapes the parsers read" in {
+  "withCurrentSettings" should "replace stale graph settings, including the skills' category field, with the fresh copy in the shapes the parsers read" in {
     val graph = new java.util.HashMap[String, AnyRef]()
-    graph.put("skill", java.util.Arrays.asList("Physics"))
+    graph.put("topic", java.util.Arrays.asList("Algebra"))
     graph.put("difficultyTarget", "{\"E\":2,\"M\":2,\"D\":2}")
     graph.put("name", "Old name")
-    val fresh: Map[String, AnyRef] = Map("skill" -> List("Physics", "Chemistry"), "difficultyTarget" -> Map("E" -> 2, "M" -> 1, "D" -> 2))
-    val merged = helper.withCurrentSettings(graph, fresh)
-    helper.parseSkills(merged) shouldBe List("Physics", "Chemistry")
+    val fresh: Map[String, AnyRef] = Map("topic" -> List("Algebra", "Geometry"), "difficultyTarget" -> Map("E" -> 2, "M" -> 1, "D" -> 2))
+    val merged = helper.withCurrentSettings(graph, fresh, List("topic"))
+    helper.parseSkills(merged, "topic") shouldBe List("Algebra", "Geometry")
     helper.parseDifficultyTarget(merged) shouldBe Map("E" -> 2, "M" -> 1, "D" -> 2)
     merged.get("name") shouldBe "Old name"
+  }
+
+  it should "leave the skills' field at its graph value when it isn't passed as the category field" in {
+    val graph = new java.util.HashMap[String, AnyRef]()
+    graph.put("topic", java.util.Arrays.asList("Algebra"))
+    val merged = helper.withCurrentSettings(graph, Map("topic" -> List("Geometry")))
+    helper.parseSkills(merged, "topic") shouldBe List("Algebra")
+  }
+
+  "parseSkills" should "read the selected skills from the framework's category field, not a fixed 'skill' field" in {
+    val props = new java.util.HashMap[String, AnyRef]()
+    props.put("topic", java.util.Arrays.asList("Algebra", "Algebra", "Geometry"))
+    props.put("skill", java.util.Arrays.asList("Ignored"))
+    helper.parseSkills(props, "topic") shouldBe List("Algebra", "Geometry")
+    helper.parseSkills(props, "skill") shouldBe List("Ignored")
+  }
+
+  it should "return no skills when the category field is absent (negative)" in {
+    helper.parseSkills(new java.util.HashMap[String, AnyRef](), "topic") shouldBe Nil
   }
 
   it should "accept a difficultyTarget the API returns as a JSON string" in {

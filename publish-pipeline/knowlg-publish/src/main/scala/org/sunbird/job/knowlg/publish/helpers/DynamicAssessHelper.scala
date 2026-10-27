@@ -32,9 +32,9 @@ class DynamicAssessHelper(config: KnowlgPublishConfig, httpUtil: HttpUtil) {
     case _ => 0
   }
 
-  /** Deduped — a repeated skill in the request would otherwise double-count toward minCriteria/feasibility. */
-  def parseSkills(nodeProps: java.util.Map[String, AnyRef]): List[String] = {
-    Option(nodeProps.get("skill")).map {
+  /** The selected skills, stored in the framework's deepest category field (`categoryField`, from resolveCategoryCode). Deduped — a repeated skill would otherwise double-count toward minCriteria/feasibility. */
+  def parseSkills(nodeProps: java.util.Map[String, AnyRef], categoryField: String): List[String] = {
+    Option(nodeProps.get(categoryField)).map {
       case l: java.util.List[_] => l.asScala.toList.map(_.toString)
       case arr: Array[_] => arr.toList.map(_.toString)
       case s: String if s.nonEmpty => ScalaJsonUtil.deserialize[List[String]](s)
@@ -263,14 +263,15 @@ class DynamicAssessHelper(config: KnowlgPublishConfig, httpUtil: HttpUtil) {
     }
   }
 
-  /** Settings fields the editors save, read back when the job runs. */
-  private val settingsFields = List("skill", "difficultyTarget", "framework", "channel", "name")
+  /** Settings fields the editors save, read back when the job runs; the selected skills' field depends on the framework and is passed to withCurrentSettings separately. */
+  private val settingsFields = List("difficultyTarget", "framework", "channel", "name")
 
   /** Editable metadata as knowlg-service returns it (QuestionSet: hierarchy incl. children); consistent, unlike this job's ONE-consistency graph reads that can lag a save by seconds. */
   def readCurrentObject(baseObjectType: String, baseObjectId: String): Option[Map[String, AnyRef]] = {
+    // Content is read without a fields filter: the skills' category field is only known once the framework is, and a read without fields returns all metadata (the body is external and stays out).
     val (url, key) =
       if (baseObjectType == "QuestionSet") (config.questionSetHierarchyURL + baseObjectId + "?mode=edit", "questionset")
-      else (config.contentReadURL + baseObjectId + "?mode=edit&fields=" + settingsFields.mkString(","), "content")
+      else (config.contentReadURL + baseObjectId + "?mode=edit", "content")
     try {
       val response = httpUtil.get(url)
       if (!response.isSuccess) {
@@ -298,9 +299,9 @@ class DynamicAssessHelper(config: KnowlgPublishConfig, httpUtil: HttpUtil) {
     }
 
   /** Graph props with the settings fields replaced by the fresh copy, in the shapes parseSkills/parseDifficultyTarget already read; fields the fresh copy lacks keep the graph value. */
-  def withCurrentSettings(nodeProps: java.util.Map[String, AnyRef], current: Map[String, AnyRef]): java.util.Map[String, AnyRef] = {
+  def withCurrentSettings(nodeProps: java.util.Map[String, AnyRef], current: Map[String, AnyRef], extraFields: List[String] = Nil): java.util.Map[String, AnyRef] = {
     val merged = new util.HashMap[String, AnyRef](nodeProps)
-    settingsFields.foreach { field =>
+    (settingsFields ++ extraFields).distinct.foreach { field =>
       current.get(field).filter(_ != null).foreach {
         case l: List[_] => merged.put(field, l.map(_.toString).asJava)
         case m: Map[_, _] => merged.put(field, ScalaJsonUtil.serialize(m))

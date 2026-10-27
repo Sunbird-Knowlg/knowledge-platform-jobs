@@ -62,7 +62,11 @@ class DynamicAssessFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
       // Settings come from knowlg-service, which saw the editor's save: this job's graph read can return the state from seconds before it.
       val currentObject = dynamicAssessHelper.readCurrentObject(baseObjectType, baseObjectId)
       if (currentObject.isEmpty) logger.warn(s"DynamicAssessFunction :: could not read current settings for $baseObjectId, using graph properties")
-      val nodeProps = currentObject.map(dynamicAssessHelper.withCurrentSettings(graphProps, _)).getOrElse(graphProps)
+      // The selected skills live in the framework's deepest category field (e.g. "topic" for BMGS, "skill" for USF), so resolve it from the freshest framework before reading them.
+      val framework = currentObject.flatMap(c => Option(c.getOrElse("framework", null))).map(_.toString)
+        .orElse(Option(graphProps.get("framework")).map(_.toString)).getOrElse("")
+      val categoryField = dynamicAssessHelper.resolveCategoryCode(framework)
+      val nodeProps = currentObject.map(dynamicAssessHelper.withCurrentSettings(graphProps, _, List(categoryField))).getOrElse(graphProps)
       val metadataNodeId = dynamicAssessHelper.generatedMetadataNodeId(objectId, rawObjectId, editCopyProps.isDefined)
 
       // Published ECML must be regenerated into its edit copy (the refresh-body API creates it); without one the body would be orphaned, so fail loudly instead.
@@ -75,11 +79,10 @@ class DynamicAssessFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
         return
       }
 
-      val skills = dynamicAssessHelper.parseSkills(nodeProps)
+      val skills = dynamicAssessHelper.parseSkills(nodeProps, categoryField)
       val difficultyTarget = dynamicAssessHelper.parseDifficultyTarget(nodeProps)
       val channel = Option(nodeProps.get("channel")).map(_.toString).getOrElse("")
       val name = Option(nodeProps.get("name")).map(_.toString).getOrElse(objectId)
-      val framework = Option(nodeProps.get("framework")).map(_.toString).getOrElse("")
       val minCriteria = config.dynamicAssessMinCriteria
 
       if (!dynamicAssessHelper.isFeasible(skills, difficultyTarget, minCriteria)) {
@@ -91,9 +94,6 @@ class DynamicAssessFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
         return
       }
 
-      // Resolved once per event: the QSet's declared framework's deepest-category code
-      // (e.g. "topic" for BMGS, "skill" for USF) is the field the pool query actually filters on.
-      val categoryField = dynamicAssessHelper.resolveCategoryCode(framework)
       // ECML and QuestionSet draw from separate pools: AssessmentItem vs Question.
       val poolObjectType = if (baseObjectType == "Content") "AssessmentItem" else "Question"
 
