@@ -1,9 +1,8 @@
 package org.sunbird.job.knowlg.publish.helpers
 
-import com.datastax.driver.core.querybuilder.QueryBuilder
 import org.slf4j.LoggerFactory
 import org.sunbird.job.knowlg.task.KnowlgPublishConfig
-import org.sunbird.job.util.{CassandraUtil, HttpUtil, JanusGraphUtil, ScalaJsonUtil}
+import org.sunbird.job.util.{HTTPResponse, HttpUtil, ScalaJsonUtil}
 
 import java.util
 import scala.collection.JavaConverters._
@@ -319,16 +318,6 @@ class DynamicAssessHelper(config: KnowlgPublishConfig, httpUtil: HttpUtil) {
     merged
   }
 
-  /** Prior refresh's children, read off node metadata already fetched for this event — no extra API call. */
-  def parseExistingChildren(nodeProps: java.util.Map[String, AnyRef]): List[String] = {
-    Option(nodeProps.get("childNodes")).map {
-      case l: java.util.List[_] => l.asScala.toList.map(_.toString)
-      case arr: Array[_] => arr.toList.map(_.toString)
-      case s: String if s.nonEmpty => ScalaJsonUtil.deserialize[List[String]](s)
-      case _ => Nil
-    }.getOrElse(Nil)
-  }
-
   /** ECML's pool member type — hits AssessmentItem's own read endpoint/response shape. */
   def getAssessmentItemsByIdentifiers(identifiers: List[String]): List[Map[String, AnyRef]] = {
     identifiers.flatMap { identifier =>
@@ -350,27 +339,23 @@ class DynamicAssessHelper(config: KnowlgPublishConfig, httpUtil: HttpUtil) {
     }
   }
 
-  /** The ECML body is Cassandra-only, so the editor can't see it was generated; totalQuestions marks that it was, lastUpdatedOn changes on every regenerate even when the count doesn't. */
-  def generatedContentMetadata(questionCount: Int, now: java.util.Date = new java.util.Date()): Map[String, AnyRef] =
-    Map(
-      "totalQuestions" -> Int.box(questionCount),
-      "lastUpdatedOn" -> new java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSZ").format(now)
-    )
-
-  /** Node to stamp generated metadata on; None when published content has no ".img" edit copy, so live content is never written to directly. */
-  def generatedMetadataNodeId(objectId: String, rawObjectId: String, editCopyExists: Boolean): Option[String] =
-    if (objectId == rawObjectId || editCopyExists) Some(objectId) else None
-
-  /** ECML has no graph relations to maintain, so this writes the rebuilt body directly, mirroring RefreshBodyHelper.updateContentBody. */
-  def updateContentBody(cassandraUtil: CassandraUtil, identifier: String, ecmlBody: String): Boolean = {
+  /** Saves a generated ECML body and the per-learner question count through knowlg-service's update, which writes to the edit copy (never the live content) and stamps lastUpdatedOn; retried once with a fresh versionKey if the content was saved after it was read. */
+  def updateGeneratedContent(contentId: String, ecmlBody: String, questionCount: Int, versionKey: String): Boolean = {
+    def send(key: String): HTTPResponse = {
+      val request = Map("request" -> Map("content" -> Map("body" -> ecmlBody, "totalQuestions" -> Int.box(questionCount), "versionKey" -> key)))
+      httpUtil.patch(config.contentUpdateURL + contentId, ScalaJsonUtil.serialize(request))
+    }
     try {
-      val updateQuery = QueryBuilder.update(config.contentKeyspaceName, config.contentTableName)
-        .where(QueryBuilder.eq("content_id", identifier))
-        .`with`(QueryBuilder.set("body", QueryBuilder.fcall("textAsBlob", ecmlBody)))
-      cassandraUtil.upsert(updateQuery.toString)
+      val first = send(versionKey)
+      if (first.isSuccess) return true
+      // Only body and totalQuestions are sent, so retrying with the newer versionKey can't overwrite the creator's own edits.
+      val freshKey = readCurrentObject("Content", contentId).flatMap(c => Option(c.getOrElse("versionKey", null))).map(_.toString).filter(_ != versionKey)
+      val last = freshKey.map(send).getOrElse(first)
+      if (!last.isSuccess) logger.error(s"DynamicAssessHelper :: updateGeneratedContent got ${last.status} for $contentId: ${last.body}")
+      last.isSuccess
     } catch {
       case e: Exception =>
-        logger.error(s"DynamicAssessHelper :: updateContentBody failed for $identifier", e)
+        logger.error(s"DynamicAssessHelper :: updateGeneratedContent failed for $contentId", e)
         false
     }
   }

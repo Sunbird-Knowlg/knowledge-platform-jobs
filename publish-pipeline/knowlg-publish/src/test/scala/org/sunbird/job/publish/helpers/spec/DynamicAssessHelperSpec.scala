@@ -15,25 +15,41 @@ class DynamicAssessHelperSpec extends FlatSpec with Matchers with MockitoSugar {
   val jobConfig: KnowlgPublishConfig = new KnowlgPublishConfig(config)
   val helper = new DynamicAssessHelper(jobConfig, mock[HttpUtil])
 
-  "generatedMetadataNodeId" should "target the node itself for a never-published Draft" in {
-    helper.generatedMetadataNodeId("do_1", "do_1", editCopyExists = false) shouldBe Some("do_1")
+  "updateGeneratedContent" should "save the body and learner count through the content update API with the read's versionKey" in {
+    val http = mock[HttpUtil]
+    val body = org.mockito.ArgumentCaptor.forClass(classOf[String])
+    when(http.patch(org.mockito.ArgumentMatchers.endsWith("/content/v3/update/do_c"), body.capture(), org.mockito.ArgumentMatchers.any())).thenReturn(HTTPResponse(200, """{"responseCode":"OK"}"""))
+    new DynamicAssessHelper(jobConfig, http).updateGeneratedContent("do_c", "{\"theme\":{}}", 6, "vk1") shouldBe true
+    val sent = ScalaJsonUtil.deserialize[Map[String, AnyRef]](body.getValue)
+    val content = sent("request").asInstanceOf[Map[String, AnyRef]]("content").asInstanceOf[Map[String, AnyRef]]
+    content("body") shouldBe "{\"theme\":{}}"
+    content("totalQuestions").toString shouldBe "6"
+    content("versionKey") shouldBe "vk1"
+    content.keySet shouldBe Set("body", "totalQuestions", "versionKey")
   }
 
-  it should "target the edit copy when published content has one" in {
-    helper.generatedMetadataNodeId("do_1.img", "do_1", editCopyExists = true) shouldBe Some("do_1.img")
+  it should "retry once with the newer versionKey when the content was saved after the job read it" in {
+    val http = mock[HttpUtil]
+    val update = org.mockito.ArgumentMatchers.endsWith("/content/v3/update/do_c")
+    when(http.patch(update, org.mockito.ArgumentMatchers.contains("\"vk1\""), org.mockito.ArgumentMatchers.any())).thenReturn(HTTPResponse(400, """{"params":{"errmsg":"Invalid version Key"}}"""))
+    when(http.patch(org.mockito.ArgumentMatchers.endsWith("/content/v3/update/do_c"), org.mockito.ArgumentMatchers.contains("\"vk2\""), org.mockito.ArgumentMatchers.any())).thenReturn(HTTPResponse(200, """{"responseCode":"OK"}"""))
+    when(http.get(org.mockito.ArgumentMatchers.endsWith("/content/v3/read/do_c?mode=edit"), org.mockito.ArgumentMatchers.any()))
+      .thenReturn(HTTPResponse(200, """{"result":{"content":{"versionKey":"vk2"}}}"""))
+    new DynamicAssessHelper(jobConfig, http).updateGeneratedContent("do_c", "{}", 6, "vk1") shouldBe true
   }
 
-  it should "skip the write when published content has no edit copy, instead of failing on a missing node or touching live" in {
-    helper.generatedMetadataNodeId("do_1.img", "do_1", editCopyExists = false) shouldBe None
+  it should "not resend the same request when the failure isn't a newer versionKey (negative)" in {
+    val http = mock[HttpUtil]
+    when(http.patch(anyString(), anyString(), org.mockito.ArgumentMatchers.any())).thenReturn(HTTPResponse(500, "{}"))
+    when(http.get(anyString(), org.mockito.ArgumentMatchers.any())).thenReturn(HTTPResponse(200, """{"result":{"content":{"versionKey":"vk1"}}}"""))
+    new DynamicAssessHelper(jobConfig, http).updateGeneratedContent("do_c", "{}", 6, "vk1") shouldBe false
+    org.mockito.Mockito.verify(http, org.mockito.Mockito.times(1)).patch(anyString(), anyString(), org.mockito.ArgumentMatchers.any())
   }
 
-  "generatedContentMetadata" should "carry the question count the editor reads to know questions exist" in {
-    helper.generatedContentMetadata(5)("totalQuestions") shouldBe Int.box(5)
-  }
-
-  it should "stamp lastUpdatedOn in the platform's timestamp format so a same-count regenerate is still detectable" in {
-    val stamp = helper.generatedContentMetadata(5, new java.util.Date(0L))("lastUpdatedOn").toString
-    stamp should fullyMatch regex """\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}[+-]\d{4}"""
+  it should "report failure instead of throwing when the call errors (negative)" in {
+    val http = mock[HttpUtil]
+    when(http.patch(anyString(), anyString(), org.mockito.ArgumentMatchers.any())).thenThrow(new RuntimeException("connection refused"))
+    new DynamicAssessHelper(jobConfig, http).updateGeneratedContent("do_c", "{}", 6, "vk1") shouldBe false
   }
 
   "learnerPoolSize" should "publish required x multiplier questions per bucket so each learner can draw their own set" in {

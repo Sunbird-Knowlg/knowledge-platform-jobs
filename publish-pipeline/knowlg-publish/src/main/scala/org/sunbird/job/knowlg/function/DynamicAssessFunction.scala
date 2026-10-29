@@ -8,13 +8,11 @@ import org.sunbird.job.knowlg.publish.domain.Event
 import org.sunbird.job.knowlg.publish.helpers.{DynamicAssessHelper, ECMLBodyBuilder}
 import org.sunbird.job.knowlg.publish.helpers.DynamicAssessHelper.Allocation
 import org.sunbird.job.knowlg.task.KnowlgPublishConfig
-import org.sunbird.job.util.{CassandraUtil, HttpUtil, JanusGraphUtil, ScalaJsonUtil}
+import org.sunbird.job.util.{HttpUtil, ScalaJsonUtil}
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 
-/** Dynamic Assess selection (docs/dynamic-assess-questionset-schema.md), triggered by edata.action = "refresh-body". */
+/** Dynamic Assess selection (docs/dynamic-assess-questionset-schema.md), triggered by edata.action = "refresh-body"; reads and writes only through knowlg-service, which owns the edit copy. */
 class DynamicAssessFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
-                            @transient var janusGraphUtil: JanusGraphUtil = null,
-                            @transient var cassandraUtil: CassandraUtil = null,
                             @transient var dynamicAssessHelper: DynamicAssessHelper = null)
                            (implicit val stringTypeInfo: TypeInformation[String])
   extends BaseProcessFunction[Event, String](config) {
@@ -23,14 +21,7 @@ class DynamicAssessFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
 
   override def open(parameters: Configuration): Unit = {
     super.open(parameters)
-    janusGraphUtil = new JanusGraphUtil(config)
-    cassandraUtil = new CassandraUtil(config.cassandraHost, config.cassandraPort, config)
     dynamicAssessHelper = new DynamicAssessHelper(config, httpUtil)
-  }
-
-  override def close(): Unit = {
-    if (cassandraUtil != null) cassandraUtil.close()
-    super.close()
   }
 
   override def metricsList(): List[String] =
@@ -50,34 +41,21 @@ class DynamicAssessFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
     }
 
     try {
-      val rawNodeProps = Option(janusGraphUtil.getNodeProperties(rawObjectId))
-        .getOrElse(throw new RuntimeException(s"Node not found in JanusGraph: $rawObjectId"))
-
-      // Once published, all reads/writes must target the editable ".img" copy, not the live one, or metadata/children come from the wrong snapshot; recomputed here so a raw Kafka-triggered event can't fall out of sync with the API layer's own mode=edit resolution.
-      val pkgVersion = Option(rawNodeProps.get("pkgVersion")).map(_.toString.toDouble).getOrElse(0d)
-      val objectId = if (pkgVersion > 0 && !rawObjectId.endsWith(".img")) s"$rawObjectId.img" else rawObjectId
-      val baseObjectId = objectId.stripSuffix(".img")
-      val editCopyProps = if (objectId == rawObjectId) None else Option(janusGraphUtil.getNodeProperties(objectId))
-      val graphProps = editCopyProps.getOrElse(rawNodeProps)
-      // Settings come from knowlg-service, which saw the editor's save: this job's graph read can return the state from seconds before it.
-      val currentObject = dynamicAssessHelper.readCurrentObject(baseObjectType, baseObjectId)
-      if (currentObject.isEmpty) logger.warn(s"DynamicAssessFunction :: could not read current settings for $baseObjectId, using graph properties")
-      // The selected skills live in the framework's deepest category field (e.g. "topic" for BMGS, "skill" for USF), so resolve it from the freshest framework before reading them.
-      val framework = currentObject.flatMap(c => Option(c.getOrElse("framework", null))).map(_.toString)
-        .orElse(Option(graphProps.get("framework")).map(_.toString)).getOrElse("")
-      val categoryField = dynamicAssessHelper.resolveCategoryCode(framework)
-      val nodeProps = currentObject.map(dynamicAssessHelper.withCurrentSettings(graphProps, _, List(categoryField))).getOrElse(graphProps)
-      val metadataNodeId = dynamicAssessHelper.generatedMetadataNodeId(objectId, rawObjectId, editCopyProps.isDefined)
-
-      // Published ECML must be regenerated into its edit copy (the refresh-body API creates it); without one the body would be orphaned, so fail loudly instead.
-      if (baseObjectType == "Content" && metadataNodeId.isEmpty) {
-        logger.error(s"DynamicAssessFunction :: no edit copy $objectId for published content $rawObjectId, skipping")
+      // knowlg-service resolves the edit copy (".img") itself on every read and write below, so the job only ever uses the base id.
+      val objectId = rawObjectId.stripSuffix(".img")
+      // Settings as the editor saved them, from the edit copy when there is one; every write below goes through knowlg-service too, so without this read nothing could be written.
+      val currentObject = dynamicAssessHelper.readCurrentObject(baseObjectType, objectId).getOrElse {
+        logger.error(s"DynamicAssessFunction :: could not read $objectId from knowlg-service, skipping")
         metrics.incCounter(config.dynamicAssessFailedCount)
         context.output(config.failedEventOutTag, ScalaJsonUtil.serialize(Map(
-          "objectId" -> rawObjectId, "stage" -> "dynamic-assess-edit-copy",
-          "error" -> "published content has no .img edit copy; regenerate via the refresh-body API, which creates it")))
+          "objectId" -> objectId, "stage" -> "dynamic-assess-read",
+          "error" -> "could not read the content's current settings (mode=edit) from knowlg-service")))
         return
       }
+      // The selected skills live in the framework's deepest category field (e.g. "topic" for BMGS, "skill" for USF), so resolve it from the freshest framework before reading them.
+      val framework = Option(currentObject.getOrElse("framework", null)).map(_.toString).getOrElse("")
+      val categoryField = dynamicAssessHelper.resolveCategoryCode(framework)
+      val nodeProps = dynamicAssessHelper.withCurrentSettings(new java.util.HashMap[String, AnyRef](), currentObject, List(categoryField))
 
       val skills = dynamicAssessHelper.parseSkills(nodeProps, categoryField)
       val difficultyTarget = dynamicAssessHelper.parseDifficultyTarget(nodeProps)
@@ -160,16 +138,16 @@ class DynamicAssessFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
 
       val written = baseObjectType match {
         case "QuestionSet" =>
-          // baseObjectId, not objectId: /add and /remove self-resolve the editable copy, so a literal ".img" id risks double-resolution. Add-then-remove: /add merges not replaces, so this order never leaves the QSet empty on partial failure.
-          val existingChildren = currentObject.map(dynamicAssessHelper.childIds).getOrElse(dynamicAssessHelper.parseExistingChildren(nodeProps))
-          val added = dynamicAssessHelper.addQuestionsToSet(baseObjectId, allSelectedIds)
+          // Add-then-remove: /add merges not replaces, so this order never leaves the QSet empty on partial failure.
+          val existingChildren = dynamicAssessHelper.childIds(currentObject)
+          val added = dynamicAssessHelper.addQuestionsToSet(objectId, allSelectedIds)
           if (!added) {
             false
           } else {
             // Re-read after the add: the start-of-job childNodes misses anything attached since (e.g. by an editor save), which would otherwise stay in the pool.
-            val currentChildren = dynamicAssessHelper.readCurrentChildren(baseObjectId).getOrElse(existingChildren)
+            val currentChildren = dynamicAssessHelper.readCurrentChildren(objectId).getOrElse(existingChildren)
             val staleChildren = (currentChildren ++ existingChildren).distinct.diff(allSelectedIds)
-            if (staleChildren.nonEmpty && !dynamicAssessHelper.removeQuestionsFromSet(baseObjectId, staleChildren)) {
+            if (staleChildren.nonEmpty && !dynamicAssessHelper.removeQuestionsFromSet(objectId, staleChildren)) {
               logger.error(s"DynamicAssessFunction :: new selection added for $objectId but failed to remove stale children $staleChildren, QuestionSet is temporarily over-populated until next refresh")
             }
             true
@@ -193,11 +171,10 @@ class DynamicAssessFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
             return
           }
           val ecmlBody = ECMLBodyBuilder.buildEcmlBodyFromItems(renderable, name, config, difficultyTarget, skills)
-          val bodyWritten = dynamicAssessHelper.updateContentBody(cassandraUtil, objectId, ecmlBody)
           // totalQuestions is what one learner sees, not the published pool size.
           val learnerCount = dynamicAssessHelper.learnerQuestionCount(difficultyTarget, renderable.map(i => Option(i.getOrElse("qlevel", null)).map(_.toString).getOrElse("")))
-          if (bodyWritten) metadataNodeId.foreach(id => janusGraphUtil.updateNode(id, dynamicAssessHelper.generatedContentMetadata(learnerCount)))
-          bodyWritten
+          val versionKey = Option(currentObject.getOrElse("versionKey", null)).map(_.toString).getOrElse("")
+          dynamicAssessHelper.updateGeneratedContent(objectId, ecmlBody, learnerCount, versionKey)
       }
 
       if (written) {
