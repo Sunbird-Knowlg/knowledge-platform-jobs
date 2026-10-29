@@ -1,0 +1,362 @@
+package org.sunbird.job.knowlg.publish.helpers
+
+import org.slf4j.LoggerFactory
+import org.sunbird.job.knowlg.task.KnowlgPublishConfig
+import org.sunbird.job.util.{HTTPResponse, HttpUtil, ScalaJsonUtil}
+
+import java.util
+import scala.collection.JavaConverters._
+import scala.util.Random
+
+/** Core selection logic for Dynamic Assess (docs/dynamic-assess-questionset-schema.md); minCriteria/multiplier come from job config, never the request. */
+object DynamicAssessHelper {
+  case class Allocation(skill: String, difficulty: String, requiredCount: Int)
+  case class SkillDifficultyResult(skill: String, difficulty: String, selectedIds: List[String])
+  case class AllocationResult(allocations: List[Allocation], minCriteriaShortfalls: List[String])
+}
+
+class DynamicAssessHelper(config: KnowlgPublishConfig, httpUtil: HttpUtil) {
+
+  import DynamicAssessHelper._
+
+  private[this] val logger = LoggerFactory.getLogger(classOf[DynamicAssessHelper])
+
+  private val difficultyLevels = List("E", "M", "D")
+  private val difficultyLevelName = Map("E" -> "EASY", "M" -> "MEDIUM", "D" -> "DIFFICULT")
+
+  /** Best-effort numeric coercion — handles "5", "5.0", boxed Int/Long/Double alike. */
+  private def toIntSafe(v: AnyRef): Int = v match {
+    case n: java.lang.Number => n.intValue()
+    case s: String => scala.util.Try(s.toDouble.toInt).getOrElse(0)
+    case _ => 0
+  }
+
+  /** The selected skills, stored in the framework's deepest category field (`categoryField`, from resolveCategoryCode). Deduped — a repeated skill would otherwise double-count toward minCriteria/feasibility. */
+  def parseSkills(nodeProps: java.util.Map[String, AnyRef], categoryField: String): List[String] = {
+    Option(nodeProps.get(categoryField)).map {
+      case l: java.util.List[_] => l.asScala.toList.map(_.toString)
+      case arr: Array[_] => arr.toList.map(_.toString)
+      case s: String if s.nonEmpty => ScalaJsonUtil.deserialize[List[String]](s)
+      case _ => Nil
+    }.getOrElse(Nil).distinct
+  }
+
+  def parseDifficultyTarget(nodeProps: java.util.Map[String, AnyRef]): Map[String, Int] = {
+    Option(nodeProps.get("difficultyTarget")).map {
+      case m: java.util.Map[_, _] => m.asInstanceOf[java.util.Map[String, AnyRef]].asScala.toMap.map { case (k, v) => k -> toIntSafe(v) }
+      case s: String if s.nonEmpty => ScalaJsonUtil.deserialize[Map[String, Int]](s)
+      case _ => Map.empty[String, Int]
+    }.getOrElse(Map.empty[String, Int])
+  }
+
+  /** The content's own minCriteria/multiplier (stored at create by knowlg-service), or `default` from this job's config for content created before it was, or holding a value below `min`. */
+  def nodeSetting(nodeProps: java.util.Map[String, AnyRef], field: String, min: Int, default: Int): Int =
+    Option(nodeProps.get(field)).flatMap {
+      case n: java.lang.Number => Some(n.intValue())
+      case s: String => scala.util.Try(s.trim.toDouble.toInt).toOption
+      case _ => None
+    }.filter(_ >= min).getOrElse(default)
+
+  /** minCriteria x skills.length <= E+M+D. Doesn't check per-skill availability, just the shared-total math. */
+  def isFeasible(skills: List[String], difficultyTarget: Map[String, Int], minCriteria: Int): Boolean = {
+    val total = difficultyLevels.map(l => difficultyTarget.getOrElse(l, 0)).sum
+    total > 0 && skills.nonEmpty && (minCriteria * skills.length) <= total
+  }
+
+  /** Minimum-first, availability-aware allocation; skills that can't cover their own minCriteria are reported in minCriteriaShortfalls. */
+  def allocate(skills: List[String], difficultyTarget: Map[String, Int], minCriteria: Int,
+               availability: (String, String) => Int): AllocationResult = {
+
+    val remainingByDifficulty = scala.collection.mutable.Map(difficultyLevels.map(l => l -> difficultyTarget.getOrElse(l, 0)): _*)
+    val allocated = scala.collection.mutable.Map[(String, String), Int]().withDefaultValue(0)
+    val shortfalls = scala.collection.mutable.ListBuffer[String]()
+    val availabilityCache = scala.collection.mutable.Map[(String, String), Int]()
+    def cachedAvailability(skill: String, level: String): Int = availabilityCache.getOrElseUpdate((skill, level), availability(skill, level))
+
+    // Step 1: reserve minCriteria per skill, most-constrained (fewest feasible buckets) first, so a flexible skill can't claim the one bucket a constrained skill depends on.
+    val orderedSkills = skills.sortBy(skill => difficultyLevels.count(level => cachedAvailability(skill, level) > 0))
+    orderedSkills.foreach { skill =>
+      var toReserve = minCriteria
+      difficultyLevels.foreach { level =>
+        if (toReserve > 0 && remainingByDifficulty(level) > 0) {
+          val avail = math.max(0, cachedAvailability(skill, level) - allocated((skill, level)))
+          val take = math.min(toReserve, math.min(remainingByDifficulty(level), avail))
+          if (take > 0) {
+            allocated((skill, level)) += take
+            remainingByDifficulty(level) -= take
+            toReserve -= take
+          }
+        }
+      }
+      if (toReserve > 0) shortfalls += skill
+    }
+
+    // Step 2: distribute the remainder, weighted by candidate availability per skill x difficulty.
+    difficultyLevels.foreach { level =>
+      var remainder = remainingByDifficulty(level)
+      if (remainder > 0) {
+        val availabilityBySkill = skills.map(s => s -> math.max(0, cachedAvailability(s, level) - allocated((s, level)))).toMap
+        val totalAvailable = availabilityBySkill.values.sum
+        if (totalAvailable > 0) {
+          // Fixed starting remainder, not the live/shrinking one, or later skills get under-allocated.
+          val startingRemainder = remainder
+          skills.foreach { skill =>
+            if (remainder > 0) {
+              val share = math.min(remainder, math.round(startingRemainder.toDouble * availabilityBySkill(skill) / totalAvailable).toInt.max(0))
+              val capped = math.min(share, availabilityBySkill(skill))
+              if (capped > 0) {
+                allocated((skill, level)) += capped
+                remainder -= capped
+              }
+            }
+          }
+          // any leftover from rounding goes to whichever skill still has spare availability
+          skills.foreach { skill =>
+            if (remainder > 0) {
+              val spare = math.max(0, cachedAvailability(skill, level) - allocated((skill, level)))
+              val take = math.min(remainder, spare)
+              if (take > 0) {
+                allocated((skill, level)) += take
+                remainder -= take
+              }
+            }
+          }
+        }
+      }
+    }
+
+    val allocations = allocated.collect { case ((skill, level), count) if count > 0 => Allocation(skill, level, count) }.toList
+    AllocationResult(allocations, shortfalls.toList)
+  }
+
+  /** How many questions a bucket can supply when each selection must be drawn from at least multiplier x its size. */
+  def effectiveAvailability(available: Int, multiplier: Int): Int = if (multiplier <= 0) available else math.max(0, available) / multiplier
+
+  /** Difficulty levels whose target the allocation couldn't fully cover, as level -> (covered, target). */
+  def uncoveredLevels(allocations: List[Allocation], difficultyTarget: Map[String, Int]): Map[String, (Int, Int)] =
+    difficultyLevels.flatMap { level =>
+      val target = difficultyTarget.getOrElse(level, 0)
+      val covered = allocations.filter(_.difficulty == level).map(_.requiredCount).sum
+      if (covered < target) Some(level -> (covered, target)) else None
+    }.toMap
+
+  /** Availability count only, for the allocation step, not the final fetch. limit=1 keeps the response light; `count` reflects the total match regardless. */
+  def getAvailabilityCount(skill: String, difficulty: String, channel: String, categoryField: String, poolObjectType: String): Int = {
+    searchQuestionPool(skill, difficulty, channel, categoryField, poolObjectType, limit = 1)._1
+  }
+
+  /** Randomly picks the bucket's published pool (requiredCount x multiplier) from its candidates, excluding ids already taken by an earlier bucket (a candidate can match more than one requested skill). */
+  def selectForAllocation(allocation: Allocation, channel: String, categoryField: String, poolObjectType: String, multiplier: Int, excludeIds: Set[String] = Set.empty): SkillDifficultyResult = {
+    val poolSize = learnerPoolSize(allocation.requiredCount, multiplier)
+    val (_, candidates) = searchQuestionPool(allocation.skill, allocation.difficulty, channel, categoryField, poolObjectType, limit = poolSize + excludeIds.size)
+    val selected = Random.shuffle(candidates.filterNot(excludeIds.contains)).take(poolSize)
+    SkillDifficultyResult(allocation.skill, allocation.difficulty, selected)
+  }
+
+  /** Questions published per bucket: required x multiplier, so the player can give each learner their own required-sized draw from it. */
+  def learnerPoolSize(requiredCount: Int, multiplier: Int): Int = requiredCount * math.max(1, multiplier)
+
+  /** Questions one learner sees: the target per level, capped by what the pool actually holds at that level. */
+  def learnerQuestionCount(difficultyTarget: Map[String, Int], poolLevels: List[String]): Int =
+    difficultyLevels.map { level =>
+      math.min(difficultyTarget.getOrElse(level, 0), poolLevels.count(_.equalsIgnoreCase(difficultyLevelName(level))))
+    }.sum
+
+  /** Resolves the framework's deepest category `code` (e.g. "topic"/"skill") as the pool filter field; falls back to "skill" on any failure. */
+  def resolveCategoryCode(framework: String): String = {
+    if (framework.isEmpty) return "skill"
+    try {
+      val response = httpUtil.get(config.frameworkReadURL + framework)
+      if (response.isSuccess) {
+        val body = ScalaJsonUtil.deserialize[Map[String, AnyRef]](response.body)
+        val result = body.getOrElse("result", Map.empty[String, AnyRef]).asInstanceOf[Map[String, AnyRef]]
+        val fw = result.getOrElse("framework", Map.empty[String, AnyRef]).asInstanceOf[Map[String, AnyRef]]
+        val categories = fw.getOrElse("categories", List.empty[Map[String, AnyRef]]).asInstanceOf[List[Map[String, AnyRef]]]
+        if (categories.isEmpty) {
+          logger.warn(s"DynamicAssessHelper :: resolveCategoryCode found no categories for framework=$framework, falling back to 'skill'")
+          "skill"
+        } else {
+          val deepest = categories.maxBy(_.getOrElse("index", Int.box(0)).asInstanceOf[Number].intValue())
+          deepest.get("code").map(_.toString).filter(_.nonEmpty).getOrElse("skill")
+        }
+      } else {
+        logger.warn(s"DynamicAssessHelper :: resolveCategoryCode failed to read framework=$framework, status=${response.status}, falling back to 'skill'")
+        "skill"
+      }
+    } catch {
+      case e: Exception =>
+        logger.error(s"DynamicAssessHelper :: resolveCategoryCode exception for framework=$framework, falling back to 'skill'", e)
+        "skill"
+    }
+  }
+
+  /** Question's difficulty field is the custom OCD "difficultyLevel"; AssessmentItem's is its native schema field "qlevel" (schemas/assessmentitem/1.0/schema.json). */
+  private def difficultyFieldName(poolObjectType: String): String =
+    if (poolObjectType == "AssessmentItem") "qlevel" else "difficultyLevel"
+
+  private def searchQuestionPool(skill: String, difficulty: String, channel: String, categoryField: String, poolObjectType: String, limit: Int): (Int, List[String]) = {
+    try {
+      val filters = new util.HashMap[String, AnyRef]() {
+        put("status", new util.ArrayList[String]() {{ add("Live") }})
+        put("objectType", poolObjectType)
+        put(categoryField, new util.ArrayList[String]() {{ add(skill) }})
+        put(difficultyFieldName(poolObjectType), difficultyLevelName.getOrElse(difficulty, difficulty))
+        if (channel.nonEmpty) put("channel", channel)
+      }
+      val reqMap = new util.HashMap[String, AnyRef]() {
+        put("request", new util.HashMap[String, AnyRef]() {
+          put("filters", filters)
+          put("fields", new util.ArrayList[String]() {{ add("identifier") }})
+          put("limit", Int.box(limit))
+        })
+      }
+      val response = httpUtil.post(config.searchServiceURL, ScalaJsonUtil.serialize(reqMap))
+      if (response.isSuccess) {
+        val body = ScalaJsonUtil.deserialize[Map[String, AnyRef]](response.body)
+        val result = body.getOrElse("result", Map.empty[String, AnyRef]).asInstanceOf[Map[String, AnyRef]]
+        val count = result.getOrElse("count", Int.box(0)).asInstanceOf[Int]
+        // search-service keys the result array by the literal objectType (e.g. "Question") for known types, falling back to "items" otherwise.
+        val items = result.getOrElse(poolObjectType, result.getOrElse("items", List.empty[Map[String, AnyRef]])).asInstanceOf[List[Map[String, AnyRef]]]
+        val ids = items.flatMap(_.get("identifier")).map(_.toString)
+        (count, ids)
+      } else (0, Nil)
+    } catch {
+      case e: Exception =>
+        logger.error(s"DynamicAssessHelper :: searchQuestionPool failed for $categoryField=$skill, difficulty=$difficulty", e)
+        (0, Nil)
+    }
+  }
+
+  /** PATCH /questionset/v5/add merges, not replaces (HierarchyManager.restructureUnit) — pair with removeQuestionsFromSet to avoid piling up. */
+  def addQuestionsToSet(questionSetId: String, questionIds: List[String]): Boolean = {
+    if (questionIds.isEmpty) return true
+    try {
+      val reqMap = new util.HashMap[String, AnyRef]() {
+        put("request", new util.HashMap[String, AnyRef]() {
+          put("questionset", new util.HashMap[String, AnyRef]() {
+            put("rootId", questionSetId)
+            put("children", questionIds.asJava)
+          })
+        })
+      }
+      val response = httpUtil.patch(config.questionSetAddURL, ScalaJsonUtil.serialize(reqMap))
+      response.isSuccess
+    } catch {
+      case e: Exception =>
+        logger.error(s"DynamicAssessHelper :: addQuestionsToSet failed for $questionSetId", e)
+        false
+    }
+  }
+
+  /** Inverse of addQuestionsToSet, called first so a refresh replaces rather than accumulates. Same rootId/children shape. */
+  def removeQuestionsFromSet(questionSetId: String, questionIds: List[String]): Boolean = {
+    if (questionIds.isEmpty) return true
+    try {
+      val reqMap = new util.HashMap[String, AnyRef]() {
+        put("request", new util.HashMap[String, AnyRef]() {
+          put("questionset", new util.HashMap[String, AnyRef]() {
+            put("rootId", questionSetId)
+            put("children", questionIds.asJava)
+          })
+        })
+      }
+      val response = httpUtil.delete(config.questionSetRemoveURL, ScalaJsonUtil.serialize(reqMap), Map("Content-Type" -> "application/json"))
+      if (!response.isSuccess) logger.error(s"DynamicAssessHelper :: removeQuestionsFromSet got ${response.status} for $questionSetId: ${response.body}")
+      response.isSuccess
+    } catch {
+      case e: Exception =>
+        logger.error(s"DynamicAssessHelper :: removeQuestionsFromSet failed for $questionSetId", e)
+        false
+    }
+  }
+
+  /** Settings fields the editors save, read back when the job runs; the selected skills' field depends on the framework and is passed to withCurrentSettings separately. */
+  private val settingsFields = List("difficultyTarget", "framework", "channel", "name", "minCriteria", "multiplier")
+
+  /** Editable metadata as knowlg-service returns it (QuestionSet: hierarchy incl. children); consistent, unlike this job's ONE-consistency graph reads that can lag a save by seconds. */
+  def readCurrentObject(baseObjectType: String, baseObjectId: String): Option[Map[String, AnyRef]] = {
+    // Content is read without a fields filter: the skills' category field is only known once the framework is, and a read without fields returns all metadata (the body is external and stays out).
+    val (url, key) =
+      if (baseObjectType == "QuestionSet") (config.questionSetHierarchyURL + baseObjectId + "?mode=edit", "questionset")
+      else (config.contentReadURL + baseObjectId + "?mode=edit", "content")
+    try {
+      val response = httpUtil.get(url)
+      if (!response.isSuccess) {
+        logger.error(s"DynamicAssessHelper :: readCurrentObject got ${response.status} for $baseObjectId: ${response.body}")
+        None
+      } else {
+        val body = ScalaJsonUtil.deserialize[Map[String, AnyRef]](response.body)
+        body.getOrElse("result", Map.empty).asInstanceOf[Map[String, AnyRef]].get(key).collect { case m: Map[_, _] => m.asInstanceOf[Map[String, AnyRef]] }
+      }
+    } catch {
+      case e: Exception =>
+        logger.error(s"DynamicAssessHelper :: readCurrentObject failed for $baseObjectId", e)
+        None
+    }
+  }
+
+  /** The QuestionSet's children as stored right now (edit mode); None if the read fails. */
+  def readCurrentChildren(questionSetId: String): Option[List[String]] =
+    readCurrentObject("QuestionSet", questionSetId).map(childIds)
+
+  def childIds(questionSet: Map[String, AnyRef]): List[String] =
+    questionSet.getOrElse("children", Nil) match {
+      case l: List[_] => l.collect { case c: Map[_, _] => c.asInstanceOf[Map[String, AnyRef]] }.flatMap(c => Option(c.getOrElse("identifier", null)).map(_.toString))
+      case _ => Nil
+    }
+
+  /** Graph props with the settings fields replaced by the fresh copy, in the shapes parseSkills/parseDifficultyTarget already read; fields the fresh copy lacks keep the graph value. */
+  def withCurrentSettings(nodeProps: java.util.Map[String, AnyRef], current: Map[String, AnyRef], extraFields: List[String] = Nil): java.util.Map[String, AnyRef] = {
+    val merged = new util.HashMap[String, AnyRef](nodeProps)
+    (settingsFields ++ extraFields).distinct.foreach { field =>
+      current.get(field).filter(_ != null).foreach {
+        case l: List[_] => merged.put(field, l.map(_.toString).asJava)
+        case m: Map[_, _] => merged.put(field, ScalaJsonUtil.serialize(m))
+        case v => merged.put(field, v)
+      }
+    }
+    merged
+  }
+
+  /** ECML's pool member type — hits AssessmentItem's own read endpoint/response shape. */
+  def getAssessmentItemsByIdentifiers(identifiers: List[String]): List[Map[String, AnyRef]] = {
+    identifiers.flatMap { identifier =>
+      try {
+        val response = httpUtil.get(config.assessmentItemReadURL + identifier)
+        if (response.isSuccess) {
+          val body = ScalaJsonUtil.deserialize[Map[String, AnyRef]](response.body)
+          val result = body.getOrElse("result", Map.empty[String, AnyRef]).asInstanceOf[Map[String, AnyRef]]
+          result.get("assessment_item").map(_.asInstanceOf[Map[String, AnyRef]])
+        } else {
+          logger.warn(s"DynamicAssessHelper :: getAssessmentItemsByIdentifiers failed to fetch $identifier, status=${response.status}")
+          None
+        }
+      } catch {
+        case e: Exception =>
+          logger.error(s"DynamicAssessHelper :: getAssessmentItemsByIdentifiers exception fetching $identifier", e)
+          None
+      }
+    }
+  }
+
+  /** Saves a generated ECML body and the per-learner question count through knowlg-service's update, which writes to the edit copy (never the live content) and stamps lastUpdatedOn; retried once with a fresh versionKey if the content was saved after it was read. */
+  def updateGeneratedContent(contentId: String, ecmlBody: String, questionCount: Int, versionKey: String): Boolean = {
+    def send(key: String): HTTPResponse = {
+      val request = Map("request" -> Map("content" -> Map("body" -> ecmlBody, "totalQuestions" -> Int.box(questionCount), "versionKey" -> key)))
+      httpUtil.patch(config.contentUpdateURL + contentId, ScalaJsonUtil.serialize(request))
+    }
+    try {
+      val first = send(versionKey)
+      if (first.isSuccess) return true
+      // Only body and totalQuestions are sent, so retrying with the newer versionKey can't overwrite the creator's own edits.
+      val freshKey = readCurrentObject("Content", contentId).flatMap(c => Option(c.getOrElse("versionKey", null))).map(_.toString).filter(_ != versionKey)
+      val last = freshKey.map(send).getOrElse(first)
+      if (!last.isSuccess) logger.error(s"DynamicAssessHelper :: updateGeneratedContent got ${last.status} for $contentId: ${last.body}")
+      last.isSuccess
+    } catch {
+      case e: Exception =>
+        logger.error(s"DynamicAssessHelper :: updateGeneratedContent failed for $contentId", e)
+        false
+    }
+  }
+}
