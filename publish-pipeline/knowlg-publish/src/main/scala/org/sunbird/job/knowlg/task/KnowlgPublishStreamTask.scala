@@ -50,6 +50,7 @@ class KnowlgPublishStreamTask(config: KnowlgPublishConfig, kafkaConnector: Flink
     contentPublish.getSideOutput(config.mvcProcessorTag).sinkTo(kafkaConnector.kafkaStringSink(config.mvcTopic))
     contentPublish.getSideOutput(config.contentMetadataEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.contentMetadataTopic))
     contentPublish.getSideOutput(config.enrichedMetadataEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.enrichedMetadataTopic))
+    contentPublish.getSideOutput(config.contentPublishedEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.contentPublishedTopic))
     contentPublish.getSideOutput(config.failedEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
 
     val collectionPublish = processStreamTask.getSideOutput(config.collectionPublishOutTag).process(new CollectionPublishFunction(config, httpUtil))
@@ -58,6 +59,7 @@ class KnowlgPublishStreamTask(config: KnowlgPublishConfig, kafkaConnector: Flink
     collectionPublish.getSideOutput(config.autoBatchCreateOutTag).process(new AutoBatchCreateFunction(config, httpUtil))
       .name("auto-batch-create-process").uid("auto-batch-create-process").setParallelism(config.autoBatchCreateParallelism)
     collectionPublish.getSideOutput(config.enrichedMetadataEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.enrichedMetadataTopic))
+    collectionPublish.getSideOutput(config.contentPublishedEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.contentPublishedTopic))
     collectionPublish.getSideOutput(config.failedEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
 
     if (config.enableDIALContextUpdate.equalsIgnoreCase("Yes")) {
@@ -70,11 +72,13 @@ class KnowlgPublishStreamTask(config: KnowlgPublishConfig, kafkaConnector: Flink
     val questionPublish = processStreamTask.getSideOutput(config.questionPublishOutTag).process(new QuestionPublishFunction(config, httpUtil))
       .name("question-publish-process").uid("question-publish-process").setParallelism(1)
     questionPublish.getSideOutput(config.enrichedMetadataEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.enrichedMetadataTopic))
+    questionPublish.getSideOutput(config.contentPublishedEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.contentPublishedTopic))
     questionPublish.getSideOutput(config.failedEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
 
     val questionSetPublish = processStreamTask.getSideOutput(config.questionSetPublishOutTag).process(new QuestionSetPublishFunction(config, httpUtil))
       .name("questionset-publish-process").uid("questionset-publish-process").setParallelism(1)
     questionSetPublish.getSideOutput(config.enrichedMetadataEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.enrichedMetadataTopic))
+    questionSetPublish.getSideOutput(config.contentPublishedEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.contentPublishedTopic))
     questionSetPublish.getSideOutput(config.failedEventOutTag).sinkTo(kafkaConnector.kafkaStringSink(config.kafkaErrorTopic))
 
     val enrichOnly = processStreamTask.getSideOutput(config.enrichOnlyOutTag).process(new EnrichOnlyFunction(config))

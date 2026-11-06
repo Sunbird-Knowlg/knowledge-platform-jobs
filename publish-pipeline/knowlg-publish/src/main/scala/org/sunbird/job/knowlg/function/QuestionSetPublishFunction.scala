@@ -8,13 +8,13 @@ import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cache.{DataCache, RedisConnect}
 import org.sunbird.job.knowlg.publish.domain.{Event, PublishMetadata}
-import org.sunbird.job.knowlg.publish.helpers.QuestionSetPublisher
+import org.sunbird.job.knowlg.publish.helpers.{ContentPublishedEventHelper, QuestionSetPublisher}
 import org.sunbird.job.knowlg.publish.util.QuestionPublishUtil
 import org.sunbird.job.knowlg.task.KnowlgPublishConfig
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.publish.config.PublishConfig
 import org.sunbird.job.publish.core.{DefinitionConfig, ExtDataConfig, ObjectData}
-import org.sunbird.job.publish.helpers.{ConfigurableEnrichedMetadataEventBuilder, EcarPackageType, FieldConfiguration}
+import org.sunbird.job.publish.helpers.{ConfigurableEnrichedMetadataEventBuilder, EcarPackageType, EcarResult, FieldConfiguration}
 import org.sunbird.job.util._
 import org.sunbird.job.{BaseProcessFunction, Metrics}
 import com.datastax.driver.core.querybuilder.{QueryBuilder, Select}
@@ -31,7 +31,7 @@ class QuestionSetPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil
                                  @transient var definitionCache: DefinitionCache = null,
                                  @transient var definitionConfig: DefinitionConfig = null)
                                 (implicit val stringTypeInfo: TypeInformation[String])
-  extends BaseProcessFunction[Event, String](config) with QuestionSetPublisher {
+  extends BaseProcessFunction[Event, String](config) with QuestionSetPublisher with ContentPublishedEventHelper {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[QuestionSetPublishFunction])
   val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
@@ -82,7 +82,7 @@ class QuestionSetPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil
   }
 
   override def metricsList(): List[String] = {
-    List(config.questionSetPublishEventCount, config.questionSetPublishSuccessEventCount, config.questionSetPublishFailedEventCount, config.enrichedMetadataEventCount)
+    List(config.questionSetPublishEventCount, config.questionSetPublishSuccessEventCount, config.questionSetPublishFailedEventCount, config.enrichedMetadataEventCount, config.contentPublishedEventCount)
   }
 
   override def processElement(event: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
@@ -144,6 +144,7 @@ class QuestionSetPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil
           val updatedObj = new ObjectData(objWithEcar.identifier, objWithEcar.metadata ++ Map("previewUrl" -> "", "pdfUrl" -> ""), objWithEcar.extData, objWithEcar.hierarchy)
           saveOnSuccess(updatedObj)(janusGraphUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig, config)
           pushEnrichedMetadataEvent(enrichedObj, context)(metrics)
+          pushContentPublishedEvent(updatedObj, "QuestionSet", config, context)(metrics)
           logger.info(LoggerUtil.getExitLogs(config.jobName, requestId, s"Feature: ${featureName} | QuestionSet publishing completed successfully for : ${data.identifier}"))
           metrics.incCounter(config.questionSetPublishSuccessEventCount)
         } else {
@@ -203,10 +204,11 @@ class QuestionSetPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil
 
   def generateECAR(data: ObjectData, pkgTypes: List[String])(implicit ec: ExecutionContext, janusGraphUtil: JanusGraphUtil, cloudStorageUtil: CloudStorageUtil, config: KnowlgPublishConfig, defCache: DefinitionCache, defConfig: DefinitionConfig, httpUtil: HttpUtil, eventContext: Map[String, AnyRef]): ObjectData = {
     val featureName = eventContext.getOrElse("featureName", "").asInstanceOf[String]
-    val ecarMap: Map[String, String] = generateEcar(data, pkgTypes)
+    val ecarResult: EcarResult = generateEcar(data, pkgTypes)
+    val ecarMap: Map[String, String] = ecarResult.urls
     val variants: java.util.Map[String, java.util.Map[String, String]] = ecarMap.map { case (key, value) => key.toLowerCase -> Map[String, String]("ecarUrl" -> value, "size" -> httpUtil.getSize(value).toString).asJava }.asJava
     logger.info(s"Feature: ${featureName} | QuestionSetPublishFunction ::: generateECAR ::: ecar map ::: " + ecarMap)
-    val meta: Map[String, AnyRef] = Map("downloadUrl" -> ecarMap.getOrElse(EcarPackageType.FULL.toString, ""), "variants" -> variants, "size" -> httpUtil.getSize(ecarMap.getOrElse(EcarPackageType.FULL.toString, "")).asInstanceOf[AnyRef])
+    val meta: Map[String, AnyRef] = Map("downloadUrl" -> ecarMap.getOrElse(EcarPackageType.FULL.toString, ""), "variants" -> variants, "size" -> httpUtil.getSize(ecarMap.getOrElse(EcarPackageType.FULL.toString, "")).asInstanceOf[AnyRef]) ++ ecarResult.hashMeta
     new ObjectData(data.identifier, data.metadata ++ meta, data.extData, data.hierarchy)
   }
 
