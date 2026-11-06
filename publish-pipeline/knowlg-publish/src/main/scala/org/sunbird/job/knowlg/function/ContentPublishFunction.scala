@@ -96,7 +96,7 @@ class ContentPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
           pushStreamingUrlEvent(enrichedObj, context)(metrics)
           pushMVCProcessorEvent(enrichedObj, context)(metrics)
           pushEnrichedMetadataEvent(enrichedObj, context)(metrics)
-          pushContentPublishedEvent(enrichedObj, "Content", config, context)(metrics)
+          pushContentPublishedEvent(objWithEcar, "Content", config, context)(metrics)
           if(config.isAISearchEnabled) {
             pushContentMetadataEvent(enrichedObj, context)(metrics)
           }

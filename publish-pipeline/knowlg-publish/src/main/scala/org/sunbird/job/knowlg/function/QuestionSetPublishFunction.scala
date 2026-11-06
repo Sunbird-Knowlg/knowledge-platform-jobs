@@ -144,7 +144,7 @@ class QuestionSetPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil
           val updatedObj = new ObjectData(objWithEcar.identifier, objWithEcar.metadata ++ Map("previewUrl" -> "", "pdfUrl" -> ""), objWithEcar.extData, objWithEcar.hierarchy)
           saveOnSuccess(updatedObj)(janusGraphUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig, config)
           pushEnrichedMetadataEvent(enrichedObj, context)(metrics)
-          pushContentPublishedEvent(enrichedObj, "QuestionSet", config, context)(metrics)
+          pushContentPublishedEvent(updatedObj, "QuestionSet", config, context)(metrics)
           logger.info(LoggerUtil.getExitLogs(config.jobName, requestId, s"Feature: ${featureName} | QuestionSet publishing completed successfully for : ${data.identifier}"))
           metrics.incCounter(config.questionSetPublishSuccessEventCount)
         } else {

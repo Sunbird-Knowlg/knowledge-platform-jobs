@@ -155,7 +155,7 @@ class CollectionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
 
           //Push Enriched metadata event
           pushEnrichedMetadataEvent(enrichedObj, context)(metrics)
-          pushContentPublishedEvent(enrichedObj, "Collection", config, context)(metrics)
+          pushContentPublishedEvent(successObj, "Collection", config, context)(metrics)
 
           if(config.isAISearchEnabled) {
             pushContentMetadataEvent(successObj, context)(metrics)

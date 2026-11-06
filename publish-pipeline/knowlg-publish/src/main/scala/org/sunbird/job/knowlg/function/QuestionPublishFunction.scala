@@ -129,7 +129,7 @@ class QuestionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
         logger.info(s"Feature: ${featureName} | Ecar generation done for Question: ${objWithEcar.identifier} | requestId: ${requestId}")
         saveOnSuccess(objWithEcar)(janusGraphUtil, cassandraUtil, readerConfig, definitionCache, definitionConfig, config)
         pushEnrichedMetadataEvent(enrichedObj, context)(metrics)
-        pushContentPublishedEvent(enrichedObj, "Question", config, context)(metrics)
+        pushContentPublishedEvent(objWithEcar, "Question", config, context)(metrics)
         metrics.incCounter(config.questionPublishSuccessEventCount)
         logger.info(LoggerUtil.getExitLogs(config.jobName, requestId, s"Feature: ${featureName} | Question publishing completed successfully for : ${data.identifier}"))
       } else {
