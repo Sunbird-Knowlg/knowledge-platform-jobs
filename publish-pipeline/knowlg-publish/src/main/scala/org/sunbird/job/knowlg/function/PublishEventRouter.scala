@@ -35,6 +35,11 @@ class PublishEventRouter(config: KnowlgPublishConfig) extends BaseProcessFunctio
     if (event.action == "enrich" && event.identifier.nonEmpty && config.supportedObjectType.contains(event.objectType)) {
       logger.info(s"PublishEventRouter :: Routing enrich-only request for: ${event.identifier}")
       context.output(config.enrichOnlyOutTag, event)
+    } else if (event.action == "refresh-body" && event.identifier.nonEmpty) {
+      // "refresh-body" matches fmps's existing action convention (ContentConstants.REFRESH_BODY),
+      // already emitted by POST /content/v3/refresh/body/:identifier onto this same publish topic.
+      logger.info(s"PublishEventRouter :: Routing refresh-body request for: ${event.identifier}")
+      context.output(config.dynamicAssessOutTag, event)
     } else if (event.validEvent(config)) {
       event.objectType match {
         case "Content" | "ContentImage" => {
