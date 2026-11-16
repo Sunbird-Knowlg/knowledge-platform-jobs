@@ -19,6 +19,29 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
   // Job Configuration
   val jobEnv: String = config.getString("job.env")
 
+  // Dynamic Assess Configuration
+  val searchServiceBase: String = if (config.hasPath("service.search.basePath")) config.getString("service.search.basePath") else ""
+  val searchServiceURL: String = s"$searchServiceBase/v3/search"
+  val questionSetServiceBase: String = if (config.hasPath("service.questionset.basePath")) config.getString("service.questionset.basePath") else ""
+  val questionSetAddURL: String = s"$questionSetServiceBase/questionset/v5/add"
+  val questionSetRemoveURL: String = s"$questionSetServiceBase/questionset/v5/remove"
+  val questionSetHierarchyURL: String = s"$questionSetServiceBase/questionset/v5/hierarchy/"
+  // Content API lives in knowlg-service too, so it defaults to the same base and needs no new deploy config.
+  val contentServiceBase: String = if (config.hasPath("service.content.basePath")) config.getString("service.content.basePath") else questionSetServiceBase
+  val contentReadURL: String = s"$contentServiceBase/content/v3/read/"
+  val contentUpdateURL: String = s"$contentServiceBase/content/v3/update/"
+  val dynamicAssessMinCriteria: Int = if (config.hasPath("dynamicassess.minCriteria")) config.getInt("dynamicassess.minCriteria") else 2
+  val dynamicAssessMultiplier: Int = if (config.hasPath("dynamicassess.multiplier")) config.getInt("dynamicassess.multiplier") else 2
+  require(dynamicAssessMinCriteria >= 0, s"dynamicassess.minCriteria must be >= 0, got $dynamicAssessMinCriteria")
+  require(dynamicAssessMultiplier >= 1, s"dynamicassess.multiplier must be >= 1, got $dynamicAssessMultiplier")
+  val questionServiceBase: String = if (config.hasPath("service.question.basePath")) config.getString("service.question.basePath") else ""
+  val assessmentItemServiceBase: String = if (config.hasPath("service.assessmentitem.basePath")) config.getString("service.assessmentitem.basePath") else questionServiceBase
+  val assessmentItemReadURL: String = s"$assessmentItemServiceBase/assessment/v3/items/read/"
+  val frameworkServiceBase: String = if (config.hasPath("service.framework.basePath")) config.getString("service.framework.basePath") else ""
+  val frameworkReadURL: String = s"$frameworkServiceBase/framework/v3/read/"
+  val defaultIsShuffleOption: Boolean = if (config.hasPath("content.publish.defaults.isShuffleOption")) config.getBoolean("content.publish.defaults.isShuffleOption") else true
+  val defaultIsPartialScore: Boolean = if (config.hasPath("content.publish.defaults.isPartialScore")) config.getBoolean("content.publish.defaults.isPartialScore") else true
+
   // Kafka Topics Configuration
   val kafkaInputTopic: String = config.getString("kafka.input.topic")
   val postPublishTopic: String = config.getString("kafka.post_publish.topic")
@@ -26,6 +49,7 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
   val contentMetadataTopic: String = config.getString("kafka.content_metadata.topic")
   val enrichedMetadataTopic: String = config.getString("kafka.enriched_metadata.topic")
   val kafkaErrorTopic: String = config.getString("kafka.error.topic")
+  val contentPublishedTopic: String = if (config.hasPath("kafka.content_published.topic")) config.getString("kafka.content_published.topic") else "sunbirddev.content.published"
   val inputConsumerName = "content-publish-consumer"
 
   // Parallelism
@@ -46,10 +70,20 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
   val mvProcessorEventCount = "mvc-processor-event-count"
   val dialcodeContextUpdaterEventCount = "dialcode-context-updater-event-count"
   val enrichedMetadataEventCount = "enriched-metadata-event-count"
+  val contentPublishedEventCount = "content-published-event-count"
   val enrichOnlyEventCount = "enrich-only-event-count"
   val enrichOnlySuccessCount = "enrich-only-success-count"
   val enrichOnlyFailedCount = "enrich-only-failed-count"
   val enrichOnlySkippedCount = "enrich-only-skipped-count"
+  val dynamicAssessEventCount = "dynamic-assess-event-count"
+  val dynamicAssessSuccessCount = "dynamic-assess-success-count"
+  val dynamicAssessFailedCount = "dynamic-assess-failed-count"
+  val dynamicAssessSkippedCount = "dynamic-assess-skipped-count"
+
+  // Auto Batch Creation Metrics
+  val autoBatchCreationCount = "auto-batch-creation-count"
+  val autoBatchCreationSuccessCount = "auto-batch-creation-success-count"
+  val autoBatchCreationFailedCount = "auto-batch-creation-failed-count"
 
   // Cassandra Configurations
   val cassandraHost: String = config.getString("lms-cassandra.host")
@@ -58,7 +92,11 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
   val contentTableName: String = config.getString("content.table")
   val hierarchyKeyspaceName: String = config.getString("hierarchy.keyspace")
   val hierarchyTableName: String = config.getString("hierarchy.table")
-  
+
+  // Auto Batch Creation Cassandra Configuration
+  val lmsKeyspaceName: String = if (config.hasPath("lms-cassandra.keyspace")) config.getString("lms-cassandra.keyspace") else "sunbird_courses"
+  val batchTableName: String = if (config.hasPath("lms-cassandra.batchTable")) config.getString("lms-cassandra.batchTable") else "course_batch"
+
   // Collection hierarchy relationships table configuration
   val collectionHierarchyKeyspaceName: String = if (config.hasPath("collection_hierarchy.keyspace")) config.getString("collection_hierarchy.keyspace") else "dev_hierarchy_store"
   val collectionHierarchyTableName: String = if (config.hasPath("collection_hierarchy.table")) config.getString("collection_hierarchy.table") else "hierarchy_relations"
@@ -96,8 +134,11 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
   val dialcodeContextUpdaterOutTag: OutputTag[String] = new OutputTag[String]("dialcode-context-updater-request", stringTypeInfo)
   val contentMetadataEventOutTag: OutputTag[String] = new OutputTag[String]("content-metadata-event-request", stringTypeInfo)
   val enrichedMetadataEventOutTag: OutputTag[String] = new OutputTag[String]("enriched-metadata-event-request", stringTypeInfo)
+  val contentPublishedEventOutTag: OutputTag[String] = new OutputTag[String]("content-published-event-request", stringTypeInfo)
   val enrichOnlyOutTag: OutputTag[Event] = new OutputTag[Event]("enrich-only-request", publishMetaTypeInfo)
+  val dynamicAssessOutTag: OutputTag[Event] = new OutputTag[Event]("dynamic-assess-refresh-request", publishMetaTypeInfo)
   val qrimageOutTag: OutputTag[String] = new OutputTag[String]("qrimage-generator-request", stringTypeInfo)
+  val autoBatchCreateOutTag: OutputTag[String] = new OutputTag[String]("auto-batch-create", stringTypeInfo)
 
 
   val definitionBasePath: String = if (config.hasPath("schema.basePath")) config.getString("schema.basePath") else "https://sunbirddev.blob.core.windows.net/sunbird-content-dev/schemas/local"
@@ -147,5 +188,9 @@ class KnowlgPublishConfig(override val config: Config) extends PublishConfig(con
   val dialStorageContainer: String = if (config.hasPath("dialcode.storage.container")) config.getString("dialcode.storage.container") else "dial"
   val qrimageTopic: String = if (config.hasPath("kafka.qrimage.topic")) config.getString("kafka.qrimage.topic") else "sunbirddev.qrimage.request"
   val dialcodeContextUpdaterTopic: String = if (config.hasPath("kafka.dialcode.context.topic")) config.getString("kafka.dialcode.context.topic") else "sunbirddev.dialcode.context.job.request"
+
+  // Auto Batch Creation LMS Configuration
+  val autoBatchCreateAPIPath: String = (if (config.hasPath("service.lms.basePath")) config.getString("service.lms.basePath") else "http://localhost/lms") + "/private/v1/course/batch/create"
+  val autoBatchCreateParallelism: Int = if (config.hasPath("task.auto_batch_create.parallelism")) config.getInt("task.auto_batch_create.parallelism") else 1
 
 }

@@ -143,8 +143,10 @@ class TransactionEventProcessorStreamTask(
       .setParallelism(config.eventRouterParallelism)
 
     if (config.compositeSearchIndexer) {
+      // Keyed so that all events of a node are handled in order by one subtask at any parallelism.
       val compositeSearchStream = searchIndexerStream
         .getSideOutput(config.compositeSearchDataOutTag)
+        .keyBy(new TransactionEventKeySelector())
         .process(new CompositeSearchIndexerFunction(config))
         .name("composite-search-indexer")
         .uid("composite-search-indexer")

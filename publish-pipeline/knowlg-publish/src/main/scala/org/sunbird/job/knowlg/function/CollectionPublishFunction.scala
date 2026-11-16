@@ -8,7 +8,7 @@ import org.apache.flink.streaming.api.functions.ProcessFunction
 import org.slf4j.LoggerFactory
 import org.sunbird.job.cache.{DataCache, RedisConnect}
 import org.sunbird.job.knowlg.publish.domain.Event
-import org.sunbird.job.knowlg.publish.helpers.{CollectionPublisher, DialcodeHelper}
+import org.sunbird.job.knowlg.publish.helpers.{AutoBatchCreation, CollectionPublisher, ContentPublishedEventHelper, DialcodeHelper}
 import org.sunbird.job.knowlg.task.KnowlgPublishConfig
 import org.sunbird.job.domain.`object`.{DefinitionCache, ObjectDefinition}
 import org.sunbird.job.exception.InvalidInputException
@@ -32,7 +32,7 @@ class CollectionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
                                 @transient var definitionCache: DefinitionCache = null,
                                 @transient var definitionConfig: DefinitionConfig = null)
                                (implicit val stringTypeInfo: TypeInformation[String])
-  extends BaseProcessFunction[Event, String](config) with CollectionPublisher with DialcodeHelper with FailedEventHelper {
+  extends BaseProcessFunction[Event, String](config) with CollectionPublisher with DialcodeHelper with FailedEventHelper with AutoBatchCreation with ContentPublishedEventHelper {
 
   private[this] val logger = LoggerFactory.getLogger(classOf[CollectionPublishFunction])
   val mapType: Type = new TypeToken[java.util.Map[String, AnyRef]]() {}.getType
@@ -71,7 +71,7 @@ class CollectionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
   }
 
   override def metricsList(): List[String] = {
-    List(config.collectionPublishEventCount, config.collectionPublishSuccessEventCount, config.collectionPublishFailedEventCount, config.skippedEventCount, config.collectionPostPublishProcessEventCount, config.enrichedMetadataEventCount)
+    List(config.collectionPublishEventCount, config.collectionPublishSuccessEventCount, config.collectionPublishFailedEventCount, config.skippedEventCount, config.collectionPostPublishProcessEventCount, config.enrichedMetadataEventCount, config.contentPublishedEventCount)
   }
 
   override def processElement(data: Event, context: ProcessFunction[Event, String]#Context, metrics: Metrics): Unit = {
@@ -151,10 +151,12 @@ class CollectionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
             pushCollectionDIALcodeEvents(successObj, dialContextMap, config, context)(metrics)
           }
           pushPostProcessEvent(successObj, dialContextMap, context)(metrics)
-          
+          pushAutoBatchCreateEvent(successObj, context)(metrics)
+
           //Push Enriched metadata event
           pushEnrichedMetadataEvent(enrichedObj, context)(metrics)
-          
+          pushContentPublishedEvent(successObj, "Collection", config, context)(metrics)
+
           if(config.isAISearchEnabled) {
             pushContentMetadataEvent(successObj, context)(metrics)
           }
@@ -209,6 +211,18 @@ class CollectionPublishFunction(config: KnowlgPublishConfig, httpUtil: HttpUtil,
     } catch  {
       case ex: Exception =>  ex.printStackTrace()
         throw new InvalidInputException("CollectionPublisher:: pushPostProcessEvent:: Error while pushing post process event.", ex)
+    }
+  }
+
+  private def pushAutoBatchCreateEvent(obj: ObjectData, context: ProcessFunction[Event, String]#Context)(implicit metrics: Metrics): Unit = {
+    try {
+      val batchDetails = getAutoBatchDetails(obj)(cassandraUtil, config)
+      if (!batchDetails.isEmpty) {
+        context.output(config.autoBatchCreateOutTag, JSONUtil.serialize(batchDetails))
+      }
+    } catch {
+      case ex: Exception =>
+        logger.error(s"Error while checking auto batch creation eligibility for ${obj.identifier}: ${ex.getMessage}", ex)
     }
   }
 
